@@ -1,4 +1,8 @@
-// Dispute a liquidation from accounts[0]. To be used in testing.
+/**
+ * @notice Dispute a liquidation as the sponsor, which is assumed to be accounts[0].
+ *
+ *  Example run: `$(npm bin)/truffle exec ./scripts/local/DisputeEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
+ */
 const { toWei, fromWei, toBN } = web3.utils;
 const { LiquidationStatesEnum } = require("../../../common/Enums.js");
 
@@ -12,13 +16,16 @@ const argv = require("minimist")(process.argv.slice(), { string: ["emp", "id"] }
 let emp;
 let collateralToken;
 
+/**
+ * @notice Return most recent LiquidationDisputed event.
+ */
 const getDisputeLiquidationEvent = async (emp, disputer) => {
   const events = await emp.getPastEvents("LiquidationDisputed", {
     fromBlock: 0,
     filter: { disputer: disputer }
   });
   // Sort descending (highest block first). Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
-  // This returns most recent event.
+  // This sets the most recent event at events[0].
   events.sort((a, b) => {
     if (a.blockNumber !== b.blockNumber) {
       return b.blockNumber - a.blockNumber;
@@ -35,28 +42,36 @@ const getDisputeLiquidationEvent = async (emp, disputer) => {
 
 const disputeEMP = async callback => {
   try {
+    // Accounts
+    const accounts = await web3.eth.getAccounts();
+    const sponsor = accounts[0]; // Sponsor will also be the disputer.
+    const liquidator = accounts[1];
+    console.log(`Liquidator: ${liquidator}`);
+    console.log(`Sponsor that was liquidated: ${sponsor}`);
+
+    // Get liquidation details
     const empAddress = argv.emp;
     if (!empAddress) {
       console.log('Missing "emp" command line argument, please specify an EMP contract address');
       return;
     }
     emp = await ExpiringMultiParty.at(empAddress);
-    const accounts = await web3.eth.getAccounts();
-    const sponsor = accounts[0];
-    const liquidator = accounts[1];
-    console.log(`Liquidator: ${liquidator}`);
-    console.log(`Sponsor that was liquidated: ${sponsor}`);
-
-    const liquidationId = argv.id;
+    let liquidationId = argv.id;
     if (!liquidationId) {
-      console.log("Missing 'id' command line argument, this selects which liquidation to dispute");
-      return;
+      console.log(
+        "Missing optional 'id' command line argument, this selects which liquidation to dispute. Defaulting ID to 0."
+      );
+      liquidationId = 0;
     }
     console.log(`Disputing liquidation with ID ${liquidationId}`);
     let liquidations = await emp.getLiquidations(sponsor);
     const liquidation = liquidations[liquidationId];
+    if (!liquidation) {
+      console.log(`Cannot find a liquidation with index ${liquidationId} for sponsor ${sponsor}`);
+      return;
+    }
 
-    // Check liquidation state
+    // Check liquidation config
     if (liquidation.state !== LiquidationStatesEnum.PRE_DISPUTE) {
       console.log("Liquidation state must be PRE_DISPUTE to dispute");
       return;
@@ -65,6 +80,8 @@ const disputeEMP = async callback => {
     const liquidationPrice = toBN(toWei(liquidation.liquidatedCollateral.toString())).div(
       toBN(liquidation.tokensOutstanding.toString())
     );
+    console.log(`- liquidated collateral: ${fromWei(liquidation.liquidatedCollateral.toString())}`);
+    console.log(`- liquidated tokens: ${fromWei(liquidation.tokensOutstanding.toString())}`);
     console.log(`- liquidation price: ${fromWei(liquidationPrice)}`);
     console.groupEnd();
 
@@ -73,17 +90,15 @@ const disputeEMP = async callback => {
     await collateralToken.allocateTo(sponsor, toWei("1000")); // This amount should cover the dispute bond.
     await collateralToken.approve(emp.address, toWei("1000"), { from: sponsor });
     await emp.dispute(liquidationId, sponsor, { from: sponsor });
-    console.log(`Sponsor has disputed liquidation ${liquidationId}`);
 
     // Check event.
     const event = await getDisputeLiquidationEvent(emp, sponsor);
-    console.log("Dispute event:", event.args);
+    console.log(`Sponsor has successfully disputed liquidation ${event.args.liquidationId.toString()}`);
+    console.log(`Dispute stake amount: ${fromWei(event.args.disputeBondAmount.toString())}`);
 
     // Check if dispute went through.
     liquidations = await emp.getLiquidations(sponsor);
-    if (liquidations[liquidationId].state !== LiquidationStatesEnum.PENDING_DISPUTE) {
-      console.log("Liquidation state did not change to PENDING_DISPUTE");
-    }
+    console.log("Updated liquidation state:", liquidations[liquidationId]);
   } catch (err) {
     console.error(err);
     callback(err);

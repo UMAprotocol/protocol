@@ -4,6 +4,10 @@
  * and configuring the contracts to use the mock oracle which is more useful for testing.
  *
  * This script is intended to make testing the Sponsor CLI easier.
+ *
+ * How to run on local testnet: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true
+ * - The `--test` flag will deploy a MockOracle, whitelist the collateral currency and the pricefeed identifier,
+ *   and create an initial sponsor position.
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("../../utils/Constants.js");

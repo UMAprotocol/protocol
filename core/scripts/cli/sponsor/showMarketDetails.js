@@ -15,7 +15,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const sponsorAddress = await getDefaultAccount(web3);
   let collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const syntheticCurrency = await ExpandedERC20.at(await emp.tokenCurrency());
   const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+  const syntheticSymbol = await getCurrencySymbol(web3, artifacts, syntheticCurrency);
 
   // This function should only be called if the sponsor has an existing position.
   const printSponsorSummary = async sponsorAddress => {
@@ -41,7 +43,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     }
   };
 
-  // Read liquidations from past events, since they will be deleted from the contract state after all of their rewards are withdrawn.
+  // Read liquidations from past events, since they will be deleted from the contract state after
+  // all of their rewards are withdrawn.
   const liquidationEvents = await emp.getPastEvents("LiquidationCreated", {
     fromBlock: 0,
     filter: { sponsor: sponsorAddress }
@@ -50,14 +53,13 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     switch (state) {
       case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
         return "SUCCESSFULLY DISPUTED LIQUIDATION";
-      case LiquidationStatesEnum.DISPUTE_FAILED:
-        return "LIQUIDATED FOLLOWING FAILED DISPUTE";
-      case LiquidationStatesEnum.UNINITIALIZED:
-        return "LIQUIDATED AND REWARDS WITHDRAWN";
+      case LiquidationStatesEnum.PRE_DISPUTE:
+        return "PENDING LIQUIDATION";
       case LiquidationStatesEnum.PENDING_DISPUTE:
-        return "LIQUIDATION PENDING DISPUTE";
+        return "PENDING DISPUTED LIQUIDATION";
       default:
-        return "PENDING OR EXPIRED LIQUIDATION";
+        // All liquidation rewards have been withdrawn.
+        return "LIQUIDATED AND/OR NO REWARDS TO WITHDRAW";
     }
   };
   const viewLiquidations = async () => {
@@ -104,9 +106,11 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   }
   let message = "What would you like to do?";
 
-  // For convenience, show user's collateral balance.
+  // For convenience, show user's token balances.
   const collateralBalance = await collateralCurrency.balanceOf(sponsorAddress);
   console.log(`Current collateral balance: ${fromWei(collateralBalance.toString())} ${collateralSymbol}`);
+  const syntheticBalance = await syntheticCurrency.balanceOf(sponsorAddress);
+  console.log(`Current synthetic balance: ${fromWei(syntheticBalance.toString())} ${syntheticSymbol}`);
 
   if (collateral === "0") {
     // Sponsor doesn't have a position.

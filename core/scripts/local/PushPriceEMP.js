@@ -1,4 +1,9 @@
-// Push a price for latest mock oracle price request. To be used in testing.
+/**
+ * @notice Push a price for a mock oracle price request. Designed to be used in testing disputed liquidations.
+ *
+ * How to use: $(npm bin)/truffle exec ./scripts/local/PushPriceEMP.js --network test --id 1 --price 1.2
+ * - This will push 1.2 as the price for the pending price request at index 1 in the MockOracle
+ */
 const { toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("../../utils/Constants");
 
@@ -14,11 +19,14 @@ let finder;
 
 const pushPriceEMP = async callback => {
   try {
+    // Get MockOracle in Finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
     const priceFeedIdentifier = utf8ToHex("ETH/BTC");
     const pendingRequests = await mockOracle.getPendingQueries();
+    console.log(`There are ${pendingRequests.length} pending price requests:`, pendingRequests);
 
+    // Determine which pending price request to push a price for.
     let priceRequestIndex = argv.id;
     if (!priceRequestIndex) {
       console.log('Optional price request "id" not specified, defaulting to index 0');
@@ -31,24 +39,24 @@ const pushPriceEMP = async callback => {
       );
       priceRequestIndex = pendingRequests.length - 1;
     }
-    // This might fail if there is more than 1 pending request.
     console.log(
-      `MockOracle latest price request for ${hexToUtf8(pendingRequests[priceRequestIndex]["identifier"])} @ time ${
-        pendingRequests[0].time
+      `Pushing a price for ${hexToUtf8(pendingRequests[priceRequestIndex]["identifier"])} @ time ${
+        pendingRequests[priceRequestIndex].time
       }`
     );
 
-    // Now, push a price to the oracle.
-    // If the dispute price is lower than the liquidation price (1.2), then the dispute will succeed.
+    // Now, push the price to the oracle.
+    // FYI: If the resolved price is lower than the liquidation price, then the dispute will succeed.
     let disputePrice;
     if (!argv.price) {
       console.log("Pushing default price of 1");
       disputePrice = toWei("1");
     } else {
+      console.log(`Pushing price of ${argv.price}`);
       disputePrice = toWei(argv.price);
     }
-    await mockOracle.pushPrice(priceFeedIdentifier, pendingRequests[0].time, disputePrice);
-    console.log(`Pushed a price to the mock oracle: ${fromWei(disputePrice)}`);
+    await mockOracle.pushPrice(priceFeedIdentifier, pendingRequests[priceRequestIndex].time, disputePrice);
+    console.log(`Pushed a new price to the mock oracle: ${fromWei(disputePrice)}`);
   } catch (err) {
     console.error(err);
     callback(err);
