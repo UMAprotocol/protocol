@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { toWei } = web3.utils;
+const { toBN } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
@@ -10,7 +10,6 @@ const { MAX_UINT_VAL } = require("../common/Constants");
 const { Disputer } = require("./disputer");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
 const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
@@ -55,22 +54,20 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute
-    // a liquidation. We'll set this once to the max value using the Token client.
-    const tokenClient = new TokenBalanceClient(
-      Logger,
-      ExpandedERC20.abi,
-      web3,
-      await emp.collateralCurrency(),
-      await emp.tokenCurrency()
-    );
-    const collateralApprovalTx = await tokenClient.collateralToken.methods
-      .approve(empClient.empAddress, MAX_UINT_VAL)
-      .send({ from: accounts[0] });
-    Logger.debug({
-      at: "Disputer#index",
-      message: "Approved EMP to transfer unlimited collateral tokens",
-      collateralApprovalTx: collateralApprovalTx.transactionHash
-    });
+    // a liquidation. We'll set this once to the max value and top up whenever the bot's allowance drops below
+    // MAX_INT / 2.
+    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+    const currentAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
+    if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.debug({
+        at: "Disputer#index",
+        message: "Approved EMP to transfer unlimited collateral tokens",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
 
     while (true) {
       await disputer.queryAndDispute();

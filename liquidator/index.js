@@ -5,12 +5,12 @@ const { delay } = require("../financial-templates-lib/helpers/delay");
 const { startServer } = require("../common/ServerUtils");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 const { MAX_UINT_VAL } = require("../common/Constants");
+const { toBN } = web3.utils;
 
 // JS libs
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
 const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
@@ -61,26 +61,32 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
-    // a position. We'll set these once to the max value using the Token client.
-    const tokenClient = new TokenBalanceClient(
-      Logger,
-      ExpandedERC20.abi,
-      web3,
-      await emp.collateralCurrency(),
-      await emp.tokenCurrency()
-    );
-    const collateralApprovalTx = await tokenClient.collateralToken.methods
-      .approve(empClient.empAddress, MAX_UINT_VAL)
-      .send({ from: accounts[0] });
-    const syntheticApprovalTx = await tokenClient.syntheticToken.methods
-      .approve(empClient.empAddress, MAX_UINT_VAL)
-      .send({ from: accounts[0] });
-    Logger.debug({
-      at: "liquidator#index",
-      message: "Approved EMP to transfer unlimited synthetic and collateral tokens",
-      collateralApprovalTx: collateralApprovalTx.transactionHash,
-      syntheticApprovalTx: syntheticApprovalTx.transactionHash
-    });
+    // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below
+    // MAX_INT / 2.
+    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
+    const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
+    const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.debug({
+        at: "liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.debug({
+        at: "liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens",
+        collateralApprovalTx: syntheticApprovalTx.transactionHash
+      });
+    }
 
     // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
     const { server, portNumber } = startServer(monitorPort);
