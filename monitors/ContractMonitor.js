@@ -1,7 +1,14 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers, priceFeed) {
+  constructor(
+    logger,
+    expiringMultiPartyEventClient,
+    monitoredLiquidators,
+    monitoredDisputers,
+    priceFeed,
+    startingBlockNumber = 0
+  ) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
@@ -17,9 +24,9 @@ class ContractMonitor {
     this.web3 = this.empEventClient.web3;
 
     // Previous contract state used to check for new entries between calls.
-    this.lastLiquidationBlockNumber = 0;
-    this.lastDisputeBlockNumber = 0;
-    this.lastDisputeSettlementBlockNumber = 0;
+    this.lastLiquidationBlockNumber = startingBlockNumber;
+    this.lastDisputeBlockNumber = startingBlockNumber;
+    this.lastDisputeSettlementBlockNumber = startingBlockNumber;
 
     // Contract constants
     // TODO: replace this with an actual query to the collateral currency symbol
