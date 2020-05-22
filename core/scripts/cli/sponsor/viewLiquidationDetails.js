@@ -4,6 +4,7 @@ const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils")
 const { submitTransaction } = require("./transactionUtils");
 const { LiquidationStatesEnum } = require("../../../../common/Enums");
 const { liquidationStateToDisplay } = require("./liquidationUtils");
+const { interfaceName } = require("../../../utils/Constants");
 
 /**
  * @notice Display details about all liquidation events for this sponsor.
@@ -77,6 +78,7 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
 
   // Check if the sponsor can withdraw by seeing if `withdrawLiquidation` reverts.
   try {
+    // This will only succeed if the state is PENDING_DISPUTE and a price has resolved that will make the dispute succeed.
     await emp.withdrawLiquidation.call(id, sponsorAddress);
     choices.push({ name: withdrawAction });
   } catch (err) {
@@ -93,9 +95,24 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
     } else if (liquidation.state === LiquidationStatesEnum.PENDING_DISPUTE) {
       // If the liquidation state is PENDING_DISPUTE and `withdrawLiquidation` fails, then it indicates that either
       // a price has not resolved yet, or a price has resolved that indicates that the dispute will FAIL.
-      console.log(
-        "Liquidation has been disputed, but it is currently pending dispute and awaiting a price resolution, or a price has already resolved and the dispute will fail"
+
+      // Fetch oracle price and use it to customize error message.
+      const Finder = artifacts.require("Finder");
+      let finder = await Finder.deployed();
+      const OracleInterface = artifacts.require("OracleInterface");
+      let oracle = await OracleInterface.at(
+        await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
       );
+      if (await oracle.hasPrice(await emp.priceIdentifier(), liquidation.liquidationTime)) {
+        const resolvedPrice = await oracle.getPrice(await emp.priceIdentifier(), liquidation.liquidationTime);
+        console.log(
+          `Liquidation has been disputed and a price of ${web3.utils.fromWei(
+            resolvedPrice.toString()
+          )} has been resolved. This will cause the dispute to fail and there will not be any rewards to withdraw`
+        );
+      } else {
+        console.log("Liquidation has been disputed and it is currently awaiting a price resolution");
+      }
     } else if (liquidation.state === LiquidationStatesEnum.DISPUTE_SUCCEEDED) {
       // If the liquidation state is DISPUTE_SUCCEEDED and `withdrawLiquidation` fails, then the sponsor has already
       // withdrawn their rewards.
