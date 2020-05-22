@@ -13,24 +13,36 @@ A liquidation is invalid if a position was in fact overcollateralized at the tim
 
 ## Implementation
 
-The liquidation and dispute bots are separate entities, each has its own wallet and are designed to be be run independently of one and other. This decouples dependencies between the bots to decrease the risk of one crashing impacting the other. The bots are written in Javascript and re-use much of the upstream codebase. In production, it is suggested to run the bots within docker containers to further isolate the bots from any systemic risk and to ensure a reproducible execution environment.
+The liquidation and dispute bots are separate entities. Each has its own wallet and is designed to be be run independently of the other.
+This decouples dependencies between the bots to decrease the risk of one crashing impacting the other.
+The bots are written in Javascript and re-use much of the upstream codebase.
+In production, it is suggested to run the bots within docker containers to further isolate the bots from any systemic risk and to ensure a reproducible execution environment.
 
 ## Technical Tutorial
 
-This tutorial will be broken down into three sections: 1) running the bots directly from your host environment (no docker) from the command line 2) running the bots within a dockerized environment from the official UMA docker image and 3) deploying bots to production in Google Cloud Compute.
+This tutorial will be broken down into three sections:
 
-This tutorial will guide you through setting up a liquidator and disputer bot to monitor an expiring multi party deployed on the Kovan test network. A verified version of the expiring multi party contract can be found on Kovan [here](https://kovan.etherscan.io/address/0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1). This contract is an ETHBTC synthetic, collateralized in Dai.
+1. [Running the bots directly from your host environment (no Docker) from the command line](#running-the-liquidator-and-disputer-bots-locally)
+2. [Running the bots within a dockerized environment from the official UMA Docker image](#running-the-bots-locally-with-Docker)
+3. [Deploying bots to production in Google Cloud Compute](#running-the-bots-in-the-cloud-with-GCP)
+
+This tutorial will guide you through setting up a liquidator and disputer bot to monitor an expiring multi party deployed on the Kovan test network.
+A verified version of the expiring multi party contract can be found on Kovan [here](https://kovan.etherscan.io/address/0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1).
+This contract is an ETHBTC synthetic, collateralized in Dai.
 
 ## Prerequisites
 
 ### Funding accounts
 
-Bots require to be funded with currency to pay for liquidations and disputes.
-Specifically, if you want to run a liquidator bot, you need to fund the wallet with 1) synthetic tokens to pay off liquidated positions, 2) collateral currency to pay the DVM final fee and 3) Ether to pay transaction fees. If you want to run a disputer bot then this wallet should be funded with collateral currency to pay dispute bonds and the DVM final fee and Ether to pay for transactions.
+Bots must be funded with currency to pay for liquidations and disputes.
+Specifically, if you want to run a liquidator bot, you need to fund the wallet with 1) synthetic tokens to close liquidated positions, 2) collateral currency to pay the DVM final fee, and 3) Ether to pay transaction fees.
+If you want to run a disputer bot, then this wallet should be funded with 1) collateral currency to pay dispute bonds and the DVM final fee and 2) Ether to pay for transactions.
 
 ### Bot private key management
 
-All deployment configurations require a wallet mnemonic (or private key) to be injected into the bots enabling them to submit transactions to preform on-chain liquidations and disputes. You can either bring your own mnemonic from an existing wallet or generate a fresh one using the `bip39` package installed within the UMA repo. If you have a wallet mnemonic already you can skip this section.
+All deployment configurations require a wallet mnemonic (or private key) to be injected into the bots enabling them to submit transactions to preform on-chain liquidations and disputes.
+You can either bring your own mnemonic from an existing wallet or generate a fresh one using the `bip39` package installed within the UMA repo.
+If you have a wallet mnemonic already you can skip this section.
 
 To generate a new mnemonic you can run the following from the `/core` directory:
 
@@ -45,7 +57,8 @@ bip39.generateMnemonic()
 'sail chuckle school attitude symptom tenant fragile patch ring immense main rapid'
 ```
 
-You can then load this mnemonic into truffle and view the associated public key. To do this, exit the the truffle console by pressing `ctrl+c` twice on your keyboard and then typing:
+You can then load this mnemonic into truffle and view the associated public key.
+To do this, exit the the truffle console by pressing `ctrl+c` twice on your keyboard and then typing:
 
 ```bash
 # Add the new mnemonic to your environment variables
@@ -59,13 +72,16 @@ accounts[0]
 0x45Bc98b00adB0dFe16c85c391B1854B706b7d612
 ```
 
-You can now fund this wallet with the associated currency for the type of bot you want to run. To learn more about creating synthetic tokens to back fund your liquidator bot see [this](./using_the_uma_sponsor_cli_tool.md) tutorial.
+You can now fund this wallet with the associated currency for the type of bot you want to run.
+To learn more about creating synthetic tokens to back fund your liquidator bot see [this](./using_the_uma_sponsor_cli_tool.md) tutorial.
 
-### Creating a price feed API key.
+### Creating a price feed API key
 
-All bots require a price feed to inform their liquidation decisions. For this you must create an account :TODO add the website here. Keep this key handy. You'll need it when configuring the bots.
+All bots require a price feed to inform their liquidation decisions.
+For this you must create an account. <!-- :TODO add the website here. -->
+Keep this key handy. You'll need it when configuring the bots.
 
-## 1. Running the liquidator and disputer bots locally
+## Running the liquidator and disputer bots locally
 
 **a) Clone repo & install dependencies**
 
@@ -83,7 +99,9 @@ truffle compile
 
 **b) Configuring environment**
 
-The bots can be easily run directly from your local development environment. To start a bot the first step is to configure the bot's settings. Liquidations bots require 4 main configurations settings which are configured using environment variables. To set this up create a `.env` file in the `/core` directory of the repo it:
+The bots can be easily run directly from your local development environment. To start a bot the first step is to configure the bot's settings.
+Liquidation bots require 4 main configurations settings which are configured using environment variables.
+To set this up create a `.env` file in the `/core` directory of the repo it:
 
 ```bash
 POLLING_DELAY=30000
@@ -176,23 +194,29 @@ You should see the following output:
   ... Rest of bot startup logs and continuous health reports...
 ```
 
-The bots is now running! Any liquidation event or informative logs will be printed here. If all is operating correctly you should be able to liquidate incorrectly collateralized positions and dispute incorrectly liquidated positions.
+The bots are now running! Any liquidation event or informative logs will be printed here.
+If all is operating correctly, you should be able to liquidate incorrectly collateralized positions and dispute incorrectly liquidated positions.
 
-## 2. Running the bots locally with Docker
+## Running the bots locally with Docker
 
-Running the bots from your local machine is simple but is not ideal for a long term bot execution as you'll need to keep a terminal running the whole time to keep the bot process alive. What would be better is to run the bots within an isolated Docker container that can run in the background on your machine.
+Running the bots from your local machine is simple but is not ideal for a long term bot execution as you'll need to keep a terminal running the whole time to keep the bot process alive.
+What would be better is to run the bots within an isolated Docker container that can run in the background on your machine.
 
-The steps followed here can also be re-produced on a VPS service like Google Cloud Compute Engine, Digital Ocean or AWS EC2 to host your Dockerized bots in the cloud. Section 3 of this tutorial will show you how to deploy the bots to GCP. It is recommended that you get the bots running within a local docker environment before trying to run them on the cloud.
+The steps followed here can also be re-produced on a VPS service like Google Cloud Compute Engine, Digital Ocean or AWS EC2 to host your Dockerized bots in the cloud.
+Section 3 of this tutorial will show you how to deploy the bots to GCP. It is recommended that you get the bots running within a local Docker environment before trying to run them on the cloud.
 
 **a) Setting docker up on your local machine**
 
-To be able to run the bots within a Dockerized environment you need to have Docker set up on your local machine. The getting started with Docker is relatively straight forward. See the official docks for [Mac](https://docs.docker.com/docker-for-mac/), [Linux](https://docs.docker.com/engine/install/ubuntu/) or [Windows](https://docs.docker.com/docker-for-windows/install/).
+To be able to run the bots within a Dockerized environment you need to have Docker set up on your local machine. Getting started with Docker is relatively straight forward.
+See the official docks for [Mac](https://docs.docker.com/docker-for-mac/), [Linux](https://docs.docker.com/engine/install/ubuntu/) or [Windows](https://docs.docker.com/docker-for-windows/install/).
 
 **b) Creating bot environment configurations**
 
-In the previous section both the liquidator and disputer bots used the same `.env` configuration file. In this section we will create separate configuration files for each bot. These scripts will contain all the settings for a given bot, as well as the starting command used to boot the bot.
+In the previous section, both the liquidator and disputer bots used the same `.env` configuration file.
+In this section, we will create separate configuration files for each bot.
+These scripts will contain all the settings for a given bot, as well as the starting command used to boot the bot.
 
-Start by copping the `.env` you created to make two new env files. This section assumes you are in the `/core` directory. Run the following commands:
+Start by copying the `.env` you created to make two new env files. This section assumes you are in the `/core` directory. Run the following commands:
 
 ```bash
 # Copy the contents of the .env and add command to run the liquidator bot.
@@ -204,7 +228,8 @@ cp .env disputer.env
 echo '\nCOMMAND=npx truffle exec ../disputer/index.js --network kovan_mnemonic' >> disputer.env
 ```
 
-You should now have two config files `liquidator.env` and `disputer.env` within the `/core` directory which contain the original configs defined in the previous section along with a `COMMAND` line which defines the execution command of the bot. These commands are the same as before.
+You should now have two config files `liquidator.env` and `disputer.env` within the `/core` directory which contain the original configs defined in the previous section along with a `COMMAND` line which defines the execution command of the bot.
+These commands are the same as before.
 
 **c) Starting the Docker containers**
 
@@ -249,13 +274,16 @@ docker stop $(docker ps -a -q)
 
 Note this will stop all running docker containers on your machine.
 
-## 3. Running the bots in the cloud with GCP
+## Running the bots in the cloud with GCP
 
-In this section of the tutorial you will learn how to spin up a liquidator and dispute bot in Google Cloud Compute. Note that you can use any cloude hosting platform to run the docker containers. We simply use GCP as an easy example. The official GCP docs are a useful reference. For more information and commands see [this](https://cloud.google.com/compute/docs/containers/deploying-containers) official tutorial.
+In this section of the tutorial you will learn how to spin up a liquidator and dispute bot in Google Cloud Compute.
+Note that you can use any cloud hosting platform to run the Docker containers. We simply use GCP as an easy example.
+The official GCP docs are a useful reference. For more information and commands see [this](https://cloud.google.com/compute/docs/containers/deploying-containers) official tutorial.
 
 **a) Setting up your `gcloud` environment**
 
-Before running any GCP commands you need to set up an account and configure the `gcloud` utility. See [this](https://cloud.google.com/compute/docs/gcloud-compute) official documentation on setting this up. Once this is set up you should be able to run the following to view your gcloud email by running the following:
+Before running any GCP commands you need to set up an account and configure the `gcloud` utility.
+See [this](https://cloud.google.com/compute/docs/gcloud-compute) official documentation on setting this up. Once this is set up you should be able to run the following to view your gcloud email by running the following:
 
 ```bash
 gcloud config list account --format "value(core.account)"
@@ -264,7 +292,9 @@ gcloud config list account --format "value(core.account)"
 
 **b) Deploying Bots to GCP**
 
-To deploy the bots to GCP we use the `compute instances create-with-container` CLI function which will create a new compute instance within your GCP Compute engine. This instance will boot up and run a docker container on execution. From the core directory, where `liquidator.env` and `disputer.env` configs are located, you can run the following to deploy bots to GCP:
+To deploy the bots to GCP we use the `compute instances create-with-container` CLI function which will create a new compute instance within your GCP Compute engine.
+This instance will boot up and run a Docker container on execution.
+From the core directory, where `liquidator.env` and `disputer.env` configs are located, you can run the following to deploy bots to GCP:
 
 ```bash
 gcloud compute instances create-with-container ethbtc-liquidator-kovan \
@@ -272,13 +302,15 @@ gcloud compute instances create-with-container ethbtc-liquidator-kovan \
     --container-env-file ./liquidator.env
 ```
 
-Note `ethbtc-liquidator-kovan` is the name of the deployed compute instance. You can change this to anything you want. `./liquidator.env` is the environment configuration file created in the previous section of this tutorial. Logging into gcloud Compute Engine dashboard you should see a deployed compute instance called `ethbtc-liquidator-kovan`.
+Note `ethbtc-liquidator-kovan` is the name of the deployed compute instance. You can change this to anything you want. `./liquidator.env` is the environment configuration file created in the previous section of this tutorial.
+Logging into gcloud Compute Engine dashboard you should see a deployed compute instance called `ethbtc-liquidator-kovan`.
 
 You can run the same command with a new name and new configuration file to start the disputer bot.
 
 **C) Updating container configuration.**
 
-You might want to update docker environment variables or push new code to the compute instances. The easiest way to update env variables is from the GCP dashboard. The official docs explain the process to do this [here](https://cloud.google.com/compute/docs/containers/configuring-options-to-run-containers#setting_environment_variables).
+You might want to update docker environment variables or push new code to the compute instances. The easiest way to update env variables is from the GCP dashboard.
+The official docs explain the process to do this [here](https://cloud.google.com/compute/docs/containers/configuring-options-to-run-containers#setting_environment_variables).
 
 Alternatively if you want to push a new local config file you can do this by running the following command (assuming we are updating the `ethbtc-liquidator-kovan` initialized in the previous code block)
 
@@ -290,11 +322,13 @@ Alternatively if you want to push a new local config file you can do this by run
 
 ## Bot health monitoring
 
-Once your bots are running on GCP you properly want to know when they are executing liquidations or if any errors occur. The bots by default provide a few useful monitoring avenues. These are now discussed.
+Once your bots are running on GCP you want to know when they are properly executing liquidations or if any errors occur. The bots by default provide a few useful monitoring avenues. These are now discussed.
 
 ### GCP StackDriver intergration
 
-Once your containers are running within compute engine you properly want to see the log messages in the same way you did when running `docker attach` in the previous section. To make this process easier the bot logger configuration includes Google Stackdriver integration. This enables GCP logging to pick up the log messages generated from the bots. To enable this add the following environment variable to the docker containers:
+Once your containers are running within compute engine you properly want to see the log messages in the same way you did when running `docker attach` in the previous section.
+To make this process easier the bot logger configuration includes Google Stackdriver integration.
+This enables GCP logging to pick up the log messages generated from the bots. To enable this add the following environment variable to the docker containers:
 
 ```bash
 ENVIRONMENT=production
@@ -304,19 +338,22 @@ This will tell the bot's logger to pipe logs to GCP logging. For more informatio
 
 ### Slack integration
 
-The bots by default also come with built in slack integration to send slack messages when events occur (bot liquidates a position, is running low on capital or something has failed). To use this integration you must first generate a slack webhook. Information on generating a webhook can be found on the slack docs [here](https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack).
+The bots by default also come with built in slack integration to send slack messages when events occur (bot liquidates a position, is running low on capital or something has failed).
+To use this integration you must first generate a Slack webhook.
+Information on generating a webhook can be found on the slack docs [here](https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack).
 
-Once you've set up a slack webhook you can add it to the bots by adding the following environment variable:
+Once you've set up a Slack webhook you can add it to the bots by adding the following environment variable:
 
 ```bash
 SLACK_WEBHOOK=<your slack webhook>
 ```
 
-The bots will now automatically start sending log messages in slack.
+The bots will now automatically start sending log messages in Slack.
 
 ## Appendix 1: Bot configuration parameters
 
-This tutorial touched on the key configuration parameters available when running an UMA liquidation or dispute bot. There are a few more configuration options available. The section below describes the parameter input in this tutorial as well as the optional extra parameters that can be included when running a bot.
+This tutorial touched on the key configuration parameters available when running an UMA liquidation or dispute bot.
+There are a few more configuration options available. The section below describes the parameter input in this tutorial as well as the optional extra parameters that can be included when running a bot.
 
 - `POLLING_DELAY`**[required]**: how long the bot should wait (in milliseconds) before running a polling cycle.
 - `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you are wanting to connect to. This config defines the synthetic that the bot will be liquidating. A list of available addresses can be found HERE //TODO.
