@@ -22,7 +22,7 @@ const liquidationStateToDisplay = state => {
     case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
       return "SUCCESSFULLY DISPUTED";
     case LiquidationStatesEnum.PRE_DISPUTE:
-      return "PENDING OR EXPIRED";
+      return "LIQUIDATION PENDING OR EXPIRED";
     case LiquidationStatesEnum.PENDING_DISPUTE:
       return "PENDING DISPUTE";
     default:

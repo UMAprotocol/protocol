@@ -89,9 +89,16 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
     if (liquidation.state === LiquidationStatesEnum.PRE_DISPUTE) {
       // If liquidation state is PRE_DISPUTE and `withdrawLiquidation` fails, then the liquidation has either expired
       // or is pre-expiry. Only a liquidator can withdraw from an expired liquidation.
-      console.log(
-        "Cannot withdraw rewards from a liquidation that is pre-expiry and has not been disputed, or has already expired"
-      );
+
+      const currentTime = web3.utils.toBN(await emp.getCurrentTime());
+      const liquidationExpirationTime = web3.utils
+        .toBN(liquidation.liquidationTime)
+        .add(web3.utils.toBN(await emp.liquidationLiveness()));
+      if (liquidationExpirationTime.lte(currentTime)) {
+        console.log("Cannot withdraw rewards from a liquidation that has expired");
+      } else {
+        console.log("Cannot withdraw rewards from a liquidation that is pre-expiry and has not been disputed");
+      }
     } else if (liquidation.state === LiquidationStatesEnum.PENDING_DISPUTE) {
       // If the liquidation state is PENDING_DISPUTE and `withdrawLiquidation` fails, then it indicates that either
       // a price has not resolved yet, or a price has resolved that indicates that the dispute will FAIL.
