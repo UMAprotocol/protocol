@@ -74,13 +74,10 @@ const withdrawEMP = async callback => {
       return;
     }
 
-    // Check if liquidation has been deleted or if liquidator has already withdrawn rewards from a successful dispute.
+    // Check if liquidation has been deleted.
     const liquidationState = liquidation.state;
     if (liquidationState === LiquidationStatesEnum.UNINITIALIZED) {
       console.log("Liquidation has been deleted");
-      return;
-    } else if (liquidationState === LiquidationStatesEnum.DISPUTE_SUCCEEDED) {
-      console.log("Dispute succeeded and liquidator has already withdrawn rewards");
       return;
     }
 
@@ -142,6 +139,29 @@ const withdrawEMP = async callback => {
         console.error(err);
         console.log("Liquidation has been disputed but a price has not resolved yet.");
       }
+    }
+    // Disputer or sponsor has already withdrawn rewards:
+    else if (liquidationState === LiquidationStatesEnum.DISPUTE_SUCCEEDED) {
+      // Check if liquidtor has already withdrawn rewards.
+      const hasLiquidatorWithdrawn = Boolean(liquidation.liquidator === "0x0000000000000000000000000000000000000000");
+      if (hasLiquidatorWithdrawn) {
+        // Note: this state is possible only if the dispute has succeeded (i.e. state == DISPUTE_SUCCEEDED) and the sponsor
+        // or disputer has already called `withdrawLiquidation`.
+        console.log("Dispute succeeded and liquidator has already withdrawn rewards");
+        return;
+      }
+
+      // Withdraw rewards.
+      const withdrawResult = await emp.withdrawLiquidation.call(liquidationId, sponsor, { from: liquidator });
+      console.log(`Withdrawing ${fromWei(withdrawResult.rawValue.toString())} collateral tokens`);
+      await emp.withdrawLiquidation(liquidationId, sponsor, { from: liquidator });
+
+      // Read event to determine if dispute succeeded or failed.
+      const withdrawEvent = await getWithdrawLiquidationEvent(emp, liquidator);
+      console.group("Withdrew liquidation:");
+      console.log(`- Withdrawal amount: ${fromWei(withdrawEvent.returnValues.withdrawalAmount)}`);
+      console.log(`- Liquidation Status: ${withdrawEvent.returnValues.liquidationStatus}`);
+      console.groupEnd();
     }
   } catch (err) {
     console.error(err);

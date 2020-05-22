@@ -3,8 +3,59 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
 const { LiquidationStatesEnum } = require("../../../../common/Enums");
+const { liquidationStateToDisplay } = require("./liquidationUtils");
 
-const viewLiquidationDetails = async (web3, artifacts, emp, liquidation, id) => {
+/**
+ * @notice Display details about all liquidation events for this sponsor.
+ */
+const viewLiquidationDetailsMenu = async (web3, artifacts, emp, liquidationEvents) => {
+  const { fromWei } = web3.utils;
+
+  const backChoice = "Back";
+  const choices = [{ name: backChoice }];
+
+  // Get liquidation data from contract and compare them against all liquidation events
+  // for the sponsor.
+  const sponsorAddress = await getDefaultAccount(web3);
+  const liquidationStructs = await emp.getLiquidations(sponsorAddress);
+  for (let i = 0; i < liquidationEvents.length; i++) {
+    const liquidation = liquidationEvents[i];
+
+    // Fetch liquidation data from contract using ID in event.
+    const liquidationId = liquidation.args.liquidationId;
+    const liquidatedTokens = liquidation.args.tokensOutstanding;
+    const liquidatedCollateral = liquidation.args.liquidatedCollateral;
+    const lockedCollateral = liquidation.args.lockedCollateral;
+    const liquidationData = liquidationStructs[liquidationId];
+    const liquidationState = liquidationData.state;
+
+    const display = `ID #${liquidationId}: Liquidated tokens: ${fromWei(
+      liquidatedTokens.toString()
+    )}, Locked collateral: ${fromWei(
+      lockedCollateral.toString()
+    )}, Liquidated collateral (including withdrawal requests) : ${fromWei(
+      liquidatedCollateral.toString()
+    )}, Status: ${liquidationStateToDisplay(liquidationState)}`;
+    choices.push({ name: display, value: liquidationId });
+  }
+  const input = await inquirer.prompt({
+    type: "list",
+    name: "choice",
+    message:
+      "Pick a liquidation. You can withdraw rewards from liquidations marked 'PENDING DISPUTE' or 'SUCCESSFULLY DISPUTED' if the oracle has resolved a price and that price makes the dispute successful.",
+    choices
+  });
+  if (input["choice"] === backChoice) {
+    return;
+  }
+
+  await viewWithdrawRewardsMenu(web3, artifacts, emp, liquidationStructs[input["choice"]], input["choice"]);
+};
+
+/**
+ * @notice Display menu of options to withdraw rewards from eligible liquidations.
+ */
+const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) => {
   // If liquidation `sponsor` property is empty, then either the sponsor's liquidation rewards have been withdrawn or the
   // liquidation data has been deleted following an expired liquidation or a failed dispute.
   // Therefore, this should catch all liquidations with state == `UNINITIALIZED` following a deletion of the liquidation struct.
@@ -95,4 +146,7 @@ const viewLiquidationDetails = async (web3, artifacts, emp, liquidation, id) => 
   }
 };
 
-module.exports = viewLiquidationDetails;
+module.exports = {
+  viewLiquidationDetailsMenu,
+  viewWithdrawRewardsMenu
+};

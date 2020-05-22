@@ -40,23 +40,31 @@ const pushPriceEMP = async callback => {
       priceRequestIndex = pendingRequests.length - 1;
     }
     console.log(
-      `Pushing a price for ${hexToUtf8(pendingRequests[priceRequestIndex]["identifier"])} @ time ${
+      `Attempting to push a price for ${hexToUtf8(pendingRequests[priceRequestIndex]["identifier"])} @ time ${
         pendingRequests[priceRequestIndex].time
       }`
     );
 
-    // Now, push the price to the oracle.
-    // FYI: If the resolved price is lower than the liquidation price, then the dispute will succeed.
-    let disputePrice;
-    if (!argv.price) {
-      console.log("Pushing default price of 1");
-      disputePrice = toWei("1");
+    // Check of oracle has already resolved a price
+    if (await mockOracle.hasPrice(priceFeedIdentifier, pendingRequests[priceRequestIndex].time)) {
+      const resolvedPrice = await mockOracle.getPrice(priceFeedIdentifier, pendingRequests[priceRequestIndex].time);
+      console.log(`Mock oracle already has a price: ${fromWei(resolvedPrice)}`);
+      return;
     } else {
-      console.log(`Pushing price of ${argv.price}`);
-      disputePrice = toWei(argv.price);
+      // Now, push the price to the oracle.
+      // FYI: If the resolved price is lower than the liquidation price, then the dispute will succeed.
+      let disputePrice;
+      if (!argv.price) {
+        console.log("Pushing default price of 1");
+        disputePrice = toWei("1");
+      } else {
+        console.log(`Pushing price of ${argv.price}`);
+        disputePrice = toWei(argv.price);
+      }
+
+      await mockOracle.pushPrice(priceFeedIdentifier, pendingRequests[priceRequestIndex].time, disputePrice);
+      console.log(`Pushed a new price to the mock oracle: ${fromWei(disputePrice)}`);
     }
-    await mockOracle.pushPrice(priceFeedIdentifier, pendingRequests[priceRequestIndex].time, disputePrice);
-    console.log(`Pushed a new price to the mock oracle: ${fromWei(disputePrice)}`);
   } catch (err) {
     console.error(err);
     callback(err);
