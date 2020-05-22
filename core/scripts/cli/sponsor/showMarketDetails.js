@@ -122,7 +122,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       await viewLiquidations(web3, artifacts, emp);
       break;
     case actions.create:
-      await create(web3, artifacts, emp);
+      await create(web3, artifacts, emp, collateral !== "0");
       break;
     case actions.redeem:
       await redeem(web3, artifacts, emp);
