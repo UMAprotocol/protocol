@@ -4,16 +4,19 @@ require("dotenv").config();
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { startServer } = require("../common/ServerUtils");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
+const { MAX_UINT_VAL } = require("../common/Constants");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
 const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
 // Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
@@ -56,6 +59,28 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
     const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+
+    // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+    // a position. We'll set these once to the max value using the Token client.
+    const tokenClient = new TokenBalanceClient(
+      Logger,
+      ExpandedERC20.abi,
+      web3,
+      await emp.collateralCurrency(),
+      await emp.tokenCurrency()
+    );
+    const collateralApprovalTx = await tokenClient.collateralToken.methods
+      .approve(empClient.empAddress, MAX_UINT_VAL)
+      .send({ from: accounts[0] });
+    const syntheticApprovalTx = await tokenClient.syntheticToken.methods
+      .approve(empClient.empAddress, MAX_UINT_VAL)
+      .send({ from: accounts[0] });
+    Logger.debug({
+      at: "liquidator#index",
+      message: "Approved EMP to transfer unlimited synthetic and collateral tokens",
+      collateralApprovalTx: collateralApprovalTx.transactionHash,
+      syntheticApprovalTx: syntheticApprovalTx.transactionHash
+    });
 
     // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
     const { server, portNumber } = startServer(monitorPort);
