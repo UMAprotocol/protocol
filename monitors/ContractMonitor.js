@@ -1,13 +1,7 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(
-    logger,
-    expiringMultiPartyEventClient,
-    monitoredLiquidators,
-    monitoredDisputers,
-    priceFeed
-  ) {
+  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers, priceFeed) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
