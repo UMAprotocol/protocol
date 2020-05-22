@@ -6,8 +6,7 @@ class ContractMonitor {
     expiringMultiPartyEventClient,
     monitoredLiquidators,
     monitoredDisputers,
-    priceFeed,
-    startingBlockNumber = 0
+    priceFeed
   ) {
     this.logger = logger;
 
@@ -24,9 +23,9 @@ class ContractMonitor {
     this.web3 = this.empEventClient.web3;
 
     // Previous contract state used to check for new entries between calls.
-    this.lastLiquidationBlockNumber = startingBlockNumber;
-    this.lastDisputeBlockNumber = startingBlockNumber;
-    this.lastDisputeSettlementBlockNumber = startingBlockNumber;
+    this.lastLiquidationBlockNumber = 0;
+    this.lastDisputeBlockNumber = 0;
+    this.lastDisputeSettlementBlockNumber = 0;
 
     // Contract constants
     // TODO: replace this with an actual query to the collateral currency symbol
