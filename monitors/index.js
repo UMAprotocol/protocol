@@ -80,7 +80,13 @@ async function run(
       emp.address,
       latestBlockNumber
     );
-    const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
+    const contractMonitor = new ContractMonitor(
+      Logger,
+      empEventClient,
+      [accounts[0]],
+      [accounts[0]],
+      medianizerPriceFeed
+    );
 
     // 2. Balance monitor
     const collateralTokenAddress = await emp.collateralCurrency();
