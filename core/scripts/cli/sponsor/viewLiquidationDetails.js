@@ -110,10 +110,10 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
       let oracle = await OracleInterface.at(
         await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
       );
-      // Need to pass {from:emp.address} in this EMP view-only calls because of this web3 view method bug
-      // https://github.com/ethereum/solidity/issues/4840#issue-352539391 that would return true regardless
-      // if the Oracle has actually resolved a price. This is because `hasPrice` and `getPrice` have the
-      // `onlyRegisteredContract` modifier.
+      // Need to explicitly pass {from:emp.address} in these EMP view-only calls because they will revert due to their
+      // `onlyRegisteredContract` modifier. However, web3 will not throw an error as expected even if the method
+      // reverts on-chain. More details [here](https://github.com/ethereum/web3.js/issues/1903) and
+      // [here](https://github.com/ethereum/solidity/issues/4840).
       if (await oracle.hasPrice(await emp.priceIdentifier(), liquidation.liquidationTime, { from: emp.address })) {
         console.log(liquidation.liquidationTime);
         const resolvedPrice = await oracle.getPrice(await emp.priceIdentifier(), liquidation.liquidationTime, {
