@@ -71,7 +71,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.debug({
+      Logger.info({
         at: "liquidator#index",
         message: "Approved EMP to transfer unlimited collateral tokens",
         collateralApprovalTx: collateralApprovalTx.transactionHash
@@ -81,7 +81,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.debug({
+      Logger.info({
         at: "liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens",
         collateralApprovalTx: syntheticApprovalTx.transactionHash

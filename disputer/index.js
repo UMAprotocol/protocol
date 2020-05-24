@@ -62,7 +62,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.debug({
+      Logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens",
         collateralApprovalTx: collateralApprovalTx.transactionHash
