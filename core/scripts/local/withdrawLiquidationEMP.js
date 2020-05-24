@@ -1,6 +1,9 @@
 /**
- * @notice Withdraws liquidation as the liquidator on a specified liquidation ID. Therefore this assumes
- * that the liquidation has expired or has been disputed unsuccessfully.
+ * @notice Withdraws liquidation as the liquidator on a specified liquidation ID. This requires
+ * that the liquidation has expired or has been disputed unsuccessfully. We can customize which liquidation ID
+ * we withdraw from by setting the value of the `--id` flag.
+ *
+ * Example: `$(npm bin)/truffle exec ./scripts/local/WithdrawLiquidationEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
  */
 const { fromWei, toBN, utf8ToHex } = web3.utils;
 const { LiquidationStatesEnum } = require("../../../common/Enums.js");

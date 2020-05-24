@@ -1,13 +1,21 @@
 /**
- * The purpose of this script is to deploy several ExpiringMultiParty financial templates.
- * This involves creating and minting collateral tokens, whitelisting price identifiers,
- * and configuring the contracts to use the mock oracle which is more useful for testing.
+ * @notice The purpose of this script is to deploy an ExpiringMultiParty financial templates.
+ * @dev If you are deploying to a local testnet, set the `--test` flag value to `true` in order to whitelist
+ * the collateral currency, approve the pricefeed identifier, use the `MockOracle` contract as the `Oracle` linked
+ * with the financial contract, creates an initial sponsor position at the minimum collateralization ratio allowed,
+ * and mints collateral tokens to the default sponsor, `accounts[0]`. The testnet version of this script is designed
+ * to be used when testing out the sponsor CLI locally. The Sponsor CLI assumes `accounts[0]` to be the default
+ * sponsor account.
+ * @dev Other helpful scripts to run after this one are:
+ * - `./AdvanceEMP.js`: advances EMP time forward, which is useful when testing withdrawal and liquidation requests.
+ * - `./LiquidateEMP.js`: liquidates the sponsor's position with `accounts[1]` as the liquidator.
+ * - `./DisputeEMP.js`: disputes the default sponsor's liquidations using `accounts[0]` as the disputer.
+ * - `./WithdrawLiquidationEMP.js`: withdraws liquidations from `accounts[1]`, i.e. the liquidator. Withdrawing
+ *    liquidations as the sponsor can be done via the CLI.
+ * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
- * This script is intended to make testing the Sponsor CLI easier.
  *
- * How to run on local testnet: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true
- * - The `--test` flag will deploy a MockOracle, whitelist the collateral currency and the pricefeed identifier,
- *   and create an initial sponsor position.
+ * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("../../utils/Constants.js");
