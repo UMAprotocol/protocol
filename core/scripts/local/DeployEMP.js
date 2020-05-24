@@ -14,6 +14,7 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const Token = artifacts.require("ExpandedERC20");
 const Registry = artifacts.require("Registry");
@@ -28,6 +29,7 @@ let emp;
 let syntheticToken;
 let mockOracle;
 let identifierWhitelist;
+let collateralTokenWhitelist;
 let registry;
 let expiringMultiPartyCreator;
 
@@ -42,6 +44,9 @@ const deployEMP = async callback => {
 
     // Use Dai as the collateral token.
     collateralToken = await TestnetERC20.deployed();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
 
     if (argv.mock_dvm) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.

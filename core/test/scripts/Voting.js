@@ -245,6 +245,7 @@ contract("scripts/Voting.js", function(accounts) {
 
     // The vote should have been committed.
     let result = await votingSystem.runIteration(USE_PROD_LOGS);
+    console.log("result", result);
     assert.equal(result.batches, 1);
     assert.equal(result.updates.length, 1);
     assert.equal(result.skipped.length, 0);
