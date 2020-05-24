@@ -5,78 +5,61 @@ const redeem = require("./redeem");
 const withdraw = require("./withdraw");
 const deposit = require("./deposit");
 const transfer = require("./transfer");
-const viewLiquidationDetails = require("./viewLiquidationDetails");
-const { LiquidationStatesEnum } = require("../../../../common/Enums.js");
+const { viewLiquidationDetailsMenu } = require("./viewLiquidationDetails");
+const { getLiquidationEvents } = require("./liquidationUtils");
 const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
-  const collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  let collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const syntheticCurrency = await ExpandedERC20.at(await emp.tokenCurrency());
+  const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+  const syntheticSymbol = await getCurrencySymbol(web3, artifacts, syntheticCurrency);
 
+  // This function should only be called if the sponsor has an existing position.
   const printSponsorSummary = async sponsorAddress => {
-    const collateral = (await emp.getCollateral(sponsorAddress)).toString();
-    if (collateral === "0") {
-      console.log("You are not currently a sponsor");
-    } else {
+    console.group("Summary of your position:");
+
+    if (collateral !== "0") {
       const position = await emp.positions(sponsorAddress);
-      const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
+      const getDateStringReadable = contractTime => {
+        return new Date(Number(contractTime.toString() * 1000)).toString();
+      };
+
       console.table({
+        "Current contract time": getDateStringReadable(await emp.getCurrentTime()),
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
         "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
         "Pending transfer request": position.transferPositionRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
       });
     }
+
+    // For convenience, show user's token balances.
+    const collateralBalance = await collateralCurrency.balanceOf(sponsorAddress);
+    console.log(`- Sponsor address: ${sponsorAddress}`);
+    console.log(`- Current collateral balance: ${fromWei(collateralBalance.toString())} ${collateralSymbol}`);
+    const syntheticBalance = await syntheticCurrency.balanceOf(sponsorAddress);
+    console.log(`- Current synthetic balance: ${fromWei(syntheticBalance.toString())} ${syntheticSymbol}`);
+
+    console.groupEnd();
+    return;
   };
 
-  const liquidations = await emp.getLiquidations(sponsorAddress);
-  const liquidationStateToDisplay = state => {
-    switch (state) {
-      case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
-        return "LIQUIDATION FAILED (ACTION REQUIRED)";
-      case LiquidationStatesEnum.DISPUTE_FAILED:
-        return "LIQUIDATED";
-      default:
-        return "PENDING";
-    }
-  };
-  const viewLiquidations = async () => {
-    const backChoice = "Back";
-    const choices = [{ name: backChoice }];
-    for (let i = 0; i < liquidations.length; i++) {
-      const liquidation = liquidations[i];
-      const display = `Minted: ${fromWei(liquidation.tokensOutstanding.toString())} Collateral: ${fromWei(
-        liquidation.lockedCollateral.toString()
-      )} Status: ${liquidationStateToDisplay(liquidation.state)}`;
-      choices.push({ name: display, value: i });
-    }
-    const input = await inquirer.prompt({
-      type: "list",
-      name: "choice",
-      message: "Pick a liquidation",
-      choices
-    });
-    if (input["choice"] === backChoice) {
-      return;
-    }
-    await viewLiquidationDetails(web3, artifacts, emp, liquidations[input["choice"]], input["choice"]);
-  };
+  /**
+   * BUILD SPONSOR MENU OF OPTIONS TO CREATE OR MODIFY THEIR POSITION:
+   */
+  await printSponsorSummary(sponsorAddress);
 
-  let actions = {
-    back: "Back"
-  };
-  if (liquidations.length > 0) {
-    actions = {
-      ...actions,
-      viewLiquidations: "View your liquidations"
-    };
-  }
+  let actions = {};
   let message = "What would you like to do?";
+
   if (collateral === "0") {
     // Sponsor doesn't have a position.
     actions = {
@@ -85,8 +68,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     };
     message = "You are not currently a sponsor. What would you like to do?";
   } else {
-    console.log("Summary of your position:");
-    await printSponsorSummary(sponsorAddress);
     const position = await emp.positions(sponsorAddress);
 
     const hasPendingWithdrawal = position.withdrawalRequestPassTimestamp.toString() !== "0";
@@ -110,6 +91,25 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       };
     }
   }
+
+  // If sponsor has ever been liquidated, then show liquidation details and allow them to withdraw rewards
+  // if possible.
+  const liquidationEvents = await getLiquidationEvents(emp, sponsorAddress);
+  if (liquidationEvents.length > 0) {
+    actions = {
+      ...actions,
+      viewLiquidations: "View your liquidations"
+    };
+  }
+
+  actions = {
+    ...actions,
+    back: "Back"
+  };
+
+  /**
+   * DISPLAY INQUIRER MENU:
+   */
   const prompt = {
     type: "list",
     name: "choice",
@@ -119,7 +119,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const input = (await inquirer.prompt(prompt))["choice"];
   switch (input) {
     case actions.viewLiquidations:
-      await viewLiquidations(web3, artifacts, emp);
+      await viewLiquidationDetailsMenu(web3, artifacts, emp, liquidationEvents);
       break;
     case actions.create:
       await create(web3, artifacts, emp, collateral !== "0");
@@ -141,8 +141,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     default:
       console.log("unimplemented state");
   }
-  console.log("\nYour updated position:");
-  await printSponsorSummary(sponsorAddress);
 };
 
 module.exports = showMarketDetails;
