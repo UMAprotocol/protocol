@@ -79,8 +79,9 @@ To learn more about creating synthetic tokens to back fund your liquidator bot s
 
 All bots require a price feed to inform their liquidation decisions.
 The easiest price feed to intergrade into is [CryptoWatch](https://cryptowat.ch/). To create an API Key do the following:
-1) Create an account [here](https://cryptowat.ch/account/create).
-2) Generate an API key [here](Generate an API key).
+
+1. Create an account [here](https://cryptowat.ch/account/create).
+2. Generate an API key [here](Generate an API key).
 
 Keep this key handy. You'll need it when configuring the bots.
 
