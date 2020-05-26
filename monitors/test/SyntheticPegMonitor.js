@@ -111,6 +111,16 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "0.7")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
       assert.isTrue(lastSpyLogIncludes(spy, "30.00")); // percentage error
+
+      // Small values (<0.1) should be scaled correctly in logs.
+      medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("0.021111"))); // Note 5 units of precision provided.
+      uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("0.025678"))); // Note 5 units of precision provided.
+      await syntheticPegMonitor.checkPriceDeviation();
+      assert.equal(spy.callCount, 3); // There should be one message sent at this point.
+      assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "0.02567")); // uniswap price (note: 4 units of precision)
+      assert.isTrue(lastSpyLogIncludes(spy, "0.02111")); // expected price (note: 4 units of precision)
+      assert.isTrue(lastSpyLogIncludes(spy, "21.63")); // percentage error
     });
   });
 

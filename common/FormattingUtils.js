@@ -36,12 +36,17 @@ const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
   }
 
   const fullPrecisionFloat = BigNumber(num);
-
+  let fixedPrecisionFloat;
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print.
-  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
-    .toFixed(decimalPlaces)
-    .toString();
-
+  if (fullPrecisionFloat.gt(BigNumber(10))) {
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+      .toFixed(decimalPlaces)
+      .toString();
+  } else {
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+      .toPrecision(decimalPlaces * 2)
+      .toString();
+  }
   // This puts commas in the thousands places, but only before the decimal point.
   const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
   fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
