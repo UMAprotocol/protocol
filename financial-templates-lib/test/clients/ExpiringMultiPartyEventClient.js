@@ -32,6 +32,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
   // Test object for EMP event client
   let client;
+  let dummyLogger;
 
   // re-used variables
   let expirationTime;
@@ -79,7 +80,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     emp = await ExpiringMultiParty.new(constructorParams);
 
     // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
-    const dummyLogger = winston.createLogger({
+    dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
     });
@@ -254,5 +255,35 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       ],
       client.getAllDisputeSettlementEvents()
     );
+  });
+  it("Starting client at an offset block number", async function() {
+    // Init the EMP event client with an offset block number. If the current block number is used then all log events
+    // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
+
+    // Create liquidation (in the past)
+    const txObject1 = await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // Start the liquidator bot from current time stamp (liquidation in the past)
+    const currentBlockNumber = await web3.eth.getBlockNumber();
+    const offSetClient = new ExpiringMultiPartyEventClient(
+      dummyLogger,
+      ExpiringMultiParty.abi,
+      web3,
+      emp.address,
+      currentBlockNumber + 1 // Start the bot one block after the liquidation event
+    );
+
+    await offSetClient.update();
+
+    assert.deepStrictEqual([], offSetClient.getAllLiquidationEvents()); // Created liquidation should not be captured
+    assert.deepStrictEqual([], offSetClient.getAllDisputeEvents());
+    assert.deepStrictEqual([], offSetClient.getAllDisputeSettlementEvents());
   });
 });
