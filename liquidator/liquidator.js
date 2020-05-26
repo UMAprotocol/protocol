@@ -136,7 +136,7 @@ class Liquidator {
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: this.liquidationMinPrice },
-        { rawValue: toWei(scaledPrice) },
+        { rawValue: scaledPrice },
         { rawValue: position.numTokens },
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
@@ -195,7 +195,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: toWei(scaledPrice),
+        inputPrice: scaledPrice.toString(),
         txnConfig,
         liquidationResult: logResult
       });
