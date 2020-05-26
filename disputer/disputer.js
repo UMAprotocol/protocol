@@ -194,7 +194,7 @@ class Disputer {
       } catch (error) {
         this.logger.debug({
           at: "Disputer",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
           error: new Error(error)
         });

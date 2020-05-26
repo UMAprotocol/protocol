@@ -242,7 +242,7 @@ class Liquidator {
       } catch (error) {
         this.logger.debug({
           at: "Liquidator",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
           error: new Error(error)
         });
