@@ -70,7 +70,16 @@ async function run(
     );
 
     // 1. Contract state monitor
-    const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    // Start the event client by looking from the most recent block number. If set to 0 will report past events.
+    const latestBlockNumber = (await web3.eth.getBlock("latest")).number;
+
+    const empEventClient = new ExpiringMultiPartyEventClient(
+      Logger,
+      ExpiringMultiParty.abi,
+      web3,
+      emp.address,
+      latestBlockNumber
+    );
     const contractMonitor = new ContractMonitor(
       Logger,
       empEventClient,

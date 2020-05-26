@@ -2,7 +2,7 @@
 // ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying chain
 // necessarily.// If no updateThreshold is specified then default to updating every 60 seconds.
 class ExpiringMultiPartyEventClient {
-  constructor(logger, empAbi, web3, empAddress) {
+  constructor(logger, empAbi, web3, empAddress, latestBlockNumber = 0) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -17,7 +17,7 @@ class ExpiringMultiPartyEventClient {
     this.newSponsorEvents = [];
 
     // First block number to begin searching for events after.
-    this.firstBlockToSearch = 0;
+    this.firstBlockToSearch = latestBlockNumber;
     this.lastUpdateTimestamp = 0;
   }
   // Delete all events within the client
