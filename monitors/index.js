@@ -135,6 +135,8 @@ async function run(
       await contractMonitor.checkForNewDisputeEvents();
       // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents();
+      // 1.e Check for new sponsor positions created
+      await contractMonitor.checkForNewSponsors();
 
       // 2.  Wallet Balance monitor
       // 2.a Update the client
