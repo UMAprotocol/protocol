@@ -170,7 +170,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
@@ -220,9 +220,9 @@ const Poll = async function(callback) {
     );
   } catch (err) {
     Logger.error({
-      at: "Monitor#index🚨",
-      message: "Monitor configuration error",
-      error: error.toString()
+      at: "Monitor#index",
+      message: "Monitor configuration error🚨",
+      error: new Error(error)
     });
     await waitForLogger(Logger);
     callback(error);

@@ -62,7 +62,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     if (config.medianizedFeeds.length === 0) {
       logger.error({
         at: "createPriceFeed",
-        message: "MedianizerPriceFeed configured with 0 feeds to medianize"
+        message: "MedianizerPriceFeed configured with 0 feeds to medianize🚨"
       });
       return null;
     }
@@ -98,7 +98,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
   logger.error({
     at: "createPriceFeed",
-    message: "Invalid price feed type specified",
+    message: "Invalid price feed type specified🚨",
     config
   });
 
@@ -110,7 +110,7 @@ function isMissingField(config, requiredFields, logger) {
   if (missingField !== undefined) {
     logger.error({
       at: "createPriceFeed",
-      message: "Config is missing field",
+      message: "Config is missing field🚨",
       priceFeedType: config.type,
       requiredFields,
       missingField,

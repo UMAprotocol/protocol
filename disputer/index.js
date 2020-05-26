@@ -83,7 +83,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     Logger.error({
       at: "Disputer#index🚨",
       message: "Disputer error",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
@@ -108,7 +108,7 @@ const Poll = async function(callback) {
     Logger.error({
       at: "Disputer#index🚨",
       message: "Disputer configuration error",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
     callback(error);
