@@ -67,14 +67,14 @@ class ContractMonitor {
       // Check if new sponsor is UMA bot.
       const isLiquidatorBot = this.monitoredLiquidators.indexOf(event.sponsor);
       const isDisputerBot = this.monitoredDisputers.indexOf(event.sponsor);
-      const isUMABot = Boolean(isLiquidatorBot != -1 || isDisputerBot != -1);
+      const isMonitoredBot = Boolean(isLiquidatorBot != -1 || isDisputerBot != -1);
 
       // Sample message:
       // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // created X tokens backed by Y collateral.  [etherscan link to txn]
       const mrkdwn =
         createEtherscanLinkMarkdown(this.web3, event.sponsor) +
-        (isUMABot ? " (Monitored liquidator or disputer bot)" : "") +
+        (isMonitoredBot ? " (Monitored liquidator or disputer bot)" : "") +
         " created " +
         this.formatDecimalString(event.tokenAmount) +
         " " +
