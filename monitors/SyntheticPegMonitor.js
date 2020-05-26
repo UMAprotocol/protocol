@@ -85,7 +85,7 @@ class SyntheticPegMonitor {
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
     if (deviationError.gt(this.web3.utils.toBN(this.deviationAlertThreshold))) {
-      this.logger.error({
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:
@@ -131,7 +131,7 @@ class SyntheticPegMonitor {
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
     if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
-      this.logger.error({
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High peg price volatility alert 🌋",
         mrkdwn:
@@ -177,7 +177,7 @@ class SyntheticPegMonitor {
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
     if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
-      this.logger.error({
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High synthetic price volatility alert 🌋",
         mrkdwn:

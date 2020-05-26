@@ -90,7 +90,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
@@ -117,7 +117,7 @@ const Poll = async function(callback) {
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator configuration error🚨",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
     callback(error);

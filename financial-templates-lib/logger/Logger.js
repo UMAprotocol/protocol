@@ -39,15 +39,16 @@ const waitForLogger = async logger => {
   return await loggerDone;
 };
 
-const errorStackTracerFormat = winston.format(info => {
-  if (info.meta && info.meta instanceof Error) {
-    info.message = `${info.message} ${info.meta.stack}`;
+// If the log entry contains an error then extract the stack trace as the error message.
+const errorStackTracerFormat = logEntry => {
+  if (logEntry.error) {
+    logEntry.error = logEntry.error.stack;
   }
-  return info;
-});
+  return logEntry;
+};
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-const winstonFormatter = logEntry => {
+const botIdentifyFormatter = logEntry => {
   if (process.env.BOT_IDENTIFIER) logEntry["bot-identifier"] = process.env.BOT_IDENTIFIER;
   return logEntry;
 };
@@ -55,9 +56,9 @@ const winstonFormatter = logEntry => {
 const Logger = winston.createLogger({
   level: "debug",
   format: winston.format.combine(
-    winston.format(errorStackTracerFormat)(),
-    winston.format(winstonFormatter)(),
+    winston.format(botIdentifyFormatter)(),
     winston.format(logEntry => logEntry)(),
+    winston.format(errorStackTracerFormat)(),
     winston.format.json()
   ),
   transports,
