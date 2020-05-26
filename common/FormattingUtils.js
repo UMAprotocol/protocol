@@ -2,6 +2,13 @@ const networkUtils = require("../common/PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 
+// Apply settings to BigNumber.js library.
+// Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
+// Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.
+// Note: EXPONENTIAL_AT is set to 500 to keep BigNumber from using exponential notation until the numbers hit
+// +-1e500.
+BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
+
 const formatDate = (timestampInSeconds, web3) => {
   return new Date(
     parseInt(
