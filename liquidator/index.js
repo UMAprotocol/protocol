@@ -4,6 +4,8 @@ require("dotenv").config();
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { startServer } = require("../common/ServerUtils");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
+const { MAX_UINT_VAL } = require("../common/Constants");
+const { toBN } = web3.utils;
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -14,6 +16,7 @@ const { Networker } = require("../financial-templates-lib/price-feed/Networker")
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
 // Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
@@ -56,6 +59,34 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
     const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+
+    // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+    // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below
+    // MAX_INT / 2.
+    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
+    const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
+    const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.info({
+        at: "liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.info({
+        at: "liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens",
+        collateralApprovalTx: syntheticApprovalTx.transactionHash
+      });
+    }
 
     // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
     const { server, portNumber } = startServer(monitorPort);
