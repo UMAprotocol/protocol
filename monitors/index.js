@@ -158,7 +158,6 @@ async function run(
       }
     }
   } catch (error) {
-    console.error(error);
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
