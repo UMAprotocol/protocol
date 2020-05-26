@@ -61,17 +61,13 @@ class ContractMonitor {
     let latestNewSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
 
     // Get events that are newer than the last block number we've seen
-    let newSponsorEvents = latestNewSponsorEvents.filter(event => event.blockNumber > this.lastLiquidationBlockNumber);
+    let newSponsorEvents = latestNewSponsorEvents.filter(event => event.blockNumber > this.lastNewSponsorBlockNumber);
 
     for (let event of newSponsorEvents) {
       // Check if new sponsor is UMA bot.
       const isLiquidatorBot = this.monitoredLiquidators.indexOf(event.sponsor);
       const isDisputerBot = this.monitoredDisputers.indexOf(event.sponsor);
       const isUMABot = Boolean(isLiquidatorBot != -1 || isDisputerBot != -1);
-
-      // Get sponsor position details.
-      const collateralAmount = await this.empContract.methods.getCollateral(event.sponsor).call();
-      const tokenAmount = (await this.empContract.methods.positions(event.sponsor).call()).tokensOutstanding;
 
       // Sample message:
       // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
@@ -80,11 +76,11 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(this.web3, event.sponsor) +
         (isUMABot ? " (Monitored liquidator or disputer bot)" : "") +
         " created " +
-        this.formatDecimalString(tokenAmount) +
+        this.formatDecimalString(event.tokenAmount) +
         " " +
         this.syntheticCurrencySymbol +
         " backed by " +
-        this.formatDecimalString(collateralAmount) +
+        this.formatDecimalString(event.collateralAmount) +
         " " +
         this.collateralCurrencySymbol +
         ". tx: " +

@@ -121,17 +121,23 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         {
           transactionHash: newSponsorTxObj1.tx,
           blockNumber: newSponsorTxObj1.receipt.blockNumber,
-          sponsor: sponsor1
+          sponsor: sponsor1,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("50")
         },
         {
           transactionHash: newSponsorTxObj2.tx,
           blockNumber: newSponsorTxObj2.receipt.blockNumber,
-          sponsor: sponsor2
+          sponsor: sponsor2,
+          collateralAmount: toWei("100"),
+          tokenAmount: toWei("45")
         },
         {
           transactionHash: newSponsorTxObj3.tx,
           blockNumber: newSponsorTxObj3.receipt.blockNumber,
-          sponsor: liquidator
+          sponsor: liquidator,
+          collateralAmount: toWei("500"),
+          tokenAmount: toWei("200")
         }
       ],
       client.getAllNewSponsorEvents()
@@ -147,7 +153,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         {
           transactionHash: newSponsorTxObj4.tx,
           blockNumber: newSponsorTxObj4.receipt.blockNumber,
-          sponsor: sponsor3
+          sponsor: sponsor3,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("1")
         }
       ],
       client.getAllNewSponsorEvents()

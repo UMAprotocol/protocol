@@ -42,8 +42,7 @@ class CRMonitor {
     if (!price) {
       this.logger.warn({
         at: "CRMonitor",
-        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
-        price: price.toString()
+        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value"
       });
       return;
     }

@@ -100,16 +100,24 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // New sponsor events
+    // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
     const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
       fromBlock: this.lastBlockNumberSeen,
       toBlock: currentBlockNumber
     });
     for (let event of newSponsorEventsObj) {
+      // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
+      const positionCreatedEventObj = await this.emp.getPastEvents("PositionCreated", {
+        fromBlock: event.blockNumber,
+        toBlock: event.blockNumber
+      });
+
       this.newSponsorEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor
+        sponsor: event.returnValues.sponsor,
+        collateralAmount: positionCreatedEventObj[0].returnValues.collateralAmount,
+        tokenAmount: positionCreatedEventObj[0].returnValues.tokenAmount
       });
     }
 
