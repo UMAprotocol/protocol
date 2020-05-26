@@ -48,7 +48,7 @@ class ExpiringMultiPartyEventClient {
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: this.lastBlockNumberSeen + 1,
+      fromBlock: this.lastBlockNumberSeen,
       toBlock: currentBlockNumber
     });
 
@@ -67,7 +67,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute events
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: this.lastBlockNumberSeen + 1,
+      fromBlock: this.lastBlockNumberSeen,
       toBlock: currentBlockNumber
     });
     for (let event of disputeEventsObj) {
@@ -84,7 +84,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute settlement events
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: this.lastBlockNumberSeen + 1,
+      fromBlock: this.lastBlockNumberSeen,
       toBlock: currentBlockNumber
     });
     for (let event of disputeSettlementEventsObj) {
@@ -102,7 +102,7 @@ class ExpiringMultiPartyEventClient {
 
     // New sponsor events
     const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
-      fromBlock: this.lastBlockNumberSeen + 1,
+      fromBlock: this.lastBlockNumberSeen,
       toBlock: currentBlockNumber
     });
     for (let event of newSponsorEventsObj) {
@@ -113,7 +113,9 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    this.lastBlockNumberSeen = currentBlockNumber;
+    // Add 1 so that we do not double-count the actual last block number seen.
+    this.lastBlockNumberSeen = currentBlockNumber + 1;
+
     this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
       at: "ExpiringMultiPartyEventClient",

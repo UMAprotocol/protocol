@@ -71,7 +71,7 @@ class ContractMonitor {
 
       // Get sponsor position details.
       const collateralAmount = await this.empContract.methods.getCollateral(event.sponsor).call();
-      const tokenAmount = (await this.empContract.methods.positions(event.sponsor).call()).tokensOutstanding();
+      const tokenAmount = (await this.empContract.methods.positions(event.sponsor).call()).tokensOutstanding;
 
       // Sample message:
       // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
@@ -92,7 +92,7 @@ class ContractMonitor {
 
       this.logger.info({
         at: "ContractMonitor",
-        message: "New Sponsor Alert 🧙‍♂️!",
+        message: "New Sponsor Alert 🐣!",
         mrkdwn: mrkdwn
       });
     }
