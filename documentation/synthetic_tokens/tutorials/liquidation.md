@@ -78,7 +78,10 @@ To learn more about creating synthetic tokens to back fund your liquidator bot s
 ### Creating a price feed API key
 
 All bots require a price feed to inform their liquidation decisions.
-For this you must create an account. <!-- :TODO add the website here. -->
+The easiest price feed to intergrade into is [CryptoWatch](https://cryptowat.ch/). To create an API Key do the following:
+1) Create an account [here](https://cryptowat.ch/account/create).
+2) Generate an API key [here](Generate an API key).
+
 Keep this key handy. You'll need it when configuring the bots.
 
 ## Running the liquidator and disputer bots locally
@@ -356,7 +359,7 @@ This tutorial touched on the key configuration parameters available when running
 There are a few more configuration options available. The section below describes the parameter input in this tutorial as well as the optional extra parameters that can be included when running a bot.
 
 - `POLLING_DELAY`**[required]**: how long the bot should wait (in milliseconds) before running a polling cycle.
-- `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you are wanting to connect to. This config defines the synthetic that the bot will be liquidating. A list of available addresses can be found HERE //TODO.
+- `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you are wanting to connect to. This config defines the synthetic that the bot will be liquidating.
 - `MNEMONIC`**[required]**: generated before hand or in the steps outlined in key generation.
 - `PRICE_FEED_CONFIG`**[required]**: configuration object used to parameterize the bot's price feed. It's broken down as follows:
   - `type` spesifies the configuration of the price feed. The `medianizer` type averages the price of the identifier over a set of diffrent exchanges.
