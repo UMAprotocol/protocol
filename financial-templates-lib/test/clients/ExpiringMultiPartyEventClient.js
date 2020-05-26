@@ -19,8 +19,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const liquidator = accounts[1];
   const sponsor1 = accounts[2];
   const sponsor2 = accounts[3];
+  const sponsor3 = accounts[4];
 
-  const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
 
   // Contracts
@@ -37,12 +37,19 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   let expirationTime;
   let constructorParams;
 
+  // Track new sponsor positions created in the `beforeEach` block so that we can test event querying
+  // for NewSponsor events.
+  let newSponsorTxObj1;
+  let newSponsorTxObj2;
+  let newSponsorTxObj3;
+
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: tokenSponsor });
     await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
     await collateralToken.mint(liquidator, toWei("100000"), { from: tokenSponsor });
     await collateralToken.mint(sponsor1, toWei("100000"), { from: tokenSponsor });
     await collateralToken.mint(sponsor2, toWei("100000"), { from: tokenSponsor });
+    await collateralToken.mint(sponsor3, toWei("100000"), { from: tokenSponsor });
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
@@ -87,19 +94,64 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     client = new ExpiringMultiPartyEventClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
+    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor3 });
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
 
     // Create two positions
-    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
-    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+    newSponsorTxObj1 = await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
+    newSponsorTxObj2 = await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
 
     // Seed the liquidator position
     await collateralToken.approve(emp.address, toWei("1000000"), { from: liquidator });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidator });
-    await emp.create({ rawValue: toWei("500") }, { rawValue: toWei("200") }, { from: liquidator });
+    newSponsorTxObj3 = await emp.create({ rawValue: toWei("500") }, { rawValue: toWei("200") }, { from: liquidator });
+  });
+
+  it("Return NewSponsor Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj1.tx,
+          blockNumber: newSponsorTxObj1.receipt.blockNumber,
+          sponsor: sponsor1
+        },
+        {
+          transactionHash: newSponsorTxObj2.tx,
+          blockNumber: newSponsorTxObj2.receipt.blockNumber,
+          sponsor: sponsor2
+        },
+        {
+          transactionHash: newSponsorTxObj3.tx,
+          blockNumber: newSponsorTxObj3.receipt.blockNumber,
+          sponsor: liquidator
+        }
+      ],
+      client.getAllNewSponsorEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const newSponsorTxObj4 = await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("1") }, { from: sponsor3 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj4.tx,
+          blockNumber: newSponsorTxObj4.receipt.blockNumber,
+          sponsor: sponsor3
+        }
+      ],
+      client.getAllNewSponsorEvents()
+    );
   });
 
   it("Return Liquidation Events", async function() {
@@ -148,16 +200,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     assert.deepStrictEqual(
       [
         {
-          transactionHash: txObject1.tx,
-          blockNumber: txObject1.receipt.blockNumber,
-          sponsor: sponsor1,
-          liquidator: liquidator,
-          liquidationId: "0",
-          tokensOutstanding: toWei("50"),
-          lockedCollateral: toWei("10"),
-          liquidatedCollateral: toWei("10")
-        },
-        {
           transactionHash: txObject2.tx,
           blockNumber: txObject2.receipt.blockNumber,
           sponsor: sponsor2,
@@ -205,6 +247,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       client.getAllDisputeEvents()
     );
   });
+
   it("Return Dispute Settlement Events", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const liquidationTime = (await emp.getCurrentTime()).toNumber();

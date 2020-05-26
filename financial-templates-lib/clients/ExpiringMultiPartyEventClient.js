@@ -14,6 +14,7 @@ class ExpiringMultiPartyEventClient {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
+    this.newSponsorEvents = [];
 
     // Last block number seen by the client.
     this.lastBlockNumberSeen = 0;
@@ -24,7 +25,11 @@ class ExpiringMultiPartyEventClient {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
+    this.newSponsorEvents = [];
   };
+
+  // Returns an array of new sponsor events.
+  getAllNewSponsorEvents = () => this.newSponsorEvents;
 
   // Returns an array of liquidation events.
   getAllLiquidationEvents = () => this.liquidationEvents;
@@ -43,7 +48,7 @@ class ExpiringMultiPartyEventClient {
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.lastBlockNumberSeen + 1,
       toBlock: currentBlockNumber
     });
 
@@ -62,7 +67,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute events
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.lastBlockNumberSeen + 1,
       toBlock: currentBlockNumber
     });
     for (let event of disputeEventsObj) {
@@ -79,7 +84,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute settlement events
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.lastBlockNumberSeen + 1,
       toBlock: currentBlockNumber
     });
     for (let event of disputeSettlementEventsObj) {
@@ -94,6 +99,20 @@ class ExpiringMultiPartyEventClient {
         disputeSucceeded: event.returnValues.disputeSucceeded
       });
     }
+
+    // New sponsor events
+    const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
+      fromBlock: this.lastBlockNumberSeen + 1,
+      toBlock: currentBlockNumber
+    });
+    for (let event of newSponsorEventsObj) {
+      this.newSponsorEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor
+      });
+    }
+
     this.lastBlockNumberSeen = currentBlockNumber;
     this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
