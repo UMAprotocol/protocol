@@ -71,7 +71,6 @@ contract("SyntheticPegMonitor", function(accounts) {
           .sub(toBN(toWei("3.14159"))) // expected
           .mul(toBN(toWei("1"))) // Scale the numerator before division
           .div(toBN(toWei("3.14159"))) // expected
-          .abs()
           .toString()
       );
     });
@@ -110,7 +109,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
       assert.isTrue(lastSpyLogIncludes(spy, "0.7")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
-      assert.isTrue(lastSpyLogIncludes(spy, "30.00")); // percentage error
+      assert.isTrue(lastSpyLogIncludes(spy, "-30.00")); // percentage error. (Note negative sign)
     });
   });
 
@@ -198,10 +197,11 @@ contract("SyntheticPegMonitor", function(accounts) {
         { timestamp: 101, price: toBN(toWei("11")) },
         { timestamp: 102, price: toBN(toWei("12")) },
         { timestamp: 103, price: toBN(toWei("13")) },
-        { timestamp: 104, price: toBN(toWei("14")) },
-        { timestamp: 105, price: toBN(toWei("15")) },
-        { timestamp: 106, price: toBN(toWei("16")) },
-        { timestamp: 107, price: toBN(toWei("17")) }
+        { timestamp: 104, price: toBN(toWei("14")) }, // Increasing price until timestamp 104
+        { timestamp: 105, price: toBN(toWei("13")) },
+        { timestamp: 106, price: toBN(toWei("12")) },
+        { timestamp: 107, price: toBN(toWei("11")) },
+        { timestamp: 108, price: toBN(toWei("10")) } // Decreasing price until timestamp 108
       ];
       medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
       uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
@@ -234,6 +234,24 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+
+      // Correctly reports negative volatility. The last 4 sets of time series data move in the opposite direction.
+      // Logger should correctly report the negative swing.
+      medianizerPriceFeedMock.setLastUpdateTime(108);
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.equal(spy.callCount, 3);
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "-40.00")); // actual volatility (note the negative sign)
+
+      uniswapPriceFeedMock.setLastUpdateTime(108);
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.equal(spy.callCount, 4);
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "-40.00")); // actual volatility
     });
 
     it("Stress testing with a lot of historical price data points", async function() {
