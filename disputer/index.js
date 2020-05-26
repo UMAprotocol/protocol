@@ -1,9 +1,10 @@
 require("dotenv").config();
-const { toWei } = web3.utils;
+const { toBN } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
+const { MAX_UINT_VAL } = require("../common/Constants");
 
 // JS libs
 const { Disputer } = require("./disputer");
@@ -14,6 +15,7 @@ const { Networker } = require("../financial-templates-lib/price-feed/Networker")
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
@@ -50,6 +52,22 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
     const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+
+    // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute
+    // a liquidation. We'll set this once to the max value and top up whenever the bot's allowance drops below
+    // MAX_INT / 2.
+    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+    const currentAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
+    if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+        from: accounts[0]
+      });
+      Logger.info({
+        at: "Disputer#index",
+        message: "Approved EMP to transfer unlimited collateral tokens",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
 
     while (true) {
       await disputer.queryAndDispute();
