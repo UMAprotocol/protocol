@@ -16,8 +16,8 @@ class ExpiringMultiPartyEventClient {
     this.disputeSettlementEvents = [];
     this.newSponsorEvents = [];
 
-    // Last block number seen by the client.
-    this.lastBlockNumberSeen = 0;
+    // First block number to begin searching for events after.
+    this.firstBlockToSearch = 0;
     this.lastUpdateTimestamp = 0;
   }
   // Delete all events within the client
@@ -48,7 +48,7 @@ class ExpiringMultiPartyEventClient {
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
     });
 
@@ -67,7 +67,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute events
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
     });
     for (let event of disputeEventsObj) {
@@ -84,7 +84,7 @@ class ExpiringMultiPartyEventClient {
 
     // Dispute settlement events
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
     });
     for (let event of disputeSettlementEventsObj) {
@@ -102,7 +102,7 @@ class ExpiringMultiPartyEventClient {
 
     // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
     const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
-      fromBlock: this.lastBlockNumberSeen,
+      fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
     });
     for (let event of newSponsorEventsObj) {
@@ -121,8 +121,8 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Add 1 so that we do not double-count the actual last block number seen.
-    this.lastBlockNumberSeen = currentBlockNumber + 1;
+    // Add 1 to current block so that we do not double count the last block number seen.
+    this.firstBlockToSearch = currentBlockNumber + 1;
 
     this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
