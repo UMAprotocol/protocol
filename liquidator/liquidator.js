@@ -269,7 +269,7 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards",
+          message: "Failed to withdraw liquidation rewards🚨",
           error: new Error(error)
         });
         continue;

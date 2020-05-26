@@ -209,8 +209,8 @@ const Poll = async function(callback) {
     );
   } catch (err) {
     Logger.error({
-      at: "Monitor#index🚨",
-      message: "Monitor configuration error",
+      at: "Monitor#index",
+      message: "Monitor configuration error🚨",
       error: new Error(error)
     });
     await waitForLogger(Logger);
