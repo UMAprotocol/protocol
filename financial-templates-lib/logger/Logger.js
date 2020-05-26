@@ -40,7 +40,7 @@ const waitForLogger = async logger => {
 };
 
 // If the log entry contains an error then extract the stack trace as the error message.
-const errorStackTracerFormat = logEntry => {
+const errorStackTracerFormatter = logEntry => {
   if (logEntry.error) {
     logEntry.error = logEntry.error.stack;
   }
@@ -58,7 +58,7 @@ const Logger = winston.createLogger({
   format: winston.format.combine(
     winston.format(botIdentifyFormatter)(),
     winston.format(logEntry => logEntry)(),
-    winston.format(errorStackTracerFormat)(),
+    winston.format(errorStackTracerFormatter)(),
     winston.format.json()
   ),
   transports,
