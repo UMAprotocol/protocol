@@ -32,7 +32,7 @@ export default function Header({ votingAccount }) {
               .div(BigNumber(supply))
               .times(BigNumber(100))
               .toString(),
-            4,
+            2,
             false
           );
     tokenBalance = (
