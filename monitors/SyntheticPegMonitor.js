@@ -27,6 +27,7 @@ class SyntheticPegMonitor {
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2);
+    this.formatDecimalStringPrecise = createFormatFunction(this.web3, 4);
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -92,9 +93,9 @@ class SyntheticPegMonitor {
           "Synthetic token " +
           this.syntheticCurrencySymbol +
           " is trading at " +
-          this.formatDecimalString(uniswapTokenPrice) +
+          this.formatDecimalStringPrecise(uniswapTokenPrice) +
           " on Uniswap. Target price is " +
-          this.formatDecimalString(cryptoWatchTokenPrice) +
+          this.formatDecimalStringPrecise(cryptoWatchTokenPrice) +
           ". Error of " +
           this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
           "%."
@@ -138,7 +139,7 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.pricefeedIdentifierName +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalStringPrecise(pricefeedLatestPrice) +
           ". Price moved " +
           this.formatDecimalString(pricefeedVolatility.muln(100)) +
           "% over the last " +
@@ -184,7 +185,7 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.pricefeedIdentifierName +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalStringPrecise(pricefeedLatestPrice) +
           ". Price moved " +
           this.formatDecimalString(pricefeedVolatility.muln(100)) +
           "% over the last " +
