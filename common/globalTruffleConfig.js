@@ -88,7 +88,7 @@ function addLocalNetwork(networks, name, customOptions) {
     host: "127.0.0.1",
     network_id: "*",
     port: 9545,
-    gas: gas
+    gas: undefined
   };
 
   networks[name] = {
