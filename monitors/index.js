@@ -135,6 +135,8 @@ async function run(
       await contractMonitor.checkForNewDisputeEvents();
       // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents();
+      // 1.e Check for new sponsor positions created
+      await contractMonitor.checkForNewSponsors();
 
       // 2.  Wallet Balance monitor
       // 2.a Update the client
@@ -168,7 +170,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
@@ -218,9 +220,9 @@ const Poll = async function(callback) {
     );
   } catch (err) {
     Logger.error({
-      at: "Monitor#index🚨",
-      message: "Monitor configuration error",
-      error: error.toString()
+      at: "Monitor#index",
+      message: "Monitor configuration error🚨",
+      error: new Error(error)
     });
     await waitForLogger(Logger);
     callback(error);
