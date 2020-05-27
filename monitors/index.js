@@ -36,6 +36,7 @@ async function run(
   shouldPoll,
   botMonitorObject,
   walletMonitorObject,
+  contractMonitorObject,
   syntheticPegMonitorObject,
   pollingDelay,
   uniswapPriceFeedConfig,
@@ -49,6 +50,7 @@ async function run(
       pollingDelay: pollingDelay,
       botMonitorObject,
       walletMonitorObject,
+      contractMonitorObject,
       syntheticPegMonitorObject,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
@@ -80,13 +82,7 @@ async function run(
       emp.address,
       latestBlockNumber
     );
-    const contractMonitor = new ContractMonitor(
-      Logger,
-      empEventClient,
-      [accounts[0]],
-      [accounts[0]],
-      medianizerPriceFeed
-    );
+    const contractMonitor = new ContractMonitor(Logger, empEventClient, contractMonitorObject, medianizerPriceFeed);
 
     // 2. Balance monitor
     const collateralTokenAddress = await emp.collateralCurrency();
@@ -180,18 +176,44 @@ const Poll = async function(callback) {
     if (!process.env.EMP_ADDRESS) {
       throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 300000;
 
-    if (!process.env.BOT_MONITOR_OBJECT || !process.env.WALLET_MONITOR_OBJECT) {
-      throw "Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.";
+    if (
+      !process.env.BOT_MONITOR_OBJECT ||
+      !process.env.WALLET_MONITOR_OBJECT ||
+      !process.env.CONTRACT_MONITOR_OBJECT ||
+      !process.env.SYNTHETIC_PEG_MONITOR_OBJECT
+    ) {
+      throw "Bad input arg! Specify a: `BOT_MONITOR_OBJECT`, `WALLET_MONITOR_OBJECT`, `CONTRACT_MONITOR_OBJECT` & `SYNTHETIC_PEG_OBJECT` to track.";
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
-
-    // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
+    // Bots to monitor. Each bot can be have a collateralThreshold, syntheticThreshold and etherThreshold. EG:
+    // [{ name: "Liquidator Bot",
+    //    address: "0x12345"
+    //    collateralThreshold: 500000000000000000000, // 500e18 collateral token currency.
+    //    syntheticThreshold: 200000000000000000000000, // 20000e18 synthetic token currency.
+    //    etherThreshold: 500000000000000000 }, //0.5e18 Wei.
+    // ...]
     const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
 
-    // Wallet objects to monitor.
+    // Wallet objects to monitor. Each wallet has a friendly name and a crAlert. EG:
+    // [{ name: "Market Making bot",
+    //    address: "0x12345",
+    //    crAlert: 1.50 }, // Note 150% is represented as 1.5
+    //  ...];
     const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
+
+    // Contract monitor. The monitor needs the addresses of the liquidator and disute bots to inform logs. EG:
+    // { "monitoredLiquidators": ["0x1234","0x5678"],
+    //   "monitoredDisputers": ["0x1234","0x5678"] }
+    const contractMonitorObject = JSON.parse(process.env.CONTRACT_MONITOR_OBJECT);
+
+    // Synthetic Peg monitor. Specify the deviationAlertThreshold, volatilityWindow and volatilityAlertThreshold. EG:
+    // { "deviationAlertThreshold": 0.5, // if the deviation in token price exceeds this value an alert is fired.
+    //   "volatilityWindow": 600 // Length of time (in seconds) to snapshot volatility.
+    //   "volatilityAlertThreshold": 0.1 // Error threshold for pricefeed's price volatility over `volatilityWindow`.
+    // }
+    const syntheticPegMonitorObject = JSON.parse(process.env.SYNTHETIC_PEG_MONITOR_OBJECT);
 
     if (!process.env.UNISWAP_PRICE_FEED_CONFIG || !process.env.MEDIANIZER_PRICE_FEED_CONFIG) {
       throw "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings.";
@@ -201,18 +223,12 @@ const Poll = async function(callback) {
     const uniswapPriceFeedConfig = JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG);
     const medianizerPriceFeedConfig = JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG);
 
-    if (!process.env.SYNTHETIC_PEG_MONITOR_OBJECT) {
-      throw "Bad input arg! Specify `SYNTHETIC_PEG_OBJECT` to parameterize the Synthetic peg monitor.";
-    }
-
-    // Read the synthetic peg monitor config from an environment variable.
-    const syntheticPegMonitorObject = JSON.parse(process.env.SYNTHETIC_PEG_MONITOR_OBJECT);
-
     await run(
       process.env.EMP_ADDRESS,
       true,
       botMonitorObject,
       walletMonitorObject,
+      contractMonitorObject,
       syntheticPegMonitorObject,
       pollingDelay,
       uniswapPriceFeedConfig,
