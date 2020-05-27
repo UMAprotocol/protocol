@@ -28,6 +28,7 @@ const gas = 9000000; // Conservative estimate of the block gas limit.
 // shell environment.
 function addPublicNetwork(networks, name, networkId) {
   const options = {
+    networkCheckTimeout: 10000,
     network_id: networkId,
     gas: gas,
     gasPrice: gasPx

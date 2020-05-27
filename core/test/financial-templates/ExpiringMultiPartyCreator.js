@@ -32,9 +32,6 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
-      from: contractCreator
-    });
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());

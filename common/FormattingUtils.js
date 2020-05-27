@@ -14,6 +14,11 @@ const formatDate = (timestampInSeconds, web3) => {
   ).toString();
 };
 
+const formatHours = (seconds, decimals = 2) => {
+  // 3600 seconds in an hour.
+  return (seconds / 3600).toFixed(decimals);
+};
+
 // formatWei converts a string or BN instance from Wei to Ether, e.g., 1e19 -> 10.
 const formatWei = (num, web3) => {
   // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
@@ -33,8 +38,14 @@ const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
   const fullPrecisionFloat = BigNumber(num);
 
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print.
-  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toFixed(decimalPlaces);
-  return fixedPrecisionFloat.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+    .toFixed(decimalPlaces)
+    .toString();
+
+  // This puts commas in the thousands places, but only before the decimal point.
+  const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
+  fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return fixedPrecisionFloatParts.join(".");
 };
 
 const createFormatFunction = (web3, numDisplayedDecimals) => {
@@ -78,6 +89,7 @@ function createEtherscanLinkMarkdown(web3, hex) {
 
 module.exports = {
   formatDate,
+  formatHours,
   formatWei,
   formatWithMaxDecimals,
   createFormatFunction,

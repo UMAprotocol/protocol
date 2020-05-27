@@ -102,8 +102,7 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value",
-        price
+        message: "Cannot liquidate: price feed returned invalid value"
       });
       return;
     }
@@ -173,7 +172,7 @@ class Liquidator {
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -199,7 +198,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -265,9 +264,9 @@ class Liquidator {
       } catch (error) {
         this.logger.debug({
           at: "Liquidator",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -292,8 +291,8 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards",
-          error: error
+          message: "Failed to withdraw liquidation rewards🚨",
+          error: new Error(error)
         });
         continue;
       }

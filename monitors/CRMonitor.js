@@ -31,7 +31,7 @@ class CRMonitor {
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "UMATEST";
+    this.syntheticCurrencySymbol = "ETHBTC";
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
@@ -42,8 +42,7 @@ class CRMonitor {
     if (!price) {
       this.logger.warn({
         at: "CRMonitor",
-        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
-        price
+        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value"
       });
       return;
     }
@@ -51,7 +50,7 @@ class CRMonitor {
     this.logger.debug({
       at: "CRMonitor",
       message: "Checking wallet collateralization ratios",
-      price
+      price: price.toString()
     });
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.

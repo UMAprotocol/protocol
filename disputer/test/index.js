@@ -1,4 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
+const { MAX_UINT_VAL } = require("../../common/Constants");
 
 // Script to test
 const Poll = require("../index.js");
@@ -18,6 +19,8 @@ contract("index.js", function(accounts) {
   let emp;
   let collateralToken;
   let uniswap;
+
+  let defaultPricefeedConfig;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -53,6 +56,13 @@ contract("index.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
+    defaultPricefeedConfig = {
+      type: "uniswap",
+      uniswapAddress: uniswap.address,
+      twapLength: 1,
+      lookback: 1
+    };
+
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
@@ -61,12 +71,7 @@ contract("index.js", function(accounts) {
   it("Completes one iteration without throwing an error", async function() {
     const address = emp.address;
 
-    const priceFeedConfig = {
-      type: "uniswap",
-      uniswapAddress: uniswap.address,
-      twapLength: 1,
-      lookback: 1
-    };
+    const priceFeedConfig = defaultPricefeedConfig;
 
     let errorThrown;
     try {
@@ -77,5 +82,14 @@ contract("index.js", function(accounts) {
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
+  });
+
+  it("Sets token allowances correctly", async function() {
+    const priceFeedConfig = defaultPricefeedConfig;
+
+    await Poll.run(emp.address, false, 10_000, priceFeedConfig);
+
+    const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
+    assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
   });
 });

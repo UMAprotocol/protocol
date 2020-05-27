@@ -13,54 +13,64 @@ const getMarketSummary = async (web3, artifacts) => {
 
   const registry = await Registry.deployed();
   const contractAddresses = await registry.getAllRegisteredContracts();
+
+  const emps = await Promise.all(
+    contractAddresses.map(async address => {
+      // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
+      if (address !== Governor.address) {
+        // Additional check that the address is a contract.
+        try {
+          return await ExpiringMultiParty.at(address);
+        } catch (err) {
+          return null;
+        }
+      }
+    })
+  );
+
+  const networkId = await web3.eth.net.getId();
+
+  const etherscanBaseUrl = PublicNetworks[networkId]
+    ? PublicNetworks[networkId].etherscan
+    : "https://fake-etherscan.com/";
+
+  const markets = await Promise.all(
+    emps.map(async emp => {
+      if (!emp) {
+        return null;
+      }
+
+      const contractState = (await emp.contractState()).toString();
+
+      const tokenAddress = await emp.tokenCurrency();
+      const token = await SyntheticToken.at(tokenAddress);
+      const name = await token.name();
+      const symbol = await token.symbol();
+
+      const collateralRequirement = await emp.collateralRequirement();
+
+      const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+      const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+
+      const expirationTimestamp = (await emp.expirationTimestamp()).toString();
+
+      const etherscanLink = `${etherscanBaseUrl}address/${emp.address}`;
+
+      return {
+        emp,
+        contractState,
+        name,
+        symbol,
+        collateralRequirement,
+        collateralSymbol,
+        expirationTimestamp,
+        etherscanLink
+      };
+    })
+  );
+
   style.spinnerReadingContracts.stop();
 
-  const emps = [];
-  for (const address of contractAddresses) {
-    // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
-    if (address !== Governor.address) {
-      // Additional check that the address is a contract.
-      try {
-        emps.push(await ExpiringMultiParty.at(address));
-      } catch (err) {
-        continue;
-      }
-    }
-  }
-
-  const markets = [];
-  const etherscanBaseUrl = PublicNetworks[web3.networkId]
-    ? PublicNetworks[web3.networkId].etherscan
-    : "https://fake-etherscan.com";
-  for (let i = 0; i < emps.length; i++) {
-    const emp = emps[i];
-    const contractState = (await emp.contractState()).toString();
-
-    const tokenAddress = await emp.tokenCurrency();
-    const token = await SyntheticToken.at(tokenAddress);
-    const name = await token.name();
-    const symbol = await token.symbol();
-
-    const collateralRequirement = await emp.collateralRequirement();
-
-    const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
-    const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
-
-    const expirationTimestamp = (await emp.expirationTimestamp()).toString();
-
-    const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
-
-    markets.push({
-      emp,
-      contractState,
-      name,
-      symbol,
-      collateralRequirement,
-      collateralSymbol,
-      expirationTimestamp,
-      etherscanLink
-    });
-  }
   return markets;
 };
 
