@@ -103,7 +103,7 @@ class Disputer {
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -133,7 +133,7 @@ class Disputer {
         this.logger.error({
           at: "Disputer",
           message: "Failed to dispute liquidation🚨",
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -194,9 +194,9 @@ class Disputer {
       } catch (error) {
         this.logger.debug({
           at: "Disputer",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -222,7 +222,7 @@ class Disputer {
         this.logger.error({
           at: "Disputer",
           message: "Failed to withdraw dispute rewards🚨",
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }

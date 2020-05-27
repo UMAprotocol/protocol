@@ -1,8 +1,9 @@
 /**
- * This script advances time in all EMP's and the Voting contract forward by some specified amount of seconds (or one hour and one second by default).
+ * @notice This script advances time in all EMP's and the Voting contract forward by some specified amount of seconds.
+ * @dev This assumes that the EMP is using the `MockOracle` on a local network. The default amount of seconds
+ * to advance is 2 hours or 7200 seconds.
  *
- * `truffle exec ./scripts/local/AdvanceEMPTime --time 10`
- * Advances time for all contracts by 10 seconds
+ * Example: `truffle exec ./scripts/local/AdvanceEMP --network test --time 10`
  */
 const { toBN } = web3.utils;
 const argv = require("minimist")(process.argv.slice(), { string: ["time"] });

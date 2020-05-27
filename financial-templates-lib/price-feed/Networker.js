@@ -14,8 +14,9 @@ class Networker {
     if (!json) {
       this.logger.error({
         at: "Networker",
-        message: "Failed to get json response",
-        url: url
+        message: "Failed to get json response🚨",
+        url: url,
+        error: new Error(response)
       });
     }
     return json;
