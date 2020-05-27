@@ -88,7 +88,7 @@ function addLocalNetwork(networks, name, customOptions) {
     host: "127.0.0.1",
     network_id: "*",
     port: 9545,
-    gas: undefined
+    gas: undefined // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
   };
 
   networks[name] = {
