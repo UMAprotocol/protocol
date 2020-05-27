@@ -9,14 +9,14 @@ They are currently compatible with the priceless synthetic token contract templa
 The liquidation bot monitors all open positions within a given expiring multi-party contract and liquidates positions if their collateralization ratio, as inferred from off-chain information about the value of the price identifier, drops below a given threshold.
 
 The dispute bot monitors all liquidations occurring within a given expiring multi-party contract and initiates disputes against liquidations it deems invalid, as inferred from off-chain information about the value of the price identifier.
-A liquidation is invalid if a position was in fact overcollateralized at the time of liquidation.
+A liquidation is invalid if a position was correctly collateralized at the time of liquidation.
 
 ## Implementation
 
 The liquidation and dispute bots are separate entities. Each has its own wallet and is designed to be be run independently of the other.
-This decouples dependencies between the bots to decrease the risk of one crashing impacting the other.
+This decouples dependencies between the bots to decrease the risk of one impacting the other.
 The bots are written in Javascript and re-use much of the upstream codebase.
-In production, it is suggested to run the bots within docker containers to further isolate the bots from any systemic risk and to ensure a reproducible execution environment.
+In production, it is suggested to run the bots within docker containers to isolate the bots and to ensure a reproducible execution environment.
 
 ## Technical Tutorial
 
@@ -26,7 +26,7 @@ This tutorial will be broken down into three main sections:
 2. [Running the bots within a dockerized environment from the official UMA Docker image](#running-the-bots-locally-with-Docker)
 3. [Deploying bots to production in Google Cloud Compute](#running-the-bots-in-the-cloud-with-GCP)
 
-This tutorial will guide you through setting up a liquidator and disputer bot to monitor an expiring multi party deployed on the Kovan test network.
+This tutorial will guide you through setting up a liquidator and disputer to monitor an expiring multi party deployed on the Kovan test network.
 A verified version of the expiring multi party contract can be found on Kovan [here](https://kovan.etherscan.io/address/0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1).
 This contract is an ETHBTC synthetic, collateralized in Dai.
 
@@ -35,8 +35,8 @@ This contract is an ETHBTC synthetic, collateralized in Dai.
 ### Funding accounts
 
 Bots must be funded with currency to pay for liquidations and disputes.
-Specifically, if you want to run a liquidator bot, you need to fund the wallet with 1) synthetic tokens to close liquidated positions, 2) collateral currency to pay the DVM final fee, and 3) Ether to pay transaction fees.
-If you want to run a disputer bot, then this wallet should be funded with 1) collateral currency to pay dispute bonds and the DVM final fee and 2) Ether to pay for transactions.
+Specifically, if you want to run a liquidation bot, you need to fund the wallet with 1) synthetic tokens to close liquidated positions, 2) collateral currency to pay the DVM final fee, and 3) Ether to pay transaction fees.
+If you want to run a dispute bot, then this wallet should be funded with 1) collateral currency to pay dispute bonds and the DVM final fee and 2) Ether to pay for transactions.
 
 ### Bot private key management
 
@@ -57,7 +57,7 @@ bip39.generateMnemonic()
 'sail chuckle school attitude symptom tenant fragile patch ring immense main rapid'
 ```
 
-You can then load this mnemonic into truffle and view the associated public key.
+You can then load this mnemonic into truffle and view the associated address.
 To do this, exit the the truffle console by pressing `ctrl+c` twice on your keyboard and then typing:
 
 ```bash
@@ -65,7 +65,7 @@ To do this, exit the the truffle console by pressing `ctrl+c` twice on your keyb
 export MNEMONIC="sail chuckle school attitude symptom tenant fragile patch ring immense main rapid"
 
 # Start the truffle console
-truffle console --network kovan_mnemonic
+$(npm bin)/truffle console --network kovan_mnemonic
 
 # Print the address of your newly created account
 accounts[0]
@@ -98,7 +98,7 @@ cd ./protocol
 
 # Install dependencies & compile the contracts
 npm install
-truffle compile
+$(npm bin)/truffle compile
 ```
 
 **b) Configuring environment**
@@ -121,7 +121,7 @@ The parameters above, as well as other optional parameters are explained in the 
 Now that your env is set up you can run the bot. Run the following command from the `core` directory to start the bots on Kovan:
 
 ```bash
-truffle exec ../liquidator/index.js --network kovan_mnemonic
+$(npm bin)/truffle exec ../liquidator/index.js --network kovan_mnemonic
 ```
 
 This will start the liquidator bot process using the network `kovan` and the wallet `mnemonic`. If you have any issues executing the `truffle` command you can try running `npx truffle <command>` or `$(npm bin)/truffle <command>`. You should see the following output:
@@ -403,19 +403,19 @@ There are a few more configuration options available. The section below describe
 
 - `POLLING_DELAY`**[required]**: how long the bot should wait (in milliseconds) before running a polling cycle.
 - `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you are wanting to connect to. This config defines the synthetic that the bot will be liquidating.
-- `MNEMONIC`**[required]**: generated before hand or in the steps outlined in key generation.
+- `MNEMONIC`**[required]**: defines the wallet for the bots to use. Generated beforehand or in the steps outlined in key generation.
 - `PRICE_FEED_CONFIG`**[required]**: configuration object used to parameterize the bot's price feed. It's broken down as follows:
-  - `type` spesifies the configuration of the price feed. The `medianizer` type averages the price of the identifier over a set of diffrent exchanges.
+  - `type` specifies the configuration of the price feed. The `medianizer` type averages the price of the identifier over a set of different exchanges.
   - `apiKey` is the key generated in API key section of the Prerequisites.
-  - `pair` defines the crypto pair to medianizer over.
-  - `lookback` defines a window size, in seconds, over which an average price is taken.
-  - `minTimeBetweenUpdates` min number of seconds between update.
-  - `medianizedFeeds` is an array of type `priceFeed` that defines the feeds overwhich the meadinzer will average. Each of these have their own components which are defined as:
+  - `pair` defines the crypto pair whose price is being fetched as defined in CryptoWatch. Ex: `ethbtc`.
+  - `lookback` defines a window size, in seconds, over which historical prices will be made available by the price feed. This parameter should be set to be at least as large as the liquidation liveness of the EMP contract.
+  - `minTimeBetweenUpdates` min number of seconds between update. If update is called more frequently, no new price data will be fetched.
+  - `medianizedFeeds` is an array of type `priceFeed` that defines the feeds overwhich the meadinzer will take the median of. Each of these have their own components which are defined as:
     - `type` Each instance of the meadinaizer also a type. This could be a `medianizer`, `uniswap` or `cryptowatch` depending on the configuration of the bot. The sample bot is using only `cryptowatch` price feeds to average over the set of exchanges to medianize.
     - `exchange` a string identifier for the exchange to pull prices from. This should be the identifier used to identify the exchange in CW's REST API.
 - `COMMAND`**[required]**: initial entry point the bot uses when it starts running.
 - `LIQUIDATOR_CONFIG` [optional]: enables the override of specific bot settings. See [Specifying liquidation sensitivity parameters](##Specifying-liquidation-sensitivity-parameters).
-- `ENVIRONMENT`[optional]: when set to `production`, will pipe logs to GCP stack driver.
+- `ENVIRONMENT`[optional]: when set to `production`, will pipe logs to GCP stackdriver.
 - `SLACK_WEBHOOK`[optional]: can be included to send messages to a slack channel.
 - `PAGERDUTY_API_KEY`[optional]: if you want to configure your bot to send pager duty messages(sms, phone calls or email) when they crash or have `error` level logs you'll need an API key here.
 - `PAGERDUTY_SERVICE_ID`[optional]: each Pagerduty service has a unique id. This goes here.
