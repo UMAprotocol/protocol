@@ -211,8 +211,7 @@ const Poll = async function(callback) {
     // Synthetic Peg monitor. Specify the deviationAlertThreshold, volatilityWindow and volatilityAlertThreshold. EG:
     // { "deviationAlertThreshold": 0.5, // if the deviation in token price exceeds this value an alert is fired.
     //   "volatilityWindow": 600 // Length of time (in seconds) to snapshot volatility.
-    //   "volatilityAlertThreshold": 0.1 // Error threshold for pricefeed's price volatility over `volatilityWindow`.
-    // }
+    //   "volatilityAlertThreshold": 0.1 } // Error threshold for pricefeed's price volatility over `volatilityWindow`.
     const syntheticPegMonitorObject = JSON.parse(process.env.SYNTHETIC_PEG_MONITOR_OBJECT);
 
     if (!process.env.UNISWAP_PRICE_FEED_CONFIG || !process.env.MEDIANIZER_PRICE_FEED_CONFIG) {
