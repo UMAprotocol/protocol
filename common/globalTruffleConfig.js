@@ -21,7 +21,6 @@ const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "
 
 // Default options
 const gasPx = 20000000000; // 20 gwei
-const gas = 9000000; // Conservative estimate of the block gas limit.
 
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
@@ -30,7 +29,7 @@ function addPublicNetwork(networks, name, networkId) {
   const options = {
     networkCheckTimeout: 10000,
     network_id: networkId,
-    gas: gas,
+    gas: undefined, // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
     gasPrice: gasPx
   };
 
