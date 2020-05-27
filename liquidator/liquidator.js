@@ -114,10 +114,10 @@ class Liquidator {
     const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
 
     // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation
-    // to be accepted by the contract the Position's collateralization ratio must be between [minCollateralPerToken,
-    // maxCollateralPerToken]. maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens. This criterion
+    // to be accepted by the contract the position's collateralization ratio must be between [minCollateralPerToken,
+    // maxCollateralPerToken] ∴ maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens. This criterion
     // checks for a positions correct capitalization, not collateralization. In order to liquidate a position that is
-    // under collaterelaized(but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
+    // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
     const maxCollateralPerToken = toBN(scaledPrice)
       .mul(toBN(this.empCRRatio))
       .div(toBN(toWei("1")));
