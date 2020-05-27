@@ -32,14 +32,13 @@ class SyntheticPegMonitor {
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
-    const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
         // if the deviation in token price exceeds this value an alert is fired.
-        value: this.web3.utils.toBN(this.web3.utils.toWei("0.2")),
+        value: 0.2,
         isValid: x => {
-          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gte(toBN("0"));
+          return x < 100 && x > 0;
         }
       },
       volatilityWindow: {
@@ -51,9 +50,9 @@ class SyntheticPegMonitor {
       },
       volatilityAlertThreshold: {
         // `volatilityAlertThreshold`: Error threshold for pricefeed's price volatility over `volatilityWindow`.
-        value: this.web3.utils.toBN(this.web3.utils.toWei("0.05")),
+        value: 0.05,
         isValid: x => {
-          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gt(toBN("0"));
+          return x < 100 && x > 0;
         }
       }
     };
@@ -86,7 +85,7 @@ class SyntheticPegMonitor {
 
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
-    if (deviationError.abs().gt(this.web3.utils.toBN(this.deviationAlertThreshold))) {
+    if (deviationError.abs().gt(this.web3.utils.toBN(this.web3.utils.toWei(this.deviationAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
@@ -135,7 +134,11 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.abs().gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
+    if (
+      pricefeedVolatility
+        .abs()
+        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
+    ) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High peg price volatility alert 🌋",
@@ -149,7 +152,7 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
           " %."
       });
     }
@@ -184,7 +187,11 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.abs().gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
+    if (
+      pricefeedVolatility
+        .abs()
+        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
+    ) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High synthetic price volatility alert 🌋",
@@ -198,7 +205,7 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
           " %."
       });
     }

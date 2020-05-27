@@ -38,7 +38,7 @@ contract("SyntheticPegMonitor", function(accounts) {
     beforeEach(async function() {
       // Tested module that uses the two price feeds.
       syntheticPegMonitorConfig = {
-        deviationAlertThreshold: toBN(toWei("0.2")) // Any deviation larger than 0.2 should fire an alert
+        deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
       };
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
@@ -120,7 +120,7 @@ contract("SyntheticPegMonitor", function(accounts) {
         volatilityWindow: 3650,
         // Not divisible by 3600 in order to test that "volatility window in hours" is printed
         // correctly by Logger.
-        volatilityAlertThreshold: toBN(toWei("0.3"))
+        volatilityAlertThreshold: 0.3
       };
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
