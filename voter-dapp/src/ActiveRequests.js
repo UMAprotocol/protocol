@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState, useReducer } from "react";
+import { useCookies } from "react-cookie";
+
 import Button from "@material-ui/core/Button";
+import IconButton from "@material-ui/core/IconButton";
 import Checkbox from "@material-ui/core/Checkbox";
 import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
@@ -12,6 +15,9 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
+import Tooltip from "@material-ui/core/Tooltip";
+
+import HelpIcon from "@material-ui/icons/Help";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
@@ -40,10 +46,14 @@ const editStateReducer = (state, action) => {
 };
 
 const toPriceRequestKey = (identifier, time) => time + "," + identifier;
+const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
+  votingAccount + "," + time + "," + identifier;
 
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  // Use cookies to locally store committed salts, mapped to the current voting account.
+  const [cookies, setCookie] = useCookies();
   const { hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
@@ -236,9 +246,16 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend(votingGateway, "batchCommit");
+  // `saltsToSave` stores the latest salts used to encrypt commits. These salts are newly generated each time the user
+  // clicks "Save", which will prompt the user to sign a `batchCommit` transaction and commit their checked votes.
+  // If the `batchCommit` transaction is sent correctly, denoted by the `commitStatus` reading "success", then we will
+  // save the `saltsToSave` as a cookie mapped to the unique combination of the voting account and the price request ({identifier, timestamp}).
+  const [saltsToSave, setSaltsToSave] = useState({});
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
+    let saltMap = {};
+
     for (const index in editState) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
@@ -263,14 +280,42 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         encryptedVote
       });
       indicesCommitted.push(index);
+
+      // Cache these potential committed salts for the user and prepare to store them as cookies.
+      const newCommitKey = toVotingAccountAndPriceRequestKey(
+        votingAccount,
+        pendingRequests[index].identifier,
+        pendingRequests[index].time
+      );
+      saltMap = {
+        ...saltMap,
+        [newCommitKey]: salt
+      };
     }
     if (commits.length < 1) {
       return;
     }
+
+    // Prompt user to sign transaction. After this function is called, the `commitStatus` is reset to undefined.
     batchCommitFunction(commits, { from: account });
+
+    // We can now safely update the `saltsToSave` storage state and be prepared to store cookies as soon as the updated
+    // `commitStatus` gets set to "success". If we were to update `saltsToSave` before calling `batchCommitFunction`,
+    // then it is possible that `commitStatus` would still be equal to "success" from a previously successful send
+    // and we would unintentionally overwrite the salt cookie.
+    setSaltsToSave(saltMap);
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };
+
+  // Once transaction successfully sends, store latest batch of salts in a cookie.
+  if (commitStatus === "success" && Object.keys(saltsToSave).length > 0) {
+    for (let key in saltsToSave) {
+      setCookie(key, saltsToSave[key], { path: "/" });
+      // Delete object mapping so that we don't store it again.
+      delete saltsToSave[key];
+    }
+  }
 
   // NOTE: No calls to React hooks from this point forward.
   if (
@@ -343,6 +388,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
+  const getLastCommittedSalt = index => {
+    const commitKey = toVotingAccountAndPriceRequestKey(
+      votingAccount,
+      pendingRequests[index].identifier,
+      pendingRequests[index].time
+    );
+    return cookies[commitKey];
+  };
   const getCurrentVoteCell = index => {
     // If this cell is currently being edited.
     if (editState[index]) {
@@ -396,6 +449,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
             <TableCell className={classes.tableHeaderCell}>Status</TableCell>
             <TableCell className={classes.tableHeaderCell}>Current Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>
+              Latest Commit Salt
+              <Tooltip
+                title="Salts are random numbers used to encrypt your vote and must be revealed during the reveal stage for a vote to count. Voters should keep copies of the salts that they used to commit their votes so that they can manually reveal votes if for any reason this application cannot decrypt your commit. We store your most recently used salt for each price request via browser cookies."
+                placement="top"
+              >
+                <IconButton>
+                  <HelpIcon />
+                </IconButton>
+              </Tooltip>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody className={classes.tableBody}>
@@ -423,6 +487,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{getCurrentVoteCell(index)}</TableCell>
+                <TableCell>{getLastCommittedSalt(index)}</TableCell>
               </TableRow>
             );
           })}
