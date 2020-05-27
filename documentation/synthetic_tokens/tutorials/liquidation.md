@@ -20,7 +20,7 @@ In production, it is suggested to run the bots within docker containers to furth
 
 ## Technical Tutorial
 
-This tutorial will be broken down into three sections:
+This tutorial will be broken down into three main sections:
 
 1. [Running the bots directly from your host environment (no Docker) from the command line](#running-the-liquidator-and-disputer-bots-locally)
 2. [Running the bots within a dockerized environment from the official UMA Docker image](#running-the-bots-locally-with-Docker)
@@ -354,7 +354,49 @@ SLACK_WEBHOOK=<your slack webhook>
 
 The bots will now automatically start sending log messages in Slack.
 
-## Appendix 1: Bot configuration parameters
+## Running a liquidator bot on mainnet
+
+The tutorial thus far assumed you are running a Kovan liquidator and dispute bots. Next, we will discuss how to move the deployment onto the Main Ethereum network. This involves three main steps which are outlined below.
+
+**1) Funding your liquidator bot's main net wallet**
+
+Run on the Mainnet involves first repeating the [Funding accounts](#Funding-accounts) section on the main Ethereum network to acquire collateral to fund the liquidator and disputer bots.
+
+**2) Updating the EMP address to point to main net expiring multi party contract**
+
+Update your environment configuration `EMP_ADDRESS` to refer to the mainnet address of the expiring multiparty contract you want to monitor.
+
+<!-- TODO: add a link to another docs page that outlines the EMP address for all main net deployments -->
+
+**3) Update the `COMMAND` used to start the bots to point at the mainnet, rather than kovan.**
+This is as simple as changing your `COMMAND` to the following for the liquidator and disputer bots respectively.
+
+```bash
+# liquidator.env update
+COMMAND=npx truffle exec ../liquidator/index.js --network mainnet_mnemonic
+
+# disputer.env update
+COMMAND=npx truffle exec ../disputer/index.js --network mainnet_mnemonic
+```
+
+## Specifying liquidation sensitivity parameters
+
+Due to the design of the UMA DVM and liquidation process, a bot operator might only want to liquidate positions that are `x` percentage under collateralized. For example if the Collateralization Requirement of a contract is 120%, a conservative operator might only want to liquidate positions that are at 115% to remove any risk ot being disputed.
+
+To facilitate this configuration the UMA liquidator bots have an optional configuration object that can be used to specify a `crThreshold` which defines how far below the given CR ratio a position must fall before the bot will initiate the liquidation. To enable this configuration with a 5% threshold add the following to your `liquidator.env`:
+
+```
+LIQUIDATOR_CONFIG={"crThreshold":0.05}
+```
+
+This configuration has additional optional configurations including:
+
+1. `liquidationDeadline` which aborts the liquidation if the transaction is mined this amount of time after the EMP client's last update time. Defaults to 5 minutes.
+2. `liquidationMinPrice` which aborts the liquidation if the amount of collateral in the position per token outstanding is below this ratio. Defaults to 0.
+
+These configurations can be added to the config in the same way the `crThreshold` was added.
+
+## Appendix: Bot configuration parameters
 
 This tutorial touched on the key configuration parameters available when running an UMA liquidation or dispute bot.
 There are a few more configuration options available. The section below describes the parameter input in this tutorial as well as the optional extra parameters that can be included when running a bot.
@@ -372,6 +414,7 @@ There are a few more configuration options available. The section below describe
     - `type` Each instance of the meadinaizer also a type. This could be a `medianizer`, `uniswap` or `cryptowatch` depending on the configuration of the bot. The sample bot is using only `cryptowatch` price feeds to average over the set of exchanges to medianize.
     - `exchange` a string identifier for the exchange to pull prices from. This should be the identifier used to identify the exchange in CW's REST API.
 - `COMMAND`**[required]**: initial entry point the bot uses when it starts running.
+- `LIQUIDATOR_CONFIG` [optional]: enables the override of specific bot settings. See [Specifying liquidation sensitivity parameters](##Specifying-liquidation-sensitivity-parameters).
 - `ENVIRONMENT`[optional]: when set to `production`, will pipe logs to GCP stack driver.
 - `SLACK_WEBHOOK`[optional]: can be included to send messages to a slack channel.
 - `PAGERDUTY_API_KEY`[optional]: if you want to configure your bot to send pager duty messages(sms, phone calls or email) when they crash or have `error` level logs you'll need an API key here.
