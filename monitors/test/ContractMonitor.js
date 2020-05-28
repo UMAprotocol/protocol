@@ -109,8 +109,11 @@ contract("ContractMonitor.js", function(accounts) {
     emp = await ExpiringMultiParty.new(constructorParams);
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
     priceFeedMock = new PriceFeedMock();
-    // accounts[1] is liquidator bot to monitor and accounts[2] is dispute bot to monitor.
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, [liquidator], [disputer], priceFeedMock);
+
+    // Define a configuration object. In this config only monitor one liquidator and one disputer.
+    const contractMonitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
+
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
