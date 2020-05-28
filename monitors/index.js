@@ -70,7 +70,16 @@ async function run(
     );
 
     // 1. Contract state monitor
-    const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    // Start the event client by looking from the most recent block number. If set to 0 will report past events.
+    const latestBlockNumber = (await web3.eth.getBlock("latest")).number;
+
+    const empEventClient = new ExpiringMultiPartyEventClient(
+      Logger,
+      ExpiringMultiParty.abi,
+      web3,
+      emp.address,
+      latestBlockNumber
+    );
     const contractMonitor = new ContractMonitor(
       Logger,
       empEventClient,
@@ -126,6 +135,8 @@ async function run(
       await contractMonitor.checkForNewDisputeEvents();
       // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents();
+      // 1.e Check for new sponsor positions created
+      await contractMonitor.checkForNewSponsors();
 
       // 2.  Wallet Balance monitor
       // 2.a Update the client
@@ -159,7 +170,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error: error.toString()
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
@@ -209,9 +220,9 @@ const Poll = async function(callback) {
     );
   } catch (err) {
     Logger.error({
-      at: "Monitor#index🚨",
-      message: "Monitor configuration error",
-      error: error.toString()
+      at: "Monitor#index",
+      message: "Monitor configuration error🚨",
+      error: new Error(error)
     });
     await waitForLogger(Logger);
     callback(error);

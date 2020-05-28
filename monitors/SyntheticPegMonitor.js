@@ -31,14 +31,13 @@ class SyntheticPegMonitor {
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
-    const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
         // if the deviation in token price exceeds this value an alert is fired.
-        value: this.web3.utils.toBN(this.web3.utils.toWei("0.2")),
+        value: 0.2,
         isValid: x => {
-          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gte(toBN("0"));
+          return x < 100 && x > 0;
         }
       },
       volatilityWindow: {
@@ -50,9 +49,9 @@ class SyntheticPegMonitor {
       },
       volatilityAlertThreshold: {
         // `volatilityAlertThreshold`: Error threshold for pricefeed's price volatility over `volatilityWindow`.
-        value: this.web3.utils.toBN(this.web3.utils.toWei("0.05")),
+        value: 0.05,
         isValid: x => {
-          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gt(toBN("0"));
+          return x < 100 && x > 0;
         }
       }
     };
@@ -66,6 +65,16 @@ class SyntheticPegMonitor {
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
+    if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
+      this.logger.warn({
+        at: "SyntheticPegMonitor",
+        message: "Unable to get price",
+        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : null,
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : null
+      });
+      return;
+    }
+
     this.logger.debug({
       at: "SyntheticPegMonitor",
       message: "Checking price deviation",
@@ -73,19 +82,10 @@ class SyntheticPegMonitor {
       cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString()
     });
 
-    if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
-      this.logger.warn({
-        at: "SyntheticPegMonitor",
-        message: "Unable to get price",
-        uniswapTokenPrice: uniswapTokenPrice.toString(),
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString()
-      });
-      return;
-    }
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
-    if (deviationError.gt(this.web3.utils.toBN(this.deviationAlertThreshold))) {
-      this.logger.error({
+    if (deviationError.abs().gt(this.web3.utils.toBN(this.web3.utils.toWei(this.deviationAlertThreshold.toString())))) {
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:
@@ -107,7 +107,21 @@ class SyntheticPegMonitor {
   checkPegVolatility = async () => {
     const pricefeed = this.medianizerPriceFeed;
 
-    const { pricefeedVolatility, pricefeedLatestPrice, min, max } = await this._checkPricefeedVolatility(pricefeed);
+    const volData = await this._checkPricefeedVolatility(pricefeed);
+
+    if (!volData) {
+      this.logger.warn({
+        at: "SyntheticPegMonitor",
+        message: "Unable to get volatility data",
+        pricefeed: "Medianizer"
+      });
+      return;
+    }
+
+    const pricefeedVolatility = volData.pricefeedVolatility;
+    const pricefeedLatestPrice = volData.pricefeedLatestPrice;
+    const min = volData.min;
+    const max = volData.max;
 
     this.logger.debug({
       at: "SyntheticPegMonitor",
@@ -118,20 +132,13 @@ class SyntheticPegMonitor {
       maxPrice: max.toString()
     });
 
-    if (!pricefeedVolatility || !pricefeedLatestPrice) {
-      this.logger.warn({
-        at: "SyntheticPegMonitor",
-        message: "Unable to get price",
-        pricefeed: "Medianizer",
-        pricefeedVolatility: pricefeedVolatility.toString(),
-        pricefeedLatestPrice: pricefeedLatestPrice.toString()
-      });
-      return;
-    }
-
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
-      this.logger.error({
+    if (
+      pricefeedVolatility
+        .abs()
+        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
+    ) {
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High peg price volatility alert 🌋",
         mrkdwn:
@@ -144,7 +151,7 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
           " %."
       });
     }
@@ -153,7 +160,21 @@ class SyntheticPegMonitor {
   checkSyntheticVolatility = async () => {
     const pricefeed = this.uniswapPriceFeed;
 
-    const { pricefeedVolatility, pricefeedLatestPrice, min, max } = await this._checkPricefeedVolatility(pricefeed);
+    const volData = await this._checkPricefeedVolatility(pricefeed);
+
+    if (!volData) {
+      this.logger.warn({
+        at: "SyntheticPegMonitor",
+        message: "Unable to get volatility data",
+        pricefeed: "Uniswap"
+      });
+      return;
+    }
+
+    const pricefeedVolatility = volData.pricefeedVolatility;
+    const pricefeedLatestPrice = volData.pricefeedLatestPrice;
+    const min = volData.min;
+    const max = volData.max;
 
     this.logger.debug({
       at: "SyntheticPegMonitor",
@@ -164,20 +185,13 @@ class SyntheticPegMonitor {
       maxPrice: max.toString()
     });
 
-    if (!pricefeedVolatility || !pricefeedLatestPrice) {
-      this.logger.warn({
-        at: "SyntheticPegMonitor",
-        message: "Unable to get price",
-        pricefeed: "Uniswap",
-        pricefeedVolatility: pricefeedVolatility.toString(),
-        pricefeedLatestPrice: pricefeedLatestPrice.toString()
-      });
-      return;
-    }
-
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
-      this.logger.error({
+    if (
+      pricefeedVolatility
+        .abs()
+        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
+    ) {
+      this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High synthetic price volatility alert 🌋",
         mrkdwn:
@@ -190,7 +204,7 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
           " %."
       });
     }
@@ -201,62 +215,72 @@ class SyntheticPegMonitor {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
-    const { volatility: pricefeedVolatility, min, max } = this._calculateHistoricalVolatility(
-      pricefeed,
-      latestTime,
-      this.volatilityWindow
-    );
+    const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    if (!volData) {
+      return null;
+    }
+
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from precisely the
     // same timestamp as the "latest price". This would prevent inaccurate volatility readings where `currentTime` differs from `lastUpdateTime`.
     const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
 
     return {
-      pricefeedVolatility,
+      pricefeedVolatility: volData.volatility,
       pricefeedLatestPrice,
-      min,
-      max
+      min: volData.min,
+      max: volData.max
     };
   };
 
-  // Takes in two big numbers and returns the error between them.
-  // calculated using: δ = | (observed - expected) / expected |
-  // For example an observed price of 1.2 with an expected price of 1.0 will return | (1.2 - 1.0) / 1.0 | = 0.20
-  // This is equivalent of a 20 percent absolute deviation between the numbers.
+  // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
+  // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
+  // This is equivalent of a 20 percent deviation between the numbers.
+  // Note that this logger can return negative error if the deviation is in a negative direction.
   _calculateDeviationError(observedValue, expectedValue) {
     return observedValue
       .sub(expectedValue)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1"))) // Scale the numerator before division
-      .div(expectedValue)
-      .abs();
+      .div(expectedValue);
   }
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
-  // until `mostRecentTime`. Returns volatility as (max - min)/min %.
+  // until `mostRecentTime`. Returns volatility as (max - min)/min %. Also Identifies the direction volatility movement.
   _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
     // Set max and min to latest price to start.
     let min = pricefeed.getHistoricalPrice(mostRecentTime);
     let max = min;
     if (!min || !max) return null;
 
+    // Store the timestamp of the max and min value to infer the direction of the movement over the interval.
+    let maxTimestamp = 0,
+      minTimestamp = 0;
+    // Iterate over all time series values to fine the maximum and minimum values.
     for (let i = 0; i < lookback; i++) {
-      let _price = pricefeed.getHistoricalPrice(mostRecentTime - i);
+      const timestamp = mostRecentTime - i;
+      const _price = pricefeed.getHistoricalPrice(timestamp);
       if (!_price) {
         continue;
       }
 
       if (_price.lt(min)) {
         min = _price;
+        minTimestamp = timestamp;
       }
       if (_price.gt(max)) {
         max = _price;
+        maxTimestamp = timestamp;
       }
     }
+    // If maxTimestamp < minTimestamp then positive volatility. If minTimestamp < maxTimestamp then negative volatility.
+    // Note:this inequality intuitively feels backwards. This is because the for loop above itterates from the current
+    // time back over the lookback duration rather than traversing time forwards from the lookback duration to present.
+    const volatilityDirection = maxTimestamp < minTimestamp ? 1 : -1;
 
     // The min-max % calculation is identical to the equation in `_calculateDeviationError`.
     return {
       min: min,
       max: max,
-      volatility: this._calculateDeviationError(max, min)
+      volatility: this._calculateDeviationError(max, min).mul(this.web3.utils.toBN(volatilityDirection))
     };
   }
 }

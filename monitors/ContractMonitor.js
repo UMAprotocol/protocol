@@ -20,6 +20,7 @@ class ContractMonitor {
     this.lastLiquidationBlockNumber = 0;
     this.lastDisputeBlockNumber = 0;
     this.lastDisputeSettlementBlockNumber = 0;
+    this.lastNewSponsorBlockNumber = 0;
 
     // Contract constants
     // TODO: replace this with an actual query to the collateral currency symbol
@@ -47,6 +48,52 @@ class ContractMonitor {
     }
     return eventArray[eventArray.length - 1].blockNumber;
   }
+
+  // Quries NewSponsor events since the latest query marked by `lastNewSponsorBlockNumber`.
+  checkForNewSponsors = async () => {
+    this.logger.debug({
+      at: "ContractMonitor",
+      message: "Checking for new sponsor events",
+      lastNewSponsorBlockNumber: this.lastNewSponsorBlockNumber
+    });
+
+    // Get the latest new sponsor information.
+    let latestNewSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
+
+    // Get events that are newer than the last block number we've seen
+    let newSponsorEvents = latestNewSponsorEvents.filter(event => event.blockNumber > this.lastNewSponsorBlockNumber);
+
+    for (let event of newSponsorEvents) {
+      // Check if new sponsor is UMA bot.
+      const isLiquidatorBot = this.monitoredLiquidators.indexOf(event.sponsor);
+      const isDisputerBot = this.monitoredDisputers.indexOf(event.sponsor);
+      const isMonitoredBot = Boolean(isLiquidatorBot != -1 || isDisputerBot != -1);
+
+      // Sample message:
+      // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
+      // created X tokens backed by Y collateral.  [etherscan link to txn]
+      const mrkdwn =
+        createEtherscanLinkMarkdown(this.web3, event.sponsor) +
+        (isMonitoredBot ? " (Monitored liquidator or disputer bot)" : "") +
+        " created " +
+        this.formatDecimalString(event.tokenAmount) +
+        " " +
+        this.syntheticCurrencySymbol +
+        " backed by " +
+        this.formatDecimalString(event.collateralAmount) +
+        " " +
+        this.collateralCurrencySymbol +
+        ". tx: " +
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+
+      this.logger.info({
+        at: "ContractMonitor",
+        message: "New Sponsor Alert 🐣!",
+        mrkdwn: mrkdwn
+      });
+    }
+    this.lastNewSponsorBlockNumber = this.getLastSeenBlockNumber(latestNewSponsorEvents);
+  };
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async () => {

@@ -1,8 +1,10 @@
 /**
- * @notice Push a price for a mock oracle price request. Designed to be used in testing disputed liquidations.
+ * @notice Push a price for a mock oracle price request. User can specify which pending price request to push a price
+ * for and what price to use. Note that the more recent the price request the higher the index. It is possible
+ * `MockOracle.getPendingQueries` returns already-resolved price requests, so this script will inform you if
+ * the price has been resolved.
  *
- * How to use: $(npm bin)/truffle exec ./scripts/local/PushPriceEMP.js --network test --id 1 --price 1.2
- * - This will push 1.2 as the price for the pending price request at index 1 in the MockOracle
+ * Example: $(npm bin)/truffle exec ./scripts/local/PushPriceEMP.js --network test --id 1 --price 1.2
  */
 const { toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("../../utils/Constants");

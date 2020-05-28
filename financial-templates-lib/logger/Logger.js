@@ -33,14 +33,22 @@ const { transports } = require("./Transports");
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
-async function waitForLogger(logger) {
+const waitForLogger = async logger => {
   const loggerDone = new Promise(resolve => logger.on("finish", resolve));
   logger.end();
   return await loggerDone;
-}
+};
+
+// If the log entry contains an error then extract the stack trace as the error message.
+const errorStackTracerFormatter = logEntry => {
+  if (logEntry.error) {
+    logEntry.error = logEntry.error.stack;
+  }
+  return logEntry;
+};
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-const winstonFormatter = logEntry => {
+const botIdentifyFormatter = logEntry => {
   if (process.env.BOT_IDENTIFIER) logEntry["bot-identifier"] = process.env.BOT_IDENTIFIER;
   return logEntry;
 };
@@ -48,8 +56,9 @@ const winstonFormatter = logEntry => {
 const Logger = winston.createLogger({
   level: "debug",
   format: winston.format.combine(
-    winston.format(winstonFormatter)(),
+    winston.format(botIdentifyFormatter)(),
     winston.format(logEntry => logEntry)(),
+    winston.format(errorStackTracerFormatter)(),
     winston.format.json()
   ),
   transports,

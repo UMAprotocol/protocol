@@ -1,7 +1,8 @@
 /**
- * @notice Dispute a liquidation as the sponsor, which is assumed to be accounts[0].
+ * @notice Dispute a liquidation using `accounts[0]` as the disputer. We can specify which liquidation
+ * ID to dispute by setting the value of the `--id` flag.
  *
- *  Example run: `$(npm bin)/truffle exec ./scripts/local/DisputeEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
+ * Example: `$(npm bin)/truffle exec ./scripts/local/DisputeEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
  */
 const { toWei, fromWei, toBN } = web3.utils;
 const { LiquidationStatesEnum } = require("../../../common/Enums.js");

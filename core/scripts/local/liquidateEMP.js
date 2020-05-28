@@ -1,8 +1,9 @@
 /**
- * @notice Liquidates the sponsor's position, where the sponsor is accounts[0] and the liquidator
- * is accounts[1].
+ * @notice Liquidates 1000 tokens of the the sponsor's position, where the sponsor is accounts[0] and the liquidator
+ * is accounts[1]. Useful when paired with the `DeployEMP.js` script which deploys an EMP with a minimum
+ * sponsor position of 1000 tokens.
  *
- * Example run: `$(npm bin)/truffle exec ./scripts/local/LiquidateEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9`
+ * Example: `$(npm bin)/truffle exec ./scripts/local/LiquidateEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9`
  */
 const { toWei, fromWei, toBN } = web3.utils;
 const { MAX_UINT_VAL } = require("../../../common/Constants");

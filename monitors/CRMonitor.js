@@ -11,7 +11,7 @@ class CRMonitor {
    *                 must be given:
    *                 [{ name: "Market Making bot",
    *                    address: "0x12345",
-   *                    crAlert: 150 },
+   *                    crAlert: 1.50 }, // Note 150% is represented as 1.5
    *                  ...];
    * @param {Object} priceFeed offchain price feed used to track the token price.
    */
@@ -42,8 +42,7 @@ class CRMonitor {
     if (!price) {
       this.logger.warn({
         at: "CRMonitor",
-        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
-        price: price.toString()
+        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value"
       });
       return;
     }
@@ -87,9 +86,9 @@ class CRMonitor {
           " (" +
           createEtherscanLinkMarkdown(this.web3, wallet.address) +
           ") collateralization ratio has dropped to " +
-          this.formatDecimalString(positionCR) +
+          this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +
-          wallet.crAlert +
+          wallet.crAlert * 100 +
           "% threshold. Current value of " +
           this.syntheticCurrencySymbol +
           " is " +
@@ -121,9 +120,8 @@ class CRMonitor {
     return this.web3.utils.toBN(value).lt(this.web3.utils.toBN(threshold));
   }
 
-  // TODO: refactor this out into a separate utility function
   // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = [collateral / (tokensOutstanding * price)] * 100
+  // This is cr = collateral / (tokensOutstanding * price)
   _calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
     if (collateral == 0) {
       return 0;
@@ -135,9 +133,7 @@ class CRMonitor {
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)))
-      .muln(100)
-      .toString();
+      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)));
   };
 }
 

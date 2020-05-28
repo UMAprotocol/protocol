@@ -40,9 +40,9 @@ class Liquidator {
         // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
         // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
         // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120.
-        value: toWei("0.02"),
+        value: 0.02,
         isValid: x => {
-          return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
+          return x < 1 && x >= 0;
         }
       },
       liquidationDeadline: {
@@ -101,14 +101,14 @@ class Liquidator {
 
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by deriving a `scaledPrice` from (`1 - crThreshold` * `price`)
-    const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
+    // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
+    const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(toWei(this.crThreshold.toString())))));
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
-      crThreshold: this.crThreshold.toString()
+      crThreshold: this.crThreshold
     });
 
     this.logger.debug({
@@ -150,7 +150,7 @@ class Liquidator {
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
           sponsor: position.sponsor,
           position: position,
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -176,7 +176,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -242,9 +242,9 @@ class Liquidator {
       } catch (error) {
         this.logger.debug({
           at: "Liquidator",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
-          error: error.toString()
+          error: new Error(error)
         });
         continue;
       }
@@ -269,8 +269,8 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards",
-          error: error.toString()
+          message: "Failed to withdraw liquidation rewards🚨",
+          error: new Error(error)
         });
         continue;
       }
