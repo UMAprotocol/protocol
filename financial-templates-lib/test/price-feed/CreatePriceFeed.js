@@ -61,6 +61,21 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validCryptoWatchFeed.getTime(), getTime());
   });
 
+  it("Valid CryptoWatch config without apiKey", async function() {
+    const config = {
+      type: "cryptowatch",
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    const validCryptoWatchFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validCryptoWatchFeed instanceof CryptoWatchPriceFeed);
+    assert.equal(validCryptoWatchFeed.apiKey, undefined);
+  });
+
   it("Invalid CryptoWatch config", async function() {
     const validConfig = {
       type: "cryptowatch",
@@ -71,7 +86,6 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, exchange: undefined }),
       null
