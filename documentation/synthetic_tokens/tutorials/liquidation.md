@@ -15,7 +15,6 @@ A liquidation is invalid if a position was correctly collateralized at the time 
 
 The liquidation and dispute bots are separate entities. Each has its own wallet and is designed to be be run independently of the other.
 This decouples dependencies between the bots to decrease the risk of one impacting the other.
-The bots are written in Javascript and re-use much of the upstream codebase.
 In production, it is suggested to run the bots within docker containers to isolate the bots and to ensure a reproducible execution environment.
 
 ## Technical Tutorial
