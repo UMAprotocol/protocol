@@ -2,6 +2,26 @@
 // create a slack webhook and add this to your .env file. a sample in .env_sample shows this.
 // see https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack for more.
 
+// This formatter assumes one of two kinds of inputs:
+// 1) A pre-formatted markdown message with a key value named `mrkdwn`. These message come from bots that have strict
+//    formatting rules around how text should be formatted. An example Winston log:
+//    this.logger.warn({
+//      at: "ContractMonitor",
+//      message: "Collateralization ratio alert 🙅‍♂️!",
+//      mrkdwn: *This is a markdown* formatted String With markdown syntax.});
+//    In this type the transport simply sends the markdown text to the slack webhook.
+// 2) A log message can also contain javascript strings, numbers, and even objects. In this case the transport will
+//    spread out the content within the log message. Nested objects are also printed. An example Winston log:
+//    this.logger.info({
+//      at: "Liquidator",
+//      message: "Liquidation withdrawn🤑",
+//      liquidation: liquidation,
+//      amount: withdrawAmount.rawValue,
+//      txnConfig,
+//      liquidationResult: logResult});
+//    In this log the liquidation and txnConfig are objects. these are spread as nested bullet points in the slack message.
+//    The amount is a string value. This is shown as a bullet point item.
+
 const SlackHook = require("winston-slack-webhook-transport");
 const { createEtherscanLinkMarkdown } = require("../../common/FormattingUtils");
 
