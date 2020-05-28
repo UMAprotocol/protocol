@@ -3,7 +3,7 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
   // Constructs the CryptoWatchPriceFeed.
-  // apiKey the CW API key. Note: these API keys are rate-limited.
+  // apiKey optional CW API key. Note: these API keys are rate-limited.
   // exchange a string identifier for the echange to pull prices from. This should be the identifier used to
   //          identify the exchange in CW's REST API.
   // pair a string representation of the pair the price feed is tracking. This pair should be available on the
