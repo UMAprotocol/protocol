@@ -30,6 +30,9 @@ class Liquidator {
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
 
+    // The expiring multi party contract collateralization Ratio is needed to calculate minCollateralPerToken.
+    this.empCRRatio = null;
+
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -40,9 +43,9 @@ class Liquidator {
         // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
         // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
         // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120.
-        value: toWei("0.02"),
+        value: 0.02,
         isValid: x => {
-          return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
+          return x < 1 && x >= 0;
         }
       },
       liquidationDeadline: {
@@ -82,6 +85,11 @@ class Liquidator {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
+
+    // Fetch the collateral requirement requirement from the contract. Will only execute on first update execution.
+    if (this.empCRRatio == null) {
+      this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
+    }
   };
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
@@ -94,21 +102,32 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value",
-        price
+        message: "Cannot liquidate: price feed returned invalid value"
       });
       return;
     }
 
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by deriving a `scaledPrice` from (`1 - crThreshold` * `price`)
-    const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
+    // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
+    const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(toWei(this.crThreshold.toString())))));
+
+    // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation
+    // to be accepted by the contract the position's collateralization ratio must be between [minCollateralPerToken,
+    // maxCollateralPerToken] ∴ maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens. This criterion
+    // checks for a positions correct capitalization, not collateralization. In order to liquidate a position that is
+    // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
+    const maxCollateralPerToken = toBN(scaledPrice)
+      .mul(toBN(this.empCRRatio))
+      .div(toBN(toWei("1")));
+
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
+      empCRRatio: this.empCRRatio.toString(),
+      maxCollateralPerToken: maxCollateralPerToken.toString(),
       crThreshold: this.crThreshold
     });
 
@@ -132,11 +151,12 @@ class Liquidator {
     for (const position of underCollateralizedPositions) {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
-      // Create the transaction.
+
+      // Create the liquidation transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: this.liquidationMinPrice },
-        { rawValue: toWei(scaledPrice) },
+        { rawValue: maxCollateralPerToken.toString() },
         { rawValue: position.numTokens },
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
@@ -150,8 +170,9 @@ class Liquidator {
           message:
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
           sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
           position: position,
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -165,7 +186,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidating position",
         position: position,
-        inputPrice: toWei(scaledPrice),
+        inputPrice: scaledPrice.toString(),
         txnConfig
       });
 
@@ -177,7 +198,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -195,7 +216,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: toWei(scaledPrice),
+        inputPrice: scaledPrice.toString(),
         txnConfig,
         liquidationResult: logResult
       });
@@ -243,9 +264,9 @@ class Liquidator {
       } catch (error) {
         this.logger.debug({
           at: "Liquidator",
-          message: "No rewards to withdraw.",
+          message: "No rewards to withdraw",
           liquidation: liquidation,
-          error: error
+          error: new Error(error)
         });
         continue;
       }
@@ -270,8 +291,8 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards",
-          error: error
+          message: "Failed to withdraw liquidation rewards🚨",
+          error: new Error(error)
         });
         continue;
       }

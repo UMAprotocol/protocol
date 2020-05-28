@@ -3,7 +3,7 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructCommitment, batchCommitVotes } = require("../../../../common/VotingUtils");
+const { constructCommitment, batchCommitVotes, getVotingRoles } = require("../../../../common/VotingUtils");
 const networkUtils = require("../../../../common/PublicNetworks");
 
 /**
@@ -16,16 +16,19 @@ const networkUtils = require("../../../../common/PublicNetworks");
  * The user can change their votes by committing another price to a pending price request
  *
  * @param {* Object} web3 Web3 provider
- * @param {* Object} voting deployed Voting.sol contract instance
+ * @param {* Object} oracle deployed Voting.sol contract instance
  */
-const commitVotes = async (web3, voting, designatedVoting) => {
+const commitVotes = async (web3, oracle, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const pendingRequests = await voting.getPendingRequests();
-  const roundId = await voting.getCurrentRoundId();
-  const roundPhase = (await voting.getVotePhase()).toString();
-  // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
-  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
+  const pendingRequests = await oracle.getPendingRequests();
+  const roundId = await oracle.getCurrentRoundId();
+  const roundPhase = (await oracle.getVotePhase()).toString();
+  const account = await getDefaultAccount(web3);
+
+  // If the user is using the two key contract, then the voting account is the designated voting contract's address.
+  const { votingAccount, signingAddress, votingContract } = getVotingRoles(account, oracle, designatedVoting);
+
+  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, oracle);
   style.spinnerReadingContracts.stop();
 
   if (roundPhase === VotePhasesEnum.REVEAL) {
@@ -69,7 +72,9 @@ const commitVotes = async (web3, voting, designatedVoting) => {
 
         // Construct commitment
         try {
-          newCommitments.push(await constructCommitment(selections[i], roundId, web3, priceInput["price"], account));
+          newCommitments.push(
+            await constructCommitment(selections[i], roundId, web3, priceInput["price"], signingAddress, votingAccount)
+          );
         } catch (err) {
           failures.push({ request: selections[i], err });
         }
@@ -78,7 +83,7 @@ const commitVotes = async (web3, voting, designatedVoting) => {
       // Batch commit the votes and display a receipt to the user
       if (newCommitments.length > 0) {
         style.spinnerWritingContracts.start();
-        const { successes, batches } = await batchCommitVotes(newCommitments, voting, account);
+        const { successes, batches } = await batchCommitVotes(newCommitments, votingContract, signingAddress);
         style.spinnerWritingContracts.stop();
 
         // Construct etherscan link based on network

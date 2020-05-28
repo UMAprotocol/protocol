@@ -1,4 +1,4 @@
-// This transport enables unit tests to validate values passed Winston using a Sinon Spy.
+// This transport enables unit tests to validate values passed to Winston using a Sinon Spy.
 
 const Transport = require("winston-transport");
 
@@ -18,8 +18,7 @@ class SpyTransport extends Transport {
 // Helper function used by unit tests to check if the last message sent to winston contains a particular string value.
 // Caller feeds in the spy instance and the value to check.
 const lastSpyLogIncludes = (spy, value) => {
-  // Sinon's getCall(n) function returns the values sent in in the nth call the the spy. We want to check both the mrkdown
-  // sent and the message sent to the bot.
+  // Sinon's getCall(n) function returns values sent in the nth call to the spy. Check both the mrkdown and message sent.
   const lastReturnedArgMrkdwn = spy.getCall(-1).lastArg.mrkdwn.toString();
   const lastReturnedArgMessage = spy.getCall(-1).lastArg.message.toString();
   return lastReturnedArgMrkdwn.indexOf(value) != -1 || lastReturnedArgMessage.indexOf(value) != -1;

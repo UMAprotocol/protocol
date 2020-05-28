@@ -59,7 +59,14 @@ const slackFormatter = info => {
         if (subKey == "tx") {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
-          ].text.text += `    - _tx_: <https://etherscan.io/tx/${info[key][subKey]}|${info[key][subKey]}> \n`;
+          ].text.text += `    - _tx_: <https://etherscan.io/tx/${info[key][subKey]}|${info[key][subKey]}>\n`;
+        }
+        // If the value within the object itself is an object we dont want to spread it any further. Rather,
+        // convert the object to a string and print it along side it's key value pair.
+        if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
+          formattedResponse.blocks[
+            formattedResponse.blocks.length - 1
+          ].text.text += `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`;
         } else {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
@@ -73,7 +80,7 @@ const slackFormatter = info => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` • _tx_: <https://etherscan.io/tx/${info[key]}|${info[key]}> \n`
+            text: ` • _tx_: <https://etherscan.io/tx/${info[key]}|${info[key]}>\n`
           }
         });
       } else if (key == "mrkdwn") {

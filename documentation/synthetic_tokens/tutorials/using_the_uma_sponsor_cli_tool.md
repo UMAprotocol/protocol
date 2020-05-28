@@ -12,6 +12,11 @@ It will let you be the “Token Sponsor,” which lets you:
 
 This [video](https://www.crowdcast.io/e/defi-discussions/18) will walk through the steps of this tutorial, starting around minute 11:00.
 
+## Signing Account
+
+The CLI assumes that `accounts[0]`, the first account linked to the `web3` object injected into Truffle, is the sponsor
+account and will sign all transactions using its private keys.
+
 ## Prerequisites
 
 1. Install homebrew via Homebrew. Tutorial can be found [here](https://changelog.com/posts/install-node-js-with-homebrew-on-os-x).
@@ -72,10 +77,18 @@ $(npm bin)/truffle migrate --reset --network=test
 ```
 
 4. Deploy a contract to create priceless synthetic tokens named “BTCUSD”.
-   Each synthetic token is an ERC-20 token that represents a synthetic bitcoin, collateralized by ETH.
+   Each synthetic token is an ERC-20 token that represents a synthetic bitcoin, collateralized by ETH. We should set
+   the `--test` flag to `true` in order to whitelist the collateral currency, approve the pricefeed identifier, use
+   `MockOracle` as our oracle, create an initial sponsor position, and mint our default sponsor account some collateral
+   tokens. The CLI tool does not support creating the first position globally for an `ExpiringMultiParty` contract
+   due to the GCR restriction, which you can read more about [here](../synthetic_tokens/explainer.md). In short,
+   every position that is created must be collateralized above the global collateralization ratio (GCR) for the
+   contract (aggregate collateral divided by aggregate synthetic tokens outstanding), but the first position
+   globally has no GCR to reference. Therefore, the sponsor's flow is different enough that we do not address it in
+   this iteration of the CLI.
 
 ```bash
-$(npm bin)/truffle exec scripts/local/DeployEMP.js --network=test
+$(npm bin)/truffle exec scripts/local/DeployEMP.js --network=test --test=true
 ```
 
 This is the output you should see:
@@ -107,7 +120,8 @@ Because there is only one deployed contract on this local testnet, only one is s
 
 ## Creating New Synthetic Tokens
 
-Navigate to the list of live synthetic tokens. Because you are not yet a token sponsor for this synthetic token, you are prompted to “Sponsor new position”. Use the arrows to navigate to this option and press “Enter”. Enter the number of tokens you would like to create (10 in this example).
+Navigate to the list of live synthetic tokens. Because you are not yet a token sponsor for this synthetic token, you are prompted to “Sponsor new position”. Use the arrows to navigate to this option and press “Enter”. Enter the number of tokens you would like to create (1000 in this example, which is the
+minimum sponsor position allowed as described by the configuration object in the `DeployEMP.js` script).
 
 ![](create_numtokens.png)
 
@@ -127,11 +141,10 @@ Navigate to the list of live synthetic tokens. Select the token contract for whi
 
 Navigate to “Deposit collateral” and press “Enter”.
 Input the number of ETH you would like to deposit.
-In this example, you will deposit 20 additional ETH.
 
 ![](deposit_num.png)
 
-After confirming the transaction, you will be presented with a summary of the transactions and an updated summary of your position. Note that the amount of deposited collateral has increased from 15 ETH to 35 ETH.
+After confirming the transaction, you will be presented with a summary of the transactions and an updated summary of your position.
 
 ![](deposit_complete.png)
 
@@ -144,12 +157,13 @@ Navigate to the list of live synthetic tokens. Select the token contract for whi
 Because you are the only token sponsor, you cannot make a “fast” withdrawal as explained [here](../synthetic_tokens/explainer.md).
 Rather, this will be a “slow” delay. The request will take 60 minutes to process, as the liveness period for withdrawals has been set in this local testnet deployment to 60 minutes.
 During this liveness period, the collateral in the contract is locked (a sponsor cannot add additional collateral or make another withdrawal request).
-Request to withdraw 15 ETH. After submitting this request, a summary of the relevant transaction will be displayed, as well as an updated summary of your token sponsor position.
-Note that the pending collateral withdrawal of 15 ETH is now reflected.
+Request to withdraw some ETH. After submitting this request, a summary of the relevant transaction will be displayed, as well as an updated summary of your token sponsor position.
+Note that the pending collateral withdrawal amount is now reflected.
 
 ![](withdraw_num.png)
 
-Because time does not advance automatically on your local blockchain with Ganache, you should exit the Sponsor CLI tool and advance time manually with the following command.
+Because time does not advance automatically on your local blockchain with Ganache, you should exit the Sponsor CLI tool and advance time manually with the following command. Manually modifying contract time is possible because we are using the `MockOracle` which allows us to manually push prices and modify contract time.
+Running this script like so will advance time by 120 minutes.
 
 ```bash
 $(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
@@ -169,7 +183,6 @@ Note that the withdrawal request is now ready to be executed.
 ![](withdraw_execute.png)
 
 Navigate to “Execute Pending Withdrawal” and press “Enter”. After confirming, you are presented with a summary of the relevant transactions and your updated position summary.
-Note that 15 ETH has been withdrawn from the position, updating the deposited collateral to 20 ETH.
 
 ![](withdraw_complete.png)
 
@@ -179,9 +192,11 @@ Navigate to the list of live synthetic tokens and select the contract for which 
 
 ![](redeem_start.png)
 
-You will now indicate how many tokens you would like to redeem. Each token is redeemable for 2 ETH, since that reflects the pro rata collateralization of each token by the token sponsor.
-Only token sponsors are allowed to redeem tokens prior to their expiration. Request to redeem 5 tokens.
-After confirming, you will be presented with the relevant transactions and a summary of the updated token sponsor position. Note that there are now 5 tokens outstanding.
+You will now indicate how many tokens you would like to redeem. Each token is redeemable for the pro rata collateralization of each token by the token sponsor.
+Only token sponsors are allowed to redeem tokens prior to their expiration. Before expiry, you are allowed to redeem as many tokens as you want provided that
+you keep the tokens outstanding above the `minSponsorTokens` requirement which is default set to `1000` in the `DeployEMP.js` script. You may always redeem
+100% of the tokens outstanding and simultaneously end the position.
+After confirming, you will be presented with the relevant transactions and a summary of the updated token sponsor position.
 
 ![](redeem_complete.png)
 

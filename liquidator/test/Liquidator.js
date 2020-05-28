@@ -120,7 +120,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
-      crThreshold: toWei("0")
+      crThreshold: 0
     };
     liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
   });
@@ -435,7 +435,7 @@ contract("Liquidator.js", function(accounts) {
       let errorThrown;
       try {
         liquidatorConfig = {
-          crThreshold: toWei("1")
+          crThreshold: 1
         };
         liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
         errorThrown = false;
@@ -449,7 +449,7 @@ contract("Liquidator.js", function(accounts) {
       let errorThrown;
       try {
         liquidatorConfig = {
-          crThreshold: toWei("-0.02")
+          crThreshold: -0.02
         };
         liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
         errorThrown = false;
@@ -461,7 +461,7 @@ contract("Liquidator.js", function(accounts) {
 
     it("Sets `crThreshold` to 2%", async function() {
       liquidatorConfig = {
-        crThreshold: toWei("0.02")
+        crThreshold: 0.02
       };
       liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
 

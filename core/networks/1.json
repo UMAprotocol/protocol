@@ -42,5 +42,21 @@
   {
     "contractName": "WETH9",
     "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x7c96d6235CfaaCcAc5d80fCe74E6032B25dd1F03"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x48e687205D3962c43891b8Cde5A4Fe75FA6C8D7a"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xdebB91Ab3e473025bb8ce278c02361A3C4f13124"
   }
 ]

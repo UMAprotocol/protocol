@@ -1,6 +1,6 @@
 # Voting With UMA Tokens
 
-We provide a user-friendly command line interface for voting on price requests and retrieving rewards.
+We provide a user-friendly command line interface for voting on price requests and retrieving rewards. UMA token holders can also use a [voter dApp](http://vote.umaproject.org/) to vote with their tokens. Instructions on how to use this voter dApp are [here](https://docs.google.com/document/d/1kaooVekQwyhHGEMCJBRaatVoHYA87tX9XqPKoIbkHuQ/edit).
 
 # Installation
 

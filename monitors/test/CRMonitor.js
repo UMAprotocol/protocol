@@ -54,7 +54,7 @@ contract("CRMonitor.js", function(accounts) {
     collateralToken = await Token.new("Dai Stable coin", "Dai", 18, { from: tokenSponsor });
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("ETHBTC"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     finder = await Finder.deployed();
@@ -77,9 +77,9 @@ contract("CRMonitor.js", function(accounts) {
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
       timerAddress: Timer.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETHBTC"),
       syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
+      syntheticSymbol: "ETHBTC",
       liquidationLiveness: "10",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -103,12 +103,12 @@ contract("CRMonitor.js", function(accounts) {
       {
         name: "Monitored trader wallet",
         address: monitoredTrader,
-        crAlert: 200 // if the collateralization ratio of this wallet drops below 200% send an alert
+        crAlert: 2.0 // if the collateralization ratio of this wallet drops below 200% send an alert
       },
       {
         name: "Monitored sponsor wallet",
         address: monitoredSponsor,
-        crAlert: 150 // if the collateralization ratio of this wallet drops below 150% send an alert
+        crAlert: 1.5 // if the collateralization ratio of this wallet drops below 150% send an alert
       }
     ];
 
@@ -155,6 +155,10 @@ contract("CRMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
+    assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
+    assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
+    assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Synthetic token symbol
 
     // The message should be sent every time the bot is polled and there is a crossing of the threshold line. At a price
     // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
@@ -185,11 +189,11 @@ contract("CRMonitor.js", function(accounts) {
     await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 5);
 
-    // In addition to the price moving of the synthetic, adding/removing collateral or creating/redeeming debt can also impact
-    // a positions collateralization ratio. If monitoredTrader was to withdraw some collateral after waiting the withdrawal liveness
-    // they can place their position's collateralization under the threshold. Say monitoredTrader withdraws 75 units of collateral.
-    // given price is 1 unit of synthetic for each unit of debt. This would place their position at a collateralization ratio of
-    // 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00 which is well over collateralized.
+    // In addition to the price moving of the synthetic, adding/removing collateral or creating/redeeming debt can also
+    // impact a positions collateralization ratio. If monitoredTrader was to withdraw some collateral after waiting the
+    // withdrawal liveness they can place their position's collateralization under the threshold. Say monitoredTrader
+    // withdraws 75 units of collateral. Given price is 1 unit of synthetic for each unit of debt. This would place
+    // their position at a collateralization ratio of 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00.
     await emp.requestWithdrawal({ rawValue: toWei("75") }, { from: monitoredTrader });
 
     currentTime = await timer.getCurrentTime.call();
@@ -202,5 +206,12 @@ contract("CRMonitor.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1")));
     await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 6); // a new message is sent.
+    assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
+    assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
+    assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Synthetic token symbol
   });
 });

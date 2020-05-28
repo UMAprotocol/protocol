@@ -1,6 +1,6 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const style = require("../textStyle");
-const { batchRetrieveRewards } = require("../../../../common/VotingUtils");
+const { batchRetrieveRewards, getVotingRoles } = require("../../../../common/VotingUtils");
 const getAvailableRewards = require("./getRewardsByRoundId");
 const inquirer = require("inquirer");
 const argv = require("minimist")(process.argv.slice());
@@ -10,9 +10,9 @@ const argv = require("minimist")(process.argv.slice());
  * For the selected round ID, we batch retrieve all of the rewards for the round.
  *
  * @param {* Object} web3 Web3 provider
- * @param {* Object} voting deployed Voting.sol contract instance
+ * @param {* Object} oracle deployed Voting.sol contract instance
  */
-const retrieveRewards = async (web3, voting, designatedVoting) => {
+const retrieveRewards = async (web3, oracle, designatedVoting) => {
   // TODO(#901): MetaMask provider sometimes has trouble reading past events
   if (argv.network === "metamask") {
     console.log(
@@ -22,9 +22,14 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
   }
 
   style.spinnerReadingContracts.start();
-  // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
-  const { rewardsByRoundId, roundIds } = await getAvailableRewards(web3, voting, account);
+
+  const account = await getDefaultAccount(web3);
+
+  // If the user is using the two key contract, then the voting account is the designated voting contract's address.
+  const { votingAccount, signingAddress } = getVotingRoles(account, oracle, designatedVoting);
+
+  const { rewardsByRoundId, roundIds } = await getAvailableRewards(web3, oracle, votingAccount);
+
   style.spinnerReadingContracts.stop();
 
   if (roundIds.length > 0) {
@@ -47,7 +52,13 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
 
       // Batch retrieve rewards
       style.spinnerWritingContracts.start();
-      const { successes, batches } = await batchRetrieveRewards(resolvedVotes, roundId, voting, account);
+      const { successes, batches } = await batchRetrieveRewards(
+        resolvedVotes,
+        roundId,
+        oracle,
+        votingAccount,
+        signingAddress
+      );
       style.spinnerWritingContracts.stop();
 
       // Print results

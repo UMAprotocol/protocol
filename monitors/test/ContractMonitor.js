@@ -33,6 +33,7 @@ contract("ContractMonitor.js", function(accounts) {
   const disputer = accounts[2];
   const sponsor1 = accounts[3];
   const sponsor2 = accounts[4];
+  const sponsor3 = accounts[5];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
@@ -54,6 +55,9 @@ contract("ContractMonitor.js", function(accounts) {
   // re-used variables
   let expirationTime;
   let constructorParams;
+
+  // Keep track of new sponsor transactions for testing `checkForNewSponsors` method.
+  let newSponsorTxn;
 
   const spy = sinon.spy();
 
@@ -105,8 +109,11 @@ contract("ContractMonitor.js", function(accounts) {
     emp = await ExpiringMultiParty.new(constructorParams);
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
     priceFeedMock = new PriceFeedMock();
-    // accounts[1] is liquidator bot to monitor and accounts[2] is dispute bot to monitor.
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[1]], [accounts[2]], priceFeedMock);
+
+    // Define a configuration object. In this config only monitor one liquidator and one disputer.
+    const contractMonitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
+
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -115,7 +122,7 @@ contract("ContractMonitor.js", function(accounts) {
     });
 
     //   Bulk mint and approve for all wallets
-    for (let i = 1; i < 5; i++) {
+    for (let i = 1; i < 6; i++) {
       await collateralToken.mint(accounts[i], toWei("100000000"), {
         from: tokenSponsor
       });
@@ -130,9 +137,43 @@ contract("ContractMonitor.js", function(accounts) {
     // Create positions for the sponsors, liquidator and disputer
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("50") }, { from: sponsor1 });
     await emp.create({ rawValue: toWei("175") }, { rawValue: toWei("45") }, { from: sponsor2 });
-    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("400") }, { from: liquidator });
+    newSponsorTxn = await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("400") }, { from: liquidator });
   });
 
+  it("Winston correctly emits new sponsor message", async function() {
+    // Update the eventClient and check it has the new sponsor event stored correctly
+    await eventClient.update();
+
+    // Check for new sponsor events
+    await contractMonitor.checkForNewSponsors();
+
+    // Ensure that the spy correctly captured the new sponsor events key information.
+    // Should contain etherscan addresses for the sponsor and transaction
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator or disputer bot)")); // The address that initiated the liquidation is a monitored address
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newSponsorTxn.tx}`));
+
+    // should contain the correct position information.
+    assert.isTrue(lastSpyLogIncludes(spy, "400.00")); // New tokens created
+    assert.isTrue(lastSpyLogIncludes(spy, "1,500.00")); // Collateral amount
+
+    // Create another position
+    const txObject1 = await emp.create(
+      { rawValue: toWei("10") },
+      { rawValue: toWei("1.5") },
+      { from: sponsor3 } // not a monitored address
+    );
+
+    await eventClient.update();
+
+    // check for new sponsor events and check the winston messages sent to the spy
+    await contractMonitor.checkForNewSponsors();
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor3}`));
+    assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator or disputer bot bot)"));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "1.50")); // New tokens created
+    assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // Collateral amount
+  });
   it("Winston correctly emits liquidation message", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(

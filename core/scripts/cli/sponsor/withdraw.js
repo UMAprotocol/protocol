@@ -33,7 +33,7 @@ const withdraw = async (web3, artifacts, emp) => {
   const executeWithdrawal = async () => {
     const confirmation = await inquirer.prompt({
       type: "confirm",
-      message: "Would you like to excecute this withdrawal?",
+      message: "Would you like to execute this withdrawal?",
       name: "confirm"
     });
     if (confirmation["confirm"]) {
