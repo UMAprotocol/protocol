@@ -5,8 +5,6 @@
 const SlackHook = require("winston-slack-webhook-transport");
 const { createEtherscanLinkMarkdown } = require("../../common/FormattingUtils");
 
-const BigNumber = require("bignumber.js");
-
 const slackFormatter = info => {
   if (!("level" in info) || !("at" in info) || !("message" in info)) {
     console.error("WINSTON INCORRECTLY CONFIGURED IN MESSAGE", info);
@@ -28,9 +26,6 @@ const slackFormatter = info => {
   let formattedResponse = {
     // If the bot contains an identifier flag it should be included in the heading.
     blocks: [
-      {
-        type: "divider"
-      },
       {
         type: "section",
         text: {
@@ -71,9 +66,6 @@ const slackFormatter = info => {
       });
       // For each key value pair within the object, spread the object out for formatting.
       for (const subKey in info[key]) {
-        console.log("CHECKING TYPE");
-        console.log(BigNumber.isBigNumber(info[key][subKey]));
-
         // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
         if (info[key][subKey].length == 66) {
           formattedResponse.blocks[
@@ -94,9 +86,9 @@ const slackFormatter = info => {
           ].text.text += `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`;
           // Else if not a address, transaction or object then print as ` - key: value`
         } else {
-          formattedResponse.blocks[
-            formattedResponse.blocks.length - 1
-          ].text.text += `    - _${subKey}_: ${info[key][subKey]}\n`;
+          formattedResponse.blocks[formattedResponse.blocks.length - 1].text.text += `    - _${subKey}_: ${info[key][
+            subKey
+          ].toString()}\n`;
         }
       }
       // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
@@ -117,12 +109,16 @@ const slackFormatter = info => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` • _${key}_: ${info[key]}`
+            text: ` • _${key}_: ${info[key].toString()}\n`
           }
         });
       }
     }
   }
+  // Add a divider to the end of the message to help distinguish messages in long lists.
+  formattedResponse.blocks.push({
+    type: "divider"
+  });
   return formattedResponse;
 };
 
