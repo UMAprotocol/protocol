@@ -31,6 +31,20 @@ This contract is an ETHBTC synthetic, collateralized in Dai.
 
 ## Prerequisites
 
+Before starting this tutorial you need to clone repo, install the dependencies and compile the smart contracts. To do this run the following:
+
+```bash
+# Clone the repo and navigate into the protocol directory
+git clone https://github.com/UMAprotocol/protocol.git
+cd ./protocol
+
+# Install dependencies & compile the contracts
+npm install
+$(npm bin)/truffle compile
+```
+
+If you have any issues executing the `truffle` command you can try running `npx truffle <command>` or `$(npm bin)/truffle <command>`. If you have Truffle globally installed you should be able to run `truffle <command>` without npx or `$(npm bin)`.
+
 ### Funding accounts
 
 Bots must be funded with currency to pay for liquidations and disputes.
@@ -46,21 +60,15 @@ If you have a wallet mnemonic already you can skip this section.
 To generate a new mnemonic you can run the following from the `/core` directory:
 
 ```bash
-# Start the truffle console
-truffle console --network kovan_mnemonic
-
-# Generate a new mnemonic phrase
-const bip39 = require('bip39')
-bip39.generateMnemonic()
-# Your new mnemonic will be generated. Keep this safe for the next steps.
-'sail chuckle school attitude symptom tenant fragile patch ring immense main rapid'
+node -e "console.log(require('bip39').generateMnemonic())"
+# your mnemonic should print here
 ```
 
 You can then load this mnemonic into truffle and view the associated address.
-To do this, exit the the truffle console by pressing `ctrl+c` twice on your keyboard and then typing:
+To do this set the mnemonic as an environment variable by running:
 
 ```bash
-# Add the new mnemonic to your environment variables
+# Add the new mnemonic to your environment variables. Be sure to replace with your mnemonic.
 export MNEMONIC="sail chuckle school attitude symptom tenant fragile patch ring immense main rapid"
 
 # Start the truffle console
@@ -86,23 +94,10 @@ Keep this key handy. You'll need it when configuring the bots.
 
 ## Running the liquidator and disputer bots locally
 
-**a) Clone repo & install dependencies**
+This tutorial start with running the liquidator and disputer bots locally from your machine without docker or any complex execution environment. This is meant to be the simplest way posable to start up a bot.
 
-Run the following from the root directory to install dependencies and compile the contracts:
-
-```bash
-# Clone the repo and navigate into the protocol directory
-git clone https://github.com/UMAprotocol/protocol.git
-cd ./protocol
-
-# Install dependencies & compile the contracts
-npm install
-$(npm bin)/truffle compile
-```
-
-**b) Configuring environment**
-
-The bots can be easily run directly from your local development environment. To start a bot the first step is to configure the bot's settings.
+**a) Configuring environment**
+To start a bot the first step is to configure the bot's settings.
 Liquidation bots require 4 main configurations settings which are configured using environment variables.
 To set this up create a `.env` file in the `/core` directory of the repo it:
 
@@ -115,7 +110,7 @@ PRICE_FEED_CONFIG={"type":"medianizer","apiKey":"YOUR_API_KEY","pair":"ethbtc","
 
 The parameters above, as well as other optional parameters are explained in the appendix of this tutorial. **Be sure to add in your mnemonic and your crypto watch API key.** The parameter in the example above conform to [UMIP-2](<[../..](https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-2.md#implementation)>)'s specification.
 
-**c) Starting the bots**
+**b) Starting the bots**
 
 Now that your env is set up you can run the bot. Run the following command from the `core` directory to start the bots on Kovan:
 
@@ -123,7 +118,7 @@ Now that your env is set up you can run the bot. Run the following command from 
 $(npm bin)/truffle exec ../liquidator/index.js --network kovan_mnemonic
 ```
 
-This will start the liquidator bot process using the network `kovan` and the wallet `mnemonic`. If you have any issues executing the `truffle` command you can try running `npx truffle <command>` or `$(npm bin)/truffle <command>`. You should see the following output:
+This will start the liquidator bot process using the network `kovan` and the wallet `mnemonic`. You should see the following output:
 
 ```bash
 Using network 'kovan_mnemonic'.
@@ -239,6 +234,9 @@ These commands are the same as before.
 Next, we will start the Docker containers in detached mode on our local machine. To do this run the following:
 
 ```bash
+# Pull the latest docker container image
+docker pull umaprotocol/protocol:latest
+
 # Start the liquidator bot Docker container
 docker run --name liquidator-bot -d --env-file ./liquidator.env umaprotocol/protocol:latest
 
@@ -357,15 +355,15 @@ The bots will now automatically start sending log messages in Slack.
 
 The tutorial thus far assumed you are running a Kovan liquidator and dispute bots. Next, we will discuss how to move the deployment onto the Main Ethereum network. This involves three main steps which are outlined below.
 
-**1) Funding your liquidator bot's main net wallet**
+**1) Funding your liquidator bot's mainnet wallet**
 
 Run on the Mainnet involves first repeating the [Funding accounts](#Funding-accounts) section on the main Ethereum network to acquire collateral to fund the liquidator and disputer bots.
 
-**2) Updating the EMP address to point to main net expiring multi party contract**
+**2) Updating the EMP address to point to mainnet expiring multi party contract**
 
 Update your environment configuration `EMP_ADDRESS` to refer to the mainnet address of the expiring multiparty contract you want to monitor.
 
-<!-- TODO: add a link to another docs page that outlines the EMP address for all main net deployments -->
+<!-- TODO: add a link to another docs page that outlines the EMP address for all mainnet deployments -->
 
 **3) Update the `COMMAND` used to start the bots to point at the mainnet, rather than kovan.**
 This is as simple as changing your `COMMAND` to the following for the liquidator and disputer bots respectively.
