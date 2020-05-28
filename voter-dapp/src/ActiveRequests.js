@@ -18,6 +18,7 @@ import Typography from "@material-ui/core/Typography";
 import Tooltip from "@material-ui/core/Tooltip";
 
 import HelpIcon from "@material-ui/icons/Help";
+import FileCopyIcon from "@material-ui/icons/FileCopy";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
@@ -252,17 +253,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend(votingGateway, "batchCommit");
-  // `commitBackup` stores the latest prices and salts that the application will attempt to encrypt for the user.
-  // The salts are newly generated each time the user clicks "Save", which will prompt the user to sign a `batchCommit`
-  // transaction and commit & encrypt their checked votes. If the `batchCommit` transaction is sent correctly,
-  // denoted by the `commitStatus` reading "success", then we will save the `commitBackup` as a cookie mapped to the
-  // unique combination of the voting account and the price request ({identifier, timestamp}). This provides a way for
-  // the user to manually reveal their votes in case this application fails to decrypt the vote data for any reason.
-  const [commitBackup, setCommitBackup] = useState({});
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
-    let pendingCommitBackups = {};
 
     for (const index in editState) {
       if (!checkboxesChecked[index] || !editState[index]) {
@@ -289,44 +282,41 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       });
       indicesCommitted.push(index);
 
-      // Cache these potential committed salts for the user and prepare to store them as cookies.
+      // Store price and salt that we will attempt to encrypt on-chain in a cookie. This way, if the encryption
+      // (or subsequent decryption) fails, then the user can still recover their committed price and salt and
+      // reveal their commit manually. Note that this will store a cookie for each call to `encryptMessage`, even
+      // if the user never signs and submits the `batchCommitFunction` to commit their vote on-chain. Therefore,
+      // the cookies could store more hash data than the user ends up committing on-chain. It is the user's
+      // responsibility to determine which commit data to use.
       const newCommitKey = toVotingAccountAndPriceRequestKey(
         votingAccount,
         pendingRequests[index].identifier,
         pendingRequests[index].time
       );
-      pendingCommitBackups = {
-        ...pendingCommitBackups,
-        [newCommitKey]: {
-          salt,
-          price
+      const updatedCommitBackups = Object.assign(
+        {},
+        {
+          ...cookies[newCommitKey],
+          [Date.now()]: {
+            salt,
+            price
+          }
         }
-      };
+      );
+      setCookie(newCommitKey, updatedCommitBackups, { path: "/" });
     }
     if (commits.length < 1) {
       return;
     }
 
     // Prompt user to sign transaction. After this function is called, the `commitStatus` is reset to undefined.
+    // Note that `commitStatus` for this transaction will fail to update correctly if the user hits "Save" again
+    // and enqueues another transaction to sign. Therefore, `commitStatus` only tracks the status of the most recent
+    // transaction that Drizzle sends to MetaMask to sign.
     batchCommitFunction(commits, { from: account });
-
-    // We can now safely update the `commitBackup` storage state and be prepared to store cookies as soon as the updated
-    // `commitStatus` gets set to "success". If we were to update `commitBackup` before calling `batchCommitFunction`,
-    // then it is possible that `commitStatus` would still be equal to "success" from a previously successful send
-    // and we would unintentionally overwrite the salt cookie.
-    setCommitBackup(pendingCommitBackups);
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };
-
-  // Once transaction successfully sends, store latest batch of prices and salts in a cookie.
-  if (commitStatus === "success" && Object.keys(commitBackup).length > 0) {
-    for (let key in commitBackup) {
-      setCookie(key, commitBackup[key], { path: "/" });
-      // Delete object mapping so that we don't store it again.
-      delete commitBackup[key];
-    }
-  }
 
   // NOTE: No calls to React hooks from this point forward.
   if (
@@ -399,7 +389,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
-  const getLastCommittedData = index => {
+  const getCommittedData = index => {
     if (index === closedDialogIndex) {
       return "";
     }
@@ -441,6 +431,44 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     }
   };
 
+  const copyStringToClipboard = string => {
+    // Source for implementation details: https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
+    if (!navigator.clipboard) {
+      // Synchronously copy
+      const textArea = document.createElement("textarea");
+      textArea.value = string;
+
+      // Avoid scrolling to bottom
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand("copy");
+        const msg = successful ? "successful" : "unsuccessful";
+        console.log("Sync: Copying text command was " + msg);
+      } catch (err) {
+        console.error("Sync: Could not copy text: ", err);
+      }
+
+      document.body.removeChild(textArea);
+    }
+
+    // Asynchronously copy. This has been the way to copy to the clipboard for Chrome since v66.
+    navigator.clipboard.writeText(string).then(
+      function() {
+        console.log(`Async: Copied to clipboard`);
+      },
+      function(err) {
+        console.error("Async: Could not copy text: ", err);
+      }
+    );
+  };
+
   return (
     <div className={classes.root}>
       <Typography variant="h6" component="h6">
@@ -456,15 +484,26 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       <Dialog open={commitBackupIndex !== closedDialogIndex} onClose={handleClickClose}>
         <DialogContent>
           <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
-            {getLastCommittedData(commitBackupIndex) ? (
-              <span>
-                {"Salt: " + getLastCommittedData(commitBackupIndex).salt}
-                <br />
-                {"Price: " + formatWei(getLastCommittedData(commitBackupIndex).price, web3)}
-              </span>
-            ) : (
-              "Commit backup for this request not found"
-            )}
+            {getCommittedData(commitBackupIndex) && Object.keys(getCommittedData(commitBackupIndex)).length > 0
+              ? Object.keys(getCommittedData(commitBackupIndex)).map((timestamp, i) => {
+                  return (
+                    <span>
+                      {`${i + 1}. Commit hash encrypted @ ${new Date(Number(timestamp)).toString().toString()}`}
+                      <br />
+                      {"-     Salt: " + getCommittedData(commitBackupIndex)[timestamp].salt.slice(0, 3) + "... "}
+                      <IconButton
+                        onClick={() => copyStringToClipboard(getCommittedData(commitBackupIndex)[timestamp].salt)}
+                      >
+                        <FileCopyIcon />
+                      </IconButton>
+                      <br />
+                      {"-     Price: " + formatWei(getCommittedData(commitBackupIndex)[timestamp].price, web3)}
+                      <br />
+                      <br />
+                    </span>
+                  );
+                })
+              : "Commit backup for this request not found"}
           </DialogContentText>
         </DialogContent>
       </Dialog>
@@ -481,7 +520,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             <TableCell className={classes.tableHeaderCell}>
               Local Commit Data Backup
               <Tooltip
-                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will encrypt your commit data on-chain and subsequently attempt to decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store your most recently committed price and salt in a browser cookie (you can find the identifier and time in the on-chain VoteCommitted event)."
+                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will attempt to encrypt your commit data on-chain and subsequently decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data properly, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store all of your committed price and salt data (whether you encrypt it on-chain or not) in your browser cookies."
                 placement="top"
               >
                 <IconButton>
