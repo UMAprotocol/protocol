@@ -22,8 +22,8 @@ export default function Header({ votingAccount }) {
   let tokenBalance;
 
   if (balance && supply) {
-    const formattedBalance = formatWithMaxDecimals(formatWei(balance, web3), 2, false);
-    const formattedSupply = formatWithMaxDecimals(formatWei(supply, web3), 2, false);
+    const formattedBalance = formatWithMaxDecimals(formatWei(balance, web3), 2, 4, false);
+    const formattedSupply = formatWithMaxDecimals(formatWei(supply, web3), 2, 4, false);
     const formattedPercentage =
       supply.toString() === "0"
         ? "0"
@@ -33,6 +33,7 @@ export default function Header({ votingAccount }) {
               .times(BigNumber(100))
               .toString(),
             2,
+            4,
             false
           );
     tokenBalance = (

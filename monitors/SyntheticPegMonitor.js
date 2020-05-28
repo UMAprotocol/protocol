@@ -26,7 +26,7 @@ class SyntheticPegMonitor {
     this.pricefeedIdentifierName = "ETHBTC/DAI";
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
-    this.formatDecimalString = createFormatFunction(this.web3, 2);
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
