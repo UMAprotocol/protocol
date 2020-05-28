@@ -18,13 +18,12 @@ import Typography from "@material-ui/core/Typography";
 import Tooltip from "@material-ui/core/Tooltip";
 
 import HelpIcon from "@material-ui/icons/Help";
-import FileCopyIcon from "@material-ui/icons/FileCopy";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-import { getKeyGenMessage, computeVoteHash, computeTopicHash } from "./common/EncryptionHelper.js";
+import { getKeyGenMessage, computeVoteHash } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
 import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
@@ -53,7 +52,7 @@ const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  // Use cookies to locally store committed salts, mapped to the current voting account.
+  // Use cookies to locally store data from committed hashes, mapped to the current voting account.
   const [cookies, setCookie] = useCookies();
   const { hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
@@ -93,21 +92,18 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
+  const [commitBackupIndex, setCommitBackupIndex] = useState(closedDialogIndex);
   const handleClickExplain = index => {
     setDialogContentIndex(index);
   };
 
-  const handleClickClose = () => {
-    setDialogContentIndex(closedDialogIndex);
+  const handleClickDisplayCommitBackup = index => {
+    setCommitBackupIndex(index);
   };
 
-  const copyStringToClipboard = string => {
-    const tempElement = document.createElement("textarea");
-    tempElement.value = string;
-    document.body.appendChild(tempElement);
-    tempElement.select();
-    document.execCommand("copy");
-    document.body.removeChild(tempElement);
+  const handleClickClose = () => {
+    setDialogContentIndex(closedDialogIndex);
+    setCommitBackupIndex(closedDialogIndex);
   };
 
   const proposals = useCacheCall(["Governor"], call => {
@@ -256,15 +252,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend(votingGateway, "batchCommit");
-  // `saltsToSave` stores the latest salts used to encrypt commits. These salts are newly generated each time the user
-  // clicks "Save", which will prompt the user to sign a `batchCommit` transaction and commit their checked votes.
-  // If the `batchCommit` transaction is sent correctly, denoted by the `commitStatus` reading "success", then we will
-  // save the `saltsToSave` as a cookie mapped to the unique combination of the voting account and the price request ({identifier, timestamp}).
-  const [saltsToSave, setSaltsToSave] = useState({});
+  // `commitBackup` stores the latest prices and salts that the application will attempt to encrypt for the user.
+  // The salts are newly generated each time the user clicks "Save", which will prompt the user to sign a `batchCommit`
+  // transaction and commit & encrypt their checked votes. If the `batchCommit` transaction is sent correctly,
+  // denoted by the `commitStatus` reading "success", then we will save the `commitBackup` as a cookie mapped to the
+  // unique combination of the voting account and the price request ({identifier, timestamp}). This provides a way for
+  // the user to manually reveal their votes in case this application fails to decrypt the vote data for any reason.
+  const [commitBackup, setCommitBackup] = useState({});
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
-    let saltMap = {};
+    let pendingCommitBackups = {};
 
     for (const index in editState) {
       if (!checkboxesChecked[index] || !editState[index]) {
@@ -297,9 +295,12 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         pendingRequests[index].identifier,
         pendingRequests[index].time
       );
-      saltMap = {
-        ...saltMap,
-        [newCommitKey]: salt
+      pendingCommitBackups = {
+        ...pendingCommitBackups,
+        [newCommitKey]: {
+          salt,
+          price
+        }
       };
     }
     if (commits.length < 1) {
@@ -309,21 +310,21 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     // Prompt user to sign transaction. After this function is called, the `commitStatus` is reset to undefined.
     batchCommitFunction(commits, { from: account });
 
-    // We can now safely update the `saltsToSave` storage state and be prepared to store cookies as soon as the updated
-    // `commitStatus` gets set to "success". If we were to update `saltsToSave` before calling `batchCommitFunction`,
+    // We can now safely update the `commitBackup` storage state and be prepared to store cookies as soon as the updated
+    // `commitStatus` gets set to "success". If we were to update `commitBackup` before calling `batchCommitFunction`,
     // then it is possible that `commitStatus` would still be equal to "success" from a previously successful send
     // and we would unintentionally overwrite the salt cookie.
-    setSaltsToSave(saltMap);
+    setCommitBackup(pendingCommitBackups);
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };
 
-  // Once transaction successfully sends, store latest batch of salts in a cookie.
-  if (commitStatus === "success" && Object.keys(saltsToSave).length > 0) {
-    for (let key in saltsToSave) {
-      setCookie(key, saltsToSave[key], { path: "/" });
+  // Once transaction successfully sends, store latest batch of prices and salts in a cookie.
+  if (commitStatus === "success" && Object.keys(commitBackup).length > 0) {
+    for (let key in commitBackup) {
+      setCookie(key, commitBackup[key], { path: "/" });
       // Delete object mapping so that we don't store it again.
-      delete saltsToSave[key];
+      delete commitBackup[key];
     }
   }
 
@@ -398,7 +399,10 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
-  const getLastCommittedSalt = index => {
+  const getLastCommittedData = index => {
+    if (index === closedDialogIndex) {
+      return "";
+    }
     const commitKey = toVotingAccountAndPriceRequestKey(
       votingAccount,
       pendingRequests[index].identifier,
@@ -449,6 +453,21 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
+      <Dialog open={commitBackupIndex !== closedDialogIndex} onClose={handleClickClose}>
+        <DialogContent>
+          <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
+            {getLastCommittedData(commitBackupIndex) ? (
+              <span>
+                {"Salt: " + getLastCommittedData(commitBackupIndex).salt}
+                <br />
+                {"Price: " + formatWei(getLastCommittedData(commitBackupIndex).price, web3)}
+              </span>
+            ) : (
+              "Commit backup for this request not found"
+            )}
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
       <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
@@ -460,9 +479,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             <TableCell className={classes.tableHeaderCell}>Status</TableCell>
             <TableCell className={classes.tableHeaderCell}>Current Vote</TableCell>
             <TableCell className={classes.tableHeaderCell}>
-              Latest Commit Salt
+              Local Commit Data Backup
               <Tooltip
-                title="Salts are random numbers used to encrypt your vote and must be revealed during the reveal stage for a vote to count. Voters should keep copies of the salts that they used to commit their votes so that they can manually reveal votes if for any reason this application cannot decrypt your commit. We store your most recently used salt for each price request via browser cookies."
+                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will encrypt your commit data on-chain and subsequently decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store your most recently committed price and salt in a browser cookie (you can find the identifier and time in the on-chain VoteCommitted event)."
                 placement="top"
               >
                 <IconButton>
@@ -498,12 +517,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{getCurrentVoteCell(index)}</TableCell>
                 <TableCell>
-                  {getLastCommittedSalt(index) && getLastCommittedSalt(index).slice(0, 6) + "... "}
-                  {getLastCommittedSalt(index) && (
-                    <IconButton onClick={() => copyStringToClipboard(getLastCommittedSalt(index))}>
-                      <FileCopyIcon />
-                    </IconButton>
-                  )}
+                  <Button variant="contained" color="primary" onClick={() => handleClickDisplayCommitBackup(index)}>
+                    Display
+                  </Button>
                 </TableCell>
               </TableRow>
             );
