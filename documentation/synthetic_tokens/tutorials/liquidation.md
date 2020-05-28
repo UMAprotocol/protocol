@@ -411,7 +411,7 @@ There are a few more configuration options available. The section below describe
   - `lookback` defines a window size, in seconds, over which historical prices will be made available by the price feed. This parameter should be set to be at least as large as the liquidation liveness of the EMP contract.
   - `minTimeBetweenUpdates` min number of seconds between update. If update is called more frequently, no new price data will be fetched.
   - `medianizedFeeds` is an array of type `priceFeed` that defines the feeds overwhich the meadinzer will take the median of. Each of these have their own components which are defined as:
-    - `type` Each instance of the meadinaizer also a type. This could be a `medianizer`, `uniswap` or `cryptowatch` depending on the configuration of the bot. The sample bot is using only `cryptowatch` price feeds to average over the set of exchanges to medianize.
+    - `type` Each instance of the meadinaizer also a type. This could be a `medianizer`, `uniswap` or `cryptowatch` depending on the configuration of the bot. The sample bot is using only `cryptowatch` price feeds to compute the median.
     - `exchange` a string identifier for the exchange to pull prices from. This should be the identifier used to identify the exchange in CW's REST API.
 - `COMMAND`**[required]**: initial entry point the bot uses when it starts running.
 - `LIQUIDATOR_CONFIG` [optional]: enables the override of specific bot settings. See [Specifying liquidation sensitivity parameters](##Specifying-liquidation-sensitivity-parameters).
