@@ -18,6 +18,7 @@ import Typography from "@material-ui/core/Typography";
 import Tooltip from "@material-ui/core/Tooltip";
 
 import HelpIcon from "@material-ui/icons/Help";
+import FileCopyIcon from "@material-ui/icons/FileCopy";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
@@ -98,6 +99,15 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const handleClickClose = () => {
     setDialogContentIndex(closedDialogIndex);
+  };
+
+  const copyStringToClipboard = string => {
+    const tempElement = document.createElement("textarea");
+    tempElement.value = string;
+    document.body.appendChild(tempElement);
+    tempElement.select();
+    document.execCommand("copy");
+    document.body.removeChild(tempElement);
   };
 
   const proposals = useCacheCall(["Governor"], call => {
@@ -487,7 +497,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{getCurrentVoteCell(index)}</TableCell>
-                <TableCell>{getLastCommittedSalt(index)}</TableCell>
+                <TableCell>
+                  {getLastCommittedSalt(index) && getLastCommittedSalt(index).slice(0, 6) + "... "}
+                  {getLastCommittedSalt(index) && (
+                    <IconButton onClick={() => copyStringToClipboard(getLastCommittedSalt(index))}>
+                      <FileCopyIcon />
+                    </IconButton>
+                  )}
+                </TableCell>
               </TableRow>
             );
           })}
