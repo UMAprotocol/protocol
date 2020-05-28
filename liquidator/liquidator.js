@@ -111,7 +111,7 @@ class Liquidator {
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
     // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
     const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(toWei(this.crThreshold.toString())))));
-    
+
     // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation
     // to be accepted by the contract the position's collateralization ratio must be between [minCollateralPerToken,
     // maxCollateralPerToken] ∴ maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens. This criterion
@@ -120,15 +120,15 @@ class Liquidator {
     const maxCollateralPerToken = toBN(scaledPrice)
       .mul(toBN(this.empCRRatio))
       .div(toBN(toWei("1")));
-    
+
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       empCRRatio: this.empCRRatio.toString(),
-      maxCollateralPerToken: maxCollateralPerToken.toString()
-      crThreshold: this.crThreshold,
+      maxCollateralPerToken: maxCollateralPerToken.toString(),
+      crThreshold: this.crThreshold
     });
 
     this.logger.debug({
