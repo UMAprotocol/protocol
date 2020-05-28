@@ -166,4 +166,25 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), originalMockTime);
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), toWei("1.5"));
   });
+
+  it("apiKey present", async function() {
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update();
+
+    assert.deepStrictEqual(networker.getJsonInputs, [
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/price?apiKey=test-api-key",
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/ohlc?after=1588376460&periods=60&apiKey=test-api-key"
+    ]);
+  });
+
+  it("apiKey absent", async function() {
+    cryptoWatchPriceFeed.apiKey = undefined;
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update();
+
+    assert.deepStrictEqual(networker.getJsonInputs, [
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/price",
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/ohlc?after=1588376460&periods=60"
+    ]);
+  });
 });
