@@ -80,7 +80,7 @@ accounts[0]
 ```
 
 You can now fund this wallet with the associated currency for the type of bot you want to run.
-To learn more about creating synthetic tokens to back fund your liquidator bot see [this](./using_the_uma_sponsor_cli_tool.md) tutorial.
+To learn more about creating synthetic tokens to back fund your liquidation bot see [this](./using_the_uma_sponsor_cli_tool.md) tutorial.
 
 ### Creating a price feed API key
 
