@@ -64,7 +64,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       });
       Logger.info({
         at: "Disputer#index",
-        message: "Approved EMP to transfer unlimited collateral tokens",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }

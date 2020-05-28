@@ -52,10 +52,15 @@ const createFormatFunction = (web3, numDisplayedDecimals) => {
   return valInWei => formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, false);
 };
 
-// generate a etherscan link prefix
+// generate an etherscan link prefix. If a web3 object is provided then check networkId. Else, assume mainnet.
 function createEtherscanLinkFromtx(web3) {
   // Construct etherscan link based on network
-  const networkId = web3.networkId;
+  if (web3) {
+    const networkId = web3.networkId;
+  } else {
+    networkId = 1;
+  }
+
   let url;
   if (networkUtils[networkId]) {
     url = `${networkUtils[networkId].etherscan}`;
@@ -74,16 +79,16 @@ function createShortHexString(hex) {
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(web3, hex) {
+function createEtherscanLinkMarkdown(hex, web3 = null) {
   let shortURLString = createShortHexString(hex);
 
   // Transaction hash
   if (hex.length == 66) {
-    return `<${createEtherscanLinkFromtx(web3, networkUtils)}tx/${hex}|${shortURLString}>`;
+    return `<${createEtherscanLinkFromtx(web3)}tx/${hex}|${shortURLString}>`;
   }
   // Account
   else if (hex.length == 42) {
-    return `<${createEtherscanLinkFromtx(web3, networkUtils)}address/${hex}|${shortURLString}>`;
+    return `<${createEtherscanLinkFromtx(web3)}address/${hex}|${shortURLString}>`;
   }
 }
 

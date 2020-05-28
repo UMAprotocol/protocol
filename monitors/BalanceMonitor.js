@@ -88,7 +88,7 @@ class BalanceMonitor {
       "*" +
       bot.name +
       "* (" +
-      createEtherscanLinkMarkdown(this.web3, bot.address) +
+      createEtherscanLinkMarkdown(bot.address, this.web3) +
       ") " +
       tokenName +
       " balance is less than " +

@@ -73,7 +73,7 @@ class ContractMonitor {
       // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // created X tokens backed by Y collateral.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, event.sponsor) +
+        createEtherscanLinkMarkdown(event.sponsor, this.web3) +
         (isMonitoredBot ? " (Monitored liquidator or disputer bot)" : "") +
         " created " +
         this.formatDecimalString(event.tokenAmount) +
@@ -84,7 +84,7 @@ class ContractMonitor {
         " " +
         this.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+        createEtherscanLinkMarkdown(event.transactionHash, this.web3);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -137,14 +137,14 @@ class ContractMonitor {
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
       // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        createEtherscanLinkMarkdown(event.liquidator, this.web3) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
         this.formatDecimalString(event.liquidatedCollateral) +
         " " +
         this.collateralCurrencySymbol +
         " of sponsor " +
-        createEtherscanLinkMarkdown(this.web3, event.sponsor) +
+        createEtherscanLinkMarkdown(event.sponsor, this.web3) +
         " collateral backing " +
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
@@ -152,7 +152,7 @@ class ContractMonitor {
         " tokens. Sponsor collateralization was " +
         collateralizationString +
         "%. tx: " +
-        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+        createEtherscanLinkMarkdown(event.transactionHash, this.web3);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -180,17 +180,17 @@ class ContractMonitor {
       // Dispute alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated dispute [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, event.disputer) +
+        createEtherscanLinkMarkdown(event.disputer, this.web3) +
         (this.monitoredDisputers.indexOf(event.disputer) != -1 ? " (Monitored dispute bot)" : "") +
         " initiated dispute against liquidator " +
-        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        createEtherscanLinkMarkdown(event.liquidator, this.web3) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
         " " +
         this.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+        createEtherscanLinkMarkdown(event.transactionHash, this.web3);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -222,15 +222,15 @@ class ContractMonitor {
       // it’s our bot]has resolved as [success or failed] [etherscan link to txn]
       const mrkdwn =
         "Dispute between liquidator " +
-        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        createEtherscanLinkMarkdown(event.liquidator, this.web3) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? "(Monitored liquidator bot)" : "") +
         " and disputer " +
-        createEtherscanLinkMarkdown(this.web3, event.disputer) +
+        createEtherscanLinkMarkdown(event.disputer, this.web3) +
         (this.monitoredDisputers.indexOf(event.disputer) != -1 ? "(Monitored dispute bot)" : "") +
         " has been resolved as " +
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+        createEtherscanLinkMarkdown(event.transactionHash, this.web3);
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",

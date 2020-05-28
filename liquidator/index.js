@@ -74,7 +74,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       });
       Logger.info({
         at: "liquidator#index",
-        message: "Approved EMP to transfer unlimited collateral tokens",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
@@ -84,7 +84,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       });
       Logger.info({
         at: "liquidator#index",
-        message: "Approved EMP to transfer unlimited synthetic tokens",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
         collateralApprovalTx: syntheticApprovalTx.transactionHash
       });
     }
