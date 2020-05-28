@@ -55,12 +55,10 @@ const createFormatFunction = (web3, numDisplayedDecimals) => {
 // generate an etherscan link prefix. If a web3 object is provided then check networkId. Else, assume mainnet.
 function createEtherscanLinkFromtx(web3) {
   // Construct etherscan link based on network
+  let networkId = 1;
   if (web3) {
-    const networkId = web3.networkId;
-  } else {
-    networkId = 1;
+    networkId = web3.networkId;
   }
-
   let url;
   if (networkUtils[networkId]) {
     url = `${networkUtils[networkId].etherscan}`;
