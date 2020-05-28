@@ -86,9 +86,9 @@ const slackFormatter = info => {
           ].text.text += `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`;
           // Else if not a address, transaction or object then print as ` - key: value`
         } else {
-          formattedResponse.blocks[formattedResponse.blocks.length - 1].text.text += `    - _${subKey}_: ${info[key][
-            subKey
-          ].toString()}\n`;
+          formattedResponse.blocks[
+            formattedResponse.blocks.length - 1
+          ].text.text += `    - _${subKey}_: ${info[key][subKey]}\n`;
         }
       }
       // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
@@ -109,7 +109,7 @@ const slackFormatter = info => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` • _${key}_: ${info[key].toString()}\n`
+            text: ` • _${key}_: ${info[key]}\n`
           }
         });
       }
