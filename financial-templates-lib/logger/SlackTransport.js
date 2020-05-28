@@ -3,7 +3,7 @@
 // see https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack for more.
 
 // This formatter assumes one of two kinds of inputs:
-// 1) A pre-formatted markdown message with a key value named `mrkdwn`. These message come from bots that have strict
+// 1) A pre-formatted markdown message with a key value named `mrkdwn`. These messages come from bots that have strict
 //    formatting rules around how text should be formatted. An example Winston log:
 //    this.logger.warn({
 //      at: "ContractMonitor",
