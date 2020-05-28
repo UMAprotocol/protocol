@@ -104,7 +104,7 @@ To set this up create a `.env` file in the `/core` directory of the repo it:
 ```bash
 POLLING_DELAY=30000
 EMP_ADDRESS=0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1
-MNEMONIC=sail chuckle school attitude symptom tenant fragile patch ring immense
+MNEMONIC=sail chuckle school attitude symptom tenant fragile patch ring immense main rapid
 PRICE_FEED_CONFIG={"type":"medianizer","apiKey":"YOUR_API_KEY","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"},{"type":"cryptowatch","exchange":"bitstamp"}]}
 ```
 
