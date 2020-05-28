@@ -51,6 +51,8 @@ Bots must be funded with currency to pay for liquidations and disputes.
 Specifically, if you want to run a liquidation bot, you need to fund the wallet with 1) synthetic tokens to close liquidated positions, 2) collateral currency to pay the DVM final fee, and 3) Ether to pay transaction fees.
 If you want to run a dispute bot, then this wallet should be funded with 1) collateral currency to pay dispute bonds and the DVM final fee and 2) Ether to pay for transactions.
 
+At a minimum, the account must have some ETH to pay gas for transactions executed during bot set up, otherwise the bots will crash. The Kovan ETH faucet can be found [here](https://faucet.kovan.network/). If the bots do not have collateral or synthetic tokens, then they will not crash but they not be able to send liquidations or disputes.
+
 ### Bot private key management
 
 All deployment configurations require a wallet mnemonic (or private key) to be injected into the bots enabling them to submit transactions to preform on-chain liquidations and disputes.
