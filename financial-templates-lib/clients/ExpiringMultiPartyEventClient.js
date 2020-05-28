@@ -155,6 +155,49 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
+    // Deposit events
+    const depositEventsObj = await this.emp.getPastEvents("Deposit", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of depositEventsObj) {
+      this.depositEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        collateralAmount: event.returnValues.collateralAmount
+      });
+    }
+
+    // Withdraw events
+    const withdrawEventsObj = await this.emp.getPastEvents("Withdrawal", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of withdrawEventsObj) {
+      this.withdrawEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        collateralAmount: event.returnValues.collateralAmount
+      });
+    }
+
+    // Redeem events
+    const redeemEventsObj = await this.emp.getPastEvents("Redeem", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of redeemEventsObj) {
+      this.redeemEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        collateralAmount: event.returnValues.collateralAmount,
+        tokenAmount: event.returnValues.tokenAmount
+      });
+    }
+
     // Add 1 to current block so that we do not double count the last block number seen.
     this.firstBlockToSearch = currentBlockNumber + 1;
 
