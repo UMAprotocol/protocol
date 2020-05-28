@@ -21,6 +21,7 @@ const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "
 
 // Default options
 const gasPx = 20000000000; // 20 gwei
+const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
@@ -29,7 +30,7 @@ function addPublicNetwork(networks, name, networkId) {
   const options = {
     networkCheckTimeout: 10000,
     network_id: networkId,
-    gas: undefined, // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
+    gas: gas,
     gasPrice: gasPx
   };
 
@@ -88,7 +89,7 @@ function addLocalNetwork(networks, name, customOptions) {
     host: "127.0.0.1",
     network_id: "*",
     port: 9545,
-    gas: undefined // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
+    gas: gas
   };
 
   networks[name] = {
