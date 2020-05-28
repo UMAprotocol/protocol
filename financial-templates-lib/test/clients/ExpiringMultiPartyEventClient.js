@@ -13,6 +13,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -29,6 +30,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
   let identifierWhitelist;
+  let store;
+  let timer;
 
   // Test object for EMP event client
   let client;
@@ -57,7 +60,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    timer = await Timer.deployed();
+    store = await Store.deployed();
+    mockOracle = await MockOracle.new(finder.address, timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
@@ -81,7 +86,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -351,6 +356,91 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       ],
       client.getAllRedeemEvents()
     );
+  });
+
+  it("Return RegularFee Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllRegularFeeEvents());
+
+    // Set fees to 1% per second and advance 1 second.
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
+    await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
+    const regularFeeTxObj1 = await emp.payRegularFees();
+
+    await client.update();
+
+    // Compare with expected processed event objects.
+    // The starting collateral is 610 so 6.1 are paid in fees.
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: regularFeeTxObj1.tx,
+          blockNumber: regularFeeTxObj1.receipt.blockNumber,
+          regularFee: toWei("6.1"),
+          lateFee: toWei("0")
+        }
+      ],
+      client.getAllRegularFeeEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    // 1% of (610-6.1) = 603.9 is 6.039
+    await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
+    const regularFeeTxObj2 = await emp.payRegularFees();
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: regularFeeTxObj2.tx,
+          blockNumber: regularFeeTxObj2.receipt.blockNumber,
+          regularFee: toWei("6.039"),
+          lateFee: toWei("0")
+        }
+      ],
+      client.getAllRegularFeeEvents()
+    );
+
+    // Reset fees
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
+  });
+
+  it("Return FinalFee Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllFinalFeeEvents());
+
+    // Set final fees to 1 token and advance to expiration.
+    await store.setFinalFee(collateralToken.address, { rawValue: toWei("1") });
+    await timer.setCurrentTime(await emp.expirationTimestamp());
+    const finalFeeTxObj1 = await emp.expire();
+
+    await client.update();
+
+    // Compare with expected processed event objects.
+    // The starting collateral is 610 so 6.1 are paid in fees.
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: finalFeeTxObj1.tx,
+          blockNumber: finalFeeTxObj1.receipt.blockNumber,
+          amount: toWei("1")
+        }
+      ],
+      client.getAllFinalFeeEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    // TODO: Change this from calling `expire` to using `dispute` so we can see multiple final fees being paid.
+
+    // Reset fees
+    await store.setFinalFee(collateralToken.address, { rawValue: "0" });
   });
 
   it("Return Liquidation Events", async function() {

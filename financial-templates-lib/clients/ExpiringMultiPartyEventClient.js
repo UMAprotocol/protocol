@@ -198,6 +198,33 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
+    // Regular fee events
+    const regularFeeEventsObj = await this.emp.getPastEvents("RegularFeesPaid", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of regularFeeEventsObj) {
+      this.regularFeeEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        regularFee: event.returnValues.regularFee,
+        lateFee: event.returnValues.lateFee
+      });
+    }
+
+    // Final fee events
+    const finalFeeEventsObj = await this.emp.getPastEvents("FinalFeesPaid", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of finalFeeEventsObj) {
+      this.finalFeeEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        amount: event.returnValues.amount
+      });
+    }
+
     // Add 1 to current block so that we do not double count the last block number seen.
     this.firstBlockToSearch = currentBlockNumber + 1;
 
