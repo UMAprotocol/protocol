@@ -88,7 +88,7 @@ All bots require a price feed to inform their liquidation decisions.
 The easiest price feed to intergrade into is [CryptoWatch](https://cryptowat.ch/). To create an API Key do the following:
 
 1. Create an account [here](https://cryptowat.ch/account/create).
-2. Generate an API key [here](Generate an API key).
+2. Generate an API key [here](https://cryptowat.ch/account/api-access).
 
 Keep this key handy. You'll need it when configuring the bots.
 
