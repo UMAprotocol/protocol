@@ -1,12 +1,12 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers, priceFeed) {
+  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
-    this.monitoredLiquidators = monitoredLiquidators;
-    this.monitoredDisputers = monitoredDisputers;
+    this.monitoredLiquidators = contractMonitorConfigObject.monitoredLiquidators;
+    this.monitoredDisputers = contractMonitorConfigObject.monitoredDisputers;
 
     // Offchain price feed to get the price for liquidations.
     this.priceFeed = priceFeed;
@@ -33,7 +33,7 @@ class ContractMonitor {
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice, price) => {
+  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
     return this.web3.utils
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
