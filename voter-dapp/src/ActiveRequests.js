@@ -481,7 +481,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             <TableCell className={classes.tableHeaderCell}>
               Local Commit Data Backup
               <Tooltip
-                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will encrypt your commit data on-chain and subsequently decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store your most recently committed price and salt in a browser cookie (you can find the identifier and time in the on-chain VoteCommitted event)."
+                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will encrypt your commit data on-chain and subsequently attempt to decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store your most recently committed price and salt in a browser cookie (you can find the identifier and time in the on-chain VoteCommitted event)."
                 placement="top"
               >
                 <IconButton>
