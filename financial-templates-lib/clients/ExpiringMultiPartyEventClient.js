@@ -15,6 +15,12 @@ class ExpiringMultiPartyEventClient {
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
     this.newSponsorEvents = [];
+    this.depositEvents = [];
+    this.createEvents = [];
+    this.withdrawEvents = [];
+    this.redeemEvents = [];
+    this.regularFeeEvents = [];
+    this.finalFeeEvents = [];
 
     // First block number to begin searching for events after.
     this.firstBlockToSearch = latestBlockNumber;
@@ -26,19 +32,33 @@ class ExpiringMultiPartyEventClient {
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
     this.newSponsorEvents = [];
+    this.depositEvents = [];
+    this.createEvents = [];
+    this.withdrawEvents = [];
+    this.redeemEvents = [];
+    this.regularFeeEvents = [];
+    this.finalFeeEvents = [];
   };
 
-  // Returns an array of new sponsor events.
   getAllNewSponsorEvents = () => this.newSponsorEvents;
 
-  // Returns an array of liquidation events.
   getAllLiquidationEvents = () => this.liquidationEvents;
 
-  // Returns an array of dispute events.
   getAllDisputeEvents = () => this.disputeEvents;
 
-  // Returns an array of dispute events.
   getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
+
+  getAllDepositEvents = () => this.depositEvents;
+
+  getAllCreateEvents = () => this.createEvents;
+
+  getAllWithdrawEvents = () => this.withdrawEvents;
+
+  getAllRedeemEvents = () => this.redeemEvents;
+
+  getAllRegularFeeEvents = () => this.regularFeeEvents;
+
+  getAllFinalFeeEvents = () => this.finalFeeEvents;
 
   // Returns the last update timestamp.
   getLastUpdateTime = () => this.lastUpdateTimestamp;
@@ -100,6 +120,21 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
+    // Create events
+    const createEventsObj = await this.emp.getPastEvents("PositionCreated", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of createEventsObj) {
+      this.createEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        collateralAmount: event.returnValues.collateralAmount,
+        tokenAmount: event.returnValues.tokenAmount
+      });
+    }
+
     // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
     const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
       fromBlock: this.firstBlockToSearch,
@@ -107,17 +142,16 @@ class ExpiringMultiPartyEventClient {
     });
     for (let event of newSponsorEventsObj) {
       // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
-      const positionCreatedEventObj = await this.emp.getPastEvents("PositionCreated", {
-        fromBlock: event.blockNumber,
-        toBlock: event.blockNumber
-      });
+      // We assume that there is only one PositionCreated event that has the same block number as
+      // the current NewSponsor event.
+      const createEvent = this.createEvents.filter(e => e.blockNumber === event.blockNumber);
 
       this.newSponsorEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
-        collateralAmount: positionCreatedEventObj[0].returnValues.collateralAmount,
-        tokenAmount: positionCreatedEventObj[0].returnValues.tokenAmount
+        collateralAmount: createEvent[0].collateralAmount,
+        tokenAmount: createEvent[0].tokenAmount
       });
     }
 

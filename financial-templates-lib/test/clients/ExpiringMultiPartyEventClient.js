@@ -163,6 +163,58 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     );
   });
 
+  it("Return Create Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj1.tx,
+          blockNumber: newSponsorTxObj1.receipt.blockNumber,
+          sponsor: sponsor1,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("50")
+        },
+        {
+          transactionHash: newSponsorTxObj2.tx,
+          blockNumber: newSponsorTxObj2.receipt.blockNumber,
+          sponsor: sponsor2,
+          collateralAmount: toWei("100"),
+          tokenAmount: toWei("45")
+        },
+        {
+          transactionHash: newSponsorTxObj3.tx,
+          blockNumber: newSponsorTxObj3.receipt.blockNumber,
+          sponsor: liquidator,
+          collateralAmount: toWei("500"),
+          tokenAmount: toWei("200")
+        }
+      ],
+      client.getAllNewSponsorEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const newSponsorTxObj4 = await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("1") }, { from: sponsor3 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj4.tx,
+          blockNumber: newSponsorTxObj4.receipt.blockNumber,
+          sponsor: sponsor3,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("1")
+        }
+      ],
+      client.getAllCreateEvents()
+    );
+  });
+
   it("Return Liquidation Events", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
