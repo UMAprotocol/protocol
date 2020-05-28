@@ -34,8 +34,8 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
   try {
     Logger.info({
-      at: "liquidator#index",
-      message: "liquidator started 🕵️‍♂️",
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
       empAddress: address,
       pollingDelay: pollingDelay,
       priceFeedConfig,

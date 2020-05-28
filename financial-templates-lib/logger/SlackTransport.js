@@ -29,10 +29,13 @@ const slackFormatter = info => {
     // If the bot contains an identifier flag it should be included in the heading.
     blocks: [
       {
+        type: "divider"
+      },
+      {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `[${info.level}] *${info["bot-identifier"]}: ${info.at}* ⭢ ${info.message}`
+          text: `[${info.level}] *${info["bot-identifier"]}* (${info.at}) ⭢ ${info.message}\n`
         }
       }
     ]
@@ -58,7 +61,7 @@ const slackFormatter = info => {
       });
     }
     // If the value in the message is an object then spread each key value pair within the object.
-    if (typeof info[key] === "object" && info[key] !== null) {
+    else if (typeof info[key] === "object" && info[key] !== null) {
       formattedResponse.blocks.push({
         type: "section",
         text: {

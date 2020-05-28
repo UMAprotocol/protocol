@@ -80,7 +80,7 @@ async function run(
       ExpiringMultiParty.abi,
       web3,
       emp.address,
-      0
+      latestBlockNumber
     );
     const contractMonitor = new ContractMonitor(Logger, empEventClient, contractMonitorObject, medianizerPriceFeed);
 

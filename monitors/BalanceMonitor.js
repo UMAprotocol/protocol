@@ -85,9 +85,8 @@ class BalanceMonitor {
 
   _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
-      "*" +
       bot.name +
-      "* (" +
+      " (" +
       createEtherscanLinkMarkdown(bot.address, this.web3) +
       ") " +
       tokenName +
