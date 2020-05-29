@@ -416,15 +416,19 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // State is empty before update()
     assert.deepStrictEqual([], client.getAllFinalFeeEvents());
 
-    // Set final fees to 1 token and advance to expiration.
     await store.setFinalFee(collateralToken.address, { rawValue: toWei("1") });
-    await timer.setCurrentTime(await emp.expirationTimestamp());
-    const finalFeeTxObj1 = await emp.expire();
-
-    await client.update();
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("1") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
 
     // Compare with expected processed event objects.
-    // The starting collateral is 610 so 6.1 are paid in fees.
+    const finalFeeTxObj1 = await emp.dispute("0", sponsor1, { from: sponsor2 });
+    await client.update();
     assert.deepStrictEqual(
       [
         {
@@ -437,7 +441,20 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     );
 
     // Correctly adds only new events after last query.
-    // TODO: Change this from calling `expire` to using `dispute` so we can see multiple final fees being paid.
+    await timer.setCurrentTime(await emp.expirationTimestamp());
+    const finalFeeTxObj2 = await emp.expire();
+    await client.clearState();
+    await client.update();
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: finalFeeTxObj2.tx,
+          blockNumber: finalFeeTxObj2.receipt.blockNumber,
+          amount: toWei("1")
+        }
+      ],
+      client.getAllFinalFeeEvents()
+    );
 
     // Reset fees
     await store.setFinalFee(collateralToken.address, { rawValue: "0" });
@@ -598,6 +615,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       client.getAllDisputeSettlementEvents()
     );
   });
+
   it("Starting client at an offset block number", async function() {
     // Init the EMP event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
