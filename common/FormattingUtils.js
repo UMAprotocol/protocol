@@ -73,16 +73,29 @@ function createShortHexString(hex) {
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(hex, networkId = 1) {
+function createEtherscanLinkMarkdown(hex, web3 = null) {
   let shortURLString = createShortHexString(hex);
-
-  // Transaction hash
-  if (hex.length == 66) {
-    return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
-  }
-  // Account
-  else if (hex.length == 42) {
-    return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
+  if (web3) {
+    // Note: use the promise notation over using await to keep the `createEtherscanLinkMarkdown` from needing to by async
+    web3.eth.net.getId((err, networkId) => {
+      // Transaction hash
+      if (hex.length == 66) {
+        return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
+      }
+      // Account
+      else if (hex.length == 42) {
+        return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
+      }
+    });
+  } else {
+    // Transaction hash
+    if (hex.length == 66) {
+      return `<${createEtherscanLinkFromtx()}tx/${hex}|${shortURLString}>`;
+    }
+    // Account
+    else if (hex.length == 42) {
+      return `<${createEtherscanLinkFromtx()}address/${hex}|${shortURLString}>`;
+    }
   }
 }
 
