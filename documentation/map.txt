@@ -8,6 +8,7 @@
 *** prerequisites.md
 *** creating_from_truffle.md
 *** using_the_uma_sponsor_cli_tool.md
+*** liquidation.md
 ** known_issues.md
 ** glossary.md
 * oracle

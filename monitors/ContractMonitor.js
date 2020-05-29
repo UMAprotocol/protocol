@@ -31,7 +31,7 @@ class ContractMonitor {
     this.networkId = 1;
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
-    this.formatDecimalString = createFormatFunction(this.web3, 2);
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
