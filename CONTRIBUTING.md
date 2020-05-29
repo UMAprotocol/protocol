@@ -24,7 +24,9 @@ The source code for this React app can be found in `./voter-dapp/src/`. At a min
    ```sh
    ganache-cli -p 9545 -e 10000000000 -l 9000000
    ```
-   This seeds every account with `10000000000` ETH and sets the block gas limit to 9 million wei.
+   This seeds every account with `10000000000` ETH and sets the block gas limit to 9 million wei. This tool should also
+   display all of the private keys associated with the ganache default accounts. You should keep the private keys handy
+   because you will want to import some of them into MetaMask to test the dApp locally.
 1. Open another window and deploy all contracts:
    ```sh
    cd core && $(npm bin)/truffle migrate --reset --network test
@@ -33,9 +35,8 @@ The source code for this React app can be found in `./voter-dapp/src/`. At a min
    ```sh
    $(npm bin)/truffle exec ./scripts/local/RequestOraclePrice.js --network test --identifier BTC/USD --time 1570000000
    ```
-1. Advance time to the next voting round's commit phase so that the price request becomes available to vote on. Note that you must run this script twice, once to advance to the current round's reveal phase, and once more to advance to the next round's commit phase. The default starting phase is the commit phase:
+1. Advance time to the next voting round's commit phase so that the price request becomes available to vote on. The default starting phase is the reveal phase so you need to run this script once:
    ```sh
-   $(npm bin)/truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
    $(npm bin)/truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
    ```
 
