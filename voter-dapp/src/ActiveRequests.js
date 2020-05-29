@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState, useReducer } from "react";
+import { useCookies } from "react-cookie";
+
 import Button from "@material-ui/core/Button";
+import IconButton from "@material-ui/core/IconButton";
 import Checkbox from "@material-ui/core/Checkbox";
 import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
@@ -12,12 +15,16 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
+import Tooltip from "@material-ui/core/Tooltip";
+
+import HelpIcon from "@material-ui/icons/Help";
+import FileCopyIcon from "@material-ui/icons/FileCopy";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-import { getKeyGenMessage, computeVoteHash, computeTopicHash } from "./common/EncryptionHelper.js";
+import { getKeyGenMessage, computeVoteHash } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
 import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
@@ -40,10 +47,14 @@ const editStateReducer = (state, action) => {
 };
 
 const toPriceRequestKey = (identifier, time) => time + "," + identifier;
+const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
+  votingAccount + "," + time + "," + identifier;
 
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  // Use cookies to locally store data from committed hashes, mapped to the current voting account.
+  const [cookies, setCookie] = useCookies();
   const { hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
@@ -82,12 +93,18 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
+  const [commitBackupIndex, setCommitBackupIndex] = useState(closedDialogIndex);
   const handleClickExplain = index => {
     setDialogContentIndex(index);
   };
 
+  const handleClickDisplayCommitBackup = index => {
+    setCommitBackupIndex(index);
+  };
+
   const handleClickClose = () => {
     setDialogContentIndex(closedDialogIndex);
+    setCommitBackupIndex(closedDialogIndex);
   };
 
   const proposals = useCacheCall(["Governor"], call => {
@@ -239,6 +256,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
+
+    // We'll mark all of these potential commits with the same timestamp
+    // for the user's convenience.
+    const encryptionTimestamp = Date.now();
+
     for (const index in editState) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
@@ -263,10 +285,38 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         encryptedVote
       });
       indicesCommitted.push(index);
+
+      // Store price and salt that we will attempt to encrypt on-chain in a cookie. This way, if the encryption
+      // (or subsequent decryption) fails, then the user can still recover their committed price and salt and
+      // reveal their commit manually. Note that this will store a cookie for each call to `encryptMessage`, even
+      // if the user never signs and submits the `batchCommitFunction` to commit their vote on-chain. Therefore,
+      // the cookies could store more hash data than the user ends up committing on-chain. It is the user's
+      // responsibility to determine which commit data to use.
+      const newCommitKey = toVotingAccountAndPriceRequestKey(
+        votingAccount,
+        pendingRequests[index].identifier,
+        pendingRequests[index].time
+      );
+      const updatedCommitBackups = Object.assign(
+        {},
+        {
+          ...cookies[newCommitKey],
+          [encryptionTimestamp]: {
+            salt,
+            price
+          }
+        }
+      );
+      setCookie(newCommitKey, updatedCommitBackups, { path: "/" });
     }
     if (commits.length < 1) {
       return;
     }
+
+    // Prompt user to sign transaction. After this function is called, the `commitStatus` is reset to undefined.
+    // Note that `commitStatus` for this transaction will fail to update correctly if the user hits "Save" again
+    // and enqueues another transaction to sign. Therefore, `commitStatus` only tracks the status of the most recent
+    // transaction that Drizzle sends to MetaMask to sign.
     batchCommitFunction(commits, { from: account });
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
@@ -343,6 +393,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
+  const getCommittedData = index => {
+    if (index === closedDialogIndex) {
+      return "";
+    }
+    const commitKey = toVotingAccountAndPriceRequestKey(
+      votingAccount,
+      pendingRequests[index].identifier,
+      pendingRequests[index].time
+    );
+    return cookies[commitKey];
+  };
   const getCurrentVoteCell = index => {
     // If this cell is currently being edited.
     if (editState[index]) {
@@ -374,6 +435,44 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     }
   };
 
+  const copyStringToClipboard = string => {
+    // Source for implementation details: https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
+    if (!navigator.clipboard) {
+      // Synchronously copy
+      const textArea = document.createElement("textarea");
+      textArea.value = string;
+
+      // Avoid scrolling to bottom
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand("copy");
+        const msg = successful ? "successful" : "unsuccessful";
+        console.log("Sync: Copying text command was " + msg);
+      } catch (err) {
+        console.error("Sync: Could not copy text: ", err);
+      }
+
+      document.body.removeChild(textArea);
+    } else {
+      // Asynchronously copy. This has been the way to copy to the clipboard for Chrome since v66.
+      navigator.clipboard.writeText(string).then(
+        function() {
+          console.log(`Async: Copied to clipboard`);
+        },
+        function(err) {
+          console.error("Async: Could not copy text: ", err);
+        }
+      );
+    }
+  };
+
   return (
     <div className={classes.root}>
       <Typography variant="h6" component="h6">
@@ -386,6 +485,32 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
+      <Dialog open={commitBackupIndex !== closedDialogIndex} onClose={handleClickClose}>
+        <DialogContent>
+          <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
+            {getCommittedData(commitBackupIndex) && Object.keys(getCommittedData(commitBackupIndex)).length > 0
+              ? Object.keys(getCommittedData(commitBackupIndex)).map((timestamp, i) => {
+                  return (
+                    <span>
+                      {`${i + 1}. Commit hash encrypted @ ${new Date(Number(timestamp)).toString().toString()}`}
+                      <br />
+                      {"-     Salt: " + getCommittedData(commitBackupIndex)[timestamp].salt.slice(0, 3) + "... "}
+                      <IconButton
+                        onClick={() => copyStringToClipboard(getCommittedData(commitBackupIndex)[timestamp].salt)}
+                      >
+                        <FileCopyIcon />
+                      </IconButton>
+                      <br />
+                      {"-     Price: " + formatWei(getCommittedData(commitBackupIndex)[timestamp].price, web3)}
+                      <br />
+                      <br />
+                    </span>
+                  );
+                })
+              : "Commit backup for this request not found"}
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
       <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
@@ -395,7 +520,28 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             </TableCell>
             <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
             <TableCell className={classes.tableHeaderCell}>Status</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Current Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>
+              Current Vote
+              <Tooltip
+                title="This is your most recently committed price for this request. We decrypt this value from your on-chain encrypted commit using your private key signature."
+                placement="top"
+              >
+                <IconButton>
+                  <HelpIcon />
+                </IconButton>
+              </Tooltip>
+            </TableCell>
+            <TableCell className={classes.tableHeaderCell}>
+              Local Commit Data Backup
+              <Tooltip
+                title="The same price, salt, identifier, and timestamp that you hashed and included in your vote commit must also be revealed during the reveal stage for a vote to count. This application will attempt to encrypt your commit data on-chain and subsequently decrypt it in order to reveal your vote. In the unfortunate circumstance that we fail to encrypt and decrypt your commit data properly, you will need to manually reveal your vote. To facilitate manually revealing votes, we can store all of your committed price and salt data (whether you encrypt it on-chain or not) in your browser cookies."
+                placement="top"
+              >
+                <IconButton>
+                  <HelpIcon />
+                </IconButton>
+              </Tooltip>
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody className={classes.tableBody}>
@@ -423,6 +569,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{getCurrentVoteCell(index)}</TableCell>
+                <TableCell>
+                  <Button variant="contained" color="primary" onClick={() => handleClickDisplayCommitBackup(index)}>
+                    Display
+                  </Button>
+                </TableCell>
               </TableRow>
             );
           })}
