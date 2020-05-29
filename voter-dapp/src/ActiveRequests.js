@@ -257,6 +257,10 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     const commits = [];
     const indicesCommitted = [];
 
+    // We'll mark all of these potential commits with the same timestamp
+    // for the user's convenience.
+    const encryptionTimestamp = Date.now();
+
     for (const index in editState) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
@@ -297,7 +301,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         {},
         {
           ...cookies[newCommitKey],
-          [Date.now()]: {
+          [encryptionTimestamp]: {
             salt,
             price
           }
@@ -516,7 +520,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             </TableCell>
             <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
             <TableCell className={classes.tableHeaderCell}>Status</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Current Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>
+              Current Vote
+              <Tooltip
+                title="This is your most recently committed price for this request. We decrypt this value from your on-chain encrypted commit and your private key."
+                placement="top"
+              >
+                <IconButton>
+                  <HelpIcon />
+                </IconButton>
+              </Tooltip>
+            </TableCell>
             <TableCell className={classes.tableHeaderCell}>
               Local Commit Data Backup
               <Tooltip
