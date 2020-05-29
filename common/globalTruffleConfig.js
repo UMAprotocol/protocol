@@ -38,14 +38,15 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name] = {
     ...options,
     provider: function() {
-      console.log(mnemonic);
-      console.log(`https://${name}.infura.io/v3/${infuraApiKey}`);
-      return new ManagedSecretProvider(
-        GckmsConfig,
-        `https://${name}.infura.io/v3/${infuraApiKey}`,
-        0,
-        GckmsConfig.length
-      );
+      if (!this.singletonProvider) {
+        this.singletonProvider = new ManagedSecretProvider(
+          GckmsConfig,
+          `https://${name}.infura.io/v3/${infuraApiKey}`,
+          0,
+          GckmsConfig.length
+        );
+      }
+      return this.singletonProvider;
     }
   };
 
@@ -53,7 +54,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_privatekey"] = {
     ...options,
     provider: function() {
-      return new HDWalletProvider([privateKey], `https://${name}.infura.io/v3/${infuraApiKey}`);
+      if (!this.singletonProvider) {
+        this.singletonProvider = new HDWalletProvider([privateKey], `https://${name}.infura.io/v3/${infuraApiKey}`);
+      }
+      return this.singletonProvider;
     }
   };
 
@@ -61,9 +65,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_mnemonic"] = {
     ...options,
     provider: function() {
-      console.log(mnemonic);
-      console.log(`https://${name}.infura.io/v3/${infuraApiKey}`);
-      return new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2);
+      if (!this.singletonProvider) {
+        this.singletonProvider = new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2);
+      }
+      return this.singletonProvider;
     }
   };
 
@@ -77,7 +82,13 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_ledger"] = {
     ...options,
     provider: function() {
-      return new LedgerWalletProvider(ledgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`);
+      if (!this.singletonProvider) {
+        this.singletonProvider = new LedgerWalletProvider(
+          ledgerOptions,
+          `https://${name}.infura.io/v3/${infuraApiKey}`
+        );
+      }
+      return this.singletonProvider;
     }
   };
 
@@ -90,7 +101,13 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_ledger_legacy"] = {
     ...options,
     provider: function() {
-      return new LedgerWalletProvider(legacyLedgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`);
+      if (!this.singletonProvider) {
+        this.singletonProvider = new LedgerWalletProvider(
+          legacyLedgerOptions,
+          `https://${name}.infura.io/v3/${infuraApiKey}`
+        );
+      }
+      return this.singletonProvider;
     }
   };
 }
