@@ -17,6 +17,10 @@ Features currently include:
 
 The source code for this React app can be found in `./voter-dapp/src/`. At a minimum, you must ensure that a user can go through a simple commit and reveal flow, both using a voting proxy and not using one.
 
+#### Prerequisites
+
+Run `npm install` from `./protocol/` to install the monorepo's dependencies and from `./protocol/voter-dapp` to install the voter-dapp's dependencies. Compile contracts from the `./protocol/core` directory by running `$(npm bin)/truffle compile`.
+
 #### Steps to generate price requests
 
 0. Change your directory to `./protocol/`
