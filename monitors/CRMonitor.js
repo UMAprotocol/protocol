@@ -84,7 +84,7 @@ class CRMonitor {
         const mrkdwn =
           wallet.name +
           " (" +
-          createEtherscanLinkMarkdown(wallet.address, this.web3) +
+          createEtherscanLinkMarkdown(wallet.address, await this.web3.eth.net.getId()) +
           ") collateralization ratio has dropped to " +
           this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +

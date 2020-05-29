@@ -87,7 +87,7 @@ class BalanceMonitor {
     return (
       bot.name +
       " (" +
-      createEtherscanLinkMarkdown(bot.address, this.web3) +
+      createEtherscanLinkMarkdown(bot.address, await this.web3.eth.net.getId()) +
       ") " +
       tokenName +
       " balance is less than " +
