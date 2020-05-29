@@ -57,7 +57,7 @@ function createEtherscanLinkFromtx(web3) {
   // Construct etherscan link based on network
   let networkId = 1;
   if (web3) {
-    networkId = web3.networkId;
+    networkId = await web3.eth.net.getId();
   }
   let url;
   if (networkUtils[networkId]) {
