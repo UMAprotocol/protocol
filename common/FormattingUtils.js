@@ -2,6 +2,13 @@ const networkUtils = require("../common/PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 
+// Apply settings to BigNumber.js library.
+// Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
+// Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.
+// Note: EXPONENTIAL_AT is set to 500 to keep BigNumber from using exponential notation until the numbers hit
+// +-1e500.
+BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
+
 const formatDate = (timestampInSeconds, web3) => {
   return new Date(
     parseInt(
@@ -27,8 +34,9 @@ const formatWei = (num, web3) => {
   return web3.utils.fromWei(num.toString());
 };
 
-// Formats the input to round to decimalPlaces number of decimals.
-const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
+// Formats the input to round to decimalPlaces number of decimals if the number is larger than 1 and fixes precision
+// to minPrecision if the number is less than 1.
+const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
   if (roundUp) {
     BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_UP });
   } else {
@@ -36,20 +44,28 @@ const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
   }
 
   const fullPrecisionFloat = BigNumber(num);
-
-  // Convert back to BN to truncate any trailing 0s that the toFixed() output would print.
-  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
-    .toFixed(decimalPlaces)
-    .toString();
-
+  let fixedPrecisionFloat;
+  // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is larger than
+  // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
+  // is less than 1 then truncate to minPrecision precision. EG: 0.0022183471 -> 0.002218 with minPrecision=4
+  if (fullPrecisionFloat.gt(BigNumber(1))) {
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+      .toFixed(decimalPlaces)
+      .toString();
+  } else {
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+      .toPrecision(minPrecision)
+      .toString();
+  }
   // This puts commas in the thousands places, but only before the decimal point.
   const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
   fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return fixedPrecisionFloatParts.join(".");
 };
 
-const createFormatFunction = (web3, numDisplayedDecimals) => {
-  return valInWei => formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, false);
+const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision) => {
+  return valInWei =>
+    formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false);
 };
 
 // generate a etherscan link prefix

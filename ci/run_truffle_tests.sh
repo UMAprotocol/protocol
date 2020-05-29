@@ -52,6 +52,3 @@ $(npm bin)/truffle test $(find ../financial-templates-lib/test -name '*.js') --n
 $(npm bin)/truffle test $(find ../liquidator/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../disputer/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../monitors/test -name '*.js') --network ci
-
-# Check the Kovan deployment.
-check_deployment $PROTOCOL_DIR/core 4 rinkeby_mnemonic

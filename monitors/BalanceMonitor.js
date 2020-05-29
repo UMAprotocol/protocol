@@ -23,7 +23,7 @@ class BalanceMonitor {
     // Bot addresses and thresholds to monitor.
     this.botsToMonitor = botsToMonitor;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2);
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
