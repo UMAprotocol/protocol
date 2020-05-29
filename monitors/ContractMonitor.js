@@ -1,12 +1,12 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers, priceFeed) {
+  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
-    this.monitoredLiquidators = monitoredLiquidators;
-    this.monitoredDisputers = monitoredDisputers;
+    this.monitoredLiquidators = contractMonitorConfigObject.monitoredLiquidators;
+    this.monitoredDisputers = contractMonitorConfigObject.monitoredDisputers;
 
     // Offchain price feed to get the price for liquidations.
     this.priceFeed = priceFeed;
@@ -28,12 +28,12 @@ class ContractMonitor {
     this.syntheticCurrencySymbol = "ETHBTC";
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
-    this.formatDecimalString = createFormatFunction(this.web3, 2);
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice, price) => {
+  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
     return this.web3.utils
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))

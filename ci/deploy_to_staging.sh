@@ -31,8 +31,17 @@ gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.ya
 ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 
 # Delete old versions.
-# TODO: this currently deletes any versions that aren't being used. It'd be preferable to leave the last few versions
-# for each service.
-VERSIONS_TO_DELETE=$(gcloud app versions list --filter="TRAFFIC_SPLIT=0.00" --format="value(VERSION.ID)")
 
-gcloud app versions delete -q $VERSIONS_TO_DELETE
+# This (rather complicated command) aims to select the oldest versions to delete:
+# 1. Filters out any versions that are set to receive traffic.
+# 2. Sorts the non-traffic receiving versions such that the ones with the smallest version ID coming last.
+#    Note: default verion ids are essentially timestamps (YYYYMMDDtHHMMSS), so as long as the defaults are used, this
+#    sorting scheme is the same as newest-first.
+# 3. Prints the sorted version IDs as a list.
+# 4. Pipes that list to tail which only takes those starting at line 100 (filtering out the newest 99, effectively).
+# 5. Stores the result in VERSIONS_TO_DELETE.
+VERSIONS_TO_DELETE=$(gcloud app versions list --filter="TRAFFIC_SPLIT=0.00" --sort-by="~VERSION.ID" --format="value(VERSION.ID)" | tail -n +100)
+
+# If VERSIONS_TO_DELETE is empty (the first command succeeds), then don't run the delete command.
+# If VERSIONS_TO_DELETE is non empty, run the command and delete the specified versions.
+[ -z "$VERSIONS_TO_DELETE" ] || gcloud app versions delete -q $VERSIONS_TO_DELETE

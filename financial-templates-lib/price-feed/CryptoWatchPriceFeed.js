@@ -3,7 +3,7 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
   // Constructs the CryptoWatchPriceFeed.
-  // apiKey the CW API key. Note: these API keys are rate-limited.
+  // apiKey optional CW API key. Note: these API keys are rate-limited.
   // exchange a string identifier for the echange to pull prices from. This should be the identifier used to
   //          identify the exchange in CW's REST API.
   // pair a string representation of the pair the price feed is tracking. This pair should be available on the
@@ -93,10 +93,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
     const ohlcUrl = [
-      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?`,
-      `afer=${earliestHistoricalTimestamp}&`,
-      `periods=${this.ohlcPeriod}&`,
-      `apikey=${this.apiKey}`
+      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc`,
+      `?after=${earliestHistoricalTimestamp}`,
+      `&periods=${this.ohlcPeriod}`,
+      this.apiKey ? `&apiKey=${this.apiKey}` : ""
     ].join("");
 
     const ohlcResponse = await this.networker.getJson(ohlcUrl);
@@ -141,7 +141,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       });
 
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
-    const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apiKey}`;
+    const priceUrl =
+      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price` +
+      (this.apiKey ? `?apiKey=${this.apiKey}` : "");
     const priceResponse = await this.networker.getJson(priceUrl);
     if (!ohlcResponse || !priceResponse.result || !priceResponse.result.price) {
       this.logger.error({

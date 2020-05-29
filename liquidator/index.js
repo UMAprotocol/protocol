@@ -31,7 +31,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Number} [monitorPort] Monitor server port number.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort) {
+async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
   try {
     Logger.info({
       at: "liquidator#index",
@@ -39,6 +39,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       empAddress: address,
       pollingDelay: pollingDelay,
       priceFeedConfig,
+      liquidatorConfig,
       monitorPort
     });
 
@@ -58,7 +59,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     // Client and liquidator bot
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
-    const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+    const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0], liquidatorConfig);
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below
@@ -141,9 +142,12 @@ const Poll = async function(callback) {
 
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
+    // If there is a liquidator config, add it. Else, set to null.
+    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? process.env.LIQUIDATOR_CONFIG : null;
+
     const portNumber = 8888;
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, portNumber);
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, portNumber, liquidatorConfig);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
