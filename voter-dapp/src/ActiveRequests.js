@@ -523,7 +523,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
             <TableCell className={classes.tableHeaderCell}>
               Current Vote
               <Tooltip
-                title="This is your most recently committed price for this request. We decrypt this value from your on-chain encrypted commit and your private key."
+                title="This is your most recently committed price for this request. We decrypt this value from your on-chain encrypted commit using your private key signature."
                 placement="top"
               >
                 <IconButton>
