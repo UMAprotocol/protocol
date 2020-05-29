@@ -28,7 +28,7 @@ const gas = undefined; // Defining this as undefined (rather than leaving undefi
 // shell environment.
 function addPublicNetwork(networks, name, networkId) {
   const options = {
-    networkCheckTimeout: 500000,
+    networkCheckTimeout: 10000,
     network_id: networkId,
     gas: gas,
     gasPrice: gasPx
@@ -156,7 +156,15 @@ addLocalNetwork(networks, "test");
 addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
-addLocalNetwork(networks, "metamask", { provider: () => new MetaMaskTruffleProvider(), networkCheckTimeout: 500000 });
+addLocalNetwork(networks, "metamask", {
+  networkCheckTimeout: 500000,
+  provider: function() {
+    if (!this.singletonProvider) {
+      this.singletonProvider = new MetaMaskTruffleProvider();
+    }
+    return this.singletonProvider;
+  }
+});
 
 addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
 
