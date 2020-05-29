@@ -24,7 +24,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 async function run(address, walletsToMonitor, priceFeedConfig) {
-  console.log(`Starting Reporter Script🖨`);
+  console.log("Starting Reporter Script🖨");
 
   // For now we will use a dummy transport to make things quiet in the logs
   const dummyLogger = winston.createLogger({
