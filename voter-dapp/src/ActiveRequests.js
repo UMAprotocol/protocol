@@ -460,17 +460,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       }
 
       document.body.removeChild(textArea);
+    } else {
+      // Asynchronously copy. This has been the way to copy to the clipboard for Chrome since v66.
+      navigator.clipboard.writeText(string).then(
+        function() {
+          console.log(`Async: Copied to clipboard`);
+        },
+        function(err) {
+          console.error("Async: Could not copy text: ", err);
+        }
+      );
     }
-
-    // Asynchronously copy. This has been the way to copy to the clipboard for Chrome since v66.
-    navigator.clipboard.writeText(string).then(
-      function() {
-        console.log(`Async: Copied to clipboard`);
-      },
-      function(err) {
-        console.error("Async: Could not copy text: ", err);
-      }
-    );
   };
 
   return (
