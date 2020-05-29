@@ -13,6 +13,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -29,6 +30,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
   let identifierWhitelist;
+  let store;
+  let timer;
 
   // Test object for EMP event client
   let client;
@@ -57,7 +60,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    timer = await Timer.deployed();
+    store = await Store.deployed();
+    mockOracle = await MockOracle.new(finder.address, timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
@@ -81,7 +86,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -114,6 +119,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   it("Return NewSponsor Events", async function() {
     // Update the client and check it has the new sponsor event stored correctly
     await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllNewSponsorEvents());
+
     await client.update();
 
     // Compare with expected processed event objects
@@ -163,6 +172,294 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     );
   });
 
+  it("Return Create Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllCreateEvents());
+
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj1.tx,
+          blockNumber: newSponsorTxObj1.receipt.blockNumber,
+          sponsor: sponsor1,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("50")
+        },
+        {
+          transactionHash: newSponsorTxObj2.tx,
+          blockNumber: newSponsorTxObj2.receipt.blockNumber,
+          sponsor: sponsor2,
+          collateralAmount: toWei("100"),
+          tokenAmount: toWei("45")
+        },
+        {
+          transactionHash: newSponsorTxObj3.tx,
+          blockNumber: newSponsorTxObj3.receipt.blockNumber,
+          sponsor: liquidator,
+          collateralAmount: toWei("500"),
+          tokenAmount: toWei("200")
+        }
+      ],
+      client.getAllCreateEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const newSponsorTxObj4 = await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("1") }, { from: sponsor3 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: newSponsorTxObj4.tx,
+          blockNumber: newSponsorTxObj4.receipt.blockNumber,
+          sponsor: sponsor3,
+          collateralAmount: toWei("10"),
+          tokenAmount: toWei("1")
+        }
+      ],
+      client.getAllCreateEvents()
+    );
+  });
+
+  it("Return Deposit Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllDepositEvents());
+
+    const depositTxObj1 = await emp.deposit({ rawValue: toWei("5") }, { from: sponsor1 });
+
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: depositTxObj1.tx,
+          blockNumber: depositTxObj1.receipt.blockNumber,
+          sponsor: sponsor1,
+          collateralAmount: toWei("5")
+        }
+      ],
+      client.getAllDepositEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const depositTxObj2 = await emp.deposit({ rawValue: toWei("3") }, { from: sponsor2 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: depositTxObj2.tx,
+          blockNumber: depositTxObj2.receipt.blockNumber,
+          sponsor: sponsor2,
+          collateralAmount: toWei("3")
+        }
+      ],
+      client.getAllDepositEvents()
+    );
+  });
+
+  it("Return Withdraw Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllWithdrawEvents());
+
+    // GCR is ~2.0, so sponsor2 and liquidator should be able to withdraw small amounts while keeping their CR above GCR.
+    const withdrawTxObj1 = await emp.withdraw({ rawValue: toWei("1") }, { from: liquidator });
+
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: withdrawTxObj1.tx,
+          blockNumber: withdrawTxObj1.receipt.blockNumber,
+          sponsor: liquidator,
+          collateralAmount: toWei("1")
+        }
+      ],
+      client.getAllWithdrawEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const withdrawTxObj2 = await emp.withdraw({ rawValue: toWei("2") }, { from: sponsor2 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: withdrawTxObj2.tx,
+          blockNumber: withdrawTxObj2.receipt.blockNumber,
+          sponsor: sponsor2,
+          collateralAmount: toWei("2")
+        }
+      ],
+      client.getAllWithdrawEvents()
+    );
+  });
+
+  it("Return Redeem Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllRedeemEvents());
+
+    // Redeem from liquidator who has many more than the min token amount
+    const redeemTxObj1 = await emp.redeem({ rawValue: toWei("1") }, { from: liquidator });
+
+    await client.update();
+
+    // Compare with expected processed event objects
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: redeemTxObj1.tx,
+          blockNumber: redeemTxObj1.receipt.blockNumber,
+          sponsor: liquidator,
+          collateralAmount: toWei("2.5"),
+          tokenAmount: toWei("1")
+        }
+      ],
+      client.getAllRedeemEvents()
+    );
+
+    // Correctly adds only new events after last query
+    const redeemTxObj2 = await emp.redeem({ rawValue: toWei("1") }, { from: sponsor1 });
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: redeemTxObj2.tx,
+          blockNumber: redeemTxObj2.receipt.blockNumber,
+          sponsor: sponsor1,
+          collateralAmount: toWei("0.2"),
+          tokenAmount: toWei("1")
+        }
+      ],
+      client.getAllRedeemEvents()
+    );
+  });
+
+  it("Return RegularFee Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllRegularFeeEvents());
+
+    // Set fees to 1% per second and advance 1 second.
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
+    await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
+    const regularFeeTxObj1 = await emp.payRegularFees();
+
+    await client.update();
+
+    // Compare with expected processed event objects.
+    // The starting collateral is 610 so 6.1 are paid in fees.
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: regularFeeTxObj1.tx,
+          blockNumber: regularFeeTxObj1.receipt.blockNumber,
+          regularFee: toWei("6.1"),
+          lateFee: toWei("0")
+        }
+      ],
+      client.getAllRegularFeeEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    // 1% of (610-6.1) = 603.9 is 6.039
+    await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
+    const regularFeeTxObj2 = await emp.payRegularFees();
+    await client.clearState();
+    await client.update();
+
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: regularFeeTxObj2.tx,
+          blockNumber: regularFeeTxObj2.receipt.blockNumber,
+          regularFee: toWei("6.039"),
+          lateFee: toWei("0")
+        }
+      ],
+      client.getAllRegularFeeEvents()
+    );
+
+    // Reset fees
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
+  });
+
+  it("Return FinalFee Events", async function() {
+    // Update the client and check it has the new sponsor event stored correctly
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllFinalFeeEvents());
+
+    await store.setFinalFee(collateralToken.address, { rawValue: toWei("1") });
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("1") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // Compare with expected processed event objects.
+    const finalFeeTxObj1 = await emp.dispute("0", sponsor1, { from: sponsor2 });
+    await client.update();
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: finalFeeTxObj1.tx,
+          blockNumber: finalFeeTxObj1.receipt.blockNumber,
+          amount: toWei("1")
+        }
+      ],
+      client.getAllFinalFeeEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    await timer.setCurrentTime(await emp.expirationTimestamp());
+    const finalFeeTxObj2 = await emp.expire();
+    await client.clearState();
+    await client.update();
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: finalFeeTxObj2.tx,
+          blockNumber: finalFeeTxObj2.receipt.blockNumber,
+          amount: toWei("1")
+        }
+      ],
+      client.getAllFinalFeeEvents()
+    );
+
+    // Reset fees
+    await store.setFinalFee(collateralToken.address, { rawValue: "0" });
+  });
+
   it("Return Liquidation Events", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
@@ -176,6 +473,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Update the client and check it has the liquidation event stored correctly
     await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllLiquidationEvents());
+
     await client.update();
 
     // Compare with expected processed event object
@@ -238,6 +539,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Update the client and check it has the dispute event stored correctly
     await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllDisputeEvents());
+
     await client.update();
 
     // Compare with expected processed event object
@@ -287,6 +592,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
     await client.clearState();
 
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllDisputeSettlementEvents());
+
     // Update the client and check it has the dispute event stored correctly
     await client.update();
 
@@ -307,6 +615,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       client.getAllDisputeSettlementEvents()
     );
   });
+
   it("Starting client at an offset block number", async function() {
     // Init the EMP event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
