@@ -65,6 +65,9 @@ class ExpiringMultiPartyEventClient {
 
   update = async () => {
     const currentBlockNumber = await this.web3.eth.getBlockNumber();
+    // TODO(#1540): For efficiency, we should only pass through `fromBlock` to `toBlock` once and check for
+    // all of the relevant events along the way.
+
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
