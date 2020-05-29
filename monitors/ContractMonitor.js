@@ -27,7 +27,7 @@ class ContractMonitor {
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "ETHBTC";
 
-    //TODO: pull this into the parent client
+    // TODO: pull this into the parent client
     this.networkId = 1;
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat

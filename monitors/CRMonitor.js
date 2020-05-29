@@ -32,8 +32,8 @@ class CRMonitor {
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "ETHBTC";
-    
-    //TODO: pull this into the parent client
+
+    // TODO: pull this into the parent client
     this.networkId = 1;
   }
 
