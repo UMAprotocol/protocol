@@ -53,7 +53,7 @@ const createFormatFunction = (web3, numDisplayedDecimals) => {
 };
 
 // generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
-function createEtherscanLinkFromtx(networkId = 1) {
+function createEtherscanLinkFromtx(networkId) {
   // Construct etherscan link based on network
   let url;
   if (networkUtils[networkId]) {
@@ -62,6 +62,7 @@ function createEtherscanLinkFromtx(networkId = 1) {
     // Default to mainnet, even though it won't work for ganache runs.
     url = "https://etherscan.io/";
   }
+  console.log("URL", url);
   return url;
 }
 
@@ -73,29 +74,15 @@ function createShortHexString(hex) {
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(hex, web3 = null) {
+function createEtherscanLinkMarkdown(hex, networkId = 1) {
   let shortURLString = createShortHexString(hex);
-  if (web3) {
-    // Note: use the promise notation over using await to keep the `createEtherscanLinkMarkdown` from needing to by async
-    web3.eth.net.getId((err, networkId) => {
-      // Transaction hash
-      if (hex.length == 66) {
-        return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
-      }
-      // Account
-      else if (hex.length == 42) {
-        return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
-      }
-    });
-  } else {
-    // Transaction hash
-    if (hex.length == 66) {
-      return `<${createEtherscanLinkFromtx()}tx/${hex}|${shortURLString}>`;
-    }
-    // Account
-    else if (hex.length == 42) {
-      return `<${createEtherscanLinkFromtx()}address/${hex}|${shortURLString}>`;
-    }
+  // Transaction hash
+  if (hex.length == 66) {
+    return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
+  }
+  // Account
+  else if (hex.length == 42) {
+    return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
   }
 }
 
