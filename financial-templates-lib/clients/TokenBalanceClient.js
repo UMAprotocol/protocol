@@ -59,6 +59,15 @@ class TokenBalanceClient {
     });
   };
 
+  // async function to get the three token balances directly. Does not store balances later retrieval.
+  getDirectTokenBalances = async account => {
+    return {
+      collateralBalance: await this.collateralToken.methods.balanceOf(account).call(),
+      syntheticBalance: await this.syntheticToken.methods.balanceOf(account).call(),
+      etherBalance: await this.web3.eth.getBalance(account)
+    };
+  };
+
   _registerAddress = address => {
     if (!this.accountMonitorList.includes(address)) {
       this.accountMonitorList.push(address);
