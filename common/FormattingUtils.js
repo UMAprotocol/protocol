@@ -68,7 +68,7 @@ const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision)
     formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false);
 };
 
-// generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
+// Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
 function createEtherscanLinkFromtx(networkId) {
   // Construct etherscan link based on network
   let url;
