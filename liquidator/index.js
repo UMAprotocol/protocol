@@ -73,7 +73,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
         from: accounts[0]
       });
       Logger.info({
-        at: "liquidator#index",
+        at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
@@ -83,7 +83,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
         from: accounts[0]
       });
       Logger.info({
-        at: "liquidator#index",
+        at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens 💰",
         collateralApprovalTx: syntheticApprovalTx.transactionHash
       });
@@ -92,7 +92,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
     const { server, portNumber } = startServer(monitorPort);
     Logger.debug({
-      at: "liquidator#index",
+      at: "Liquidator#index",
       message: "Monitor server is listening",
       portNumber: portNumber
     });

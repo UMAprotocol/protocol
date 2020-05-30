@@ -126,7 +126,7 @@ This will start the liquidator bot process using the network `kovan` and the wal
 Using network 'kovan_mnemonic'.
 
 2020-05-22 08:39:42 [info]: {
-  "at": "liquidator#index",
+  "at": "Liquidator#index",
   "message": "liquidator started 🕵️‍♂️",
   "empAddress": "0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1",
   "pollingDelay": "30000",
