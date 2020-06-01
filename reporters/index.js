@@ -62,7 +62,7 @@ async function run(address, walletsToMonitor, priceFeedConfig) {
 
   const sponsorReporter = new SponsorReporter(empClient, tokenBalanceClient, walletsToMonitor, priceFeed);
 
-  const globalSummaryReporter = new GlobalSummaryReporter(empEventClient, priceFeed);
+  const globalSummaryReporter = new GlobalSummaryReporter(empClient, empEventClient, priceFeed);
 
   console.log(boldUnderline("1. Monitored wallets risk metrics😅"));
   await sponsorReporter.generateMonitoredWalletMetrics();

@@ -1,11 +1,13 @@
 const { createFormatFunction } = require("../common/FormattingUtils");
+const { averageBlockTimeSeconds } = require("../common/TimeUtils");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
 class GlobalSummaryReporter {
-  constructor(expiringMultiPartyEventClient, priceFeed) {
+  constructor(expiringMultiPartyClient, expiringMultiPartyEventClient, priceFeed) {
+    this.empClient = expiringMultiPartyClient;
     this.empEventClient = expiringMultiPartyEventClient;
     this.priceFeed = priceFeed;
 
@@ -20,6 +22,7 @@ class GlobalSummaryReporter {
   }
 
   update = async () => {
+    await this.empClient.update();
     await this.empEventClient.update();
     await this.priceFeed.update();
   };
@@ -30,6 +33,13 @@ class GlobalSummaryReporter {
     // 1. Sponsor stats table
     console.group();
     console.log(bold("Sponsor summary stats"));
+    console.log(italic("- Collateral deposited counts collateral transferred into contract from creates and deposits"));
+    console.log(
+      italic(
+        "- Collateral withdrawn counts collateral transferred out of contract from withdrawals, redemptions, expiry settlements, liquidation reward withdrawals, and fees paid"
+      )
+    );
+
     await this._generateSponsorStats();
     console.groupEnd();
 
@@ -54,71 +64,148 @@ class GlobalSummaryReporter {
     const createEvents = this.empEventClient.getAllCreateEvents();
     const withdrawEvents = this.empEventClient.getAllWithdrawEvents();
     const redeemEvents = this.empEventClient.getAllRedeemEvents();
+    const regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
+    const finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
+
+    const currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
+    const blockNumberOneDayAgo = currentBlockNumber - (await this._getLookbackTimeInBlocks(24 * 60 * 60));
 
     let allSponsorStatsTable = {};
 
     // - Lifetime # of unique sponsors.
     const uniqueSponsors = {};
+    const currentUniqueSponsors = this.empClient.getAllPositions();
     for (let event of newSponsorEvents) {
       uniqueSponsors[event.sponsor] = true;
     }
-    allSponsorStatsTable["# of unique sponsors"] = Object.keys(uniqueSponsors).length;
+    allSponsorStatsTable["# of unique sponsors"] = {
+      cumulative: Object.keys(uniqueSponsors).length,
+      current: Object.keys(currentUniqueSponsors).length
+    };
 
     // - Cumulative collateral deposited into contract: Deposits, Creates
     let collateralDeposited = toBN("0");
+    let collateralDepositedDaily = toBN("0");
     for (let event of depositEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
+      }
     }
     for (let event of createEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
+      }
     }
-    allSponsorStatsTable["collateral deposited"] = this.formatDecimalString(collateralDeposited);
+    allSponsorStatsTable["collateral deposited"] = {
+      cumulative: this.formatDecimalString(collateralDeposited),
+      "24H": this.formatDecimalString(collateralDepositedDaily)
+    };
 
-    // - Cumulative collateral withdrawn from contract: Withdraws, Redeems, SettleExpired's, WithdrawLiquidations
+    // - Cumulative collateral withdrawn from contract: Withdraws, Redeems, SettleExpired's, WithdrawLiquidations, RegularFees, FinalFees
     let collateralWithdrawn = toBN("0");
+    let collateralWithdrawnDaily = toBN("0");
     for (let event of withdrawEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
+      }
     }
     for (let event of redeemEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
+      }
     }
-    allSponsorStatsTable["collateral withdrawn"] = this.formatDecimalString(collateralWithdrawn);
+    for (let event of regularFeeEvents) {
+      collateralWithdrawn = collateralWithdrawn.add(toBN(event.regularFee)).add(toBN(event.lateFee));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.regularFee)).add(toBN(event.lateFee));
+      }
+    }
+    for (let event of finalFeeEvents) {
+      collateralWithdrawn = collateralWithdrawn.add(toBN(event.amount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.amount));
+      }
+    }
+
+    allSponsorStatsTable["collateral withdrawn"] = {
+      cumulative: this.formatDecimalString(collateralWithdrawn),
+      "24H": this.formatDecimalString(collateralWithdrawnDaily)
+    };
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = collateralDeposited.sub(collateralWithdrawn);
-    allSponsorStatsTable["net collateral deposited"] = this.formatDecimalString(netCollateralWithdrawn);
+    let netCollateralWithdrawnDaily = collateralDepositedDaily.sub(collateralWithdrawnDaily);
+    allSponsorStatsTable["net collateral deposited"] = {
+      cumulative: this.formatDecimalString(netCollateralWithdrawn),
+      "24H": this.formatDecimalString(netCollateralWithdrawnDaily)
+    };
 
     // - Tokens minted: Creates
     let tokensMinted = toBN("0");
+    let tokensMintedDaily = toBN("0");
     for (let event of createEvents) {
       tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        tokensMintedDaily = tokensMintedDaily.add(toBN(event.collateralAmount));
+      }
     }
-    allSponsorStatsTable["tokens minted"] = this.formatDecimalString(tokensMinted);
+    allSponsorStatsTable["tokens minted"] = {
+      cumulative: this.formatDecimalString(tokensMinted),
+      "24H": this.formatDecimalString(tokensMintedDaily)
+    };
 
     // - Tokens repaid: Redeems, SettleExpired's
     let tokensRepaid = toBN("0");
+    let tokensRepaidDaily = toBN("0");
     for (let event of redeemEvents) {
       tokensRepaid = tokensRepaid.add(toBN(event.tokenAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.collateralAmount));
+      }
     }
-    allSponsorStatsTable["tokens repaid"] = this.formatDecimalString(tokensRepaid);
+    allSponsorStatsTable["tokens repaid"] = {
+      cumulative: this.formatDecimalString(tokensRepaid),
+      "24H": this.formatDecimalString(tokensRepaidDaily)
+    };
 
     // - Net tokens minted:
     let netTokensMinted = tokensMinted.sub(tokensRepaid);
-    allSponsorStatsTable["net tokens minted"] = this.formatDecimalString(netTokensMinted);
+    let netTokensMintedDaily = tokensMintedDaily.sub(tokensRepaidDaily);
+    allSponsorStatsTable["net tokens minted"] = {
+      cumulative: this.formatDecimalString(netTokensMinted),
+      "24H": this.formatDecimalString(netTokensMintedDaily)
+    };
 
     // - GCR (collateral / tokens outstanding):
     let currentCollateral = toBN((await this.empContract.methods.totalPositionCollateral().call()).toString());
     let currentTokensOutstanding = toBN((await this.empContract.methods.totalTokensOutstanding().call()).toString());
     let currentGCR = currentCollateral.mul(toBN(toWei("1"))).div(currentTokensOutstanding);
-    allSponsorStatsTable["GCR - collateral / # tokens outstanding"] = this.formatDecimalString(currentGCR);
+    allSponsorStatsTable["GCR - collateral / # tokens outstanding"] = {
+      current: this.formatDecimalString(currentGCR)
+    };
 
     // - GCR (collateral / TRV):
     let priceEstimate = toBN(this.priceFeed.getCurrentPrice());
     let currentTRV = currentTokensOutstanding.mul(priceEstimate).div(toBN(toWei("1")));
     let currentGCRUsingTRV = currentCollateral.mul(toBN(toWei("1"))).div(currentTRV);
-    allSponsorStatsTable["GCR - collateral / TRV"] = this.formatDecimalString(currentGCRUsingTRV);
+    allSponsorStatsTable["GCR - collateral / TRV"] = {
+      current: this.formatDecimalString(currentGCRUsingTRV)
+    };
+    allSponsorStatsTable["Price from pricefeed"] = {
+      current: this.formatDecimalString(priceEstimate)
+    };
 
     console.table(allSponsorStatsTable);
+  };
+
+  _getLookbackTimeInBlocks = async lookbackTimeInSeconds => {
+    const blockTimeInSeconds = await averageBlockTimeSeconds();
+    const blocksToLookBack = Math.ceil(lookbackTimeInSeconds / blockTimeInSeconds);
+    return blocksToLookBack;
   };
 }
 module.exports = {
