@@ -1,5 +1,8 @@
 # Style Guide
 
+This guide covers the preferred style guidelines for the `protocol` repo. If a rule is not listed here, you are
+encouraged to follow whatever the most accepted or idiomatic rule is for that language and scenario.
+
 ## Solidity
 
 ### Correct Solhint Errors and Warnigns
@@ -61,3 +64,27 @@ Function parameters are not preceded by underscores unless they are constructor 
 ### Comments
 
 We follow the official Soldity style guide and use the ["Ethereum Natural Language Specification Format" or "NatSpec"](https://solidity.readthedocs.io/en/latest/style-guide.html#natspec). We choose to apply this only to public methods. If internal methods require documentation, we prefer to use single line (`//`) format comments.
+
+## Javascript
+
+### Function Declarations
+
+If the implementation does not _require_ a specific type of function declaration, the following guidelines should be
+used.
+
+When the function is named and declared at the file-level or class-level scope, it should be declared as a
+"traditional" or "normal" function:
+
+```js
+function name(arg1, arg2) {
+  // Fuction body
+}
+```
+
+When a function is declared within another function, some tighter non-class scope, or is anonymous, it should use the "arrow" style:
+
+```js
+const name = (arg1, arg2) => {
+  // Function body
+}
+```
