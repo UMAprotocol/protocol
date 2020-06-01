@@ -37,24 +37,39 @@ function addPublicNetwork(networks, name, networkId) {
   // GCS ManagedSecretProvider network.
   networks[name] = {
     ...options,
-    provider: new ManagedSecretProvider(
-      GckmsConfig,
-      `https://${name}.infura.io/v3/${infuraApiKey}`,
-      0,
-      GckmsConfig.length
-    )
+    provider: function() {
+      if (!this.singletonProvider) {
+        this.singletonProvider = new ManagedSecretProvider(
+          GckmsConfig,
+          `https://${name}.infura.io/v3/${infuraApiKey}`,
+          0,
+          GckmsConfig.length
+        );
+      }
+      return this.singletonProvider;
+    }
   };
 
   // Private key network.
   networks[name + "_privatekey"] = {
     ...options,
-    provider: new HDWalletProvider([privateKey], `https://${name}.infura.io/v3/${infuraApiKey}`)
+    provider: function() {
+      if (!this.singletonProvider) {
+        this.singletonProvider = new HDWalletProvider([privateKey], `https://${name}.infura.io/v3/${infuraApiKey}`);
+      }
+      return this.singletonProvider;
+    }
   };
 
   // Mnemonic network.
   networks[name + "_mnemonic"] = {
     ...options,
-    provider: new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2)
+    provider: function() {
+      if (!this.singletonProvider) {
+        this.singletonProvider = new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2);
+      }
+      return this.singletonProvider;
+    }
   };
 
   // Ledger has changed their standard derivation path since this library was created, so we must override the default one.
@@ -66,7 +81,15 @@ function addPublicNetwork(networks, name, networkId) {
   // Normal ledger wallet network.
   networks[name + "_ledger"] = {
     ...options,
-    provider: new LedgerWalletProvider(ledgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
+    provider: function() {
+      if (!this.singletonProvider) {
+        this.singletonProvider = new LedgerWalletProvider(
+          ledgerOptions,
+          `https://${name}.infura.io/v3/${infuraApiKey}`
+        );
+      }
+      return this.singletonProvider;
+    }
   };
 
   // The default derivation path matches the "legacy" ledger account in Ledger Live.
@@ -77,7 +100,15 @@ function addPublicNetwork(networks, name, networkId) {
   // Legacy ledger wallet network.
   networks[name + "_ledger_legacy"] = {
     ...options,
-    provider: new LedgerWalletProvider(legacyLedgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
+    provider: function() {
+      if (!this.singletonProvider) {
+        this.singletonProvider = new LedgerWalletProvider(
+          legacyLedgerOptions,
+          `https://${name}.infura.io/v3/${infuraApiKey}`
+        );
+      }
+      return this.singletonProvider;
+    }
   };
 }
 
@@ -125,7 +156,15 @@ addLocalNetwork(networks, "test");
 addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
-addLocalNetwork(networks, "metamask", { provider: new MetaMaskTruffleProvider(), networkCheckTimeout: 500000 });
+addLocalNetwork(networks, "metamask", {
+  networkCheckTimeout: 500000,
+  provider: function() {
+    if (!this.singletonProvider) {
+      this.singletonProvider = new MetaMaskTruffleProvider();
+    }
+    return this.singletonProvider;
+  }
+});
 
 addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
 
