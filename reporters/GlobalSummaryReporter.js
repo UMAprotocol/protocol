@@ -42,7 +42,11 @@ class GlobalSummaryReporter {
       )
     );
     console.log(italic("- Tokens minted counts synthetic tokens created"));
-    console.log(italic("- Tokens repaid counts synthetic tokens burned via redemptions and expiry settlements"));
+    console.log(
+      italic(
+        "- Tokens burned counts synthetic tokens destroyed via redemptions, expiry settlements, and liquidations created"
+      )
+    );
 
     await this._generateSponsorStats();
     console.groupEnd();
@@ -72,6 +76,7 @@ class GlobalSummaryReporter {
     const expirySettlementEvents = this.empEventClient.getAllSettleExpiredPositionEvents();
     const regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
     const finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
+    const liquidationEvents = this.empEventClient.getAllLiquidationEvents();
 
     const currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
     const startBlockNumberForPeriod =
@@ -171,7 +176,7 @@ class GlobalSummaryReporter {
     for (let event of createEvents) {
       tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
       if (event.blockNumber >= startBlockNumberForPeriod) {
-        tokensMintedPeriod = tokensMintedPeriod.add(toBN(event.collateralAmount));
+        tokensMintedPeriod = tokensMintedPeriod.add(toBN(event.tokenAmount));
       }
     }
     allSponsorStatsTable["tokens minted"] = {
@@ -180,29 +185,35 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(await this.empContract.methods.totalTokensOutstanding().call())
     };
 
-    // - Tokens repaid: Redeems, SettleExpired's
-    let tokensRepaid = toBN("0");
-    let tokensRepaidPeriod = toBN("0");
+    // - Tokens burned: Redeems, SettleExpired's, Liquidations
+    let tokensBurned = toBN("0");
+    let tokensBurnedPeriod = toBN("0");
     for (let event of redeemEvents) {
-      tokensRepaid = tokensRepaid.add(toBN(event.tokenAmount));
+      tokensBurned = tokensBurned.add(toBN(event.tokenAmount));
       if (event.blockNumber >= startBlockNumberForPeriod) {
-        tokensRepaidPeriod = tokensRepaidPeriod.add(toBN(event.collateralAmount));
+        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokenAmount));
       }
     }
     for (let event of expirySettlementEvents) {
-      tokensRepaid = tokensRepaid.add(toBN(event.tokensBurned));
+      tokensBurned = tokensBurned.add(toBN(event.tokensBurned));
       if (event.blockNumber >= startBlockNumberForPeriod) {
-        tokensRepaidPeriod = tokensRepaidPeriod.add(toBN(event.tokensBurned));
+        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokensBurned));
       }
     }
-    allSponsorStatsTable["tokens repaid"] = {
-      cumulative: this.formatDecimalString(tokensRepaid),
-      [periodLabelInHours]: this.formatDecimalString(tokensRepaidPeriod)
+    for (let event of liquidationEvents) {
+      tokensBurned = tokensBurned.add(toBN(event.tokensOutstanding));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokensOutstanding));
+      }
+    }
+    allSponsorStatsTable["tokens burned"] = {
+      cumulative: this.formatDecimalString(tokensBurned),
+      [periodLabelInHours]: this.formatDecimalString(tokensBurnedPeriod)
     };
 
     // - Net tokens minted:
-    let netTokensMinted = tokensMinted.sub(tokensRepaid);
-    let netTokensMintedPeriod = tokensMintedPeriod.sub(tokensRepaidPeriod);
+    let netTokensMinted = tokensMinted.sub(tokensBurned);
+    let netTokensMintedPeriod = tokensMintedPeriod.sub(tokensBurnedPeriod);
     allSponsorStatsTable["net tokens minted"] = {
       cumulative: this.formatDecimalString(netTokensMinted),
       [periodLabelInHours]: this.formatDecimalString(netTokensMintedPeriod)
