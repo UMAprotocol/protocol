@@ -195,7 +195,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["GCR - collateral / TRV"] = {
       current: this.formatDecimalString(currentGCRUsingTRV)
     };
-    allSponsorStatsTable["Price from pricefeed"] = {
+    allSponsorStatsTable["price from pricefeed"] = {
       current: this.formatDecimalString(priceEstimate)
     };
 
