@@ -7,13 +7,11 @@ const averageBlockTimeSeconds = async lookbackSeconds => {
   // since April 2016, although this value seems to spike periodically for a relatively short period of time.
   const defaultBlockTimeSeconds = 13.5;
 
-  return new Promise((resolve, reject) => {
-    if (!defaultBlockTimeSeconds) {
-      reject("Missing default block time value");
-    } else {
-      resolve(defaultBlockTimeSeconds);
-    }
-  });
+  if (!defaultBlockTimeSeconds) {
+    throw "Missing default block time value";
+  } else {
+    return defaultBlockTimeSeconds;
+  }
 };
 
 module.exports = {

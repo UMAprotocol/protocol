@@ -25,7 +25,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 const OracleInterface = artifacts.require("OracleInterface");
 const Finder = artifacts.require("Finder");
 
-async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig) {
+async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds) {
   console.log("Starting Reporter Script🖨");
 
   // For now we will use a dummy transport to make things quiet in the logs
@@ -93,7 +93,8 @@ async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapP
     empEventClient,
     referencePriceFeed,
     uniswapPriceFeed,
-    oracle
+    oracle,
+    periodLengthSeconds
   );
 
   console.log(boldUnderline("1. Monitored wallets risk metrics😅"));
@@ -130,7 +131,11 @@ const Poll = async function(callback) {
     // UNISWAP_PRICE_FEED_CONFIG={"type":"uniswap","twapLength":86400,"lookback":7200,"invertPrice":true,"uniswapAddress":"0x1e4F65138Bbdb66b9C4140b2b18255A896272338"}
     const uniswapPriceFeedConfig = JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG);
 
-    await run(empAddress, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig);
+    // Change `periodLengthSeconds` to modify how far back the report will look for its shorter report period. For example, setting this to
+    // `24 * 60 * 60` means that the report will include aggregated data for the past 24 hours.
+    const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH ? process.env.PERIOD_REPORT_LENGTH : 24 * 60 * 60;
+
+    await run(empAddress, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds);
     callback();
   } catch (err) {
     callback(err);
