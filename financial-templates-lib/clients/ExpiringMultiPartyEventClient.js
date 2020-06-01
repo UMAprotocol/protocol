@@ -21,6 +21,8 @@ class ExpiringMultiPartyEventClient {
     this.redeemEvents = [];
     this.regularFeeEvents = [];
     this.finalFeeEvents = [];
+    this.liquidationWithdrawnEvents = [];
+    this.settleExpiredPositionEvents = [];
 
     // First block number to begin searching for events after.
     this.firstBlockToSearch = latestBlockNumber;
@@ -38,6 +40,8 @@ class ExpiringMultiPartyEventClient {
     this.redeemEvents = [];
     this.regularFeeEvents = [];
     this.finalFeeEvents = [];
+    this.liquidationWithdrawnEvents = [];
+    this.settleExpiredPositionEvents = [];
   };
 
   getAllNewSponsorEvents = () => this.newSponsorEvents;
@@ -60,6 +64,10 @@ class ExpiringMultiPartyEventClient {
 
   getAllFinalFeeEvents = () => this.finalFeeEvents;
 
+  getAllLiquidationWithdrawnEvents = () => this.liquidationWithdrawnEvents;
+
+  getAllSettleExpiredPositionEvents = () => this.settleExpiredPositionEvents;
+
   // Returns the last update timestamp.
   getLastUpdateTime = () => this.lastUpdateTimestamp;
 
@@ -75,6 +83,7 @@ class ExpiringMultiPartyEventClient {
       toBlock: currentBlockNumber
     });
 
+    // Liquidation events
     for (let event of liquidationEventsObj) {
       this.liquidationEvents.push({
         transactionHash: event.transactionHash,
@@ -225,6 +234,36 @@ class ExpiringMultiPartyEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         amount: event.returnValues.amount
+      });
+    }
+
+    // Liquidation withdrawn events
+    const liquidationWithdrawnEventsObj = await this.emp.getPastEvents("LiquidationWithdrawn", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of liquidationWithdrawnEventsObj) {
+      this.liquidationWithdrawnEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        caller: event.returnValues.caller,
+        withdrawalAmount: event.returnValues.withdrawalAmount,
+        liquidationStatus: event.returnValues.liquidationStatus
+      });
+    }
+
+    // Settle expired position events
+    const settleExpiredPositionEventsObj = await this.emp.getPastEvents("SettleExpiredPosition", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of settleExpiredPositionEventsObj) {
+      this.settleExpiredPositionEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        caller: event.returnValues.caller,
+        collateralReturned: event.returnValues.collateralReturned,
+        tokensBurned: event.returnValues.tokensBurned
       });
     }
 

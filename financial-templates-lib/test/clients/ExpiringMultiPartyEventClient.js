@@ -359,7 +359,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   });
 
   it("Return RegularFee Events", async function() {
-    // Update the client and check it has the new sponsor event stored correctly
     await client.clearState();
 
     // State is empty before update()
@@ -613,6 +612,103 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         }
       ],
       client.getAllDisputeSettlementEvents()
+    );
+  });
+
+  it("Return Liquidation Withdrawn Events", async function() {
+    // Create liquidation to liquidate sponsor1
+    const liquidationTime = (await emp.getCurrentTime()).toNumber();
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // Dispute the position from the second sponsor
+    await emp.dispute("0", sponsor1, {
+      from: sponsor2
+    });
+
+    // Advance time and settle
+    const timeAfterLiquidationLiveness = liquidationTime + 10;
+    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
+    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+
+    // Force a price such that the dispute succeeds, and then withdraw from the successfully
+    // disputed liquidation.
+    const disputePrice = toWei("0.1");
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+
+    const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllLiquidationWithdrawnEvents());
+
+    // Update the client and check it has the liquidation withdrawn event stored correctly
+    await client.update();
+
+    // Compare with expected processed event object
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject.tx,
+          blockNumber: txObject.receipt.blockNumber,
+          caller: liquidator,
+          withdrawalAmount: toWei("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
+          liquidationStatus: "3" // Settlement price makes dispute successful
+        }
+      ],
+      client.getAllLiquidationWithdrawnEvents()
+    );
+  });
+
+  it("Return SettleExpiredPosition Events", async function() {
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllSettleExpiredPositionEvents());
+
+    // Expire contract at settlement price of 0.2.
+    await timer.setCurrentTime(expirationTime.toString());
+    await emp.expire();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), expirationTime.toString(), toWei("0.2"));
+    const txObject = await emp.settleExpired({ from: sponsor1 });
+
+    await client.update();
+
+    // Compare with expected processed event objects.
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject.tx,
+          blockNumber: txObject.receipt.blockNumber,
+          caller: sponsor1,
+          collateralReturned: toWei("10"), // Sponsor should get back all collateral in position because they still hold all tokens
+          tokensBurned: toWei("50")
+        }
+      ],
+      client.getAllSettleExpiredPositionEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    const txObject2 = await emp.settleExpired({ from: sponsor2 });
+    await client.clearState();
+    await client.update();
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject2.tx,
+          blockNumber: txObject2.receipt.blockNumber,
+          caller: sponsor2,
+          collateralReturned: toWei("100"), // Sponsor should get back all collateral in position because they still hold all tokens
+          tokensBurned: toWei("45")
+        }
+      ],
+      client.getAllSettleExpiredPositionEvents()
     );
   });
 
