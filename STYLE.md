@@ -1,6 +1,6 @@
 # Style Guide
 
-This guide covers the preferred style guidelines for the `protocol/` repo. If a rule is not listed here, you are
+This guide covers the preferred style guidelines for the `protocol` repo. If a rule is not listed here, you are
 encouraged to follow whatever the most accepted or idiomatic rule is for that language and scenario.
 
 ## Solidity
