@@ -1,5 +1,9 @@
 # How to contribute
 
+## Style guide
+
+You can find the style guide [here](./STYLE.md).
+
 ## Voter dApp
 
 This is a browser client that UMA token holders can use to vote on price requests. The dApp interacts with the deployed [DVM](https://docs.umaproject.org/uma/oracle/technical_architecture.html) code using MetaMask's browser extension. The source code was bootstrapped from [Create React App](https://github.com/facebook/create-react-app).

@@ -35,7 +35,7 @@ class CRMonitor {
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
-  checkWalletCrRatio = async () => {
+  async checkWalletCrRatio() {
     // yield the price feed at the current time.
     const price = this.priceFeed.getCurrentPrice();
 
@@ -78,6 +78,12 @@ class CRMonitor {
       // Lastly, if we have gotten a position CR ratio this can be compared against the threshold. If it is below the
       // threshold then push the notification.
       if (this._ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString()))) {
+        const liquidationPrice = this._calculatePriceForCR(
+          collateral,
+          tokensOutstanding,
+          this.empClient.collateralRequirement
+        );
+
         // Sample message:
         // Risk alert: [Tracked wallet name] has fallen below [threshold]%.
         // Current [name of identifier] value: [current identifier value].
@@ -92,7 +98,12 @@ class CRMonitor {
           "% threshold. Current value of " +
           this.syntheticCurrencySymbol +
           " is " +
-          this.formatDecimalString(price);
+          this.formatDecimalString(price) +
+          ". The collateralization requirement is " +
+          this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
+          "%. If the price increases to " +
+          this.formatDecimalString(liquidationPrice) +
+          ", the position can be liquidated.";
 
         this.logger.warn({
           at: "ContractMonitor",
@@ -101,40 +112,47 @@ class CRMonitor {
         });
       }
     }
-  };
+  }
 
-  _getPositionInformation = address => {
-    const positionInfo = this.empClient.getAllPositions().filter(position => position.sponsor == address);
-    if (positionInfo.length == 0) {
-      return null;
-      // there should only ever be one position information object per address
-    } else return positionInfo[0];
-  };
+  _getPositionInformation(address) {
+    return this.empClient.getAllPositions().find(position => position.sponsor == address);
+  }
 
   // Checks if a big number value is below a given threshold.
   _ltThreshold(value, threshold) {
+    const { toBN, toWei } = this.web3.utils;
     // If the price has not resolved yet then return false.
     if (value == null) {
       return false;
     }
-    return this.web3.utils.toBN(value).lt(this.web3.utils.toBN(threshold));
+    return toBN(value).lt(toBN(threshold));
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = collateral / (tokensOutstanding * price)
-  _calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+  _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
+    const { toBN, toWei } = this.web3.utils;
     if (collateral == 0) {
       return 0;
     }
     if (tokensOutstanding == 0) {
       return null;
     }
-    return this.web3.utils
-      .toBN(collateral)
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)));
-  };
+    return toBN(collateral)
+      .mul(toBN(toWei("1")))
+      .mul(toBN(toWei("1")))
+      .div(toBN(tokensOutstanding).mul(toBN(tokenPrice)));
+  }
+
+  _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
+    const { toBN, toWei } = this.web3.utils;
+    const fixedPointScaling = toBN(toWei("1"));
+    return toBN(collateral)
+      .mul(fixedPointScaling)
+      .mul(fixedPointScaling)
+      .div(toBN(tokensOutstanding))
+      .div(toBN(positionCR));
+  }
 }
 
 module.exports = {
