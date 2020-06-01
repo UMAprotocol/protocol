@@ -359,7 +359,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   });
 
   it("Return RegularFee Events", async function() {
-    // Update the client and check it has the new sponsor event stored correctly
     await client.clearState();
 
     // State is empty before update()
@@ -664,6 +663,52 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         }
       ],
       client.getAllLiquidationWithdrawnEvents()
+    );
+  });
+
+  it("Return SettleExpiredPosition Events", async function() {
+    await client.clearState();
+
+    // State is empty before update()
+    assert.deepStrictEqual([], client.getAllSettleExpiredPositionEvents());
+
+    // Expire contract at settlement price of 0.2.
+    await timer.setCurrentTime(expirationTime.toString());
+    await emp.expire();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), expirationTime.toString(), toWei("0.2"));
+    const txObject = await emp.settleExpired({ from: sponsor1 });
+
+    await client.update();
+
+    // Compare with expected processed event objects.
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject.tx,
+          blockNumber: txObject.receipt.blockNumber,
+          caller: sponsor1,
+          collateralReturned: toWei("10"), // Sponsor should get back all collateral in position because they still hold all tokens
+          tokensBurned: toWei("50")
+        }
+      ],
+      client.getAllSettleExpiredPositionEvents()
+    );
+
+    // Correctly adds only new events after last query.
+    const txObject2 = await emp.settleExpired({ from: sponsor2 });
+    await client.clearState();
+    await client.update();
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject2.tx,
+          blockNumber: txObject2.receipt.blockNumber,
+          caller: sponsor2,
+          collateralReturned: toWei("100"), // Sponsor should get back all collateral in position because they still hold all tokens
+          tokensBurned: toWei("45")
+        }
+      ],
+      client.getAllSettleExpiredPositionEvents()
     );
   });
 
