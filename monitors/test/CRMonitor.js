@@ -159,6 +159,8 @@ contract("CRMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
     assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Synthetic token symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
+    assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
 
     // The message should be sent every time the bot is polled and there is a crossing of the threshold line. At a price
     // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
