@@ -6,10 +6,12 @@ const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
 class GlobalSummaryReporter {
-  constructor(expiringMultiPartyClient, expiringMultiPartyEventClient, priceFeed) {
+  constructor(expiringMultiPartyClient, expiringMultiPartyEventClient, priceFeed, lookbackTimeSeconds) {
     this.empClient = expiringMultiPartyClient;
     this.empEventClient = expiringMultiPartyEventClient;
     this.priceFeed = priceFeed;
+
+    this.lookbackTimeSeconds = lookbackTimeSeconds;
 
     this.web3 = this.empEventClient.web3;
 
@@ -72,7 +74,9 @@ class GlobalSummaryReporter {
     const finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
 
     const currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
-    const blockNumberOneDayAgo = currentBlockNumber - (await this._getLookbackTimeInBlocks(24 * 60 * 60));
+    const startBlockNumberSmallWindow =
+      currentBlockNumber - (await this._getLookbackTimeInBlocks(this.lookbackTimeSeconds));
+    const smallWindowLabelInHours = `${Math.round(this.lookbackTimeSeconds / (60 * 60))}H`;
 
     let allSponsorStatsTable = {};
 
@@ -92,19 +96,19 @@ class GlobalSummaryReporter {
     let collateralDepositedDaily = toBN("0");
     for (let event of depositEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
       }
     }
     for (let event of createEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
       }
     }
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(collateralDeposited),
-      "24H": this.formatDecimalString(collateralDepositedDaily),
+      [smallWindowLabelInHours]: this.formatDecimalString(collateralDepositedDaily),
       current: this.formatDecimalString(await this.empContract.methods.totalPositionCollateral().call())
     };
 
@@ -113,44 +117,44 @@ class GlobalSummaryReporter {
     let collateralWithdrawnDaily = toBN("0");
     for (let event of withdrawEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
       }
     }
     for (let event of redeemEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
       }
     }
     for (let event of expirySettlementEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralReturned));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralReturned));
       }
     }
     for (let event of liquidationRewardEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.withdrawalAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.withdrawalAmount));
       }
     }
     for (let event of regularFeeEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.regularFee)).add(toBN(event.lateFee));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.regularFee)).add(toBN(event.lateFee));
       }
     }
     for (let event of finalFeeEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.amount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.amount));
       }
     }
 
     allSponsorStatsTable["collateral withdrawn"] = {
       cumulative: this.formatDecimalString(collateralWithdrawn),
-      "24H": this.formatDecimalString(collateralWithdrawnDaily)
+      [smallWindowLabelInHours]: this.formatDecimalString(collateralWithdrawnDaily)
     };
 
     // - Net collateral deposited into contract:
@@ -158,7 +162,7 @@ class GlobalSummaryReporter {
     let netCollateralWithdrawnDaily = collateralDepositedDaily.sub(collateralWithdrawnDaily);
     allSponsorStatsTable["net collateral deposited"] = {
       cumulative: this.formatDecimalString(netCollateralWithdrawn),
-      "24H": this.formatDecimalString(netCollateralWithdrawnDaily)
+      [smallWindowLabelInHours]: this.formatDecimalString(netCollateralWithdrawnDaily)
     };
 
     // - Tokens minted: Creates
@@ -166,13 +170,13 @@ class GlobalSummaryReporter {
     let tokensMintedDaily = toBN("0");
     for (let event of createEvents) {
       tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         tokensMintedDaily = tokensMintedDaily.add(toBN(event.collateralAmount));
       }
     }
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
-      "24H": this.formatDecimalString(tokensMintedDaily),
+      [smallWindowLabelInHours]: this.formatDecimalString(tokensMintedDaily),
       current: this.formatDecimalString(await this.empContract.methods.totalTokensOutstanding().call())
     };
 
@@ -181,19 +185,19 @@ class GlobalSummaryReporter {
     let tokensRepaidDaily = toBN("0");
     for (let event of redeemEvents) {
       tokensRepaid = tokensRepaid.add(toBN(event.tokenAmount));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.collateralAmount));
       }
     }
     for (let event of expirySettlementEvents) {
       tokensRepaid = tokensRepaid.add(toBN(event.tokensBurned));
-      if (event.blockNumber >= blockNumberOneDayAgo) {
+      if (event.blockNumber >= startBlockNumberSmallWindow) {
         tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.tokensBurned));
       }
     }
     allSponsorStatsTable["tokens repaid"] = {
       cumulative: this.formatDecimalString(tokensRepaid),
-      "24H": this.formatDecimalString(tokensRepaidDaily)
+      [smallWindowLabelInHours]: this.formatDecimalString(tokensRepaidDaily)
     };
 
     // - Net tokens minted:
@@ -201,7 +205,7 @@ class GlobalSummaryReporter {
     let netTokensMintedDaily = tokensMintedDaily.sub(tokensRepaidDaily);
     allSponsorStatsTable["net tokens minted"] = {
       cumulative: this.formatDecimalString(netTokensMinted),
-      "24H": this.formatDecimalString(netTokensMintedDaily)
+      [smallWindowLabelInHours]: this.formatDecimalString(netTokensMintedDaily)
     };
 
     // - GCR (collateral / tokens outstanding):
