@@ -2,9 +2,6 @@ require("dotenv").config();
 const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
 
-const { toWei } = web3.utils;
-
-const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 const winston = require("winston");
 
@@ -12,12 +9,12 @@ const { createPriceFeed } = require("../financial-templates-lib/price-feed/Creat
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Clients to retrieve on-chain data.
-// Clients to retrieve on-chain data.
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
 const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
 const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
 
 const { SponsorReporter } = require("./SponsorReporter");
+const { GlobalSummaryReporter } = require("./GlobalSummaryReporter");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -44,6 +41,17 @@ async function run(address, walletsToMonitor, priceFeedConfig) {
   const collateralTokenAddress = await emp.collateralCurrency();
   const syntheticTokenAddress = await emp.tokenCurrency();
 
+  // 4. EMP event client for reading past events. Change the start block to modify lookback window for summary stats.
+  // i.e. If you want to get data for only latest 24 hours, change block to the one mined 24 hours ago.
+  const startBlock = 0;
+  const empEventClient = new ExpiringMultiPartyEventClient(
+    dummyLogger,
+    ExpiringMultiParty.abi,
+    web3,
+    emp.address,
+    startBlock
+  );
+
   const tokenBalanceClient = new TokenBalanceClient(
     Logger,
     ExpandedERC20.abi,
@@ -55,11 +63,17 @@ async function run(address, walletsToMonitor, priceFeedConfig) {
 
   const sponsorReporter = new SponsorReporter(empClient, tokenBalanceClient, walletsToMonitor, priceFeed);
 
+  const globalSummaryReporter = new GlobalSummaryReporter(empEventClient, priceFeed);
+
   console.log(boldUnderline("1. Monitored wallets risk metrics😅"));
   await sponsorReporter.generateMonitoredWalletMetrics();
 
   console.log(boldUnderline("2. Sponsor table💸"));
   await sponsorReporter.generateSponsorsTable();
+
+  console.log(boldUnderline("3. Global summary stats🌐"));
+  // TODO: Print out what block # we are starting from (and convert to time using a library function blockNumberToTimestamp).
+  await globalSummaryReporter.generateSummaryStatsTable();
 }
 
 const Poll = async function(callback) {
