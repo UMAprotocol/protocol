@@ -18,9 +18,6 @@ class GlobalSummaryReporter {
     this.empContract = this.empEventClient.emp;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
-
-    this.collateralSymbol = "DAI";
-    this.syntheticSymbol = "ETHBTC";
   }
 
   update = async () => {
