@@ -6,12 +6,12 @@ const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
 class GlobalSummaryReporter {
-  constructor(expiringMultiPartyClient, expiringMultiPartyEventClient, priceFeed, lookbackTimeSeconds) {
+  constructor(expiringMultiPartyClient, expiringMultiPartyEventClient, priceFeed, periodLengthSeconds) {
     this.empClient = expiringMultiPartyClient;
     this.empEventClient = expiringMultiPartyEventClient;
     this.priceFeed = priceFeed;
 
-    this.lookbackTimeSeconds = lookbackTimeSeconds;
+    this.periodLengthSeconds = periodLengthSeconds;
 
     this.web3 = this.empEventClient.web3;
 
@@ -74,9 +74,9 @@ class GlobalSummaryReporter {
     const finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
 
     const currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
-    const startBlockNumberSmallWindow =
-      currentBlockNumber - (await this._getLookbackTimeInBlocks(this.lookbackTimeSeconds));
-    const smallWindowLabelInHours = `${Math.round(this.lookbackTimeSeconds / (60 * 60))}H`;
+    const startBlockNumberForPeriod =
+      currentBlockNumber - (await this._getLookbackTimeInBlocks(this.periodLengthSeconds));
+    const periodLabelInHours = `${Math.round(this.periodLengthSeconds / (60 * 60))}H`;
 
     let allSponsorStatsTable = {};
 
@@ -93,119 +93,119 @@ class GlobalSummaryReporter {
 
     // - Cumulative collateral deposited into contract: Deposits, Creates
     let collateralDeposited = toBN("0");
-    let collateralDepositedDaily = toBN("0");
+    let collateralDepositedPeriod = toBN("0");
     for (let event of depositEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.collateralAmount));
       }
     }
     for (let event of createEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralDepositedDaily = collateralDepositedDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.collateralAmount));
       }
     }
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(collateralDeposited),
-      [smallWindowLabelInHours]: this.formatDecimalString(collateralDepositedDaily),
+      [periodLabelInHours]: this.formatDecimalString(collateralDepositedPeriod),
       current: this.formatDecimalString(await this.empContract.methods.totalPositionCollateral().call())
     };
 
     // - Cumulative collateral withdrawn from contract: Withdraws, Redeems, SettleExpired's, WithdrawLiquidations, RegularFees, FinalFees
     let collateralWithdrawn = toBN("0");
-    let collateralWithdrawnDaily = toBN("0");
+    let collateralWithdrawnPeriod = toBN("0");
     for (let event of withdrawEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralAmount));
       }
     }
     for (let event of redeemEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralAmount));
       }
     }
     for (let event of expirySettlementEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralReturned));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralReturned));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralReturned));
       }
     }
     for (let event of liquidationRewardEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.withdrawalAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.withdrawalAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.withdrawalAmount));
       }
     }
     for (let event of regularFeeEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.regularFee)).add(toBN(event.lateFee));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.regularFee)).add(toBN(event.lateFee));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.regularFee)).add(toBN(event.lateFee));
       }
     }
     for (let event of finalFeeEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.amount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.amount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.amount));
       }
     }
 
     allSponsorStatsTable["collateral withdrawn"] = {
       cumulative: this.formatDecimalString(collateralWithdrawn),
-      [smallWindowLabelInHours]: this.formatDecimalString(collateralWithdrawnDaily)
+      [periodLabelInHours]: this.formatDecimalString(collateralWithdrawnPeriod)
     };
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = collateralDeposited.sub(collateralWithdrawn);
-    let netCollateralWithdrawnDaily = collateralDepositedDaily.sub(collateralWithdrawnDaily);
+    let netCollateralWithdrawnPeriod = collateralDepositedPeriod.sub(collateralWithdrawnPeriod);
     allSponsorStatsTable["net collateral deposited"] = {
       cumulative: this.formatDecimalString(netCollateralWithdrawn),
-      [smallWindowLabelInHours]: this.formatDecimalString(netCollateralWithdrawnDaily)
+      [periodLabelInHours]: this.formatDecimalString(netCollateralWithdrawnPeriod)
     };
 
     // - Tokens minted: Creates
     let tokensMinted = toBN("0");
-    let tokensMintedDaily = toBN("0");
+    let tokensMintedPeriod = toBN("0");
     for (let event of createEvents) {
       tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        tokensMintedDaily = tokensMintedDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        tokensMintedPeriod = tokensMintedPeriod.add(toBN(event.collateralAmount));
       }
     }
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
-      [smallWindowLabelInHours]: this.formatDecimalString(tokensMintedDaily),
+      [periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod),
       current: this.formatDecimalString(await this.empContract.methods.totalTokensOutstanding().call())
     };
 
     // - Tokens repaid: Redeems, SettleExpired's
     let tokensRepaid = toBN("0");
-    let tokensRepaidDaily = toBN("0");
+    let tokensRepaidPeriod = toBN("0");
     for (let event of redeemEvents) {
       tokensRepaid = tokensRepaid.add(toBN(event.tokenAmount));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.collateralAmount));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        tokensRepaidPeriod = tokensRepaidPeriod.add(toBN(event.collateralAmount));
       }
     }
     for (let event of expirySettlementEvents) {
       tokensRepaid = tokensRepaid.add(toBN(event.tokensBurned));
-      if (event.blockNumber >= startBlockNumberSmallWindow) {
-        tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.tokensBurned));
+      if (event.blockNumber >= startBlockNumberForPeriod) {
+        tokensRepaidPeriod = tokensRepaidPeriod.add(toBN(event.tokensBurned));
       }
     }
     allSponsorStatsTable["tokens repaid"] = {
       cumulative: this.formatDecimalString(tokensRepaid),
-      [smallWindowLabelInHours]: this.formatDecimalString(tokensRepaidDaily)
+      [periodLabelInHours]: this.formatDecimalString(tokensRepaidPeriod)
     };
 
     // - Net tokens minted:
     let netTokensMinted = tokensMinted.sub(tokensRepaid);
-    let netTokensMintedDaily = tokensMintedDaily.sub(tokensRepaidDaily);
+    let netTokensMintedPeriod = tokensMintedPeriod.sub(tokensRepaidPeriod);
     allSponsorStatsTable["net tokens minted"] = {
       cumulative: this.formatDecimalString(netTokensMinted),
-      [smallWindowLabelInHours]: this.formatDecimalString(netTokensMintedDaily)
+      [periodLabelInHours]: this.formatDecimalString(netTokensMintedPeriod)
     };
 
     // - GCR (collateral / tokens outstanding):

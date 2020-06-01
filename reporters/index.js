@@ -20,7 +20,7 @@ const { GlobalSummaryReporter } = require("./GlobalSummaryReporter");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
-async function run(address, walletsToMonitor, priceFeedConfig, smallWindowReportLengthSeconds) {
+async function run(address, walletsToMonitor, priceFeedConfig, periodLengthSeconds) {
   console.log("Starting Reporter Script🖨");
 
   // For now we will use a dummy transport to make things quiet in the logs
@@ -62,12 +62,7 @@ async function run(address, walletsToMonitor, priceFeedConfig, smallWindowReport
 
   const sponsorReporter = new SponsorReporter(empClient, tokenBalanceClient, walletsToMonitor, priceFeed);
 
-  const globalSummaryReporter = new GlobalSummaryReporter(
-    empClient,
-    empEventClient,
-    priceFeed,
-    smallWindowReportLengthSeconds
-  );
+  const globalSummaryReporter = new GlobalSummaryReporter(empClient, empEventClient, priceFeed, periodLengthSeconds);
 
   console.log(boldUnderline("1. Monitored wallets risk metrics😅"));
   await sponsorReporter.generateMonitoredWalletMetrics();
@@ -96,11 +91,11 @@ const Poll = async function(callback) {
     // PRICE_FEED_CONFIG={"type":"medianizer","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"}]}
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
-    // Change `smallWindowReportLengthSeconds` to modify how far back the report will look for its shorter window. For example, setting this to
+    // Change `periodLengthSeconds` to modify how far back the report will look for its shorter report period. For example, setting this to
     // `24 * 60 * 60` means that the report will include aggregated data for the past 24 hours.
-    const smallWindowReportLengthSeconds = process.env.REPORT_LENGTH ? process.env.REPORT_LENGTH : 24 * 60 * 60;
+    const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH ? process.env.PERIOD_REPORT_LENGTH : 24 * 60 * 60;
 
-    await run(empAddress, walletsToMonitor, priceFeedConfig, smallWindowReportLengthSeconds);
+    await run(empAddress, walletsToMonitor, priceFeedConfig, periodLengthSeconds);
     callback();
   } catch (err) {
     callback(err);
