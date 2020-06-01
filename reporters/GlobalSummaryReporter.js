@@ -39,6 +39,8 @@ class GlobalSummaryReporter {
         "- Collateral withdrawn counts collateral transferred out of contract from withdrawals, redemptions, expiry settlements, liquidation reward withdrawals, and fees paid"
       )
     );
+    console.log(italic("- Tokens minted counts synthetic tokens created"));
+    console.log(italic("- Tokens repaid counts synthetic tokens burned via redemptions and expiry settlements"));
 
     await this._generateSponsorStats();
     console.groupEnd();
@@ -64,6 +66,8 @@ class GlobalSummaryReporter {
     const createEvents = this.empEventClient.getAllCreateEvents();
     const withdrawEvents = this.empEventClient.getAllWithdrawEvents();
     const redeemEvents = this.empEventClient.getAllRedeemEvents();
+    const liquidationRewardEvents = this.empEventClient.getAllLiquidationWithdrawnEvents();
+    const expirySettlementEvents = this.empEventClient.getAllSettleExpiredPositionEvents();
     const regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
     const finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
 
@@ -100,7 +104,8 @@ class GlobalSummaryReporter {
     }
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(collateralDeposited),
-      "24H": this.formatDecimalString(collateralDepositedDaily)
+      "24H": this.formatDecimalString(collateralDepositedDaily),
+      current: this.formatDecimalString(await this.empContract.methods.totalPositionCollateral().call())
     };
 
     // - Cumulative collateral withdrawn from contract: Withdraws, Redeems, SettleExpired's, WithdrawLiquidations, RegularFees, FinalFees
@@ -116,6 +121,18 @@ class GlobalSummaryReporter {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
       if (event.blockNumber >= blockNumberOneDayAgo) {
         collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralAmount));
+      }
+    }
+    for (let event of expirySettlementEvents) {
+      collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralReturned));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.collateralReturned));
+      }
+    }
+    for (let event of liquidationRewardEvents) {
+      collateralWithdrawn = collateralWithdrawn.add(toBN(event.withdrawalAmount));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        collateralWithdrawnDaily = collateralWithdrawnDaily.add(toBN(event.withdrawalAmount));
       }
     }
     for (let event of regularFeeEvents) {
@@ -155,7 +172,8 @@ class GlobalSummaryReporter {
     }
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
-      "24H": this.formatDecimalString(tokensMintedDaily)
+      "24H": this.formatDecimalString(tokensMintedDaily),
+      current: this.formatDecimalString(await this.empContract.methods.totalTokensOutstanding().call())
     };
 
     // - Tokens repaid: Redeems, SettleExpired's
@@ -165,6 +183,12 @@ class GlobalSummaryReporter {
       tokensRepaid = tokensRepaid.add(toBN(event.tokenAmount));
       if (event.blockNumber >= blockNumberOneDayAgo) {
         tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.collateralAmount));
+      }
+    }
+    for (let event of expirySettlementEvents) {
+      tokensRepaid = tokensRepaid.add(toBN(event.tokensBurned));
+      if (event.blockNumber >= blockNumberOneDayAgo) {
+        tokensRepaidDaily = tokensRepaidDaily.add(toBN(event.tokensBurned));
       }
     }
     allSponsorStatsTable["tokens repaid"] = {
