@@ -21,6 +21,7 @@ class ExpiringMultiPartyEventClient {
     this.redeemEvents = [];
     this.regularFeeEvents = [];
     this.finalFeeEvents = [];
+    this.liquidationWithdrawnEvents = [];
 
     // First block number to begin searching for events after.
     this.firstBlockToSearch = latestBlockNumber;
@@ -38,6 +39,7 @@ class ExpiringMultiPartyEventClient {
     this.redeemEvents = [];
     this.regularFeeEvents = [];
     this.finalFeeEvents = [];
+    this.liquidationWithdrawnEvents = [];
   };
 
   getAllNewSponsorEvents = () => this.newSponsorEvents;
@@ -60,6 +62,8 @@ class ExpiringMultiPartyEventClient {
 
   getAllFinalFeeEvents = () => this.finalFeeEvents;
 
+  getAllLiquidationWithdrawnEvents = () => this.liquidationWithdrawnEvents;
+
   // Returns the last update timestamp.
   getLastUpdateTime = () => this.lastUpdateTimestamp;
 
@@ -75,6 +79,7 @@ class ExpiringMultiPartyEventClient {
       toBlock: currentBlockNumber
     });
 
+    // Liquidation events
     for (let event of liquidationEventsObj) {
       this.liquidationEvents.push({
         transactionHash: event.transactionHash,
@@ -225,6 +230,21 @@ class ExpiringMultiPartyEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         amount: event.returnValues.amount
+      });
+    }
+
+    // Liquidation withdrawn events
+    const liquidationWithdrawnEventsObj = await this.emp.getPastEvents("LiquidationWithdrawn", {
+      fromBlock: this.firstBlockToSearch,
+      toBlock: currentBlockNumber
+    });
+    for (let event of liquidationWithdrawnEventsObj) {
+      this.liquidationWithdrawnEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        caller: event.returnValues.caller,
+        withdrawalAmount: event.returnValues.withdrawalAmount,
+        liquidationStatus: event.returnValues.liquidationStatus
       });
     }
 

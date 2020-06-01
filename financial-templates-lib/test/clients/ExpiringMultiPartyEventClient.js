@@ -616,6 +616,57 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     );
   });
 
+  it("Return Liquidation Withdrawn Events", async function() {
+    // Create liquidation to liquidate sponsor1
+    const liquidationTime = (await emp.getCurrentTime()).toNumber();
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // Dispute the position from the second sponsor
+    await emp.dispute("0", sponsor1, {
+      from: sponsor2
+    });
+
+    // Advance time and settle
+    const timeAfterLiquidationLiveness = liquidationTime + 10;
+    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
+    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+
+    // Force a price such that the dispute succeeds, and then withdraw from the successfully
+    // disputed liquidation.
+    const disputePrice = toWei("0.1");
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+
+    const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+    await client.clearState();
+
+    // State is empty before update().
+    assert.deepStrictEqual([], client.getAllLiquidationWithdrawnEvents());
+
+    // Update the client and check it has the liquidation withdrawn event stored correctly
+    await client.update();
+
+    // Compare with expected processed event object
+    assert.deepStrictEqual(
+      [
+        {
+          transactionHash: txObject.tx,
+          blockNumber: txObject.receipt.blockNumber,
+          caller: liquidator,
+          withdrawalAmount: toWei("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
+          liquidationStatus: "3" // Settlement price makes dispute successful
+        }
+      ],
+      client.getAllLiquidationWithdrawnEvents()
+    );
+  });
+
   it("Starting client at an offset block number", async function() {
     // Init the EMP event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
