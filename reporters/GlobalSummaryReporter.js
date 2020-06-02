@@ -1,4 +1,5 @@
 const { createFormatFunction } = require("../common/FormattingUtils");
+const { revertWrapper } = require("../common/ContractUtils");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
@@ -367,32 +368,21 @@ class GlobalSummaryReporter {
         }
 
         // Create list of resolved prices for disputed liquidations.
-        try {
-          const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
-          const hasResolvedPrice = await this.oracleContract.hasPrice(
-            await this.empContract.methods.priceIdentifier().call(),
-            liquidationTimestamp,
-            {
-              from: this.empContract.options.address
-            }
-          );
-          if (hasResolvedPrice) {
-            // @dev: We need to check `hasPrice` first because `getPrice` as called below will return a non-sensical, really high
-            // integer value if the price has not resolved yet. I thought we had resolved this by setting the `from` property
-            // so that the call wouldn't revert. For example, the `getPrice` call with `liquidationTimestamp=1589993634` (the timestamp of the only
-            // mainnet liquidation a/o June 2nd, 2020) returns `3963877391197344453575983046348115674221700746820753546331534351508065746944`.
-            const resolvedPrice = await this.oracleContract.getPrice(
-              await this.empContract.methods.priceIdentifier().call(),
-              liquidationTimestamp,
-              {
-                from: this.empContract.options.address
-              }
-            );
-            disputesResolved[
-              `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-            ] = this.formatDecimalString(resolvedPrice);
+        const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+        const resolvedPrice = await this.oracleContract.getPrice(
+          await this.empContract.methods.priceIdentifier().call(),
+          liquidationTimestamp,
+          {
+            from: this.empContract.options.address
           }
-        } catch (err) {
+        );
+        // `getPrice` will revert or return the resolved price. `revertWrapper` returns the result if there was no
+        // revert or `null`.
+        if (revertWrapper(resolvedPrice)) {
+          disputesResolved[
+            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
+          ] = this.formatDecimalString(resolvedPrice);
+        } else {
           disputesResolved[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
         }
       }
