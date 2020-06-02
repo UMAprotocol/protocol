@@ -77,6 +77,10 @@ async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapP
     await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
   );
 
+  // 6. Token contracts for tracking events.
+  const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+  const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
+
   const tokenBalanceClient = new TokenBalanceClient(
     Logger,
     ExpandedERC20.abi,
@@ -94,6 +98,8 @@ async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapP
     referencePriceFeed,
     uniswapPriceFeed,
     oracle,
+    collateralToken,
+    syntheticToken,
     periodLengthSeconds
   );
 

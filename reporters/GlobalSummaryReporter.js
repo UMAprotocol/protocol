@@ -12,6 +12,8 @@ class GlobalSummaryReporter {
     referencePriceFeed,
     uniswapPriceFeed,
     oracle,
+    collateralToken,
+    syntheticToken,
     periodLengthSeconds
   ) {
     this.empClient = expiringMultiPartyClient;
@@ -24,6 +26,8 @@ class GlobalSummaryReporter {
     this.web3 = this.empEventClient.web3;
 
     this.empContract = this.empEventClient.emp;
+    this.collateralContract = collateralToken;
+    this.syntheticContract = syntheticToken;
     this.oracleContract = oracle;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
@@ -37,29 +41,42 @@ class GlobalSummaryReporter {
     await this.referencePriceFeed.update();
     await this.uniswapPriceFeed.update();
 
-    // Events accessible by all methods.
-    this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
-    this.depositEvents = this.empEventClient.getAllDepositEvents();
-    this.createEvents = this.empEventClient.getAllCreateEvents();
-    this.withdrawEvents = this.empEventClient.getAllWithdrawEvents();
-    this.redeemEvents = this.empEventClient.getAllRedeemEvents();
-    this.liquidationRewardEvents = this.empEventClient.getAllLiquidationWithdrawnEvents();
-    this.expirySettlementEvents = this.empEventClient.getAllSettleExpiredPositionEvents();
-    this.regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
-    this.finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
-    this.liquidationEvents = this.empEventClient.getAllLiquidationEvents();
-    this.disputeEvents = this.empEventClient.getAllDisputeEvents();
-    this.disputeSettledEvents = this.empEventClient.getAllDisputeSettlementEvents();
-
     // Block number stats.
     this.currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
     this.startBlockNumberForPeriod =
       this.currentBlockNumber - (await this._getLookbackTimeInBlocks(this.periodLengthSeconds));
     this.periodLabelInHours = `${Math.round(this.periodLengthSeconds / (60 * 60))}H`;
 
+    // Events accessible by all methods.
+    this.collateralDepositEvents = await this.collateralContract.getPastEvents("Transfer", {
+      fromBlock: 0,
+      toBlock: this.currentBlockNumber,
+      filter: { to: this.empContract.options.address }
+    });
+    this.collateralWithdrawEvents = await this.collateralContract.getPastEvents("Transfer", {
+      fromBlock: 0,
+      toBlock: this.currentBlockNumber,
+      filter: { from: this.empContract.options.address }
+    });
+    this.syntheticBurnedEvents = await this.syntheticContract.getPastEvents("Transfer", {
+      fromBlock: 0,
+      toBlock: this.currentBlockNumber,
+      filter: { from: this.empContract.options.address, to: "0x0000000000000000000000000000000000000000" }
+    });
+    this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
+    this.createEvents = this.empEventClient.getAllCreateEvents();
+    this.regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
+    this.finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
+    this.liquidationEvents = this.empEventClient.getAllLiquidationEvents();
+    this.disputeEvents = this.empEventClient.getAllDisputeEvents();
+    this.disputeSettledEvents = this.empEventClient.getAllDisputeSettlementEvents();
+
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
     this.totalTokensOutstanding = await this.empContract.methods.totalTokensOutstanding().call();
+    this.collateralLockedInLiquidations = toBN((await this.empContract.methods.pfc().call()).toString()).sub(
+      toBN(this.totalPositionCollateral.toString())
+    );
 
     // Pricefeed stats.
     this.priceEstimate = toBN(this.referencePriceFeed.getCurrentPrice());
@@ -71,7 +88,11 @@ class GlobalSummaryReporter {
     // 1. Sponsor stats table
     console.group();
     console.log(bold("Sponsor summary stats"));
-    console.log(italic("- Collateral deposited counts collateral transferred into contract from creates and deposits"));
+    console.log(
+      italic(
+        "- Collateral deposited counts collateral transferred into contract from creates, deposits, final fee bonds, and dispute bonds"
+      )
+    );
     console.log(
       italic(
         "- Collateral withdrawn counts collateral transferred out of contract from withdrawals, redemptions, expiry settlements, liquidation reward withdrawals, and fees paid"
@@ -141,66 +162,30 @@ class GlobalSummaryReporter {
       current: Object.keys(currentUniqueSponsors).length
     };
 
-    // - Cumulative collateral deposited into contract: Deposits, Creates
+    // - Cumulative collateral deposited into contract
     let collateralDeposited = toBN("0");
     let collateralDepositedPeriod = toBN("0");
-    for (let event of this.depositEvents) {
-      collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
+    for (let event of this.collateralDepositEvents) {
+      collateralDeposited = collateralDeposited.add(toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.collateralAmount));
-      }
-    }
-    for (let event of this.createEvents) {
-      collateralDeposited = collateralDeposited.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.collateralAmount));
+        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.returnValues.value));
       }
     }
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(collateralDeposited),
-      [this.periodLabelInHours]: this.formatDecimalString(collateralDepositedPeriod)
+      [this.periodLabelInHours]: this.formatDecimalString(collateralDepositedPeriod),
+      current: this.formatDecimalString(this.totalPositionCollateral)
     };
 
-    // - Cumulative collateral withdrawn from contract: Withdraws, Redeems, SettleExpired's, WithdrawLiquidations, RegularFees, FinalFees
+    // - Cumulative collateral withdrawn from contract
     let collateralWithdrawn = toBN("0");
     let collateralWithdrawnPeriod = toBN("0");
-    for (let event of this.withdrawEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
+    for (let event of this.collateralWithdrawEvents) {
+      collateralWithdrawn = collateralWithdrawn.add(toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralAmount));
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.returnValues.value));
       }
     }
-    for (let event of this.redeemEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralAmount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralAmount));
-      }
-    }
-    for (let event of this.expirySettlementEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.collateralReturned));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.collateralReturned));
-      }
-    }
-    for (let event of this.liquidationRewardEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.withdrawalAmount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.withdrawalAmount));
-      }
-    }
-    for (let event of this.regularFeeEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.regularFee)).add(toBN(event.lateFee));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.regularFee)).add(toBN(event.lateFee));
-      }
-    }
-    for (let event of this.finalFeeEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.amount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.amount));
-      }
-    }
-
     allSponsorStatsTable["collateral withdrawn"] = {
       cumulative: this.formatDecimalString(collateralWithdrawn),
       [this.periodLabelInHours]: this.formatDecimalString(collateralWithdrawnPeriod)
@@ -214,7 +199,7 @@ class GlobalSummaryReporter {
       [this.periodLabelInHours]: this.formatDecimalString(netCollateralWithdrawnPeriod)
     };
 
-    // - Tokens minted: Creates
+    // - Tokens minted: tracked via Create events.
     let tokensMinted = toBN("0");
     let tokensMintedPeriod = toBN("0");
     for (let event of this.createEvents) {
@@ -225,28 +210,17 @@ class GlobalSummaryReporter {
     }
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
-      [this.periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod)
+      [this.periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod),
+      current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
-    // - Tokens burned: Redeems, SettleExpired's, Liquidations
+    // - Tokens burned
     let tokensBurned = toBN("0");
     let tokensBurnedPeriod = toBN("0");
-    for (let event of this.redeemEvents) {
-      tokensBurned = tokensBurned.add(toBN(event.tokenAmount));
+    for (let event of this.syntheticBurnedEvents) {
+      tokensBurned = tokensBurned.add(toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokenAmount));
-      }
-    }
-    for (let event of this.expirySettlementEvents) {
-      tokensBurned = tokensBurned.add(toBN(event.tokensBurned));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokensBurned));
-      }
-    }
-    for (let event of this.liquidationEvents) {
-      tokensBurned = tokensBurned.add(toBN(event.tokensOutstanding));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
-        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.tokensOutstanding));
+        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.returnValues.value));
       }
     }
     allSponsorStatsTable["tokens burned"] = {
@@ -327,9 +301,9 @@ class GlobalSummaryReporter {
         collateralLiquidated = collateralLiquidated.add(toBN(event.lockedCollateral));
         uniqueLiquidations[event.sponsor] = true;
         if (event.blockNumber >= this.startBlockNumberForPeriod) {
-          tokensLiquidatedDaily = tokensLiquidatedDaily.add(toBN(event.tokensOutstanding));
-          collateralLiquidatedDaily = collateralLiquidatedDaily.add(toBN(event.lockedCollateral));
-          uniqueLiquidationsDaily[event.sponsor] = true;
+          tokensLiquidatedPeriod = tokensLiquidatedPeriod.add(toBN(event.tokensOutstanding));
+          collateralLiquidatedPeriod = collateralLiquidatedPeriod.add(toBN(event.lockedCollateral));
+          uniqueLiquidationsPeriod[event.sponsor] = true;
         }
       }
       allLiquidationStatsTable = {
@@ -343,7 +317,8 @@ class GlobalSummaryReporter {
         },
         ["collateral liquidated"]: {
           cumulative: this.formatDecimalString(collateralLiquidated),
-          [this.periodLabelInHours]: this.formatDecimalString(collateralLiquidatedPeriod)
+          [this.periodLabelInHours]: this.formatDecimalString(collateralLiquidatedPeriod),
+          current: this.formatDecimalString(this.collateralLockedInLiquidations)
         }
       };
 
@@ -381,19 +356,32 @@ class GlobalSummaryReporter {
           uniqueDisputesPeriod[event.sponsor] = true;
         }
 
-        // TODO: Get resolved prices for disputed liquidation. Use block # from event and use that block's timestamp as the liquidation time.
+        // Create list of resolved prices for disputed liquidations.
         try {
-          const liquidationTimestamp = "TODO";
-          const resolvedPrice = await this.oracle.getPrice(
+          const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+          const hasResolvedPrice = await this.oracleContract.hasPrice(
             await this.empContract.methods.priceIdentifier().call(),
             liquidationTimestamp,
             {
-              from: emp.address
+              from: this.empContract.options.address
             }
           );
-          disputesResolved[
-            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-          ] = this.formatDecimalString(resolvedPrice);
+          if (hasResolvedPrice) {
+            // @dev: We need to check `hasPrice` first because `getPrice` as called below will return a non-sensical, really high
+            // integer value if the price has not resolved yet. I thought we had resolved this by setting the `from` property
+            // so that the call wouldn't revert. For example, the `getPrice` call with `liquidationTimestamp=1589993634` (the timestamp of the only
+            // mainnet liquidation a/o June 2nd, 2020) returns `3963877391197344453575983046348115674221700746820753546331534351508065746944`.
+            const resolvedPrice = await this.oracleContract.getPrice(
+              await this.empContract.methods.priceIdentifier().call(),
+              liquidationTimestamp,
+              {
+                from: this.empContract.options.address
+              }
+            );
+            disputesResolved[
+              `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
+            ] = this.formatDecimalString(resolvedPrice);
+          }
         } catch (err) {
           disputesResolved[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
         }
