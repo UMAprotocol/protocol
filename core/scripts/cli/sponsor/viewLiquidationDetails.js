@@ -115,7 +115,6 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
       // reverts on-chain. More details [here](https://github.com/ethereum/web3.js/issues/1903) and
       // [here](https://github.com/ethereum/solidity/issues/4840).
       if (await oracle.hasPrice(await emp.priceIdentifier(), liquidation.liquidationTime, { from: emp.address })) {
-        console.log(liquidation.liquidationTime);
         const resolvedPrice = await oracle.getPrice(await emp.priceIdentifier(), liquidation.liquidationTime, {
           from: emp.address
         });
