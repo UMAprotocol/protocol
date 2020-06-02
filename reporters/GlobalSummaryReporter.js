@@ -43,7 +43,7 @@ class GlobalSummaryReporter {
     await this.uniswapPriceFeed.update();
 
     // Block number stats.
-    this.currentBlockNumber = Number(await this.web3.eth.getBlockNumber());
+    this.currentBlockNumber = await this.web3.eth.getBlockNumber();
     this.startBlockNumberForPeriod =
       this.currentBlockNumber - (await this._getLookbackTimeInBlocks(this.periodLengthSeconds));
     this.periodLabelInHours = `${Math.round(this.periodLengthSeconds / (60 * 60))}H`;
@@ -80,7 +80,7 @@ class GlobalSummaryReporter {
     );
 
     // Pricefeed stats.
-    this.priceEstimate = toBN(this.referencePriceFeed.getCurrentPrice());
+    this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
   };
 
   generateSummaryStatsTable = async () => {
@@ -369,20 +369,25 @@ class GlobalSummaryReporter {
 
         // Create list of resolved prices for disputed liquidations.
         const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
-        const resolvedPrice = await this.oracleContract.getPrice(
-          await this.empContract.methods.priceIdentifier().call(),
-          liquidationTimestamp,
-          {
-            from: this.empContract.options.address
+        try {
+          // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
+          // but return a very high integer--a false positive. `revertWrapper` handles this case and returns the resolved price or `null`
+          // if the call should have reverted but returned the high integer instead.
+          const resolvedPrice = await this.oracleContract.getPrice(
+            await this.empContract.methods.priceIdentifier().call(),
+            liquidationTimestamp,
+            {
+              from: this.empContract.options.address
+            }
+          );
+          if (revertWrapper(resolvedPrice)) {
+            disputesResolved[
+              `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
+            ] = this.formatDecimalString(resolvedPrice);
+          } else {
+            throw "getPrice reverted but web3.Contract method call returned a false positive price";
           }
-        );
-        // `getPrice` will revert or return the resolved price. `revertWrapper` returns the result if there was no
-        // revert or `null`.
-        if (revertWrapper(resolvedPrice)) {
-          disputesResolved[
-            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-          ] = this.formatDecimalString(resolvedPrice);
-        } else {
+        } catch (err) {
           disputesResolved[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
         }
       }
