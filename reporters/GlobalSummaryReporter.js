@@ -94,17 +94,21 @@ class GlobalSummaryReporter {
       )
     );
     console.log(
+      italic("- Current collateral deposited does not include collateral that is locked in pending liquidations")
+    );
+    console.log(
       italic(
         "- Collateral withdrawn counts collateral transferred out of contract from withdrawals, redemptions, expiry settlements, liquidation reward withdrawals, and fees paid"
       )
     );
     console.log(italic("- Tokens minted counts synthetic tokens created"));
+    console.log(italic("- Current tokens minted is the outstanding supply and should be equal to net tokens minted"));
     console.log(
       italic(
         "- Tokens burned counts synthetic tokens burned via redemptions, expiry settlements, and liquidations created"
       )
     );
-    console.log(italic("- Reference price should be sourced from liquid exchanges (i.e. Coinbase Pro)"));
+    console.log(italic("- Reference price is sourced from liquid exchanges (i.e. Coinbase Pro)"));
     await this._generateSponsorStats();
     console.groupEnd();
 
@@ -125,6 +129,7 @@ class GlobalSummaryReporter {
     console.log(bold("Liquidation summary stats"));
     console.log(italic("- Unique liquidations count # of unique sponsors that have been liquidated"));
     console.log(italic("- Collateral & tokens liquidated counts aggregate amounts from all partial liquidations"));
+    console.log(italic("- Current collateral liquidated includes any collateral locked in pending liquidations"));
     await this._generateLiquidationStats();
     console.groupEnd();
 
