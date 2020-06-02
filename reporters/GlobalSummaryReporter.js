@@ -109,6 +109,11 @@ class GlobalSummaryReporter {
       )
     );
     console.log(italic("- Reference price is sourced from liquid exchanges (i.e. Coinbase Pro)"));
+    console.log(
+      italic(
+        "- The collateral amount used to calculate GCR's is equal to the current collateral deposited, and does not include liquidated collateral"
+      )
+    );
     await this._generateSponsorStats();
     console.groupEnd();
 
