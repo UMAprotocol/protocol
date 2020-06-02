@@ -27,7 +27,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const position = await emp.positions(sponsorAddress);
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
-      const collateralizationRatio = computeCollateralizationRatio(web3, toBN(collateral), toBN(position.tokensOutstanding))
+      const collateralizationRatio = computeCollateralizationRatio(web3, toBN(collateral), toBN(position.tokensOutstanding));
 
       const getDateStringReadable = contractTime => {
         return new Date(Number(contractTime.toString() * 1000)).toString();
