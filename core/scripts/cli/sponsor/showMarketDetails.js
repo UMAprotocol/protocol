@@ -11,7 +11,7 @@ const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const { fromWei } = web3.utils;
+  const { fromWei, toBN } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   let collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
@@ -27,6 +27,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const position = await emp.positions(sponsorAddress);
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+      const collateralizationRatio = computeCollateralizationRatio(web3, toBN(collateral), toBN(position.tokensOutstanding))
 
       const getDateStringReadable = contractTime => {
         return new Date(Number(contractTime.toString() * 1000)).toString();
@@ -36,6 +37,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
         "Current contract time": getDateStringReadable(await emp.getCurrentTime()),
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
+        "Collateralization ratio": 
         "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
         "Pending transfer request": position.transferPositionRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
       });
