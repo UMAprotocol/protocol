@@ -34,8 +34,8 @@ const formatWei = (num, web3) => {
   return web3.utils.fromWei(num.toString());
 };
 
-// Formats the input to round to decimalPlaces number of decimals if the number is larger than 1 and fixes precision
-// to minPrecision if the number is less than 1.
+// Formats the input to round to decimalPlaces number of decimals if the number has a magnitude larger than 1 and fixes
+// precision to minPrecision if the number has a magnitude less than 1.
 const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
   if (roundUp) {
     BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_UP });
@@ -48,7 +48,7 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is larger than
   // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
   // is less than 1 then truncate to minPrecision precision. EG: 0.0022183471 -> 0.002218 with minPrecision=4
-  if (fullPrecisionFloat.gt(BigNumber(1))) {
+  if (fullPrecisionFloat.abs().gt(BigNumber(1))) {
     fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
       .toFixed(decimalPlaces)
       .toString();
