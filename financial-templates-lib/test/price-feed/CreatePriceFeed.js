@@ -1,4 +1,16 @@
-const { createPriceFeed } = require("../../price-feed/CreatePriceFeed");
+const { toWei } = web3.utils;
+
+// Tested Contract
+const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+
+// Helper Contracts
+const Finder = artifacts.require("Finder");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const TokenFactory = artifacts.require("TokenFactory");
+const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
+
+const { createPriceFeed, createUniswapPriceFeedForEmp } = require("../../price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
 const { MedianizerPriceFeed } = require("../../price-feed/MedianizerPriceFeed");
@@ -24,8 +36,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   beforeEach(async function() {
     networker = new NetworkerMock();
     logger = winston.createLogger({
-      level: "info",
-      transports: []
+      silent: true
     });
   });
 
@@ -146,6 +157,77 @@ contract("CreatePriceFeed.js", function(accounts) {
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null
     );
+  });
+
+  it("Default Uniswap Config", async function() {
+    // Given the collateral token is 0x1, the , it should always come first, meaning the config should always be inverted.
+    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+
+    const constructorParams = {
+      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralTokenAddress,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+
+    let emp = await ExpiringMultiParty.new(constructorParams);
+
+    const getIdBackup = web3.eth.net.getId;
+
+    // Modify web3 to say the chain id is mainnet temporarily.
+    web3.eth.net.getId = async () => 1;
+
+    const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+
+    // Cannot test for the uniswap address since that depends on the synthetic token address, which is generated in a non-hermetic way.
+    assert.equal(priceFeed.invertedPrice);
+
+    // Reset getId method.
+    web3.eth.net.getId = getIdBackup;
+  });
+
+  it("Uniswap address not found", async function() {
+    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
+
+    const constructorParams = {
+      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralToken.address,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+
+    let emp = await ExpiringMultiParty.new(constructorParams);
+
+    let didThrow = false;
+    try {
+      const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+    } catch (error) {
+      didThrow = true;
+    }
+
+    assert.isTrue(didThrow);
   });
 
   it("Valid Medianizer inherited config", async function() {

@@ -1,8 +1,10 @@
+const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 const Uniswap = require("../../core/build/contracts/Uniswap.json");
+const ExpiringMultiParty = require("../../core/build/contracts/ExpiringMultiParty.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
@@ -122,6 +124,60 @@ function isMissingField(config, requiredFields, logger) {
   return false;
 }
 
+async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress) {
+  const networkId = await web3.eth.net.getId();
+
+  if (process.env.UNISWAP_ADDRESS) {
+    // Used for mock uniswap pair contracts.
+    return { address: process.env.UNISWAP_ADDRESS, inverted: false };
+  } else if (networkId in Object.keys(ChainId)) {
+    // If Uniswap V2 supports this network, compute the address using the SDK.
+    const syntheticToken = new Token(networkId, syntheticTokenAddress, 18, "", "");
+    const collateralCurrency = new Token(networkId, collateralCurrencyAddress, 18, "", "");
+    const pair = new Pair(new TokenAmount(syntheticToken, "0"), new TokenAmount(collateralCurrency, "0"));
+
+    // If the synthetic token is token1 (numerator), the price needs to be inverted.
+    const inverted = syntheticToken.equals(pair.token1);
+
+    // Uniswap pair addresses are computed deterministically, so no on-chain calls are needed.
+    return { pairAddress: Pair.getAddress(syntheticToken, collateralCurrency), inverted };
+  }
+
+  return {};
+}
+
+async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  const emp = getEmpAtAddress(web3, empAddress);
+
+  const collateralCurrencyAddress = await emp.methods.collateralCurrency().call();
+  const syntheticTokenAddress = await emp.methods.tokenCurrency().call();
+
+  // Note: order doesn't matter.
+  const { pairAddress, inverted } = await getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress);
+
+  if (!pairAddress) {
+    throw "No Uniswap Pair address found. Either set UNISWAP_ADDRESS or use a network where there is an official Uniswap V2 deployment.";
+  }
+
+  // TODO: maybe move this default config to a better location.
+  const defaultConfig = {
+    type: "uniswap",
+    twapLength: 2, // Essentially turns the TWAP off since block times are >> 2 seconds.
+    lookback: 7200,
+    invertPrice: inverted,
+    uniswapAddress: pairAddress
+  };
+
+  const userConfig = config || {};
+
+  return createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
+}
+
+function getEmpAtAddress(web3, empAddress) {
+  return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+}
+
 module.exports = {
-  createPriceFeed
+  createPriceFeed,
+  createUniswapPriceFeedForEmp
 };
