@@ -71,8 +71,6 @@ async function run(
       networkId: await web3.eth.net.getId()
     };
 
-    console.log("EMPPROPOS", empProps);
-
     // Setup medianizer price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const medianizerPriceFeed = await createPriceFeed(
