@@ -1,5 +1,11 @@
 # How to contribute
 
+## Issues and PRs
+
+To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be changed and why.
+
+Once an issue is open and one or more maintainers have expressed corroborating opinions, anyone can open a PR to close the issue. No PRs should be opened that are not associated with one or more issues.
+
 ## Style guide
 
 You can find the style guide [here](./STYLE.md).
