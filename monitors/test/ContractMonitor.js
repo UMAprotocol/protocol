@@ -207,6 +207,10 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "280.00%")); // expected collateralization ratio of 280%
     assert.isTrue(lastSpyLogIncludes(spy, "140.00")); // liquidated collateral amount of 150 - 10
     assert.isTrue(lastSpyLogIncludes(spy, "150.00")); // locked collateral amount of 150
+    assert.isTrue(lastSpyLogIncludes(spy, "50.00")); // tokens liquidated
+    assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
+    assert.isTrue(lastSpyLogIncludes(spy, "1.86")); // maximum price for liquidation to be disputable
 
     // Liquidate another position and ensure the Contract monitor emits the correct params
     const txObject2 = await emp.createLiquidation(
@@ -228,6 +232,10 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
     assert.isTrue(lastSpyLogIncludes(spy, "388.88%")); // expected collateralization ratio: 175 / (45 * 1) = 388.88%
     assert.isTrue(lastSpyLogIncludes(spy, "175.00")); // liquidated & locked collateral: 175
+    assert.isTrue(lastSpyLogIncludes(spy, "45.00")); // tokens liquidated
+    assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
+    assert.isTrue(lastSpyLogIncludes(spy, "2.59")); // maximum price for liquidation to be disputable
   });
   it("Winston correctly emits dispute events", async function() {
     // Create liquidation to dispute.
