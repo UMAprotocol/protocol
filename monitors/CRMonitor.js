@@ -144,13 +144,13 @@ class CRMonitor {
       return null;
     }
     return this.toBN(collateral)
-      .mul(this.toBN(toWei("1")))
-      .mul(this.toBN(toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    const fixedPointScaling = this.toBN(toWei("1"));
+    const fixedPointScaling = this.toBN(this.toWei("1"));
     return this.toBN(collateral)
       .mul(fixedPointScaling)
       .mul(fixedPointScaling)
