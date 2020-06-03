@@ -81,12 +81,15 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute: price feed returned invalid value"
         });
+        return false;
       } else {
         if (
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
         ) {
-          return liquidation;
+          return true;
+        } else {
+          return false;
         }
       }
     });
