@@ -22,6 +22,10 @@ class ExpiringMultiPartyClient {
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
+
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -34,9 +38,8 @@ class ExpiringMultiPartyClient {
   // that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions = tokenRedemptionValue => {
     return this.positions.filter(position => {
-      const collateralNetWithdrawal = this.web3.utils
-        .toBN(position.amountCollateral)
-        .sub(this.web3.utils.toBN(position.withdrawalRequestAmount))
+      const collateralNetWithdrawal = this.toBN(position.amountCollateral)
+        .sub(this.toBN(position.withdrawalRequestAmount))
         .toString();
       return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
     });
@@ -68,9 +71,7 @@ class ExpiringMultiPartyClient {
   getLastUpdateTime = () => this.lastUpdateTimestamp;
 
   update = async () => {
-    this.collateralRequirement = this.web3.utils.toBN(
-      (await this.emp.methods.collateralRequirement().call()).toString()
-    );
+    this.collateralRequirement = this.toBN((await this.emp.methods.collateralRequirement().call()).toString());
     this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call());
 
     const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0 });
@@ -150,16 +151,15 @@ class ExpiringMultiPartyClient {
     });
   };
   _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
-    const { toBN, toWei } = this.web3.utils;
-    const fixedPointAdjustment = toBN(toWei("1"));
+    const fixedPointAdjustment = this.toBN(this.toWei("1"));
     // The formula for an undercollateralized position is:
     // (numTokens * trv) * collateralRequirement > amountCollateral.
     // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
-    return toBN(numTokens)
-      .mul(toBN(trv))
+    return this.toBN(numTokens)
+      .mul(this.toBN(trv))
       .mul(this.collateralRequirement)
       .gt(
-        toBN(amountCollateral)
+        this.toBN(amountCollateral)
           .mul(fixedPointAdjustment)
           .mul(fixedPointAdjustment)
       );
