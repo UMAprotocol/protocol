@@ -117,6 +117,14 @@ class Disputer {
       const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
       const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
 
+      if (!inputPrice) {
+        this.logger.warn({
+          at: "Disputer",
+          message: "Cannot dispute: price feed returned invalid value"
+        });
+        return;
+      }
+
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",

@@ -435,4 +435,51 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await client.update();
     assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
   });
+
+  describe("Unit tests: isDisputable", function() {
+    beforeEach(async function() {
+      await client.update();
+    });
+
+    it("Liquidation is disputable", async function() {
+      const liquidationMock = {
+        numTokens: toWei("1"),
+        amountCollateral: toWei("2")
+      };
+      const tokenRedemptionValue = toWei("1");
+      assert.isTrue(await client.isDisputable(liquidationMock, tokenRedemptionValue));
+    });
+
+    it("Liquidation is not disputable", async function() {
+      const liquidationMock = {
+        numTokens: toWei("1"),
+        amountCollateral: toWei("2")
+      };
+      const tokenRedemptionValue = toWei("2");
+      assert.isFalse(await client.isDisputable(liquidationMock, tokenRedemptionValue));
+    });
+
+    it("Missing liquidation object: Liquidation is not disputable", async function() {
+      const tokenRedemptionValue = toWei("2");
+      assert.isFalse(await client.isDisputable(null, tokenRedemptionValue));
+    });
+
+    it("Missing TRV: Liquidation is not disputable", async function() {
+      const liquidationMock = {
+        numTokens: toWei("1"),
+        amountCollateral: toWei("2")
+      };
+      assert.isFalse(await client.isDisputable(liquidationMock, null));
+    });
+  });
+
+  describe("Unit tests: getUnderCollateralizedPositions", function() {
+    beforeEach(async function() {
+      await client.update();
+    });
+
+    it("Missing TRV: returns empty array", async function() {
+      assert.deepEqual(await client.getUnderCollateralizedPositions(null), []);
+    });
+  });
 });

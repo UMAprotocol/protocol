@@ -171,6 +171,10 @@ contract("Disputer.js", function(accounts) {
       { from: liquidator }
     );
 
+    // Try disputing before any mocked prices are set, simulating a situation where the pricefeed
+    // fails to return a price. The disputer should fail gracefully.
+    await disputer.queryAndDispute();
+
     // Start with a mocked price of 1.75 usd per token.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
     priceFeedMock.setHistoricalPrice(toBN(toWei("1.75")));
