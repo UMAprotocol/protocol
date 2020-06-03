@@ -1,6 +1,7 @@
 require("dotenv").config();
 const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
+const boldUnderlineRed = chalkPipe("bold.underline.red");
 
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 const winston = require("winston");
@@ -26,7 +27,7 @@ const OracleInterface = artifacts.require("OracleInterface");
 const Finder = artifacts.require("Finder");
 
 async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds) {
-  console.log("Starting Reporter Script🖨");
+  console.log(boldUnderlineRed("Starting Reporter Script🖨\n"));
 
   // For now we will use a dummy transport to make things quiet in the logs
   const dummyLogger = winston.createLogger({
@@ -103,13 +104,13 @@ async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapP
     periodLengthSeconds
   );
 
-  console.log(boldUnderline("1. Monitored wallets risk metrics😅"));
+  console.log(boldUnderline("1. Monitored wallets risk metrics🔎"));
   await sponsorReporter.generateMonitoredWalletMetrics();
 
   console.log(boldUnderline("2. Sponsor table💸"));
   await sponsorReporter.generateSponsorsTable();
 
-  console.log(boldUnderline("3. Global summary stats🌐"));
+  console.log(boldUnderline("3. Global summary stats🌎"));
   await globalSummaryReporter.generateSummaryStatsTable();
 }
 
