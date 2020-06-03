@@ -45,6 +45,17 @@ class ContractMonitor {
       .muln(100);
   };
 
+  // Calculate the maximum price at which this liquidation would be disputable using the `crRequirement`,
+  // `liquidatedCollateral` and the `liquidatedTokens`.
+  calculateDisputablePrice = (crRequirement, liquidatedCollateral, liquidatedTokens) => {
+    const { toBN, toWei } = this.web3.utils;
+    return toBN(liquidatedCollateral)
+      .mul(toBN(toWei("1")))
+      .div(toBN(liquidatedTokens))
+      .mul(toBN(toWei("1")))
+      .div(toBN(crRequirement));
+  };
+
   getLastSeenBlockNumber(eventArray) {
     if (eventArray.length == 0) {
       return 0;
@@ -121,9 +132,15 @@ class ContractMonitor {
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
 
       let collateralizationString;
+      let maxPriceToBeDisputableString;
+      const crRequirement = await this.empContract.methods.collateralRequirement().call();
+      let crRequirementString = this.web3.utils.toBN(crRequirement).muln(100);
       if (price) {
         collateralizationString = this.formatDecimalString(
           this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
+        );
+        maxPriceToBeDisputableString = this.formatDecimalString(
+          this.calculateDisputablePrice(crRequirement, event.liquidatedCollateral, event.tokensOutstanding)
         );
       } else {
         this.logger.warn({
@@ -133,12 +150,14 @@ class ContractMonitor {
           liquidationTime: liquidationTime.toString()
         });
         collateralizationString = "[Invalid]";
+        maxPriceToBeDisputableString = "[Invalid]";
       }
 
       // Sample message:
       // Liquidation alert: [ethereum address if third party, or “UMA” if it’s our bot]
-      // initiated liquidation for for [x][collateral currency]of sponsor collateral
-      // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
+      // initiated liquidation for for [x][collateral currency] (liquidated collateral = [y]) of sponsor collateral
+      // backing[n] tokens. Sponsor collateralization was[y] %, using [p] as the estimated price at liquidation time.
+      // With a collateralization requirement of [r]%, this liquidation would be disputable at a price below [l]. [etherscan link to txn]
       const mrkdwn =
         createEtherscanLinkMarkdown(event.liquidator, this.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
@@ -154,9 +173,15 @@ class ContractMonitor {
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
         this.syntheticCurrencySymbol +
-        " tokens. Sponsor collateralization (based on 'liquidated' not 'locked' collateral) was " +
+        " tokens. Sponsor collateralization ('liquidatedCollateral / tokensOutsanding') was " +
         collateralizationString +
-        "%. tx: " +
+        "%, using " +
+        this.formatDecimalString(price) +
+        " as the estimated price at liquidation time. With a collateralization requirement of " +
+        this.formatDecimalString(crRequirementString) +
+        "%, this liquidation would be disputable at a price below " +
+        maxPriceToBeDisputableString +
+        ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
 
       this.logger.info({
