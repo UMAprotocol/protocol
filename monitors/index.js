@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { toWei } = web3.utils;
+const { hexToUtf8 } = web3.utils;
 
 // Helpers.
 const { delay } = require("../financial-templates-lib/helpers/delay");
@@ -56,12 +56,24 @@ async function run(
       medianizerPriceFeedConfig
     });
 
-    // Setup web3 accounts an contract instance
-    const accounts = await web3.eth.getAccounts();
+    // 0. Setup EMP and token instances to monitor.
     const emp = await ExpiringMultiParty.at(address);
+    const collateralTokenAddress = await emp.collateralCurrency();
+    const collateralToken = await ExpandedERC20.at(collateralTokenAddress);
+    const syntheticTokenAddress = await emp.tokenCurrency();
+    const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
 
-    // Setup price feed.
-    // TODO: consider making getTime async and using contract time.
+    // Generate EMP properties to inform logs in modules like the token symbols.
+    const empProps = {
+      collateralCurrencySymbol: await collateralToken.symbol(),
+      syntheticCurrencySymbol: await syntheticToken.symbol(),
+      priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
+      networkId: await web3.eth.net.getId()
+    };
+
+    console.log("EMPPROPOS", empProps);
+
+    // Setup medianizer price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const medianizerPriceFeed = await createPriceFeed(
       Logger,
@@ -82,27 +94,29 @@ async function run(
       emp.address,
       latestBlockNumber
     );
-    const contractMonitor = new ContractMonitor(Logger, empEventClient, contractMonitorObject, medianizerPriceFeed);
+    const contractMonitor = new ContractMonitor(
+      Logger,
+      empEventClient,
+      contractMonitorObject,
+      medianizerPriceFeed,
+      empProps
+    );
 
-    // 2. Balance monitor
-    const collateralTokenAddress = await emp.collateralCurrency();
-    const syntheticTokenAddress = await emp.tokenCurrency();
-
+    // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
       Logger,
       ExpandedERC20.abi,
       web3,
       collateralTokenAddress,
-      syntheticTokenAddress,
-      10
+      syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
+    const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject, empProps);
 
     // 3. Collateralization Ratio monitor.
-    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
 
-    const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed);
+    const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed, empProps);
 
     // 4. Synthetic Peg Monitor.
     const uniswapPriceFeed = await createPriceFeed(
@@ -117,7 +131,8 @@ async function run(
       web3,
       uniswapPriceFeed,
       medianizerPriceFeed,
-      syntheticPegMonitorObject
+      syntheticPegMonitorObject,
+      empProps
     );
 
     while (true) {

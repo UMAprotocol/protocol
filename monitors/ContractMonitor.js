@@ -1,7 +1,7 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed) {
+  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed, empProps) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
@@ -22,15 +22,9 @@ class ContractMonitor {
     this.lastDisputeSettlementBlockNumber = 0;
     this.lastNewSponsorBlockNumber = 0;
 
-    // Contract constants
-    // TODO: replace this with an actual query to the collateral currency symbol
-    this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "ETHBTC";
+    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId
+    this.empProps = empProps;
 
-    // TODO: pull this into the parent client
-    this.networkId = 1;
-
-    // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
   }
 
@@ -76,18 +70,18 @@ class ContractMonitor {
       // New sponsor alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // created X tokens backed by Y collateral.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(event.sponsor, this.networkId) +
+        createEtherscanLinkMarkdown(event.sponsor, this.empProps.networkId) +
         (isMonitoredBot ? " (Monitored liquidator or disputer bot)" : "") +
         " created " +
         this.formatDecimalString(event.tokenAmount) +
         " " +
-        this.syntheticCurrencySymbol +
+        this.empProps.syntheticCurrencySymbol +
         " backed by " +
         this.formatDecimalString(event.collateralAmount) +
         " " +
-        this.collateralCurrencySymbol +
+        this.empProps.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
+        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -140,22 +134,22 @@ class ContractMonitor {
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
       // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(event.liquidator, this.networkId) +
+        createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
         this.formatDecimalString(event.liquidatedCollateral) +
         " " +
-        this.collateralCurrencySymbol +
+        this.empProps.collateralCurrencySymbol +
         " of sponsor " +
-        createEtherscanLinkMarkdown(event.sponsor, this.networkId) +
+        createEtherscanLinkMarkdown(event.sponsor, this.empProps.networkId) +
         " collateral backing " +
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
-        this.syntheticCurrencySymbol +
+        this.empProps.syntheticCurrencySymbol +
         " tokens. Sponsor collateralization was " +
         collateralizationString +
         "%. tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
+        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -183,17 +177,17 @@ class ContractMonitor {
       // Dispute alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated dispute [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(event.disputer, this.networkId) +
+        createEtherscanLinkMarkdown(event.disputer, this.empProps.networkId) +
         (this.monitoredDisputers.indexOf(event.disputer) != -1 ? " (Monitored dispute bot)" : "") +
         " initiated dispute against liquidator " +
-        createEtherscanLinkMarkdown(event.liquidator, this.networkId) +
+        createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
         " " +
-        this.collateralCurrencySymbol +
+        this.empProps.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
+        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
       this.logger.info({
         at: "ContractMonitor",
@@ -225,15 +219,15 @@ class ContractMonitor {
       // it’s our bot]has resolved as [success or failed] [etherscan link to txn]
       const mrkdwn =
         "Dispute between liquidator " +
-        createEtherscanLinkMarkdown(event.liquidator, this.networkId) +
+        createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? "(Monitored liquidator bot)" : "") +
         " and disputer " +
-        createEtherscanLinkMarkdown(event.disputer, this.networkId) +
+        createEtherscanLinkMarkdown(event.disputer, this.empProps.networkId) +
         (this.monitoredDisputers.indexOf(event.disputer) != -1 ? "(Monitored dispute bot)" : "") +
         " has been resolved as " +
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
+        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
