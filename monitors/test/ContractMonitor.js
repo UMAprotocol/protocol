@@ -83,7 +83,7 @@ contract("ContractMonitor.js", function(accounts) {
     constructorParams = {
       isTest: true,
       expirationTimestamp: expirationTime.toString(),
-      withdrawalLiveness: "1000",
+      withdrawalLiveness: "1",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
@@ -175,6 +175,9 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // Collateral amount
   });
   it("Winston correctly emits liquidation message", async function() {
+    // Request a withdrawal from sponsor1 to check if monitor correctly differentiates between liquidated and locked collateral
+    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
+
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
       sponsor1,
@@ -199,10 +202,11 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor1}`));
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
 
-    // should contain the correct position information. Collateralization ratio for sponsor with 150 collateral and 50
-    // debt with a price feed of 1 should give 150/(50 * 1) = 300%
-    assert.isTrue(lastSpyLogIncludes(spy, "300.00%")); // expected collateralization ratio of 300%
-    assert.isTrue(lastSpyLogIncludes(spy, "150.00")); // liquidated collateral amount of 150
+    // should contain the correct position information. Collateralization ratio for sponsor with 140 collateral and 50
+    // debt with a price feed of 1 should give 140/(50 * 1) = 280%
+    assert.isTrue(lastSpyLogIncludes(spy, "280.00%")); // expected collateralization ratio of 280%
+    assert.isTrue(lastSpyLogIncludes(spy, "140.00")); // liquidated collateral amount of 150 - 10
+    assert.isTrue(lastSpyLogIncludes(spy, "150.00")); // locked collateral amount of 150
 
     // Liquidate another position and ensure the Contract monitor emits the correct params
     const txObject2 = await emp.createLiquidation(
@@ -223,7 +227,7 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // token sponsor
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
     assert.isTrue(lastSpyLogIncludes(spy, "388.88%")); // expected collateralization ratio: 175 / (45 * 1) = 388.88%
-    assert.isTrue(lastSpyLogIncludes(spy, "175.00")); // liquidated collateral: 175
+    assert.isTrue(lastSpyLogIncludes(spy, "175.00")); // liquidated & locked collateral: 175
   });
   it("Winston correctly emits dispute events", async function() {
     // Create liquidation to dispute.

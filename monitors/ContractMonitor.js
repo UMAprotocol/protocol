@@ -143,8 +143,10 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.liquidator, this.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
+        this.formatDecimalString(event.lockedCollateral) +
+        " (liquidated collateral = " +
         this.formatDecimalString(event.liquidatedCollateral) +
-        " " +
+        ") " +
         this.collateralCurrencySymbol +
         " of sponsor " +
         createEtherscanLinkMarkdown(event.sponsor, this.networkId) +
@@ -152,7 +154,7 @@ class ContractMonitor {
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
         this.syntheticCurrencySymbol +
-        " tokens. Sponsor collateralization was " +
+        " tokens. Sponsor collateralization (based on 'liquidated' not 'locked' collateral) was " +
         collateralizationString +
         "%. tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.networkId);
