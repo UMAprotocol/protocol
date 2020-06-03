@@ -1,4 +1,4 @@
-const { createFormatFunction } = require("../common/FormattingUtils");
+const { createFormatFunction, formatDateShort } = require("../common/FormattingUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
 const chalkPipe = require("chalk-pipe");
@@ -15,6 +15,7 @@ class GlobalSummaryReporter {
     oracle,
     collateralToken,
     syntheticToken,
+    endDateOffsetSeconds,
     periodLengthSeconds
   ) {
     this.empClient = expiringMultiPartyClient;
@@ -22,6 +23,7 @@ class GlobalSummaryReporter {
     this.referencePriceFeed = referencePriceFeed;
     this.uniswapPriceFeed = uniswapPriceFeed;
 
+    this.endDateOffsetSeconds = endDateOffsetSeconds;
     this.periodLengthSeconds = periodLengthSeconds;
 
     this.web3 = this.empEventClient.web3;
@@ -44,9 +46,15 @@ class GlobalSummaryReporter {
 
     // Block number stats.
     this.currentBlockNumber = await this.web3.eth.getBlockNumber();
+    this.endBlockNumberForPeriod =
+      this.currentBlockNumber - (await this._getLookbackTimeInBlocks(this.endDateOffsetSeconds));
     this.startBlockNumberForPeriod =
-      this.currentBlockNumber - (await this._getLookbackTimeInBlocks(this.periodLengthSeconds));
-    this.periodLabelInHours = `${Math.round(this.periodLengthSeconds / (60 * 60))}H`;
+      this.endBlockNumberForPeriod - (await this._getLookbackTimeInBlocks(this.periodLengthSeconds));
+    this.startBlockTimestamp = (await this.web3.eth.getBlock(this.startBlockNumberForPeriod)).timestamp;
+    this.endBlockTimestamp = (await this.web3.eth.getBlock(this.endBlockNumberForPeriod)).timestamp;
+    this.periodLabelInHours = `${formatDateShort(this.startBlockTimestamp)} to ${formatDateShort(
+      this.endBlockTimestamp
+    )}`;
 
     // Events accessible by all methods.
     this.collateralDepositEvents = await this.collateralContract.getPastEvents("Transfer", {
@@ -178,7 +186,7 @@ class GlobalSummaryReporter {
     let collateralDepositedPeriod = toBN("0");
     for (let event of this.collateralDepositEvents) {
       collateralDeposited = collateralDeposited.add(toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
+      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
         collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.returnValues.value));
       }
     }
@@ -193,7 +201,7 @@ class GlobalSummaryReporter {
     let collateralWithdrawnPeriod = toBN("0");
     for (let event of this.collateralWithdrawEvents) {
       collateralWithdrawn = collateralWithdrawn.add(toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
+      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
         collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.returnValues.value));
       }
     }
@@ -215,7 +223,7 @@ class GlobalSummaryReporter {
     let tokensMintedPeriod = toBN("0");
     for (let event of this.createEvents) {
       tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
+      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
         tokensMintedPeriod = tokensMintedPeriod.add(toBN(event.tokenAmount));
       }
     }
@@ -230,7 +238,7 @@ class GlobalSummaryReporter {
     let tokensBurnedPeriod = toBN("0");
     for (let event of this.syntheticBurnedEvents) {
       tokensBurned = tokensBurned.add(toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod) {
+      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
         tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.returnValues.value));
       }
     }
@@ -311,7 +319,7 @@ class GlobalSummaryReporter {
         // the contract.
         collateralLiquidated = collateralLiquidated.add(toBN(event.lockedCollateral));
         uniqueLiquidations[event.sponsor] = true;
-        if (event.blockNumber >= this.startBlockNumberForPeriod) {
+        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
           tokensLiquidatedPeriod = tokensLiquidatedPeriod.add(toBN(event.tokensOutstanding));
           collateralLiquidatedPeriod = collateralLiquidatedPeriod.add(toBN(event.lockedCollateral));
           uniqueLiquidationsPeriod[event.sponsor] = true;
@@ -361,7 +369,7 @@ class GlobalSummaryReporter {
         tokensDisputed = tokensDisputed.add(toBN(liquidationData.tokensOutstanding));
         collateralDisputed = collateralDisputed.add(toBN(liquidationData.lockedCollateral));
         uniqueDisputes[event.sponsor] = true;
-        if (event.blockNumber >= this.startBlockNumberForPeriod) {
+        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
           tokensDisputedDaily = tokensDisputedPeriod.add(toBN(liquidationData.tokensOutstanding));
           collateralDisputedDaily = collateralDisputedPeriod.add(toBN(liquidationData.lockedCollateral));
           uniqueDisputesPeriod[event.sponsor] = true;
@@ -432,7 +440,7 @@ class GlobalSummaryReporter {
       for (let event of this.regularFeeEvents) {
         regularFeesPaid = regularFeesPaid.add(toBN(event.regularFee));
         lateFeesPaid = lateFeesPaid.add(toBN(event.lateFee));
-        if (event.blockNumber >= this.startBlockNumberForPeriod) {
+        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
           regularFeesPaidPeriod = regularFeesPaidPeriod.add(toBN(event.regularFee));
           lateFeesPaidPeriod = lateFeesPaidPeriod.add(toBN(event.lateFee));
         }
@@ -444,7 +452,7 @@ class GlobalSummaryReporter {
     } else {
       for (let event of this.finalFeeEvents) {
         finalFeesPaid = finalFeesPaid.add(toBN(event.amount));
-        if (event.blockNumber >= this.startBlockNumberForPeriod) {
+        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
           finalFeesPaidPeriod = finalFeesPaidPeriod.add(toBN(event.amount));
         }
       }
