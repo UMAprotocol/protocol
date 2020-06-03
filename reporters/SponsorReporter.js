@@ -30,9 +30,7 @@ class SponsorReporter {
   generateMonitoredWalletMetrics = async () => {
     await this.update();
     console.log(
-      italic(
-        "- Each monitored wallet within the configuration object has their position and token balances printed"
-      )
+      italic("- Each monitored wallet within the configuration object has their position and token balances printed")
     );
 
     // For each wallet monitored run through the checks and log information.
@@ -55,11 +53,7 @@ class SponsorReporter {
 
   generateSponsorsTable = async () => {
     await this.update();
-    console.log(
-      italic(
-        "- All current token sponsors within the spesified EMP are printed"
-      )
-    );
+    console.log(italic("- All current token sponsors within the spesified EMP are printed"));
 
     // For all positions current open in the UMA ecosystem, generate a table.
     const allPositions = this.empClient.getAllPositions();
