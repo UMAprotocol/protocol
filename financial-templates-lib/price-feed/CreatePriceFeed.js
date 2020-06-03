@@ -3,6 +3,7 @@ const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 const Uniswap = require("../../core/build/contracts/Uniswap.json");
+const ExpiringMultiParty = require("../../core/build/contracts/ExpiringMultiParty.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
@@ -120,6 +121,77 @@ function isMissingField(config, requiredFields, logger) {
   }
 
   return false;
+}
+
+async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  // TODO: maybe move this default config to a better location.
+  const defaultConfigs = {
+    "ETH/BTC": {
+      type: "medianizer",
+      pair: "ethbtc",
+      lookback: 7200,
+      minTimeBetweenUpdates: 60,
+      medianizedFeeds: [
+        { type: "cryptowatch", exchange: "coinbase-pro" },
+        { type: "cryptowatch", exchange: "binance" },
+        { type: "cryptowatch", exchange: "bitstamp" }
+      ]
+    }
+  };
+
+  const emp = getEmpAtAddress(web3, empAddress);
+  const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier.call());
+  const defaultConfig = defaultConfigs[identifier];
+
+  let combinedConfig;
+  if (defaultConfig && config) {
+    // Combine the two configs, giving the user-config's properties precedence.
+    combinedConfig = { ...defaultConfig, ...config };
+
+    logger.debug({
+      at: "createReferencePriceFeedForEmp",
+      message: "Found both a default config and a user-config",
+      defaultConfig,
+      userConfig: config,
+      combinedConfig
+    });
+  } else {
+    combinedConfig = defaultConfig || config;
+
+    if (!combinedConfig) {
+      throw "createReferencePriceFeedForEmp: No default config was found and no user config was provided.";
+    }
+  }
+
+  return createPriceFeed(logger, web3, networker, getTime, config);
+}
+
+async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, uniswapAddress, config) {
+  const emp = getEmpAtAddress(web3, empAddress);
+
+  const collateralAddress = await emp.methods.collateralCurrency.call();
+  const tokenAddress = await emp.methods.tokenCurrency.call();
+
+  // Compute the uniswap address:
+  // 1. Sort the token addresses
+  // 2. Compute pair address: https://uniswap.org/docs/v2/technical-considerations/pair-addresses/.
+  const uniswapAddress = null;
+
+  // TODO: maybe move this default config to a better location.
+  const defaultConfig = {
+    type: "uniswap",
+    twapLength: 2,
+    lookback: 7200,
+    uniswapAddress
+  };
+
+  const userConfig = config || {};
+
+  return createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
+}
+
+function getEmpAtAddress(web3, empAddress) {
+  return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
 }
 
 module.exports = {
