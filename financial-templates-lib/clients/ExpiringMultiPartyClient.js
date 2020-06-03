@@ -58,7 +58,7 @@ class ExpiringMultiPartyClient {
   // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
-    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, tokenRedemptionValue);
+    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.liquidatedCollateral, tokenRedemptionValue);
   };
 
   // Returns an array of sponsor addresses.
@@ -101,7 +101,8 @@ class ExpiringMultiPartyClient {
           sponsor: liquidation.sponsor,
           id: id.toString(),
           numTokens: liquidation.tokensOutstanding.toString(),
-          amountCollateral: liquidation.liquidatedCollateral.toString(),
+          liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
+          lockedCollateral: liquidation.lockedCollateral.toString(),
           liquidationTime: liquidation.liquidationTime,
           liquidator: liquidation.liquidator,
           disputer: liquidation.disputer

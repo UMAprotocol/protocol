@@ -184,7 +184,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         sponsor: sponsor2,
         id: liquidationId.toString(),
         numTokens: toWei("45"),
-        amountCollateral: toWei("100"),
+        liquidatedCollateral: toWei("100"),
+        lockedCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
         liquidator: sponsor1,
         disputer: zeroAddress
@@ -307,6 +308,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
+    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
     await emp.createLiquidation.call(
@@ -336,7 +338,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150"),
+          liquidatedCollateral: toWei("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
+          lockedCollateral: toWei("150"),
           liquidator: liquidator,
           disputer: zeroAddress
         }
@@ -360,7 +363,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150"),
+          liquidatedCollateral: toWei("140"),
+          lockedCollateral: toWei("150"),
           liquidator: liquidator,
           disputer: zeroAddress
         }
@@ -418,7 +422,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150"),
+          liquidatedCollateral: toWei("150"),
+          lockedCollateral: toWei("150"),
           liquidator: liquidator,
           disputer: sponsor1
         }
