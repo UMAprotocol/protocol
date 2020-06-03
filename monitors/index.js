@@ -63,7 +63,7 @@ async function run(
     const syntheticTokenAddress = await emp.tokenCurrency();
     const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
 
-    // Generate EMP properties to inform logs in modules like the token symbols.
+    // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),

@@ -1,4 +1,4 @@
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
@@ -51,7 +51,7 @@ contract("CRMonitor.js", function(accounts) {
   const spy = sinon.spy();
 
   before(async function() {
-    collateralToken = await Token.new("Dai Stable coin", "Dai", 18, { from: tokenSponsor });
+    collateralToken = await Token.new("Dai Stable coin", "DAI", 18, { from: tokenSponsor });
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("ETHBTC"));
@@ -111,10 +111,16 @@ contract("CRMonitor.js", function(accounts) {
         crAlert: 1.5 // if the collateralization ratio of this wallet drops below 150% send an alert
       }
     ];
-
-    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject, priceFeedMock);
-
     syntheticToken = await Token.at(await emp.tokenCurrency());
+
+    const empProps = {
+      collateralCurrencySymbol: await collateralToken.symbol(),
+      syntheticCurrencySymbol: await syntheticToken.symbol(),
+      priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
+      networkId: await web3.eth.net.getId()
+    };
+
+    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject, priceFeedMock, empProps);
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
