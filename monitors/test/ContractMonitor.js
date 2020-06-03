@@ -209,7 +209,7 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "150.00")); // locked collateral amount of 150
     assert.isTrue(lastSpyLogIncludes(spy, "50.00")); // tokens liquidated
     assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
-    assert.isTrue(lastSpyLogIncludes(spy, "1.000")); // estimated price at liquidation time
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
     assert.isTrue(lastSpyLogIncludes(spy, "1.86")); // maximum price for liquidation to be disputable
 
     // Liquidate another position and ensure the Contract monitor emits the correct params
@@ -234,7 +234,7 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "175.00")); // liquidated & locked collateral: 175
     assert.isTrue(lastSpyLogIncludes(spy, "45.00")); // tokens liquidated
     assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
-    assert.isTrue(lastSpyLogIncludes(spy, "1.000")); // estimated price at liquidation time
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
     assert.isTrue(lastSpyLogIncludes(spy, "2.59")); // maximum price for liquidation to be disputable
   });
   it("Winston correctly emits dispute events", async function() {
