@@ -24,3 +24,6 @@ app.yaml
 
 # environment-specific values pulled by dotenv package
 .env
+
+# Logs created by reporter module
+dailyreport.log

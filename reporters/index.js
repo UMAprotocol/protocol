@@ -3,6 +3,7 @@ const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
 const boldUnderlineRed = chalkPipe("bold.underline.red");
 
+const { redirectStdOutToFile } = require("../common/StreamUtils");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 const winston = require("winston");
 
@@ -142,8 +143,18 @@ const Poll = async function(callback) {
     // `24 * 60 * 60` means that the report will include aggregated data for the past 24 hours.
     const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH ? process.env.PERIOD_REPORT_LENGTH : 24 * 60 * 60;
 
+    // Open the file stream and set console.log to write output to it.
+    const fileStream = redirectStdOutToFile("./dailyreport.log");
+
     await run(empAddress, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds);
-    callback();
+
+    // Signal that we will not send any more data to `fileStream`.
+    fileStream.end();
+
+    // Once we receive the signal that we should not expect any more data, exit this process.
+    fileStream.on("finish", () => {
+      callback();
+    });
   } catch (err) {
     callback(err);
   }
