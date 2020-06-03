@@ -68,10 +68,9 @@ const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision)
     formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false);
 };
 
-// generate a etherscan link prefix
-function createEtherscanLinkFromtx(web3) {
+// Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
+function createEtherscanLinkFromtx(networkId) {
   // Construct etherscan link based on network
-  const networkId = web3.networkId;
   let url;
   if (networkUtils[networkId]) {
     url = `${networkUtils[networkId].etherscan}`;
@@ -79,6 +78,7 @@ function createEtherscanLinkFromtx(web3) {
     // Default to mainnet, even though it won't work for ganache runs.
     url = "https://etherscan.io/";
   }
+
   return url;
 }
 
@@ -90,17 +90,13 @@ function createShortHexString(hex) {
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(web3, hex) {
+function createEtherscanLinkMarkdown(hex, networkId = 1) {
+  if (hex.substring(0, 2) != "0x") return null;
   let shortURLString = createShortHexString(hex);
-
   // Transaction hash
-  if (hex.length == 66) {
-    return `<${createEtherscanLinkFromtx(web3, networkUtils)}tx/${hex}|${shortURLString}>`;
-  }
+  if (hex.length == 66) return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
   // Account
-  else if (hex.length == 42) {
-    return `<${createEtherscanLinkFromtx(web3, networkUtils)}address/${hex}|${shortURLString}>`;
-  }
+  else if (hex.length == 42) return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
 }
 
 module.exports = {

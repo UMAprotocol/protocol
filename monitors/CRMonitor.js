@@ -32,6 +32,9 @@ class CRMonitor {
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "ETHBTC";
+
+    // TODO: pull this into the parent client
+    this.networkId = 1;
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
@@ -90,7 +93,7 @@ class CRMonitor {
         const mrkdwn =
           wallet.name +
           " (" +
-          createEtherscanLinkMarkdown(this.web3, wallet.address) +
+          createEtherscanLinkMarkdown(wallet.address, this.networkId) +
           ") collateralization ratio has dropped to " +
           this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +

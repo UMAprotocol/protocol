@@ -280,7 +280,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amount: fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig
       });
 
@@ -307,7 +307,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amount: fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });

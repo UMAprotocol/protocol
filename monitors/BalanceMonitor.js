@@ -28,6 +28,9 @@ class BalanceMonitor {
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "ETHBTC";
+
+    // TODO: pull this into the parent client
+    this.networkId = 1;
   }
 
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
@@ -85,10 +88,9 @@ class BalanceMonitor {
 
   _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
-      "*" +
       bot.name +
-      "* (" +
-      createEtherscanLinkMarkdown(this.web3, bot.address) +
+      " (" +
+      createEtherscanLinkMarkdown(bot.address, this.networkId) +
       ") " +
       tokenName +
       " balance is less than " +
