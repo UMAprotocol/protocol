@@ -74,8 +74,7 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = [];
-    undisputedLiquidations.map(liquidation => {
+    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
       if (!price) {
         this.logger.warn({
@@ -87,7 +86,7 @@ class Disputer {
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
         ) {
-          disputeableLiquidations.push(liquidation);
+          return liquidation;
         }
       }
     });
