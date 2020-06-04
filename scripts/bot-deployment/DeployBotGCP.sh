@@ -30,7 +30,7 @@ echo "📄 Bot service account found @" $serviceAccountEmail
 echo "🤖 Pulling bot config from GCP bucket"
 
 # Create a temp file to store the config. This will be cleaned up by the OS.
-tempFile=$(mktemp /tmp/UMA.XXXXXXXXX)
+tempFile=$(mktemp -t UMA)
 
 # Copy config files from GCP to the temp file
 gsutil cp gs://bot-configs/$1.env $tempFile
