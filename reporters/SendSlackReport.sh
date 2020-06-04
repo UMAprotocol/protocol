@@ -41,7 +41,12 @@ if [ "$uploadSuccess" = true ] ; then
 else
     error=$(cat $responseFileName | jq '.error')
     echo "Failed to upload file! Error description:" $error
+    rm $fileName
+    exit 1
 fi
 
 echo "Cleaning up and removing files"
 rm $fileName
+
+# Exit with success state
+exit 0
