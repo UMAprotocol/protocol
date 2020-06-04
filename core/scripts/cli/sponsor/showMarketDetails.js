@@ -34,6 +34,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
+      // TODO: potentially generalize this for use elsewhere in the CLI tool.
       const getCollateralizationRatio = async () => {
         let priceFeed;
         try {
