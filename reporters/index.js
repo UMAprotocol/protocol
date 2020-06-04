@@ -26,7 +26,14 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 const OracleInterface = artifacts.require("OracleInterface");
 const Finder = artifacts.require("Finder");
 
-async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds, endDateOffsetSeconds) {
+async function run(
+  address,
+  walletsToMonitor,
+  referencePriceFeedConfig,
+  uniswapPriceFeedConfig,
+  periodLengthSeconds,
+  endDateOffsetSeconds
+) {
   console.log(boldUnderlineRed("Starting Reporter Script🖨\n"));
 
   // For now we will use a dummy transport to make things quiet in the logs
