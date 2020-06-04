@@ -6,6 +6,10 @@ const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
+// Web scraping
+const fetch = require("node-fetch");
+const cheerio = require("cheerio");
+
 class GlobalSummaryReporter {
   constructor(
     expiringMultiPartyClient,
@@ -135,6 +139,7 @@ class GlobalSummaryReporter {
         "- Uniswap TWAP price window can be modified using the 'twapLength' property in the UNISWAP_PRICE_FEED_CONFIG"
       )
     );
+    console.log(italic("- Token holder distribution stats sourced from etherscan.io"));
     await this._generateTokenStats();
     console.groupEnd();
 
@@ -290,8 +295,14 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
+    const tokenHolders = await this._getTokenHolders();
+    if (tokenHolders) {
+      allTokenStatsTable["# of token holders"] = {
+        current: tokenHolders
+      };
+    }
+
     // TODO:
-    // - # token holders (current) (cumulative)
     // - # trades in uniswap (24H) (cumulative)
     // - volume of trades in uniswap in # of tokens (24H) (cumulative)
 
@@ -482,6 +493,22 @@ class GlobalSummaryReporter {
     const blockTimeInSeconds = await averageBlockTimeSeconds();
     const blocksToLookBack = Math.ceil(lookbackTimeInSeconds / blockTimeInSeconds);
     return blocksToLookBack;
+  };
+
+  _getTokenHolders = async () => {
+    // TODO: This is a fragile implementation that scrapes etherscan's token holder page. It would likely fail if the
+    // the etherscan HTML document changes.
+    const etherscanTokenHoldersUrl =
+      "https://etherscan.io/token/generic-tokenholders2?a=0x6d002a834480367fb1a1dc5f47e82fde39ec2c42&s=2004251000000000000000000";
+    const response = await fetch(etherscanTokenHoldersUrl);
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // The list of token holders can be found in the <table>, and each token holder's information
+    // is displayed in a <tr> element within the <tbody>.
+    const tokenHolderTable = $("tbody");
+    const countTokenHolders = tokenHolderTable.children().length;
+    return countTokenHolders;
   };
 }
 module.exports = {

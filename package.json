@@ -53,6 +53,7 @@
     "bignumber.js": "^8.0.1",
     "bip39": "^3.0.2",
     "chalk-pipe": "^3.0.0",
+    "cheerio": "^1.0.0-rc.3",
     "dotenv": "^6.2.0",
     "eth-crypto": "^1.3.4",
     "express": "^4.17.1",
