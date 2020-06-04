@@ -7,14 +7,18 @@
  * @param {BN} number of tokens that have been borrowed/minted against the position
  * @return {BN} collateralization ratio.
  */
-async function computeCollateralizationRatio(web3, tokenPrice, collateral, tokensOutstanding) => {
+function computeCollateralizationRatio(web3, tokenPrice, collateral, tokensOutstanding) {
   const { toWei, toBN } = web3.utils;
   const fixedPointScalingFactor = toBN(toWei("1"));
   if (tokensOutstanding.isZero() || tokenPrice.isZero()) {
     return toBN("0");
   }
-  return collateral.mul(fixedPointScalingFactor).mul(fixedPointScalingFactor).div(tokensOutstanding).div(tokenPrice);
-};
+  return collateral
+    .mul(fixedPointScalingFactor)
+    .mul(fixedPointScalingFactor)
+    .div(tokensOutstanding)
+    .div(tokenPrice);
+}
 
 module.exports = {
   computeCollateralizationRatio

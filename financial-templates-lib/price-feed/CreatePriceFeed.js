@@ -140,7 +140,7 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
   };
 
   const emp = getEmpAtAddress(web3, empAddress);
-  const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier.call());
+  const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
   const defaultConfig = defaultConfigs[identifier];
 
   let combinedConfig;
@@ -163,37 +163,38 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     }
   }
 
-  return createPriceFeed(logger, web3, networker, getTime, config);
+  return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }
 
-async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, uniswapAddress, config) {
-  const emp = getEmpAtAddress(web3, empAddress);
-
-  const collateralAddress = await emp.methods.collateralCurrency.call();
-  const tokenAddress = await emp.methods.tokenCurrency.call();
-
-  // Compute the uniswap address:
-  // 1. Sort the token addresses
-  // 2. Compute pair address: https://uniswap.org/docs/v2/technical-considerations/pair-addresses/.
-  const uniswapAddress = null;
-
-  // TODO: maybe move this default config to a better location.
-  const defaultConfig = {
-    type: "uniswap",
-    twapLength: 2,
-    lookback: 7200,
-    uniswapAddress
-  };
-
-  const userConfig = config || {};
-
-  return createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
-}
+// async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, uniswapAddress, config) {
+//   const emp = getEmpAtAddress(web3, empAddress);
+//
+//   const collateralAddress = await emp.methods.collateralCurrency.call();
+//   const tokenAddress = await emp.methods.tokenCurrency.call();
+//
+//   // Compute the uniswap address:
+//   // 1. Sort the token addresses
+//   // 2. Compute pair address: https://uniswap.org/docs/v2/technical-considerations/pair-addresses/.
+//   const uniswapAddress = null;
+//
+//   // TODO: maybe move this default config to a better location.
+//   const defaultConfig = {
+//     type: "uniswap",
+//     twapLength: 2,
+//     lookback: 7200,
+//     uniswapAddress
+//   };
+//
+//   const userConfig = config || {};
+//
+//   return createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
+// }
 
 function getEmpAtAddress(web3, empAddress) {
   return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
 }
 
 module.exports = {
-  createPriceFeed
+  createPriceFeed,
+  createReferencePriceFeedForEmp
 };
