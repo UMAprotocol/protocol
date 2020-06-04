@@ -27,6 +27,9 @@ class BalanceMonitor {
     this.empProps = empProps;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
   }
 
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
@@ -106,7 +109,7 @@ class BalanceMonitor {
     if (value == null) {
       return false;
     }
-    return this.web3.utils.toBN(value).lt(this.web3.utils.toBN(threshold));
+    return this.toBN(value).lt(this.toBN(threshold));
   }
 }
 

@@ -52,6 +52,10 @@ class SyntheticPegMonitor {
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
   }
 
   // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
@@ -80,7 +84,7 @@ class SyntheticPegMonitor {
 
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
-    if (deviationError.abs().gt(this.web3.utils.toBN(this.web3.utils.toWei(this.deviationAlertThreshold.toString())))) {
+    if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
@@ -129,11 +133,7 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (
-      pricefeedVolatility
-        .abs()
-        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
-    ) {
+    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High peg price volatility alert 🌋",
@@ -182,11 +182,7 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (
-      pricefeedVolatility
-        .abs()
-        .gt(this.web3.utils.toBN(this.web3.utils.toWei(this.volatilityAlertThreshold.toString())))
-    ) {
+    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "High synthetic price volatility alert 🌋",
@@ -235,7 +231,7 @@ class SyntheticPegMonitor {
   _calculateDeviationError(observedValue, expectedValue) {
     return observedValue
       .sub(expectedValue)
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1"))) // Scale the numerator before division
+      .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division
       .div(expectedValue);
   }
 
@@ -276,7 +272,7 @@ class SyntheticPegMonitor {
     return {
       min: min,
       max: max,
-      volatility: this._calculateDeviationError(max, min).mul(this.web3.utils.toBN(volatilityDirection))
+      volatility: this._calculateDeviationError(max, min).mul(this.toBN(volatilityDirection))
     };
   }
 }

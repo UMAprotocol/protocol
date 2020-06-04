@@ -28,6 +28,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // Use CryptoWatch's most granular option, one minute.
     this.ohlcPeriod = 60;
+
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
   }
 
   getCurrentPrice() {
@@ -65,7 +69,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-    const { toWei, toBN } = this.web3.utils;
     const currentTime = this.getTime();
 
     // Return early if the last call was too recent.
@@ -132,8 +135,8 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
         closeTime: ohlc[0],
-        openPrice: toBN(toWei(ohlc[1].toString())),
-        closePrice: toBN(toWei(ohlc[4].toString()))
+        openPrice: this.toBN(this.toWei(ohlc[1].toString())),
+        closePrice: this.toBN(this.toWei(ohlc[4].toString()))
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -161,7 +164,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     //     "price": priceValue
     //   }
     // }
-    this.currentPrice = toBN(toWei(priceResponse.result.price.toString()));
+    this.currentPrice = this.toBN(this.toWei(priceResponse.result.price.toString()));
 
     this.historicalPricePeriods = newHistoricalPricePeriods;
     this.lastUpdateTime = currentTime;

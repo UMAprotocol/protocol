@@ -30,6 +30,9 @@ class Disputer {
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
 
+    // Helper functions from web3.
+    this.fromWei = this.web3.utils.fromWei;
+
     // Default config settings. Disputer deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -161,8 +164,6 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {
-    const { fromWei } = this.web3.utils;
-
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
@@ -210,7 +211,7 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: fromWei(withdrawAmount.rawValue),
+        amount: this.fromWei(withdrawAmount.rawValue),
         txnConfig
       });
 
@@ -237,7 +238,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: fromWei(withdrawAmount.rawValue),
+        amount: this.fromWei(withdrawAmount.rawValue),
         txnConfig,
         liquidationResult: logResult
       });

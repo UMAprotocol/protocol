@@ -31,6 +31,10 @@ class CRMonitor {
 
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
+    
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
@@ -76,7 +80,7 @@ class CRMonitor {
 
       // Lastly, if we have gotten a position CR ratio this can be compared against the threshold. If it is below the
       // threshold then push the notification.
-      if (this._ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString()))) {
+      if (this._ltThreshold(positionCR, this.toWei(wallet.crAlert.toString()))) {
         const liquidationPrice = this._calculatePriceForCR(
           collateral,
           tokensOutstanding,
@@ -119,38 +123,35 @@ class CRMonitor {
 
   // Checks if a big number value is below a given threshold.
   _ltThreshold(value, threshold) {
-    const { toBN, toWei } = this.web3.utils;
     // If the price has not resolved yet then return false.
     if (value == null) {
       return false;
     }
-    return toBN(value).lt(toBN(threshold));
+    return this.toBN(value).lt(this.toBN(threshold));
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = collateral / (tokensOutstanding * price)
   _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
-    const { toBN, toWei } = this.web3.utils;
     if (collateral == 0) {
       return 0;
     }
     if (tokensOutstanding == 0) {
       return null;
     }
-    return toBN(collateral)
-      .mul(toBN(toWei("1")))
-      .mul(toBN(toWei("1")))
-      .div(toBN(tokensOutstanding).mul(toBN(tokenPrice)));
+    return this.toBN(collateral)
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
+      .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    const { toBN, toWei } = this.web3.utils;
-    const fixedPointScaling = toBN(toWei("1"));
-    return toBN(collateral)
+    const fixedPointScaling = this.toBN(this.toWei("1"));
+    return this.toBN(collateral)
       .mul(fixedPointScaling)
       .mul(fixedPointScaling)
-      .div(toBN(tokensOutstanding))
-      .div(toBN(positionCR));
+      .div(this.toBN(tokensOutstanding))
+      .div(this.toBN(positionCR));
   }
 }
 

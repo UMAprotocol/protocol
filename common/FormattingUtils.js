@@ -45,10 +45,10 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
 
   const fullPrecisionFloat = BigNumber(num);
   let fixedPrecisionFloat;
-  // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is larger than
+  // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is equal to or larger than
   // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
   // is less than 1 then truncate to minPrecision precision. EG: 0.0022183471 -> 0.002218 with minPrecision=4
-  if (fullPrecisionFloat.abs().gt(BigNumber(1))) {
+  if (fullPrecisionFloat.abs().gte(BigNumber(1))) {
     fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
       .toFixed(decimalPlaces)
       .toString();
