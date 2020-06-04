@@ -171,6 +171,11 @@ contract("Disputer.js", function(accounts) {
       { from: liquidator }
     );
 
+    // Try disputing before any mocked prices are set, simulating a situation where the pricefeed
+    // fails to return a price. The disputer should emit a "warn" level log about each missing prices.
+    await disputer.queryAndDispute();
+    assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
+
     // Start with a mocked price of 1.75 usd per token.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
     priceFeedMock.setHistoricalPrice(toBN(toWei("1.75")));
@@ -180,12 +185,12 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
-    assert.equal(spy.callCount, 0); // No info level logs should be sent.
+    assert.equal(spy.callCount, 3); // No info level logs should be sent.
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
     priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
     await disputer.queryAndDispute();
-    assert.equal(spy.callCount, 2); // 2 info level logs should be sent at the conclusion of the disputes.
+    assert.equal(spy.callCount, 5); // 2 info level logs should be sent at the conclusion of the disputes.
 
     // Sponsor2 and sponsor3 should be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);

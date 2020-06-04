@@ -77,13 +77,25 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(
-      liquidation =>
-        this.empClient.isDisputable(
-          liquidation,
-          this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()))
-        ) && this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
-    );
+    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
+      const price = this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
+      if (!price) {
+        this.logger.warn({
+          at: "Disputer",
+          message: "Cannot dispute: price feed returned invalid value"
+        });
+        return false;
+      } else {
+        if (
+          this.empClient.isDisputable(liquidation, price) &&
+          this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
+        ) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    });
 
     if (disputeableLiquidations.length === 0) {
       this.logger.debug({
