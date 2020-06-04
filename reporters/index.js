@@ -150,16 +150,12 @@ const Poll = async function(callback) {
     // start and end dates we can control:
 
     // Change `endDateOffsetSeconds` to modify the end date for the "period". End date will be (now - endDateOffsetSeconds).
-    const endDateOffsetSeconds =
-      process.env.PERIOD_END_DATE_OFFSET && process.env.PERIOD_END_DATE_OFFSET > 0
-        ? Math.round(process.env.PERIOD_END_DATE_OFFSET)
-        : 0;
+    const endDateOffsetSeconds = process.env.PERIOD_END_DATE_OFFSET ? parseInt(process.env.PERIOD_END_DATE_OFFSET) : 0;
 
     // Change `periodLengthSeconds` to modify the "period" start date. Start date will be (endDate - periodLengthSeconds).
-    const periodLengthSeconds =
-      process.env.PERIOD_REPORT_LENGTH && process.env.PERIOD_REPORT_LENGTH > 0
-        ? Math.round(process.env.PERIOD_REPORT_LENGTH)
-        : 24 * 60 * 60;
+    const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH
+      ? parseInt(process.env.PERIOD_REPORT_LENGTH)
+      : 24 * 60 * 60;
 
     await run(
       empAddress,
