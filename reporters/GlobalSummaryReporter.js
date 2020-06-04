@@ -172,13 +172,18 @@ class GlobalSummaryReporter {
 
     // - Lifetime # of unique sponsors.
     const uniqueSponsors = {};
+    const periodUniqueSponsors = {};
     const currentUniqueSponsors = this.empClient.getAllPositions();
     for (let event of this.newSponsorEvents) {
       uniqueSponsors[event.sponsor] = true;
+      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
+        periodUniqueSponsors[event.sponsor] = true;
+      }
     }
     allSponsorStatsTable["# of unique sponsors"] = {
       cumulative: Object.keys(uniqueSponsors).length,
-      current: Object.keys(currentUniqueSponsors).length
+      current: Object.keys(currentUniqueSponsors).length,
+      [this.periodLabelInHours]: Object.keys(periodUniqueSponsors).length
     };
 
     // - Cumulative collateral deposited into contract
