@@ -26,8 +26,20 @@ message_title=$date" Daily Report"
 pathToFile="./"$fileName
 
 # Send a curl command to upload the file along with a message to the channel.
+# We'll store the response data in a file to verify that it was uploaded properly.
 echo "Sending file as slack message"
-curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}"
+responseFile="response.json"
+curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}" > $responseFile
 
-echo "Cleaning up and removing file"
+# Verify that the 'ok' property of the response data is "true".
+uploadSuccess=$(cat $responseFile | jq '.ok')
+if [ "$uploadSuccess" = true ] ; then
+    echo 'File upload succeeded!'
+else
+    echo 'File upload failed!'
+    # Do something here
+fi
+
+echo "Cleaning up and removing files"
 rm $fileName
+rm $responseFile
