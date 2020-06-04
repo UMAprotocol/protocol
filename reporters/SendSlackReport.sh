@@ -22,12 +22,12 @@ echo "${reportOutput}" >$fileName
 
 # Spesify the parameters to send to the slack API. All caps values need to be set as enviroment variables.
 # Note that this SLACK_TOKEN is an API token, not a webhook.
-message_title=$date" Daily Report"
+messageTitle=$date $BOT_IDENTIFIER " Daily Report"
 pathToFile="./"$fileName
 
 # Send a curl command to upload the file along with a message to the channel.
 echo "Sending file as slack message"
-curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}"
+curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${messageTitle}" -F fileName="${fileName}" -F file=@"${pathToFile}"
 
 echo "Cleaning up and removing file"
 rm $fileName
