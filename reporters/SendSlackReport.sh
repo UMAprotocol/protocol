@@ -25,9 +25,28 @@ echo "${reportOutput}" >$fileName
 messageTitle="$date $BOT_IDENTIFIER Daily Report"
 pathToFile="./"$fileName
 
-# Send a curl command to upload the file along with a message to the channel.
+# Send a curl command to upload the file along with a message to the channel. Store response log for debugging.
+responseFileName="response.json"
 echo "Sending file as slack message"
-curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${messageTitle}" -F fileName="${fileName}" -F file=@"${pathToFile}"
+curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}" | jq > $responseFileName
+echo "Slack API response logged in $responseFileName"
 
-echo "Cleaning up and removing file"
+# Verify that the 'ok' property of the response data is "true".
+# API documentation can be found here: https://api.slack.com/methods/files.upload
+uploadSuccess=$(cat $responseFileName | jq '.ok')
+if [ "$uploadSuccess" = true ] ; then
+    fileType=$(cat $responseFileName | jq '.file.pretty_type')
+    fileSize=$(cat $responseFileName | jq '.file.size')
+    echo "Success! Uploaded a new" $fileType "file ("$fileSize "bytes)"
+else
+    error=$(cat $responseFileName | jq '.error')
+    echo "Failed to upload file! Error description:" $error
+    rm $fileName
+    exit 1
+fi
+
+echo "Cleaning up and removing files"
 rm $fileName
+
+# Exit with success state
+exit 0
