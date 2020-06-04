@@ -13,6 +13,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
     this.invertPrice = invertPrice;
+
+    // Helper functions from web3.
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
   }
 
   getCurrentPrice() {
@@ -88,13 +92,12 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _getPriceFromSyncEvent(event) {
-    const { toWei, toBN } = this.web3.utils;
-    const fixedPointAdjustment = toBN(toWei("1"));
+    const fixedPointAdjustment = this.toBN(this.toWei("1"));
 
     // Currently assumes that token0 is the price denominator and token1 is the numerator.
     // TODO: allow the constructor to select the denominator currency.
-    const reserve0 = toBN(event.returnValues.reserve0);
-    const reserve1 = toBN(event.returnValues.reserve1);
+    const reserve0 = this.toBN(event.returnValues.reserve0);
+    const reserve1 = this.toBN(event.returnValues.reserve1);
 
     if (this.invertPrice) {
       return reserve0.mul(fixedPointAdjustment).div(reserve1);
@@ -104,15 +107,13 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _computeTwap(eventsIn, startTime, endTime) {
-    const { toBN } = this.web3.utils;
-
     // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
     const events = eventsIn.slice();
     events.push({ timestamp: MAX_SAFE_JS_INT });
 
     let lastPrice = null;
     let lastTime = null;
-    let priceSum = toBN("0");
+    let priceSum = this.toBN("0");
     let timeSum = 0;
     for (const event of events) {
       // Because the price window goes up until the next event, computation cannot start until event 2.

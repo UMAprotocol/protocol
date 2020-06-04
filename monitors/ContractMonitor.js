@@ -32,16 +32,19 @@ class ContractMonitor {
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+
+    // Helper functions from web3.
+    this.toWei = this.web3.utils.toWei;
+    this.toBN = this.web3.utils.toBN;
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
   calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
-    return this.web3.utils
-      .toBN(collateral)
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice.toString())))
+    return this.toBN(collateral)
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
+      .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice.toString())))
       .muln(100);
   };
 
