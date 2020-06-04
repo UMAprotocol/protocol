@@ -17,8 +17,7 @@ const { createFormatFunction } = require("../../../../common/FormattingUtils.js"
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei, toBN } = web3.utils;
-  // const sponsorAddress = await getDefaultAccount(web3);
-  const sponsorAddress = "0x367f62f022e0c8236d664fba35b594591270dafb";
+  const sponsorAddress = await getDefaultAccount(web3);
   let collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const syntheticCurrency = await ExpandedERC20.at(await emp.tokenCurrency());

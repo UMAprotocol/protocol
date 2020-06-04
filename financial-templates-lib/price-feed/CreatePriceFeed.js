@@ -123,6 +123,16 @@ function isMissingField(config, requiredFields, logger) {
   return false;
 }
 
+/**
+ * Create a reference price feed for the EMP. Note: this is the price feed that the token is tracking.
+ * @param {Object} winston logger.
+ * @param {Object} web3 instance.
+ * @param {Object} networker object that the price feed may use to make REST calls.
+ * @param {Function} function to get the current time.
+ * @param {String} string representing the address of the EMP contract.
+ * @param {Object} optional config to override the defaults for this reference feed.
+ * @return {Object} an instance of PriceFeedInterface that can be used to get the reference price.
+ */
 async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
   // TODO: maybe move this default config to a better location.
   const defaultConfigs = {
