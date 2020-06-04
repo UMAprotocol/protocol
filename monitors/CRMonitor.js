@@ -15,7 +15,7 @@ class CRMonitor {
    *                  ...];
    * @param {Object} priceFeed offchain price feed used to track the token price.
    */
-  constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed) {
+  constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed, empProps) {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;
@@ -29,12 +29,8 @@ class CRMonitor {
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
-    // TODO: replace this with a fetcher that pulls the actual collateral token symbol
-    this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "ETHBTC";
-
-    // TODO: pull this into the parent client
-    this.networkId = 1;
+    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
+    this.empProps = empProps;
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -97,13 +93,13 @@ class CRMonitor {
         const mrkdwn =
           wallet.name +
           " (" +
-          createEtherscanLinkMarkdown(wallet.address, this.networkId) +
+          createEtherscanLinkMarkdown(wallet.address, this.empProps.networkId) +
           ") collateralization ratio has dropped to " +
           this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +
           wallet.crAlert * 100 +
           "% threshold. Current value of " +
-          this.syntheticCurrencySymbol +
+          this.empProps.syntheticCurrencySymbol +
           " is " +
           this.formatDecimalString(price) +
           ". The collateralization requirement is " +

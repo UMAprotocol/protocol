@@ -40,12 +40,21 @@ contract("SyntheticPegMonitor", function(accounts) {
       syntheticPegMonitorConfig = {
         deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
       };
+
+      const empProps = {
+        collateralCurrencySymbol: "DAI",
+        syntheticCurrencySymbol: "ETHBTC",
+        priceIdentifier: "ETH/BTC",
+        networkId: await web3.eth.net.getId()
+      };
+
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        syntheticPegMonitorConfig
+        syntheticPegMonitorConfig,
+        empProps
       );
     });
 
@@ -132,12 +141,20 @@ contract("SyntheticPegMonitor", function(accounts) {
         // correctly by Logger.
         volatilityAlertThreshold: 0.3
       };
+
+      const empProps = {
+        collateralCurrencySymbol: "DAI",
+        syntheticCurrencySymbol: "ETHBTC",
+        priceIdentifier: "ETH/BTC",
+        networkId: await web3.eth.net.getId()
+      };
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        syntheticPegMonitorConfig
+        syntheticPegMonitorConfig,
+        empProps
       );
     });
 

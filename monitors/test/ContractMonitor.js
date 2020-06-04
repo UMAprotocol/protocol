@@ -1,4 +1,4 @@
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
@@ -62,10 +62,10 @@ contract("ContractMonitor.js", function(accounts) {
   const spy = sinon.spy();
 
   before(async function() {
-    collateralToken = await Token.new("Dai Stable coin", "Dai", 18, { from: tokenSponsor });
+    collateralToken = await Token.new("Dai Stable coin", "DAI", 18, { from: tokenSponsor });
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("ETH/BTC"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     finder = await Finder.deployed();
@@ -88,9 +88,9 @@ contract("ContractMonitor.js", function(accounts) {
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
       timerAddress: Timer.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
       syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
+      syntheticSymbol: "ETHBTC",
       liquidationLiveness: "10",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -113,9 +113,16 @@ contract("ContractMonitor.js", function(accounts) {
     // Define a configuration object. In this config only monitor one liquidator and one disputer.
     const contractMonitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
 
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock);
-
     syntheticToken = await Token.at(await emp.tokenCurrency());
+
+    const empProps = {
+      collateralCurrencySymbol: await collateralToken.symbol(),
+      syntheticCurrencySymbol: await syntheticToken.symbol(),
+      priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
+      networkId: await web3.eth.net.getId()
+    };
+
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock, empProps);
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -319,7 +326,7 @@ contract("ContractMonitor.js", function(accounts) {
     // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
     // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
     let disputePrice = toWei("2.5");
-    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
 
     // Withdraw from liquidation to settle the dispute event.
     const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -362,7 +369,7 @@ contract("ContractMonitor.js", function(accounts) {
     // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
     // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
     disputePrice = toWei("2.0");
-    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
 
     // Withdraw from liquidation to settle the dispute event.
     const txObject2 = await emp.withdrawLiquidation("0", sponsor2, { from: sponsor2 });

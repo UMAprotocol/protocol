@@ -13,7 +13,7 @@ class BalanceMonitor {
   //   syntheticThreshold: x2,
   //   etherThreshold: x3 },
   // ...]
-  constructor(logger, tokenBalanceClient, botsToMonitor) {
+  constructor(logger, tokenBalanceClient, botsToMonitor, empProps) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
@@ -23,14 +23,10 @@ class BalanceMonitor {
     // Bot addresses and thresholds to monitor.
     this.botsToMonitor = botsToMonitor;
 
+    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
+    this.empProps = empProps;
+
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
-
-    // TODO: replace this with a fetcher that pulls the actual collateral token symbol
-    this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "ETHBTC";
-
-    // TODO: pull this into the parent client
-    this.networkId = 1;
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -55,7 +51,7 @@ class BalanceMonitor {
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(bot.address),
-            this.collateralCurrencySymbol,
+            this.empProps.collateralCurrencySymbol,
             "collateral"
           )
         });
@@ -68,7 +64,7 @@ class BalanceMonitor {
             bot,
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(bot.address),
-            this.syntheticCurrencySymbol,
+            this.empProps.syntheticCurrencySymbol,
             "synthetic"
           )
         });
@@ -93,7 +89,7 @@ class BalanceMonitor {
     return (
       bot.name +
       " (" +
-      createEtherscanLinkMarkdown(bot.address, this.networkId) +
+      createEtherscanLinkMarkdown(bot.address, this.empProps.networkId) +
       ") " +
       tokenName +
       " balance is less than " +

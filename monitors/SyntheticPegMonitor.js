@@ -10,7 +10,7 @@ class SyntheticPegMonitor {
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config) {
+  constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
@@ -19,13 +19,9 @@ class SyntheticPegMonitor {
 
     this.web3 = web3;
 
-    // Contract constants
-    // TODO: replace this with an actual query to the collateral currency symbol
-    this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "ETHBTC";
-    this.pricefeedIdentifierName = "ETHBTC/DAI";
+    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
+    this.empProps = empProps;
 
-    // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
@@ -94,7 +90,7 @@ class SyntheticPegMonitor {
         message: "Synthetic off peg alert 😵",
         mrkdwn:
           "Synthetic token " +
-          this.syntheticCurrencySymbol +
+          this.empProps.syntheticCurrencySymbol +
           " is trading at " +
           this.formatDecimalString(uniswapTokenPrice) +
           " on Uniswap. Target price is " +
@@ -143,7 +139,7 @@ class SyntheticPegMonitor {
         message: "High peg price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
-          this.pricefeedIdentifierName +
+          this.empProps.priceIdentifier +
           " price is " +
           this.formatDecimalString(pricefeedLatestPrice) +
           ". Price moved " +
@@ -192,7 +188,7 @@ class SyntheticPegMonitor {
         message: "High synthetic price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
-          this.pricefeedIdentifierName +
+          this.empProps.priceIdentifier +
           " price is " +
           this.formatDecimalString(pricefeedLatestPrice) +
           ". Price moved " +

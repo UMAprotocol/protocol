@@ -43,8 +43,7 @@ contract("BalanceMonitor.js", function(accounts) {
       Token.abi,
       web3,
       collateralToken.address,
-      syntheticToken.address,
-      10
+      syntheticToken.address
     );
 
     // Create two bot objects to monitor a liquidator bot with a lot of tokens and Eth and a disputer with less.
@@ -65,7 +64,14 @@ contract("BalanceMonitor.js", function(accounts) {
       }
     ];
 
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, botMonitorObject);
+    const empProps = {
+      collateralCurrencySymbol: await collateralToken.symbol(),
+      syntheticCurrencySymbol: await syntheticToken.symbol(),
+      priceIdentifier: "ETH/BTC",
+      networkId: await web3.eth.net.getId()
+    };
+
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, botMonitorObject, empProps);
 
     // setup the positions to the initial happy state.
     // Liquidator threshold is 10000 for both collateral and synthetic so mint a bit more to start above this
