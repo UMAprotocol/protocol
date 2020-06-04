@@ -25,21 +25,23 @@ echo "${reportOutput}" >$fileName
 message_title=$date" Daily Report"
 pathToFile="./"$fileName
 
-# Send a curl command to upload the file along with a message to the channel.
-# We'll store the response data in a file to verify that it was uploaded properly.
+# Send a curl command to upload the file along with a message to the channel. Store response log for debugging.
+responseFileName="response.json"
 echo "Sending file as slack message"
-responseFile="response.json"
-curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}" > $responseFile
+curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${message_title}" -F fileName="${fileName}" -F file=@"${pathToFile}" | jq > $responseFileName
+echo "Slack API response logged in $responseFileName"
 
 # Verify that the 'ok' property of the response data is "true".
-uploadSuccess=$(cat $responseFile | jq '.ok')
+# API documentation can be found here: https://api.slack.com/methods/files.upload
+uploadSuccess=$(cat $responseFileName | jq '.ok')
 if [ "$uploadSuccess" = true ] ; then
-    echo 'File upload succeeded!'
+    fileType=$(cat $responseFileName | jq '.file.pretty_type')
+    fileSize=$(cat $responseFileName | jq '.file.size')
+    echo "Success! Uploaded a new" $fileType "file ("$fileSize "bytes)"
 else
-    echo 'File upload failed!'
-    # Do something here
+    error=$(cat $responseFileName | jq '.error')
+    echo "Failed to upload file! Error description:" $error
 fi
 
 echo "Cleaning up and removing files"
 rm $fileName
-rm $responseFile
