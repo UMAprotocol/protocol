@@ -26,7 +26,14 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 const OracleInterface = artifacts.require("OracleInterface");
 const Finder = artifacts.require("Finder");
 
-async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds) {
+async function run(
+  address,
+  walletsToMonitor,
+  referencePriceFeedConfig,
+  uniswapPriceFeedConfig,
+  periodLengthSeconds,
+  endDateOffsetSeconds
+) {
   console.log(boldUnderlineRed("Starting Reporter Script🖨\n"));
 
   // For now we will use a dummy transport to make things quiet in the logs
@@ -101,6 +108,7 @@ async function run(address, walletsToMonitor, referencePriceFeedConfig, uniswapP
     oracle,
     collateralToken,
     syntheticToken,
+    endDateOffsetSeconds,
     periodLengthSeconds
   );
 
@@ -138,11 +146,25 @@ const Poll = async function(callback) {
     // UNISWAP_PRICE_FEED_CONFIG={"type":"uniswap","twapLength":86400,"lookback":7200,"invertPrice":true,"uniswapAddress":"0x1e4F65138Bbdb66b9C4140b2b18255A896272338"}
     const uniswapPriceFeedConfig = JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG);
 
-    // Change `periodLengthSeconds` to modify how far back the report will look for its shorter report period. For example, setting this to
-    // `24 * 60 * 60` means that the report will include aggregated data for the past 24 hours.
-    const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH ? process.env.PERIOD_REPORT_LENGTH : 24 * 60 * 60;
+    // The report will always display "cumulative" and "current" data but it will also show data for a shorter period ("period") whose
+    // start and end dates we can control:
 
-    await run(empAddress, walletsToMonitor, referencePriceFeedConfig, uniswapPriceFeedConfig, periodLengthSeconds);
+    // Change `endDateOffsetSeconds` to modify the end date for the "period". End date will be (now - endDateOffsetSeconds).
+    const endDateOffsetSeconds = process.env.PERIOD_END_DATE_OFFSET ? parseInt(process.env.PERIOD_END_DATE_OFFSET) : 0;
+
+    // Change `periodLengthSeconds` to modify the "period" start date. Start date will be (endDate - periodLengthSeconds).
+    const periodLengthSeconds = process.env.PERIOD_REPORT_LENGTH
+      ? parseInt(process.env.PERIOD_REPORT_LENGTH)
+      : 24 * 60 * 60;
+
+    await run(
+      empAddress,
+      walletsToMonitor,
+      referencePriceFeedConfig,
+      uniswapPriceFeedConfig,
+      periodLengthSeconds,
+      endDateOffsetSeconds
+    );
     callback();
   } catch (err) {
     callback(err);
