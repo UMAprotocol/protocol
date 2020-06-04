@@ -34,23 +34,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
-      let priceFeed;
-      try {
-        const priceFeed = await createReferencePriceFeedForEmp(
-          winston.createLogger({ silent: true }),
-          web3,
-          new Networker(),
-          () => Math.floor(Date.now() / 1000),
-          emp.address
-        );
-      } catch (error) {
-        // Ignore error
-      }
-
-      let collateralizationRatio;
-      if (priceFeed) {
-      }
-
       const getCollateralizationRatio = async () => {
         let priceFeed;
         try {
