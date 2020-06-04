@@ -53,9 +53,15 @@ const showMarketDetails = async (web3, artifacts, emp) => {
         }
 
         await priceFeed.update();
+        const currentPrice = priceFeed.getCurrentPrice();
+
+        if (!currentPrice) {
+          return "Unknown";
+        }
+
         const collateralizationRatio = await computeCollateralizationRatio(
           web3,
-          priceFeed.getCurrentPrice(),
+          currentPrice,
           toBN(collateral.toString()),
           toBN(position.tokensOutstanding.toString())
         );
