@@ -24,3 +24,7 @@ app.yaml
 
 # environment-specific values pulled by dotenv package
 .env
+
+# daily reporter temp files.
+response.json
+*daily-report.txt
