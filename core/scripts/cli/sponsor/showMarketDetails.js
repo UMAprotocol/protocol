@@ -1,5 +1,4 @@
 const inquirer = require("inquirer");
-const winston = require("winston");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
 const redeem = require("./redeem");
@@ -9,16 +8,11 @@ const transfer = require("./transfer");
 const { viewLiquidationDetailsMenu } = require("./viewLiquidationDetails");
 const { getLiquidationEvents } = require("./liquidationUtils");
 const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
-const { createReferencePriceFeedForEmp } = require("../../../../financial-templates-lib/price-feed/CreatePriceFeed.js");
-const { Networker } = require("../../../../financial-templates-lib/price-feed/Networker.js");
-const { computeCollateralizationRatio } = require("../../../../common/EmpUtils.js");
-const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const { fromWei, toBN } = web3.utils;
-  // const sponsorAddress = await getDefaultAccount(web3);
-  const sponsorAddress = "0x367f62f022e0c8236d664fba35b594591270dafb";
+  const { fromWei } = web3.utils;
+  const sponsorAddress = await getDefaultAccount(web3);
   let collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const syntheticCurrency = await ExpandedERC20.at(await emp.tokenCurrency());
@@ -34,35 +28,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
-      const getCollateralizationRatio = async () => {
-        let priceFeed;
-        try {
-          priceFeed = await createReferencePriceFeedForEmp(
-            winston.createLogger({ silent: true }),
-            web3,
-            new Networker(),
-            () => Math.floor(Date.now() / 1000),
-            emp.address
-          );
-        } catch (error) {
-          // Ignore error
-        }
-
-        if (!priceFeed) {
-          return "Unknown";
-        }
-
-        await priceFeed.update();
-        const collateralizationRatio = await computeCollateralizationRatio(
-          web3,
-          priceFeed.getCurrentPrice(),
-          toBN(collateral.toString()),
-          toBN(position.tokensOutstanding.toString())
-        );
-        const format = createFormatFunction(web3, 2, 4, false);
-        return format(collateralizationRatio.muln(100)) + "%";
-      };
-
       const getDateStringReadable = contractTime => {
         return new Date(Number(contractTime.toString() * 1000)).toString();
       };
@@ -71,7 +36,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
         "Current contract time": getDateStringReadable(await emp.getCurrentTime()),
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
-        "Collateralization ratio": await getCollateralizationRatio(),
         "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
         "Pending transfer request": position.transferPositionRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
       });
