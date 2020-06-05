@@ -3,6 +3,7 @@ const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 const Uniswap = require("../../core/build/contracts/Uniswap.json");
+const ExpiringMultiParty = require("../../core/build/contracts/ExpiringMultiParty.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
@@ -122,6 +123,64 @@ function isMissingField(config, requiredFields, logger) {
   return false;
 }
 
+/**
+ * Create a reference price feed for the EMP. Note: this is the price feed that the token is tracking.
+ * @param {Object} winston logger.
+ * @param {Object} web3 instance.
+ * @param {Object} networker object that the price feed may use to make REST calls.
+ * @param {Function} function to get the current time.
+ * @param {String} string representing the address of the EMP contract.
+ * @param {Object} optional config to override the defaults for this reference feed.
+ * @return {Object} an instance of PriceFeedInterface that can be used to get the reference price.
+ */
+async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  // TODO: maybe move this default config to a better location.
+  const defaultConfigs = {
+    "ETH/BTC": {
+      type: "medianizer",
+      pair: "ethbtc",
+      lookback: 7200,
+      minTimeBetweenUpdates: 60,
+      medianizedFeeds: [
+        { type: "cryptowatch", exchange: "coinbase-pro" },
+        { type: "cryptowatch", exchange: "binance" },
+        { type: "cryptowatch", exchange: "bitstamp" }
+      ]
+    }
+  };
+
+  const emp = getEmpAtAddress(web3, empAddress);
+  const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
+  const defaultConfig = defaultConfigs[identifier];
+
+  let combinedConfig;
+  if (defaultConfig && config) {
+    // Combine the two configs, giving the user-config's properties precedence.
+    combinedConfig = { ...defaultConfig, ...config };
+
+    logger.debug({
+      at: "createReferencePriceFeedForEmp",
+      message: "Found both a default config and a user-config",
+      defaultConfig,
+      userConfig: config,
+      combinedConfig
+    });
+  } else {
+    combinedConfig = defaultConfig || config;
+
+    if (!combinedConfig) {
+      throw "createReferencePriceFeedForEmp: No default config was found and no user config was provided.";
+    }
+  }
+
+  return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
+}
+
+function getEmpAtAddress(web3, empAddress) {
+  return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+}
+
 module.exports = {
-  createPriceFeed
+  createPriceFeed,
+  createReferencePriceFeedForEmp
 };
