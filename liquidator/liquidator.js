@@ -1,6 +1,3 @@
-// When running this script it assumed that the account has enough tokens and allowance from the unlocked Truffle
-// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
-
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class Liquidator {

@@ -1,31 +1,36 @@
+// This module is used to monitor a list of addresses and their associated Collateralization ratio.
+
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
-// This module is used to monitor a list of addresses and their associated Collateralization ratio.
 class CRMonitor {
   /**
    * @notice Constructs new Collateral Requirement Monitor.
-   * @param {Object} logger an instance of a winston logger used to emit messages, logs and errors.
-   * @param {Object} expiringMultiPartyClient an instance of the expiringMultiPartyClient from the `financial-templates
-   *                 lib which provides synchronous access to positions opened against an expiring multiparty
-   * @param {Object} walletsToMonitor array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
-   *                 must be given:
-   *                 [{ name: "Market Making bot",
-   *                    address: "0x12345",
-   *                    crAlert: 1.50 }, // Note 150% is represented as 1.5
-   *                  ...];
-   * @param {Object} priceFeed offchain price feed used to track the token price.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} expiringMultiPartyClient Client used to query EMP status for monitored wallets position info.
+   * @param {List} walletsToMonitor Array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
+   *      must be given. Example:
+   *      [{ name: "Market Making bot",
+   *         address: "0x12345",
+   *         crAlert: 1.50 }, // Note 150% is represented as 1.5
+   *       ...];
+   * @param {Object} priceFeed Module used to query the current token price.
+   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   *      { collateralCurrencySymbol: "DAI",
+            syntheticCurrencySymbol:"ETHBTC",
+            priceIdentifier: "ETH/BTC",
+            networkId:1 }
    */
   constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed, empProps) {
     this.logger = logger;
+    
+    // Wallet addresses and thresholds to monitor.
+    this.walletsToMonitor = walletsToMonitor;
 
     this.empClient = expiringMultiPartyClient;
     this.web3 = this.empClient.web3;
 
     // Offchain price feed to compute the current collateralization ratio for the monitored positions.
     this.priceFeed = priceFeed;
-
-    // Wallet addresses and thresholds to monitor.
-    this.walletsToMonitor = walletsToMonitor;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 

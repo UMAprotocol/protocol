@@ -3,6 +3,15 @@
 // address that wallet is registered within a local array of addresses that the client monitors. This lets bots that
 // implement the client retrieve the latest available data from the last update synchronously.
 class TokenBalanceClient {
+  /**
+   * @notice Constructs new TokenBalanceClient.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} erc20abi ERC20 token abi used to create a token contract instance to query.
+   * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
+   * @param {String} collateralTokenAddress Ethereum address of the Collateral ERC20 token from the EMP.
+   * @param {String} syntheticTokenAddress Ethereum address of the Synthetic ERC20 token from the EMP.
+   * @return None or throws an Error.
+   */
   constructor(logger, erc20abi, web3, collateralTokenAddress, syntheticTokenAddress) {
     this.logger = logger;
     this.web3 = web3;
@@ -14,11 +23,11 @@ class TokenBalanceClient {
     // Token balances to enable synchronous return of the latest token ballance cashed in the client.
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
 
-    // Array of balances to monitor. Updated when a new addresses balance is requested
+    // Array of balances to monitor. Updated when a new addresses balance is requested.
     this.accountMonitorList = [];
   }
 
-  // Delete all data within the client
+  // Delete all data within the client.
   clearState = async () => {
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
     this.accountMonitorList = [];
