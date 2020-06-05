@@ -1,6 +1,7 @@
-const { createFormatFunction, formatDateShort } = require("../common/FormattingUtils");
+const { createFormatFunction, formatDateShort, formatWithMaxDecimals } = require("../common/FormattingUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
+const { getUniswapClient, queries } = require("./uniswapSubgraphClient");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
@@ -130,11 +131,6 @@ class GlobalSummaryReporter {
     console.group();
     console.log(bold("Token summary stats"));
     console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
-    console.log(
-      italic(
-        "- Uniswap TWAP price window can be modified using the 'twapLength' property in the UNISWAP_PRICE_FEED_CONFIG"
-      )
-    );
     await this._generateTokenStats();
     console.groupEnd();
 
@@ -295,10 +291,33 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
-    // TODO:
-    // - # token holders (current) (cumulative)
-    // - # trades in uniswap (24H) (cumulative)
-    // - volume of trades in uniswap in # of tokens (24H) (cumulative)
+    // Get uniswap data via graphql.
+    // TODO: Programmatically get this pair address.
+    const uniswapPairAddress = "0x1e4f65138bbdb66b9c4140b2b18255a896272338";
+    const uniswapClient = getUniswapClient();
+    const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
+    const startPeriodTokenData = (
+      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
+    ).pairs[0];
+    const endPeriodTokenData = (
+      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
+    ).pairs[0];
+
+    const tradeCount = parseInt(allTokenData.txCount);
+    const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
+    const tradeVolumeTokens = parseFloat(allTokenData.volumeToken1);
+    const periodTradeVolumeTokens =
+      parseFloat(endPeriodTokenData.volumeToken1) - parseFloat(startPeriodTokenData.volumeToken1);
+
+    allTokenStatsTable["# trades in Uniswap"] = {
+      cumulative: tradeCount,
+      [this.periodLabelInHours]: periodTradeCount
+    };
+
+    allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+      cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
+      [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false)
+    };
 
     console.table(allTokenStatsTable);
   };
