@@ -22,7 +22,7 @@ class CRMonitor {
    */
   constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed, empProps) {
     this.logger = logger;
-    
+
     // Wallet addresses and thresholds to monitor.
     this.walletsToMonitor = walletsToMonitor;
 
