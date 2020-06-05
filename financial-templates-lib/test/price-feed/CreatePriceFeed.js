@@ -181,17 +181,22 @@ contract("CreatePriceFeed.js", function(accounts) {
       timerAddress: Timer.address
     };
 
-    let emp = await ExpiringMultiParty.new(constructorParams);
+    const emp = await ExpiringMultiParty.new(constructorParams);
 
     const getIdBackup = web3.eth.net.getId;
 
     // Modify web3 to say the chain id is mainnet temporarily.
     web3.eth.net.getId = async () => 1;
 
-    const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+    const twapLength = 100;
+    const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address, { twapLength });
 
     // Cannot test for the uniswap address since that depends on the synthetic token address, which is generated in a non-hermetic way.
-    assert.equal(priceFeed.invertedPrice);
+    // Price should always be inverted since the collateralTokenAddress is 0x1.
+    assert.isTrue(priceFeed.invertPrice);
+
+    // Config override should be passed through.
+    assert.equal(priceFeed.twapLength, twapLength);
 
     // Reset getId method.
     web3.eth.net.getId = getIdBackup;
@@ -218,7 +223,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       timerAddress: Timer.address
     };
 
-    let emp = await ExpiringMultiParty.new(constructorParams);
+    const emp = await ExpiringMultiParty.new(constructorParams);
 
     let didThrow = false;
     try {
