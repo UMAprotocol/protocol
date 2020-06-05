@@ -227,6 +227,8 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     let didThrow = false;
     try {
+      // Creation should fail because this test network has no deployed uniswap contract and UNISWAP_ADDRESS isn't
+      // provided in the environment.
       const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
     } catch (error) {
       didThrow = true;
