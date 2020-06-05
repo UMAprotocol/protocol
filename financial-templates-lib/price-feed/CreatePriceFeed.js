@@ -233,5 +233,6 @@ function getEmpAtAddress(web3, empAddress) {
 module.exports = {
   createPriceFeed,
   createUniswapPriceFeedForEmp,
-  createReferencePriceFeedForEmp
+  createReferencePriceFeedForEmp,
+  getUniswapPairDetails
 };

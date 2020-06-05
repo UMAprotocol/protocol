@@ -32,6 +32,7 @@ const PAIR_DATA = (pairAddress, block) => {
                 pairs(block: {number: ${block - blockNumberLag}}, where: {id: "${pairAddress}"}) {
                     txCount
                     volumeToken1
+                    volumeToken0
                 }
             }
         `
@@ -40,6 +41,7 @@ const PAIR_DATA = (pairAddress, block) => {
                 pairs(where: {id: "${pairAddress}"}) {
                     txCount
                     volumeToken1
+                    volumeToken0
                 }
             }
         `;

@@ -2,6 +2,7 @@ const { createFormatFunction, formatDateShort, formatWithMaxDecimals } = require
 const { revertWrapper } = require("../common/ContractUtils");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
 const { getUniswapClient, queries } = require("./uniswapSubgraphClient");
+const { getUniswapPairDetails } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
@@ -292,8 +293,12 @@ class GlobalSummaryReporter {
     };
 
     // Get uniswap data via graphql.
-    // TODO: Programmatically get this pair address.
-    const uniswapPairAddress = "0x1e4f65138bbdb66b9c4140b2b18255a896272338";
+    const uniswapPairDetails = await getUniswapPairDetails(
+      this.web3,
+      this.syntheticContract.address,
+      this.collateralContract.address
+    );
+    const uniswapPairAddress = uniswapPairDetails.pairAddress.toLowerCase();
     const uniswapClient = getUniswapClient();
     const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
     const startPeriodTokenData = (
@@ -305,9 +310,11 @@ class GlobalSummaryReporter {
 
     const tradeCount = parseInt(allTokenData.txCount);
     const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
-    const tradeVolumeTokens = parseFloat(allTokenData.volumeToken1);
+
+    const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+    const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
     const periodTradeVolumeTokens =
-      parseFloat(endPeriodTokenData.volumeToken1) - parseFloat(startPeriodTokenData.volumeToken1);
+      parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
 
     allTokenStatsTable["# trades in Uniswap"] = {
       cumulative: tradeCount,
