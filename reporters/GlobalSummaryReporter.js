@@ -7,10 +7,6 @@ const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
-// Web scraping
-const fetch = require("node-fetch");
-const cheerio = require("cheerio");
-
 class GlobalSummaryReporter {
   constructor(
     expiringMultiPartyClient,
@@ -72,11 +68,14 @@ class GlobalSummaryReporter {
       toBlock: this.currentBlockNumber,
       filter: { from: this.empContract.options.address }
     });
-    this.syntheticBurnedEvents = await this.syntheticContract.getPastEvents("Transfer", {
+    this.syntheticTransferEvents = await this.syntheticContract.getPastEvents("Transfer", {
       fromBlock: 0,
-      toBlock: this.currentBlockNumber,
-      filter: { from: this.empContract.options.address, to: ZERO_ADDRESS }
+      toBlock: this.currentBlockNumber
     });
+    this.syntheticBurnedEvents = this.syntheticTransferEvents.filter(
+      event => event.returnValues.from === this.empContract.options.address && event.returnValues.to === ZERO_ADDRESS
+    );
+
     this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
     this.createEvents = this.empEventClient.getAllCreateEvents();
     this.regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
@@ -299,10 +298,11 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
-    const tokenHolders = await this._getTokenHolders();
+    const tokenHolders = await this._constructTokenHolderList();
     if (tokenHolders) {
       allTokenStatsTable["# of token holders"] = {
-        current: tokenHolders
+        current: Object.keys(tokenHolders.current).length,
+        cumulative: Object.keys(tokenHolders.cumulative).length
       };
     }
 
@@ -493,65 +493,50 @@ class GlobalSummaryReporter {
     return blocksToLookBack;
   };
 
-  _getTokenHolders = async () => {
-    // TODO: This is a fragile implementation that scrapes etherscan's token holder page. It would likely fail if the
-    // the etherscan HTML document changes. To minimize web3 event querying, we'll attempt to grab the etherscan
-    // number and only create our own token holder list if this fails for any reason.
-    try {
-      const etherscanTokenHoldersUrl = `https://etherscan.io/token/generic-tokenholders2?a=${this.syntheticContract.address}`;
-      const response = await fetch(etherscanTokenHoldersUrl);
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // The list of token holders can be found in the <table>, and each token holder's information
-      // is displayed in a <tr> element within the <tbody>.
-      const tokenHolderTable = $("tbody");
-      const countTokenHolders = tokenHolderTable.children().length;
-      return countTokenHolders;
-    } catch (err) {
-      return Object.keys(await this._constructTokenHolderList()).length;
-    }
-  };
-
   _constructTokenHolderList = async () => {
-    const uniqueTokenHolders = {};
-    let syntheticTransferEvents = await this.syntheticContract.getPastEvents("Transfer", {
-      fromBlock: 0,
-      toBlock: this.currentBlockNumber
-    });
+    const cumulativeTokenHolders = {};
+    const currentTokenHolders = {};
+
+    let allTransferEvents = this.syntheticTransferEvents;
 
     // Sort events from oldest first to newest last.
-    syntheticTransferEvents.sort((a, b) => {
+    allTransferEvents.sort((a, b) => {
       return a.blockNumber < b.blockNumber;
     });
 
-    syntheticTransferEvents.forEach(event => {
+    allTransferEvents.forEach(event => {
       const sender = event.returnValues.from;
       const receiver = event.returnValues.to;
 
       if (receiver !== ZERO_ADDRESS) {
-        // Initialize new address
-        if (!uniqueTokenHolders[receiver]) {
-          uniqueTokenHolders[receiver] = this.toBN("0");
+        // Add to cumulative holder list.
+        cumulativeTokenHolders[receiver] = true;
+
+        // Initialize current holder.
+        if (!currentTokenHolders[receiver]) {
+          currentTokenHolders[receiver] = this.toBN("0");
         }
 
         // Update balance
-        uniqueTokenHolders[receiver] = uniqueTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+        currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
       }
 
       if (sender !== ZERO_ADDRESS) {
-        // Since we are searching from oldest events first, the sender should already have a balance since we are ignoring
+        // Since we are searching from oldest events first, the sender must already have a balance since we are ignoring
         // events where the sender is the zero address.
-        uniqueTokenHolders[sender] = uniqueTokenHolders[sender].sub(this.toBN(event.returnValues.value));
+        currentTokenHolders[sender] = currentTokenHolders[sender].sub(this.toBN(event.returnValues.value));
 
         // If sender transferred full balance, delete it from the dictionary.
-        if (uniqueTokenHolders[sender].eq(this.toBN("0"))) {
-          delete uniqueTokenHolders[sender];
+        if (currentTokenHolders[sender].isZero()) {
+          delete currentTokenHolders[sender];
         }
       }
     });
 
-    return uniqueTokenHolders;
+    return {
+      cumulative: cumulativeTokenHolders,
+      current: currentTokenHolders
+    };
   };
 }
 module.exports = {
