@@ -1,5 +1,6 @@
 const { createFormatFunction, formatDateShort } = require("../common/FormattingUtils");
 const { revertWrapper } = require("../common/ContractUtils");
+const { ZERO_ADDRESS } = require("../common/Constants");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
@@ -31,6 +32,8 @@ class GlobalSummaryReporter {
     this.periodLengthSeconds = periodLengthSeconds;
 
     this.web3 = this.empEventClient.web3;
+    this.toBN = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toBN;
 
     this.empContract = this.empEventClient.emp;
     this.collateralContract = collateralToken;
@@ -41,8 +44,6 @@ class GlobalSummaryReporter {
   }
 
   update = async () => {
-    const { toBN } = this.web3.utils;
-
     await this.empClient.update();
     await this.empEventClient.update();
     await this.referencePriceFeed.update();
@@ -74,7 +75,7 @@ class GlobalSummaryReporter {
     this.syntheticBurnedEvents = await this.syntheticContract.getPastEvents("Transfer", {
       fromBlock: 0,
       toBlock: this.currentBlockNumber,
-      filter: { from: this.empContract.options.address, to: "0x0000000000000000000000000000000000000000" }
+      filter: { from: this.empContract.options.address, to: ZERO_ADDRESS }
     });
     this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
     this.createEvents = this.empEventClient.getAllCreateEvents();
@@ -87,8 +88,8 @@ class GlobalSummaryReporter {
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
     this.totalTokensOutstanding = await this.empContract.methods.totalTokensOutstanding().call();
-    this.collateralLockedInLiquidations = toBN((await this.empContract.methods.pfc().call()).toString()).sub(
-      toBN(this.totalPositionCollateral.toString())
+    this.collateralLockedInLiquidations = this.toBN((await this.empContract.methods.pfc().call()).toString()).sub(
+      this.toBN(this.totalPositionCollateral.toString())
     );
 
     // Pricefeed stats.
@@ -166,8 +167,6 @@ class GlobalSummaryReporter {
   };
 
   _generateSponsorStats = async () => {
-    const { toBN, toWei } = this.web3.utils;
-
     let allSponsorStatsTable = {};
 
     if (this.newSponsorEvents.length === 0) {
@@ -192,12 +191,12 @@ class GlobalSummaryReporter {
     };
 
     // - Cumulative collateral deposited into contract
-    let collateralDeposited = toBN("0");
-    let collateralDepositedPeriod = toBN("0");
+    let collateralDeposited = this.toBN("0");
+    let collateralDepositedPeriod = this.toBN("0");
     for (let event of this.collateralDepositEvents) {
-      collateralDeposited = collateralDeposited.add(toBN(event.returnValues.value));
+      collateralDeposited = collateralDeposited.add(this.toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        collateralDepositedPeriod = collateralDepositedPeriod.add(toBN(event.returnValues.value));
+        collateralDepositedPeriod = collateralDepositedPeriod.add(this.toBN(event.returnValues.value));
       }
     }
     allSponsorStatsTable["collateral deposited"] = {
@@ -207,12 +206,12 @@ class GlobalSummaryReporter {
     };
 
     // - Cumulative collateral withdrawn from contract
-    let collateralWithdrawn = toBN("0");
-    let collateralWithdrawnPeriod = toBN("0");
+    let collateralWithdrawn = this.toBN("0");
+    let collateralWithdrawnPeriod = this.toBN("0");
     for (let event of this.collateralWithdrawEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(toBN(event.returnValues.value));
+      collateralWithdrawn = collateralWithdrawn.add(this.toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(toBN(event.returnValues.value));
+        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(this.toBN(event.returnValues.value));
       }
     }
     allSponsorStatsTable["collateral withdrawn"] = {
@@ -229,12 +228,12 @@ class GlobalSummaryReporter {
     };
 
     // - Tokens minted: tracked via Create events.
-    let tokensMinted = toBN("0");
-    let tokensMintedPeriod = toBN("0");
+    let tokensMinted = this.toBN("0");
+    let tokensMintedPeriod = this.toBN("0");
     for (let event of this.createEvents) {
-      tokensMinted = tokensMinted.add(toBN(event.tokenAmount));
+      tokensMinted = tokensMinted.add(this.toBN(event.tokenAmount));
       if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        tokensMintedPeriod = tokensMintedPeriod.add(toBN(event.tokenAmount));
+        tokensMintedPeriod = tokensMintedPeriod.add(this.toBN(event.tokenAmount));
       }
     }
     allSponsorStatsTable["tokens minted"] = {
@@ -244,12 +243,12 @@ class GlobalSummaryReporter {
     };
 
     // - Tokens burned
-    let tokensBurned = toBN("0");
-    let tokensBurnedPeriod = toBN("0");
+    let tokensBurned = this.toBN("0");
+    let tokensBurnedPeriod = this.toBN("0");
     for (let event of this.syntheticBurnedEvents) {
-      tokensBurned = tokensBurned.add(toBN(event.returnValues.value));
+      tokensBurned = tokensBurned.add(this.toBN(event.returnValues.value));
       if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        tokensBurnedPeriod = tokensBurnedPeriod.add(toBN(event.returnValues.value));
+        tokensBurnedPeriod = tokensBurnedPeriod.add(this.toBN(event.returnValues.value));
       }
     }
     allSponsorStatsTable["tokens burned"] = {
@@ -266,16 +265,16 @@ class GlobalSummaryReporter {
     };
 
     // - GCR (collateral / tokens outstanding):
-    let currentCollateral = toBN(this.totalPositionCollateral.toString());
-    let currentTokensOutstanding = toBN(this.totalTokensOutstanding.toString());
-    let currentGCR = currentCollateral.mul(toBN(toWei("1"))).div(currentTokensOutstanding);
+    let currentCollateral = this.toBN(this.totalPositionCollateral.toString());
+    let currentTokensOutstanding = this.toBN(this.totalTokensOutstanding.toString());
+    let currentGCR = currentCollateral.mul(this.toBN(this.toWei("1"))).div(currentTokensOutstanding);
     allSponsorStatsTable["GCR - collateral / # tokens outstanding"] = {
       current: this.formatDecimalString(currentGCR)
     };
 
     // - GCR (collateral / TRV):
-    let currentTRV = currentTokensOutstanding.mul(this.priceEstimate).div(toBN(toWei("1")));
-    let currentGCRUsingTRV = currentCollateral.mul(toBN(toWei("1"))).div(currentTRV);
+    let currentTRV = currentTokensOutstanding.mul(this.priceEstimate).div(this.toBN(this.toWei("1")));
+    let currentGCRUsingTRV = currentCollateral.mul(this.toBN(this.toWei("1"))).div(currentTRV);
     allSponsorStatsTable["GCR - collateral / TRV"] = {
       current: this.formatDecimalString(currentGCRUsingTRV)
     };
@@ -315,29 +314,27 @@ class GlobalSummaryReporter {
   };
 
   _generateLiquidationStats = async () => {
-    const { toBN } = this.web3.utils;
-
     let allLiquidationStatsTable = {};
 
     let uniqueLiquidations = {};
     let uniqueLiquidationsPeriod = {};
-    let tokensLiquidated = toBN("0");
-    let tokensLiquidatedPeriod = toBN("0");
-    let collateralLiquidated = toBN("0");
-    let collateralLiquidatedPeriod = toBN("0");
+    let tokensLiquidated = this.toBN("0");
+    let tokensLiquidatedPeriod = this.toBN("0");
+    let collateralLiquidated = this.toBN("0");
+    let collateralLiquidatedPeriod = this.toBN("0");
 
     if (this.liquidationEvents.length === 0) {
       console.log(dim("\tNo liquidation events found for this EMP."));
     } else {
       for (let event of this.liquidationEvents) {
-        tokensLiquidated = tokensLiquidated.add(toBN(event.tokensOutstanding));
+        tokensLiquidated = tokensLiquidated.add(this.toBN(event.tokensOutstanding));
         // We count "lockedCollateral" instead of "liquidatedCollateral" because this is the amount of the collateral that the liquidator is elegible to draw from
         // the contract.
-        collateralLiquidated = collateralLiquidated.add(toBN(event.lockedCollateral));
+        collateralLiquidated = collateralLiquidated.add(this.toBN(event.lockedCollateral));
         uniqueLiquidations[event.sponsor] = true;
         if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          tokensLiquidatedPeriod = tokensLiquidatedPeriod.add(toBN(event.tokensOutstanding));
-          collateralLiquidatedPeriod = collateralLiquidatedPeriod.add(toBN(event.lockedCollateral));
+          tokensLiquidatedPeriod = tokensLiquidatedPeriod.add(this.toBN(event.tokensOutstanding));
+          collateralLiquidatedPeriod = collateralLiquidatedPeriod.add(this.toBN(event.lockedCollateral));
           uniqueLiquidationsPeriod[event.sponsor] = true;
         }
       }
@@ -362,16 +359,14 @@ class GlobalSummaryReporter {
   };
 
   _generateDisputeStats = async () => {
-    const { toBN } = this.web3.utils;
-
     let allDisputeStatsTable = {};
 
     let uniqueDisputes = {};
     let uniqueDisputesPeriod = {};
-    let tokensDisputed = toBN("0");
-    let tokensDisputedPeriod = toBN("0");
-    let collateralDisputed = toBN("0");
-    let collateralDisputedPeriod = toBN("0");
+    let tokensDisputed = this.toBN("0");
+    let tokensDisputedPeriod = this.toBN("0");
+    let collateralDisputed = this.toBN("0");
+    let collateralDisputedPeriod = this.toBN("0");
     let disputesResolved = {};
 
     if (this.disputeEvents.length === 0) {
@@ -382,12 +377,12 @@ class GlobalSummaryReporter {
         const liquidationData = this.liquidationEvents.filter(
           e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
         );
-        tokensDisputed = tokensDisputed.add(toBN(liquidationData.tokensOutstanding));
-        collateralDisputed = collateralDisputed.add(toBN(liquidationData.lockedCollateral));
+        tokensDisputed = tokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
+        collateralDisputed = collateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
         uniqueDisputes[event.sponsor] = true;
         if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          tokensDisputedDaily = tokensDisputedPeriod.add(toBN(liquidationData.tokensOutstanding));
-          collateralDisputedDaily = collateralDisputedPeriod.add(toBN(liquidationData.lockedCollateral));
+          tokensDisputedDaily = tokensDisputedPeriod.add(this.toBN(liquidationData.tokensOutstanding));
+          collateralDisputedDaily = collateralDisputedPeriod.add(this.toBN(liquidationData.lockedCollateral));
           uniqueDisputesPeriod[event.sponsor] = true;
         }
 
@@ -439,26 +434,24 @@ class GlobalSummaryReporter {
   };
 
   _generateDvmStats = async () => {
-    const { toBN } = this.web3.utils;
-
     let allDvmStatsTable = {};
 
-    let regularFeesPaid = toBN("0");
-    let regularFeesPaidPeriod = toBN("0");
-    let lateFeesPaid = toBN("0");
-    let lateFeesPaidPeriod = toBN("0");
-    let finalFeesPaid = toBN("0");
-    let finalFeesPaidPeriod = toBN("0");
+    let regularFeesPaid = this.toBN("0");
+    let regularFeesPaidPeriod = this.toBN("0");
+    let lateFeesPaid = this.toBN("0");
+    let lateFeesPaidPeriod = this.toBN("0");
+    let finalFeesPaid = this.toBN("0");
+    let finalFeesPaidPeriod = this.toBN("0");
 
     if (this.regularFeeEvents.length === 0) {
       console.log(dim("\tNo regular fee events found for this EMP."));
     } else {
       for (let event of this.regularFeeEvents) {
-        regularFeesPaid = regularFeesPaid.add(toBN(event.regularFee));
-        lateFeesPaid = lateFeesPaid.add(toBN(event.lateFee));
+        regularFeesPaid = regularFeesPaid.add(this.toBN(event.regularFee));
+        lateFeesPaid = lateFeesPaid.add(this.toBN(event.lateFee));
         if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          regularFeesPaidPeriod = regularFeesPaidPeriod.add(toBN(event.regularFee));
-          lateFeesPaidPeriod = lateFeesPaidPeriod.add(toBN(event.lateFee));
+          regularFeesPaidPeriod = regularFeesPaidPeriod.add(this.toBN(event.regularFee));
+          lateFeesPaidPeriod = lateFeesPaidPeriod.add(this.toBN(event.lateFee));
         }
       }
     }
@@ -467,9 +460,9 @@ class GlobalSummaryReporter {
       console.log(dim("\tNo final fee events found for this EMP."));
     } else {
       for (let event of this.finalFeeEvents) {
-        finalFeesPaid = finalFeesPaid.add(toBN(event.amount));
+        finalFeesPaid = finalFeesPaid.add(this.toBN(event.amount));
         if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          finalFeesPaidPeriod = finalFeesPaidPeriod.add(toBN(event.amount));
+          finalFeesPaidPeriod = finalFeesPaidPeriod.add(this.toBN(event.amount));
         }
       }
     }
@@ -502,18 +495,63 @@ class GlobalSummaryReporter {
 
   _getTokenHolders = async () => {
     // TODO: This is a fragile implementation that scrapes etherscan's token holder page. It would likely fail if the
-    // the etherscan HTML document changes.
-    const etherscanTokenHoldersUrl =
-      "https://etherscan.io/token/generic-tokenholders2?a=0x6d002a834480367fb1a1dc5f47e82fde39ec2c42&s=2004251000000000000000000";
-    const response = await fetch(etherscanTokenHoldersUrl);
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    // the etherscan HTML document changes. To minimize web3 event querying, we'll attempt to grab the etherscan
+    // number and only create our own token holder list if this fails for any reason.
+    try {
+      const etherscanTokenHoldersUrl = `https://etherscan.io/token/generic-tokenholders2?a=${this.syntheticContract.address}`;
+      const response = await fetch(etherscanTokenHoldersUrl);
+      const html = await response.text();
+      const $ = cheerio.load(html);
 
-    // The list of token holders can be found in the <table>, and each token holder's information
-    // is displayed in a <tr> element within the <tbody>.
-    const tokenHolderTable = $("tbody");
-    const countTokenHolders = tokenHolderTable.children().length;
-    return countTokenHolders;
+      // The list of token holders can be found in the <table>, and each token holder's information
+      // is displayed in a <tr> element within the <tbody>.
+      const tokenHolderTable = $("tbody");
+      const countTokenHolders = tokenHolderTable.children().length;
+      return countTokenHolders;
+    } catch (err) {
+      return Object.keys(await this._constructTokenHolderList()).length;
+    }
+  };
+
+  _constructTokenHolderList = async () => {
+    const uniqueTokenHolders = {};
+    let syntheticTransferEvents = await this.syntheticContract.getPastEvents("Transfer", {
+      fromBlock: 0,
+      toBlock: this.currentBlockNumber
+    });
+
+    // Sort events from oldest first to newest last.
+    syntheticTransferEvents.sort((a, b) => {
+      return a.blockNumber < b.blockNumber;
+    });
+
+    syntheticTransferEvents.forEach(event => {
+      const sender = event.returnValues.from;
+      const receiver = event.returnValues.to;
+
+      if (receiver !== ZERO_ADDRESS) {
+        // Initialize new address
+        if (!uniqueTokenHolders[receiver]) {
+          uniqueTokenHolders[receiver] = this.toBN("0");
+        }
+
+        // Update balance
+        uniqueTokenHolders[receiver] = uniqueTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+      }
+
+      if (sender !== ZERO_ADDRESS) {
+        // Since we are searching from oldest events first, the sender should already have a balance since we are ignoring
+        // events where the sender is the zero address.
+        uniqueTokenHolders[sender] = uniqueTokenHolders[sender].sub(this.toBN(event.returnValues.value));
+
+        // If sender transferred full balance, delete it from the dictionary.
+        if (uniqueTokenHolders[sender].eq(this.toBN("0"))) {
+          delete uniqueTokenHolders[sender];
+        }
+      }
+    });
+
+    return uniqueTokenHolders;
   };
 }
 module.exports = {
