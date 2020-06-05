@@ -47,6 +47,7 @@
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
+    "@uniswap/sdk": "^2.0.5",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
     "acorn": "^7.1.1",
     "babel-eslint": "10.0.1",
