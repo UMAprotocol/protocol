@@ -1,4 +1,4 @@
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { createFormatFunction, createShortHexString } = require("../common/FormattingUtils");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
@@ -34,21 +34,39 @@ class SponsorReporter {
     );
 
     // For each wallet monitored run through the checks and log information.
-    for (let wallet of this.walletsToMonitor) {
-      console.group();
-      console.log(bold(wallet.name));
-      // 1. Print information about wallets borrowed tokens, collateral and what’s the CR ratio.
-      console.group();
-      this._generatePositionTable(wallet.address);
-      console.groupEnd();
 
-      // 2. Print balance information about wallets including synthetic, collateral and ether balances.
-      console.group();
-      await this._generateTokenBalanceTable(wallet.address);
-      console.groupEnd();
-      // end of main group
-      console.groupEnd();
+    let tableInformation = {
+      "Token debt": {},
+      "Backing collateral": {},
+      "Position CR %": {},
+      "Synthetic balance": {},
+      "Collateral balance": {},
+      "ETH balance": {}
+    };
+    for (let wallet of this.walletsToMonitor) {
+      const position = this.empClient.getAllPositions().filter(position => position.sponsor == wallet.address);
+      const currentPrice = this.priceFeed.getCurrentPrice();
+      const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(wallet.address);
+
+      tableInformation["Token debt"][wallet.name] =
+        position.length == 0 ? "no position" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+      tableInformation["Backing collateral"][wallet.name] =
+        position.length == 0 ? "no position" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+      tableInformation["Position CR %"][wallet.name] =
+        position.length == 0
+          ? "no position"
+          : this.formatDecimalString(
+              this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice).muln(
+                100
+              )
+            ) + "%";
+      tableInformation["Synthetic balance"][wallet.name] =
+        this.formatDecimalString(balanceInformation.syntheticBalance) + this.syntheticSymbol;
+      tableInformation["Collateral balance"][wallet.name] =
+        this.formatDecimalString(balanceInformation.collateralBalance) + this.collateralSymbol;
+      tableInformation["ETH balance"][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance) + "ETH";
     }
+    console.table(tableInformation);
   }
 
   async generateSponsorsTable() {
@@ -70,36 +88,6 @@ class SponsorReporter {
       };
     }
     console.table(allSponsorTable);
-  }
-
-  _generatePositionTable(address) {
-    const position = this.empClient.getAllPositions().filter(position => position.sponsor == address);
-    const currentPrice = this.priceFeed.getCurrentPrice();
-    console.log(italic("Position information:"));
-    if (position.length == 0) {
-      console.log(dim("\tWallet does not have an open position."));
-    } else {
-      console.table({
-        "Token debt": this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol,
-        "Backing collateral": this.formatDecimalString(position[0].amountCollateral) + this.collateralSymbol,
-        "Position CR %":
-          this.formatDecimalString(
-            this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice).muln(
-              100
-            )
-          ) + "%"
-      });
-    }
-  }
-
-  async _generateTokenBalanceTable(address) {
-    console.log("Token balance information:");
-    const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(address);
-    console.table({
-      "Synthetic balance": this.formatDecimalString(balanceInformation.syntheticBalance) + this.syntheticSymbol,
-      "Collateral balance": this.formatDecimalString(balanceInformation.collateralBalance) + this.collateralSymbol,
-      "ETH balance": this.formatDecimalString(balanceInformation.etherBalance) + "Ether"
-    });
   }
 
   _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
