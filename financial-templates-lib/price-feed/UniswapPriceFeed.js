@@ -1,14 +1,28 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
+// An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 
+const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
-// An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 class UniswapPriceFeed extends PriceFeedInterface {
-  constructor(logger, abi, web3, uniswapAddress, twapLength, historicalLookback, getTime, invertPrice) {
+  /**
+   * @notice Constructs new ExpiringMultiPartyClient.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} uniswapAbi Uniswap Market Truffle ABI object to create a contract instance to query prices.
+   * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
+   * @param {String} uniswapAddress Ethereum address of the Uniswap market the price feed is monitoring.
+   * @param {Integer} twapLength Duration of the time weighted average computation used by the price feed.
+   * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
+   * @param {Function} getTime Returns the current time.
+   * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
+   *      reserve1/reserve0 (false).
+   * @return None or throws an Error.
+   */
+  constructor(logger, uniswapAbi, web3, uniswapAddress, twapLength, historicalLookback, getTime, invertPrice) {
     super();
     this.logger = logger;
     this.web3 = web3;
-    this.uniswap = new web3.eth.Contract(abi, uniswapAddress);
+
+    this.uniswap = new web3.eth.Contract(uniswapAbi, uniswapAddress);
     this.twapLength = twapLength;
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;

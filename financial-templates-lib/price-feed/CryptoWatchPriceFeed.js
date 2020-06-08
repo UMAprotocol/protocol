@@ -2,17 +2,21 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
-  // Constructs the CryptoWatchPriceFeed.
-  // apiKey optional CW API key. Note: these API keys are rate-limited.
-  // exchange a string identifier for the echange to pull prices from. This should be the identifier used to
-  //          identify the exchange in CW's REST API.
-  // pair a string representation of the pair the price feed is tracking. This pair should be available on the
-  //      provided exchange. The string should be the representation used by CW to identify this pair.
-  // lookback how far in the past the historical prices will be available using the getHistoricalPrice function.
-  // networker networker object used to send the API requests.
-  // getTime function to return the current time.
-  // minTimeBetweenUpdates min number of seconds between updates. If update() is called again before this number of
-  // seconds has passed, it will be a no-op.
+  /**
+   * @notice Constructs the CryptoWatchPriceFeed.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
+   * @param {String} apiKey optional CW API key. Note: these API keys are rate-limited.
+   * @param {String} exchange Identifier for the exchange to pull prices from. This should be the identifier used by the
+   *      exchange in CW's REST API.
+   * @param {String} pair Representation of the pair the price feed is tracking. This pair should be available on the
+   *      provided exchange. The string should be the representation used by CW to identify this pair.
+   * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
+   * @param {Object} networker Used to send the API requests.
+   * @param {Function} getTime Returns the current time.
+   * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
+   *      this number of seconds has passed, it will be a no-op.
+   */
   constructor(logger, web3, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
     super();
     this.logger = logger;
@@ -43,8 +47,8 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return undefined;
     }
 
-    // If the time is before the first piece of data in the set, return null because the price is before the lookback
-    // window.
+    // If the time is before the first piece of data in the set, return null because
+    // the price is before the lookback window.
     if (time < this.historicalPricePeriods[0].openTime) {
       return null;
     }

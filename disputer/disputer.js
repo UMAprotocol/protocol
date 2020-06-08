@@ -1,12 +1,9 @@
-// When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
-// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
-
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class Disputer {
   /**
    * @notice Constructs new Disputer bot.
-   * @param {Object} logger Module used to send logs.
+   * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
@@ -59,7 +56,6 @@ class Disputer {
   }
 
   // Update the client and gasEstimator clients.
-  // If a client has recently updated then it will do nothing.
   update = async () => {
     await this.empClient.update();
     await this.gasEstimator.update();
@@ -169,9 +165,6 @@ class Disputer {
         disputeResult: logResult
       });
     }
-
-    // Update the EMP Client since we disputed liquidations.
-    await this.empClient.update();
   };
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
@@ -255,9 +248,6 @@ class Disputer {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we withdrew rewards.
-    await this.empClient.update();
   };
 }
 
