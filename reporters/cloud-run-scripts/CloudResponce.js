@@ -8,12 +8,15 @@ app.get("/", (req, res) => {
   let reporterScript = exec("/bin/bash ../reporters/cloud-run-scripts/SendSlackReport.sh", (error, stdout, stderr) => {
     console.log(stdout);
     console.log(stderr);
-    res.send(`Daily Report sent!`);
+
     if (error !== null) {
+      console.error(`exec error: ${error}`);
       res.status(400).send({
         message: error
       });
-      console.log(`exec error: ${error}`);
+    } else {
+      console.log("Daily report generated");
+      res.send(`Daily Report sent!`);
     }
   });
 });
