@@ -4,8 +4,9 @@ const {
   deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask
 } = require("./Crypto");
-const { getKeyGenMessage, computeTopicHash, computeVoteHash } = require("./EncryptionHelper");
+const { getKeyGenMessage, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
+const { getRandomUnsignedInt } = require("./Random.js");
 
 const argv = require("minimist")(process.argv.slice());
 
@@ -47,7 +48,7 @@ const getVotingRoles = (account, voting, designatedVoting) => {
  */
 const constructCommitment = async (request, roundId, web3, price, signingAccount, votingAccount) => {
   const priceWei = web3.utils.toWei(price.toString());
-  const salt = web3.utils.toBN(web3.utils.randomHex(32));
+  const salt = getRandomUnsignedInt().toString();
   const hash = computeVoteHash({
     price: priceWei,
     salt,
@@ -101,7 +102,7 @@ const constructReveal = async (request, roundId, web3, signingAccount, votingCon
     identifier: request.identifier,
     time: request.time,
     price: vote.price.toString(),
-    salt: web3.utils.hexToNumberString("0x" + vote.salt.toString())
+    salt: vote.salt
   };
 };
 
