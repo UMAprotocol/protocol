@@ -82,7 +82,7 @@ class SponsorReporter {
         "Collateral(DAI)": this.formatDecimalString(position.amountCollateral),
         "Tokens borrowed(ETHBTC)": this.formatDecimalString(position.numTokens),
         "Position CR %": this.formatDecimalString(
-          this._calculatePositionCRPercent(position.amountCollateral, position.numTokens, currentPrice).muln(100)
+          this._calculatePositionCRPercent(position.amountCollateral, position.numTokens, currentPrice)
         )
       };
     }
