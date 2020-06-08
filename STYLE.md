@@ -77,7 +77,7 @@ When the function is named and declared at the file-level or class-level scope, 
 
 ```js
 function name(arg1, arg2) {
-  // Fuction body
+  // Function body
 }
 ```
 

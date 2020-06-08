@@ -39,7 +39,7 @@ class GlobalSummaryReporter {
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
   }
 
-  update = async () => {
+  async update() {
     await this.empClient.update();
     await this.empEventClient.update();
     await this.referencePriceFeed.update();
@@ -57,7 +57,7 @@ class GlobalSummaryReporter {
       this.endBlockTimestamp
     )}`;
 
-    // Events accessible by all methods.
+    // Query events not already queried by EMPEventClient
     this.collateralDepositEvents = await this.collateralContract.getPastEvents("Transfer", {
       fromBlock: 0,
       toBlock: this.currentBlockNumber,
@@ -76,6 +76,7 @@ class GlobalSummaryReporter {
       event => event.returnValues.from === this.empContract.options.address && event.returnValues.to === ZERO_ADDRESS
     );
 
+    // Events loaded by EMPEventClient.update()
     this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
     this.createEvents = this.empEventClient.getAllCreateEvents();
     this.regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
@@ -93,9 +94,9 @@ class GlobalSummaryReporter {
 
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
-  };
+  }
 
-  generateSummaryStatsTable = async () => {
+  async generateSummaryStatsTable() {
     await this.update();
 
     // 1. Sponsor stats table
@@ -163,9 +164,9 @@ class GlobalSummaryReporter {
     console.log(bold("DVM summary stats"));
     await this._generateDvmStats();
     console.groupEnd();
-  };
+  }
 
-  _generateSponsorStats = async () => {
+  async _generateSponsorStats() {
     let allSponsorStatsTable = {};
 
     if (this.newSponsorEvents.length === 0) {
@@ -282,9 +283,9 @@ class GlobalSummaryReporter {
     };
 
     console.table(allSponsorStatsTable);
-  };
+  }
 
-  _generateTokenStats = async () => {
+  async _generateTokenStats() {
     let allTokenStatsTable = {};
 
     const currentTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
@@ -311,9 +312,9 @@ class GlobalSummaryReporter {
     // - volume of trades in uniswap in # of tokens (24H) (cumulative)
 
     console.table(allTokenStatsTable);
-  };
+  }
 
-  _generateLiquidationStats = async () => {
+  async _generateLiquidationStats() {
     let allLiquidationStatsTable = {};
 
     let uniqueLiquidations = {};
@@ -356,9 +357,9 @@ class GlobalSummaryReporter {
 
       console.table(allLiquidationStatsTable);
     }
-  };
+  }
 
-  _generateDisputeStats = async () => {
+  async _generateDisputeStats() {
     let allDisputeStatsTable = {};
 
     let uniqueDisputes = {};
@@ -431,9 +432,9 @@ class GlobalSummaryReporter {
       console.table(disputesResolved);
       console.groupEnd();
     }
-  };
+  }
 
-  _generateDvmStats = async () => {
+  async _generateDvmStats() {
     let allDvmStatsTable = {};
 
     let regularFeesPaid = this.toBN("0");
@@ -485,15 +486,15 @@ class GlobalSummaryReporter {
 
       console.table(allDvmStatsTable);
     }
-  };
+  }
 
-  _getLookbackTimeInBlocks = async lookbackTimeInSeconds => {
+  async _getLookbackTimeInBlocks(lookbackTimeInSeconds) {
     const blockTimeInSeconds = await averageBlockTimeSeconds();
     const blocksToLookBack = Math.ceil(lookbackTimeInSeconds / blockTimeInSeconds);
     return blocksToLookBack;
-  };
+  }
 
-  _constructTokenHolderList = async () => {
+  async _constructTokenHolderList() {
     const cumulativeTokenHolders = {};
     const currentTokenHolders = {};
 
@@ -537,7 +538,7 @@ class GlobalSummaryReporter {
       cumulative: cumulativeTokenHolders,
       current: currentTokenHolders
     };
-  };
+  }
 }
 module.exports = {
   GlobalSummaryReporter
