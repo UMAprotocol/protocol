@@ -34,7 +34,7 @@ class SponsorReporter {
     );
 
     // Place holder object to store all table information.
-    let tableInformation = {
+    let tableInfo = {
       "Token debt": {},
       "Backing collateral": {},
       "Position CR %": {},
@@ -49,23 +49,26 @@ class SponsorReporter {
       const currentPrice = this.priceFeed.getCurrentPrice();
       const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(wallet.address);
 
-      tableInformation["Token debt"][wallet.name] =
-        position.length == 0 ? "" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
-      tableInformation["Backing collateral"][wallet.name] =
-        position.length == 0 ? "" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
-      tableInformation["Position CR %"][wallet.name] =
-        position.length == 0
-          ? ""
-          : this.formatDecimalString(
-              this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
-            ) + "%";
-      tableInformation["Synthetic balance"][wallet.name] =
+      if (position.length == 0) {
+        tableInfo["Token debt"][wallet.name] = "";
+        tableInfo["Backing collateral"][wallet.name] = "";
+        tableInfo["Position CR %"][wallet.name] = "";
+      } else {
+        tableInfo["Token debt"][wallet.name] = this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+        tableInfo["Backing collateral"][wallet.name] =
+          this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+        tableInfo["Position CR %"][wallet.name] =
+          this.formatDecimalString(
+            this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
+          ) + "%";
+      }
+      tableInfo["Synthetic balance"][wallet.name] =
         this.formatDecimalString(balanceInformation.syntheticBalance) + this.syntheticSymbol;
-      tableInformation["Collateral balance"][wallet.name] =
+      tableInfo["Collateral balance"][wallet.name] =
         this.formatDecimalString(balanceInformation.collateralBalance) + this.collateralSymbol;
-      tableInformation["ETH balance"][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance) + "ETH";
+      tableInfo["ETH balance"][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance) + "ETH";
     }
-    console.table(tableInformation);
+    console.table(tableInfo);
   }
 
   async generateSponsorsTable() {
