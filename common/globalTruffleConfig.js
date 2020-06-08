@@ -19,6 +19,7 @@ const privateKey = process.env.PRIVATE_KEY
 // Fallback to a backup non-prod API key.
 const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
 const customNodeUrl = process.env.CUSTOM_NODE_URL;
+let singletonProvider;
 
 // Default options
 const gasPx = 20000000000; // 20 gwei
@@ -42,10 +43,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name] = {
     ...options,
     provider: function() {
-      if (!this.singletonProvider) {
-        this.singletonProvider = new ManagedSecretProvider(GckmsConfig, nodeUrl, 0, GckmsConfig.length);
+      if (!singletonProvider) {
+        singletonProvider = new ManagedSecretProvider(GckmsConfig, nodeUrl, 0, GckmsConfig.length);
       }
-      return this.singletonProvider;
+      return singletonProvider;
     }
   };
 
@@ -53,10 +54,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_privatekey"] = {
     ...options,
     provider: function() {
-      if (!this.singletonProvider) {
-        this.singletonProvider = new HDWalletProvider([privateKey], nodeUrl);
+      if (!singletonProvider) {
+        singletonProvider = new HDWalletProvider([privateKey], nodeUrl);
       }
-      return this.singletonProvider;
+      return singletonProvider;
     }
   };
 
@@ -64,10 +65,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_mnemonic"] = {
     ...options,
     provider: function() {
-      if (!this.singletonProvider) {
-        this.singletonProvider = new HDWalletProvider(mnemonic, nodeUrl, 0, 2);
+      if (!singletonProvider) {
+        singletonProvider = new HDWalletProvider(mnemonic, nodeUrl, 0, 2);
       }
-      return this.singletonProvider;
+      return singletonProvider;
     }
   };
 
@@ -81,10 +82,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_ledger"] = {
     ...options,
     provider: function() {
-      if (!this.singletonProvider) {
-        this.singletonProvider = new LedgerWalletProvider(ledgerOptions, nodeUrl);
+      if (!singletonProvider) {
+        singletonProvider = new LedgerWalletProvider(ledgerOptions, nodeUrl);
       }
-      return this.singletonProvider;
+      return singletonProvider;
     }
   };
 
@@ -97,10 +98,10 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_ledger_legacy"] = {
     ...options,
     provider: function() {
-      if (!this.singletonProvider) {
-        this.singletonProvider = new LedgerWalletProvider(legacyLedgerOptions, nodeUrl);
+      if (!singletonProvider) {
+        singletonProvider = new LedgerWalletProvider(legacyLedgerOptions, nodeUrl);
       }
-      return this.singletonProvider;
+      return singletonProvider;
     }
   };
 }
@@ -152,10 +153,10 @@ addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
 addLocalNetwork(networks, "metamask", {
   networkCheckTimeout: 500000,
   provider: function() {
-    if (!this.singletonProvider) {
-      this.singletonProvider = new MetaMaskTruffleProvider();
+    if (!singletonProvider) {
+      singletonProvider = new MetaMaskTruffleProvider();
     }
-    return this.singletonProvider;
+    return singletonProvider;
   }
 });
 
