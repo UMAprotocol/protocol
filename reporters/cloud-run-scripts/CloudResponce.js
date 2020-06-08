@@ -16,7 +16,7 @@ app.get("/", (req, res) => {
       });
     } else {
       console.log("Daily report generated");
-      res.send(`Daily Report sent!`);
+      res.send("Daily Report sent!");
     }
   });
 });
