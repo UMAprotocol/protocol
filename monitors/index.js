@@ -18,17 +18,22 @@ const { BalanceMonitor } = require("./BalanceMonitor");
 const { CRMonitor } = require("./CRMonitor");
 const { SyntheticPegMonitor } = require("./SyntheticPegMonitor");
 
-// Truffle contracts
+// Truffle contracts artifacts.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
-// TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../monitor/index.js --price=<price>` *from the core  directory*.
-
 /**
- * @notice Continuously attempts to monitor contract positions listening for newly emmited events.
+ * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
  * @param {Number} price Price used to inform the collateralization ratio of positions.
  * @param {String} address Contract address of the EMP.
+ * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
+ * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
+ * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
+ * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
+ * @param {Object} syntheticPegMonitorObject Configuration to construct the synthetic peg monitor module.
+ * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
+ * @param {Object} uniswapPriceFeedConfig Configuration to construct the uniswap price feed object.
+ * @param {Object} medianizerPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @return None or throws an Error.
  */
 async function run(
@@ -81,7 +86,7 @@ async function run(
       medianizerPriceFeedConfig
     );
 
-    // 1. Contract state monitor
+    // 1. Contract state monitor.
     // Start the event client by looking from the most recent block number. If set to 0 will report past events.
     const latestBlockNumber = (await web3.eth.getBlock("latest")).number;
 
@@ -153,7 +158,7 @@ async function run(
       // 2.b Check for monitored bot balance changes
       await balanceMonitor.checkBotBalances();
 
-      // 3.  Position Collateralization Ratio monitor.
+      // 3.  Position Collateralization Ratio monitor
       // 3.a Update the client
       await empClient.update();
       // 3.b Check for positions below their CR
@@ -231,8 +236,13 @@ const Poll = async function(callback) {
       throw "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings.";
     }
 
-    // Read price feed configuration from an environment variable.
+    // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
+    // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
     const uniswapPriceFeedConfig = JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG);
+
+    // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
+    // to use. EG: {"type":"medianizer","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
+    // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
     const medianizerPriceFeedConfig = JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG);
 
     await run(
@@ -259,7 +269,6 @@ const Poll = async function(callback) {
   callback();
 };
 
-// Attach this function to the exported function
-// in order to allow the script to be executed through both truffle and a test runner.
+// Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
 module.exports = Poll;

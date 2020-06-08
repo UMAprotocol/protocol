@@ -1,14 +1,22 @@
+// This module monitors the synthetic peg of a given expiring multiparty contract and reports when: 1) the synthetic is
+// trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
+
 const { createFormatFunction, formatHours } = require("../common/FormattingUtils");
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class SyntheticPegMonitor {
   /**
-   * @notice Constructs new Liquidator bot.
-   * @param {Object} logger Module used to send logs.
+   * @notice Constructs new synthetic peg monitor module.
+   * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   *      { collateralCurrencySymbol: "DAI",
+            syntheticCurrencySymbol:"ETHBTC",
+            priceIdentifier: "ETH/BTC",
+            networkId:1 }
    */
   constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps) {
     this.logger = logger;

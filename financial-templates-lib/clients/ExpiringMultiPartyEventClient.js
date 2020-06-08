@@ -1,7 +1,16 @@
 // A thick client for getting information about an ExpiringMultiParty events. This client is kept separate from the
-// ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying chain
-// necessarily.// If no updateThreshold is specified then default to updating every 60 seconds.
+// ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
+
 class ExpiringMultiPartyEventClient {
+  /**
+   * @notice Constructs new ExpiringMultiPartyClient.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
+   * @param {Object} web3 Web3 provider from truffle instance.
+   * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @param {Integer} latestBlockNumber Offset block number to index events from.
+   * @return None or throws an Error.
+   */
   constructor(logger, empAbi, web3, empAddress, latestBlockNumber = 0) {
     this.logger = logger;
     this.web3 = web3;
@@ -83,7 +92,7 @@ class ExpiringMultiPartyEventClient {
       toBlock: currentBlockNumber
     });
 
-    // Liquidation events
+    // Liquidation events.
     for (let event of liquidationEventsObj) {
       this.liquidationEvents.push({
         transactionHash: event.transactionHash,
@@ -97,7 +106,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Dispute events
+    // Dispute events.
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -114,7 +123,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Dispute settlement events
+    // Dispute settlement events.
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -132,7 +141,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Create events
+    // Create events.
     const createEventsObj = await this.emp.getPastEvents("PositionCreated", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -167,7 +176,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Deposit events
+    // Deposit events.
     const depositEventsObj = await this.emp.getPastEvents("Deposit", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -181,7 +190,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Withdraw events
+    // Withdraw events.
     const withdrawEventsObj = await this.emp.getPastEvents("Withdrawal", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -195,7 +204,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Redeem events
+    // Redeem events.
     const redeemEventsObj = await this.emp.getPastEvents("Redeem", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -210,7 +219,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Regular fee events
+    // Regular fee events.
     const regularFeeEventsObj = await this.emp.getPastEvents("RegularFeesPaid", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -224,7 +233,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Final fee events
+    // Final fee events.
     const finalFeeEventsObj = await this.emp.getPastEvents("FinalFeesPaid", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -237,7 +246,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Liquidation withdrawn events
+    // Liquidation withdrawn events.
     const liquidationWithdrawnEventsObj = await this.emp.getPastEvents("LiquidationWithdrawn", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber
@@ -252,7 +261,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
-    // Settle expired position events
+    // Settle expired position events.
     const settleExpiredPositionEventsObj = await this.emp.getPastEvents("SettleExpiredPosition", {
       fromBlock: this.firstBlockToSearch,
       toBlock: currentBlockNumber

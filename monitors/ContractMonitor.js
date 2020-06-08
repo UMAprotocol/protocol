@@ -1,6 +1,24 @@
+// This module monitors Expiring Multi Party contracts and produce logs when: 1) new sponsors are detected,
+// 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
+
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
+  /**
+  * @notice Constructs new contract monitor module.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} expiringMultiPartyEventClient Client used to query EMP events for contract state updates.
+   * @param {Object} contractMonitorConfigObject Config object containing two arrays of monitored liquidator and disputer
+   *      bots to inform log messages. Example:
+   *      { "monitoredLiquidators": ["0x1234","0x5678"],
+  *         "monitoredDisputers": ["0x1234","0x5678"] }
+   * @param {Object} priceFeed Module used to query the current token price.
+   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   *      { collateralCurrencySymbol: "DAI",
+            syntheticCurrencySymbol:"ETHBTC",
+            priceIdentifier: "ETH/BTC",
+            networkId:1 }
+   */
   constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed, empProps) {
     this.logger = logger;
 

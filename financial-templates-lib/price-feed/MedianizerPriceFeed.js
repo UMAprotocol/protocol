@@ -2,9 +2,11 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 
 // An implementation of PriceFeedInterface that medianizes other price feeds.
 class MedianizerPriceFeed extends PriceFeedInterface {
-  // Constructs the MedianizerPriceFeed.
-  // priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface. Must be an array of
-  // at least one element.
+  /**
+   * @notice Constructs new MedianizerPriceFeed.
+   * @param {List} priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface.
+   *      Must be an array of at least one element.
+   */
   constructor(priceFeeds) {
     super();
 

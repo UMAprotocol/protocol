@@ -4,15 +4,21 @@
 const fetch = require("node-fetch");
 const url = "https://ethgasstation.info/json/ethgasAPI.json";
 
-// If no updateThreshold is specified then default to updating every 60 seconds.
 class GasEstimator {
+  /**
+   * @notice Constructs new GasEstimator.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Integer} updateThreshold How long, in seconds, the estimator should wait between updates.
+   * @param {Integer} defaultFastPriceGwei Default gas price used if the GasEstimator returns an error.
+   * @return None or throws an Error.
+   */
   constructor(logger, updateThreshold = 60, defaultFastPriceGwei = 40) {
     this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
 
-    // If the script fails or the API response fails default to this value
+    // If the script fails or the API response fails default to this value.
     this.defaultFastPriceGwei = defaultFastPriceGwei;
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }

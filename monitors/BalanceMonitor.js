@@ -1,18 +1,27 @@
+// This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
+
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
-// This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 class BalanceMonitor {
-  // @param logger an instance of a winston logger used to emit messages, logs and errors.
-  // @param tokenBalanceClient is an instance of the TokenBalanceClient from the `financial-templates lib
-  // which provides synchronous access to address balances for a given expiring multi party contract.
-  // @param botsToMonitor is array of bot objects to monitor. Each bot's `botName` `address`,
-  // `CollateralThreshold` and`syntheticThreshold` must be given. Example:
-  // [{ name: "Liquidator Bot",
-  //   address: "0x12345"
-  //   collateralThreshold: x1,
-  //   syntheticThreshold: x2,
-  //   etherThreshold: x3 },
-  // ...]
+  /**
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} tokenBalanceClient Client used to query token balances for monitored bots and wallets.
+   * @param tokenBalanceClient Instance of the TokenBalanceClient from the `financial-templates lib.
+   * which provides synchronous access to address balances for a given expiring multi party contract.
+   * @param {List} botsToMonitor Array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
+   *      and`syntheticThreshold` must be given. Example:
+   *      [{ name: "Liquidator Bot",
+   *         address: "0x12345"
+   *         collateralThreshold: x1,
+   *         syntheticThreshold: x2,
+   *         etherThreshold: x3 },
+   *      ..]
+   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   *      { collateralCurrencySymbol: "DAI",
+            syntheticCurrencySymbol:"ETHBTC",
+            priceIdentifier: "ETH/BTC",
+            networkId:1 }
+   */
   constructor(logger, tokenBalanceClient, botsToMonitor, empProps) {
     this.logger = logger;
 
@@ -32,7 +41,7 @@ class BalanceMonitor {
     this.toBN = this.web3.utils.toBN;
   }
 
-  // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
+  // Queries all bot ballance for collateral, synthetic and ether against specified thresholds.
   checkBotBalances = async () => {
     this.logger.debug({
       at: "BalanceMonitor",

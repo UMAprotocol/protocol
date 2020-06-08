@@ -1,9 +1,17 @@
+// A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
+// positions, undisputed Liquidations, expired liquidations, disputed liquidations.
+
 const { LiquidationStatesEnum } = require("../../common/Enums");
 
-// A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
-// positions, undisputed Liquidations, expired liquidations, disputed liquidations. Client is used by both the
-//  liquidator and dispute bots.
 class ExpiringMultiPartyClient {
+  /**
+   * @notice Constructs new ExpiringMultiPartyClient.
+   * @param {Object} logger Winston module used to send logs.
+   * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
+   * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
+   * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @return None or throws an Error.
+   */
   constructor(logger, empAbi, web3, empAddress) {
     this.logger = logger;
     this.web3 = web3;
@@ -58,8 +66,8 @@ class ExpiringMultiPartyClient {
   // Liquidators can withdraw rewards from these disputed liquidations.
   getDisputedLiquidations = () => this.disputedLiquidations;
 
-  // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
-  // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
+  // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is
+  // disputable. `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
     return !this._isUnderCollateralized(liquidation.numTokens, liquidation.liquidatedCollateral, tokenRedemptionValue);
   };
@@ -91,8 +99,8 @@ class ExpiringMultiPartyClient {
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
-        // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties set to default values.
-        // We can skip them.
+        // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
+        // set to default values. We can skip them.
         if (liquidation.state === LiquidationStatesEnum.UNINITIALIZED) {
           continue;
         }
