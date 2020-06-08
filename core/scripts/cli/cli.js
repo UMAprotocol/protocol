@@ -4,6 +4,7 @@ const sponsor = require("./sponsor");
 const style = require("./textStyle");
 const wallet = require("./wallet");
 const admin = require("./admin.js");
+const vote = require("./vote");
 
 const ACTIONS = {
   wallet: "Wallet",
@@ -42,10 +43,7 @@ async function run() {
         await wallet(web3, artifacts);
         break;
       case ACTIONS.vote:
-        console.log(
-          `${style.help(`Voting through the CLI is currently unstable due to incompatible encryption/decryption
-           between browser and Node.js, please use the dApp at vote.umaproject.org instead.`)}`
-        );
+        await vote(web3, artifacts);
         break;
       case ACTIONS.sponsor:
         await sponsor(web3, artifacts);
