@@ -8,12 +8,12 @@ const { GraphQLClient } = require("graphql-request");
  * @return `createdClient` singleton graphql client.
  */
 let uniswapClient;
-const getUniswapClient = () => {
+function getUniswapClient() {
   if (!uniswapClient) {
     uniswapClient = new GraphQLClient("https://api.thegraph.com/subgraphs/name/ianlapham/unsiwap3");
   }
   return uniswapClient;
-};
+}
 
 /**
  * @notice Return query to get pair data for uniswap pair @ `pairAddress` up to `block`-2 height. Default block height
@@ -24,7 +24,7 @@ const getUniswapClient = () => {
  * @param {[Integer]} block Highest block number to query data from.
  * @return query string
  */
-const PAIR_DATA = (pairAddress, block) => {
+function PAIR_DATA(pairAddress, block) {
   const blockNumberLag = 2;
   const queryString = block
     ? `
@@ -46,7 +46,7 @@ const PAIR_DATA = (pairAddress, block) => {
             }
         `;
   return queryString;
-};
+}
 
 const queries = {
   PAIR_DATA
