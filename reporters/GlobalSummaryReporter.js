@@ -1,7 +1,9 @@
-const { createFormatFunction, formatDateShort } = require("../common/FormattingUtils");
+const { createFormatFunction, formatDateShort, formatWithMaxDecimals } = require("../common/FormattingUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { ZERO_ADDRESS } = require("../common/Constants");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
+const { getUniswapClient, queries } = require("./uniswapSubgraphClient");
+const { getUniswapPairDetails } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
@@ -135,12 +137,6 @@ class GlobalSummaryReporter {
     console.group();
     console.log(bold("Token summary stats"));
     console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
-    console.log(
-      italic(
-        "- Uniswap TWAP price window can be modified using the 'twapLength' property in the UNISWAP_PRICE_FEED_CONFIG"
-      )
-    );
-    console.log(italic("- Token holder distribution stats sourced from etherscan.io"));
     await this._generateTokenStats();
     console.groupEnd();
 
@@ -299,6 +295,40 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
+    // Get uniswap data via graphql.
+    const uniswapPairDetails = await getUniswapPairDetails(
+      this.web3,
+      this.syntheticContract.address,
+      this.collateralContract.address
+    );
+    const uniswapPairAddress = uniswapPairDetails.pairAddress.toLowerCase();
+    const uniswapClient = getUniswapClient();
+    const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
+    const startPeriodTokenData = (
+      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
+    ).pairs[0];
+    const endPeriodTokenData = (
+      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
+    ).pairs[0];
+
+    const tradeCount = parseInt(allTokenData.txCount);
+    const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
+
+    const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+    const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
+    const periodTradeVolumeTokens =
+      parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
+
+    allTokenStatsTable["# trades in Uniswap"] = {
+      cumulative: tradeCount,
+      [this.periodLabelInHours]: periodTradeCount
+    };
+    allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+      cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
+      [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false)
+    };
+
+    // Get token holder stats.
     const tokenHolders = await this._constructTokenHolderList();
     if (tokenHolders) {
       allTokenStatsTable["# of token holders"] = {
@@ -306,11 +336,6 @@ class GlobalSummaryReporter {
         cumulative: Object.keys(tokenHolders.cumulative).length
       };
     }
-
-    // TODO:
-    // - # trades in uniswap (24H) (cumulative)
-    // - volume of trades in uniswap in # of tokens (24H) (cumulative)
-
     console.table(allTokenStatsTable);
   }
 
