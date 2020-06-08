@@ -21,13 +21,13 @@ class SponsorReporter {
     this.networkId = 1;
   }
 
-  update = async () => {
+  async update() {
     await this.empClient.update();
     await this.priceFeed.update();
-  };
+  }
 
   // Iterate over monitored wallets and generate key metrics.
-  generateMonitoredWalletMetrics = async () => {
+  async generateMonitoredWalletMetrics() {
     await this.update();
     console.log(
       italic("- Each monitored wallet within the configuration object has their position and token balances printed")
@@ -49,9 +49,9 @@ class SponsorReporter {
       // end of main group
       console.groupEnd();
     }
-  };
+  }
 
-  generateSponsorsTable = async () => {
+  async generateSponsorsTable() {
     await this.update();
     console.log(italic("- All current token sponsors within the spesified EMP are printed"));
 
@@ -70,7 +70,7 @@ class SponsorReporter {
       };
     }
     console.table(allSponsorTable);
-  };
+  }
 
   _generatePositionTable(address) {
     const position = this.empClient.getAllPositions().filter(position => position.sponsor == address);
@@ -102,7 +102,7 @@ class SponsorReporter {
     });
   }
 
-  _calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+  _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
     if (collateral == 0) {
       return 0;
     }
@@ -114,7 +114,7 @@ class SponsorReporter {
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
       .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)));
-  };
+  }
 }
 module.exports = {
   SponsorReporter
