@@ -33,8 +33,7 @@ class SponsorReporter {
       italic("- Each monitored wallet within the configuration object has their position and token balances printed")
     );
 
-    // For each wallet monitored run through the checks and log information.
-
+    // Place holder object to store all table information.
     let tableInformation = {
       "Token debt": {},
       "Backing collateral": {},
@@ -43,22 +42,22 @@ class SponsorReporter {
       "Collateral balance": {},
       "ETH balance": {}
     };
+
+    // For each wallet monitored run through the checks and log information.
     for (let wallet of this.walletsToMonitor) {
       const position = this.empClient.getAllPositions().filter(position => position.sponsor == wallet.address);
       const currentPrice = this.priceFeed.getCurrentPrice();
       const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(wallet.address);
 
       tableInformation["Token debt"][wallet.name] =
-        position.length == 0 ? "no position" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+        position.length == 0 ? "" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
       tableInformation["Backing collateral"][wallet.name] =
-        position.length == 0 ? "no position" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
+        position.length == 0 ? "" : this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
       tableInformation["Position CR %"][wallet.name] =
         position.length == 0
-          ? "no position"
+          ? ""
           : this.formatDecimalString(
-              this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice).muln(
-                100
-              )
+              this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
             ) + "%";
       tableInformation["Synthetic balance"][wallet.name] =
         this.formatDecimalString(balanceInformation.syntheticBalance) + this.syntheticSymbol;
@@ -101,7 +100,8 @@ class SponsorReporter {
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)));
+      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice)))
+      .muln(100);
   }
 }
 module.exports = {
