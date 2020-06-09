@@ -42,15 +42,15 @@ These instructions will compute for the GCR:
 1. Go to the [Read Contract Tab](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944#readContract) on the [ETHBTC token minting contract](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944) page.
 2. Search for the `cumulativeFeeMultiplier` function and observe the number there. This is in units of Wei so you will again need to convert it back into a human-readable number with the converter above. For example, a value of `1000000000000000000` would equate to **a multiplier with the value of `1`**.
 
-   ![multiplier](images/image1.png "image_tooltip")
+   ![multiplier](mint_multiplier.png)
 
 3. Next search for the `rawTotalPositionCollateral` function and observe the number there. Multiply this number with the multiplier above to get the true total collateral amount. In this example, the resulting **total collateral amount is `68939980252164664648765`, or ~`68,939` when converted from Wei**.
 
-   ![raw_total_position_collateral](images/image2.png "image_tooltip")
+   ![raw total position collateral](mint_raw_collateral.png)
 
 4. Next, search for the `totalTokensOutstanding` function and observe the number there. In this example the **total number of tokens outstanding is `2089090310671656504456548` or ~`2,089,090` when converted from Wei**.
 
-   ![total_tokens_outstanding](images/image3.png "image_tooltip")
+   ![total tokens outstanding](mint_tokens_outstanding.png)
 
 5. The GCR is simply a ratio of these two numbers (i.e. total collateral / total tokens outstanding), so in our example: **GCR = 68939 / 2089090 = ~0.033**
 
@@ -61,7 +61,7 @@ There is a setting in the contract that defines the minimum number of tokens you
 1. Go to the [Read Contract Tab](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944#readContract) on the [ETHBTC token minting contract](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944) page.
 2. Search for the `minSponsorTokens` function and observe the number there. In this example, a value of `1000000000000000000000` or **`1000` tokens when converted from Wei**.
 
-   ![min_sponsor_tokens](images/image4.png "image_tooltip")
+   ![min sponsor tokens](mint_min_sponsor_tokens.png)
 
 This means that by the end of your minting transaction, you would need to make sure that you would have minted a total of 1000 tokens outstanding.
 
