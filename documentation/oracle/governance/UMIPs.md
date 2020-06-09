@@ -27,15 +27,13 @@ If upon review, there is a material change or substantial unaddressed complaints
 If the UMIP requires code changes, the core devs must review the UMIP.
 A successful UMIP will be in "Last Call" status for a reasonable period of time for comments and be merged (if necessary) before moving to a tokenholder vote.
 
-## Approved
-
-A UMIP that successfully passes the "Last Call" will be put to UMA tokenholder vote.
-If tokenholders approve the proposal, the live protocol will be updated to reflect it.
-At this time, any code changes (if relevant) should be merged into the core protocol repository so that the core protocol repository always reflects the live code that is running.
-
 ## Final
 
-If tokenholders approve the proposal, the live protocol will be updated to reflect them. The UMIP is then considered to be in the "Final" state.
+An UMIP that successfully passes the "Last Call" will move to the "Final" state and be put to UMA tokenholder vote.
+
+## Approved
+
+If tokenholders approve the proposal, the live protocol will be updated to reflect it. At this time, any code changes (if relevant) should be merged into the core protocol repository so that the core protocol repository always reflects the live code that is running. The UMIP is then considered to be in the "Approved" state.
 
 ## Abandoned
 
