@@ -7,7 +7,9 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-echo "🔥 Starting deployment script for bot" $1
+echo "🔥 Creating monitor config for bot" $1
+
+gcloud logging metrics create $1 --description "$1 winston logging metric." --log-filter "jsonPayload.metadata.\"bot-identifier\"=\"$1\""
 
 config = '
 ---
