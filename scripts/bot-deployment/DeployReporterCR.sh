@@ -19,9 +19,9 @@ gsutil cp gs://bot-configs/$1.yml $tempFile
 
 echo "✍️  Config has been pulled and placed in a temp directory" $tempFile
 
-# Deploy The bot to GCP using the config file and the service account
 echo "🚀 Deploying cloud run instance to GCP"
 
+# Deploy The bot to GCP using the config file
 gcloud beta run services replace $tempFile \
     --platform managed \
     --region=us-central1
