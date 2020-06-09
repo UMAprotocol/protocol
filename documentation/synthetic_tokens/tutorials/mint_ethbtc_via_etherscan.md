@@ -29,7 +29,7 @@ There are three things we need to be concerned about when minting tokens for the
 
 Once we have determined the values for these three items, then we will be ready to mint some tokens!
 
-### 1. Computing for the GCR
+### 1) Computing for the GCR
 
 **The GCR is defined as the ratio of total collateral to the total number of tokens outstanding (i.e. GCR = total collateral / total tokens)** and we can only mint tokens if we collateralize enough to keep the GCR at its current level or higher.
 
@@ -54,7 +54,7 @@ These instructions will compute for the GCR:
 
 5. The GCR is simply a ratio of these two numbers (i.e. total collateral / total tokens outstanding), so in our example: **GCR = 75,204 / 2,004,251 = ~0.038**
 
-### 2. Minimum number of tokens to mint
+### 2) Minimum number of tokens to mint
 
 There is a setting in the contract that defines the minimum number of tokens your position must have. For ETHBTC, this value is set at 1000 tokens, but if you wanted to confirm this on Etherscan, you can follow these instructions:
 
@@ -65,7 +65,7 @@ There is a setting in the contract that defines the minimum number of tokens you
 
 This means that by the end of your minting transaction, you would need to make sure that you would have minted a total of 1000 tokens outstanding.
 
-### 3. Minimum amount of collateral required
+### 3) Minimum amount of collateral required
 
 Since the `GCR = total collateral / total tokens`, in order to maintain the GCR while minting the minimum amount of tokens, we simply multiply the number of tokens we want to mint with the GCR to find the required amount of collateral.
 

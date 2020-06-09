@@ -9,7 +9,7 @@
 *** creating_from_truffle.md
 *** using_the_uma_sponsor_cli_tool.md
 *** liquidation.md
-*** mint_ethbtc_etherscan.md
+*** mint_ethbtc_via_etherscan.md
 ** known_issues.md
 ** glossary.md
 * oracle
