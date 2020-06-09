@@ -77,7 +77,7 @@ Finally, we are ready to mint our actual ETHBTC tokens! You might want to add a 
 
 1. Go to the [Write Contract Tab](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944#writeContract) on the [ETHBTC token minting contract](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944) page.
 2. Search for the `create` function.
-3. For the first argument, input the collateral amount in Wei wrapped in double-quotes and square brackets. For example, 34 DAI of collateral would mean inputting `[“34000000000000000000”]`.
+3. For the first argument, input the collateral amount in Wei wrapped in double-quotes and square brackets. For example, 40 DAI of collateral would mean inputting `[“40000000000000000000”]`.
 4. For the second argument, input the number of tokens (in Wei) that you want to mint, and wrap it in double-quotes with square brackets just like above.
 
 ![create](mint_create.png)
@@ -97,7 +97,7 @@ Now that we have minted our tokens, let’s check the smart contract to make sur
 
 ![positions](mint_positions.png)
 
-From this, we can conclude that we have minted 1000 tokens with 38 DAI of collateral supplied.
+From this, we can conclude that we have successfully minted 1000 tokens with 40 DAI of supplied collateral.
 
 ## What next?
 
