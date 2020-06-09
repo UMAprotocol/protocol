@@ -2,7 +2,7 @@
 set -e
 
 if [ $# -ne 1 ]; then
-    echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config."
+    echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config will be inferred."
     echo "example: ./DeployBotCR.sh ethbtc-mainnet-reporter"
     exit 1
 fi
