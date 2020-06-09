@@ -3,7 +3,7 @@ set -e
 
 if [ $# -ne 1 ]; then
     echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config."
-    echo "example: ./DeployBotCR.sh ethbtc-monitor-reporter"
+    echo "example: ./DeployBotCR.sh ethbtc-mainnet-reporter"
     exit 1
 fi
 
@@ -50,4 +50,4 @@ gcloud scheduler jobs create http $1 \
     --http-method=get \
     --description="Daily reporter cron job to send messages at 8am UTC"
 
-echo "🎊 scheduler created!"
+echo "🎊 Scheduler created!"
