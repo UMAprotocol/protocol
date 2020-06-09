@@ -29,7 +29,7 @@ There are three things we need to be concerned about when minting tokens for the
 
 Once we have determined the values for these three items, then we will be ready to mint some tokens!
 
-### Computing for the GCR
+### 1. Computing for the GCR
 
 **The GCR is defined as the ratio of total collateral to the total number of tokens outstanding (i.e. GCR = total collateral / total tokens)** and we can only mint tokens if we collateralize enough to keep the GCR at its current level or higher.
 
@@ -44,17 +44,17 @@ These instructions will compute for the GCR:
 
    ![multiplier](mint_multiplier.png)
 
-3. Next search for the `rawTotalPositionCollateral` function and observe the number there. Multiply this number with the multiplier above to get the true total collateral amount. In this example, the resulting **total collateral amount is `68939980252164664648765`, or ~`68,939` when converted from Wei**.
+3. Next search for the `rawTotalPositionCollateral` function and observe the number there. Multiply this number with the multiplier above to get the true total collateral amount. In this example, the resulting **total collateral amount is `75204285203707845817894`, or ~`75,204` when converted from Wei**.
 
    ![raw total position collateral](mint_raw_collateral.png)
 
-4. Next, search for the `totalTokensOutstanding` function and observe the number there. In this example the **total number of tokens outstanding is `2089090310671656504456548` or ~`2,089,090` when converted from Wei**.
+4. Next, search for the `totalTokensOutstanding` function and observe the number there. In this example the **total number of tokens outstanding is `2004251000000000000000000` or ~`2,004,251` when converted from Wei**.
 
    ![total tokens outstanding](mint_tokens_outstanding.png)
 
-5. The GCR is simply a ratio of these two numbers (i.e. total collateral / total tokens outstanding), so in our example: **GCR = 68939 / 2089090 = ~0.033**
+5. The GCR is simply a ratio of these two numbers (i.e. total collateral / total tokens outstanding), so in our example: **GCR = 75,204 / 2,004,251 = ~0.038**
 
-### Minimum number of tokens to mint
+### 2. Minimum number of tokens to mint
 
 There is a setting in the contract that defines the minimum number of tokens your position must have. For ETHBTC, this value is set at 1000 tokens, but if you wanted to confirm this on Etherscan, you can follow these instructions:
 
@@ -65,26 +65,26 @@ There is a setting in the contract that defines the minimum number of tokens you
 
 This means that by the end of your minting transaction, you would need to make sure that you would have minted a total of 1000 tokens outstanding.
 
-### Minimum amount of collateral required
+### 3. Minimum amount of collateral required
 
 Since the `GCR = total collateral / total tokens`, in order to maintain the GCR while minting the minimum amount of tokens, we simply multiply the number of tokens we want to mint with the GCR to find the required amount of collateral.
 
-Assuming we want to mint 1000 tokens, that would mean we need **`1000 * GCR (~0.33) = ~33 DAI` of collateral**.
+Assuming we want to mint 1000 tokens, that would mean we need **`1000 * GCR (~0.038) = ~38 DAI` of collateral**.
 
 ## Minting the actual tokens
 
-Finally, we are ready to mint our actual ETHBTC tokens! You might want to add a bit more collateral than the minimum to prevent yourself from being liquidated (the minimum collateralization ratio for ETHBTC is 120%).
+Finally, we are ready to mint our actual ETHBTC tokens! You might want to add a bit more collateral than the minimum to prevent yourself from being liquidated (the minimum collateralization ratio for ETHBTC is 120%). In this example, we will put in 40 DAI.
 
 1. Go to the [Write Contract Tab](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944#writeContract) on the [ETHBTC token minting contract](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944) page.
 2. Search for the `create` function.
 3. For the first argument, input the collateral amount in Wei wrapped in double-quotes and square brackets. For example, 34 DAI of collateral would mean inputting `[“34000000000000000000”]`.
 4. For the second argument, input the number of tokens (in Wei) that you want to mint, and wrap it in double-quotes with square brackets just like above. \
 
-![create](images/image5.png "image_tooltip")
+![create](mint_create.png)
 
 5. Hit write, and confirm the transaction through your wallet. Once the transaction completes, you should have minted your tokens. The Etherscan page for that transaction should look something like this: \
 
-![etherscan_result](images/image6.png "image_tooltip")
+![positions](mint_positions.png)
 
 ### Checking your position
 
