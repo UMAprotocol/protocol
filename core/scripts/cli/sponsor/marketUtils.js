@@ -1,6 +1,11 @@
 const style = require("../textStyle");
+const winston = require("winston");
 const PublicNetworks = require("../../../../common/PublicNetworks");
 const { getCurrencySymbol } = require("./currencyUtils.js");
+const { createReferencePriceFeedForEmp } = require("../../../../financial-templates-lib/price-feed/CreatePriceFeed.js");
+const { Networker } = require("../../../../financial-templates-lib/price-feed/Networker.js");
+const { computeCollateralizationRatio } = require("../../../../common/EmpUtils.js");
+const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
 
 const getMarketSummary = async (web3, artifacts) => {
   style.spinnerReadingContracts.start();
@@ -74,6 +79,44 @@ const getMarketSummary = async (web3, artifacts) => {
   return markets;
 };
 
+async function getCollateralizationRatio(web3, empAddress, collateral, tokens) {
+  const { toBN, toWei } = web3.utils;
+  let priceFeed;
+  try {
+    priceFeed = await createReferencePriceFeedForEmp(
+      winston.createLogger({ silent: true }),
+      web3,
+      new Networker(),
+      () => Math.floor(Date.now() / 1000),
+      empAddress
+    );
+  } catch (error) {
+    console.log(error);
+    // Ignore error
+  }
+
+  if (!priceFeed) {
+    return "Unknown";
+  }
+
+  await priceFeed.update();
+  const currentPrice = priceFeed.getCurrentPrice();
+
+  if (!currentPrice) {
+    return "Unknown";
+  }
+
+  const collateralizationRatio = await computeCollateralizationRatio(
+    web3,
+    currentPrice,
+    toBN(collateral.toString()),
+    toBN(tokens.toString())
+  );
+  const format = createFormatFunction(web3, 2, 4, false);
+  return format(collateralizationRatio.muln(100)) + "%";
+}
+
 module.exports = {
-  getMarketSummary
+  getMarketSummary,
+  getCollateralizationRatio
 };

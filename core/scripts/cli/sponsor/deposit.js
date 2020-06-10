@@ -47,7 +47,13 @@ const deposit = async (web3, artifacts, emp) => {
       transactionNum,
       totalTransactions
     );
+
+    // Indicates that the sponsor successfully made a deposit.
+    return true;
   }
+
+  // Indicates that no deposit was made.
+  return false;
 };
 
 module.exports = deposit;

@@ -24,7 +24,9 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
     // When creating the globally first position, we wouldn't have a GCR. Therefore, creating that position is a
     // different flow that isn't currently part of this tool.
     console.log("Error: This tool does not currently support creating the chosen market's first position");
-    return;
+
+    // No creation occurred.
+    return false;
   }
 
   const input = await inquirer.prompt({
@@ -66,7 +68,9 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
         userCollateralBalance
       )} ${requiredCollateralSymbol}`
     );
-    return;
+
+    // No creation occurred.
+    return false;
   }
 
   const confirmation = await inquirer.prompt({
@@ -99,7 +103,13 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
       totalTransactions
     );
     // TODO: Add link to uniswap and bolded messaging.
+
+    // Indicates that the user successfully created tokens.
+    return true;
   }
+
+  // No creation occurred.
+  return false;
 };
 
 module.exports = create;

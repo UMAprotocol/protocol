@@ -72,7 +72,13 @@ const redeem = async (web3, artifacts, emp) => {
     if (isWeth) {
       await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
     }
+
+    // User successfully redeemed.
+    return true;
   }
+
+  // No redemption occurred.
+  return false;
 };
 
 module.exports = redeem;
