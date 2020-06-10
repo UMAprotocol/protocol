@@ -45,10 +45,10 @@ echo "⏱  Creating cloud scedular to run the cloud run instance"
 
 # Lastly, creat the scheduler job.
 gcloud scheduler jobs create http $1 \
-    --schedule="0 8 * * *" \
+    --schedule="0 12 * * *" \
     --uri=$cloudRunURL \
     --oidc-service-account-email=$serviceAccountEmail \
     --http-method=get \
-    --description="Daily reporter cron job to send messages at 8am UTC"
+    --description="Daily reporter cron job to send messages at 8am ET"
 
 echo "🎊 Scheduler created!"
