@@ -27,7 +27,7 @@ notificationChannel=$(gcloud alpha monitoring channels list --format='value(name
 echo " Pulled notification channel from GCP @" $notificationChannel
 
 # This YAML config below creates a monitor that trackes the logging metric created before.
-# Tt sends an alert to the `notificationChannel` if the `filter` has not been seen for `duration`.
+# It sends an alert to the `notificationChannel` if the `filter` has not been seen for `duration`.
 config="---
 combiner: OR
 conditions:
