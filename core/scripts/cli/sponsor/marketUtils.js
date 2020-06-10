@@ -83,6 +83,8 @@ async function getCollateralizationRatio(web3, empAddress, collateral, tokens) {
   const { toBN, toWei } = web3.utils;
   let priceFeed;
   try {
+    // TODO: change createReferencePriceFeedForEmp to allow a null or undefined logger instead of forcing the caller
+    // to provide a silent logger.
     priceFeed = await createReferencePriceFeedForEmp(
       winston.createLogger({ silent: true }),
       web3,
@@ -112,7 +114,7 @@ async function getCollateralizationRatio(web3, empAddress, collateral, tokens) {
     toBN(collateral.toString()),
     toBN(tokens.toString())
   );
-  const format = createFormatFunction(web3, 2, 4, false);
+  const format = createFormatFunction(web3, 2, 4);
   return format(collateralizationRatio.muln(100)) + "%";
 }
 

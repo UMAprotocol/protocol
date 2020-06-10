@@ -31,7 +31,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
       const collateralRequirement = await emp.collateralRequirement();
-      const format = createFormatFunction(web3, 2, 4, false);
+      const format = createFormatFunction(web3, 2, 4);
 
       const getDateStringReadable = contractTime => {
         return new Date(Number(contractTime.toString() * 1000)).toString();
