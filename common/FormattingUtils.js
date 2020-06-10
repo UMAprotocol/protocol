@@ -1,6 +1,7 @@
 const networkUtils = require("../common/PublicNetworks");
 
 const BigNumber = require("bignumber.js");
+const moment = require("moment");
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -9,9 +10,10 @@ const BigNumber = require("bignumber.js");
 // +-1e500.
 BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
+// Given a timestamp in seconds, returns the date in the format: "MM/DD/YYYY"
 const formatDateShort = timestampInSeconds => {
-  const date = new Date(parseInt(Number(timestampInSeconds) * 1000));
-  return `${date.getMonth()}/${date.getDate()}/${date.getFullYear()}`;
+  const date = moment.unix(parseInt(Number(timestampInSeconds)));
+  return date.format("MM/DD/YYYY");
 };
 
 const formatDate = (timestampInSeconds, web3) => {
