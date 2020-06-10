@@ -11,6 +11,10 @@ The liquidation bot monitors all open positions within a given expiring multi-pa
 The dispute bot monitors all liquidations occurring within a given expiring multi-party contract and initiates disputes against liquidations it deems invalid, as inferred from off-chain information about the value of the price identifier.
 A liquidation is invalid if a position was correctly collateralized at the time of liquidation.
 
+## Incentives to Running a Bot
+
+Details about liquidation and dispute rewards can be found [here](../explainer.md#liquidation-and-dispute).
+
 ## Implementation
 
 The liquidation and dispute bots are separate entities. Each has its own wallet and is designed to be be run independently of the other.
@@ -327,7 +331,7 @@ Alternatively if you want to push a new local config file you can do this by run
 
 Once your bots are running on GCP you want to know when they are properly executing liquidations or if any errors occur. The bots by default provide a few useful monitoring avenues. These are now discussed.
 
-### GCP StackDriver intergration
+### GCP StackDriver integration
 
 Once your containers are running within compute engine you properly want to see the log messages in the same way you did when running `docker attach` in the previous section.
 To make this process easier the bot logger configuration includes Google Stackdriver integration.
