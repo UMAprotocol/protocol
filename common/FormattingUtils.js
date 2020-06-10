@@ -9,6 +9,7 @@ const BigNumber = require("bignumber.js");
 // +-1e500.
 BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
+// Given a timestamp in seconds, returns the date in the format: "MM/DD/YYYY"
 const formatDateShort = timestampInSeconds => {
   const date = new Date(parseInt(Number(timestampInSeconds) * 1000));
   return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;

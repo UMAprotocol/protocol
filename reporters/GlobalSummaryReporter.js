@@ -31,7 +31,7 @@ class GlobalSummaryReporter {
 
     this.web3 = this.empEventClient.web3;
     this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toBN;
+    this.toWei = this.web3.utils.toWei;
 
     this.empContract = this.empEventClient.emp;
     this.collateralContract = collateralToken;
