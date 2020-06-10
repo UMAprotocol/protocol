@@ -11,7 +11,7 @@ BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
 const formatDateShort = timestampInSeconds => {
   const date = new Date(parseInt(Number(timestampInSeconds) * 1000));
-  return `${date.getMonth()}/${date.getDate()}/${date.getFullYear()}`;
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 };
 
 const formatDate = (timestampInSeconds, web3) => {
