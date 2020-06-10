@@ -6,6 +6,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
+const TestnetERC20 = artifacts.require("TestnetERC20");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 module.exports = async function(deployer, network, accounts) {
@@ -17,6 +18,7 @@ module.exports = async function(deployer, network, accounts) {
     from: keys.deployer
   });
 
+  await collateralCurrencyWhitelist.addToWhitelist(TestnetERC20.address);
   const finder = await Finder.deployed();
   const tokenFactory = await TokenFactory.deployed();
   const registry = await Registry.deployed();
