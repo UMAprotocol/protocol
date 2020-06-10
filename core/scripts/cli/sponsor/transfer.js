@@ -17,7 +17,11 @@ const transfer = async (web3, emp) => {
     });
     if (confirmation["confirm"]) {
       await submitTransaction(web3, async () => await emp.cancelTransferPosition(), "Cancelling pending transfer");
+      // Transfer was successfully cancelled.
+      return true;
     }
+    // Transfer wasn't cancelled.
+    return false;
   };
 
   // Execute pending transfer.
@@ -33,7 +37,9 @@ const transfer = async (web3, emp) => {
       console.log(
         `Target address already has ${fromWei(targetCollateral)} WETH. Can only transfer to an owner without a position`
       );
-      return;
+
+      // No transfer occurred.
+      return false;
     }
 
     const confirmation = await inquirer.prompt({
@@ -43,7 +49,13 @@ const transfer = async (web3, emp) => {
     });
     if (confirmation["confirm"]) {
       await emp.transferPositionPassedRequest(input["address"]);
+
+      // Transfer was executed.
+      return true;
     }
+
+    // No transfer occurred.
+    return false;
   };
 
   // First check if user has a transfer request pending.
@@ -68,10 +80,11 @@ const transfer = async (web3, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Cancel Pending Transfer":
-          await cancelTransfer();
-          break;
+          // Propogate the boolean up.
+          return await cancelTransfer();
         case "Back":
-          return;
+          // No cancellation occurred.
+          return false;
         default:
           console.log("unimplemented state");
       }
@@ -104,13 +117,12 @@ const transfer = async (web3, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Execute Pending Transfer":
-          await executeTransfer();
-          break;
+          return await executeTransfer();
         case "Cancel Pending Transfer":
-          await cancelTransfer();
-          break;
+          return await cancelTransfer();
         case "Back":
-          return;
+          // No transaction was sent.
+          return false;
         default:
           console.log("unimplemented state");
       }
@@ -136,8 +148,14 @@ const transfer = async (web3, emp) => {
       console.log(
         `Transfer requested. Come back in ${transferLivenessInMinutes} minutes to execute your transfer to another sponsor address.`
       );
+
+      // Request was sent.
+      return true;
     }
   }
+
+  // No transaction was sent.
+  return false;
 };
 
 module.exports = transfer;

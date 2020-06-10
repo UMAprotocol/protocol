@@ -2,6 +2,7 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { unwrapToEth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
+const { getCollateralizationRatio } = require("./marketUtils.js");
 
 const withdraw = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
@@ -26,7 +27,13 @@ const withdraw = async (web3, artifacts, emp) => {
     });
     if (confirmation["confirm"]) {
       await submitTransaction(web3, async () => await emp.cancelWithdrawal(), "Cancelling pending withdrawal");
+
+      // Cancellation was sent.
+      return true;
     }
+
+    // No cancellation was sent.
+    return false;
   };
 
   // Execute pending withdrawal.
@@ -53,7 +60,13 @@ const withdraw = async (web3, artifacts, emp) => {
       if (isWeth) {
         await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
       }
+
+      // Withdrawal was executed.
+      return true;
     }
+
+    // Withdrawal was not executed.
+    return false;
   };
 
   // First check if user has a withdrawal request pending.
@@ -63,12 +76,12 @@ const withdraw = async (web3, artifacts, emp) => {
     const currentTime = await emp.getCurrentTime();
 
     // Calculate future collateralization ratio if withdrawal request were to go through.
-    const collateralPerToken = toBN(collateral)
-      .sub(toBN(withdrawRequestAmount))
-      .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()))
-      // Express as a percent.
-      .muln(100);
+    const collateralizationRatio = await getCollateralizationRatio(
+      web3,
+      emp.address,
+      toBN(collateral).sub(toBN(withdrawRequestAmount)),
+      position.tokensOutstanding
+    );
 
     // Get current contract time and withdrawal request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
@@ -83,9 +96,7 @@ const withdraw = async (web3, artifacts, emp) => {
       );
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
-        `Hypothetical collateralization ratio if the withdrawal request were to go through: ${Number(
-          fromWei(collateralPerToken)
-        ).toFixed(2)}%`
+        `Hypothetical collateralization ratio if the withdrawal request were to go through: ${collateralizationRatio}`
       );
       const prompt = {
         type: "list",
@@ -96,10 +107,10 @@ const withdraw = async (web3, artifacts, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Cancel Pending Withdrawal":
-          await cancelWithdrawal();
-          break;
+          return await cancelWithdrawal();
         case "Back":
-          return;
+          // No transaction was sent.
+          return false;
         default:
           console.log("unimplemented state");
       }
@@ -113,9 +124,7 @@ const withdraw = async (web3, artifacts, emp) => {
       );
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
-        `Hypothetical collateralization ratio once the withdrawal request executes: ${Number(
-          fromWei(collateralPerToken)
-        ).toFixed(2)}%`
+        `Hypothetical collateralization ratio once the withdrawal request executes: ${collateralizationRatio}`
       );
       const prompt = {
         type: "list",
@@ -126,13 +135,12 @@ const withdraw = async (web3, artifacts, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Execute Pending Withdrawal":
-          await executeWithdrawal();
-          break;
+          return await executeWithdrawal();
         case "Cancel Pending Withdrawal":
-          await cancelWithdrawal();
-          break;
+          return await cancelWithdrawal();
         case "Back":
-          return;
+          // No transaction was sent.
+          return false;
         default:
           console.log("unimplemented state");
       }
@@ -143,11 +151,13 @@ const withdraw = async (web3, artifacts, emp) => {
       .div(toBN(60))
       .toString();
     // Calculate current collateralization ratio.
-    const collateralPerToken = toBN(collateral)
-      .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()))
-      .muln(100);
-    console.log(`Current collateralization ratio: ${Number(fromWei(collateralPerToken)).toFixed(2)}%`);
+    const collateralizationRatio = await getCollateralizationRatio(
+      web3,
+      emp.address,
+      collateral,
+      position.tokensOutstanding
+    );
+    console.log(`Current collateralization ratio: ${collateralizationRatio}`);
 
     // Calculate GCR.
     const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
@@ -176,6 +186,12 @@ const withdraw = async (web3, artifacts, emp) => {
         `You can only withdraw up to ${fromWei(collateral)} ${requiredCollateralSymbol}`
     });
     const tokensToWithdraw = toBN(toWei(input["numCollateral"]));
+    const newCollateralizationRatio = await getCollateralizationRatio(
+      web3,
+      emp.address,
+      toBN(collateral).sub(tokensToWithdraw),
+      position.tokensOutstanding
+    );
 
     // Requested withdrawal amount can be processed instantly, call `withdraw()`
     if (tokensToWithdraw.lte(maxInstantWithdrawal)) {
@@ -183,6 +199,9 @@ const withdraw = async (web3, artifacts, emp) => {
         `Your withdrawal of approximately ${fromWei(
           tokensToWithdraw
         )} ${requiredCollateralSymbol} will process instantly`
+      );
+      console.log(
+        `Hypothetical collateralization ratio if you choose to execute this withdrawal: ${newCollateralizationRatio}`
       );
       const confirmation = await inquirer.prompt({
         type: "confirm",
@@ -206,6 +225,9 @@ const withdraw = async (web3, artifacts, emp) => {
         if (isWeth) {
           await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
         }
+
+        // Withdrawal was sent.
+        return true;
       }
     }
     // Requested withdrawal amount cannot be processed instantly, call `requestWithdrawal()`
@@ -215,6 +237,7 @@ const withdraw = async (web3, artifacts, emp) => {
           tokensToWithdraw
         )} ${requiredCollateralSymbol}`
       );
+      console.log(`Hypothetical collateralization ratio if this withdrawal is executed: ${newCollateralizationRatio}`);
       const confirmation = await inquirer.prompt({
         type: "confirm",
         message: "Continue?",
@@ -231,9 +254,15 @@ const withdraw = async (web3, artifacts, emp) => {
             tokensToWithdraw.toString()
           )} ${requiredCollateralSymbol}`
         );
+
+        // Withdrawal was executed.
+        return true;
       }
     }
   }
+
+  // No transaction was sent.
+  return false;
 };
 
 module.exports = withdraw;
