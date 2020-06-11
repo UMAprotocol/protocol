@@ -15,7 +15,7 @@ We should be able to compile the smart contracts from `protocol/core`:
 
 ```bash
 cd core
-$(npm bin)/truffle compile
+npx truffle compile
 ```
 
 If everything worked, we should see the line "> Compiled successfully using:" in the output.
@@ -37,7 +37,7 @@ If everything was setup correctly, we should be able to run automated tests from
 
 ```bash
 cd core
-$(npm bin)/truffle test --network test
+npx truffle test --network test
 ```
 
 These tests will take a while to finish, but if set up correctly, all tests should pass.
@@ -62,7 +62,7 @@ these networks, you'll generally need to know:
 The `--network` parameter that's passed to all truffle commands depends on both of these factors. Here's an example:
 
 ```bash
-$(npm bin)/truffle console --network rinkeby_mnemonic
+npx truffle console --network rinkeby_mnemonic
 ```
 
 That command will tell truffle that the user wants to use the Rinkeby testnet and their private key is a mnemonic, or
@@ -88,7 +88,7 @@ Once you've done that you're ready to run a truffle command. When using a mnemon
 be `--network [NETWORK_NAME]_mnemonic`. So, for example, using a mnemonic on kovan would look like:
 
 ```bash
-$(npm bin)/truffle console --network kovan_mnemonic
+npx truffle console --network kovan_mnemonic
 ```
 
 ### Hardware wallets (more secure)
@@ -116,7 +116,7 @@ For example, you could connect your ledger wallet to the truffle console and beg
 with the following command:
 
 ```bash
-$(npm bin)/truffle console --network mainnet_ledger
+npx truffle console --network mainnet_ledger
 ```
 
 Note: outgoing transactions will require manual approval on the ledger device. If you fail to approve, the command will
