@@ -3,7 +3,8 @@ set -e
 
 if [ $# -ne 1 ]; then
     echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config and service account will be inferred."
-    echo "example: ./DeployBotGCP.sh ethbtc-monitor-bot"
+    echo "example: ./DeployBotGCP.sh ethbtc-mainnet-monitor"
+    echo "To view all available configs run: gsutil ls gs://bot-configs"
     exit 1
 fi
 
