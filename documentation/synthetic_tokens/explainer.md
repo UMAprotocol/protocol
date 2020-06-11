@@ -8,7 +8,7 @@ Some examples of synthetic tokens include:
 - synthetic cross-chain cryptoassets
 - tracking tokens for various non-tradable indices
 
-Some of the most creative ideas for synthetic tokens fall in the last category. Check out our [Slack channel #tokenideas](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE) for more project ideas like:
+Some of the most creative ideas for synthetic tokens fall in the last category. Check out our #token-ideas channel on [Discord](https://discord.com/invite/jsb9XQJ) for more project ideas like:
 
 - tokens that track the future usage of DeFi projects (e.g. assets locked in Uniswap)
 - tokens that track the number of downloads of a Chrome extension (e.g. Metamask)
