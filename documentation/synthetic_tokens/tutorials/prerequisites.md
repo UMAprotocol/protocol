@@ -30,7 +30,7 @@ If everything worked, we should see the line "> Compiled successfully using:" in
 You can also run the Ganache from the command line with identical settings as follows:
 
 ```bash
-ganache-cli -p 9545 -e 1000000 -l 10000000
+npx ganache-cli -p 9545 -e 1000000 -l 10000000
 ```
 
 If everything was setup correctly, we should be able to run automated tests from `protocol/core`:
