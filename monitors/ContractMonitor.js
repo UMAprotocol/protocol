@@ -187,8 +187,8 @@ class ContractMonitor {
         " collateral backing " +
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
-        this.syntheticCurrencySymbol +
-        " tokens. Sponsor collateralization ('liquidatedCollateral / tokensOutsanding') was " +
+        this.empProps.syntheticCurrencySymbol +
+        " tokens. Sponsor collateralization was " +
         collateralizationString +
         "%, using " +
         this.formatDecimalString(price) +
