@@ -43,7 +43,7 @@ cd core
 npx truffle test --network test
 ```
 
-These tests will take a while to finish, but if set up correctly, all tests should pass.
+These tests will take a while to finish, but if set up correctly, all tests should pass (with the possible exception of a few that depend on the Intrinio API).
 
 ## Keys and Networks
 
