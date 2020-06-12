@@ -5,7 +5,7 @@ In this tutorial, you’ll be deploying a synthetic token contract to a local te
 
 It will let you be the “Token Sponsor,” which lets you:
 
-- Deposit collateral (ETH) and borrow synthetic tokens
+- Deposit collateral and borrow synthetic tokens
 - Manage your position’s collateral (deposit/withdraw)
 - Redeem the borrowed synthetic tokens and get collateral back
 - Transfer your position to another Ethereum address
@@ -45,17 +45,16 @@ You may need to prefix these commands (`sudo npm link`) to run them.
 2. If on Kovan testnet, apply network addresses:
 
 ```bash
-$(npm bin)/apply-registry
+npx apply-registry
 ```
 
-3. Compile and migrate the contracts:
+3. Migrate the contracts:
 
 ```bash
-$(npm bin)/truffle compile
-$(npm bin)/truffle migrate --reset --network=test
+npx truffle migrate --reset --network=test
 ```
 
-4. Deploy a contract to create priceless synthetic tokens named “BTCUSD”.
+4. Deploy a contract to create priceless synthetic tokens named “BTCUSD” (note this may have changed, this tutorial will be updated soon).
    Each synthetic token is an ERC-20 token that represents a synthetic bitcoin, collateralized by ETH. We should set
    the `--test` flag to `true` in order to whitelist the collateral currency, approve the pricefeed identifier, use
    `MockOracle` as our oracle, create an initial sponsor position, and mint our default sponsor account some collateral
@@ -67,10 +66,10 @@ $(npm bin)/truffle migrate --reset --network=test
    this iteration of the CLI.
 
 ```bash
-$(npm bin)/truffle exec scripts/local/DeployEMP.js --network=test --test=true
+npx truffle exec scripts/local/DeployEMP.js --network=test --test=true
 ```
 
-This is the output you should see:
+This is the output you should see (the numbers might be slightly different):
 
 ![](deployEMP_output.png)
 
@@ -104,7 +103,7 @@ minimum sponsor position allowed as described by the configuration object in the
 
 ![](create_numtokens.png)
 
-After displaying the required amount of ETH to create this position, you are prompted to confirm if you would like to proceed.
+After displaying the required amount of collateral to create this position, you are prompted to confirm if you would like to proceed.
 
 ![](create_confirm.png)
 
@@ -145,7 +144,7 @@ Because time does not advance automatically on your local blockchain with Ganach
 Running this script like so will advance time by 120 minutes.
 
 ```bash
-$(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
+npx truffle exec scripts/local/AdvanceEMP.js --network=test
 ```
 
 Return to the Sponsor CLI tool with the following command.
@@ -191,7 +190,7 @@ Note that your summary indicates that there is a “Pending transfer request”.
 Because time does not advance automatically on your local blockchain with Ganache, you should exit the Sponsor CLI tool and advance time manually with the following command:
 
 ```bash
-$(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
+npx truffle exec scripts/local/AdvanceEMP.js --network=test
 ```
 
 Return to the Sponsor CLI tool with the following command:
