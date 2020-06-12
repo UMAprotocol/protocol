@@ -1,3 +1,10 @@
+/**
+ * @notice This script contains private keys, mnemonics, and API keys that serve as default values so
+ * that it executes even if the user has not set up their environment variables properly. Typically, these
+ * are sensitive secrets that should never be shared publicly and ideally should not be
+ * stored in plain text.
+ */
+
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
