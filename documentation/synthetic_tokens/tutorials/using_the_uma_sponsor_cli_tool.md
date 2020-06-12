@@ -19,34 +19,13 @@ account and will sign all transactions using its private keys.
 
 ## Prerequisites
 
-1. Install homebrew via Homebrew. Tutorial can be found [here](https://changelog.com/posts/install-node-js-with-homebrew-on-os-x).
-2. Install [Node v12](https://nodejs.org/en/download/) and make sure that npm is v6 or above. You can verify by running in the terminal:
+Before beginning this tutorial, please make sure your environment is set up correctly by following the instructions in the [Prerequisites](prerequisites.md). After completing this section, you should:
 
-```bash
-node -v
-npm -v
-```
+- Have the protocol repo cloned.
+- Be running an instance of Ganache on port 9545.
+- Have run truffle compilation for the contracts in `core/`.
 
-3. If on local testnet:
-
-- Install [Ganache](https://www.trufflesuite.com/ganache)
-- Run ganache
-- Click “new workspace”
-- In the server tab, change “Port Number” to `9545`
-- In the “Accounts & Keys” tab, change “Account Default Balance” to `100000000`
-- (Optional) In the Server tab, deselect "Automine". Turning off "Automine" provides a more “authentic” blockchain experience but can be very frustrating.
-
-Once you have set up your environment, clone the repo and install the CLI tool.
-
-4. Download the code by typing this into terminal:
-
-```bash
-git clone https://github.com/UMAprotocol/protocol.git
-```
-
-5. Run `npm install` in `protocol/`.
-
-6. Symlink the CLI to your global directory. There are 2 ways to do this. Either run
+There is just one more additional step before the tutorial can begin. At the project root, symlink the CLI to your global directory. There are 2 ways to do this. Either run
 
 ```sh
 npm link
