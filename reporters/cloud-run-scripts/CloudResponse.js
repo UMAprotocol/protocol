@@ -7,20 +7,24 @@ app.post("/", (req, res) => {
   console.log("Executing GCP Cloud Run API");
   if (!req.body.cloudRunCommand) {
     res.status(400).send({
-      message: "ERROR: Body missing json Cloud Run Command!"
+      message: "ERROR: Body missing json cloudRunCommand!"
     });
-    throw "Missing cloudRunCommand";
+    throw "ERROR: Missing cloudRunCommand";
   }
 
   // Iterate over the provided environment variables and ensure that they are all strings. This enables json configs
   // to be passed in the req body and then set as environment variables in the child_process as a string
   let processedEnvironmentVariables = {};
-  Object.keys(req.body.environmentVariables).forEach(key => {
-    processedEnvironmentVariables[key] =
-      typeof req.body.environmentVariables[key] == "string"
-        ? req.body.environmentVariables[key]
-        : JSON.stringify(req.body.environmentVariables[key]);
-  });
+
+  if (req.body.environmentVariables) {
+    Object.keys(req.body.environmentVariables).forEach(key => {
+      // All env variables must be a string. If they are not a string (int, object ect) convert them to a string.
+      processedEnvironmentVariables[key] =
+        typeof req.body.environmentVariables[key] == "string"
+          ? req.body.environmentVariables[key]
+          : JSON.stringify(req.body.environmentVariables[key]);
+    });
+  }
 
   // Run the command from the request body. Note this assumes that the process is running from the /core directory.
   // Include the environment variables. Having both ...process.env and ...processedEnvironmentVariables acts to combined
