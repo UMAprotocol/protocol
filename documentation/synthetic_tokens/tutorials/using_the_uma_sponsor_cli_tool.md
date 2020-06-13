@@ -12,6 +12,8 @@ It will let you be the “Token Sponsor,” which lets you:
 
 This [video](https://www.crowdcast.io/e/defi-discussions/18) will walk through the steps of this tutorial, starting around minute 11:00.
 
+This tutorial assumes a contract that mints “BTCUSD” synthetic tokens backed by ETH. However, the more recent iteration of the example is an "ETHBTC" synthetic token backed by DAI. Keep this in mind when reading this tutorial as the images and text have not been updated to reflect this just yet.
+
 ## Signing Account
 
 The CLI assumes that `accounts[0]`, the first account linked to the `web3` object injected into Truffle, is the sponsor
@@ -54,7 +56,7 @@ npx apply-registry
 npx truffle migrate --reset --network=test
 ```
 
-4. Deploy a contract to create priceless synthetic tokens named “BTCUSD” (note this may have changed, this tutorial will be updated soon).
+4. Deploy a contract to create priceless synthetic tokens named “BTCUSD”.
    Each synthetic token is an ERC-20 token that represents a synthetic bitcoin, collateralized by ETH. We should set
    the `--test` flag to `true` in order to whitelist the collateral currency, approve the pricefeed identifier, use
    `MockOracle` as our oracle, create an initial sponsor position, and mint our default sponsor account some collateral
