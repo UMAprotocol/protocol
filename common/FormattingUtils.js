@@ -43,7 +43,7 @@ const formatWei = (num, web3) => {
 
 // Formats the input to round to decimalPlaces number of decimals if the number has a magnitude larger than 1 and fixes
 // precision to minPrecision if the number has a magnitude less than 1.
-const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
+const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSign) => {
   if (roundUp) {
     BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_UP });
   } else {
@@ -51,6 +51,7 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
   }
 
   const fullPrecisionFloat = BigNumber(num);
+  const positiveSign = showSign && fullPrecisionFloat.gt(0) ? "+" : "";
   let fixedPrecisionFloat;
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is equal to or larger than
   // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
@@ -67,12 +68,12 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp) => {
   // This puts commas in the thousands places, but only before the decimal point.
   const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
   fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return fixedPrecisionFloatParts.join(".");
+  return positiveSign + fixedPrecisionFloatParts.join(".");
 };
 
-const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision) => {
+const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false) => {
   return valInWei =>
-    formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false);
+    formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false, showSign);
 };
 
 // Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
@@ -106,6 +107,15 @@ function createEtherscanLinkMarkdown(hex, networkId = 1) {
   else if (hex.length == 42) return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
 }
 
+function addSign(number) {
+  if (Number(number) > 0) {
+    return `+${number}`;
+  } else {
+    // Number strings already print the '-' sign for negative numbers.
+    return `${number}`;
+  }
+}
+
 module.exports = {
   formatDateShort,
   formatDate,
@@ -115,5 +125,6 @@ module.exports = {
   createFormatFunction,
   createEtherscanLinkFromtx,
   createShortHexString,
-  createEtherscanLinkMarkdown
+  createEtherscanLinkMarkdown,
+  addSign
 };
