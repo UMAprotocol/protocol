@@ -333,7 +333,8 @@ class GlobalSummaryReporter {
     if (tokenHolders) {
       allTokenStatsTable["# of token holders"] = {
         current: Object.keys(tokenHolders.current).length,
-        cumulative: Object.keys(tokenHolders.cumulative).length
+        cumulative: Object.keys(tokenHolders.cumulative).length,
+        period: Object.keys(tokenHolders.period).length
       };
     }
     console.table(allTokenStatsTable);
@@ -522,6 +523,7 @@ class GlobalSummaryReporter {
   async _constructTokenHolderList() {
     const cumulativeTokenHolders = {};
     const currentTokenHolders = {};
+    const periodTokenHolders = {};
 
     let allTransferEvents = this.syntheticTransferEvents;
 
@@ -534,17 +536,27 @@ class GlobalSummaryReporter {
       const sender = event.returnValues.from;
       const receiver = event.returnValues.to;
 
+      const isInPeriod = Boolean(
+        event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod
+      );
+
       if (receiver !== ZERO_ADDRESS) {
         // Add to cumulative holder list.
         cumulativeTokenHolders[receiver] = true;
 
-        // Initialize current holder.
+        // Initialize holder for period.
         if (!currentTokenHolders[receiver]) {
           currentTokenHolders[receiver] = this.toBN("0");
         }
+        if (isInPeriod && !periodTokenHolders[receiver]) {
+          periodTokenHolders[receiver] = this.toBN("0");
+        }
 
-        // Update balance
+        // Update balance for period.
         currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+        if (isInPeriod) {
+          periodTokenHolders[receiver] = periodTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+        }
       }
 
       if (sender !== ZERO_ADDRESS) {
@@ -556,12 +568,15 @@ class GlobalSummaryReporter {
         if (currentTokenHolders[sender].isZero()) {
           delete currentTokenHolders[sender];
         }
+
+        // TODO: Factor in "sent" amounts for period holders.
       }
     });
 
     return {
       cumulative: cumulativeTokenHolders,
-      current: currentTokenHolders
+      current: currentTokenHolders,
+      period: periodTokenHolders
     };
   }
 }
