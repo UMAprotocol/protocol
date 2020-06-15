@@ -20,21 +20,25 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
  * @param {String} address Contract address of the EMP.
- * @param {bool} shouldPoll Whether to poll continuously or run a single iteration (for testing).
- * @param {Number} pollingDelay Number of seconds to delay between polls.
+ * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
+ *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @return None or throws an Error.
  */
 async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
-    Logger.debug({
+    // If pollingDelay == 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    const LogObject = {
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
       pollingDelay,
       priceFeedConfig
-    });
+    };
+    if (pollingDelay == 0) Logger.debug(LogObject);
+    else Logger.info(LogObject);
 
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();

@@ -25,13 +25,13 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
  * @param {Number} price Price used to inform the collateralization ratio of positions.
+ * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
+ *     mode which will exit after the loop.
  * @param {String} address Contract address of the EMP.
- * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
  * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
  * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
  * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
  * @param {Object} syntheticPegMonitorObject Configuration to construct the synthetic peg monitor module.
- * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
  * @param {Object} uniswapPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @return None or throws an Error.
@@ -47,7 +47,9 @@ async function run(
   medianizerPriceFeedConfig
 ) {
   try {
-    Logger.info({
+    // If pollingDelay == 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    const LogObject = {
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
@@ -58,7 +60,9 @@ async function run(
       syntheticPegMonitorObject,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
-    });
+    };
+    if (pollingDelay == 0) Logger.debug(LogObject);
+    else Logger.info(LogObject);
 
     // 0. Setup EMP and token instances to monitor.
     const emp = await ExpiringMultiParty.at(address);
