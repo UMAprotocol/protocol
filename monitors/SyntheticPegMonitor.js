@@ -95,7 +95,7 @@ class SyntheticPegMonitor {
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "Synthetic off peg 😵",
+        message: "Synthetic off peg alert 😵",
         mrkdwn:
           "Synthetic token " +
           this.empProps.syntheticCurrencySymbol +
@@ -144,7 +144,7 @@ class SyntheticPegMonitor {
     if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "High peg price volatility 🌋",
+        message: "Peg price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
           this.empProps.priceIdentifier +
@@ -193,7 +193,7 @@ class SyntheticPegMonitor {
     if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "High synthetic price volatility 🌋",
+        message: "Synthetic price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
           this.empProps.priceIdentifier +
