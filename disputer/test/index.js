@@ -75,7 +75,7 @@ contract("index.js", function(accounts) {
 
     let errorThrown;
     try {
-      await Poll.run(address, false, 10_000, priceFeedConfig);
+      await Poll.run(address, 0, priceFeedConfig);
       errorThrown = false;
     } catch (err) {
       console.error(err);
@@ -87,7 +87,7 @@ contract("index.js", function(accounts) {
   it("Sets token allowances correctly", async function() {
     const priceFeedConfig = defaultPricefeedConfig;
 
-    await Poll.run(emp.address, false, 10_000, priceFeedConfig);
+    await Poll.run(emp.address, 0, priceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);

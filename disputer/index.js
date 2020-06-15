@@ -77,7 +77,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
       await disputer.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
-      if (pollingDelay != 0) {
+      if (pollingDelay == 0) {
         break;
       }
       await delay(Number(pollingDelay));

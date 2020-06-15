@@ -78,7 +78,7 @@ contract("index.js", function(accounts) {
 
     let errorThrown = false;
     try {
-      await Poll.run(address, false, 10_000, priceFeedConfig);
+      await Poll.run(address, 0, priceFeedConfig);
     } catch (err) {
       errorThrown = true;
     }
@@ -88,15 +88,15 @@ contract("index.js", function(accounts) {
   it("Sets token allowances correctly", async function() {
     const priceFeedConfig = defaultPricefeedConfig;
 
-    await Poll.run(emp.address, false, 10_000, priceFeedConfig);
+    await Poll.run(emp.address, 0, priceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
     const syntheticAllowance = await syntheticToken.allowance(contractCreator, emp.address);
     assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
   });
-
-  it("Responds to incoming monitor requests while bot is alive", async function() {
+  // TODO: remove this test when we remove the black box testing URL.
+  it.skip("Responds to incoming monitor requests while bot is alive", async function() {
     const address = emp.address;
 
     const priceFeedConfig = defaultPricefeedConfig;
@@ -116,7 +116,7 @@ contract("index.js", function(accounts) {
 
     // Start bot synchronously so that we can attempt to send a request to the monitor server without
     // having to wait for the `run` method to return. Wait a little bit for bot to start before sending the request.
-    Poll.run(address, false, 10_000, priceFeedConfig, monitorPort);
+    Poll.run(address, 0, priceFeedConfig, monitorPort);
     await delay(1000); // Empirically, anything > 100 ms seems to be sufficient delay.
 
     // Pinging server while bot is alive should succeed.
