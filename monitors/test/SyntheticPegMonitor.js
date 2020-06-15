@@ -99,7 +99,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1.25")));
       await syntheticPegMonitor.checkPriceDeviation();
       assert.equal(spy.callCount, 1); // There should be one message sent at this point.
-      assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Synthetic off peg"));
       assert.isTrue(lastSpyLogIncludes(spy, "1.25")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
       assert.isTrue(lastSpyLogIncludes(spy, "25.00")); // percentage error
@@ -115,7 +115,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("0.7")));
       await syntheticPegMonitor.checkPriceDeviation();
       assert.equal(spy.callCount, 2); // There should be one message sent at this point.
-      assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Synthetic off peg"));
       assert.isTrue(lastSpyLogIncludes(spy, "0.7000")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
       assert.isTrue(lastSpyLogIncludes(spy, "-30.00")); // percentage error (note negative sign)
@@ -125,7 +125,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("0.025678"))); // Note 5 units of precision provided.
       await syntheticPegMonitor.checkPriceDeviation();
       assert.equal(spy.callCount, 3); // There should be one message sent at this point.
-      assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Synthetic off peg"));
       assert.isTrue(lastSpyLogIncludes(spy, "0.02567")); // uniswap price (note: 4 units of precision)
       assert.isTrue(lastSpyLogIncludes(spy, "0.02111")); // expected price (note: 4 units of precision)
       assert.isTrue(lastSpyLogIncludes(spy, "21.63")); // percentage error
@@ -249,36 +249,40 @@ contract("SyntheticPegMonitor", function(accounts) {
       medianizerPriceFeedMock.setLastUpdateTime(104);
       await syntheticPegMonitor.checkPegVolatility();
       assert.equal(spy.callCount, 1);
-      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+      assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
       uniswapPriceFeedMock.setLastUpdateTime(104);
       await syntheticPegMonitor.checkSyntheticVolatility();
       assert.equal(spy.callCount, 2);
-      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+      assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
       // Correctly reports negative volatility. The last 4 sets of time series data move in the opposite direction.
       // Logger should correctly report the negative swing.
       medianizerPriceFeedMock.setLastUpdateTime(108);
       await syntheticPegMonitor.checkPegVolatility();
       assert.equal(spy.callCount, 3);
-      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "-40.00")); // actual volatility (note the negative sign)
+      assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
       uniswapPriceFeedMock.setLastUpdateTime(108);
       await syntheticPegMonitor.checkSyntheticVolatility();
       assert.equal(spy.callCount, 4);
-      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "-40.00")); // actual volatility
+      assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
     });
 
     it("Stress testing with a lot of historical price data points", async function() {
@@ -293,12 +297,12 @@ contract("SyntheticPegMonitor", function(accounts) {
       medianizerPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
       uniswapPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
 
-      // There should be one alert emitted for each pricefeed.
+      // There should be one emitted for each pricefeed.
       // Max price will be 9999, min price will be (9999-3650+1) = 6350.
       // Vol will be 3649/6350 = 57.46%
       await syntheticPegMonitor.checkPegVolatility();
       assert.equal(spy.callCount, 1);
-      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility
@@ -306,7 +310,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       // uniswapPriceFeedMock.setLastUpdateTime(104);
       await syntheticPegMonitor.checkSyntheticVolatility();
       assert.equal(spy.callCount, 2);
-      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility"));
       assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility

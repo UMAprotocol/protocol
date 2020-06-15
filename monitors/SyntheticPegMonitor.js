@@ -95,7 +95,7 @@ class SyntheticPegMonitor {
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "Synthetic off peg alert 😵",
+        message: "Synthetic off peg 😵",
         mrkdwn:
           "Synthetic token " +
           this.empProps.syntheticCurrencySymbol +
@@ -144,7 +144,7 @@ class SyntheticPegMonitor {
     if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "High peg price volatility alert 🌋",
+        message: "High peg price volatility 🌋",
         mrkdwn:
           "Latest updated " +
           this.empProps.priceIdentifier +
@@ -155,8 +155,8 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
-          " %."
+          this.volatilityAlertThreshold * 100 +
+          "%."
       });
     }
   };
@@ -193,7 +193,7 @@ class SyntheticPegMonitor {
     if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "High synthetic price volatility alert 🌋",
+        message: "High synthetic price volatility 🌋",
         mrkdwn:
           "Latest updated " +
           this.empProps.priceIdentifier +
@@ -204,8 +204,8 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.formatDecimalString(this.volatilityAlertThreshold * 100) +
-          " %."
+          this.volatilityAlertThreshold * 100 +
+          "%."
       });
     }
   };
