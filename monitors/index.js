@@ -174,11 +174,10 @@ async function run(
       await syntheticPegMonitor.checkPegVolatility();
       await syntheticPegMonitor.checkSyntheticVolatility();
 
-      await delay(Number(pollingDelay));
-
       if (!shouldPoll) {
         break;
       }
+      await delay(Number(pollingDelay));
     }
   } catch (error) {
     Logger.error({
@@ -194,7 +193,11 @@ const Poll = async function(callback) {
     if (!process.env.EMP_ADDRESS) {
       throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 300000;
+
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480; // Default to 480 seconds delay (8 mins)
+
+    // If the polling delay is set to 0 then should poll should be false. This will terminate the bot after one full run.
+    const shouldPoll = process.env.POLLING_DELAY == 0 ? false : true;
 
     if (
       !process.env.BOT_MONITOR_OBJECT ||
@@ -247,7 +250,7 @@ const Poll = async function(callback) {
 
     await run(
       process.env.EMP_ADDRESS,
-      true,
+      shouldPoll,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
