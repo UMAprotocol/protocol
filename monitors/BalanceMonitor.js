@@ -52,40 +52,40 @@ class BalanceMonitor {
     // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this._ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
+      if (this.toBN(await this.client.getCollateralBalance(bot.address)).lt(this.toBN(bot.collateralThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
-            this.client.getCollateralBalance(bot.address),
+            await this.client.getCollateralBalance(bot.address),
             this.empProps.collateralCurrencySymbol,
             "collateral"
           )
         });
       }
-      if (this._ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
+      if (this.toBN(await this.client.getSyntheticBalance(bot.address)).lt(this.toBN(bot.syntheticThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.syntheticThreshold,
-            this.client.getSyntheticBalance(bot.address),
+            await this.client.getSyntheticBalance(bot.address),
             this.empProps.syntheticCurrencySymbol,
             "synthetic"
           )
         });
       }
-      if (this._ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
+      if (this.toBN(await this.client.getEtherBalance(bot.address)).lt(this.toBN(bot.etherThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.etherThreshold,
-            this.client.getEtherBalance(bot.address),
+            await this.client.getEtherBalance(bot.address),
             "ETH",
             "ether"
           )
@@ -111,15 +111,6 @@ class BalanceMonitor {
       tokenSymbol
     );
   };
-
-  // Checks if a big number value is below a given threshold.
-  _ltThreshold(value, threshold) {
-    // If the price has not resolved yet then return false.
-    if (value == null) {
-      return false;
-    }
-    return this.toBN(value).lt(this.toBN(threshold));
-  }
 }
 
 module.exports = {

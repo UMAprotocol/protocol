@@ -38,12 +38,11 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  */
 async function run(
   address,
-  shouldPoll,
+  pollingDelay,
   botMonitorObject,
   walletMonitorObject,
   contractMonitorObject,
   syntheticPegMonitorObject,
-  pollingDelay,
   uniswapPriceFeedConfig,
   medianizerPriceFeedConfig
 ) {
@@ -52,7 +51,7 @@ async function run(
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
@@ -174,7 +173,8 @@ async function run(
       await syntheticPegMonitor.checkPegVolatility();
       await syntheticPegMonitor.checkSyntheticVolatility();
 
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay != 0) {
         break;
       }
       await delay(Number(pollingDelay));
@@ -194,10 +194,8 @@ const Poll = async function(callback) {
       throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480; // Default to 480 seconds delay (8 mins)
-
-    // If the polling delay is set to 0 then should poll should be false. This will terminate the bot after one full run.
-    const shouldPoll = process.env.POLLING_DELAY == 0 ? false : true;
+    // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
 
     if (
       !process.env.BOT_MONITOR_OBJECT ||
@@ -250,12 +248,11 @@ const Poll = async function(callback) {
 
     await run(
       process.env.EMP_ADDRESS,
-      shouldPoll,
+      pollingDelay,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
       syntheticPegMonitorObject,
-      pollingDelay,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     );

@@ -28,13 +28,13 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
+async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
   try {
     Logger.info({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
       priceFeedConfig,
       liquidatorConfig,
       monitorPort
@@ -96,11 +96,11 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       await liquidator.queryAndLiquidate();
       await liquidator.queryAndWithdrawRewards();
 
-      await delay(Number(pollingDelay));
-
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay != 0) {
         break;
       }
+      await delay(Number(pollingDelay));
     }
 
     // TODO: I'm not sure if this actually is working as expected.
@@ -123,7 +123,8 @@ const Poll = async function(callback) {
       throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
+    // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables.";
@@ -142,7 +143,7 @@ const Poll = async function(callback) {
 
     const portNumber = 8888;
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, portNumber, liquidatorConfig);
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, portNumber, liquidatorConfig);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",

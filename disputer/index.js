@@ -26,13 +26,13 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerConfig) {
+async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
-    Logger.info({
+    Logger.debug({
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
       priceFeedConfig
     });
 
@@ -72,11 +72,11 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
       await disputer.queryAndDispute();
       await disputer.queryAndWithdrawRewards();
 
-      await delay(Number(pollingDelay));
-
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay != 0) {
         break;
       }
+      await delay(Number(pollingDelay));
     }
   } catch (error) {
     Logger.error({
@@ -94,7 +94,8 @@ const Poll = async function(callback) {
       throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
+    // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw "Bad input arg! Specify a `PRICE_FEED_CONFIG` for price feed config for the disputer bot to use.";
@@ -109,7 +110,7 @@ const Poll = async function(callback) {
     // {"disputeDelay":60,"txnGasLimit":9000000}
     const disputerConfig = process.env.DISPUTER_CONFIG ? process.env.DISPUTER_CONFIG : null;
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, disputerConfig);
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
   } catch (error) {
     Logger.error({
       at: "Disputer#index🚨",
