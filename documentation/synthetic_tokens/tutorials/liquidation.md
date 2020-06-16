@@ -394,8 +394,8 @@ LIQUIDATOR_CONFIG={"crThreshold":0.05}
 
 This configuration object has additional options including:
 
-1. `liquidationDeadline` which aborts the liquidation if the transaction is mined this amount of time after the EMP client's last update time. Defaults to 5 minutes.
-2. `liquidationMinPrice` which aborts the liquidation if the amount of collateral in the position per token outstanding is below this ratio. Defaults to 0.
+1. `liquidationDeadline` (in seconds) which aborts the liquidation if the transaction is mined this amount of time after the EMP client's last update time. Defaults to 5 minutes.
+2. `liquidationMinPrice` (in Wei, as a `FixedPoint` type) which aborts the liquidation if the amount of collateral in the position per token outstanding is below this ratio. Defaults to 0.
 
 These configurations can be added to the config in the same way the `crThreshold` was added (i.e. as part of the JSON object in the same line).
 
