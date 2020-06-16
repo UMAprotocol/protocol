@@ -337,7 +337,7 @@ class GlobalSummaryReporter {
       allTokenStatsTable["# of token holders"] = {
         current: Object.keys(tokenHolderStats.balanceAll).length,
         cumulative: Object.keys(tokenHolderStats.countAll).length,
-        period: Object.keys(tokenHolderStats.countPeriod).length
+        [this.periodLabelInHours]: Object.keys(tokenHolderStats.countPeriod).length
       };
     }
     console.table(allTokenStatsTable);
