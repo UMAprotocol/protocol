@@ -194,7 +194,7 @@ class GlobalSummaryReporter {
       cumulative: Object.keys(uniqueSponsors).length,
       current: Object.keys(currentUniqueSponsors).length,
       [this.periodLabelInHours]: Object.keys(periodUniqueSponsors).length,
-      ["delta from prev. period"]: addSign(
+      ["Δ from prev. period"]: addSign(
         Object.keys(periodUniqueSponsors).length - Object.keys(prevPeriodUniqueSponsors).length
       )
     };
@@ -218,7 +218,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(collateralDeposited),
       [this.periodLabelInHours]: this.formatDecimalString(collateralDepositedPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
         collateralDepositedPeriod.sub(collateralDepositedPrevPeriod)
       )
     };
@@ -242,7 +242,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["collateral withdrawn"] = {
       cumulative: this.formatDecimalString(collateralWithdrawn),
       [this.periodLabelInHours]: this.formatDecimalString(collateralWithdrawnPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
         collateralWithdrawnPeriod.sub(collateralWithdrawnPrevPeriod)
       )
     };
@@ -257,7 +257,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["net collateral deposited"] = {
       cumulative: this.formatDecimalString(netCollateralWithdrawn),
       [this.periodLabelInHours]: this.formatDecimalString(netCollateralWithdrawnPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
         netCollateralWithdrawnPeriod.sub(netCollateralWithdrawnPrevPeriod)
       )
     };
@@ -281,7 +281,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
       [this.periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(tokensMintedPrevPeriod.sub(tokensMintedPeriod))
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensMintedPrevPeriod.sub(tokensMintedPeriod))
     };
 
     // - Tokens burned
@@ -303,7 +303,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["tokens burned"] = {
       cumulative: this.formatDecimalString(tokensBurned),
       [this.periodLabelInHours]: this.formatDecimalString(tokensBurnedPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(tokensBurnedPeriod.sub(tokensBurnedPrevPeriod))
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensBurnedPeriod.sub(tokensBurnedPrevPeriod))
     };
 
     // - Net tokens minted:
@@ -316,9 +316,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["net tokens minted"] = {
       cumulative: this.formatDecimalString(netTokensMinted),
       [this.periodLabelInHours]: this.formatDecimalString(netTokensMintedPeriod),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(
-        netTokensMintedPeriod.sub(netTokensMintedPrevPeriod)
-      )
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(netTokensMintedPeriod.sub(netTokensMintedPrevPeriod))
     };
 
     // - GCR (collateral / tokens outstanding):
@@ -330,7 +328,7 @@ class GlobalSummaryReporter {
     let prevGCR = prevPeriodCollateral.mul(this.toBN(this.toWei("1"))).div(prevPeriodTokensOutstanding);
     allSponsorStatsTable["GCR - collateral / # tokens outstanding"] = {
       current: this.formatDecimalString(currentGCR),
-      ["delta from prev. period"]: this.formatDecimalStringWithSign(currentGCR.sub(prevGCR))
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(currentGCR.sub(prevGCR))
     };
 
     // - GCR (collateral / TRV):
@@ -393,12 +391,12 @@ class GlobalSummaryReporter {
     allTokenStatsTable["# trades in Uniswap"] = {
       cumulative: tradeCount,
       [this.periodLabelInHours]: periodTradeCount,
-      ["delta from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
+      ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
     };
     allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
       cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
       [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
-      ["delta from prev. period"]: formatWithMaxDecimals(
+      ["Δ from prev. period"]: formatWithMaxDecimals(
         periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
         2,
         4,
@@ -458,14 +456,14 @@ class GlobalSummaryReporter {
         ["# of liquidations"]: {
           cumulative: Object.keys(uniqueLiquidations).length,
           [this.periodLabelInHours]: Object.keys(uniqueLiquidationsPeriod).length,
-          ["delta from prev. period"]: addSign(
+          ["Δ from prev. period"]: addSign(
             Object.keys(uniqueLiquidationsPeriod).length - Object.keys(uniqueLiquidationsPrevPeriod).length
           )
         },
         ["tokens liquidated"]: {
           cumulative: this.formatDecimalString(tokensLiquidated),
           [this.periodLabelInHours]: this.formatDecimalString(tokensLiquidatedPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
             tokensLiquidatedPeriod.sub(tokensLiquidatedPrevPeriod)
           )
         },
@@ -473,7 +471,7 @@ class GlobalSummaryReporter {
           cumulative: this.formatDecimalString(collateralLiquidated),
           [this.periodLabelInHours]: this.formatDecimalString(collateralLiquidatedPeriod),
           current: this.formatDecimalString(this.collateralLockedInLiquidations),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
             collateralLiquidatedPeriod.sub(collateralLiquidatedPrevPeriod)
           )
         }
@@ -550,21 +548,19 @@ class GlobalSummaryReporter {
         ["# of disputes"]: {
           cumulative: Object.keys(uniqueDisputes).length,
           [this.periodLabelInHours]: Object.keys(uniqueDisputesPeriod).length,
-          ["delta from prev. period"]: addSign(
+          ["Δ from prev. period"]: addSign(
             Object.keys(uniqueDisputesPeriod).length - Object.keys(uniqueDisputesPrevPeriod).length
           )
         },
         ["tokens disputed"]: {
           cumulative: this.formatDecimalString(tokensDisputed),
           [this.periodLabelInHours]: this.formatDecimalString(tokensDisputedPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
-            tokensDisputedPeriod.sub(tokensDisputedPrevPeriod)
-          )
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensDisputedPeriod.sub(tokensDisputedPrevPeriod))
         },
         ["collateral disputed"]: {
           cumulative: this.formatDecimalString(collateralDisputed),
           [this.periodLabelInHours]: this.formatDecimalString(collateralDisputedPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
             collateralDisputedPeriod.sub(collateralDisputedPrevPeriod)
           )
         }
@@ -633,21 +629,19 @@ class GlobalSummaryReporter {
         ["final fees paid to store"]: {
           cumulative: this.formatDecimalString(finalFeesPaid),
           [this.periodLabelInHours]: this.formatDecimalString(finalFeesPaidPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
-            finalFeesPaidPeriod.sub(finalFeesPaidPrevPeriod)
-          )
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(finalFeesPaidPeriod.sub(finalFeesPaidPrevPeriod))
         },
         ["ongoing regular fees paid to store"]: {
           cumulative: this.formatDecimalString(regularFeesPaid),
           [this.periodLabelInHours]: this.formatDecimalString(regularFeesPaidPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
             regularFeesPaidPeriod.sub(regularFeesPaidPrevPeriod)
           )
         },
         ["ongoing late fees paid to store"]: {
           cumulative: this.formatDecimalString(lateFeesPaid),
           [this.periodLabelInHours]: this.formatDecimalString(lateFeesPaidPeriod),
-          ["delta from prev. period"]: this.formatDecimalStringWithSign(lateFeesPaidPeriod.sub(lateFeesPaidPrevPeriod))
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(lateFeesPaidPeriod.sub(lateFeesPaidPrevPeriod))
         }
       };
 
