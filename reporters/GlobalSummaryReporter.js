@@ -137,6 +137,9 @@ class GlobalSummaryReporter {
     console.group();
     console.log(bold("Token summary stats"));
     console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
+    console.log(
+      italic("- Token holder counts are equal to the # of unique token holders who held any balance during a period")
+    );
     await this._generateTokenStats();
     console.groupEnd();
 
@@ -329,12 +332,12 @@ class GlobalSummaryReporter {
     };
 
     // Get token holder stats.
-    const tokenHolders = await this._constructTokenHolderList();
-    if (tokenHolders) {
+    const tokenHolderStats = await this._constructTokenHolderList();
+    if (tokenHolderStats) {
       allTokenStatsTable["# of token holders"] = {
-        current: Object.keys(tokenHolders.current).length,
-        cumulative: Object.keys(tokenHolders.cumulative).length,
-        period: Object.keys(tokenHolders.period).length
+        current: Object.keys(tokenHolderStats.balanceAll).length,
+        cumulative: Object.keys(tokenHolderStats.countAll).length,
+        period: Object.keys(tokenHolderStats.countPeriod).length
       };
     }
     console.table(allTokenStatsTable);
@@ -521,7 +524,11 @@ class GlobalSummaryReporter {
   }
 
   async _constructTokenHolderList() {
-    const cumulativeTokenHolders = {};
+    // Unique token holders who held any balance during a period:
+    const countAllTokenHolders = {};
+    const countPeriodTokenHolders = {};
+
+    // Net balances during a period:
     const currentTokenHolders = {};
     const periodTokenHolders = {};
 
@@ -541,25 +548,50 @@ class GlobalSummaryReporter {
       );
 
       if (receiver !== ZERO_ADDRESS) {
-        // Add to cumulative holder list.
-        cumulativeTokenHolders[receiver] = true;
+        // Add to token holder list.
+        countAllTokenHolders[receiver] = true;
 
-        // Initialize holder for period.
+        // Initialize balance if we have not seen this receiver yet.
         if (!currentTokenHolders[receiver]) {
           currentTokenHolders[receiver] = this.toBN("0");
-        }
-        if (isInPeriod && !periodTokenHolders[receiver]) {
-          periodTokenHolders[receiver] = this.toBN("0");
         }
 
         // Update balance for period.
         currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+
+        // Since we are searching from oldest to newest block, the receiver account's balance for this period will always
+        // be equal to its cumulative balance.
         if (isInPeriod) {
-          periodTokenHolders[receiver] = periodTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+          countPeriodTokenHolders[receiver] = true;
+          periodTokenHolders[receiver] = currentTokenHolders[receiver];
         }
       }
 
       if (sender !== ZERO_ADDRESS) {
+        // Since we are searching from oldest to newest block, it is possible that the sender has not been seen yet
+        // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
+        // before we update its cumulative balance.
+        if (isInPeriod) {
+          if (!periodTokenHolders[sender]) {
+            countPeriodTokenHolders[sender] = true;
+
+            if (!currentTokenHolders[sender]) {
+              // If we have not seen this sender yet, then we can initialize its balance to 0.
+              periodTokenHolders[sender] = this.toBN("0");
+            } else {
+              // If we have seen this sender, but we have not seen the sender as a receiver within this period,
+              // then its balance should be get initialized to its cumulative balance.
+              periodTokenHolders[sender] = currentTokenHolders[sender];
+            }
+          }
+
+          periodTokenHolders[sender] = periodTokenHolders[sender].sub(this.toBN(event.returnValues.value));
+
+          if (periodTokenHolders[sender].isZero()) {
+            delete periodTokenHolders[sender];
+          }
+        }
+
         // Since we are searching from oldest events first, the sender must already have a balance since we are ignoring
         // events where the sender is the zero address.
         currentTokenHolders[sender] = currentTokenHolders[sender].sub(this.toBN(event.returnValues.value));
@@ -568,15 +600,14 @@ class GlobalSummaryReporter {
         if (currentTokenHolders[sender].isZero()) {
           delete currentTokenHolders[sender];
         }
-
-        // TODO: Factor in "sent" amounts for period holders.
       }
     });
 
     return {
-      cumulative: cumulativeTokenHolders,
-      current: currentTokenHolders,
-      period: periodTokenHolders
+      countAll: countAllTokenHolders,
+      countPeriod: countPeriodTokenHolders,
+      balanceAll: currentTokenHolders,
+      balancePeriod: periodTokenHolders
     };
   }
 }
