@@ -99,10 +99,6 @@ class GlobalSummaryReporter {
 
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
-    // Since the current price estimate is getting the price at the end of the current period,
-    // then the price estimate for the "previous period" should be the price associated with the ending timestamp,
-    // which is the "startBlockTimestamp".
-    this.prevPeriodPriceEstimate = this.referencePriceFeed.getHistoricalPrice(this.startBlockTimestamp);
   }
 
   async generateSummaryStatsTable() {
@@ -328,28 +324,20 @@ class GlobalSummaryReporter {
 
     // - GCR (collateral / tokens outstanding):
     let currentCollateral = this.toBN(this.totalPositionCollateral.toString());
-    let prevPeriodCollateral = currentCollateral.sub(netCollateralWithdrawnPeriod);
     let currentTokensOutstanding = this.toBN(this.totalTokensOutstanding.toString());
-    let prevPeriodTokensOutstanding = currentTokensOutstanding.sub(netTokensMintedPeriod);
     let currentGCR = currentCollateral.mul(this.toBN(this.toWei("1"))).div(currentTokensOutstanding);
-    let prevGCR = prevPeriodCollateral.mul(this.toBN(this.toWei("1"))).div(prevPeriodTokensOutstanding);
     allSponsorStatsTable["GCR - collateral / # tokens outstanding"] = {
-      current: this.formatDecimalString(currentGCR),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(currentGCR.sub(prevGCR))
+      current: this.formatDecimalString(currentGCR)
     };
 
     // - GCR (collateral / TRV):
     let currentTRV = currentTokensOutstanding.mul(this.priceEstimate).div(this.toBN(this.toWei("1")));
-    let prevPeriodTRV = prevPeriodTokensOutstanding.mul(this.prevPeriodPriceEstimate).div(this.toBN(this.toWei("1")));
     let currentGCRUsingTRV = currentCollateral.mul(this.toBN(this.toWei("1"))).div(currentTRV);
-    let prevGCRUsingTRV = prevPeriodCollateral.mul(this.toBN(this.toWei("1"))).div(prevPeriodTRV);
     allSponsorStatsTable["GCR - collateral / TRV"] = {
-      current: this.formatDecimalString(currentGCRUsingTRV),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(currentGCRUsingTRV.sub(prevGCRUsingTRV))
+      current: this.formatDecimalString(currentGCRUsingTRV)
     };
     allSponsorStatsTable["price from reference pricefeed"] = {
-      current: this.formatDecimalString(this.priceEstimate),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(this.priceEstimate.sub(this.prevPeriodPriceEstimate))
+      current: this.formatDecimalString(this.priceEstimate)
     };
 
     console.table(allSponsorStatsTable);
@@ -422,7 +410,10 @@ class GlobalSummaryReporter {
       allTokenStatsTable["# of token holders"] = {
         current: Object.keys(tokenHolderStats.balanceAll).length,
         cumulative: Object.keys(tokenHolderStats.countAll).length,
-        [this.periodLabelInHours]: Object.keys(tokenHolderStats.countPeriod).length
+        [this.periodLabelInHours]: Object.keys(tokenHolderStats.countPeriod).length,
+        ["Δ from prev. period"]: addSign(
+          Object.keys(tokenHolderStats.countPeriod).length - Object.keys(tokenHolderStats.countPrevPeriod).length
+        )
       };
     }
     console.table(allTokenStatsTable);
@@ -671,10 +662,12 @@ class GlobalSummaryReporter {
     // Unique token holders who held any balance during a period:
     const countAllTokenHolders = {};
     const countPeriodTokenHolders = {};
+    const countPrevPeriodTokenHolders = {};
 
     // Net balances during a period:
     const currentTokenHolders = {};
     const periodTokenHolders = {};
+    const prevPeriodTokenHolders = {};
 
     let allTransferEvents = this.syntheticTransferEvents;
 
@@ -689,6 +682,10 @@ class GlobalSummaryReporter {
 
       const isInPeriod = Boolean(
         event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod
+      );
+      const isInPrevPeriod = Boolean(
+        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
+          event.blockNumber < this.startBlockNumberForPeriod
       );
 
       if (receiver !== ZERO_ADDRESS) {
@@ -705,6 +702,10 @@ class GlobalSummaryReporter {
 
         // Since we are searching from oldest to newest block, the receiver account's balance for this period will always
         // be equal to its cumulative balance.
+        if (isInPrevPeriod) {
+          countPrevPeriodTokenHolders[receiver] = true;
+          prevPeriodTokenHolders[receiver] = currentTokenHolders[receiver];
+        }
         if (isInPeriod) {
           countPeriodTokenHolders[receiver] = true;
           periodTokenHolders[receiver] = currentTokenHolders[receiver];
@@ -715,6 +716,26 @@ class GlobalSummaryReporter {
         // Since we are searching from oldest to newest block, it is possible that the sender has not been seen yet
         // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
         // before we update its cumulative balance.
+        if (isInPrevPeriod) {
+          if (!prevPeriodTokenHolders[sender]) {
+            countPrevPeriodTokenHolders[sender] = true;
+
+            if (!currentTokenHolders[sender]) {
+              // If we have not seen this sender yet, then we can initialize its balance to 0.
+              prevPeriodTokenHolders[sender] = this.toBN("0");
+            } else {
+              // If we have seen this sender, but we have not seen the sender as a receiver within this period,
+              // then its balance should be get initialized to its cumulative balance.
+              prevPeriodTokenHolders[sender] = currentTokenHolders[sender];
+            }
+          }
+
+          prevPeriodTokenHolders[sender] = prevPeriodTokenHolders[sender].sub(this.toBN(event.returnValues.value));
+
+          if (prevPeriodTokenHolders[sender].isZero()) {
+            delete prevPeriodTokenHolders[sender];
+          }
+        }
         if (isInPeriod) {
           if (!periodTokenHolders[sender]) {
             countPeriodTokenHolders[sender] = true;
@@ -750,8 +771,10 @@ class GlobalSummaryReporter {
     return {
       countAll: countAllTokenHolders,
       countPeriod: countPeriodTokenHolders,
+      countPrevPeriod: countPrevPeriodTokenHolders,
       balanceAll: currentTokenHolders,
-      balancePeriod: periodTokenHolders
+      balancePeriod: periodTokenHolders,
+      balancePrevPeriod: prevPeriodTokenHolders
     };
   }
 }
