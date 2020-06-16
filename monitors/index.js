@@ -24,10 +24,9 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
- * @param {Number} price Price used to inform the collateralization ratio of positions.
+ * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
- * @param {String} address Contract address of the EMP.
  * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
  * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
  * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
