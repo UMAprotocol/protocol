@@ -47,7 +47,7 @@ npm install
 npx truffle compile
 ```
 
-If you have any issues executing the `truffle` command you can try running `$(npm bin)/truffle <command>`. If you have Truffle globally installed you should be able to run `truffle <command>` without npx or `$(npm bin)` but it may not be the same version specified in the project.
+If you have any issues executing `npx truffle <command>` you can try running `$(npm bin)/truffle <command>`. If you have Truffle globally installed you should be able to run `truffle <command>` without npx or `$(npm bin)` but it may not be the same version specified in the project.
 
 ### Funding accounts
 
