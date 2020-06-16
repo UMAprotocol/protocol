@@ -99,6 +99,10 @@ class GlobalSummaryReporter {
 
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
+    // Since the current price estimate is getting the price at the end of the current period,
+    // then the price estimate for the "previous period" should be the price associated with the ending timestamp,
+    // which is the "startBlockTimestamp".
+    this.prevPeriodPriceEstimate = this.referencePriceFeed.getHistoricalPrice(this.startBlockTimestamp);
   }
 
   async generateSummaryStatsTable() {
@@ -281,7 +285,7 @@ class GlobalSummaryReporter {
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokensMinted),
       [this.periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensMintedPrevPeriod.sub(tokensMintedPeriod))
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensMintedPeriod.sub(tokensMintedPrevPeriod))
     };
 
     // - Tokens burned
@@ -333,12 +337,16 @@ class GlobalSummaryReporter {
 
     // - GCR (collateral / TRV):
     let currentTRV = currentTokensOutstanding.mul(this.priceEstimate).div(this.toBN(this.toWei("1")));
+    let prevPeriodTRV = prevPeriodTokensOutstanding.mul(this.prevPeriodPriceEstimate).div(this.toBN(this.toWei("1")));
     let currentGCRUsingTRV = currentCollateral.mul(this.toBN(this.toWei("1"))).div(currentTRV);
+    let prevGCRUsingTRV = prevPeriodCollateral.mul(this.toBN(this.toWei("1"))).div(prevPeriodTRV);
     allSponsorStatsTable["GCR - collateral / TRV"] = {
-      current: this.formatDecimalString(currentGCRUsingTRV)
+      current: this.formatDecimalString(currentGCRUsingTRV),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(currentGCRUsingTRV.sub(prevGCRUsingTRV))
     };
     allSponsorStatsTable["price from reference pricefeed"] = {
-      current: this.formatDecimalString(this.priceEstimate)
+      current: this.formatDecimalString(this.priceEstimate),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(this.priceEstimate.sub(this.prevPeriodPriceEstimate))
     };
 
     console.table(allSponsorStatsTable);
