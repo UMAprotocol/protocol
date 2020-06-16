@@ -96,7 +96,7 @@ contract("index.js", function(accounts) {
     assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
   });
   // TODO: remove this test when we remove the black box testing URL.
-  it("Responds to incoming monitor requests while bot is alive", async function() {
+  it.skip("Responds to incoming monitor requests while bot is alive", async function() {
     const address = emp.address;
 
     const priceFeedConfig = defaultPricefeedConfig;
