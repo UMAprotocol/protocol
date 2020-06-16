@@ -408,7 +408,7 @@ There are a few more configuration options available. The section below describe
 - `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you want to connect to. This config defines the synthetic that the bot will be liquidating.
 - `MNEMONIC`**[required]**: defines the wallet for the bots to use. Generated beforehand or in the steps outlined in key generation.
 - `PRICE_FEED_CONFIG`**[required]**: configuration object used to parameterize the bot's price feed. It's broken down as follows:
-  - `type` specifies the configuration of the price feed. The `medianizer` type averages the price of the identifier over a set of different exchanges.
+  - `type` specifies the configuration of the price feed. The `medianizer` provides the median of the price of the identifier over a set of different exchanges.
   - `apiKey` is the key generated in API key section of the Prerequisites.
   - `pair` defines the crypto pair whose price is being fetched as defined in CryptoWatch. Ex: `ethbtc`.
   - `lookback` defines a window size, in seconds, over which historical prices will be made available by the price feed. This parameter should be set to be at least as large as the liquidation liveness period of the EMP contract.
