@@ -27,6 +27,8 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} startingBlock Offset block number to define where the monitor bot should start searching for events
+ *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
  * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
  * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
  * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
@@ -38,6 +40,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 async function run(
   address,
   pollingDelay,
+  startingBlock,
   botMonitorObject,
   walletMonitorObject,
   contractMonitorObject,
@@ -53,6 +56,7 @@ async function run(
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
       pollingDelay,
+      startingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
@@ -89,15 +93,16 @@ async function run(
     );
 
     // 1. Contract state monitor.
-    // Start the event client by looking from the most recent block number. If set to 0 will report past events.
-    const latestBlockNumber = (await web3.eth.getBlock("latest")).number;
+    // Start the event client by looking from the provided block number. If param set to null then use the latest
+    // block number. Else, use the param number to start the search from.
+    const eventsFromBlock = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
       Logger,
       ExpiringMultiParty.abi,
       web3,
       emp.address,
-      latestBlockNumber
+      eventsFromBlock
     );
     const contractMonitor = new ContractMonitor(
       Logger,
@@ -200,6 +205,10 @@ const Poll = async function(callback) {
     // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
 
+    // Block number to search for events from. If set, acts to offset the search to ignore events in the past.  If not
+    // set then default to null which indicates that the bot should start at the current block number.
+    const startingBlock = process.env.STARTING_BLOCK_NUMBER ? process.env.STARTING_BLOCK_NUMBER : null;
+
     if (
       !process.env.BOT_MONITOR_OBJECT ||
       !process.env.WALLET_MONITOR_OBJECT ||
@@ -252,6 +261,7 @@ const Poll = async function(callback) {
     await run(
       process.env.EMP_ADDRESS,
       pollingDelay,
+      startingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
