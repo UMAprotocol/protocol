@@ -2,6 +2,7 @@
   "name": "protocol",
   "version": "0.1.0",
   "description": "UMA Protocol Smart Contracts",
+  "private": true,
   "scripts": {
     "lint": "npm run eslint && npm run prettier -- --list-different",
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
@@ -94,5 +95,6 @@
   },
   "lint-staged": {
     "*.js": "eslint --cache --fix"
-  }
+  },
+  "workspaces": []
 }
