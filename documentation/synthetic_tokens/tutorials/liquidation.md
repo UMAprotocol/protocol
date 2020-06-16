@@ -82,7 +82,8 @@ npx truffle console --network kovan_mnemonic
 
 # Print the address of your newly created account
 truffle(kovan_mnemonic)> accounts[0]
-`0x45Bc98b00adB0dFe16c85c391B1854B706b7d612`
+
+# should print: `0x45Bc98b00adB0dFe16c85c391B1854B706b7d612`
 ```
 
 You can now fund this wallet with the associated currency for the type of bot you want to run.
