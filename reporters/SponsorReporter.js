@@ -73,7 +73,7 @@ class SponsorReporter {
 
   async generateSponsorsTable() {
     await this.update();
-    console.log(italic("- All current token sponsors within the spesified EMP are printed"));
+    console.log(italic("- All current token sponsors within the specified EMP are printed"));
 
     // For all positions current open in the UMA ecosystem, generate a table.
     const allPositions = this.empClient.getAllPositions();
