@@ -432,16 +432,18 @@ class GlobalSummaryReporter {
     };
   }
 
+  // Returns token holder statistics since synthetic token inception and for the periods input.
+  // Statistics include:
+  // - count of unique token holders during a period
+  // - final account balance at the end of the period
   async _constructTokenHolderList(periods) {
     // Unique token holders who held any balance during a period:
     const countAllTokenHolders = {};
     const countPeriodTokenHolders = {};
-    // const countPrevPeriodTokenHolders = {};
 
     // Net balances during a period:
     const currentTokenHolders = {};
     const periodTokenHolders = {};
-    // const prevPeriodTokenHolders = {};
 
     let allTransferEvents = this.syntheticTransferEvents;
 
