@@ -93,12 +93,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
         break;
       }
     }
-
-    // TODO: I'm not sure if this actually is working as expected.
-    // Close server gracefully.
-    server.close();
   } catch (error) {
-    console.log(error);
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
