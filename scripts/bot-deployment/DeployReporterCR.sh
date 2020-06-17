@@ -57,8 +57,7 @@ if [ $schedularExists == 0 ]; then
         --schedule="0 12 * * *" \
         --uri=$cloudRunURL \
         --oidc-service-account-email=$serviceAccountEmail \
-        --headers="Authorization=key=AUTHKEY, Content-Type=application/json" \
-        --http-method=post \
+        --http-method=get \
         --description="Daily reporter cron job to send messages at 8am ET"
     echo "🎊 Scheduler created!"
 fi
@@ -69,8 +68,7 @@ if [ $schedularExists == 1 ]; then
         --schedule="0 12 * * *" \
         --uri=$cloudRunURL \
         --oidc-service-account-email=$serviceAccountEmail \
-        --headers="Authorization=key=AUTHKEY, Content-Type=application/json" \
-        --http-method=post \
+        --http-method=get \
         --description="Daily reporter cron job to send messages at 8am ET"
     echo "🎊 Scheduler updated!"
 fi
