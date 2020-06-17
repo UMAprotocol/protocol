@@ -139,8 +139,6 @@ const slackFormatter = info => {
   formattedResponse.blocks.push({
     type: "divider"
   });
-
-  console.log("SLACK");
   return formattedResponse;
 };
 
