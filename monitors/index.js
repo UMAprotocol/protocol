@@ -192,7 +192,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error
+      error: new Error(error)
     });
     await waitForLogger(Logger);
   }
