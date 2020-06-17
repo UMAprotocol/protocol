@@ -141,7 +141,7 @@ class GlobalSummaryReporter {
         "- The collateral amount used to calculate GCR's is equal to the current collateral deposited, and does not include liquidated collateral"
       )
     );
-    await this._generateSponsorStats(periods);
+    this._generateSponsorStats(periods);
     console.groupEnd();
 
     // 2. Tokens stats table
@@ -160,7 +160,7 @@ class GlobalSummaryReporter {
     console.log(italic("- Unique liquidations count # of unique sponsors that have been liquidated"));
     console.log(italic("- Collateral & tokens liquidated counts aggregate amounts from all partial liquidations"));
     console.log(italic("- Current collateral liquidated includes any collateral locked in pending liquidations"));
-    await this._generateLiquidationStats(periods);
+    this._generateLiquidationStats(periods);
     console.groupEnd();
 
     // 4. Dispute stats table
@@ -172,7 +172,7 @@ class GlobalSummaryReporter {
     // 5. DVM stats table
     console.group();
     console.log(bold("DVM summary stats"));
-    await this._generateDvmStats(periods);
+    this._generateDvmStats(periods);
     console.groupEnd();
   }
 
@@ -181,7 +181,7 @@ class GlobalSummaryReporter {
    * Helper methods to sort event data by block timestamp
    *
    * *******************************************************/
-  async _filterNewSponsorData(periods, newSponsorEvents) {
+  _filterNewSponsorData(periods, newSponsorEvents) {
     const allUniqueSponsors = {};
     const periodUniqueSponsors = {};
 
@@ -204,7 +204,7 @@ class GlobalSummaryReporter {
     };
   }
 
-  async _filterTransferData(periods, transferEvents) {
+  _filterTransferData(periods, transferEvents) {
     let allCollateralTransferred = this.toBN("0");
     const periodCollateralTransferred = {};
 
@@ -229,7 +229,7 @@ class GlobalSummaryReporter {
     };
   }
 
-  async _filterCreateData(periods, createEvents) {
+  _filterCreateData(periods, createEvents) {
     let allTokensCreated = this.toBN("0");
     const periodTokensCreated = {};
 
@@ -252,7 +252,7 @@ class GlobalSummaryReporter {
     };
   }
 
-  async _filterLiquidationData(periods, liquidateEvents) {
+  _filterLiquidationData(periods, liquidateEvents) {
     let allUniqueLiquidations = {};
     let periodUniqueLiquidations = {};
     let allTokensLiquidated = this.toBN("0");
@@ -375,7 +375,7 @@ class GlobalSummaryReporter {
     };
   }
 
-  async _filterRegFeeData(periods, regFeeEvents) {
+  _filterRegFeeData(periods, regFeeEvents) {
     let allRegFeesPaid = this.toBN("0");
     let periodRegFeesPaid = {};
     let allLateFeesPaid = this.toBN("0");
@@ -408,7 +408,7 @@ class GlobalSummaryReporter {
     };
   }
 
-  async _filterFinalFeeData(periods, finalFeeEvents) {
+  _filterFinalFeeData(periods, finalFeeEvents) {
     let allFinalFeesPaid = this.toBN("0");
     let periodFinalFeesPaid = {};
 
@@ -437,7 +437,7 @@ class GlobalSummaryReporter {
    * Main methods that format data into tables to print to console
    *
    * *******************************************************/
-  async _generateSponsorStats(periods) {
+  _generateSponsorStats(periods) {
     let allSponsorStatsTable = {};
 
     if (this.newSponsorEvents.length === 0) {
@@ -446,7 +446,7 @@ class GlobalSummaryReporter {
     }
 
     // - Lifetime # of unique sponsors.
-    const newSponsorData = await this._filterNewSponsorData(periods, this.newSponsorEvents);
+    const newSponsorData = this._filterNewSponsorData(periods, this.newSponsorEvents);
     const currentUniqueSponsors = this.empClient.getAllPositions();
     allSponsorStatsTable["# of unique sponsors"] = {
       cumulative: Object.keys(newSponsorData.allUniqueSponsors).length,
@@ -459,7 +459,7 @@ class GlobalSummaryReporter {
     };
 
     // - Cumulative collateral deposited into contract
-    const depositData = await this._filterTransferData(periods, this.collateralDepositEvents);
+    const depositData = this._filterTransferData(periods, this.collateralDepositEvents);
     allSponsorStatsTable["collateral deposited"] = {
       cumulative: this.formatDecimalString(depositData.allCollateralTransferred),
       [this.periodLabelInHours]: this.formatDecimalString(depositData.periodCollateralTransferred["period"]),
@@ -469,7 +469,7 @@ class GlobalSummaryReporter {
     };
 
     // - Cumulative collateral withdrawn from contract
-    const withdrawData = await this._filterTransferData(periods, this.collateralWithdrawEvents);
+    const withdrawData = this._filterTransferData(periods, this.collateralWithdrawEvents);
     allSponsorStatsTable["collateral withdrawn"] = {
       cumulative: this.formatDecimalString(withdrawData.allCollateralTransferred),
       [this.periodLabelInHours]: this.formatDecimalString(withdrawData.periodCollateralTransferred["period"]),
@@ -498,7 +498,7 @@ class GlobalSummaryReporter {
     };
 
     // - Tokens minted: tracked via Create events.
-    const tokenMintData = await this._filterCreateData(periods, this.createEvents);
+    const tokenMintData = this._filterCreateData(periods, this.createEvents);
     allSponsorStatsTable["tokens minted"] = {
       cumulative: this.formatDecimalString(tokenMintData.allTokensCreated),
       [this.periodLabelInHours]: this.formatDecimalString(tokenMintData.periodTokensCreated["period"]),
@@ -508,7 +508,7 @@ class GlobalSummaryReporter {
     };
 
     // - Tokens burned
-    const tokenBurnData = await this._filterTransferData(periods, this.syntheticBurnedEvents);
+    const tokenBurnData = this._filterTransferData(periods, this.syntheticBurnedEvents);
     allSponsorStatsTable["tokens burned"] = {
       cumulative: this.formatDecimalString(tokenBurnData.allCollateralTransferred),
       [this.periodLabelInHours]: this.formatDecimalString(tokenBurnData.periodCollateralTransferred["period"]),
@@ -618,7 +618,7 @@ class GlobalSummaryReporter {
     };
 
     // Get token holder stats.
-    const tokenHolderStats = await this._constructTokenHolderList(periods);
+    const tokenHolderStats = this._constructTokenHolderList(periods);
     allTokenStatsTable["# of token holders"] = {
       current: Object.keys(tokenHolderStats.currentTokenHolders).length,
       cumulative: Object.keys(tokenHolderStats.countAllTokenHolders).length,
@@ -631,13 +631,13 @@ class GlobalSummaryReporter {
     console.table(allTokenStatsTable);
   }
 
-  async _generateLiquidationStats(periods) {
+  _generateLiquidationStats(periods) {
     let allLiquidationStatsTable = {};
 
     if (this.liquidationEvents.length === 0) {
       console.log(dim("\tNo liquidation events found for this EMP."));
     } else {
-      const liquidationData = await this._filterLiquidationData(periods, this.liquidationEvents);
+      const liquidationData = this._filterLiquidationData(periods, this.liquidationEvents);
       allLiquidationStatsTable = {
         ["# of liquidations"]: {
           cumulative: Object.keys(liquidationData.allUniqueLiquidations).length,
@@ -710,14 +710,14 @@ class GlobalSummaryReporter {
     }
   }
 
-  async _generateDvmStats(periods) {
+  _generateDvmStats(periods) {
     let allDvmStatsTable = {};
 
     // Regular fees
     if (this.regularFeeEvents.length === 0) {
       console.log(dim("\tNo regular fee events found for this EMP."));
     } else {
-      const regFeeData = await this._filterRegFeeData(periods, this.regularFeeEvents);
+      const regFeeData = this._filterRegFeeData(periods, this.regularFeeEvents);
       allDvmStatsTable = {
         ["ongoing regular fees paid to store"]: {
           cumulative: this.formatDecimalString(regFeeData.allRegFeesPaid),
@@ -740,13 +740,13 @@ class GlobalSummaryReporter {
     if (this.finalFeeEvents.length === 0) {
       console.log(dim("\tNo final fee events found for this EMP."));
     } else {
-      const finalFeeData = await this._filterFinalFeeData(periods, this.finalFeeEvents);
+      const finalFeeData = this._filterFinalFeeData(periods, this.finalFeeEvents);
       allDvmStatsTable = {
         ["final fees paid to store"]: {
-          cumulative: this.formatDecimalString(regFeeData.allFinalFeesPaid),
-          [this.periodLabelInHours]: this.formatDecimalString(regFeeData.periodFinalFeesPaid["period"]),
+          cumulative: this.formatDecimalString(finalFeeData.allFinalFeesPaid),
+          [this.periodLabelInHours]: this.formatDecimalString(finalFeeData.periodFinalFeesPaid["period"]),
           ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            regFeeData.periodFinalFeesPaid["period"].sub(regFeeData.periodFinalFeesPaid["prevPeriod"])
+            finalFeeData.periodFinalFeesPaid["period"].sub(finalFeeData.periodFinalFeesPaid["prevPeriod"])
           )
         }
       };
@@ -767,7 +767,7 @@ class GlobalSummaryReporter {
   // Statistics include:
   // - count of unique token holders during a period
   // - final account balance at the end of the period
-  async _constructTokenHolderList(periods) {
+  _constructTokenHolderList(periods) {
     // Unique token holders who held any balance during a period:
     const countAllTokenHolders = {};
     const countPeriodTokenHolders = {};
