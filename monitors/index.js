@@ -203,8 +203,8 @@ const Poll = async function(callback) {
       throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
 
-    // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
+    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 60 * 1000;
 
     // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.
