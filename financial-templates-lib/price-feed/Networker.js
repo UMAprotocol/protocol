@@ -20,7 +20,7 @@ class Networker {
         at: "Networker",
         message: "Failed to get json response🚨",
         url: url,
-        error: typeof error === "string" ? new Error(error) : error
+        error: new Error(response)
       });
     }
     return json;
