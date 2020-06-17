@@ -1,6 +1,4 @@
 const { toWei, utf8ToHex } = web3.utils;
-const fetch = require("node-fetch");
-const { delay } = require("../../financial-templates-lib/helpers/delay");
 const { MAX_UINT_VAL } = require("../../common/Constants");
 
 // Script to test
@@ -94,36 +92,5 @@ contract("index.js", function(accounts) {
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
     const syntheticAllowance = await syntheticToken.allowance(contractCreator, emp.address);
     assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
-  });
-
-  it("Responds to incoming monitor requests while bot is alive", async function() {
-    const address = emp.address;
-
-    const priceFeedConfig = defaultPricefeedConfig;
-
-    const monitorPort = 3333;
-    const url = `http://localhost:${monitorPort}`;
-    const route = "/";
-
-    // Pinging server while bot is dead should throw an error.
-    let errorThrown = false;
-    try {
-      await fetch(`${url}${route}`);
-    } catch (err) {
-      errorThrown = true;
-    }
-    assert.isTrue(errorThrown);
-
-    // Start bot synchronously so that we can attempt to send a request to the monitor server without
-    // having to wait for the `run` method to return. Wait a little bit for bot to start before sending the request.
-    Poll.run(address, false, 10_000, priceFeedConfig, monitorPort);
-    await delay(1000); // Empirically, anything > 100 ms seems to be sufficient delay.
-
-    // Pinging server while bot is alive should succeed.
-    const response = await fetch(`${url}${route}`);
-    const data = await response.json();
-
-    assert.equal(response.status, 200);
-    assert.equal(data.message, "Bot is up");
   });
 });
