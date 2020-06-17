@@ -2,7 +2,6 @@ require("dotenv").config();
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { startServer } = require("../common/ServerUtils");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 const { MAX_UINT_VAL } = require("../common/Constants");
 const { toBN } = web3.utils;
@@ -83,14 +82,6 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
         collateralApprovalTx: syntheticApprovalTx.transactionHash
       });
     }
-
-    // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
-    const { server, portNumber } = startServer(monitorPort);
-    Logger.debug({
-      at: "Liquidator#index",
-      message: "Monitor server is listening",
-      portNumber: portNumber
-    });
 
     while (true) {
       await liquidator.queryAndLiquidate();
