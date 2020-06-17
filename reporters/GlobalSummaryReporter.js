@@ -252,6 +252,186 @@ class GlobalSummaryReporter {
     };
   }
 
+  async _filterLiquidationData(periods, liquidateEvents) {
+    let allUniqueLiquidations = {};
+    let periodUniqueLiquidations = {};
+    let allTokensLiquidated = this.toBN("0");
+    const periodTokensLiquidated = {};
+    let allCollateralLiquidated = this.toBN("0");
+    const periodCollateralLiquidated = {};
+
+    for (let event of liquidateEvents) {
+      allTokensLiquidated = allTokensLiquidated.add(this.toBN(event.tokensOutstanding));
+      // We count "lockedCollateral" instead of "liquidatedCollateral" because this is the amount of the collateral that the liquidator is elegible to draw from
+      // the contract.
+      allCollateralLiquidated = allCollateralLiquidated.add(this.toBN(event.lockedCollateral));
+      allUniqueLiquidations[event.sponsor] = true;
+
+      for (let period of periods) {
+        if (!periodTokensLiquidated[period.label]) {
+          periodTokensLiquidated[period.label] = this.toBN("0");
+        }
+        if (!periodCollateralLiquidated[period.label]) {
+          periodCollateralLiquidated[period.label] = this.toBN("0");
+        }
+        if (!periodUniqueLiquidations[period.label]) {
+          periodUniqueLiquidations[period.label] = {};
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodTokensLiquidated[period.label] = periodTokensLiquidated[period.label].add(
+            this.toBN(event.tokensOutstanding)
+          );
+          periodCollateralLiquidated[period.label] = periodCollateralLiquidated[period.label].add(
+            this.toBN(event.lockedCollateral)
+          );
+          periodUniqueLiquidations[period.label][event.sponsor] = true;
+        }
+      }
+    }
+    return {
+      allUniqueLiquidations,
+      periodUniqueLiquidations,
+      allTokensLiquidated,
+      periodTokensLiquidated,
+      allCollateralLiquidated,
+      periodCollateralLiquidated
+    };
+  }
+
+  async _filterDisputeData(periods, disputeEvents, liquidationEvents) {
+    let allUniqueDisputes = {};
+    let periodUniqueDisputes = {};
+    let allTokensDisputed = this.toBN("0");
+    const periodTokensDisputed = {};
+    let allCollateralDisputed = this.toBN("0");
+    const periodCollateralDisputed = {};
+    const allResolvedDisputes = {};
+
+    for (let event of disputeEvents) {
+      // Fetch disputed collateral & token amounts from corresponding liquidation event that with same ID and sponsor.
+      const liquidationData = liquidationEvents.filter(
+        e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
+      );
+
+      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
+      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
+      allUniqueDisputes[event.sponsor] = true;
+
+      for (let period of periods) {
+        if (!periodTokensDisputed[period.label]) {
+          periodTokensDisputed[period.label] = this.toBN("0");
+        }
+        if (!periodCollateralDisputed[period.label]) {
+          periodCollateralDisputed[period.label] = this.toBN("0");
+        }
+        if (!periodUniqueDisputes[period.label]) {
+          periodUniqueDisputes[period.label] = {};
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodTokensDisputed[period.label] = periodTokensDisputed[period.label].add(
+            this.toBN(liquidationData.tokensOutstanding)
+          );
+          periodCollateralDisputed[period.label] = periodCollateralDisputed[period.label].add(
+            this.toBN(liquidationData.lockedCollateral)
+          );
+          periodUniqueDisputes[period.label][event.sponsor] = true;
+        }
+      }
+
+      // Create list of resolved prices for disputed liquidations.
+      const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      try {
+        // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
+        // but return a very high integer--a false positive. `revertWrapper` handles this case and returns the resolved price or `null`
+        // if the call should have reverted but returned the high integer instead.
+        const resolvedPrice = await this.oracleContract.getPrice(
+          await this.empContract.methods.priceIdentifier().call(),
+          liquidationTimestamp,
+          {
+            from: this.empContract.options.address
+          }
+        );
+        if (revertWrapper(resolvedPrice)) {
+          allResolvedDisputes[
+            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
+          ] = this.formatDecimalString(resolvedPrice);
+        } else {
+          throw "getPrice reverted but web3.Contract method call returned a false positive price";
+        }
+      } catch (err) {
+        allResolvedDisputes[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
+      }
+    }
+    return {
+      allUniqueDisputes,
+      periodUniqueDisputes,
+      allTokensDisputed,
+      periodTokensDisputed,
+      allCollateralDisputed,
+      periodCollateralDisputed,
+      allResolvedDisputes
+    };
+  }
+
+  async _filterRegFeeData(periods, regFeeEvents) {
+    let allRegFeesPaid = this.toBN("0");
+    let periodRegFeesPaid = {};
+    let allLateFeesPaid = this.toBN("0");
+    let periodLateFeesPaid = {};
+
+    for (let event of regFeeEvents) {
+      allRegFeesPaid = allRegFeesPaid.add(this.toBN(event.regularFee));
+      allLateFeesPaid = allLateFeesPaid.add(this.toBN(event.lateFee));
+
+      for (let period of periods) {
+        if (!periodRegFeesPaid[period.label]) {
+          periodRegFeesPaid[period.label] = this.toBN("0");
+        }
+        if (!periodLateFeesPaid[period.label]) {
+          periodLateFeesPaid[period.label] = this.toBN("0");
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodRegFeesPaid = periodRegFeesPaid.add(this.toBN(event.regularFee));
+          periodLateFeesPaid = periodLateFeesPaid.add(this.toBN(event.lateFee));
+        }
+      }
+    }
+
+    return {
+      allRegFeesPaid,
+      periodRegFeesPaid,
+      allLateFeesPaid,
+      periodLateFeesPaid
+    };
+  }
+
+  async _filterFinalFeeData(periods, finalFeeEvents) {
+    let allFinalFeesPaid = this.toBN("0");
+    let periodFinalFeesPaid = {};
+
+    for (let event of finalFeeEvents) {
+      allFinalFeesPaid = allFinalFeesPaid.add(this.toBN(event.amount));
+
+      for (let period of periods) {
+        if (!periodFinalFeesPaid[period.label]) {
+          periodFinalFeesPaid[period.label] = this.toBN("0");
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodFinalFeesPaid = periodFinalFeesPaid.add(this.toBN(event.amount));
+        }
+      }
+    }
+
+    return {
+      allFinalFeesPaid,
+      periodFinalFeesPaid
+    };
+  }
+
   async _constructTokenHolderList(periods) {
     // Unique token holders who held any balance during a period:
     const countAllTokenHolders = {};
@@ -290,8 +470,10 @@ class GlobalSummaryReporter {
         // be equal to its cumulative balance.
         for (let period of periods) {
           if (!periodTokenHolders[period.label]) {
-            countPeriodTokenHolders[period.label] = {};
             periodTokenHolders[period.label] = {};
+          }
+          if (!countPeriodTokenHolders[period.label]) {
+            countPeriodTokenHolders[period.label] = {};
           }
 
           if (this.isEventInPeriod(event, period)) {
@@ -546,63 +728,37 @@ class GlobalSummaryReporter {
     console.table(allTokenStatsTable);
   }
 
-  async _generateLiquidationStats() {
+  async _generateLiquidationStats(periods) {
     let allLiquidationStatsTable = {};
-
-    let uniqueLiquidations = {};
-    let uniqueLiquidationsPeriod = {};
-    let uniqueLiquidationsPrevPeriod = {};
-    let tokensLiquidated = this.toBN("0");
-    let tokensLiquidatedPeriod = this.toBN("0");
-    let tokensLiquidatedPrevPeriod = this.toBN("0");
-    let collateralLiquidated = this.toBN("0");
-    let collateralLiquidatedPeriod = this.toBN("0");
-    let collateralLiquidatedPrevPeriod = this.toBN("0");
 
     if (this.liquidationEvents.length === 0) {
       console.log(dim("\tNo liquidation events found for this EMP."));
     } else {
-      for (let event of this.liquidationEvents) {
-        tokensLiquidated = tokensLiquidated.add(this.toBN(event.tokensOutstanding));
-        // We count "lockedCollateral" instead of "liquidatedCollateral" because this is the amount of the collateral that the liquidator is elegible to draw from
-        // the contract.
-        collateralLiquidated = collateralLiquidated.add(this.toBN(event.lockedCollateral));
-        uniqueLiquidations[event.sponsor] = true;
-        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          tokensLiquidatedPeriod = tokensLiquidatedPeriod.add(this.toBN(event.tokensOutstanding));
-          collateralLiquidatedPeriod = collateralLiquidatedPeriod.add(this.toBN(event.lockedCollateral));
-          uniqueLiquidationsPeriod[event.sponsor] = true;
-        }
-        if (
-          event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-          event.blockNumber < this.startBlockNumberForPeriod
-        ) {
-          tokensLiquidatedPrevPeriod = tokensLiquidatedPrevPeriod.add(this.toBN(event.tokensOutstanding));
-          collateralLiquidatedPrevPeriod = collateralLiquidatedPrevPeriod.add(this.toBN(event.lockedCollateral));
-          uniqueLiquidationsPrevPeriod[event.sponsor] = true;
-        }
-      }
+      const liquidationData = await this._filterLiquidationData(periods, this.liquidationEvents);
       allLiquidationStatsTable = {
         ["# of liquidations"]: {
-          cumulative: Object.keys(uniqueLiquidations).length,
-          [this.periodLabelInHours]: Object.keys(uniqueLiquidationsPeriod).length,
+          cumulative: Object.keys(liquidationData.allUniqueLiquidations).length,
+          [this.periodLabelInHours]: Object.keys(liquidationData.periodUniqueLiquidations["period"]).length,
           ["Δ from prev. period"]: addSign(
-            Object.keys(uniqueLiquidationsPeriod).length - Object.keys(uniqueLiquidationsPrevPeriod).length
+            Object.keys(liquidationData.periodUniqueLiquidations["period"]).length -
+              Object.keys(liquidationData.periodUniqueLiquidations["prevPeriod"]).length
           )
         },
         ["tokens liquidated"]: {
-          cumulative: this.formatDecimalString(tokensLiquidated),
-          [this.periodLabelInHours]: this.formatDecimalString(tokensLiquidatedPeriod),
+          cumulative: this.formatDecimalString(liquidationData.allTokensLiquidated),
+          [this.periodLabelInHours]: this.formatDecimalString(liquidationData.periodTokensLiquidated["period"]),
           ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            tokensLiquidatedPeriod.sub(tokensLiquidatedPrevPeriod)
+            liquidationData.periodTokensLiquidated["period"].sub(liquidationData.periodTokensLiquidated["prevPeriod"])
           )
         },
         ["collateral liquidated"]: {
-          cumulative: this.formatDecimalString(collateralLiquidated),
-          [this.periodLabelInHours]: this.formatDecimalString(collateralLiquidatedPeriod),
+          cumulative: this.formatDecimalString(liquidationData.allCollateralLiquidated),
+          [this.periodLabelInHours]: this.formatDecimalString(liquidationData.periodCollateralLiquidated["period"]),
           current: this.formatDecimalString(this.collateralLockedInLiquidations),
           ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            collateralLiquidatedPeriod.sub(collateralLiquidatedPrevPeriod)
+            liquidationData.periodCollateralLiquidated["period"].sub(
+              liquidationData.periodCollateralLiquidated["prevPeriod"]
+            )
           )
         }
       };
@@ -611,87 +767,34 @@ class GlobalSummaryReporter {
     }
   }
 
-  async _generateDisputeStats() {
+  async _generateDisputeStats(periods) {
     let allDisputeStatsTable = {};
-
-    let uniqueDisputes = {};
-    let uniqueDisputesPeriod = {};
-    let uniqueDisputesPrevPeriod = {};
-    let tokensDisputed = this.toBN("0");
-    let tokensDisputedPeriod = this.toBN("0");
-    let tokensDisputedPrevPeriod = this.toBN("0");
-    let collateralDisputed = this.toBN("0");
-    let collateralDisputedPeriod = this.toBN("0");
-    let collateralDisputedPrevPeriod = this.toBN("0");
-    let disputesResolved = {};
 
     if (this.disputeEvents.length === 0) {
       console.log(dim("\tNo dispute events found for this EMP."));
     } else {
-      for (let event of this.disputeEvents) {
-        // Fetch disputed collateral & token amounts from corresponding liquidation event that with same ID and sponsor.
-        const liquidationData = this.liquidationEvents.filter(
-          e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
-        );
-        tokensDisputed = tokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
-        collateralDisputed = collateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
-        uniqueDisputes[event.sponsor] = true;
-        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          tokensDisputedPeriod = tokensDisputedPeriod.add(this.toBN(liquidationData.tokensOutstanding));
-          collateralDisputedPeriod = collateralDisputedPeriod.add(this.toBN(liquidationData.lockedCollateral));
-          uniqueDisputesPeriod[event.sponsor] = true;
-        }
-        if (
-          event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-          event.blockNumber < this.startBlockNumberForPeriod
-        ) {
-          tokensDisputedPrevPeriod = tokensDisputedPrevPeriod.add(this.toBN(liquidationData.tokensOutstanding));
-          collateralDisputedPrevPeriod = collateralDisputedPrevPeriod.add(this.toBN(liquidationData.lockedCollateral));
-          uniqueDisputesPrevPeriod[event.sponsor] = true;
-        }
-
-        // Create list of resolved prices for disputed liquidations.
-        const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
-        try {
-          // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
-          // but return a very high integer--a false positive. `revertWrapper` handles this case and returns the resolved price or `null`
-          // if the call should have reverted but returned the high integer instead.
-          const resolvedPrice = await this.oracleContract.getPrice(
-            await this.empContract.methods.priceIdentifier().call(),
-            liquidationTimestamp,
-            {
-              from: this.empContract.options.address
-            }
-          );
-          if (revertWrapper(resolvedPrice)) {
-            disputesResolved[
-              `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-            ] = this.formatDecimalString(resolvedPrice);
-          } else {
-            throw "getPrice reverted but web3.Contract method call returned a false positive price";
-          }
-        } catch (err) {
-          disputesResolved[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
-        }
-      }
+      const disputeData = await this._filterDisputeData(periods, this.disputeEvents, this.liquidationEvents);
       allDisputeStatsTable = {
         ["# of disputes"]: {
-          cumulative: Object.keys(uniqueDisputes).length,
-          [this.periodLabelInHours]: Object.keys(uniqueDisputesPeriod).length,
+          cumulative: Object.keys(disputeData.allUniqueDisputes).length,
+          [this.periodLabelInHours]: Object.keys(disputeData.periodUniqueDisputes["period"]).length,
           ["Δ from prev. period"]: addSign(
-            Object.keys(uniqueDisputesPeriod).length - Object.keys(uniqueDisputesPrevPeriod).length
+            Object.keys(disputeData.periodUniqueDisputes["period"]).length -
+              Object.keys(disputeData.periodUniqueDisputes["prevPeriod"]).length
           )
         },
         ["tokens disputed"]: {
-          cumulative: this.formatDecimalString(tokensDisputed),
-          [this.periodLabelInHours]: this.formatDecimalString(tokensDisputedPeriod),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensDisputedPeriod.sub(tokensDisputedPrevPeriod))
+          cumulative: this.formatDecimalString(disputeData.allTokensDisputed),
+          [this.periodLabelInHours]: this.formatDecimalString(disputeData.periodTokensDisputed["period"]),
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+            disputeData.periodTokensDisputed["period"].sub(disputeData.periodTokensDisputed["prevPeriod"])
+          )
         },
         ["collateral disputed"]: {
-          cumulative: this.formatDecimalString(collateralDisputed),
-          [this.periodLabelInHours]: this.formatDecimalString(collateralDisputedPeriod),
+          cumulative: this.formatDecimalString(disputeData.allCollateralDisputed),
+          [this.periodLabelInHours]: this.formatDecimalString(disputeData.periodCollateralDisputed["period"]),
           ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            collateralDisputedPeriod.sub(collateralDisputedPrevPeriod)
+            disputeData.periodCollateralDisputed["period"].sub(disputeData.periodCollateralDisputed["prevPeriod"])
           )
         }
       };
@@ -699,86 +802,63 @@ class GlobalSummaryReporter {
       console.table(allDisputeStatsTable);
 
       console.group("Dispute resolution prices");
-      console.table(disputesResolved);
+      console.table(disputeData.allResolvedDisputes);
       console.groupEnd();
     }
   }
 
-  async _generateDvmStats() {
+  async _generateDvmStats(periods) {
     let allDvmStatsTable = {};
 
-    let regularFeesPaid = this.toBN("0");
-    let regularFeesPaidPeriod = this.toBN("0");
-    let regularFeesPaidPrevPeriod = this.toBN("0");
-    let lateFeesPaid = this.toBN("0");
-    let lateFeesPaidPeriod = this.toBN("0");
-    let lateFeesPaidPrevPeriod = this.toBN("0");
-    let finalFeesPaid = this.toBN("0");
-    let finalFeesPaidPeriod = this.toBN("0");
-    let finalFeesPaidPrevPeriod = this.toBN("0");
-
+    // Regular fees
     if (this.regularFeeEvents.length === 0) {
       console.log(dim("\tNo regular fee events found for this EMP."));
     } else {
-      for (let event of this.regularFeeEvents) {
-        regularFeesPaid = regularFeesPaid.add(this.toBN(event.regularFee));
-        lateFeesPaid = lateFeesPaid.add(this.toBN(event.lateFee));
-        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          regularFeesPaidPeriod = regularFeesPaidPeriod.add(this.toBN(event.regularFee));
-          lateFeesPaidPeriod = lateFeesPaidPeriod.add(this.toBN(event.lateFee));
-        }
-        if (
-          event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-          event.blockNumber < this.startBlockNumberForPeriod
-        ) {
-          regularFeesPaidPrevPeriod = regularFeesPaidPrevPeriod.add(this.toBN(event.regularFee));
-          lateFeesPaidPrevPeriod = lateFeesPaidPrevPeriod.add(this.toBN(event.lateFee));
-        }
-      }
-    }
-
-    if (this.finalFeeEvents.length === 0) {
-      console.log(dim("\tNo final fee events found for this EMP."));
-    } else {
-      for (let event of this.finalFeeEvents) {
-        finalFeesPaid = finalFeesPaid.add(this.toBN(event.amount));
-        if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-          finalFeesPaidPeriod = finalFeesPaidPeriod.add(this.toBN(event.amount));
-        }
-        if (
-          event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-          event.blockNumber < this.startBlockNumberForPeriod
-        ) {
-          finalFeesPaidPrevPeriod = finalFeesPaidPrevPeriod.add(this.toBN(event.amount));
-        }
-      }
-    }
-
-    if (Object.keys(allDvmStatsTable).length !== 0) {
+      const regFeeData = await this._filterRegFeeData(periods, this.regularFeeEvents);
       allDvmStatsTable = {
-        ["final fees paid to store"]: {
-          cumulative: this.formatDecimalString(finalFeesPaid),
-          [this.periodLabelInHours]: this.formatDecimalString(finalFeesPaidPeriod),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(finalFeesPaidPeriod.sub(finalFeesPaidPrevPeriod))
-        },
         ["ongoing regular fees paid to store"]: {
-          cumulative: this.formatDecimalString(regularFeesPaid),
-          [this.periodLabelInHours]: this.formatDecimalString(regularFeesPaidPeriod),
+          cumulative: this.formatDecimalString(regFeeData.allRegFeesPaid),
+          [this.periodLabelInHours]: this.formatDecimalString(regFeeData.periodRegFeesPaid["period"]),
           ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            regularFeesPaidPeriod.sub(regularFeesPaidPrevPeriod)
+            regFeeData.periodRegFeesPaid["period"].sub(regFeeData.periodRegFeesPaid["prevPeriod"])
           )
         },
         ["ongoing late fees paid to store"]: {
-          cumulative: this.formatDecimalString(lateFeesPaid),
-          [this.periodLabelInHours]: this.formatDecimalString(lateFeesPaidPeriod),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(lateFeesPaidPeriod.sub(lateFeesPaidPrevPeriod))
+          cumulative: this.formatDecimalString(regFeeData.allLateFeesPaid),
+          [this.periodLabelInHours]: this.formatDecimalString(regFeeData.periodLateFeesPaid["period"]),
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+            regFeeData.periodLateFeesPaid["period"].sub(regFeeData.periodLateFeesPaid["prevPeriod"])
+          )
         }
       };
+    }
 
+    // Final fees
+    if (this.finalFeeEvents.length === 0) {
+      console.log(dim("\tNo final fee events found for this EMP."));
+    } else {
+      const finalFeeData = await this._filterFinalFeeData(periods, this.finalFeeEvents);
+      allDvmStatsTable = {
+        ["final fees paid to store"]: {
+          cumulative: this.formatDecimalString(regFeeData.allFinalFeesPaid),
+          [this.periodLabelInHours]: this.formatDecimalString(regFeeData.periodFinalFeesPaid["period"]),
+          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+            regFeeData.periodFinalFeesPaid["period"].sub(regFeeData.periodFinalFeesPaid["prevPeriod"])
+          )
+        }
+      };
+    }
+
+    if (Object.keys(allDvmStatsTable).length !== 0) {
       console.table(allDvmStatsTable);
     }
   }
 
+  /** *******************************************************
+   *
+   * Misc. helper methods
+   *
+   * *******************************************************/
   async _getLookbackTimeInBlocks(lookbackTimeInSeconds) {
     const blockTimeInSeconds = await averageBlockTimeSeconds();
     const blocksToLookBack = Math.ceil(lookbackTimeInSeconds / blockTimeInSeconds);
