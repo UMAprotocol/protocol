@@ -18,10 +18,9 @@ const customFormat = combine(
     // Winston does not properly log Error objects like console.error() does, so this formatter will search for the Error object
     // in the "error" property of "info", and add the error stack to the log.
     // Discussion at https://github.com/winstonjs/winston/issues/1338.
-    if (error && error.stack) {
-      log = `${log}\n${error.stack}`;
+    if (error) {
+      log = `${log}\n${error}`;
     }
-
     return log;
   })
 );

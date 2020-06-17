@@ -156,7 +156,9 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   const { pairAddress, inverted } = await getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress);
 
   if (!pairAddress) {
-    throw "No Uniswap Pair address found. Either set UNISWAP_ADDRESS or use a network where there is an official Uniswap V2 deployment.";
+    throw new Error(
+      "No Uniswap Pair address found. Either set UNISWAP_ADDRESS or use a network where there is an official Uniswap V2 deployment."
+    );
   }
 
   // TODO: maybe move this default config to a better location.
@@ -219,7 +221,7 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     combinedConfig = defaultConfig || config;
 
     if (!combinedConfig) {
-      throw "createReferencePriceFeedForEmp: No default config was found and no user config was provided.";
+      throw new Error("createReferencePriceFeedForEmp: No default config was found and no user config was provided.");
     }
   }
 
