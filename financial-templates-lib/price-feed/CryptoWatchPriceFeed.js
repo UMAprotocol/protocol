@@ -157,7 +157,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         at: "CryptoWatchPriceFeed",
         message: "Could not parse price result🚨",
         priceUrl,
-        error: new Error(ohlcResponse)
+        error: new Error(priceResponse)
       });
       return;
     }
