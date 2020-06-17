@@ -42,7 +42,8 @@ const waitForLogger = async logger => {
 // If the log entry contains an error then extract the stack trace as the error message.
 const errorStackTracerFormatter = logEntry => {
   if (logEntry.error) {
-    logEntry.error = logEntry.error.stack;
+    console.log("ERROR", logEntry);
+    logEntry.error = JSON.stringify(logEntry.error);
   }
   return logEntry;
 };

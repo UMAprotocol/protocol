@@ -88,6 +88,8 @@ class TokenBalanceClient {
       this.tokenBalances.syntheticBalances[address] = tokenBalancesObject.syntheticBalance;
       this.tokenBalances.etherBalances[address] = tokenBalancesObject.etherBalance;
 
+      console.log("tokenBalancesObject", tokenBalancesObject);
+
       this.logger.debug({
         at: "TokenBalanceClient",
         message: "New address requested, adding address to monitor list.",

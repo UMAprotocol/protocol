@@ -102,6 +102,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay == 0) {
+        await waitForLogger(Logger);
         break;
       }
       await delay(Number(pollingDelay));

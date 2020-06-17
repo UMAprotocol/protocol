@@ -35,7 +35,7 @@ contract("GasEstimator.js", function() {
     it("Does not update if called before update threshold", async () => {
       await gasEstimator.update();
       const lastUpdateTimestamp = gasEstimator.lastUpdateTimestamp;
-      await delay(Number(1));
+      await delay(Number(1_000));
       await gasEstimator.update();
       assert.equal(lastUpdateTimestamp, gasEstimator.lastUpdateTimestamp);
     });
@@ -57,7 +57,7 @@ contract("GasEstimator.js", function() {
     it("Updates if called after update threshold", async () => {
       await gasEstimator.update();
       const lastUpdateTimestamp = gasEstimator.lastUpdateTimestamp;
-      await delay(Number(3));
+      await delay(Number(3_000));
       await gasEstimator.update();
       assert(lastUpdateTimestamp < gasEstimator.lastUpdateTimestamp);
     });

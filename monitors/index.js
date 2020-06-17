@@ -183,6 +183,7 @@ async function run(
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay == 0) {
+        await waitForLogger(Logger);
         break;
       }
       await delay(Number(pollingDelay));
@@ -191,7 +192,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error: new Error(error)
+      error
     });
     await waitForLogger(Logger);
   }
@@ -205,7 +206,7 @@ const Poll = async function(callback) {
     // Default to 480 seconds delay (8 mins). If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 480;
 
-    // Block number to search for events from. If set, acts to offset the search to ignore events in the past.  If not
+    // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.
     const startingBlock = process.env.STARTING_BLOCK_NUMBER ? process.env.STARTING_BLOCK_NUMBER : null;
 
