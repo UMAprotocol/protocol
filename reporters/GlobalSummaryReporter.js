@@ -432,105 +432,6 @@ class GlobalSummaryReporter {
     };
   }
 
-  // Returns token holder statistics since synthetic token inception and for the periods input.
-  // Statistics include:
-  // - count of unique token holders during a period
-  // - final account balance at the end of the period
-  async _constructTokenHolderList(periods) {
-    // Unique token holders who held any balance during a period:
-    const countAllTokenHolders = {};
-    const countPeriodTokenHolders = {};
-
-    // Net balances during a period:
-    const currentTokenHolders = {};
-    const periodTokenHolders = {};
-
-    let allTransferEvents = this.syntheticTransferEvents;
-
-    // Sort events from oldest first to newest last.
-    allTransferEvents.sort((a, b) => {
-      return a.blockNumber < b.blockNumber;
-    });
-
-    allTransferEvents.forEach(event => {
-      const sender = event.returnValues.from;
-      const receiver = event.returnValues.to;
-
-      if (receiver !== ZERO_ADDRESS) {
-        // Add to token holder list.
-        countAllTokenHolders[receiver] = true;
-
-        // Initialize balance if we have not seen this receiver yet.
-        if (!currentTokenHolders[receiver]) {
-          currentTokenHolders[receiver] = this.toBN("0");
-        }
-
-        // Update balances for periods.
-        currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
-
-        // Since we are searching from oldest to newest block, the receiver account's balance for this period will always
-        // be equal to its cumulative balance.
-        for (let period of periods) {
-          if (!periodTokenHolders[period.label]) {
-            periodTokenHolders[period.label] = {};
-          }
-          if (!countPeriodTokenHolders[period.label]) {
-            countPeriodTokenHolders[period.label] = {};
-          }
-
-          if (this.isEventInPeriod(event, period)) {
-            countPeriodTokenHolders[period.label][receiver] = true;
-            periodTokenHolders[period.label][receiver] = currentTokenHolders[receiver];
-          }
-        }
-      }
-
-      if (sender !== ZERO_ADDRESS) {
-        // Since we are searching from oldest to newest block, it is possible that the sender has not been seen yet
-        // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
-        // before we update its cumulative balance.
-        for (let period of periods) {
-          if (this.isEventInPeriod(event, period)) {
-            countPeriodTokenHolders[period.label][sender] = true;
-
-            if (!currentTokenHolders[sender]) {
-              // If we have not seen this sender yet, then we can initialize its balance to 0.
-              periodTokenHolders[period.label][sender] = this.toBN("0");
-            } else {
-              // If we have seen this sender, but we have not seen the sender as a receiver within this period,
-              // then its balance should be get initialized to its cumulative balance.
-              periodTokenHolders[period.label][sender] = currentTokenHolders[sender];
-            }
-
-            periodTokenHolders[period.label][sender] = periodTokenHolders[period.label][sender].sub(
-              this.toBN(event.returnValues.value)
-            );
-
-            if (periodTokenHolders[period.label][sender].isZero()) {
-              delete periodTokenHolders[period.label][sender];
-            }
-          }
-        }
-
-        // Since we are searching from oldest events first, the sender must already have a balance since we are ignoring
-        // events where the sender is the zero address.
-        currentTokenHolders[sender] = currentTokenHolders[sender].sub(this.toBN(event.returnValues.value));
-
-        // If sender transferred full balance, delete it from the dictionary.
-        if (currentTokenHolders[sender].isZero()) {
-          delete currentTokenHolders[sender];
-        }
-      }
-    });
-
-    return {
-      countAllTokenHolders,
-      countPeriodTokenHolders,
-      currentTokenHolders,
-      periodTokenHolders
-    };
-  }
-
   /** *******************************************************
    *
    * Main methods that format data into tables to print to console
@@ -861,6 +762,107 @@ class GlobalSummaryReporter {
    * Misc. helper methods
    *
    * *******************************************************/
+
+  // Returns token holder statistics since synthetic token inception and for the periods input.
+  // Statistics include:
+  // - count of unique token holders during a period
+  // - final account balance at the end of the period
+  async _constructTokenHolderList(periods) {
+    // Unique token holders who held any balance during a period:
+    const countAllTokenHolders = {};
+    const countPeriodTokenHolders = {};
+
+    // Net balances during a period:
+    const currentTokenHolders = {};
+    const periodTokenHolders = {};
+
+    let allTransferEvents = this.syntheticTransferEvents;
+
+    // Sort events from oldest first to newest last.
+    allTransferEvents.sort((a, b) => {
+      return a.blockNumber < b.blockNumber;
+    });
+
+    allTransferEvents.forEach(event => {
+      const sender = event.returnValues.from;
+      const receiver = event.returnValues.to;
+
+      if (receiver !== ZERO_ADDRESS) {
+        // Add to token holder list.
+        countAllTokenHolders[receiver] = true;
+
+        // Initialize balance if we have not seen this receiver yet.
+        if (!currentTokenHolders[receiver]) {
+          currentTokenHolders[receiver] = this.toBN("0");
+        }
+
+        // Update balances for periods.
+        currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
+
+        // Since we are searching from oldest to newest block, the receiver account's balance for this period will always
+        // be equal to its cumulative balance.
+        for (let period of periods) {
+          if (!periodTokenHolders[period.label]) {
+            periodTokenHolders[period.label] = {};
+          }
+          if (!countPeriodTokenHolders[period.label]) {
+            countPeriodTokenHolders[period.label] = {};
+          }
+
+          if (this.isEventInPeriod(event, period)) {
+            countPeriodTokenHolders[period.label][receiver] = true;
+            periodTokenHolders[period.label][receiver] = currentTokenHolders[receiver];
+          }
+        }
+      }
+
+      if (sender !== ZERO_ADDRESS) {
+        // Since we are searching from oldest to newest block, it is possible that the sender has not been seen yet
+        // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
+        // before we update its cumulative balance.
+        for (let period of periods) {
+          if (this.isEventInPeriod(event, period)) {
+            countPeriodTokenHolders[period.label][sender] = true;
+
+            if (!currentTokenHolders[sender]) {
+              // If we have not seen this sender yet, then we can initialize its balance to 0.
+              periodTokenHolders[period.label][sender] = this.toBN("0");
+            } else {
+              // If we have seen this sender, but we have not seen the sender as a receiver within this period,
+              // then its balance should be get initialized to its cumulative balance.
+              periodTokenHolders[period.label][sender] = currentTokenHolders[sender];
+            }
+
+            periodTokenHolders[period.label][sender] = periodTokenHolders[period.label][sender].sub(
+              this.toBN(event.returnValues.value)
+            );
+
+            if (periodTokenHolders[period.label][sender].isZero()) {
+              delete periodTokenHolders[period.label][sender];
+            }
+          }
+        }
+
+        // Since we are searching from oldest events first, the sender must already have a balance since we are ignoring
+        // events where the sender is the zero address.
+        currentTokenHolders[sender] = currentTokenHolders[sender].sub(this.toBN(event.returnValues.value));
+
+        // If sender transferred full balance, delete it from the dictionary.
+        if (currentTokenHolders[sender].isZero()) {
+          delete currentTokenHolders[sender];
+        }
+      }
+    });
+
+    return {
+      countAllTokenHolders,
+      countPeriodTokenHolders,
+      currentTokenHolders,
+      periodTokenHolders
+    };
+  }
+
+  // Converts an interval in seconds to block height
   async _getLookbackTimeInBlocks(lookbackTimeInSeconds) {
     const blockTimeInSeconds = await averageBlockTimeSeconds();
     const blocksToLookBack = Math.ceil(lookbackTimeInSeconds / blockTimeInSeconds);
