@@ -23,7 +23,7 @@ contract("index.js", function(accounts) {
   let emp;
   let uniswap;
 
-  let defaultPricefeedConfig;
+  let defaultPriceFeedConfig;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -59,7 +59,7 @@ contract("index.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
-    defaultPricefeedConfig = {
+    defaultPriceFeedConfig = {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
@@ -72,23 +72,13 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without throwing an error", async function() {
-    const address = emp.address;
-
-    const priceFeedConfig = defaultPricefeedConfig;
-
     let errorThrown = false;
     try {
-      await Poll.run(address, 0, priceFeedConfig);
+      await Poll.run(emp.address, 0, defaultPriceFeedConfig);
     } catch (err) {
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
-  });
-
-  it("Sets token allowances correctly", async function() {
-    const priceFeedConfig = defaultPricefeedConfig;
-
-    await Poll.run(emp.address, 0, priceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -99,7 +89,7 @@ contract("index.js", function(accounts) {
   it.skip("Responds to incoming monitor requests while bot is alive", async function() {
     const address = emp.address;
 
-    const priceFeedConfig = defaultPricefeedConfig;
+    const priceFeedConfig = defaultPriceFeedConfig;
 
     const monitorPort = 3333;
     const url = `http://localhost:${monitorPort}`;

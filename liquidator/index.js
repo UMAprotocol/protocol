@@ -89,12 +89,12 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
     }
 
     // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
-    const { server, portNumber } = startServer(monitorPort);
-    Logger.debug({
-      at: "Liquidator#index",
-      message: "Monitor server is listening",
-      portNumber: portNumber
-    });
+    // const { server, portNumber } = startServer(monitorPort);
+    // Logger.debug({
+    //   at: "Liquidator#index",
+    //   message: "Monitor server is listening",
+    //   portNumber: portNumber
+    // });
 
     while (true) {
       await liquidator.queryAndLiquidate();
@@ -110,7 +110,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
 
     // TODO: I'm not sure if this actually is working as expected.
     // Close server gracefully.
-    server.close();
+    // server.close();
   } catch (error) {
     console.log(error);
     Logger.error({
