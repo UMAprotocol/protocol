@@ -104,6 +104,14 @@ class GlobalSummaryReporter {
   async generateSummaryStatsTable() {
     await this.update();
 
+    // Set up periods for querying data at specific intervals.
+    const periods = [
+      { label: "period", start: this.startBlockNumberForPeriod, end: this.endBlockNumberForPeriod },
+      { label: "prevPeriod", start: this.startBlockNumberForPreviousPeriod, end: this.startBlockNumberForPeriod }
+    ];
+    this.isEventInPeriod = (event, period) =>
+      Boolean(event.blockNumber >= period.start && event.blockNumber < period.end);
+
     // 1. Sponsor stats table
     console.group();
     console.log(bold("Sponsor summary stats"));
@@ -133,7 +141,7 @@ class GlobalSummaryReporter {
         "- The collateral amount used to calculate GCR's is equal to the current collateral deposited, and does not include liquidated collateral"
       )
     );
-    await this._generateSponsorStats();
+    await this._generateSponsorStats(periods);
     console.groupEnd();
 
     // 2. Tokens stats table
@@ -143,7 +151,7 @@ class GlobalSummaryReporter {
     console.log(
       italic("- Token holder counts are equal to the # of unique token holders who held any balance during a period")
     );
-    await this._generateTokenStats();
+    await this._generateTokenStats(periods);
     console.groupEnd();
 
     // 3. Liquidation stats table
@@ -152,23 +160,104 @@ class GlobalSummaryReporter {
     console.log(italic("- Unique liquidations count # of unique sponsors that have been liquidated"));
     console.log(italic("- Collateral & tokens liquidated counts aggregate amounts from all partial liquidations"));
     console.log(italic("- Current collateral liquidated includes any collateral locked in pending liquidations"));
-    await this._generateLiquidationStats();
+    await this._generateLiquidationStats(periods);
     console.groupEnd();
 
     // 4. Dispute stats table
     console.group();
     console.log(bold("Dispute summary stats"));
-    await this._generateDisputeStats();
+    await this._generateDisputeStats(periods);
     console.groupEnd();
 
     // 5. DVM stats table
     console.group();
     console.log(bold("DVM summary stats"));
-    await this._generateDvmStats();
+    await this._generateDvmStats(periods);
     console.groupEnd();
   }
 
-  async _generateSponsorStats() {
+  /** *******************************************************
+   *
+   * Helper methods to sort event data by block timestamp
+   *
+   * *******************************************************/
+  async _filterNewSponsorData(periods, newSponsorEvents) {
+    const allUniqueSponsors = {};
+    const periodUniqueSponsors = {};
+
+    for (let event of newSponsorEvents) {
+      allUniqueSponsors[event.sponsor] = true;
+
+      for (let period of periods) {
+        if (!periodUniqueSponsors[period.label]) {
+          periodUniqueSponsors[period.label] = {};
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodUniqueSponsors[period.label][event.sponsor] = true;
+        }
+      }
+    }
+    return {
+      allUniqueSponsors,
+      periodUniqueSponsors
+    };
+  }
+
+  async _filterTransferData(periods, transferEvents) {
+    let allCollateralTransferred = this.toBN("0");
+    const periodCollateralTransferred = {};
+
+    for (let event of transferEvents) {
+      allCollateralTransferred = allCollateralTransferred.add(this.toBN(event.returnValues.value));
+
+      for (let period of periods) {
+        if (!periodCollateralTransferred[period.label]) {
+          periodCollateralTransferred[period.label] = this.toBN("0");
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodCollateralTransferred[period.label] = periodCollateralTransferred[period.label].add(
+            this.toBN(event.returnValues.value)
+          );
+        }
+      }
+    }
+    return {
+      allCollateralTransferred,
+      periodCollateralTransferred
+    };
+  }
+
+  async _filterCreateData(periods, createEvents) {
+    let allTokensCreated = this.toBN("0");
+    const periodTokensCreated = {};
+
+    for (let event of createEvents) {
+      allTokensCreated = allTokensCreated.add(this.toBN(event.tokenAmount));
+
+      for (let period of periods) {
+        if (!periodTokensCreated[period.label]) {
+          periodTokensCreated[period.label] = this.toBN("0");
+        }
+
+        if (this.isEventInPeriod(event, period)) {
+          periodTokensCreated[period.label] = periodTokensCreated[period.label].add(this.toBN(event.tokenAmount));
+        }
+      }
+    }
+    return {
+      allTokensCreated,
+      periodTokensCreated
+    };
+  }
+
+  /** *******************************************************
+   *
+   * Main methods that format data into tables to print to console
+   *
+   * *******************************************************/
+  async _generateSponsorStats(periods) {
     let allSponsorStatsTable = {};
 
     if (this.newSponsorEvents.length === 0) {
@@ -177,86 +266,49 @@ class GlobalSummaryReporter {
     }
 
     // - Lifetime # of unique sponsors.
-    const uniqueSponsors = {};
-    const periodUniqueSponsors = {};
-    const prevPeriodUniqueSponsors = {};
+    const newSponsorData = await this._filterNewSponsorData(periods, this.newSponsorEvents);
     const currentUniqueSponsors = this.empClient.getAllPositions();
-    for (let event of this.newSponsorEvents) {
-      uniqueSponsors[event.sponsor] = true;
-      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        periodUniqueSponsors[event.sponsor] = true;
-      }
-      if (
-        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-        event.blockNumber < this.startBlockNumberForPeriod
-      ) {
-        prevPeriodUniqueSponsors[event.sponsor] = true;
-      }
-    }
     allSponsorStatsTable["# of unique sponsors"] = {
-      cumulative: Object.keys(uniqueSponsors).length,
+      cumulative: Object.keys(newSponsorData.allUniqueSponsors).length,
       current: Object.keys(currentUniqueSponsors).length,
-      [this.periodLabelInHours]: Object.keys(periodUniqueSponsors).length,
+      [this.periodLabelInHours]: Object.keys(newSponsorData.periodUniqueSponsors["period"]).length,
       ["Δ from prev. period"]: addSign(
-        Object.keys(periodUniqueSponsors).length - Object.keys(prevPeriodUniqueSponsors).length
+        Object.keys(newSponsorData.periodUniqueSponsors["period"]).length -
+          Object.keys(newSponsorData.periodUniqueSponsors["prevPeriod"]).length
       )
     };
 
     // - Cumulative collateral deposited into contract
-    let collateralDeposited = this.toBN("0");
-    let collateralDepositedPeriod = this.toBN("0");
-    let collateralDepositedPrevPeriod = this.toBN("0");
-    for (let event of this.collateralDepositEvents) {
-      collateralDeposited = collateralDeposited.add(this.toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        collateralDepositedPeriod = collateralDepositedPeriod.add(this.toBN(event.returnValues.value));
-      }
-      if (
-        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-        event.blockNumber < this.startBlockNumberForPeriod
-      ) {
-        collateralDepositedPrevPeriod = collateralDepositedPrevPeriod.add(this.toBN(event.returnValues.value));
-      }
-    }
+    const depositData = await this._filterTransferData(periods, this.collateralDepositEvents);
     allSponsorStatsTable["collateral deposited"] = {
-      cumulative: this.formatDecimalString(collateralDeposited),
-      [this.periodLabelInHours]: this.formatDecimalString(collateralDepositedPeriod),
+      cumulative: this.formatDecimalString(depositData.allCollateralTransferred),
+      [this.periodLabelInHours]: this.formatDecimalString(depositData.periodCollateralTransferred["period"]),
       ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        collateralDepositedPeriod.sub(collateralDepositedPrevPeriod)
+        depositData.periodCollateralTransferred["period"].sub(depositData.periodCollateralTransferred["prevPeriod"])
       )
     };
 
     // - Cumulative collateral withdrawn from contract
-    let collateralWithdrawn = this.toBN("0");
-    let collateralWithdrawnPeriod = this.toBN("0");
-    let collateralWithdrawnPrevPeriod = this.toBN("0");
-    for (let event of this.collateralWithdrawEvents) {
-      collateralWithdrawn = collateralWithdrawn.add(this.toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        collateralWithdrawnPeriod = collateralWithdrawnPeriod.add(this.toBN(event.returnValues.value));
-      }
-      if (
-        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-        event.blockNumber < this.startBlockNumberForPeriod
-      ) {
-        collateralWithdrawnPrevPeriod = collateralWithdrawnPrevPeriod.add(this.toBN(event.returnValues.value));
-      }
-    }
+    const withdrawData = await this._filterTransferData(periods, this.collateralWithdrawEvents);
     allSponsorStatsTable["collateral withdrawn"] = {
-      cumulative: this.formatDecimalString(collateralWithdrawn),
-      [this.periodLabelInHours]: this.formatDecimalString(collateralWithdrawnPeriod),
+      cumulative: this.formatDecimalString(withdrawData.allCollateralTransferred),
+      [this.periodLabelInHours]: this.formatDecimalString(withdrawData.periodCollateralTransferred["period"]),
       ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        collateralWithdrawnPeriod.sub(collateralWithdrawnPrevPeriod)
+        withdrawData.periodCollateralTransferred["period"].sub(withdrawData.periodCollateralTransferred["prevPeriod"])
       )
     };
 
     // - Net collateral deposited into contract:
-    let netCollateralWithdrawn = collateralDeposited.sub(collateralWithdrawn);
+    let netCollateralWithdrawn = depositData.allCollateralTransferred.sub(withdrawData.allCollateralTransferred);
     if (!netCollateralWithdrawn.eq(this.toBN(this.totalPositionCollateral.toString()))) {
       throw "Net collateral deposited is not equal to current total position collateral";
     }
-    let netCollateralWithdrawnPeriod = collateralDepositedPeriod.sub(collateralWithdrawnPeriod);
-    let netCollateralWithdrawnPrevPeriod = collateralDepositedPrevPeriod.sub(collateralWithdrawnPrevPeriod);
+    let netCollateralWithdrawnPeriod = depositData.periodCollateralTransferred["period"].sub(
+      withdrawData.periodCollateralTransferred["period"]
+    );
+    let netCollateralWithdrawnPrevPeriod = depositData.periodCollateralTransferred["prevPeriod"].sub(
+      withdrawData.periodCollateralTransferred["prevPeriod"]
+    );
     allSponsorStatsTable["net collateral deposited"] = {
       cumulative: this.formatDecimalString(netCollateralWithdrawn),
       [this.periodLabelInHours]: this.formatDecimalString(netCollateralWithdrawnPeriod),
@@ -266,56 +318,36 @@ class GlobalSummaryReporter {
     };
 
     // - Tokens minted: tracked via Create events.
-    let tokensMinted = this.toBN("0");
-    let tokensMintedPeriod = this.toBN("0");
-    let tokensMintedPrevPeriod = this.toBN("0");
-    for (let event of this.createEvents) {
-      tokensMinted = tokensMinted.add(this.toBN(event.tokenAmount));
-      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        tokensMintedPeriod = tokensMintedPeriod.add(this.toBN(event.tokenAmount));
-      }
-      if (
-        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-        event.blockNumber < this.startBlockNumberForPeriod
-      ) {
-        tokensMintedPrevPeriod = tokensMintedPrevPeriod.add(this.toBN(event.tokenAmount));
-      }
-    }
+    const tokenMintData = await this._filterCreateData(periods, this.createEvents);
     allSponsorStatsTable["tokens minted"] = {
-      cumulative: this.formatDecimalString(tokensMinted),
-      [this.periodLabelInHours]: this.formatDecimalString(tokensMintedPeriod),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensMintedPeriod.sub(tokensMintedPrevPeriod))
+      cumulative: this.formatDecimalString(tokenMintData.allTokensCreated),
+      [this.periodLabelInHours]: this.formatDecimalString(tokenMintData.periodTokensCreated["period"]),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        tokenMintData.periodTokensCreated["period"].sub(tokenMintData.periodTokensCreated["prevPeriod"])
+      )
     };
 
     // - Tokens burned
-    let tokensBurned = this.toBN("0");
-    let tokensBurnedPeriod = this.toBN("0");
-    let tokensBurnedPrevPeriod = this.toBN("0");
-    for (let event of this.syntheticBurnedEvents) {
-      tokensBurned = tokensBurned.add(this.toBN(event.returnValues.value));
-      if (event.blockNumber >= this.startBlockNumberForPeriod && event.blockNumber < this.endBlockNumberForPeriod) {
-        tokensBurnedPeriod = tokensBurnedPeriod.add(this.toBN(event.returnValues.value));
-      }
-      if (
-        event.blockNumber >= this.startBlockNumberForPreviousPeriod &&
-        event.blockNumber < this.startBlockNumberForPeriod
-      ) {
-        tokensBurnedPrevPeriod = tokensBurnedPrevPeriod.add(this.toBN(event.returnValues.value));
-      }
-    }
+    const tokenBurnData = await this._filterTransferData(periods, this.syntheticBurnedEvents);
     allSponsorStatsTable["tokens burned"] = {
-      cumulative: this.formatDecimalString(tokensBurned),
-      [this.periodLabelInHours]: this.formatDecimalString(tokensBurnedPeriod),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(tokensBurnedPeriod.sub(tokensBurnedPrevPeriod))
+      cumulative: this.formatDecimalString(tokenBurnData.allCollateralTransferred),
+      [this.periodLabelInHours]: this.formatDecimalString(tokenBurnData.periodCollateralTransferred["period"]),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        tokenBurnData.periodCollateralTransferred["period"].sub(tokenBurnData.periodCollateralTransferred["prevPeriod"])
+      )
     };
 
     // - Net tokens minted:
-    let netTokensMinted = tokensMinted.sub(tokensBurned);
+    let netTokensMinted = tokenMintData.allTokensCreated.sub(tokenBurnData.allCollateralTransferred);
     if (!netTokensMinted.eq(this.toBN(this.totalTokensOutstanding.toString()))) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
-    let netTokensMintedPeriod = tokensMintedPeriod.sub(tokensBurnedPeriod);
-    let netTokensMintedPrevPeriod = tokensMintedPrevPeriod.sub(tokensBurnedPrevPeriod);
+    let netTokensMintedPeriod = tokenMintData.periodTokensCreated["period"].sub(
+      tokenBurnData.periodCollateralTransferred["period"]
+    );
+    let netTokensMintedPrevPeriod = tokenMintData.periodTokensCreated["prevPeriod"].sub(
+      tokenBurnData.periodCollateralTransferred["prevPeriod"]
+    );
     allSponsorStatsTable["net tokens minted"] = {
       cumulative: this.formatDecimalString(netTokensMinted),
       [this.periodLabelInHours]: this.formatDecimalString(netTokensMintedPeriod),
