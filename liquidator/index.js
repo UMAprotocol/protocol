@@ -115,7 +115,7 @@ const Poll = async function(callback) {
     }
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 60 * 1000;
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60 * 1000;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables.";
