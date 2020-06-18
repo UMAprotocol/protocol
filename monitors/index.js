@@ -208,7 +208,7 @@ const Poll = async function(callback) {
 
     // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.
-    const startingBlock = process.env.STARTING_BLOCK_NUMBER ? process.env.STARTING_BLOCK_NUMBER : null;
+    const startingBlock = process.env.STARTING_BLOCK_NUMBER;
 
     if (
       !process.env.BOT_MONITOR_OBJECT ||
