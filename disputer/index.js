@@ -28,17 +28,17 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  */
 async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
-    // If pollingDelay == 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    const LogObject = {
+    const logObject = {
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
       pollingDelay,
       priceFeedConfig
     };
-    if (pollingDelay == 0) Logger.debug(LogObject);
-    else Logger.info(LogObject);
+    if (pollingDelay === 0) Logger.debug(logObject);
+    else Logger.info(logObject);
 
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();
@@ -77,7 +77,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
       await disputer.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
-      if (pollingDelay == 0) {
+      if (pollingDelay === 0) {
         await waitForLogger(Logger);
         break;
       }

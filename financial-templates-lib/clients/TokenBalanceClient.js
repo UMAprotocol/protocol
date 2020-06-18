@@ -28,10 +28,10 @@ class TokenBalanceClient {
   }
 
   // Delete all data within the client.
-  clearState = () => {
+  clearState() {
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
     this.accountMonitorList = [];
-  };
+  }
 
   getCollateralBalance = async address => {
     await this._registerAddress(address);
@@ -87,8 +87,6 @@ class TokenBalanceClient {
       this.tokenBalances.collateralBalances[address] = tokenBalancesObject.collateralBalance;
       this.tokenBalances.syntheticBalances[address] = tokenBalancesObject.syntheticBalance;
       this.tokenBalances.etherBalances[address] = tokenBalancesObject.etherBalance;
-
-      console.log("tokenBalancesObject", tokenBalancesObject);
 
       this.logger.debug({
         at: "TokenBalanceClient",
