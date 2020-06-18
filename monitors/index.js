@@ -184,7 +184,7 @@ async function run(
     Logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
   }
@@ -192,7 +192,9 @@ async function run(
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
+      throw new Error(
+        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
+      );
     }
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 300000;
 
@@ -202,7 +204,9 @@ const Poll = async function(callback) {
       !process.env.CONTRACT_MONITOR_OBJECT ||
       !process.env.SYNTHETIC_PEG_MONITOR_OBJECT
     ) {
-      throw "Bad input arg! Specify a: `BOT_MONITOR_OBJECT`, `WALLET_MONITOR_OBJECT`, `CONTRACT_MONITOR_OBJECT` & `SYNTHETIC_PEG_OBJECT` to track.";
+      throw new Error(
+        "Bad input arg! Specify a: `BOT_MONITOR_OBJECT`, `WALLET_MONITOR_OBJECT`, `CONTRACT_MONITOR_OBJECT` & `SYNTHETIC_PEG_OBJECT` to track."
+      );
     }
 
     // Bots to monitor. Each bot can be have a collateralThreshold, syntheticThreshold and etherThreshold. EG:
@@ -233,7 +237,9 @@ const Poll = async function(callback) {
     const syntheticPegMonitorObject = JSON.parse(process.env.SYNTHETIC_PEG_MONITOR_OBJECT);
 
     if (!process.env.UNISWAP_PRICE_FEED_CONFIG || !process.env.MEDIANIZER_PRICE_FEED_CONFIG) {
-      throw "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings.";
+      throw new Error(
+        "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings."
+      );
     }
 
     // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
@@ -256,11 +262,11 @@ const Poll = async function(callback) {
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     );
-  } catch (err) {
+  } catch (error) {
     Logger.error({
       at: "Monitor#index",
       message: "Monitor configuration error🚨",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);

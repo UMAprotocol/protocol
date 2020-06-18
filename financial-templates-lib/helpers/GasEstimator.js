@@ -66,13 +66,13 @@ class GasEstimator {
         let price = json.fast / 10;
         return price;
       } else {
-        throw "bad json response";
+        throw new Error("bad json response");
       }
     } catch (error) {
       this.logger.error({
         at: "GasEstimator",
         message: "client polling error🚨",
-        error: new Error(error)
+        error: typeof error === "string" ? new Error(error) : error
       });
 
       // In the failure mode return the fast default price.
