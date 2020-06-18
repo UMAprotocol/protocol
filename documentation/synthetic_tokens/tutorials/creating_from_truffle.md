@@ -4,31 +4,27 @@ This tutorial will show you how to create synthetic tokens from the command line
 
 - Have the protocol repo cloned.
 - Be running an instance of Ganache on port 9545.
-- Have run truffle migrations for the contracts in `core/`.
+- Have run truffle compilation for the contracts in `core/`.
 
 Below, we’ll discuss how to create and manage a token sponsor position via the command line on a local testnet.
 UMA also has a command-line interface (CLI) tool that bundles and renames some of these steps.
-These tutorials discuss how to create and manage a token sponsor position using this CLI tool.
-
-<!-- TODO: links to separate page -->
+[These](./using_the_uma_sponsor_cli_tool.md) tutorials discuss how to create and manage a token sponsor position using this CLI tool.
 
 - Begin [here](#parameterize-and-deploy-a-contract) if you are creating a new type of synthetic token on a local testnet.
 - Begin [here](#create-new-tokens-from-an-existing-contract) if you are creating synthetic tokens from an existing contract on a local testnet.
-- Begin here if you are creating tokens on UMA-supported testnet and mainnet deployments. <!-- TODO: links to separate page -->
 
 ## Parameterize and deploy a contract
 
-1. Set up the truffle environment and migrate contracts.
-   (This step is not necessary if working with an existing testnet or mainnet deployment.)
+1. Open the truffle console and connect it to the test network.
 
 ```bash
-$(npm bin)/truffle migrate --network test
+npx truffle console --network test
 ```
 
-2. Open the truffle console.
+2. Migrate the contracts within the truffle console with the migrate command:
 
 ```bash
-$(npm bin)/truffle console --network test
+truffle(test)> migrate
 ```
 
 3. Create an instance of the expiring multiparty creator (the contract factory for synthetic tokens).

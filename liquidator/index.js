@@ -2,7 +2,6 @@ require("dotenv").config();
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { startServer } = require("../common/ServerUtils");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 const { MAX_UINT_VAL } = require("../common/Constants");
 const { toBN } = web3.utils;
@@ -88,14 +87,6 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
       });
     }
 
-    // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
-    // const { server, portNumber } = startServer(monitorPort);
-    // Logger.debug({
-    //   at: "Liquidator#index",
-    //   message: "Monitor server is listening",
-    //   portNumber: portNumber
-    // });
-
     while (true) {
       await liquidator.queryAndLiquidate();
       await liquidator.queryAndWithdrawRewards();
@@ -107,12 +98,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
       }
       await delay(Number(pollingDelay));
     }
-
-    // TODO: I'm not sure if this actually is working as expected.
-    // Close server gracefully.
-    // server.close();
   } catch (error) {
-    console.log(error);
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",

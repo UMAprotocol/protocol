@@ -50,7 +50,7 @@ const slackFormatter = info => {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `[${info.level}] *${info["bot-identifier"]}* (${info.at}) ⭢ ${info.message}\n`
+          text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n`
         }
       }
     ]

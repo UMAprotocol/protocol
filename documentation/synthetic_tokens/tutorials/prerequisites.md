@@ -8,39 +8,42 @@ The following steps require the `git` CLI to be installed. If you are on Windows
 
 Clone the UMA [repo](https://github.com/UMAprotocol/protocol). Start in the top-level directory in this repository, `protocol/`.
 
-1. Install the latest stable version of nodejs and ensure that npm is installed along with it.
+1. Install the latest stable version of [Node.js](https://nodejs.org/) and ensure that `npm` is installed along with it.
 2. Run `npm install` in `protocol/`.
 
 We should be able to compile the smart contracts from `protocol/core`:
 
 ```bash
 cd core
-$(npm bin)/truffle compile
+npx truffle compile
 ```
 
 If everything worked, we should see the line "> Compiled successfully using:" in the output.
 
 ## Ganache
 
-1. Install the [Ganache UI](https://truffleframework.com/ganache).
-2. Run Ganache on localhost port `9545` (use the above links for instructions on how to do this).
-3. Under "Accounts & Keys", set the "Account Default Balance" to `1000000`. This will ensure that you have enough local testnet ETH to run through tutorials.
-4. Note that to deploy new `ExpiringMultiPartyCreator`, the main factory used in the priceless financial contract, you must set your gas limit to at least 9 million in Ganache. To do this, under "Chain", set the "Gas Limit" field 10 million (`10000000`). This will enable your Ganache instance to deploy larger contracts.
-
-You can also run the Ganache from the command line with identical settings as follows:
+Ganache-CLI was already installed via `npm install` and now we will use it to run a test-chain with this command:
 
 ```bash
-ganache-cli -p 9545 -e 1000000 -l 10000000
+npx ganache-cli -p 9545 -e 1000000 -l 10000000
 ```
 
-If everything was setup correctly, we should be able to run automated tests from `protocol/core`:
+Here, we are running Ganache:
+
+- On localhost port `9545`
+- Initializing the test accounts with 1000000 ETH
+- Setting a maximum gas limit of 10 million
+
+This will make sure we have enough ETH and a high enough gas limit to deploy our larger contracts.
+
+If everything was setup correctly, we should be able to run automated tests from `protocol/core`. In a separate terminal, run the following commands from the `protocol/core` directory:
 
 ```bash
 cd core
-$(npm bin)/truffle test --network test
+npx truffle test --network test
 ```
 
-These tests will take a while to finish, but if set up correctly, all tests should pass.
+These tests will take a while to finish, but if set up correctly, all tests should pass (with the possible exception of a few that depend on the Intrinio API).
 
 ## Keys and Networks
 
@@ -62,7 +65,7 @@ these networks, you'll generally need to know:
 The `--network` parameter that's passed to all truffle commands depends on both of these factors. Here's an example:
 
 ```bash
-$(npm bin)/truffle console --network rinkeby_mnemonic
+npx truffle console --network rinkeby_mnemonic
 ```
 
 That command will tell truffle that the user wants to use the Rinkeby testnet and their private key is a mnemonic, or
@@ -85,10 +88,10 @@ export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble 
 ```
 
 Once you've done that you're ready to run a truffle command. When using a mnemonic, your network argument should look
-be `--network [NETWORK_NAME]_mnemonic`. So, for example, using a mnemonic on kovan would look like:
+like `--network [NETWORK_NAME]_mnemonic`. So, for example, using a mnemonic on Kovan would look like:
 
 ```bash
-$(npm bin)/truffle console --network kovan_mnemonic
+npx truffle console --network kovan_mnemonic
 ```
 
 ### Hardware wallets (more secure)
@@ -116,7 +119,7 @@ For example, you could connect your ledger wallet to the truffle console and beg
 with the following command:
 
 ```bash
-$(npm bin)/truffle console --network mainnet_ledger
+npx truffle console --network mainnet_ledger
 ```
 
 Note: outgoing transactions will require manual approval on the ledger device. If you fail to approve, the command will

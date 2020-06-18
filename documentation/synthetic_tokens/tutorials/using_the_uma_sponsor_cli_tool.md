@@ -5,12 +5,14 @@ In this tutorial, you’ll be deploying a synthetic token contract to a local te
 
 It will let you be the “Token Sponsor,” which lets you:
 
-- Deposit collateral (ETH) and borrow synthetic tokens
+- Deposit collateral and borrow synthetic tokens
 - Manage your position’s collateral (deposit/withdraw)
 - Redeem the borrowed synthetic tokens and get collateral back
 - Transfer your position to another Ethereum address
 
 This [video](https://www.crowdcast.io/e/defi-discussions/18) will walk through the steps of this tutorial, starting around minute 11:00.
+
+This tutorial assumes a contract that mints “BTCUSD” synthetic tokens backed by ETH. However, the more recent iteration of the example is an "ETHBTC" synthetic token backed by DAI. Keep this in mind when reading this tutorial as the images and text have not been updated to reflect this just yet.
 
 ## Signing Account
 
@@ -19,34 +21,13 @@ account and will sign all transactions using its private keys.
 
 ## Prerequisites
 
-1. Install homebrew via Homebrew. Tutorial can be found [here](https://changelog.com/posts/install-node-js-with-homebrew-on-os-x).
-2. Install [Node v12](https://nodejs.org/en/download/) and make sure that npm is v6 or above. You can verify by running in the terminal:
+Before beginning this tutorial, please make sure your environment is set up correctly by following the instructions in the [Prerequisites](prerequisites.md). After completing this section, you should:
 
-```bash
-node -v
-npm -v
-```
+- Have the protocol repo cloned.
+- Be running an instance of Ganache on port 9545.
+- Have run truffle compilation for the contracts in `core/`.
 
-3. If on local testnet:
-
-- Install [Ganache](https://www.trufflesuite.com/ganache)
-- Run ganache
-- Click “new workspace”
-- In the server tab, change “Port Number” to `9545`
-- In the “Accounts & Keys” tab, change “Account Default Balance” to `100000000`
-- (Optional) In the Server tab, deselect "Automine". Turning off "Automine" provides a more “authentic” blockchain experience but can be very frustrating.
-
-Once you have set up your environment, clone the repo and install the CLI tool.
-
-4. Download the code by typing this into terminal:
-
-```bash
-git clone https://github.com/UMAprotocol/protocol.git
-```
-
-5. Run `npm install` in `protocol/`.
-
-6. Symlink the CLI to your global directory. There are 2 ways to do this. Either run
+There is just one more additional step before the tutorial can begin. At the project root, symlink the CLI to your global directory. There are 2 ways to do this. Either run
 
 ```sh
 npm link
@@ -66,14 +47,13 @@ You may need to prefix these commands (`sudo npm link`) to run them.
 2. If on Kovan testnet, apply network addresses:
 
 ```bash
-$(npm bin)/apply-registry
+npx apply-registry
 ```
 
-3. Compile and migrate the contracts:
+3. Migrate the contracts:
 
 ```bash
-$(npm bin)/truffle compile
-$(npm bin)/truffle migrate --reset --network=test
+npx truffle migrate --reset --network=test
 ```
 
 4. Deploy a contract to create priceless synthetic tokens named “BTCUSD”.
@@ -88,10 +68,10 @@ $(npm bin)/truffle migrate --reset --network=test
    this iteration of the CLI.
 
 ```bash
-$(npm bin)/truffle exec scripts/local/DeployEMP.js --network=test --test=true
+npx truffle exec scripts/local/DeployEMP.js --network=test --test=true
 ```
 
-This is the output you should see:
+This is the output you should see (the numbers might be slightly different):
 
 ![](deployEMP_output.png)
 
@@ -125,7 +105,7 @@ minimum sponsor position allowed as described by the configuration object in the
 
 ![](create_numtokens.png)
 
-After displaying the required amount of ETH to create this position, you are prompted to confirm if you would like to proceed.
+After displaying the required amount of collateral to create this position, you are prompted to confirm if you would like to proceed.
 
 ![](create_confirm.png)
 
@@ -166,7 +146,7 @@ Because time does not advance automatically on your local blockchain with Ganach
 Running this script like so will advance time by 120 minutes.
 
 ```bash
-$(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
+npx truffle exec scripts/local/AdvanceEMP.js --network=test
 ```
 
 Return to the Sponsor CLI tool with the following command.
@@ -212,7 +192,7 @@ Note that your summary indicates that there is a “Pending transfer request”.
 Because time does not advance automatically on your local blockchain with Ganache, you should exit the Sponsor CLI tool and advance time manually with the following command:
 
 ```bash
-$(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
+npx truffle exec scripts/local/AdvanceEMP.js --network=test
 ```
 
 Return to the Sponsor CLI tool with the following command:
