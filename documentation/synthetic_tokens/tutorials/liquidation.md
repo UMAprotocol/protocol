@@ -38,11 +38,11 @@ This contract is an ETHBTC synthetic, collateralized in Dai.
 Before starting this tutorial you need to clone repo, install the dependencies and compile the smart contracts. To do this run the following:
 
 ```bash
-# Clone the repo and navigate into the protocol directory
+## Clone the repo and navigate into the protocol directory
 git clone https://github.com/UMAprotocol/protocol.git
 cd ./protocol
 
-# Install dependencies & compile the contracts
+## Install dependencies & compile the contracts
 npm install
 npx truffle compile
 ```
@@ -67,23 +67,23 @@ To generate a new mnemonic you can run the following from the `/core` directory:
 
 ```bash
 node -e "console.log(require('bip39').generateMnemonic())"
-# your mnemonic should print here
+## your mnemonic should print here
 ```
 
 You can then load this mnemonic into truffle and view the associated address.
 To do this, set the mnemonic as an environment variable by running:
 
 ```bash
-# Add the new mnemonic to your environment variables. Be sure to replace with your mnemonic.
+## Add the new mnemonic to your environment variables. Be sure to replace with your mnemonic.
 export MNEMONIC="sail chuckle school attitude symptom tenant fragile patch ring immense main rapid"
 
-# Start the truffle console
+## Start the truffle console
 npx truffle console --network kovan_mnemonic
 
-# Print the address of your newly created account
+## Print the address of your newly created account
 truffle(kovan_mnemonic)> accounts[0]
 
-# should print: `0x45Bc98b00adB0dFe16c85c391B1854B706b7d612`
+## should print: `0x45Bc98b00adB0dFe16c85c391B1854B706b7d612`
 ```
 
 You can now fund this wallet with the associated currency for the type of bot you want to run.
@@ -108,7 +108,7 @@ To start a bot the first step is to configure the bot's settings.
 Liquidation bots require 4 main configurations settings which are configured using environment variables.
 To set this up create a `.env` file in the `/core` directory of the repo it:
 
-```js
+```bash
 POLLING_DELAY=30000
 EMP_ADDRESS=0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1
 MNEMONIC=sail chuckle school attitude symptom tenant fragile patch ring immense main rapid
@@ -127,7 +127,7 @@ npx truffle exec ../liquidator/index.js --network kovan_mnemonic
 
 This will start the liquidator bot process using the network `kovan` and the wallet `mnemonic`. You should see the following output:
 
-```js
+```bash
 Using network 'kovan_mnemonic'.
 
 2020-05-22 08:39:42 [info]: {
@@ -241,13 +241,13 @@ These commands are the same as before.
 Next, we will start the Docker containers in detached mode on our local machine. To do this run the following:
 
 ```bash
-# Pull the latest docker container image
+## Pull the latest docker container image
 docker pull umaprotocol/protocol:latest
 
-# Start the liquidator bot Docker container
+## Start the liquidator bot Docker container
 docker run --name liquidator-bot -d --env-file ./liquidator.env umaprotocol/protocol:latest
 
-# Start the disputer bot Docker container
+## Start the disputer bot Docker container
 docker run --name disputer-bot -d --env-file ./disputer.env umaprotocol/protocol:latest
 ```
 
@@ -295,7 +295,7 @@ See [this](https://cloud.google.com/compute/docs/gcloud-compute) official docume
 
 ```bash
 gcloud config list account --format "value(core.account)"
-<your email should print here>
+## <your email should print here>
 ```
 
 **b) Deploying Bots to GCP**
@@ -376,10 +376,10 @@ Update your environment configuration `EMP_ADDRESS` to refer to the mainnet addr
 This is as simple as changing your `COMMAND` to the following for the liquidator and disputer bots respectively.
 
 ```bash
-# liquidator.env update
+## liquidator.env update
 COMMAND=npx truffle exec ../liquidator/index.js --network mainnet_mnemonic
 
-# disputer.env update
+## disputer.env update
 COMMAND=npx truffle exec ../disputer/index.js --network mainnet_mnemonic
 ```
 
