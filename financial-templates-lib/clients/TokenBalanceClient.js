@@ -33,28 +33,37 @@ class TokenBalanceClient {
     this.accountMonitorList = [];
   }
 
-  getCollateralBalance = async address => {
-    await this._registerAddress(address);
+  getCollateralBalance = address => {
+    this._registerAddress(address);
     return this.tokenBalances.collateralBalances[address];
   };
 
-  getSyntheticBalance = async address => {
-    await this._registerAddress(address);
+  getSyntheticBalance = address => {
+    this._registerAddress(address);
     return this.tokenBalances.syntheticBalances[address];
   };
 
-  getEtherBalance = async address => {
-    await this._registerAddress(address);
+  getEtherBalance = address => {
+    this._registerAddress(address);
     return this.tokenBalances.etherBalances[address];
   };
 
+  // Checks if an address has a resolved value(has been updated past it's initialization state).
   resolvedAddressBalance = address => {
     return this.tokenBalances.collateralBalances[address] != null;
   };
 
+  // Batch register an array of addresses. This can be used by a client implementor to register addresses on
+  // construction to enable synchronous retrieval on the first loop.
+  batchRegisterAddresses = addresses => {
+    for (const address of addresses) {
+      this._registerAddress(address);
+    }
+  };
+
+  // Loop over all account addresses in the monitor list and for each check the balances of the
+  // respective tokens and Eth balance. Store these for synchronous retrieval.
   update = async () => {
-    // loop over all account addresses in the monitor list and for each check the balances of the
-    // respective tokens and Eth balance. Store these for synchronous retrieval.
     for (let account of this.accountMonitorList) {
       const tokenBalancesObject = await this.getDirectTokenBalances(account);
       this.tokenBalances.collateralBalances[account] = tokenBalancesObject.collateralBalance;
@@ -78,15 +87,13 @@ class TokenBalanceClient {
     };
   };
 
-  // If the address requested has not been fetched before then will query the balances. If it has, then do nothing
-  // Balance will only update when calling the `update` function.
-  _registerAddress = async address => {
+  // Add an address to the monitored address list. Balance will only update when calling the `update()` function.
+  _registerAddress = address => {
     if (!this.accountMonitorList.includes(address)) {
       this.accountMonitorList.push(address);
-      const tokenBalancesObject = await this.getDirectTokenBalances(address);
-      this.tokenBalances.collateralBalances[address] = tokenBalancesObject.collateralBalance;
-      this.tokenBalances.syntheticBalances[address] = tokenBalancesObject.syntheticBalance;
-      this.tokenBalances.etherBalances[address] = tokenBalancesObject.etherBalance;
+      this.tokenBalances.collateralBalances[address] = null;
+      this.tokenBalances.syntheticBalances[address] = null;
+      this.tokenBalances.etherBalances[address] = null;
 
       this.logger.debug({
         at: "TokenBalanceClient",

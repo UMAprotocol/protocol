@@ -35,34 +35,41 @@ contract("BalanceMonitor.js", function(accounts) {
   });
 
   it("Returning token balances", async function() {
+    // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
+    client.batchRegisterAddresses([sponsor1, sponsor2]);
+
+    // Update the client to pull the initial balances.
+    await client.update();
+
     // Token balances should correctly pull on the first query.
-    assert.equal(await client.getCollateralBalance(sponsor1), 0);
-    assert.equal(await client.getSyntheticBalance(sponsor1), 0);
+    assert.equal(client.getCollateralBalance(sponsor1), 0);
+    assert.equal(client.getSyntheticBalance(sponsor1), 0);
     assert.isTrue(client.resolvedAddressBalance(sponsor1));
 
     // After sending tokens to a wallet the client should update accordingly.
     await collateralToken.mint(sponsor1, toWei("1234"), { from: tokenCreator });
     await client.update();
-    assert.equal(await client.getCollateralBalance(sponsor1), toWei("1234"));
-    assert.equal(await client.getSyntheticBalance(sponsor1), 0);
+    assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
+    assert.equal(client.getSyntheticBalance(sponsor1), 0);
 
     // Sending tokens to a wallet should be correctly updated on the first query.
     await syntheticToken.mint(sponsor2, toWei("5678"), { from: tokenCreator });
-    assert.equal(await client.getCollateralBalance(sponsor2), 0);
-    assert.equal(await client.getSyntheticBalance(sponsor2), toWei("5678"));
-    assert.equal(await client.getEtherBalance(sponsor2), await web3.eth.getBalance(sponsor2));
+    await client.update();
+    assert.equal(client.getCollateralBalance(sponsor2), 0);
+    assert.equal(client.getSyntheticBalance(sponsor2), toWei("5678"));
+    assert.equal(client.getEtherBalance(sponsor2), await web3.eth.getBalance(sponsor2));
     assert.isTrue(client.resolvedAddressBalance(sponsor2));
 
     // After multiple updates with no state changes the client should not update.
     await client.update();
     await client.update();
     await client.update();
-    assert.equal(await client.getCollateralBalance(sponsor1), toWei("1234"));
-    assert.equal(await client.getSyntheticBalance(sponsor1), 0);
+    assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
+    assert.equal(client.getSyntheticBalance(sponsor1), 0);
     assert.isTrue(client.resolvedAddressBalance(sponsor2));
-    assert.equal(await client.getCollateralBalance(sponsor2), 0);
-    assert.equal(await client.getSyntheticBalance(sponsor2), toWei("5678"));
-    assert.equal(await client.getEtherBalance(sponsor2), await web3.eth.getBalance(sponsor2));
+    assert.equal(client.getCollateralBalance(sponsor2), 0);
+    assert.equal(client.getSyntheticBalance(sponsor2), toWei("5678"));
+    assert.equal(client.getEtherBalance(sponsor2), await web3.eth.getBalance(sponsor2));
     assert.isTrue(client.resolvedAddressBalance(sponsor2));
 
     // After all testing rando should not be monitored address.
@@ -70,13 +77,19 @@ contract("BalanceMonitor.js", function(accounts) {
   });
 
   it("Returning ETH balances", async function() {
-    assert.equal(await client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
+    // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
+    client.batchRegisterAddresses([sponsor1, sponsor2]);
+
+    // Update the client to pull the initial balances.
+    await client.update();
+
+    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
 
     // After Sending ether the balance should update accordingly.
     await web3.eth.sendTransaction({ from: tokenCreator, to: sponsor1, value: toWei("1") });
     await client.update();
-    assert.equal(await client.getCollateralBalance(sponsor1), toWei("1234"));
-    assert.equal(await client.getSyntheticBalance(sponsor1), 0);
-    assert.equal(await client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
+    assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
+    assert.equal(client.getSyntheticBalance(sponsor1), 0);
+    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
   });
 });
