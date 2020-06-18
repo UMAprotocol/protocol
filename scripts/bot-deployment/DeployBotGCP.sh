@@ -38,6 +38,15 @@ gsutil cp gs://bot-configs/$1.env $tempFile
 
 echo "✍️  Config has been pulled and placed in a temp directory" $tempFile
 
+# Delete existing instance to clear space for new instance. This will prompt the user to confirm y/N if they want
+# to delete the instance. 
+# TODO: Check if an image exists before attempting to delete it via "gcloud compute instances list --filter $1"
+echo "♻️  Deleting old bot.  ⚠️  Deleting an instance can take some time, please be patient.  ⚠️"
+gcloud compute instances delete $1 \
+    --zone northamerica-northeast1-b
+
+echo "🎇  Old bot has been deleted!"
+
 # Deploy The bot to GCP using the config file and the service account
 echo "🚀 Deploying bot to GCP"
 gcloud compute instances create-with-container $1 \
