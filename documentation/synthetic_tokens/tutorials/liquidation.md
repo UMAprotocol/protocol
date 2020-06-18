@@ -42,8 +42,11 @@ Before starting this tutorial you need to clone repo, install the dependencies a
 git clone https://github.com/UMAprotocol/protocol.git
 cd ./protocol
 
-# Install dependencies & compile the contracts
+# Install dependencies
 npm install
+
+# Navigate into the core directory & compile contracts
+cd ./core
 npx truffle compile
 ```
 
