@@ -39,7 +39,7 @@ gsutil cp gs://bot-configs/$1.env $tempFile
 echo "✍️  Config has been pulled and placed in a temp directory" $tempFile
 
 # Check if there is an existing instance. If there is, then we will delete it to clear space for the new one.
-existingImages=$(gcloud compute instances list --filter $1 --limit 1 | grep $1)
+existingImages=$(gcloud compute instances list --filter $1 --limit 1)
 if [[ "$existingImages" == *"$1"* ]]; then
     echo "♻️  Deleting old bot.  ⚠️  Deleting an instance can take some time, please be patient.  ⚠️"
     
