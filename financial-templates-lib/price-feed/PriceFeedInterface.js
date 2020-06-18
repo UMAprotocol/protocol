@@ -34,7 +34,7 @@ class PriceFeedInterface {
 
   // Common function to throw an error if an interface method is called.
   _abstractFunctionCalled() {
-    throw "Abstract function called -- derived class should implement this function";
+    throw new Error("Abstract function called -- derived class should implement this function");
   }
 }
 

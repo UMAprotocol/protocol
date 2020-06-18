@@ -48,7 +48,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
 
     if (!priceFeed) {
-      throw "Price feed config is invalid";
+      throw new Error("Price feed config is invalid");
     }
 
     // Client and liquidator bot
@@ -97,7 +97,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
   }
@@ -106,13 +106,17 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
+      throw new Error(
+        "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables."
+      );
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
     if (!process.env.PRICE_FEED_CONFIG) {
-      throw "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables.";
+      throw new Error(
+        "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables."
+      );
     }
 
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
@@ -133,7 +137,7 @@ const Poll = async function(callback) {
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator configuration error🚨",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);

@@ -45,7 +45,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
     const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
 
     if (!priceFeed) {
-      throw "Price feed config is invalid";
+      throw new Error("Price feed config is invalid");
     }
 
     // Client and dispute bot.
@@ -82,7 +82,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
     Logger.error({
       at: "Disputer#index🚨",
       message: "Disputer error",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
   }
@@ -91,13 +91,17 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
+      throw new Error(
+        "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables."
+      );
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
     if (!process.env.PRICE_FEED_CONFIG) {
-      throw "Bad input arg! Specify a `PRICE_FEED_CONFIG` for price feed config for the disputer bot to use.";
+      throw new Error(
+        "Bad input arg! Specify a `PRICE_FEED_CONFIG` for price feed config for the disputer bot to use."
+      );
     }
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
     // price feed Config defines the exchanges to use. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
@@ -114,7 +118,7 @@ const Poll = async function(callback) {
     Logger.error({
       at: "Disputer#index🚨",
       message: "Disputer configuration error",
-      error: new Error(error)
+      error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);

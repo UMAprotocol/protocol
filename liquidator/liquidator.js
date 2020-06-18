@@ -174,7 +174,7 @@ class Liquidator {
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,
-          error: new Error(error)
+          error
         });
         continue;
       }
@@ -200,7 +200,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: new Error(error)
+          error
         });
         continue;
       }
@@ -266,7 +266,7 @@ class Liquidator {
           at: "Liquidator",
           message: "No rewards to withdraw",
           liquidation: liquidation,
-          error: new Error(error)
+          error
         });
         continue;
       }
@@ -292,7 +292,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to withdraw liquidation rewards🚨",
-          error: new Error(error)
+          error
         });
         continue;
       }
