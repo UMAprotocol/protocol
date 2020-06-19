@@ -43,9 +43,9 @@ existingImages=$(gcloud compute instances list --filter $1 --limit 1)
 if [[ "$existingImages" == *"$1"* ]]; then
     echo "♻️  Deleting old bot.  ⚠️  Deleting an instance can take some time, please be patient.  ⚠️"
     
-    # This will prompt the user to confirm y/N if they want o delete the instance. 
     gcloud compute instances delete $1 \
-        --zone northamerica-northeast1-b
+        --zone northamerica-northeast1-b \
+        --quiet
 
     echo "🎇  Old bot has been deleted!"
 fi
