@@ -20,7 +20,7 @@ contract("index.js", function(accounts) {
   let collateralToken;
   let uniswap;
 
-  let defaultPricefeedConfig;
+  let defaultPriceFeedConfig;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -56,7 +56,7 @@ contract("index.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
-    defaultPricefeedConfig = {
+    defaultPriceFeedConfig = {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
@@ -69,25 +69,15 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without throwing an error", async function() {
-    const address = emp.address;
-
-    const priceFeedConfig = defaultPricefeedConfig;
-
     let errorThrown;
     try {
-      await Poll.run(address, false, 10_000, priceFeedConfig);
+      await Poll.run(emp.address, 0, defaultPriceFeedConfig);
       errorThrown = false;
     } catch (err) {
       console.error(err);
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
-  });
-
-  it("Sets token allowances correctly", async function() {
-    const priceFeedConfig = defaultPricefeedConfig;
-
-    await Poll.run(emp.address, false, 10_000, priceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);

@@ -28,10 +28,10 @@ class TokenBalanceClient {
   }
 
   // Delete all data within the client.
-  clearState = async () => {
+  clearState() {
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
     this.accountMonitorList = [];
-  };
+  }
 
   getCollateralBalance = address => {
     this._registerAddress(address);
@@ -48,18 +48,27 @@ class TokenBalanceClient {
     return this.tokenBalances.etherBalances[address];
   };
 
+  // Checks if an address has a resolved value(has been updated past it's initialization state).
   resolvedAddressBalance = address => {
     return this.tokenBalances.collateralBalances[address] != null;
   };
 
+  // Batch register an array of addresses. This can be used by a client implementor to register addresses on
+  // construction to enable synchronous retrieval on the first loop.
+  batchRegisterAddresses = addresses => {
+    for (const address of addresses) {
+      this._registerAddress(address);
+    }
+  };
+
+  // Loop over all account addresses in the monitor list and for each check the balances of the
+  // respective tokens and Eth balance. Store these for synchronous retrieval.
   update = async () => {
-    // loop over all account addresses in the monitor list and for each check the balances of the
-    // respective tokens and Eth balance. Store these for synchronous retrieval.
     for (let account of this.accountMonitorList) {
-      // TODO: refactor this to create an array of promises for all accounts to monitor and resolve them all at once.
-      this.tokenBalances.collateralBalances[account] = await this.collateralToken.methods.balanceOf(account).call();
-      this.tokenBalances.syntheticBalances[account] = await this.syntheticToken.methods.balanceOf(account).call();
-      this.tokenBalances.etherBalances[account] = await this.web3.eth.getBalance(account);
+      const tokenBalancesObject = await this.getDirectTokenBalances(account);
+      this.tokenBalances.collateralBalances[account] = tokenBalancesObject.collateralBalance;
+      this.tokenBalances.syntheticBalances[account] = tokenBalancesObject.syntheticBalance;
+      this.tokenBalances.etherBalances[account] = tokenBalancesObject.etherBalance;
     }
 
     this.logger.debug({
@@ -68,7 +77,8 @@ class TokenBalanceClient {
     });
   };
 
-  // async function to get the three token balances directly. Does not store balances later retrieval.
+  // Async function to get the three token balances directly. Does not store balances for later retrieval.
+  // TODO: refactor this to create an array of promises for all accounts to monitor and resolve them all at once.
   getDirectTokenBalances = async account => {
     return {
       collateralBalance: await this.collateralToken.methods.balanceOf(account).call(),
@@ -77,6 +87,7 @@ class TokenBalanceClient {
     };
   };
 
+  // Add an address to the monitored address list. Balance will only update when calling the `update()` function.
   _registerAddress = address => {
     if (!this.accountMonitorList.includes(address)) {
       this.accountMonitorList.push(address);

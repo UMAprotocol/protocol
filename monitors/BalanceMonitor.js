@@ -32,6 +32,10 @@ class BalanceMonitor {
     // Bot addresses and thresholds to monitor.
     this.botsToMonitor = botsToMonitor;
 
+    // Loop over all bots in the provided config and register them in the tokenBalanceClient. This will ensure that
+    // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
+    this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => bot.address));
+
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
@@ -52,7 +56,7 @@ class BalanceMonitor {
     // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this._ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
+      if (this.toBN(this.client.getCollateralBalance(bot.address)).lt(this.toBN(bot.collateralThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
@@ -65,7 +69,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this._ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
+      if (this.toBN(this.client.getSyntheticBalance(bot.address)).lt(this.toBN(bot.syntheticThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
@@ -78,7 +82,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this._ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
+      if (this.toBN(this.client.getEtherBalance(bot.address)).lt(this.toBN(bot.etherThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
@@ -111,15 +115,6 @@ class BalanceMonitor {
       tokenSymbol
     );
   };
-
-  // Checks if a big number value is below a given threshold.
-  _ltThreshold(value, threshold) {
-    // If the price has not resolved yet then return false.
-    if (value == null) {
-      return false;
-    }
-    return this.toBN(value).lt(this.toBN(threshold));
-  }
 }
 
 module.exports = {
