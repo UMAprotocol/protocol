@@ -1,6 +1,8 @@
 # UMA Protocol
 
-<div style="text-align:center"><img src="./documentation/Logo.png" /></div>
+<p align="center">
+  <img alt="UMA Logo" src="./documentation/Logo.png" width="440">
+</p>
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/umaprotocol/protocol)](https://hub.docker.com/r/umaprotocol/protocol)
