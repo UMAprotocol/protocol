@@ -56,14 +56,14 @@ class Disputer {
   }
 
   // Update the client and gasEstimator clients.
-  update = async () => {
+  async update() {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-  };
+  }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  queryAndDispute = async () => {
+  async queryAndDispute() {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
@@ -165,7 +165,7 @@ class Disputer {
         disputeResult: logResult
       });
     }
-  };
+  }
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {

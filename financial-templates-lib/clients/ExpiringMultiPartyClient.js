@@ -37,48 +37,60 @@ class ExpiringMultiPartyClient {
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
-  getAllPositions = () => this.positions;
+  getAllPositions() {
+    return this.positions;
+  }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
   // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into
   // `_isUnderCollateralized` is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a
   // result this function will return positions that are undercollateralized due to too little collateral or a withdrawal
   // that, if passed, would make the position undercollateralized.
-  getUnderCollateralizedPositions = tokenRedemptionValue => {
+  getUnderCollateralizedPositions(tokenRedemptionValue) {
     return this.positions.filter(position => {
       const collateralNetWithdrawal = this.toBN(position.amountCollateral)
         .sub(this.toBN(position.withdrawalRequestAmount))
         .toString();
       return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
     });
-  };
+  }
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
   // To check whether a liquidation can be disputed, call `isDisputable` with the token redemption value at
   // `liquidationTime`.
-  getUndisputedLiquidations = () => this.undisputedLiquidations;
+  getUndisputedLiquidations() {
+    return this.undisputedLiquidations;
+  }
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
   // Liquidators can withdraw rewards from these expired liquidations.
-  getExpiredLiquidations = () => this.expiredLiquidations;
+  getExpiredLiquidations() {
+    return this.expiredLiquidations;
+  }
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
   // Liquidators can withdraw rewards from these disputed liquidations.
-  getDisputedLiquidations = () => this.disputedLiquidations;
+  getDisputedLiquidations() {
+    return this.disputedLiquidations;
+  }
 
   // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is
   // disputable. `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
-  isDisputable = (liquidation, tokenRedemptionValue) => {
+  isDisputable(liquidation, tokenRedemptionValue) {
     return !this._isUnderCollateralized(liquidation.numTokens, liquidation.liquidatedCollateral, tokenRedemptionValue);
-  };
+  }
 
   // Returns an array of sponsor addresses.
-  getAllSponsors = () => this.sponsorAddresses;
+  getAllSponsors() {
+    return this.sponsorAddresses;
+  }
 
   // Returns the last update timestamp.
-  getLastUpdateTime = () => this.lastUpdateTimestamp;
+  getLastUpdateTime() {
+    return this.lastUpdateTimestamp;
+  }
 
-  update = async () => {
+  async update() {
     this.collateralRequirement = this.toBN((await this.emp.methods.collateralRequirement().call()).toString());
     this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call());
 
@@ -158,8 +170,8 @@ class ExpiringMultiPartyClient {
       message: "Expiring multi party state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
-  };
-  _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
+  }
+  _isUnderCollateralized(numTokens, amountCollateral, trv) {
     const fixedPointAdjustment = this.toBN(this.toWei("1"));
     // The formula for an undercollateralized position is:
     // (numTokens * trv) * collateralRequirement > amountCollateral.
@@ -172,16 +184,16 @@ class ExpiringMultiPartyClient {
           .mul(fixedPointAdjustment)
           .mul(fixedPointAdjustment)
       );
-  };
+  }
 
-  _isExpired = async liquidation => {
+  async _isExpired(liquidation) {
     const currentTime = await this.emp.methods.getCurrentTime().call();
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
-  };
+  }
 
-  _isLiquidationPreDispute = liquidation => {
+  _isLiquidationPreDispute(liquidation) {
     return liquidation.state === LiquidationStatesEnum.PRE_DISPUTE;
-  };
+  }
 }
 
 module.exports = {

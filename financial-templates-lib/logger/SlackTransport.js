@@ -25,7 +25,7 @@
 const SlackHook = require("winston-slack-webhook-transport");
 const { createEtherscanLinkMarkdown } = require("../../common/FormattingUtils");
 
-const slackFormatter = info => {
+function slackFormatter(info) {
   if (!("level" in info) || !("at" in info) || !("message" in info)) {
     console.error("WINSTON INCORRECTLY CONFIGURED IN MESSAGE", info);
     return {
@@ -140,7 +140,7 @@ const slackFormatter = info => {
     type: "divider"
   });
   return formattedResponse;
-};
+}
 
 function createSlackTransport(webHookUrl) {
   return new SlackHook({
