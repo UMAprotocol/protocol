@@ -57,6 +57,7 @@ You can find the coverage report at [coveralls](https://coveralls.io/github/UMAp
 ```
 ./ci/coverage.sh core
 ```
+
 The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
 
 ## Style Guide 🕺
