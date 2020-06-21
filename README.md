@@ -52,14 +52,12 @@ npm run lint-fix
 ## Coverage 🔎
 
 We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) package to generate our coverage reports.
-These can be generated manually by developers. There are no regression tests or published reports. CircleCI does
-generate a coverage report automatically, but if you'd like to generate it locally, run:
+You can find the coverage report at [coveralls](https://coveralls.io/github/UMAprotocol/protocol). Otherwise, you can generate it locally by running:
 
 ```
 ./ci/coverage.sh core
 ```
-
-The full report can be viewed by opening the `core/coverage/index.html` file in a browser. The full report can be viewed by opening the `core/coverage/index.html` file in a browser. You can also find an online version of our covarge report on [coveralls](https://coveralls.io/github/UMAprotocol/protocol).
+The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
 
 ## Style Guide 🕺
 
