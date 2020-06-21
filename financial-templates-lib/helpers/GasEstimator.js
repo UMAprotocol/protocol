@@ -24,7 +24,7 @@ class GasEstimator {
   }
 
   // Calls update unless it was recently called, as determined by this.updateThreshold.
-  update = async () => {
+  async update() {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
       this.logger.debug({
@@ -46,18 +46,18 @@ class GasEstimator {
         currentFastPriceGwei: this.lastFastPriceGwei
       });
     }
-  };
+  }
 
   // Returns the current fast gas price in Wei, converted from the stored Gwei value.
-  getCurrentFastPrice = () => {
+  getCurrentFastPrice() {
     return this.lastFastPriceGwei * 1e9;
-  };
+  }
 
-  _update = async () => {
+  async _update() {
     this.lastFastPriceGwei = await this._getPrice(url);
-  };
+  }
 
-  _getPrice = async url => {
+  async _getPrice(url) {
     try {
       const response = await fetch(url);
       const json = await response.json();
@@ -78,7 +78,7 @@ class GasEstimator {
       // In the failure mode return the fast default price.
       return this.defaultFastPriceGwei;
     }
-  };
+  }
 }
 
 module.exports = {

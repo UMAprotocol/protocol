@@ -52,24 +52,24 @@ class ContractMonitor {
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+  calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
     return this.toBN(collateral)
       .mul(this.toBN(this.toWei("1")))
       .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice.toString())))
       .muln(100);
-  };
+  }
 
   // Calculate the maximum price at which this liquidation would be disputable using the `crRequirement`,
   // `liquidatedCollateral` and the `liquidatedTokens`.
-  calculateDisputablePrice = (crRequirement, liquidatedCollateral, liquidatedTokens) => {
+  calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
     const { toBN, toWei } = this.web3.utils;
     return toBN(liquidatedCollateral)
       .mul(toBN(toWei("1")))
       .div(toBN(liquidatedTokens))
       .mul(toBN(toWei("1")))
       .div(toBN(crRequirement));
-  };
+  }
 
   getLastSeenBlockNumber(eventArray) {
     if (eventArray.length == 0) {
@@ -79,7 +79,7 @@ class ContractMonitor {
   }
 
   // Quries NewSponsor events since the latest query marked by `lastNewSponsorBlockNumber`.
-  checkForNewSponsors = async () => {
+  async checkForNewSponsors() {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new sponsor events",
@@ -122,10 +122,10 @@ class ContractMonitor {
       });
     }
     this.lastNewSponsorBlockNumber = this.getLastSeenBlockNumber(latestNewSponsorEvents);
-  };
+  }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  checkForNewLiquidations = async () => {
+  async checkForNewLiquidations() {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
@@ -206,9 +206,9 @@ class ContractMonitor {
       });
     }
     this.lastLiquidationBlockNumber = this.getLastSeenBlockNumber(latestLiquidationEvents);
-  };
+  }
 
-  checkForNewDisputeEvents = async () => {
+  async checkForNewDisputeEvents() {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
@@ -244,9 +244,9 @@ class ContractMonitor {
       });
     }
     this.lastDisputeBlockNumber = this.getLastSeenBlockNumber(latestDisputeEvents);
-  };
+  }
 
-  checkForNewDisputeSettlementEvents = async () => {
+  async checkForNewDisputeSettlementEvents() {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
@@ -283,7 +283,7 @@ class ContractMonitor {
       });
     }
     this.lastDisputeSettlementBlockNumber = this.getLastSeenBlockNumber(latestDisputeSettlementEvents);
-  };
+  }
 }
 
 module.exports = {

@@ -68,7 +68,7 @@ class SyntheticPegMonitor {
 
   // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
   // if the synythetic price deviates too far from the peg.
-  checkPriceDeviation = async () => {
+  async checkPriceDeviation() {
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
@@ -108,11 +108,11 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
   // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time.
   // Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
-  checkPegVolatility = async () => {
+  async checkPegVolatility() {
     const pricefeed = this.medianizerPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -159,9 +159,9 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
-  checkSyntheticVolatility = async () => {
+  async checkSyntheticVolatility() {
     const pricefeed = this.uniswapPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -208,10 +208,10 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
   // Return historical volatility for pricefeed over specified time range and latest price.
-  _checkPricefeedVolatility = async pricefeed => {
+  async _checkPricefeedVolatility(pricefeed) {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
@@ -230,7 +230,7 @@ class SyntheticPegMonitor {
       min: volData.min,
       max: volData.max
     };
-  };
+  }
 
   // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
   // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20

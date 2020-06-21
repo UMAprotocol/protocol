@@ -46,7 +46,7 @@ class BalanceMonitor {
   }
 
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds.
-  checkBotBalances = async () => {
+  async checkBotBalances() {
     this.logger.debug({
       at: "BalanceMonitor",
       message: "Checking bot balances"
@@ -96,9 +96,9 @@ class BalanceMonitor {
         });
       }
     }
-  };
+  }
 
-  _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
+  _createLowBalanceMrkdwn(bot, threshold, tokenBalance, tokenSymbol, tokenName) {
     return (
       bot.name +
       " (" +
@@ -114,7 +114,7 @@ class BalanceMonitor {
       " " +
       tokenSymbol
     );
-  };
+  }
 }
 
 module.exports = {

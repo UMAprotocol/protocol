@@ -82,7 +82,7 @@ class Liquidator {
 
   // Update the client and gasEstimator clients.
   // If a client has recently updated then it will do nothing.
-  update = async () => {
+  async update() {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
@@ -91,10 +91,10 @@ class Liquidator {
     if (this.empCRRatio == null) {
       this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
     }
-  };
+  }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  queryAndLiquidate = async () => {
+  async queryAndLiquidate() {
     await this.update();
 
     const price = this.priceFeed.getCurrentPrice();
@@ -226,10 +226,10 @@ class Liquidator {
 
     // Update the EMP Client since we created new liquidations.
     await this.empClient.update();
-  };
+  }
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
-  queryAndWithdrawRewards = async () => {
+  async queryAndWithdrawRewards() {
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
@@ -315,7 +315,7 @@ class Liquidator {
 
     // Update the EMP Client since we withdrew rewards.
     await this.empClient.update();
-  };
+  }
 }
 
 module.exports = {
