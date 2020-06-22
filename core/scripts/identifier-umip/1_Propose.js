@@ -1,4 +1,4 @@
-// This script generates and submits UMIP-2 upgrade transactions to the DVM. It can be run on a local ganache
+// This script generates and submits an identifier-add upgrade transaction to the DVM. It can be run on a local ganache
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
@@ -8,6 +8,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
 const tdr = require("truffle-deploy-registry");
 
@@ -15,26 +16,24 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 async function runExport() {
-  console.log("Running UMIP-2 Upgrade🔥");
+  console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
 
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const governor = await Governor.deployed();
 
   // After it's given ownership, the upgrade transaction needs to be executed.
-  const identifierBytes = web3.utils.utf8ToHex("ETH/BTC");
-  const addEthBtcIdentifierTx = identifierWhitelist.contract.methods
-    .addSupportedIdentifier(identifierBytes)
-    .encodeABI();
+  const identifierBytes = web3.utils.utf8ToHex(argv.identifier);
+  const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
 
-  console.log("addEthBtcIdentifierTx", addEthBtcIdentifierTx);
+  console.log("addIdentifierTx", addIdentifierTx);
 
   await governor.propose(
     [
       {
         to: identifierWhitelist.address,
         value: 0,
-        data: addEthBtcIdentifierTx
+        data: addIdentifierTx
       }
     ],
     { from: proposerWallet }
@@ -44,7 +43,7 @@ async function runExport() {
 
 Newly Proposed DVM Identifier: 
 
-ETH/BTC (UTF8)
+${argv.identifier} (UTF8)
 ${identifierBytes} (HEX)
 
 `);
