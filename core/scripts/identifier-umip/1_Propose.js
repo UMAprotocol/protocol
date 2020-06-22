@@ -19,6 +19,10 @@ async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
 
+  if (!argv.identifier) {
+    throw new Error("Must specify --identifier");
+  }
+
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const governor = await Governor.deployed();
 
