@@ -70,17 +70,23 @@ app.post("/", async (req, res) => {
     const results = await Promise.allSettled(promiseArray);
     console.log(results); // TODO: refine this logging with a winston log
 
-    // Validate that the promises returned correctly. If ANY have error, then throw. This returns a 400 error upstream.
+    // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
+    let thrownErrors = [];
     results.forEach(result => {
       if (result.status == "rejected") {
-        throw result.value;
+        thrownErrors.push(result);
       }
     });
 
-    res.status(200).send("Done");
+    if (thrownErrors.length > 0) {
+      throw thrownErrors;
+    }
+
+    // If no errors and got to this point correctly then return a 200 success status.
+    res.status(200).send({ message: "All calls returned correctly", error: null });
   } catch (error) {
     console.log("error", error);
-    res.status(400).send("error", error);
+    res.status(400).send({ message: "One or more calls failed with error", error: error });
   }
 });
 
