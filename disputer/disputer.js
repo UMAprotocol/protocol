@@ -168,7 +168,7 @@ class Disputer {
   }
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
-  queryAndWithdrawRewards = async () => {
+  async queryAndWithdrawRewards() {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
@@ -248,7 +248,7 @@ class Disputer {
         liquidationResult: logResult
       });
     }
-  };
+  }
 }
 
 module.exports = {
