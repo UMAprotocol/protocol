@@ -1,3 +1,25 @@
+/**
+ * @notice This script reads in a global configuration file stored on GCP buckets and executes parallel Cloud Run
+ * instances for each configured bot. This enables one global config file to define all bot instances. This drastically
+ * simplifying the devops and management overhead for spinning up new instances as this can be done by simply updating
+ * a config file. This script is designed to be run within a GCP Cloud Run (or cloud function) environment with a
+ * permissioned service account to pull config objects from GCP buckets and execute Cloud Run functions.
+ * This script assumes the caller is providing a HTTP POST with a body formatted as:
+ * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
+ *
+ * If you want to run it in your local environment, you need to do the following configuration changes:
+ * 1) Set the environment variable PROTOCOL_RUNNER_URL to point to your remote cloud run instance URL.
+ * 2) To access service accounts you need to configure your local environment with the associated config file. Go to:
+ * https://console.cloud.google.com/apis/credentials/serviceaccountkey and generate a json config file. Save this to
+ * a safe place. Then, set the environment variable GOOGLE_APPLICATION_CREDENTIALS to point to this config file.
+ * 3) Once this is done the script can be started by running: node ../reporters/cloud-run-scripts/CloudRunnerHub.js
+ * This will start a restful API server on PORT (default 8080).
+ * 4) call the restful query using CURL as:
+ * curl -X POST -H 'Content-type: application/json' --data '{"bucket":"bot-configs","configFile":"global-bot-config.json"}' https://localhost:8080
+ */
+
+// TODO: add integration tests between this CloudRunnerHub and CloudResponse.
+
 const express = require("express");
 const app = express();
 app.use(express.json()); // Enables json to be parsed by the express process.
@@ -12,32 +34,48 @@ const { Storage } = require("@google-cloud/storage");
 const storage = new Storage();
 
 // Helpers
+// TODO integrate with winston logger.
 // const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
 
 app.post("/", async (req, res) => {
   try {
-    console.log("Running Cloud runner hub");
+    console.log("Running Cloud runner hub query");
     if (!process.env.PROTOCOL_RUNNER_URL) {
       throw new Error("Bad environment! Specify a `PROTOCOL_RUNNER_URL` to point to the a cloud run instance");
     }
+    // The cloud runner hub should have a configured URL to define the remote instance to boot.
+    const protocolRunnerUrl = process.env.PROTOCOL_RUNNER_URL;
 
-    if (!req.body.bucket || !req.body.file) {
+    // Validate the post request has both the `bucket` and `configFile` params.
+    if (!req.body.bucket || !req.body.configFile) {
       res.status(400).send({
         message: "ERROR: Body missing json bucket or file parameters!"
       });
       throw new Error("ERROR: Body missing json bucket or file parameters!");
     }
 
-    const protocolRunnerUrl = process.env.PROTOCOL_RUNNER_URL;
-
-    const configObject = await _fetchConfigObject(req.body.bucket, req.body.file);
+    // Get the config file from the GCP bucket
+    const configObject = await _fetchConfigObject(req.body.bucket, req.body.configFile);
     console.log("configObject", configObject);
 
+    // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
+    let promiseArray = [];
     for (const botName in configObject) {
       const botConfig = configObject[botName];
-      console.log("executing bot", botName);
-      await _executeCloudRun(protocolRunnerUrl, botConfig);
+      console.log("Appending to promise array", botName); // TODO: refine this logging with a winston log
+      promiseArray.push(_executeCloudRun(protocolRunnerUrl, botConfig));
     }
+
+    // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
+    const results = await Promise.allSettled(promiseArray);
+    console.log(results); // TODO: refine this logging with a winston log
+
+    // Validate that the promises returned correctly. If ANY have error, then throw. This returns a 400 error upstream.
+    results.forEach(result => {
+      if (result.status == "rejected") {
+        throw result.value;
+      }
+    });
 
     res.status(200).send("Done");
   } catch (error) {
@@ -74,8 +112,24 @@ const _executeCloudRun = async (url, body) => {
     method: "post",
     data: body
   });
-  console.info(res.data);
+  return res.data;
 };
+
+// Execute a post query on a arbitrary `url` with a given json `body. Used to test the hub script locally.
+// TODO: wire this in for unit testing.
+async function _postJson(url, body) {
+  console.log("b", JSON.stringify(body));
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-type": "application/json",
+      Accept: "application/json",
+      "Accept-Charset": "utf-8"
+    }
+  });
+  return await response.json(); // extract JSON from the http response
+}
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {

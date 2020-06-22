@@ -60,6 +60,7 @@
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
+    "google-auth-library": "^6.0.2",
     "graphql-request": "^1.8.2",
     "inquirer": "^7.0.4",
     "lodash.startcase": "^4.4.0",

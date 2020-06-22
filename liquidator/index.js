@@ -105,6 +105,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
+    process.exit(1);
   }
 }
 
