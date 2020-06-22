@@ -195,7 +195,6 @@ async function run(
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
-    process.exit(1);
   }
 }
 async function Poll(callback) {
