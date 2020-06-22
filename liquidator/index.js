@@ -117,7 +117,7 @@ async function Poll(callback) {
     }
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60 * 1000;
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw new Error(
