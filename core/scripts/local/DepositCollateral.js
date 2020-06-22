@@ -12,7 +12,7 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
 const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "collateralToken"] });
 
-async function createPosition(callback) {
+async function depositCollateral(callback) {
   try {
     if (!argv.emp || !argv.collateral) {
       throw new Error(`
@@ -47,4 +47,4 @@ async function createPosition(callback) {
   callback();
 }
 
-module.exports = createPosition;
+module.exports = depositCollateral;
