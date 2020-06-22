@@ -94,7 +94,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   }
 }
 
-const Poll = async function(callback) {
+async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
@@ -132,7 +132,7 @@ const Poll = async function(callback) {
     return;
   }
   callback();
-};
+}
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
