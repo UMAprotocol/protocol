@@ -12,6 +12,10 @@ const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");
 
+  if (!argv.identifier) {
+    throw new Error("Must specify --identifier");
+  }
+
   const identifierWhitelist = await IdentifierWhitelist.deployed();
 
   assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(argv.identifier)), true);
