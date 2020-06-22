@@ -77,8 +77,8 @@ class SyntheticPegMonitor {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
-        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : null,
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : null
+        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
       return;
     }
