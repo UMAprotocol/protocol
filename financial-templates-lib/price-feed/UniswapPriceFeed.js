@@ -87,7 +87,11 @@ class UniswapPriceFeed extends PriceFeedInterface {
     while (i !== 0) {
       const event = events[--i];
       event.timestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+
+      // @dev: _getPriceFromSyncEvent() will return null if the price cannot be calculated, which is possible
+      // if one of the reserve amounts is 0 for example.
       event.price = this._getPriceFromSyncEvent(event);
+
       if (event.timestamp <= lookbackWindowStart) {
         break;
       }
@@ -95,6 +99,9 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
     // Cut off all the events that were before the time we care about.
     this.events = events.slice(i);
+
+    // Filter out events where price is null.
+    this.events = events.filter(e => e.price !== null);
 
     // Price at the end of the most recent block.
     this.lastBlockPrice = this.events[this.events.length - 1].price;
@@ -112,6 +119,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // TODO: allow the constructor to select the denominator currency.
     const reserve0 = this.toBN(event.returnValues.reserve0);
     const reserve1 = this.toBN(event.returnValues.reserve1);
+
+    if (reserve1.isZero() || reserve0.isZero()) return null;
 
     if (this.invertPrice) {
       return reserve0.mul(fixedPointAdjustment).div(reserve1);

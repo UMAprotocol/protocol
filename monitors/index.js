@@ -51,7 +51,7 @@ async function run(
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    const logObject = {
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
@@ -63,9 +63,7 @@ async function run(
       syntheticPegMonitorObject,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
-    };
-    if (pollingDelay === 0) Logger.debug(logObject);
-    else Logger.info(logObject);
+    });
 
     // 0. Setup EMP and token instances to monitor.
     const emp = await ExpiringMultiParty.at(address);
