@@ -130,8 +130,12 @@ async function Poll(callback) {
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
-    // liquidationMinPrice and txnGasLimit. EG: {"crThreshold":0.02,"liquidationDeadline":300,"liquidationMinPrice":0,
-    // "txnGasLimit":9000000}
+    // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
+    // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+    //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
+    //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
+    //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
+    //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
     const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
     const portNumber = 8888;
