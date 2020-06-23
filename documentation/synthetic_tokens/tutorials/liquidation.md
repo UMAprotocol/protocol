@@ -35,7 +35,17 @@ This contract is an ETHBTC synthetic, collateralized in Dai.
 
 ## Prerequisites
 
-Before starting this tutorial you need to clone repo, install the dependencies and compile the smart contracts. To do this run the following:
+Before starting this tutorial you need to clone the repo, install the dependencies, and compile the smart contracts.
+
+### Linux users
+
+If you are using Linux, you may need to first install the following packages before `npm install` can complete properly:
+
+```
+make gcc libudev-dev g++ linux-headers-generic libusb-1.0-0
+```
+
+If you are not using Linux (or if you have installed the above), you can run the following to continue:
 
 ```bash
 ## Clone the repo and navigate into the protocol directory
