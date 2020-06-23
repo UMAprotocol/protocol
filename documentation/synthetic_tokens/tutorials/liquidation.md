@@ -130,6 +130,8 @@ PRICE_FEED_CONFIG={"type":"medianizer","apiKey":"YOUR_API_KEY","pair":"ethbtc","
 
 The parameters above, as well as other optional parameters are explained in the appendix of this tutorial. **Be sure to add in your mnemonic and your crypto watch API key.** The parameter in the example above conform to [UMIP-2](https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-2.md#implementation)'s specification.
 
+Note that the `EMP_ADDRESS` above currently refers to the ETHBTC synthetic token deployed on Kovan. The EMP refers to the `ExpiringMultiParty` financial contract used here.
+
 **b) Starting the bots**
 
 Now that your env is set up you can run the bot. Run the following command from the `core` directory to start the bots on Kovan:
