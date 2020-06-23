@@ -27,7 +27,8 @@ const { createEtherscanLinkMarkdown } = require("../../common/FormattingUtils");
 
 function slackFormatter(info) {
   try {
-    if (!("level" in info) || !("at" in info) || !("message" in info)) throw "WINSTON MESSAGE INCORRECTLY CONFIGURED";
+    if (!("level" in info) || !("at" in info) || !("message" in info))
+      throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
 
     // Each part of the slack response is a separate block with markdown text within it.
     // All slack responses start with the heading level and where the message came from.
