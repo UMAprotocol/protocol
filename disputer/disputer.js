@@ -153,7 +153,7 @@ class Disputer {
         tx: receipt.transactionHash,
         sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
         liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-        id: receipt.events.LiquidationDisputed.returnValues.disputeId,
+        id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
         disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
       };
       this.logger.info({
