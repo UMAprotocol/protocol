@@ -30,15 +30,13 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    const logObject = {
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
       pollingDelay,
       priceFeedConfig
-    };
-    if (pollingDelay === 0) Logger.debug(logObject);
-    else Logger.info(logObject);
+    });
 
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();
@@ -117,7 +115,7 @@ async function Poll(callback) {
 
     // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
     // {"disputeDelay":60,"txnGasLimit":9000000}
-    const disputerConfig = process.env.DISPUTER_CONFIG ? process.env.DISPUTER_CONFIG : null;
+    const disputerConfig = process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null;
 
     await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
   } catch (error) {

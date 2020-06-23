@@ -24,4 +24,9 @@ function lastSpyLogIncludes(spy, value) {
   return lastReturnedArgMrkdwn.indexOf(value) != -1 || lastReturnedArgMessage.indexOf(value) != -1;
 }
 
-module.exports = { SpyTransport, lastSpyLogIncludes };
+// Helper function used by unit tests to get the most recent log level.
+function lastSpyLogLevel(spy) {
+  return spy.getCall(-1).lastArg.level.toString();
+}
+
+module.exports = { SpyTransport, lastSpyLogIncludes, lastSpyLogLevel };
