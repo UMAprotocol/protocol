@@ -134,7 +134,7 @@ contract("SyntheticPegMonitor", function(accounts) {
 
     it("Does not track price deviation if threshold set to zero", async function() {
       syntheticPegMonitorConfig = {
-        deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price.
+        deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price deviation.
       };
 
       syntheticPegMonitor = new SyntheticPegMonitor(
