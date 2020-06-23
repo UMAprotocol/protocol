@@ -18,7 +18,7 @@ module.exports = class PagerDutyTransport extends Transport {
   async log(info, callback) {
     try {
       // If the message has markdown then add it and the bot-identifer field. Else put the whole info object as a string
-      const logMessage = info.mrkdwn ? info.mrkdwn + info["bot-identifier"] : JSON.stringify(info);
+      const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
 
       await this.pd.incidents.createIncident(this.fromEmail, {
         incident: {
@@ -35,7 +35,6 @@ module.exports = class PagerDutyTransport extends Transport {
           }
         }
       });
-      callback();
     } catch (error) {
       console.error("PagerDuty error", error);
     }

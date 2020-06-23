@@ -46,7 +46,6 @@ function slackFormatter(info) {
     // All messages from winston come in as a Json object. The loop below expands this object and adds mrkdwn sections
     // for each key value pair with a bullet point. If the section is an object then it was passed containing multiple
     // sub points. This is also expanded as a sub indented section.
-    console.log("IN spread", info);
     for (const key in info) {
       // these keys have been printed in the previous block.
       if (key == "at" || key == "level" || key == "message" || key == "bot-identifier") {
