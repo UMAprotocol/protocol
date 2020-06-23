@@ -505,10 +505,9 @@ contract("Liquidator.js", function(accounts) {
       assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("118"));
     });
     it("Cannot set invalid alerting overrides", async function() {
-      // Create an invalid log level override. This should be rejected.
-
       let errorThrown;
       try {
+        // Create an invalid log level override. This should be rejected.
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
         liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
         errorThrown = false;
