@@ -9,7 +9,7 @@ const { MAX_UINT_VAL } = require("../../../common/Constants");
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "collateralToken"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral"] });
 
 async function depositCollateral(callback) {
   try {
@@ -17,7 +17,6 @@ async function depositCollateral(callback) {
       throw new Error(`
       required: --emp must be the emp address.
       required: --collateral must be the amount of collateral to supply to back the tokens.
-      optional: --collateralToken must be the address of the deployed collateral currency
       `);
     }
 
