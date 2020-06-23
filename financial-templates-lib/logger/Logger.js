@@ -62,7 +62,7 @@ const Logger = winston.createLogger({
     winston.format.json()
   ),
   transports,
-  exitOnError: false
+  exitOnError: true
 });
 
 module.exports = {
