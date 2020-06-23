@@ -197,6 +197,13 @@ class Disputer {
       let withdrawAmount;
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
+        // See: https://github.com/ethereum/solidity/issues/4840 for the reason this fix is necessary.
+        if (
+          withdrawAmount.rawValue.toString() ===
+          "3963877391197344453575983046348115674221700746820753546331534351508065746944"
+        ) {
+          throw new Error("Simulated reward withdrawal failed");
+        }
       } catch (error) {
         this.logger.debug({
           at: "Disputer",
