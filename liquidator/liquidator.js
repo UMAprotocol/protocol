@@ -73,6 +73,16 @@ class Liquidator {
         isValid: x => {
           return x >= 6000000 && x < 15000000;
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { positionLiquidated:'warn' } would override the default `info` behaviour for liquidationEvents.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
 
@@ -125,18 +135,12 @@ class Liquidator {
 
     this.logger.debug({
       at: "Liquidator",
-      message: "Scaling down collateral threshold for liquidations",
+      message: "Checking for under collateralized positions",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       empCRRatio: this.empCRRatio.toString(),
       maxCollateralPerToken: maxCollateralPerToken.toString(),
       crThreshold: this.crThreshold
-    });
-
-    this.logger.debug({
-      at: "Liquidator",
-      message: "Checking for under collateralized positions",
-      scaledPrice: scaledPrice.toString()
     });
 
     // Get the latest undercollateralized positions from the client.
@@ -214,7 +218,9 @@ class Liquidator {
         lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
         liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
       };
-      this.logger.info({
+
+      // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
+      this.logger[this.logOverrides.positionLiquidated ? this.logOverrides.positionLiquidated : "info"]({
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,

@@ -31,7 +31,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    const logObject = {
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
       empAddress: address,
@@ -39,9 +39,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
       priceFeedConfig,
       liquidatorConfig,
       monitorPort
-    };
-    if (pollingDelay === 0) Logger.debug(logObject);
-    else Logger.info(logObject);
+    });
 
     // Setup web3 accounts an contract instance.
     const accounts = await web3.eth.getAccounts();
@@ -134,7 +132,7 @@ async function Poll(callback) {
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
     // liquidationMinPrice and txnGasLimit. EG: {"crThreshold":0.02,"liquidationDeadline":300,"liquidationMinPrice":0,
     // "txnGasLimit":9000000}
-    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? process.env.LIQUIDATOR_CONFIG : null;
+    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
     const portNumber = 8888;
 
