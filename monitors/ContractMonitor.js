@@ -2,7 +2,6 @@
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class ContractMonitor {
   /**
@@ -49,8 +48,6 @@ class ContractMonitor {
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
-
-    const defaultConfig = {};
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
