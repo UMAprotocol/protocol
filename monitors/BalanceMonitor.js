@@ -104,7 +104,7 @@ class BalanceMonitor {
     return (
       bot.name +
       " (" +
-      createEtherscanLinkMarkdown(monitoredAddress, this.empProps.networkId) +
+      createEtherscanLinkMarkdown(bot.address, this.empProps.networkId) +
       ") " +
       tokenName +
       " balance is less than " +
