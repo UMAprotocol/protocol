@@ -280,6 +280,13 @@ contract("Disputer.js", function(accounts) {
     await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // Two info level events for the two disputes.
 
+    // Before the dispute is resolved, the bot should simulate the withdrawal, determine that it will fail, and
+    // continue to wait.
+    await disputer.queryAndWithdrawRewards();
+
+    // No new info or error logs should appear because no attempted withdrawal should be made.
+    assert.equal(spy.callCount, 2);
+
     // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
     const liquidationTime = await emp.getCurrentTime();
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1.3"));

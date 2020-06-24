@@ -1,4 +1,5 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const { revertWrapper } = require("../common/ContractUtils");
 
 class Disputer {
   /**
@@ -196,7 +197,10 @@ class Disputer {
       // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
-        withdrawAmount = await withdraw.call({ from: this.account });
+        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        if (withdrawAmount === null) {
+          throw new Error("Simulated reward withdrawal failed");
+        }
       } catch (error) {
         this.logger.debug({
           at: "Disputer",
