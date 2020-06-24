@@ -13,7 +13,7 @@ The liquidation bot monitors all open positions within a given expiring multi-pa
 The dispute bot monitors all liquidations occurring within a given expiring multi-party contract and initiates disputes against liquidations it deems invalid, as inferred from off-chain information about the value of the price identifier.
 A liquidation is invalid if a position was correctly collateralized at the time of liquidation.
 
-In short, a liquidation bot is to liquidate under-collateralized positions while a dispute bot is used for disputing inaccuracies within the UMA DVM system. Only a dispute triggers a price request in the system, so disputes are very important to the operation of the DVM.
+In short, a liquidation bot is to liquidate under-collateralized positions while a dispute bot is used for disputing those liquidations if they incorrectly report a position as under-collateralized. Since a dispute is the only way a price request is triggered in the system, they are very important to the operation of the DVM.
 
 ## Incentives to Running a Bot
 
