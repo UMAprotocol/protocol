@@ -38,10 +38,10 @@ class SyntheticPegMonitor {
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
-        // if the deviation in token price exceeds this value an alert is fired.
+        // if the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
         value: 0.2,
         isValid: x => {
-          return x < 100 && x > 0;
+          return x < 100 && x >= 0;
         }
       },
       volatilityWindow: {
@@ -67,8 +67,9 @@ class SyntheticPegMonitor {
   }
 
   // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
-  // if the synythetic price deviates too far from the peg.
+  // if the synythetic price deviates too far from the peg. If deviationAlertThreshold == 0 then do nothing.
   async checkPriceDeviation() {
+    if (this.deviationAlertThreshold == 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
@@ -77,8 +78,8 @@ class SyntheticPegMonitor {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
-        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : null,
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : null
+        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
       return;
     }

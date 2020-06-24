@@ -1,8 +1,8 @@
-// This script gets the current recommended `fast` gas price from ethGasStation
+// This script gets the current recommended `fast` gas price from etherchain
 // to inform the Liquidator and dispute bot of a reasonable gas price to use.
 
 const fetch = require("node-fetch");
-const url = "https://ethgasstation.info/json/ethgasAPI.json";
+const url = "https://www.etherchain.org/api/gasPriceOracle";
 
 class GasEstimator {
   /**
@@ -61,9 +61,8 @@ class GasEstimator {
     try {
       const response = await fetch(url);
       const json = await response.json();
-      // The number returned by EthGasStation is a Gwei amount, scaled by 10.
       if (json.fast) {
-        let price = json.fast / 10;
+        let price = json.fast;
         return price;
       } else {
         throw new Error("bad json response");

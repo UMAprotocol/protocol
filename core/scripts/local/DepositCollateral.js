@@ -1,7 +1,7 @@
 /**
- * @notice Creates a new token position with --tokens synthetic tokens backed by --collateral of collateral.
+ * @notice Deposits collateral into existing token position with --collateral of collateral.
  *
- * Example: `$(npm bin)/truffle exec ./scripts/local/CreateTokens.js --network test --tokens 1000 --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9`
+ * Example: `$(npm bin)/truffle exec ./scripts/local/DepositCollateral.js --network test --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9`
  */
 const { toWei, toBN } = web3.utils;
 const { MAX_UINT_VAL } = require("../../../common/Constants");
@@ -9,14 +9,13 @@ const { MAX_UINT_VAL } = require("../../../common/Constants");
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "tokens", "collateral"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral"] });
 
-async function createPosition(callback) {
+async function depositCollateral(callback) {
   try {
-    if (!argv.emp || !argv.tokens || !argv.collateral) {
+    if (!argv.emp || !argv.collateral) {
       throw new Error(`
       required: --emp must be the emp address.
-      required: --tokens must be the number of synthetic tokens to create.
       required: --collateral must be the amount of collateral to supply to back the tokens.
       `);
     }
@@ -31,8 +30,8 @@ async function createPosition(callback) {
     }
 
     await collateralToken.approve(emp.address, MAX_UINT_VAL);
-    await emp.create({ rawValue: collateral.toString() }, { rawValue: toWei(argv.tokens) });
-    console.log(`Created ${argv.tokens} tokens (backed by ${argv.collateral} collateral)`);
+    await emp.deposit({ rawValue: collateral.toString() });
+    console.log(`Deposited ${argv.collateral} of ${await collateralToken.symbol()}`);
   } catch (err) {
     callback(err);
     return;
@@ -40,4 +39,4 @@ async function createPosition(callback) {
   callback();
 }
 
-module.exports = createPosition;
+module.exports = depositCollateral;

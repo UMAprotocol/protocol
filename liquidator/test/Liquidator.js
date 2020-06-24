@@ -13,7 +13,7 @@ const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstim
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport, lastSpyLogLevel } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -503,6 +503,40 @@ contract("Liquidator.js", function(accounts) {
       // Sponsor2 should have all their collateral left and no liquidations.
       assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
       assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("118"));
+    });
+    it("Cannot set invalid alerting overrides", async function() {
+      let errorThrown;
+      try {
+        // Create an invalid log level override. This should be rejected.
+        liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
+        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Overriding threshold correctly effects generated logs", async function() {
+      // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
+      // validated after the log is generated.
+      liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
+      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+
+      // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("118") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+      // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+      assert.equal(spy.callCount, 0); // No log events before liquidation query
+      await liquidator.queryAndLiquidate();
+      assert.equal(spy.callCount, 1); // 1 log events after liquidation query.
+      assert.equal(lastSpyLogLevel(spy), "warn"); // most recent log level should be "warn"
     });
   });
 });

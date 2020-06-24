@@ -63,7 +63,9 @@ class CRMonitor {
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
     for (let wallet of this.walletsToMonitor) {
-      const positionInformation = this._getPositionInformation(wallet.address);
+      const monitoredAddress = this.web3.utils.toChecksumAddress(wallet.address);
+
+      const positionInformation = this._getPositionInformation(monitoredAddress);
       if (positionInformation == null) {
         // There is no position information for the given wallet. Next run this will be updated as it is now enqueued.
         continue;
@@ -98,7 +100,7 @@ class CRMonitor {
         const mrkdwn =
           wallet.name +
           " (" +
-          createEtherscanLinkMarkdown(wallet.address, this.empProps.networkId) +
+          createEtherscanLinkMarkdown(monitoredAddress, this.empProps.networkId) +
           ") collateralization ratio has dropped to " +
           this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +
@@ -123,7 +125,7 @@ class CRMonitor {
   }
 
   _getPositionInformation(address) {
-    return this.empClient.getAllPositions().find(position => position.sponsor == address);
+    return this.empClient.getAllPositions().find(position => position.sponsor === address);
   }
 
   // Checks if a big number value is below a given threshold.
