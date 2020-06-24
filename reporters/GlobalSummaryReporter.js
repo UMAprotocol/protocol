@@ -93,7 +93,8 @@ class GlobalSummaryReporter {
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
     this.totalTokensOutstanding = await this.empContract.methods.totalTokensOutstanding().call();
-    this.collateralLockedInLiquidations = this.toBN((await this.empContract.methods.pfc().call()).toString()).sub(
+    this.totalPfc = await this.empContract.methods.pfc().call();
+    this.collateralLockedInLiquidations = this.toBN(this.totalPfc.toString()).sub(
       this.toBN(this.totalPositionCollateral.toString())
     );
 
@@ -312,10 +313,10 @@ class GlobalSummaryReporter {
       // Fetch disputed collateral & token amounts from corresponding liquidation event that with same ID and sponsor.
       const liquidationData = liquidationEvents.filter(
         e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
-      );
+      )[0];
 
-      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
-      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
+      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding.toString()));
+      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral.toString()));
       allUniqueDisputes[event.sponsor] = true;
 
       for (let period of periods) {
@@ -331,10 +332,10 @@ class GlobalSummaryReporter {
 
         if (this.isEventInPeriod(event, period)) {
           periodTokensDisputed[period.label] = periodTokensDisputed[period.label].add(
-            this.toBN(liquidationData.tokensOutstanding)
+            this.toBN(liquidationData.tokensOutstanding.toString())
           );
           periodCollateralDisputed[period.label] = periodCollateralDisputed[period.label].add(
-            this.toBN(liquidationData.lockedCollateral)
+            this.toBN(liquidationData.lockedCollateral.toString())
           );
           periodUniqueDisputes[period.label][event.sponsor] = true;
         }
@@ -342,6 +343,7 @@ class GlobalSummaryReporter {
 
       // Create list of resolved prices for disputed liquidations.
       const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      const disputeLabel = `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`;
       try {
         // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
         // but return a very high integer--a false positive. `revertWrapper` handles this case and returns the resolved price or `null`
@@ -354,14 +356,12 @@ class GlobalSummaryReporter {
           }
         );
         if (revertWrapper(resolvedPrice)) {
-          allResolvedDisputes[
-            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-          ] = this.formatDecimalString(resolvedPrice);
+          allResolvedDisputes[disputeLabel] = this.formatDecimalString(resolvedPrice);
         } else {
-          throw "getPrice reverted but web3.Contract method call returned a false positive price";
+          allResolvedDisputes[disputeLabel] = "unresolved";
         }
       } catch (err) {
-        allResolvedDisputes[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
+        allResolvedDisputes[disputeLabel] = "unresolved";
       }
     }
     return {
@@ -421,7 +421,7 @@ class GlobalSummaryReporter {
         }
 
         if (this.isEventInPeriod(event, period)) {
-          periodFinalFeesPaid = periodFinalFeesPaid.add(this.toBN(event.amount));
+          periodFinalFeesPaid[period.label] = periodFinalFeesPaid[period.label].add(this.toBN(event.amount));
         }
       }
     }
@@ -480,8 +480,8 @@ class GlobalSummaryReporter {
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = depositData.allCollateralTransferred.sub(withdrawData.allCollateralTransferred);
-    if (!netCollateralWithdrawn.eq(this.toBN(this.totalPositionCollateral.toString()))) {
-      throw "Net collateral deposited is not equal to current total position collateral";
+    if (!netCollateralWithdrawn.eq(this.toBN(this.totalPfc.toString()))) {
+      throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
     let netCollateralWithdrawnPeriod = depositData.periodCollateralTransferred["period"].sub(
       withdrawData.periodCollateralTransferred["period"]
