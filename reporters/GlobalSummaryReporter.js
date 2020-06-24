@@ -315,8 +315,8 @@ class GlobalSummaryReporter {
         e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
       )[0];
 
-      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding.toString()));
-      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral.toString()));
+      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
+      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
       allUniqueDisputes[event.sponsor] = true;
 
       for (let period of periods) {
@@ -332,10 +332,10 @@ class GlobalSummaryReporter {
 
         if (this.isEventInPeriod(event, period)) {
           periodTokensDisputed[period.label] = periodTokensDisputed[period.label].add(
-            this.toBN(liquidationData.tokensOutstanding.toString())
+            this.toBN(liquidationData.tokensOutstanding)
           );
           periodCollateralDisputed[period.label] = periodCollateralDisputed[period.label].add(
-            this.toBN(liquidationData.lockedCollateral.toString())
+            this.toBN(liquidationData.lockedCollateral)
           );
           periodUniqueDisputes[period.label][event.sponsor] = true;
         }
