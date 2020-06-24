@@ -1,4 +1,5 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const { revertWrapper } = require("../common/ContractUtils");
 
 class Disputer {
   /**
@@ -196,12 +197,8 @@ class Disputer {
       // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
-        withdrawAmount = await withdraw.call({ from: this.account });
-        // See: https://github.com/ethereum/solidity/issues/4840 for the reason this fix is necessary.
-        if (
-          withdrawAmount.rawValue.toString() ===
-          "3963877391197344453575983046348115674221700746820753546331534351508065746944"
-        ) {
+        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
