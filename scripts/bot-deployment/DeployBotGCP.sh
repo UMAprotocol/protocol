@@ -13,10 +13,11 @@ echo "🔥 Starting deployment script for bot" $1
 
 # This service account has all permissions needed for any bot to run.
 # Check if user passed in a service account email to use, otherwise use the email that starts with "emp-bot" by default.
-serviceAccountEmail=$(gcloud iam service-accounts list --filter name:emp-bot --format 'value(email)')
 if [ "$2" ]
-  then
+then
     serviceAccountEmail=$2
+else
+    serviceAccountEmail=$(gcloud iam service-accounts list --filter name:emp-bot --format 'value(email)')
 fi
 
 echo "📄 Using service account for bot @" $serviceAccountEmail
