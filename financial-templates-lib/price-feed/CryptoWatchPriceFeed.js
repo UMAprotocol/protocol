@@ -111,7 +111,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       this.logger.error({
         at: "CryptoWatchPriceFeed",
         message: "Could not parse ohlc result🚨",
-        error: new Error(ohlcResponse)
+        error: new Error(JSON.stringify(ohlcResponse))
       });
       return;
     }
@@ -157,7 +157,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         at: "CryptoWatchPriceFeed",
         message: "Could not parse price result🚨",
         priceUrl,
-        error: new Error(priceResponse)
+        error: new Error(JSON.stringify(priceResponse))
       });
       return;
     }
