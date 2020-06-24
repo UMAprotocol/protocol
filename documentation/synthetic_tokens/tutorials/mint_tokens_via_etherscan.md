@@ -1,6 +1,6 @@
 # Minting Synthetic Tokens via Etherscan
 
-This article will walk you through minting tokens (like ETHBTC or xyCOMP) for the first time on Etherscan’s contract interaction GUI. If you already have a position (i.e. if you’ve already minted tokens, these steps may not apply to you). The screenshots and example numbers used in this tutorial reflect the ETHBTC token, but all steps in this article apply just the same to any other expiring multi-party token (like the xyCOMP).
+This article will walk you through minting tokens (like ETHBTC or yCOMP) for the first time on Etherscan’s contract interaction GUI. If you already have a position (i.e. if you’ve already minted tokens, these steps may not apply to you). The screenshots and example numbers used in this tutorial reflect the ETHBTC token, but all steps in this article apply just the same to any other expiring multi-party token (like the yCOMP).
 
 You can already mint tokens via the [CLI tool](./using_the_uma_sponsor_cli_tool.md), but you may prefer to interact with the contract more directly via Etherscan. All you’ll need to get started is some DAI to use as collateral (50 DAI should be enough) and ETH to pay for transaction gas (0.05 ETH should be enough).
 
