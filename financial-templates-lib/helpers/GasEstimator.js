@@ -2,8 +2,24 @@
 // to inform the Liquidator and dispute bot of a reasonable gas price to use.
 
 const fetch = require("node-fetch");
+// Etherchain expected response structure:
+// {
+//   "safeLow": "25.0",
+//   "standard": "30.0",
+//   "fast": "35.0",
+//   "fastest": "39.6"
+// }
 const url = "https://www.etherchain.org/api/gasPriceOracle";
-// Etherscan API limits 1 request every 3 seconds without passing in an API key.
+// Etherscan API limits 1 request every 3 seconds without passing in an API key. Expected response structure:
+// {
+//   "status": "1",
+//   "message": "OK-Missing/Invalid API Key, rate limit of 1/3sec applied",
+//   "result": {
+//       "LastBlock": "10330323",
+//       "SafeGasPrice": "30",
+//       "ProposeGasPrice": "41"
+//   }
+// }
 const backupUrl = "https://api.etherscan.io/api?module=gastracker&action=gasoracle";
 
 class GasEstimator {
@@ -80,8 +96,8 @@ class GasEstimator {
       try {
         const responseBackup = await fetch(backupUrl);
         const jsonBackup = await responseBackup.json();
-        if (jsonBackup.SafeGasPrice) {
-          return jsonBackup.fast;
+        if (jsonBackup.result && jsonBackup.result.SafeGasPrice) {
+          return jsonBackup.SafeGasPrice;
         } else {
           throw new Error("Etherscan API: bad json response");
         }
