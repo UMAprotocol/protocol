@@ -186,12 +186,17 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
  * @return {Object} an instance of PriceFeedInterface that can be used to get the reference price.
  */
 async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  const emp = getEmpAtAddress(web3, empAddress);
+
+  // Infer lookback from liquidation liveness.
+  const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
+
   // TODO: maybe move this default config to a better location.
   const defaultConfigs = {
     "ETH/BTC": {
       type: "medianizer",
       pair: "ethbtc",
-      lookback: 7200,
+      lookback,
       minTimeBetweenUpdates: 60,
       medianizedFeeds: [
         { type: "cryptowatch", exchange: "coinbase-pro" },
@@ -211,7 +216,6 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     }
   };
 
-  const emp = getEmpAtAddress(web3, empAddress);
   const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
   const defaultConfig = defaultConfigs[identifier];
 
