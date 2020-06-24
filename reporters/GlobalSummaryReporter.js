@@ -40,6 +40,11 @@ class GlobalSummaryReporter {
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
     this.formatDecimalStringWithSign = createFormatFunction(this.web3, 2, 4, true);
+
+    // This report runs accounting on the current and historical state of EMP positions.
+    // Use `accountingVariance` to adjust how much room for error we should allow in calculations, for example to
+    // allow for FixedPoint rounding errors.
+    this.accountingVariance = this.toBN(this.toWei("0.0001"));
   }
 
   async update() {
@@ -519,7 +524,10 @@ class GlobalSummaryReporter {
 
     // - Net tokens minted:
     let netTokensMinted = tokenMintData.allTokensCreated.sub(tokenBurnData.allCollateralTransferred);
-    if (!netTokensMinted.eq(this.toBN(this.totalTokensOutstanding.toString()))) {
+    if (
+      !netTokensMinted.lt(this.toBN(this.totalTokensOutstanding.toString()).add(this.accountingVariance)) &&
+      !netTokensMinted.gt(this.toBN(this.totalTokensOutstanding.toString()).sub(this.accountingVariance))
+    ) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
     let netTokensMintedPeriod = tokenMintData.periodTokensCreated["period"].sub(
