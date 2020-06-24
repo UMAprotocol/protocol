@@ -34,7 +34,7 @@ class BalanceMonitor {
 
     // Loop over all bots in the provided config and register them in the tokenBalanceClient. This will ensure that
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
-    this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => bot.address));
+    this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
 
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
@@ -56,40 +56,42 @@ class BalanceMonitor {
     // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this.toBN(this.client.getCollateralBalance(bot.address)).lt(this.toBN(bot.collateralThreshold))) {
+      const monitoredAddress = this.web3.utils.toChecksumAddress(bot.address);
+
+      if (this.toBN(this.client.getCollateralBalance(monitoredAddress)).lt(this.toBN(bot.collateralThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
-            this.client.getCollateralBalance(bot.address),
+            this.client.getCollateralBalance(monitoredAddress),
             this.empProps.collateralCurrencySymbol,
             "collateral"
           )
         });
       }
-      if (this.toBN(this.client.getSyntheticBalance(bot.address)).lt(this.toBN(bot.syntheticThreshold))) {
+      if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.syntheticThreshold,
-            this.client.getSyntheticBalance(bot.address),
+            this.client.getSyntheticBalance(monitoredAddress),
             this.empProps.syntheticCurrencySymbol,
             "synthetic"
           )
         });
       }
-      if (this.toBN(this.client.getEtherBalance(bot.address)).lt(this.toBN(bot.etherThreshold))) {
+      if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.etherThreshold,
-            this.client.getEtherBalance(bot.address),
+            this.client.getEtherBalance(monitoredAddress),
             "ETH",
             "ether"
           )

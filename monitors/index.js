@@ -204,7 +204,7 @@ async function Poll(callback) {
     }
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60 * 1000;
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
     // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.

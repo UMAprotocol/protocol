@@ -92,7 +92,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
   it("Basic 2-price TWAP", async function() {
     // Update the prices with a small amount of time between.
     const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
-    await delay(1000);
+    await delay(1);
     // Invalid price should be ignored.
     await uniswapMock.setPrice(toWei("0"), toWei("1"));
     const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));

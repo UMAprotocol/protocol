@@ -23,11 +23,10 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
- * @param {Number} [monitorPort] Monitor server port number.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
+async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -37,8 +36,7 @@ async function run(address, pollingDelay, priceFeedConfig, monitorPort, liquidat
       empAddress: address,
       pollingDelay,
       priceFeedConfig,
-      liquidatorConfig,
-      monitorPort
+      liquidatorConfig
     });
 
     // Setup web3 accounts an contract instance.
@@ -115,7 +113,7 @@ async function Poll(callback) {
     }
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60 * 1000;
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw new Error(
@@ -138,9 +136,7 @@ async function Poll(callback) {
     //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
     const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
-    const portNumber = 8888;
-
-    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, portNumber, liquidatorConfig);
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
