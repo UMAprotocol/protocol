@@ -84,7 +84,8 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     }
 
     while (true) {
-      await liquidator.queryAndLiquidate();
+      const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+      await liquidator.queryAndLiquidate(currentSyntheticBalance);
       await liquidator.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.

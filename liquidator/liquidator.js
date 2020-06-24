@@ -27,10 +27,14 @@ class Liquidator {
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
 
-    // The expiring multi party contract collateralization Ratio is needed to calculate minCollateralPerToken.
+    // The EMP contract collateralization Ratio is needed to calculate minCollateralPerToken.
     this.empCRRatio = null;
 
+    // The EMP contract min sponsor position size is needed to calculate maxTokensToLiquidate.
+    this.empMinSponsorSize = null;
+
     // Helper functions from web3.
+    this.BN = this.web3.utils.BN;
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
@@ -98,13 +102,19 @@ class Liquidator {
     await this.priceFeed.update();
 
     // Fetch the collateral requirement requirement from the contract. Will only execute on first update execution.
-    if (this.empCRRatio == null) {
+    if (this.empCRRatio === null) {
       this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
+    }
+
+    // Fetch the min sponsor position from the contract.
+    if (this.empMinSponsorSize === null) {
+      this.empMinSponsorSize = await this.empContract.methods.minSponsorTokens().call();
     }
   }
 
-  // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  async queryAndLiquidate() {
+  // Queries underCollateralized positions and performs liquidations using `tokenBalanceWei` against any under collateralized positions.
+  // If `tokenBalanceWei` is not passed in, then the bot will only attempt to liquidate the full position.
+  async queryAndLiquidate(tokenBalanceWei) {
     await this.update();
 
     const price = this.priceFeed.getCurrentPrice();
@@ -158,12 +168,27 @@ class Liquidator {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
 
+      let tokensToLiquidate;
+      if (tokenBalanceWei) {
+        // Calculate the maximum tokens we can liquidate. We cannot bring the position down below the `minSponsorPosition`,
+        // and we cannot liquidate more than the bot's current balance, `tokenBalanceWei`. If the liquidator has enough balance
+        // to liquidate the entire position, then it will do so. If not, then it will liquidate the maximum amount of tokens it can provided
+        // that it maintains the position's token debt above the minimum token size.
+        const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
+        const maxTokensToLiquidate = this.BN.min(this.toBN(tokenBalanceWei), this.toBN(position.numTokens));
+        tokensToLiquidate = maxTokensToLiquidate.eq(this.toBN(position.numTokens))
+          ? maxTokensToLiquidate
+          : this.BN.min(positionTokensAboveMinimum, maxTokensToLiquidate);
+      } else {
+        tokensToLiquidate = position.numTokens;
+      }
+
       // Create the liquidation transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: this.liquidationMinPrice },
         { rawValue: maxCollateralPerToken.toString() },
-        { rawValue: position.numTokens },
+        { rawValue: tokensToLiquidate.toString() },
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
@@ -178,6 +203,9 @@ class Liquidator {
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
           error
         });
         continue;
@@ -193,6 +221,9 @@ class Liquidator {
         message: "Liquidating position",
         position: position,
         inputPrice: scaledPrice.toString(),
+        minLiquidationPrice: this.liquidationMinPrice,
+        maxLiquidationPrice: maxCollateralPerToken.toString(),
+        tokensToLiquidate: tokensToLiquidate.toString(),
         txnConfig
       });
 

@@ -86,7 +86,7 @@ contract("Liquidator.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
+      minSponsorTokens: { rawValue: toWei("5") },
       timerAddress: Timer.address
     };
 
@@ -428,6 +428,109 @@ contract("Liquidator.js", function(accounts) {
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
     assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
+  });
+
+  describe("Partially liquidate positions depending on liquidator's token balance", function() {
+    it("Bot balance < position tokens outstanding && minimum sponsor tokens is not a factor", async function() {
+      // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // liquidatorBot creates a position with enough tokens to liquidate the full position if neccessary.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      // Next, assume the price feed given to the liquidator has moved such that the sponsor
+      // is now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
+      // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
+      // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
+      // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+
+      priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
+
+      // Let's give the liquidator bot fewer than 100 synthetic tokens to liquidate with. The minimum sponsor size is 5,
+      // so if the bot has < 100 tokens, then it must liquidate < 96 tokens to keep the position above the minimum. We'll give the bot
+      // 95 tokens, and it should liquidate 95/100 tokens out in the position.
+      await liquidator.queryAndLiquidate(toWei("95"));
+      assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 liquidations.
+
+      // Sponsor1 should be in a liquidation state with the bot as the liquidator. 95% of the 125 starting collateral should be liquidated.
+      let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+      assert.equal(liquidationObject.sponsor, sponsor1);
+      assert.equal(liquidationObject.liquidator, liquidatorBot);
+      assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+      assert.equal(liquidationObject.liquidatedCollateral, toWei("118.75"));
+      assert.equal(liquidationObject.tokensOutstanding, toWei("95"));
+
+      // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+      assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("6.25"));
+      const positionObject = await emp.positions(sponsor1);
+      assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+    });
+
+    it("Bot balance < position tokens outstanding && minimum sponsor tokens is a factor", async function() {
+      // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // liquidatorBot creates a position with enough tokens to liquidate the full position if neccessary.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      // Next, assume the price feed given to the liquidator has moved such that the sponsor
+      // is now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
+      // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
+      // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
+      // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+
+      priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
+
+      // Let's give the liquidator bot fewer than 100 synthetic tokens to liquidate with. The minimum sponsor size is 5,
+      // so if the bot has < 100 tokens, then it must liquidate < 96 tokens to keep the position above the minimum. We'll give the bot
+      // 97 tokens, but because of the minimum sponsor amount it should only liquidate 95/100 tokens out in the position.
+      await liquidator.queryAndLiquidate(toWei("97"));
+      assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 liquidations.
+
+      // Sponsor1 should be in a liquidation state with the bot as the liquidator. 95% of the 125 starting collateral should be liquidated.
+      let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+      assert.equal(liquidationObject.sponsor, sponsor1);
+      assert.equal(liquidationObject.liquidator, liquidatorBot);
+      assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+      assert.equal(liquidationObject.liquidatedCollateral, toWei("118.75"));
+      assert.equal(liquidationObject.tokensOutstanding, toWei("95"));
+
+      // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+      assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("6.25"));
+      const positionObject = await emp.positions(sponsor1);
+      assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+    });
+
+    it("Bot balance > position tokens outstanding, should liquidate entire position", async function() {
+      // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // liquidatorBot creates a position with enough tokens to liquidate the full position if neccessary.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      // Next, assume the price feed given to the liquidator has moved such that the sponsor
+      // is now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
+      // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
+      // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
+      // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+
+      priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
+
+      // Let's give the liquidator bot more than 100 synthetic tokens to liquidate with. The bot should default to liquidating the entire position.
+      await liquidator.queryAndLiquidate(toWei("105"));
+      assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 liquidations.
+
+      // Sponsor1 should be in a liquidation state with the bot as the liquidator. 95% of the 125 starting collateral should be liquidated.
+      let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+      assert.equal(liquidationObject.sponsor, sponsor1);
+      assert.equal(liquidationObject.liquidator, liquidatorBot);
+      assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+      assert.equal(liquidationObject.liquidatedCollateral, toWei("125"));
+      assert.equal(liquidationObject.tokensOutstanding, toWei("100"));
+
+      // Sponsor1 should have no collateral and tokens left in their position from the liquidation.
+      assert.equal((await emp.getCollateral(sponsor1)).rawValue, 0);
+    });
   });
 
   describe("Overrides the default liquidator configuration settings", function() {
