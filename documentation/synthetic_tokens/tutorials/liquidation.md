@@ -6,10 +6,14 @@ The prompt and accurate execution of liquidations and disputes is a core assumpt
 Liquidation and dispute bots, as described below and implemented [here](https://github.com/UMAprotocol/protocol/tree/master/liquidator) and [here](https://github.com/UMAprotocol/protocol/tree/master/disputer), are infrastructure tools that will help maintain the overall health of the UMA ecosystem.
 They are currently compatible with the priceless synthetic token contract template, as described [here](../explainer.md) and implemented [here](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates).
 
+### Liquidation vs Dispute Bot
+
 The liquidation bot monitors all open positions within a given expiring multi-party contract and liquidates positions if their collateralization ratio, as inferred from off-chain information about the value of the price identifier, drops below a given threshold.
 
 The dispute bot monitors all liquidations occurring within a given expiring multi-party contract and initiates disputes against liquidations it deems invalid, as inferred from off-chain information about the value of the price identifier.
 A liquidation is invalid if a position was correctly collateralized at the time of liquidation.
+
+In short, a liquidation bot is to liquidate under-collateralized positions while a dispute bot is used for disputing those liquidations if they incorrectly report a position as under-collateralized. Since a dispute is the only way a price request is triggered in the system, they are very important to the operation of the DVM.
 
 ## Incentives to Running a Bot
 
@@ -35,7 +39,19 @@ This contract is an ETHBTC synthetic, collateralized in Dai.
 
 ## Prerequisites
 
-Before starting this tutorial you need to clone repo, install the dependencies and compile the smart contracts. To do this run the following:
+Before starting this tutorial you need to clone the repo, install the dependencies, and compile the smart contracts.
+
+### Linux users
+
+If you are using Linux, you may need to first install the following packages before `npm install` can complete properly:
+
+```
+make gcc libudev-dev g++ linux-headers-generic libusb-1.0-0
+```
+
+Note that `libudev-dev`, `linux-headers-generic`, and `libusb-1.0-0` may have different names depending on your Linux distribution.
+
+If you are not using Linux (or if you have installed the above), you can run the following to continue:
 
 ```bash
 ## Clone the repo and navigate into the protocol directory
@@ -119,6 +135,8 @@ PRICE_FEED_CONFIG={"type":"medianizer","apiKey":"YOUR_API_KEY","pair":"ethbtc","
 ```
 
 The parameters above, as well as other optional parameters are explained in the appendix of this tutorial. **Be sure to add in your mnemonic and your crypto watch API key.** The parameter in the example above conform to [UMIP-2](https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-2.md#implementation)'s specification.
+
+Note that the `EMP_ADDRESS` above currently refers to the ETHBTC synthetic token deployed on Kovan. The EMP refers to the `ExpiringMultiParty` financial contract used here.
 
 **b) Starting the bots**
 
