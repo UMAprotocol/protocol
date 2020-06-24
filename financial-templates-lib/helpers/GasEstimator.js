@@ -97,7 +97,7 @@ class GasEstimator {
         const responseBackup = await fetch(backupUrl);
         const jsonBackup = await responseBackup.json();
         if (jsonBackup.result && jsonBackup.result.SafeGasPrice) {
-          return jsonBackup.SafeGasPrice;
+          return jsonBackup.result.SafeGasPrice;
         } else {
           throw new Error("Etherscan API: bad json response");
         }
