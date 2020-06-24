@@ -49,6 +49,8 @@ If you are using Linux, you may need to first install the following packages bef
 make gcc libudev-dev g++ linux-headers-generic libusb-1.0-0
 ```
 
+Note that `libudev-dev`, `linux-headers-generic`, and `libusb-1.0-0` may have different names depending on your Linux distribution.
+
 If you are not using Linux (or if you have installed the above), you can run the following to continue:
 
 ```bash
