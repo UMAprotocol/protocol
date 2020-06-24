@@ -485,7 +485,10 @@ class GlobalSummaryReporter {
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = depositData.allCollateralTransferred.sub(withdrawData.allCollateralTransferred);
-    if (!netCollateralWithdrawn.eq(this.toBN(this.totalPfc.toString()))) {
+    if (
+      !netCollateralWithdrawn.lt(this.toBN(this.totalPfc.toString()).add(this.accountingVariance)) &&
+      !netCollateralWithdrawn.gt(this.toBN(this.totalPfc.toString()).sub(this.accountingVariance))
+    ) {
       throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
     let netCollateralWithdrawnPeriod = depositData.periodCollateralTransferred["period"].sub(
