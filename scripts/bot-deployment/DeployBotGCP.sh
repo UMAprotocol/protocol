@@ -1,33 +1,26 @@
 #!/bin/bash
 set -e
 
-if [ $# -ne 1 ]; then
-    echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config and service account will be inferred."
-    echo "example: ./DeployBotGCP.sh ethbtc-mainnet-monitor"
+if [ $# -lt 1 ]; then
+    echo "Incorrect number of arguments supplied! First (required) argument is the bot's name. From this the bot's config and service account will be inferred. Second (optional) argument is the GCP service account email to link with the bots."
+    echo "example: ./DeployBotGCP.sh ethbtc-mainnet-monitor [emp-bot@uma-protocol.iam.gserviceaccount.com]"
     echo "To view all available configs run: gsutil ls gs://bot-configs"
+    echo "To view all available service accounts run: gcloud iam service-accounts list"
     exit 1
 fi
 
 echo "🔥 Starting deployment script for bot" $1
 
-# Bot names are <identifer>-<network>-<bot-type>. EG: ethbtc-liquidator-mainnet.
-# This cut removes the network as this is not included in a service account. ethbtc-liquidator-mainnet becomes ethbtc-liquidator
-paramToServiceAccount=$(echo $1 | cut -d'-' -f 1,3)
-serviceAccountEmail=""
-
-# Loop through all service accounts in GCP and validate that the provided bot name matches to a service account email.
-for serviceAccount in $(gcloud iam service-accounts list --format="value(EMAIL)"); do
-    if [ $paramToServiceAccount == $(echo $serviceAccount | cut -d'@' -f 1) ]; then
-        serviceAccountEmail=$serviceAccount
-    fi
-done
-
-if [ $serviceAccountEmail == "" ]; then
-    echo "Bot name provided does not match to a service account"
-    exit 1
+# This service account has all permissions needed for any bot to run.
+# Check if user passed in a service account email to use, otherwise use the email that starts with "emp-bot" by default.
+if [ "$2" ]
+then
+    serviceAccountEmail=$2
+else
+    serviceAccountEmail=$(gcloud iam service-accounts list --filter name:emp-bot --format 'value(email)')
 fi
 
-echo "📄 Bot service account found @" $serviceAccountEmail
+echo "📄 Using service account for bot @" $serviceAccountEmail
 echo "🤖 Pulling bot config from GCP bucket"
 
 # Create a temp file to store the config. This will be cleaned up by the OS.

@@ -85,11 +85,11 @@ const deployEMP = async callback => {
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: `${identifierBase} Synthetic Token Expiring 1 August 2020`,
       syntheticSymbol: `${identifierBase.replace("/", "")}-AUG20`,
-      collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.03") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.05") },
-      minSponsorTokens: { rawValue: toWei("1000") }
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.05") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.2") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") }
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
