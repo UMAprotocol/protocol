@@ -1,17 +1,23 @@
 #!/bin/bash
 set -e
 
-if [ $# -ne 1 ]; then
-    echo "Incorrect number of arguments supplied! First and only argument is bot's name. From this the bot's config and service account will be inferred."
-    echo "example: ./DeployBotGCP.sh ethbtc-mainnet-monitor"
+if [ $# -lt 1 ]; then
+    echo "Incorrect number of arguments supplied! First (required) argument is the bot's name. From this the bot's config and service account will be inferred. Second (optional) argument is the GCP service account email to link with the bots."
+    echo "example: ./DeployBotGCP.sh ethbtc-mainnet-monitor [emp-bot@uma-protocol.iam.gserviceaccount.com]"
     echo "To view all available configs run: gsutil ls gs://bot-configs"
+    echo "To view all available service accounts run: gcloud iam service-accounts list"
     exit 1
 fi
 
 echo "🔥 Starting deployment script for bot" $1
 
 # This service account has all permissions needed for any bot to run.
-serviceAccountEmail="emp-bot@uma-protocol.iam.gserviceaccount.com"
+# Check if user passed in a service account email to use, otherwise use the email that starts with "emp-bot" by default.
+serviceAccountEmail=$(gcloud iam service-accounts list --filter name:emp-bot --format 'value(email)')
+if [ "$2" ]
+  then
+    serviceAccountEmail=$2
+fi
 
 echo "📄 Using service account for bot @" $serviceAccountEmail
 echo "🤖 Pulling bot config from GCP bucket"
