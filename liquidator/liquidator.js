@@ -112,9 +112,9 @@ class Liquidator {
     }
   }
 
-  // Queries underCollateralized positions and performs liquidations using `tokenBalanceWei` against any under collateralized positions.
-  // If `tokenBalanceWei` is not passed in, then the bot will only attempt to liquidate the full position.
-  async queryAndLiquidate(tokenBalanceWei) {
+  // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
+  // If `maxTokensToLiquidateWei` is not passed in, then the bot will only attempt to liquidate the full position.
+  async queryAndLiquidate(maxTokensToLiquidateWei) {
     await this.update();
 
     const price = this.priceFeed.getCurrentPrice();
@@ -168,19 +168,42 @@ class Liquidator {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
 
+      // Calculate the amount of tokens we will attempt to liquidate.
       let tokensToLiquidate;
-      if (tokenBalanceWei) {
-        // Calculate the maximum tokens we can liquidate. We cannot bring the position down below the `minSponsorPosition`,
-        // and we cannot liquidate more than the bot's current balance, `tokenBalanceWei`. If the liquidator has enough balance
-        // to liquidate the entire position, then it will do so. If not, then it will liquidate the maximum amount of tokens it can provided
-        // that it maintains the position's token debt above the minimum token size.
-        const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
-        const maxTokensToLiquidate = this.BN.min(this.toBN(tokenBalanceWei), this.toBN(position.numTokens));
-        tokensToLiquidate = maxTokensToLiquidate.eq(this.toBN(position.numTokens))
-          ? maxTokensToLiquidate
-          : this.BN.min(positionTokensAboveMinimum, maxTokensToLiquidate);
+
+      // If the user specifies `maxTokensToLiquidateWei`, then we must make sure that it follows an important constraint:
+      // we cannot bring the position down below the `minSponsorPosition`.
+      if (maxTokensToLiquidateWei) {
+        // First, we check if `maxTokensToLiquidateWei > tokensOutstanding`, if so then we'll liquidate the full position.
+        if (this.toBN(maxTokensToLiquidateWei).gte(this.toBN(position.numTokens))) {
+          tokensToLiquidate = this.toBN(position.numTokens);
+        } else {
+          // If we're not liquidating the full position, then we cannot liquidate the position below the `minSponsorTokens` constraint.
+          // `positionTokensAboveMinimum` is the maximum amount of tokens any liquidator can liquidate while taking `minSponsorTokens` into account.
+          const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
+
+          // Finally, we cannot liquidate more than `maxTokensToLiquidate`.
+          tokensToLiquidate = this.BN.min(positionTokensAboveMinimum, this.toBN(maxTokensToLiquidateWei));
+        }
       } else {
-        tokensToLiquidate = position.numTokens;
+        // If `maxTokensToLiquidateWei` is not specified, then we will attempt to liquidate the full position.
+        tokensToLiquidate = this.toBN(position.numTokens);
+      }
+
+      // If `tokensToLiquidate` is 0, then skip this liquidation.
+      if (tokensToLiquidate.isZero()) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Cannot liquidate position: not enough synthetic to initiate liquidation✋",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          error: new Error("Refusing to liquidate 0 tokens")
+        });
+        continue;
       }
 
       // Create the liquidation transaction.
