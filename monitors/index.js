@@ -41,6 +41,7 @@ async function run(
   address,
   pollingDelay,
   startingBlock,
+  endingBlock,
   botMonitorObject,
   walletMonitorObject,
   contractMonitorObject,
@@ -57,6 +58,7 @@ async function run(
       empAddress: address,
       pollingDelay,
       startingBlock,
+      endingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
@@ -91,16 +93,18 @@ async function run(
     );
 
     // 1. Contract state monitor.
-    // Start the event client by looking from the provided block number. If param set to null then use the latest
-    // block number. Else, use the param number to start the search from.
-    const eventsFromBlock = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
+    // Start the event client by looking from the provided `startingBlock` number to the provided `endingBlock` number.
+    // If param are sets to null then use the latest block number for the `eventsFromBlockNumber` and leave the
+    // `endingBlock` as null in the client constructor. The client will then query up until the `latest` block.
+    const eventsFromBlockNumber = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
       Logger,
       ExpiringMultiParty.abi,
       web3,
       emp.address,
-      eventsFromBlock
+      eventsFromBlockNumber,
+      eventsToBlockNumber
     );
     const contractMonitor = new ContractMonitor(
       Logger,
@@ -210,6 +214,10 @@ async function Poll(callback) {
     // set then default to null which indicates that the bot should start at the current block number.
     const startingBlock = process.env.STARTING_BLOCK_NUMBER;
 
+    // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
+    // until. If not set the default to null which indicates that the bot should search up to 'latests'.
+    const endingBlock = process.env.ENDING_BLOCK_NUMBER;
+
     if (
       !process.env.BOT_MONITOR_OBJECT ||
       !process.env.WALLET_MONITOR_OBJECT ||
@@ -267,6 +275,7 @@ async function Poll(callback) {
       process.env.EMP_ADDRESS,
       pollingDelay,
       startingBlock,
+      endingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,

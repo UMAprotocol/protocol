@@ -27,11 +27,13 @@ require("dotenv").config();
 const fetch = require("node-fetch");
 const { URL } = require("url");
 
-// GCP helpers
-const { GoogleAuth } = require("google-auth-library");
+// GCP helpers.
+const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run.
 const auth = new GoogleAuth();
-const { Storage } = require("@google-cloud/storage");
+const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
 const storage = new Storage();
+const { Datastore } = require("@google-cloud/datastore"); // used to read/write the last block number the monitor used.
+const datastore = new Datastore();
 
 // Helpers
 // TODO integrate with winston logger.
@@ -118,8 +120,33 @@ const _executeCloudRun = async (url, body) => {
     method: "post",
     data: body
   });
+
   return res.data;
 };
+
+// Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entry kind and
+// `lastHubUpdateBlockNumber` is the entry ID. Will override the previous value on each run.
+async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
+  const key = datastore.key(["BlockNumberLog", configIdentifier]);
+  const dataBlob = {
+    key: key,
+    data: {
+      blockNumber: blockNumber
+    }
+  };
+
+  // Saves the entity
+  await datastore.save(dataBlob);
+}
+
+// Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
+// recorded by the bot to inform where searches should start from.
+async function _getLastQueriedBlockNumber(configIdentifier) {
+  const key = datastore.key(["BlockNumberLog", configIdentifier]);
+  const [dataField] = await datastore.get(key);
+
+  return dataField;
+}
 
 // Execute a post query on a arbitrary `url` with a given json `body. Used to test the hub script locally.
 // TODO: wire this in for unit testing.
