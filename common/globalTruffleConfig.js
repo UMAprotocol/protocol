@@ -24,7 +24,7 @@ const privateKey = process.env.PRIVATE_KEY
   : "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709";
 
 // Fallback to a backup non-prod API key.
-const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
+const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "e34138b2db5b496ab5cc52319d2f0299";
 const customNodeUrl = process.env.CUSTOM_NODE_URL;
 let singletonProvider;
 
