@@ -1,4 +1,4 @@
-if [ $# -ne 5 ]; then
+if [ $# -ne 6 ]; then
     echo "Incorrect number of arguments supplied! arguments are:"
     echo "1) Scheduler name"
     echo "2) Schedular cron time"
