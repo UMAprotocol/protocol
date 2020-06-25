@@ -26,7 +26,7 @@ function getUniswapClient() {
  * @return query string
  */
 function PAIR_DATA(pairAddress, block) {
-  const blockNumberLag = 3;
+  const blockNumberLag = 5;
   const queryString = block
     ? `
             query pairs {
