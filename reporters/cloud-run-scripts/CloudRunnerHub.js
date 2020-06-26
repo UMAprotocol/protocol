@@ -69,7 +69,7 @@ app.post("/", async (req, res) => {
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
     for (const botName in configObject) {
-      const botConfig = appendStartEndBlockVariables(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
+      const botConfig = appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
       console.log("Appending to promise array", botName); // TODO: refine this logging with a winston log
       // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
       // promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
@@ -164,7 +164,7 @@ async function _getLatestBlockNumber() {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function appendStartEndBlockVariables(config, lastQueriedBlockNumber, latestBlockNumber) {
+function appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
