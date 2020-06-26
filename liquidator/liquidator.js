@@ -198,7 +198,7 @@ class Liquidator {
       if (tokensToLiquidate.isZero()) {
         this.logger.error({
           at: "Liquidator",
-          message: "Cannot liquidate position: not enough synthetic to initiate liquidation✋",
+          message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,
@@ -208,6 +208,21 @@ class Liquidator {
           error: new Error("Refusing to liquidate 0 tokens")
         });
         continue;
+      }
+
+      // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
+      if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei.toString()
+        });
       }
 
       // Create the liquidation transaction.
@@ -226,7 +241,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message:
-            "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
+            "Failed to liquidate position: not enough synthetic (or large enough approval) to initiate liquidation❌",
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,

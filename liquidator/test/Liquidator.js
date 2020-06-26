@@ -13,7 +13,12 @@ const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstim
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogLevel } = require("../../financial-templates-lib/logger/SpyTransport");
+const {
+  SpyTransport,
+  lastSpyLogLevel,
+  spyLogIncludes,
+  spyLogLevel
+} = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -463,7 +468,19 @@ contract("Liquidator.js", function(accounts) {
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
       await liquidator.queryAndLiquidate(amountToLiquidate);
-      assert.equal(spy.callCount, 3); // 3 info level events should be sent at the conclusion of the 3 liquidations.
+
+      // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
+      assert.equal(spy.callCount, 5); // 3 info + 2 error level events should be sent at the conclusion of the 3 liquidations including 2 partials.
+      assert.equal(spyLogLevel(spy, 4), "info");
+      assert.isTrue(spyLogIncludes(spy, 4, "liquidated"));
+      assert.equal(spyLogLevel(spy, 3), "info");
+      assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
+      assert.equal(spyLogLevel(spy, 2), "error");
+      assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
+      assert.equal(spyLogLevel(spy, 1), "info");
+      assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+      assert.equal(spyLogLevel(spy, 0), "error");
+      assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
 
       // Sponsor1 should be in a liquidation state with the bot as the liquidator. (6/12) = 50% of the 100 starting collateral and 6 tokens should be liquidated.
       let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -534,9 +551,21 @@ contract("Liquidator.js", function(accounts) {
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
       await liquidator.queryAndLiquidate(amountToLiquidate);
-      assert.equal(spy.callCount, 3); // 2 info + 1 error level events should be sent at the conclusion of the 2 successful and 1 failed liquidations.
-      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 successful, 2 partial, and 1 failed liquidations.
       assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, "0");
+
+      // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
+      assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 liquidations, including 2 partials, and 1 failed attempt to liquidate 0 tokens.
+      assert.equal(spyLogLevel(spy, 4), "error");
+      assert.isTrue(spyLogIncludes(spy, 4, "minimum"));
+      assert.equal(spyLogLevel(spy, 3), "info");
+      assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
+      assert.equal(spyLogLevel(spy, 2), "error");
+      assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
+      assert.equal(spyLogLevel(spy, 1), "info");
+      assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+      assert.equal(spyLogLevel(spy, 0), "error");
+      assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
 
       // Sponsor1 should be in a liquidation state with the bot as the liquidator. (4/12) = 33.33% of the 100 starting collateral and 6 tokens should be liquidated.
       let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -572,7 +601,7 @@ contract("Liquidator.js", function(accounts) {
       assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
     });
 
-    it("bot does not have enough funds to liquidate all positions", async function() {
+    it("amount-to-liquidate > min-sponsor-tokens, but bot balance is too low to send liquidation", async function() {
       // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
       const amountToLiquidate = toWei("10");
 
@@ -586,9 +615,13 @@ contract("Liquidator.js", function(accounts) {
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
       await liquidator.queryAndLiquidate(amountToLiquidate);
-      assert.equal(spy.callCount, 2); // 1 info + 1 error level events should be sent at the conclusion of the 1 successful and 1 failed liquidations.
-      assert.equal(lastSpyLogLevel(spy), "error");
-      assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, toWei("8"));
+      assert.equal(spy.callCount, 3); // 1 info + 2 error level events should be sent at the conclusion of the 1 successful (incl. 1 partial) and 1 failed liquidations.
+      assert.equal(spyLogLevel(spy, 2), "error");
+      assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
+      assert.equal(spyLogLevel(spy, 1), "info");
+      assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+      assert.equal(spyLogLevel(spy, 0), "error");
+      assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
 
       // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
       let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
