@@ -9,6 +9,7 @@ class ExpiringMultiPartyEventClient {
    * @param {Object} web3 Web3 provider from truffle instance.
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
    * @param {Integer} startingBlockNumber Offset block number to index events from.
+   * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
    */
   constructor(logger, empAbi, web3, empAddress, startingBlockNumber = 0, endingBlockNumber = null) {
