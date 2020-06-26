@@ -29,6 +29,8 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Number} startingBlock Offset block number to define where the monitor bot should start searching for events
  *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
+ * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
+ *     If `null` then will search up until the latest block number in each loop.
  * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
  * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
  * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
@@ -94,8 +96,9 @@ async function run(
 
     // 1. Contract state monitor.
     // Start the event client by looking from the provided `startingBlock` number to the provided `endingBlock` number.
-    // If param are sets to null then use the latest block number for the `eventsFromBlockNumber` and leave the
-    // `endingBlock` as null in the client constructor. The client will then query up until the `latest` block.
+    // If param are sets to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+    // `endingBlock` as null in the client constructor. The client will then query up until the `latest` block on every
+    // loop and update this variable accordingly on each iteration.
     const eventsFromBlockNumber = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
@@ -215,7 +218,7 @@ async function Poll(callback) {
     const startingBlock = process.env.STARTING_BLOCK_NUMBER;
 
     // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
-    // until. If not set the default to null which indicates that the bot should search up to 'latests'.
+    // until. If not set the default to null which indicates that the bot should search up to 'latest'.
     const endingBlock = process.env.ENDING_BLOCK_NUMBER;
 
     if (
