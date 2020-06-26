@@ -190,7 +190,11 @@ class Liquidator {
         tokensToLiquidate = this.toBN(position.numTokens);
       }
 
-      // If `tokensToLiquidate` is 0, then skip this liquidation.
+      // If `tokensToLiquidate` is 0, then skip this liquidation. Due to the if-statement branching above, `tokensToLiquidate == 0`
+      // is only possible if the `positionTokensAboveMinimum == 0` && `maxTokensToLiquidate < position.numTokens`. In other words,
+      // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
+      // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
+      // client-side.
       if (tokensToLiquidate.isZero()) {
         this.logger.error({
           at: "Liquidator",
