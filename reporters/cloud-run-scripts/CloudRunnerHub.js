@@ -32,7 +32,7 @@ const { GoogleAuth } = require("google-auth-library"); // Used to get authentica
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
 const storage = new Storage();
-const { Datastore } = require("@google-cloud/datastore"); // used to read/write the last block number the monitor used.
+const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 
 // Web3 instance to get current block numbers of polling loops.
