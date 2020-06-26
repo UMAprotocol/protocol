@@ -40,19 +40,17 @@ app.post("/", async (req, res) => {
 
     const execResponse = await execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
     // TODO: refactor this to send a more graceful winston log.
-    console.log("error:", execResponse.error);
-    console.log("stdout:", execResponse.stdout);
-    console.log("stderr:", execResponse.stderr);
+    console.log("execResponse:", execResponse);
 
     if (execResponse.error) {
       console.log("Process exited with error");
-      throw execResponse.error;
+      throw execResponse;
     }
     console.log("Process exited with no error");
 
-    res.status(200).send({ message: "Process exited correctly!", error: null });
-  } catch (error) {
-    res.status(400).send({ message: "Process exited with error!", error: error });
+    res.status(200).send({ message: "Process exited correctly!", execResponse: execResponse });
+  } catch (execResponse) {
+    res.status(400).send({ message: "Process exited with error!", execResponse: execResponse });
   }
 });
 

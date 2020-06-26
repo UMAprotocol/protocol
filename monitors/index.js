@@ -104,7 +104,7 @@ async function run(
       web3,
       emp.address,
       eventsFromBlockNumber,
-      eventsToBlockNumber
+      endingBlock
     );
     const contractMonitor = new ContractMonitor(
       Logger,

@@ -35,6 +35,9 @@ const storage = new Storage();
 const { Datastore } = require("@google-cloud/datastore"); // used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 
+// Web3 instance to get current block numbers of polling loops.
+const Web3 = require("web3");
+
 // Helpers
 // TODO integrate with winston logger.
 // const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
@@ -42,12 +45,6 @@ const datastore = new Datastore();
 app.post("/", async (req, res) => {
   try {
     console.log("Running Cloud runner hub query");
-    if (!process.env.PROTOCOL_RUNNER_URL) {
-      throw new Error("Bad environment! Specify a `PROTOCOL_RUNNER_URL` to point to the a cloud run instance");
-    }
-    // The cloud runner hub should have a configured URL to define the remote instance to boot.
-    const protocolRunnerUrl = process.env.PROTOCOL_RUNNER_URL;
-
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
       res.status(400).send({
@@ -58,19 +55,30 @@ app.post("/", async (req, res) => {
 
     // Get the config file from the GCP bucket
     const configObject = await _fetchConfigObject(req.body.bucket, req.body.configFile);
-    console.log("configObject", configObject);
+
+    // Fetch the last block number this given config file queried the blockchain at.
+    const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
+
+    // Get the latest block number. The query will run from the last queried block number to the latest block number.
+    const latestBlockNumber = await _getLatestBlockNumber();
+
+    // Save the current latest block number to the remote config. This will be the used as the "lastQueriedBlockNumber"
+    // in the next iteration when the hub is called again.
+    await _saveQueriedBlockNumber(req.body.configFile, latestBlockNumber);
 
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
     for (const botName in configObject) {
-      const botConfig = configObject[botName];
+      const botConfig = appendStartEndBlockVariables(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
       console.log("Appending to promise array", botName); // TODO: refine this logging with a winston log
-      promiseArray.push(_executeCloudRun(protocolRunnerUrl, botConfig));
+      // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
+      // promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
     }
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     const results = await Promise.allSettled(promiseArray);
-    console.log(results); // TODO: refine this logging with a winston log
+    console.log(JSON.stringify(results)); // TODO: refine this logging with a winston log
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
     let thrownErrors = [];
@@ -145,13 +153,25 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
   const key = datastore.key(["BlockNumberLog", configIdentifier]);
   const [dataField] = await datastore.get(key);
 
-  return dataField;
+  if (dataField == undefined) return 0;
+  return dataField.blockNumber;
+}
+
+async function _getLatestBlockNumber() {
+  const web3 = new Web3(process.env.CUSTOM_NODE_URL);
+  return await web3.eth.getBlockNumber();
+}
+
+function appendStartEndBlockVariables(config, lastQueriedBlockNumber, latestBlockNumber) {
+  // The starting block number should be one block after the last queried block number to not double report that block.
+  config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
+  config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
+  return config;
 }
 
 // Execute a post query on a arbitrary `url` with a given json `body. Used to test the hub script locally.
 // TODO: wire this in for unit testing.
 async function _postJson(url, body) {
-  console.log("b", JSON.stringify(body));
   const response = await fetch(url, {
     method: "POST",
     body: JSON.stringify(body),
@@ -167,4 +187,8 @@ async function _postJson(url, body) {
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log("Listening on port", port);
+  // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
+  if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
+    throw new Error("Bad environment! Specify a `PROTOCOL_RUNNER_URL` to point to the a cloud run instance");
+  }
 });
