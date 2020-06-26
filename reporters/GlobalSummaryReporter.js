@@ -590,43 +590,54 @@ class GlobalSummaryReporter {
     const uniswapClient = getUniswapClient();
     const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
 
-    const startPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
-    ).pairs[0];
-    const endPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
-    ).pairs[0];
-    const startPrevPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPreviousPeriod))
-    ).pairs[0];
+    // Calculate Uniswap trade count and volume data.
+    if (!allTokenData) {
+      // If there is no data for this pair, then we cannot get trade count or volume data.
+      allTokenStatsTable["# trades in Uniswap"] = {
+        cumulative: "Graph data unavailable"
+      };
+      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+        cumulative: "Graph data unavailable"
+      };
+    } else {
+      const startPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
+      ).pairs[0];
+      const endPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
+      ).pairs[0];
+      const startPrevPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPreviousPeriod))
+      ).pairs[0];
 
-    const tradeCount = parseInt(allTokenData.txCount);
-    const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
-    const prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
+      const tradeCount = parseInt(allTokenData.txCount);
+      const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
+      const prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
 
-    const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
-    const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
-    const periodTradeVolumeTokens =
-      parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
-    const prevPeriodTradeVolumeTokens =
-      parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
+      const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+      const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
+      const periodTradeVolumeTokens =
+        parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
+      const prevPeriodTradeVolumeTokens =
+        parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
 
-    allTokenStatsTable["# trades in Uniswap"] = {
-      cumulative: tradeCount,
-      [this.periodLabelInHours]: periodTradeCount,
-      ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
-    };
-    allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
-      cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
-      [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
-      ["Δ from prev. period"]: formatWithMaxDecimals(
-        periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
-        2,
-        4,
-        false,
-        true
-      )
-    };
+      allTokenStatsTable["# trades in Uniswap"] = {
+        cumulative: tradeCount,
+        [this.periodLabelInHours]: periodTradeCount,
+        ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
+      };
+      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+        cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
+        [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
+        ["Δ from prev. period"]: formatWithMaxDecimals(
+          periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
+          2,
+          4,
+          false,
+          true
+        )
+      };
+    }
 
     // Get token holder stats.
     const tokenHolderStats = this._constructTokenHolderList(periods);
