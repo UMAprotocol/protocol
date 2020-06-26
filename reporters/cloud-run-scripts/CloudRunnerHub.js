@@ -157,11 +157,13 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
   return dataField.blockNumber;
 }
 
+// Get the latest block number from `CUSTOM_NODE_URL`. Used to update the `lastSeenBlockNumber` after each run.
 async function _getLatestBlockNumber() {
   const web3 = new Web3(process.env.CUSTOM_NODE_URL);
   return await web3.eth.getBlockNumber();
 }
 
+// Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
 function appendStartEndBlockVariables(config, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
