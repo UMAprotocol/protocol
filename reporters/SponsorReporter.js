@@ -35,7 +35,7 @@ class SponsorReporter {
     const row1Name = `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`;
     const row2Name = `Backing collateral${this.empProps.collateralCurrencySymbol})`;
     const row3Name = "Position CR %";
-    const row4Name = `Synthetic balance${this.empProps.syntheticCurrencySymbol})`;
+    const row4Name = `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`;
     const row5Name = `Collateral balance(${this.empProps.collateralCurrencySymbol})`;
     const row6Name = "ETH balance";
 
