@@ -40,20 +40,6 @@ const defaultConfigs = {
 
 async function getMedianHistoricalPrice(callback) {
   try {
-    // Function to get the current time.
-    const getTime = () => Math.round(new Date().getTime() / 1000);
-
-    // If user specified a timestamp, then use it, otherwise default to the current time.
-    let queryTime;
-    if (!argv.time) {
-      queryTime = getTime();
-      console.log(
-        `Optional '--time' flag not specified, defaulting to the current Unix timestamp (in seconds): ${queryTime}`
-      );
-    } else {
-      queryTime = argv.time;
-    }
-
     // If user did not specify an identifier, provide a default value.
     let queryIdentifier;
     if (!argv.identifier) {
@@ -68,12 +54,26 @@ async function getMedianHistoricalPrice(callback) {
     let pricefeedConfig;
     if (!defaultConfigs[queryIdentifier]) {
       throw new Error(
-        `Identifier '${queryIdentifier}' not found in defaultConfigs object. Please add to the object to continue. Current available identifiers are [ ${JSON.stringify(
+        `Identifier '${queryIdentifier}' not found in defaultConfigs object. Please add to the object to continue. Current available identifiers are ${JSON.stringify(
           Object.keys(defaultConfigs)
-        )} ].`
+        )}.`
       );
     } else {
       pricefeedConfig = defaultConfigs[queryIdentifier];
+    }
+
+    // Function to get the current time.
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+
+    // If user specified a timestamp, then use it, otherwise default to the current time.
+    let queryTime;
+    if (!argv.time) {
+      queryTime = getTime();
+      console.log(
+        `Optional '--time' flag not specified, defaulting to the current Unix timestamp (in seconds): ${queryTime}`
+      );
+    } else {
+      queryTime = argv.time;
     }
 
     // Create and update a new Medianizer price feed.
