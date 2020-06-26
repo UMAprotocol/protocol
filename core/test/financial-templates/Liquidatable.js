@@ -1232,7 +1232,7 @@ contract("Liquidatable", function(accounts) {
 
   describe("Weird Edge cases", () => {
     it("Liquidating 0 tokens always results in a successful Dispute", async () => {
-      // TODO: Liquidations for 0 tokens should be blocked but they are not. They will harmlessly always cause a successful dispute because
+      // Liquidations for 0 tokens should be blocked but they are not. They will harmlessly always cause a successful dispute because
       // the TRV and requiredCollateral calculations both equal 0. The liquidator and disputer will each pay final fee payments, and the dispute will always succeed.
       // Withdrawing rewards sends a final fee payment back to the disputer. So in summary, a liquidator will be charged a final fee
       // for sending a liquidation of 0 tokens. The downside is that this sends a useless price request and the liquidation will never be deleted
