@@ -1,5 +1,10 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 const { revertWrapper } = require("../common/ContractUtils");
+const { LiquidationStatesInverseEnum } = require("../common/Enums");
+const { interfaceName } = require("../core/utils/Constants");
+
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 
 class Disputer {
   /**
@@ -30,6 +35,7 @@ class Disputer {
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
+    this.utf8ToHex = this.web3.utils.utf8ToHex;
 
     // Default config settings. Disputer deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -61,6 +67,14 @@ class Disputer {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
+
+    // Initialize DVM to query price requests. This should only be done once.
+    if (!this.votingContract) {
+      this.finderContract = await Finder.at(await this.empContract.methods.finder().call());
+      this.votingContract = await Voting.at(
+        await this.finderContract.getImplementationAddress(this.utf8ToHex(interfaceName.Oracle))
+      );
+    }
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -237,11 +251,18 @@ class Disputer {
         continue;
       }
 
+      // Get resolved price request for dispute.
+      const requestIdentifier = await this.empContract.methods.priceIdentifier().call();
+      const requestTimestamp = liquidation.liquidationTime;
+      const resolvedPriceRequest = await this.votingContract.getPrice(requestIdentifier, requestTimestamp);
+
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        liquidationStatus:
+          LiquidationStatesInverseEnum[receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus],
+        resolvedPrice: resolvedPriceRequest.toString()
       };
       this.logger.info({
         at: "Disputer",

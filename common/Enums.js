@@ -19,6 +19,14 @@ const LiquidationStatesEnum = {
   DISPUTE_FAILED: "4"
 };
 
+const LiquidationStatesInverseEnum = {
+  "0": "UNINITIALIZED",
+  "1": "PRE_DISPUTE",
+  "2": "PENDING_DISPUTE",
+  "3": "DISPUTE_SUCCEEDED",
+  "4": "DISPUTE_FAILED"
+};
+
 // States for an EMP's Position to be in.
 const PositionStatesEnum = {
   OPEN: "0",
@@ -30,5 +38,6 @@ module.exports = {
   RegistryRolesEnum,
   VotePhasesEnum,
   LiquidationStatesEnum,
+  LiquidationStatesInverseEnum,
   PositionStatesEnum
 };

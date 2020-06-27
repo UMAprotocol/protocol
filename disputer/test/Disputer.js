@@ -1,4 +1,4 @@
-const { LiquidationStatesEnum } = require("../../common/Enums");
+const { LiquidationStatesInverseEnum, LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../common/Constants.js");
 const winston = require("winston");
@@ -301,6 +301,10 @@ contract("Disputer.js", function(accounts) {
     // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+
+    console.log(spy.getCall(-1));
+    // // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    // assert.isTrue(lastSpyLogIncludes(spy, LiquidationStatesInverseEnum["3"]))
   });
 
   it("Too little collateral", async function() {
