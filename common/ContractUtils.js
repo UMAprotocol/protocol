@@ -19,7 +19,7 @@ const revertWrapper = result => {
   if (isObject(result)) {
     // Iterate over the properties of the object and see if any match the revert value.
     for (let prop in result) {
-      if (result[prop].toString() === revertValue) {
+      if (result[prop] && result[prop].toString() === revertValue) {
         return null;
       }
     }
