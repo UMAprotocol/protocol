@@ -66,7 +66,7 @@ uma --network mainnet_privatekey
 uma --network kovan_mnemonic
 ```
 
-- Connect to mainnet and vote with your two key contract, address stored in the environment variable `TWO_KEY_ADDRESS`, and the private key of the voter account stored in `PRIVATE_KEY`. We recommend this method as the most secure way to store ownership to your voting tokens in cold storage while conveniently being able to vote with the tokens via a hot wallet:
+- Connect to mainnet and vote with your two key contract and the private key of the voter account stored in `PRIVATE_KEY`. The CLI will automatically detect if your voter address has deployed a two key contract. We recommend this method as the most secure way to store ownership to your voting tokens in cold storage while conveniently being able to vote with the tokens via a hot wallet:
 
 ```sh
 uma --network mainnet_privatekey
@@ -86,7 +86,7 @@ After starting the CLI tool, a menu will appear. There will always be options "h
 
 Selecting these lead to further menus with relevant actions:
 
-- _Wallet_: View token balances for default account, from which you can vote
+- _Wallet_: View token balances for default account (and two key contract if it exists), from which you can vote
 - _Vote_: Commit and reveal votes, retrieve rewards, and view results of previous votes.
 - _Admin_: Vote on system administrator proposals
 
