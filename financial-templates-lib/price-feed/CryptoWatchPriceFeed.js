@@ -47,6 +47,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return undefined;
     }
 
+    // If first element in `historicalPricePeriods` data is invalid, return null.
+    if (!this.historicalPricePeriods[0] || !this.historicalPricePeriods[0].openTime) {
+      return null;
+    }
+
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < this.historicalPricePeriods[0].openTime) {
