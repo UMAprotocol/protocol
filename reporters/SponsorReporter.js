@@ -44,7 +44,6 @@ class SponsorReporter {
     // Place holder object to store all table information.
     let tableInfo = {};
     rowNames.forEach(row => (tableInfo[row] = {}));
-    console.log("tableInfo", tableInfo);
 
     // For each wallet monitored run through the checks and log information.
     for (let wallet of this.walletsToMonitor) {
