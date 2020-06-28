@@ -247,13 +247,7 @@ class SyntheticPegMonitor {
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
   // until `mostRecentTime`. Returns volatility as (max - min)/min %. Also Identifies the direction volatility movement.
   _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
-    // TODO: If the historical price @ `mostRecentTime` is not available, go backwards until you find a most recent timestamp that works.
-    // This method should ideally only return null if there are no valid historical prices between `mostRecentTime` and `mostRecentTime-lookback`.
-
-    // Set max and min to latest price to start.
-    let min = pricefeed.getHistoricalPrice(mostRecentTime);
-    let max = min;
-    if (!min || !max) return null;
+    let min, max;
 
     // Store the timestamp of the max and min value to infer the direction of the movement over the interval.
     let maxTimestamp = 0,
@@ -266,6 +260,14 @@ class SyntheticPegMonitor {
         continue;
       }
 
+      // Set default values for min and max to the most recent non-null price.
+      if (!min) {
+        min = _price;
+      }
+      if (!max) {
+        max = _price;
+      }
+
       if (_price.lt(min)) {
         min = _price;
         minTimestamp = timestamp;
@@ -275,6 +277,10 @@ class SyntheticPegMonitor {
         maxTimestamp = timestamp;
       }
     }
+
+    // If there are no valid prices in the time window from `mostRecentTime` to `mostRecentTime - lookback`, return null.
+    if (!min || !max) return null;
+
     // If maxTimestamp < minTimestamp then positive volatility. If minTimestamp < maxTimestamp then negative volatility.
     // Note:this inequality intuitively feels backwards. This is because the for loop above itterates from the current
     // time back over the lookback duration rather than traversing time forwards from the lookback duration to present.
