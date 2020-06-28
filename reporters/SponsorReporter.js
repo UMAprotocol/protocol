@@ -32,21 +32,19 @@ class SponsorReporter {
     );
 
     // Define the table rows beforehand to re-use the variables.
-    const row1Name = `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`;
-    const row2Name = `Backing collateral${this.empProps.collateralCurrencySymbol})`;
-    const row3Name = "Position CR %";
-    const row4Name = `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`;
-    const row5Name = `Collateral balance(${this.empProps.collateralCurrencySymbol})`;
-    const row6Name = "ETH balance";
+    const rowNames = [
+      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
+      `Backing collateral${this.empProps.collateralCurrencySymbol})`,
+      "Position CR %",
+      `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`,
+      `Collateral balance(${this.empProps.collateralCurrencySymbol})`,
+      "ETH balance"
+    ];
 
     // Place holder object to store all table information.
     let tableInfo = {};
-    tableInfo[row1Name] = {};
-    tableInfo[row2Name] = {};
-    tableInfo[row3Name] = {};
-    tableInfo[row4Name] = {};
-    tableInfo[row5Name] = {};
-    tableInfo[row6Name] = {};
+    rowNames.forEach(row => (tableInfo[row] = {}));
+    console.log("tableInfo", tableInfo);
 
     // For each wallet monitored run through the checks and log information.
     for (let wallet of this.walletsToMonitor) {
@@ -55,19 +53,19 @@ class SponsorReporter {
       const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(wallet.address);
 
       if (position.length == 0) {
-        tableInfo[row1Name][wallet.name] = "";
-        tableInfo[row2Name][wallet.name] = "";
-        tableInfo[row3Name][wallet.name] = "";
+        tableInfo[rowNames[0]][wallet.name] = "";
+        tableInfo[rowNames[1]][wallet.name] = "";
+        tableInfo[rowNames[2]][wallet.name] = "";
       } else {
-        tableInfo[row1Name][wallet.name] = this.formatDecimalString(position[0].numTokens);
-        tableInfo[row2Name][wallet.name] = this.formatDecimalString(position[0].numTokens);
-        tableInfo[row3Name][wallet.name] = this.formatDecimalString(
+        tableInfo[rowNames[0]][wallet.name] = this.formatDecimalString(position[0].numTokens);
+        tableInfo[rowNames[1]][wallet.name] = this.formatDecimalString(position[0].numTokens);
+        tableInfo[rowNames[2]][wallet.name] = this.formatDecimalString(
           this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
         );
       }
-      tableInfo[row4Name][wallet.name] = this.formatDecimalString(balanceInformation.syntheticBalance);
-      tableInfo[row5Name][wallet.name] = this.formatDecimalString(balanceInformation.collateralBalance);
-      tableInfo[row6Name][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance);
+      tableInfo[rowNames[3]][wallet.name] = this.formatDecimalString(balanceInformation.syntheticBalance);
+      tableInfo[rowNames[4]][wallet.name] = this.formatDecimalString(balanceInformation.collateralBalance);
+      tableInfo[rowNames[5]][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance);
     }
     console.table(tableInfo);
   }
@@ -81,19 +79,22 @@ class SponsorReporter {
     const currentPrice = this.priceFeed.getCurrentPrice();
 
     // Define the table column headings before hand to re-use the variables.
-    const col1Heading = `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`;
-    const col2Heading = `Backing collateral(${this.empProps.collateralCurrencySymbol})`;
-    const col3Heading = "Position CR %";
+    const colHeadings = [
+      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
+      `Backing collateral(${this.empProps.collateralCurrencySymbol})`,
+      "Position CR %"
+    ];
 
     // Place holder object to store all table information.
     let allSponsorTable = {};
     for (let position of allPositions) {
-      allSponsorTable[position.sponsor] = {};
-      allSponsorTable[position.sponsor][col1Heading] = this.formatDecimalString(position.numTokens);
-      allSponsorTable[position.sponsor][col2Heading] = this.formatDecimalString(position.amountCollateral);
-      allSponsorTable[position.sponsor][col3Heading] = this.formatDecimalString(
-        this._calculatePositionCRPercent(position.amountCollateral, position.numTokens, currentPrice)
-      );
+      allSponsorTable[position.sponsor] = {
+        [[colHeadings[0]]]: this.formatDecimalString(position.numTokens),
+        [[colHeadings[1]]]: this.formatDecimalString(position.amountCollateral),
+        [[colHeadings[2]]]: this.formatDecimalString(
+          this._calculatePositionCRPercent(position.amountCollateral, position.numTokens, currentPrice)
+        )
+      };
     }
     console.table(allSponsorTable);
   }
