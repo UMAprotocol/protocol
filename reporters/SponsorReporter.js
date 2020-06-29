@@ -5,7 +5,7 @@ const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
 
 class SponsorReporter {
-  constructor(expiringMultiPartyClient, tokenBalanceClient, walletsToMonitor, priceFeed) {
+  constructor(expiringMultiPartyClient, tokenBalanceClient, walletsToMonitor, priceFeed, empProps) {
     this.empClient = expiringMultiPartyClient;
     this.tokenBalanceClient = tokenBalanceClient;
 
@@ -16,9 +16,7 @@ class SponsorReporter {
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
-    this.collateralSymbol = "DAI";
-    this.syntheticSymbol = "ETHBTC";
-    this.networkId = 1;
+    this.empProps = empProps;
   }
 
   async update() {
@@ -33,15 +31,20 @@ class SponsorReporter {
       italic("- Each monitored wallet within the configuration object has their position and token balances printed")
     );
 
+    // Define the table rows beforehand to re-use the variables.
+    const rowNames = [
+      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
+      `Backing collateral${this.empProps.collateralCurrencySymbol})`,
+      "Position CR %",
+      `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`,
+      `Collateral balance(${this.empProps.collateralCurrencySymbol})`,
+      "ETH balance"
+    ];
+
     // Place holder object to store all table information.
-    let tableInfo = {
-      "Token debt": {},
-      "Backing collateral": {},
-      "Position CR %": {},
-      "Synthetic balance": {},
-      "Collateral balance": {},
-      "ETH balance": {}
-    };
+    let tableInfo = {};
+    rowNames.forEach(row => (tableInfo[row] = {}));
+    console.log("tableInfo", tableInfo);
 
     // For each wallet monitored run through the checks and log information.
     for (let wallet of this.walletsToMonitor) {
@@ -50,23 +53,19 @@ class SponsorReporter {
       const balanceInformation = await this.tokenBalanceClient.getDirectTokenBalances(wallet.address);
 
       if (position.length == 0) {
-        tableInfo["Token debt"][wallet.name] = "";
-        tableInfo["Backing collateral"][wallet.name] = "";
-        tableInfo["Position CR %"][wallet.name] = "";
+        tableInfo[rowNames[0]][wallet.name] = "";
+        tableInfo[rowNames[1]][wallet.name] = "";
+        tableInfo[rowNames[2]][wallet.name] = "";
       } else {
-        tableInfo["Token debt"][wallet.name] = this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
-        tableInfo["Backing collateral"][wallet.name] =
-          this.formatDecimalString(position[0].numTokens) + this.syntheticSymbol;
-        tableInfo["Position CR %"][wallet.name] =
-          this.formatDecimalString(
-            this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
-          ) + "%";
+        tableInfo[rowNames[0]][wallet.name] = this.formatDecimalString(position[0].numTokens);
+        tableInfo[rowNames[1]][wallet.name] = this.formatDecimalString(position[0].numTokens);
+        tableInfo[rowNames[2]][wallet.name] = this.formatDecimalString(
+          this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
+        );
       }
-      tableInfo["Synthetic balance"][wallet.name] =
-        this.formatDecimalString(balanceInformation.syntheticBalance) + this.syntheticSymbol;
-      tableInfo["Collateral balance"][wallet.name] =
-        this.formatDecimalString(balanceInformation.collateralBalance) + this.collateralSymbol;
-      tableInfo["ETH balance"][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance) + "ETH";
+      tableInfo[rowNames[3]][wallet.name] = this.formatDecimalString(balanceInformation.syntheticBalance);
+      tableInfo[rowNames[4]][wallet.name] = this.formatDecimalString(balanceInformation.collateralBalance);
+      tableInfo[rowNames[5]][wallet.name] = this.formatDecimalString(balanceInformation.etherBalance);
     }
     console.table(tableInfo);
   }
@@ -79,12 +78,20 @@ class SponsorReporter {
     const allPositions = this.empClient.getAllPositions();
     const currentPrice = this.priceFeed.getCurrentPrice();
 
+    // Define the table column headings before hand to re-use the variables.
+    const colHeadings = [
+      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
+      `Backing collateral(${this.empProps.collateralCurrencySymbol})`,
+      "Position CR %"
+    ];
+
+    // Place holder object to store all table information.
     let allSponsorTable = {};
     for (let position of allPositions) {
       allSponsorTable[position.sponsor] = {
-        "Collateral(DAI)": this.formatDecimalString(position.amountCollateral),
-        "Tokens borrowed(ETHBTC)": this.formatDecimalString(position.numTokens),
-        "Position CR %": this.formatDecimalString(
+        [[colHeadings[0]]]: this.formatDecimalString(position.numTokens),
+        [[colHeadings[1]]]: this.formatDecimalString(position.amountCollateral),
+        [[colHeadings[2]]]: this.formatDecimalString(
           this._calculatePositionCRPercent(position.amountCollateral, position.numTokens, currentPrice)
         )
       };

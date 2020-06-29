@@ -347,7 +347,7 @@ class GlobalSummaryReporter {
       }
 
       // Create list of resolved prices for disputed liquidations.
-      const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationData.blockNumber)).timestamp;
       const disputeLabel = `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`;
       try {
         // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
