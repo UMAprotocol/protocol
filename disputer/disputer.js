@@ -238,6 +238,11 @@ class Disputer {
         txnConfig
       });
 
+      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
+      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
+      // is callable.
+      const requestTimestamp = liquidation.liquidationTime;
+
       // Send the transaction or report failure.
       let receipt;
       try {
@@ -251,10 +256,12 @@ class Disputer {
         continue;
       }
 
-      // Get resolved price request for dispute.
+      // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
+      // to be callable.
       const requestIdentifier = await this.empContract.methods.priceIdentifier().call();
-      const requestTimestamp = liquidation.liquidationTime;
-      const resolvedPriceRequest = await this.votingContract.getPrice(requestIdentifier, requestTimestamp);
+      let resolvedPrice = await this.votingContract.getPrice(requestIdentifier, requestTimestamp, {
+        from: this.empContract.options.address
+      });
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -262,8 +269,9 @@ class Disputer {
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
         liquidationStatus:
           LiquidationStatesInverseEnum[receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus],
-        resolvedPrice: resolvedPriceRequest.toString()
+        resolvedPrice: resolvedPrice.toString()
       };
+
       this.logger.info({
         at: "Disputer",
         message: "Dispute withdrawn🤑",
