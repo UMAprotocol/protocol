@@ -15,7 +15,7 @@ const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstim
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -302,9 +302,12 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
 
-    console.log(spy.getCall(-1));
-    // // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
-    // assert.isTrue(lastSpyLogIncludes(spy, LiquidationStatesInverseEnum["3"]))
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      LiquidationStatesInverseEnum[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
   });
 
   it("Too little collateral", async function() {
