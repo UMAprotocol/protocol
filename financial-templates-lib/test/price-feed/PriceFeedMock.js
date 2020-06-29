@@ -22,7 +22,7 @@ class PriceFeedMock extends PriceFeedInterface {
   // a price for a specific timestamp if found in this array.
   setHistoricalPrices(historicalPrices) {
     historicalPrices.forEach(_price => {
-      if (isNaN(_price.timestamp) || !_price.price) {
+      if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
       }
 
