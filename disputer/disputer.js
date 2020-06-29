@@ -1,6 +1,6 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 const { revertWrapper } = require("../common/ContractUtils");
-const { LiquidationStatesInverseEnum } = require("../common/Enums");
+const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
 const { interfaceName } = require("../core/utils/Constants");
 
 const Finder = artifacts.require("Finder");
@@ -67,6 +67,10 @@ class Disputer {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
+
+    if (!this.empIdentifier) {
+      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
+    }
 
     // Initialize DVM to query price requests. This should only be done once.
     if (!this.votingContract) {
@@ -258,8 +262,7 @@ class Disputer {
 
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
-      const requestIdentifier = await this.empContract.methods.priceIdentifier().call();
-      let resolvedPrice = await this.votingContract.getPrice(requestIdentifier, requestTimestamp, {
+      let resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
         from: this.empContract.options.address
       });
 
@@ -268,7 +271,9 @@ class Disputer {
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
         liquidationStatus:
-          LiquidationStatesInverseEnum[receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus],
+          PostWithdrawLiquidationRewardsStatusTranslations[
+            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+          ],
         resolvedPrice: resolvedPrice.toString()
       };
 

@@ -1,7 +1,7 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { LiquidationStatesEnum } = require("../../common/Enums");
+const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
@@ -357,6 +357,13 @@ contract("Liquidator.js", function(accounts) {
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.UNINITIALIZED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
   });
 
   it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
@@ -401,6 +408,13 @@ contract("Liquidator.js", function(accounts) {
         .toString(),
       collateralPostWithdraw.toString()
     );
+
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1"));
   });
 
   it("Detect if the liquidator cannot liquidate due to capital constraints", async function() {

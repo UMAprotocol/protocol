@@ -1,4 +1,10 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const { revertWrapper } = require("../common/ContractUtils");
+const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
+const { interfaceName } = require("../core/utils/Constants");
+
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 
 class Liquidator {
   /**
@@ -38,6 +44,7 @@ class Liquidator {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
+    this.utf8ToHex = this.web3.utils.utf8ToHex;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -102,13 +109,25 @@ class Liquidator {
     await this.priceFeed.update();
 
     // Fetch the collateral requirement requirement from the contract. Will only execute on first update execution.
-    if (this.empCRRatio === null) {
+    if (!this.empCRRatio) {
       this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
     }
 
     // Fetch the min sponsor position from the contract.
-    if (this.empMinSponsorSize === null) {
+    if (!this.empMinSponsorSize) {
       this.empMinSponsorSize = await this.empContract.methods.minSponsorTokens().call();
+    }
+
+    if (!this.empIdentifier) {
+      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
+    }
+
+    // Initialize DVM to query price requests. This should only be done once.
+    if (!this.votingContract) {
+      this.finderContract = await Finder.at(await this.empContract.methods.finder().call());
+      this.votingContract = await Voting.at(
+        await this.finderContract.getImplementationAddress(this.utf8ToHex(interfaceName.Oracle))
+      );
     }
   }
 
@@ -339,7 +358,10 @@ class Liquidator {
       // Confirm that liquidation has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
-        withdrawAmount = await withdraw.call({ from: this.account });
+        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        if (!withdrawAmount) {
+          throw new Error("Simulated reward withdrawal failed");
+        }
       } catch (error) {
         this.logger.debug({
           at: "Liquidator",
@@ -363,6 +385,11 @@ class Liquidator {
         txnConfig
       });
 
+      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
+      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
+      // is callable.
+      let requestTimestamp = liquidation.liquidationTime;
+
       // Send the transaction or report failure.
       let receipt;
       try {
@@ -376,12 +403,37 @@ class Liquidator {
         continue;
       }
 
+      // Get resolved price request for dispute. This will fail if there is no price for the liquidation timestamp, which is possible if the
+      // liquidation expired without dispute.
+      let resolvedPrice;
+      if (requestTimestamp) {
+        try {
+          resolvedPrice = revertWrapper(
+            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+              from: this.empContract.options.address
+            })
+          );
+          if (!resolvedPrice) {
+            // No price available for liquidation time, likely that liquidation expired without dispute.
+          }
+        } catch (error) {
+          // No price available for liquidation time, likely that liquidation expired without dispute.
+        }
+      }
+
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        liquidationStatus:
+          PostWithdrawLiquidationRewardsStatusTranslations[
+            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+          ]
       };
+      if (resolvedPrice) {
+        logResult.resolvedPrice = resolvedPrice.toString();
+      }
+
       this.logger.info({
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",

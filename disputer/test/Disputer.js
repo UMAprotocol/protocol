@@ -1,4 +1,4 @@
-const { LiquidationStatesInverseEnum, LiquidationStatesEnum } = require("../../common/Enums");
+const { PostWithdrawLiquidationRewardsStatusTranslations, LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../common/Constants.js");
 const winston = require("winston");
@@ -305,7 +305,7 @@ contract("Disputer.js", function(accounts) {
     // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
     assert.equal(
       spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
-      LiquidationStatesInverseEnum[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
     );
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
   });
