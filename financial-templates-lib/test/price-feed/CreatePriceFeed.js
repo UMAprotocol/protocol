@@ -363,6 +363,8 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     assert.isTrue(priceFeed != null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
+
+    // Check that the default `lookback` property is overridden.
     assert.equal(priceFeed.priceFeeds[0].lookback, 1000);
   });
 
