@@ -1,10 +1,6 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
-const { interfaceName } = require("../core/utils/Constants");
-
-const Finder = artifacts.require("Finder");
-const Voting = artifacts.require("Voting");
 
 class Liquidator {
   /**
