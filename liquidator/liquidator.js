@@ -7,14 +7,14 @@ class Liquidator {
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
-   * @param {Object} dvmClient Module used to query DVM information on-chain.
+   * @param {Object} votingContract Deployed DVM contract.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, dvmClient, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -26,7 +26,7 @@ class Liquidator {
     this.gasEstimator = gasEstimator;
 
     // DVM contract to read price request information.
-    this.votingContract = dvmClient.dvm;
+    this.votingContract = votingContract;
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
@@ -385,7 +385,7 @@ class Liquidator {
       if (requestTimestamp) {
         try {
           resolvedPrice = revertWrapper(
-            (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
+            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
               from: this.empContract.options.address
             })
           );

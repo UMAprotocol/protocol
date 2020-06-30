@@ -10,7 +10,6 @@ const { MAX_UINT_VAL } = require("../common/Constants");
 const { Disputer } = require("./disputer");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { DVMClient } = require("../financial-templates-lib/clients/DVMClient");
 const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
@@ -57,12 +56,11 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
 
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
-    const dvmClient = new DVMClient(Logger, Voting.abi, web3, (await Voting.deployed()).address);
     const gasEstimator = new GasEstimator(Logger);
     const disputer = new Disputer(
       Logger,
       empClient,
-      dvmClient,
+      await Voting.deployed(),
       gasEstimator,
       priceFeed,
       accounts[0],

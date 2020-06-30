@@ -9,7 +9,6 @@ const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { DVMClient } = require("../../financial-templates-lib/clients/DVMClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
@@ -132,17 +131,15 @@ contract("Liquidator.js", function(accounts) {
     // Create a new instance of the price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    // Create a new instance of the DVM client.
-    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address);
-
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
       crThreshold: 0
     };
+
     liquidator = new Liquidator(
       spyLogger,
       empClient,
-      dvmClient,
+      await Voting.deployed(),
       gasEstimator,
       priceFeedMock,
       accounts[0],
@@ -698,7 +695,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
-          dvmClient,
+          await Voting.deployed(),
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -721,7 +718,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
-          dvmClient,
+          await Voting.deployed(),
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -742,7 +739,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
-        dvmClient,
+        await Voting.deployed(),
         gasEstimator,
         priceFeedMock,
         accounts[0],
@@ -797,7 +794,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
-          dvmClient,
+          await Voting.deployed(),
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -818,7 +815,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
-        dvmClient,
+        await Voting.deployed(),
         gasEstimator,
         priceFeedMock,
         accounts[0],

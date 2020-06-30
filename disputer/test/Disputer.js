@@ -11,7 +11,6 @@ const { Disputer } = require("../disputer.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { DVMClient } = require("../../financial-templates-lib/clients/DVMClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
@@ -137,13 +136,10 @@ contract("Disputer.js", function(accounts) {
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    // Create a new instance of the DVM client.
-    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address);
-
     disputer = new Disputer(
       spyLogger,
       empClient,
-      dvmClient,
+      await Voting.deployed(),
       gasEstimator,
       priceFeedMock,
       accounts[0],
@@ -394,7 +390,7 @@ contract("Disputer.js", function(accounts) {
         disputer = new Disputer(
           spyLogger,
           empClient,
-          dvmClient,
+          await Voting.deployed(),
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -415,7 +411,7 @@ contract("Disputer.js", function(accounts) {
       disputer = new Disputer(
         spyLogger,
         empClient,
-        dvmClient,
+        await Voting.deployed(),
         gasEstimator,
         priceFeedMock,
         accounts[0],

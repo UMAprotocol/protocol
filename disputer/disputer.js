@@ -7,14 +7,14 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
-   * @param {Object} dvmClient Module used to query DVM information on-chain.
+   * @param {Object} votingContract Deployed DVM contract.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, dvmClient, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -26,7 +26,7 @@ class Disputer {
     this.gasEstimator = gasEstimator;
 
     // DVM contract to read price request information.
-    this.votingContract = dvmClient.dvm;
+    this.votingContract = votingContract;
 
     // Price feed to compute the token price.
     this.priceFeed = priceFeed;
@@ -252,7 +252,7 @@ class Disputer {
 
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
-      let resolvedPrice = (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
+      let resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
         from: this.empContract.options.address
       });
 
