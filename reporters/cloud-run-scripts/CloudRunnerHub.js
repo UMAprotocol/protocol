@@ -153,7 +153,8 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
   const key = datastore.key(["BlockNumberLog", configIdentifier]);
   const [dataField] = await datastore.get(key);
 
-  if (dataField == undefined) return 0;
+  // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
+  if (dataField == undefined) return await this._getLatestBlockNumber();
   return dataField.blockNumber;
 }
 
