@@ -62,7 +62,7 @@ app.post("/", async (req, res) => {
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
 
-    // Save the current latest block number to the remote config. This will be the used as the "lastQueriedBlockNumber"
+    // Save the current latest block number to the remote cache. This will be the used as the "lastQueriedBlockNumber"
     // in the next iteration when the hub is called again.
     await _saveQueriedBlockNumber(req.body.configFile, latestBlockNumber);
 
