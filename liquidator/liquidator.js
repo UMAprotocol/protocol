@@ -413,9 +413,6 @@ class Liquidator {
               from: this.empContract.options.address
             })
           );
-          if (!resolvedPrice) {
-            // No price available for liquidation time, likely that liquidation expired without dispute.
-          }
         } catch (error) {
           // No price available for liquidation time, likely that liquidation expired without dispute.
         }
