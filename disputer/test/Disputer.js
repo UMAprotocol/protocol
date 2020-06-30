@@ -140,7 +140,16 @@ contract("Disputer.js", function(accounts) {
     // Create a new instance of the DVM client.
     dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address);
 
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], empProps, disputerConfig);
+    disputer = new Disputer(
+      spyLogger,
+      empClient,
+      dvmClient,
+      gasEstimator,
+      priceFeedMock,
+      accounts[0],
+      empProps,
+      disputerConfig
+    );
   });
 
   it("Detect disputable positions and send disputes", async function() {
