@@ -14,13 +14,13 @@ function getOrCreateObj(containingObj, field) {
   return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceResolvedEvents, votingAccount) {
+function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceRequests, votingAccount) {
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents === undefined) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests == null) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -43,21 +43,22 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
       voteState.retrievedRewards = true;
     }
 
-    for (const event of priceResolvedEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
-
-      voteState.priceResolutionRound = event.returnValues.roundId.toString();
-    }
-
     // Since this loop is the last one, we can use the state to determine if this identifer, time, roundId combo
     // is eligible for a reward claim. We track the oldestUnclaimedRound to determine which round the transaction
     // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_JS_INT;
-    for (const event of revealedVoteEvents) {
+    for (let i = 0; i < revealedVoteEvents.length; i++) {
+      const event = revealedVoteEvents[i];
+      const priceRequest = priceRequests[i];
       const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
       const revealRound = event.returnValues.roundId.toString();
+      const votedPrice = event.returnValues.price.toString();
 
-      if (!voteState.retrievedRewards && voteState.priceResolutionRound === revealRound) {
+      if (
+        !voteState.retrievedRewards &&
+        priceRequest.lastRound.toString() === revealRound &&
+        votedPrice === priceRequest.resolvedPrice.toString()
+      ) {
         // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
         oldestUnclaimedRound = Math.min(oldestUnclaimedRound, revealRound);
         voteState.didReveal = true;
@@ -103,6 +104,7 @@ function RetrieveRewards({ votingAccount }) {
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
+  const governorAddress = drizzle.contracts.Governor.address;
 
   // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
@@ -117,7 +119,7 @@ function RetrieveRewards({ votingAccount }) {
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-      const defaultLookback = 10; // Default lookback is 10 rounds.
+      const defaultLookback = 7; // Default lookback is 10 rounds.
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
       const windowLength = Math.min(currentRoundId, defaultLookback);
@@ -138,14 +140,6 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
-  const priceResolvedEvents = useCacheEvents(
-    "Voting",
-    "PriceResolved",
-    useMemo(() => {
-      return { filter: { roundId: roundIds }, fromBlock: 0 };
-    }, [roundIds])
-  );
-
   const revealedVoteEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
@@ -154,13 +148,44 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
+  // Get the status of all price requests that were revealed.
+  const priceRequests = useCacheCall(["Voting"], call => {
+    if (!revealedVoteEvents) {
+      return null;
+    }
+
+    const priceRequests = revealedVoteEvents.map(event => {
+      return {
+        identifier: event.returnValues.identifier,
+        time: event.returnValues.time
+      };
+    });
+
+    const statuses = call("Voting", "getPriceRequestStatuses", priceRequests);
+
+    if (!statuses) {
+      return null;
+    }
+
+    let done = true;
+
+    for (let i = 0; i < priceRequests.length; i++) {
+      const priceRequest = priceRequests[i];
+      const status = statuses[i];
+      priceRequest.lastRound = status.lastVotingRound;
+      if (status.status === "2") {
+        priceRequest.resolvedPrice = call("Voting", "getPrice", priceRequest.identifier, priceRequest.time, {
+          from: governorAddress
+        });
+        if (!priceRequest.resolvedPrice) done = false;
+      }
+    }
+
+    return done ? priceRequests : null;
+  });
+
   // Construct the claim rewards transaction.
-  const rewardsTxn = useRetrieveRewardsTxn(
-    retrievedRewardsEvents,
-    revealedVoteEvents,
-    priceResolvedEvents,
-    votingAccount
-  );
+  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceRequests, votingAccount);
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
