@@ -119,7 +119,7 @@ function RetrieveRewards({ votingAccount }) {
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-      const defaultLookback = 7; // Default lookback is 10 rounds.
+      const defaultLookback = 7; // Default lookback is 7 rounds (2 weeks).
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
       const windowLength = Math.min(currentRoundId, defaultLookback);
