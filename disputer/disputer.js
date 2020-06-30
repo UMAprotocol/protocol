@@ -27,7 +27,6 @@ class Disputer {
 
     // DVM contract to read price request information.
     this.votingContract = dvmClient.dvm;
-    this.votingAddress = dvmClient.votingAddress;
 
     // Price feed to compute the token price.
     this.priceFeed = priceFeed;
@@ -254,7 +253,7 @@ class Disputer {
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
       let resolvedPrice = (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
-        from: this.votingAddress
+        from: this.empContract.options.address
       });
 
       const logResult = {

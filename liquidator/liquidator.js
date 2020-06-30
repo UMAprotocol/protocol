@@ -27,7 +27,6 @@ class Liquidator {
 
     // DVM contract to read price request information.
     this.votingContract = dvmClient.dvm;
-    this.votingAddress = dvmClient.votingAddress;
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
@@ -387,7 +386,7 @@ class Liquidator {
         try {
           resolvedPrice = revertWrapper(
             (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
-              from: this.votingAddress
+              from: this.empContract.options.address
             })
           );
         } catch (error) {
