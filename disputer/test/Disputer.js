@@ -308,6 +308,10 @@ contract("Disputer.js", function(accounts) {
       PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
     );
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
+
+    // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
+    await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 3);
   });
 
   it("Too little collateral", async function() {

@@ -364,6 +364,10 @@ contract("Liquidator.js", function(accounts) {
       PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.UNINITIALIZED]
     );
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
+
+    // After the dispute is resolved, the liquidation should no longer exist and there should be no disputes to withdraw rewards from.
+    await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2);
   });
 
   it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
@@ -415,6 +419,10 @@ contract("Liquidator.js", function(accounts) {
       PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
     );
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1"));
+
+    // After the dispute is resolved, the liquidation should still exist but the liquidator should no longer be able to withdraw any rewards.
+    await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2);
   });
 
   it("Detect if the liquidator cannot liquidate due to capital constraints", async function() {
