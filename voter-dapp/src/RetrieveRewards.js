@@ -5,6 +5,7 @@ import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
 import { MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "./common/Constants.js";
+import { PriceRequestStatusEnum } from "./common/Enums.js";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -145,7 +146,7 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
-  // Get the status of all price requests that were revealed.
+  // Get auxillary information about all price requests that were revealed.
   const priceRequests = useCacheCall(["Voting"], call => {
     if (!revealedVoteEvents) {
       return null;
@@ -158,22 +159,27 @@ function RetrieveRewards({ votingAccount }) {
       };
     });
 
+    // Get each price request's status. This includes whether it has been resolved and the last round where it was
+    // voted on.
     const statuses = call("Voting", "getPriceRequestStatuses", priceRequests);
 
     if (!statuses) {
       return null;
     }
 
+    // Pulls down the price for every resolved request. If the request wasn't resolved, the resolved price isn't
+    // queried and the field is left undefined.
     let done = true;
-
     for (let i = 0; i < priceRequests.length; i++) {
       const priceRequest = priceRequests[i];
       const status = statuses[i];
       priceRequest.lastRound = status.lastVotingRound;
-      if (status.status === "2") {
+      if (status.status === PriceRequestStatusEnum.RESOLVED) {
         priceRequest.resolvedPrice = call("Voting", "getPrice", priceRequest.identifier, priceRequest.time, {
           from: governorAddress
         });
+
+        // Note: a resolved price should always be returned if the status is RESOLVED. No reverts are expected.
         if (!priceRequest.resolvedPrice) done = false;
       }
     }
