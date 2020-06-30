@@ -11,6 +11,7 @@ const { Disputer } = require("../disputer.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { DVMClient } = require("../../financial-templates-lib/clients/DVMClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
@@ -25,6 +26,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Voting = artifacts.require("Voting");
 
 contract("Disputer.js", function(accounts) {
   const disputeBot = accounts[0];
@@ -134,6 +136,9 @@ contract("Disputer.js", function(accounts) {
 
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
+
+    // Create a new instance of the DVM client.
+    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address);
 
     disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], empProps, disputerConfig);
   });
@@ -380,6 +385,7 @@ contract("Disputer.js", function(accounts) {
         disputer = new Disputer(
           spyLogger,
           empClient,
+          dvmClient,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -397,7 +403,16 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], empProps, disputerConfig);
+      disputer = new Disputer(
+        spyLogger,
+        empClient,
+        dvmClient,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        disputerConfig
+      );
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });

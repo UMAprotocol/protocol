@@ -133,7 +133,7 @@ contract("Liquidator.js", function(accounts) {
     priceFeedMock = new PriceFeedMock();
 
     // Create a new instance of the DVM client.
-    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address)
+    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address);
 
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
@@ -333,7 +333,7 @@ contract("Liquidator.js", function(accounts) {
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
   });
 
-  it.only("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
+  it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 

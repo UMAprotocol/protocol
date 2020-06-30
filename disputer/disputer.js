@@ -11,13 +11,14 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} dvmClient Module used to query DVM information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(logger, expiringMultiPartyClient, dvmClient, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -27,6 +28,9 @@ class Disputer {
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
+
+    // DVM contract to read price request information.
+    this.votingContract = dvmClient.dvm;
 
     // Price feed to compute the token price.
     this.priceFeed = priceFeed;
@@ -69,14 +73,6 @@ class Disputer {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-
-    // Initialize DVM to query price requests. This should only be done once.
-    if (!this.votingContract) {
-      this.finderContract = await Finder.at(await this.empContract.methods.finder().call());
-      this.votingContract = await Voting.at(
-        await this.finderContract.getImplementationAddress(this.utf8ToHex(interfaceName.Oracle))
-      );
-    }
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -260,8 +256,8 @@ class Disputer {
 
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
-      let resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
-        from: this.empContract.options.address
+      let resolvedPrice = (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
+        from: this.dvmClient.votingAddress
       });
 
       const logResult = {

@@ -389,7 +389,9 @@ class Liquidator {
       if (requestTimestamp) {
         try {
           resolvedPrice = revertWrapper(
-            (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({ from: this.empContract.options.address })
+            (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({
+              from: this.dvmClient.votingAddress
+            })
           );
         } catch (error) {
           // No price available for liquidation time, likely that liquidation expired without dispute.
