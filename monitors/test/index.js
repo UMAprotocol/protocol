@@ -104,12 +104,12 @@ contract("index.js", function(accounts) {
     try {
       await Poll.run(
         address,
-        false,
+        10,
+        0,
         defaultBotMonitorConfig,
         defaultWalletMonitorConfig,
         defaultContractMonitorConfig,
         defaultSyntheticPegMonitorConfig,
-        10_000,
         defaultUniswapPricefeedConfig,
         defaultMedianizerPricefeedConfig
       );
