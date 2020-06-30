@@ -1,4 +1,5 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const { revertWrapper } = require("../common/ContractUtils");
 
 class Disputer {
   /**
@@ -56,14 +57,14 @@ class Disputer {
   }
 
   // Update the client and gasEstimator clients.
-  update = async () => {
+  async update() {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-  };
+  }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  queryAndDispute = async () => {
+  async queryAndDispute() {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
@@ -153,7 +154,7 @@ class Disputer {
         tx: receipt.transactionHash,
         sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
         liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-        id: receipt.events.LiquidationDisputed.returnValues.disputeId,
+        id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
         disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
       };
       this.logger.info({
@@ -165,10 +166,10 @@ class Disputer {
         disputeResult: logResult
       });
     }
-  };
+  }
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
-  queryAndWithdrawRewards = async () => {
+  async queryAndWithdrawRewards() {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
@@ -196,7 +197,10 @@ class Disputer {
       // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
-        withdrawAmount = await withdraw.call({ from: this.account });
+        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        if (withdrawAmount === null) {
+          throw new Error("Simulated reward withdrawal failed");
+        }
       } catch (error) {
         this.logger.debug({
           at: "Disputer",
@@ -248,7 +252,7 @@ class Disputer {
         liquidationResult: logResult
       });
     }
-  };
+  }
 }
 
 module.exports = {

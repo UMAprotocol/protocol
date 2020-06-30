@@ -32,6 +32,10 @@ class BalanceMonitor {
     // Bot addresses and thresholds to monitor.
     this.botsToMonitor = botsToMonitor;
 
+    // Loop over all bots in the provided config and register them in the tokenBalanceClient. This will ensure that
+    // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
+    this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
+
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
@@ -42,7 +46,7 @@ class BalanceMonitor {
   }
 
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds.
-  checkBotBalances = async () => {
+  async checkBotBalances() {
     this.logger.debug({
       at: "BalanceMonitor",
       message: "Checking bot balances"
@@ -52,49 +56,51 @@ class BalanceMonitor {
     // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this._ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
+      const monitoredAddress = this.web3.utils.toChecksumAddress(bot.address);
+
+      if (this.toBN(this.client.getCollateralBalance(monitoredAddress)).lt(this.toBN(bot.collateralThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
-            this.client.getCollateralBalance(bot.address),
+            this.client.getCollateralBalance(monitoredAddress),
             this.empProps.collateralCurrencySymbol,
             "collateral"
           )
         });
       }
-      if (this._ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
+      if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.syntheticThreshold,
-            this.client.getSyntheticBalance(bot.address),
+            this.client.getSyntheticBalance(monitoredAddress),
             this.empProps.syntheticCurrencySymbol,
             "synthetic"
           )
         });
       }
-      if (this._ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
+      if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
         this.logger.warn({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.etherThreshold,
-            this.client.getEtherBalance(bot.address),
+            this.client.getEtherBalance(monitoredAddress),
             "ETH",
             "ether"
           )
         });
       }
     }
-  };
+  }
 
-  _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
+  _createLowBalanceMrkdwn(bot, threshold, tokenBalance, tokenSymbol, tokenName) {
     return (
       bot.name +
       " (" +
@@ -110,15 +116,6 @@ class BalanceMonitor {
       " " +
       tokenSymbol
     );
-  };
-
-  // Checks if a big number value is below a given threshold.
-  _ltThreshold(value, threshold) {
-    // If the price has not resolved yet then return false.
-    if (value == null) {
-      return false;
-    }
-    return this.toBN(value).lt(this.toBN(threshold));
   }
 }
 

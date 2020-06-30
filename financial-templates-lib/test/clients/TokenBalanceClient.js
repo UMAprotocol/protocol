@@ -35,13 +35,13 @@ contract("BalanceMonitor.js", function(accounts) {
   });
 
   it("Returning token balances", async function() {
-    // Should start at empty state (null) and the address should not be resolved.
-    assert.equal(client.getCollateralBalance(sponsor1), null);
-    assert.equal(client.getSyntheticBalance(sponsor1), null);
-    assert.isFalse(client.resolvedAddressBalance(sponsor1));
+    // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
+    client.batchRegisterAddresses([sponsor1, sponsor2]);
 
-    // After the second update the balances should update accordingly and should be resolved.
+    // Update the client to pull the initial balances.
     await client.update();
+
+    // Token balances should correctly pull on the first query.
     assert.equal(client.getCollateralBalance(sponsor1), 0);
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
     assert.isTrue(client.resolvedAddressBalance(sponsor1));
@@ -52,16 +52,8 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
 
-    // Sending tokens to a wallet before they are search in the client should not load until queried.
+    // Sending tokens to a wallet should be correctly updated on the first query.
     await syntheticToken.mint(sponsor2, toWei("5678"), { from: tokenCreator });
-    await client.update();
-    assert.equal(client.getCollateralBalance(sponsor2), null);
-    assert.equal(client.getSyntheticBalance(sponsor2), null);
-    assert.equal(client.getEtherBalance(sponsor2), null);
-    assert.isFalse(client.resolvedAddressBalance(sponsor2));
-
-    // After updating the client the balances should reflect accordingly.
-    // After the second update the balances should update accordingly and should be resolved.
     await client.update();
     assert.equal(client.getCollateralBalance(sponsor2), 0);
     assert.equal(client.getSyntheticBalance(sponsor2), toWei("5678"));
@@ -85,9 +77,12 @@ contract("BalanceMonitor.js", function(accounts) {
   });
 
   it("Returning ETH balances", async function() {
-    assert.equal(client.getEtherBalance(sponsor1), null);
+    // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
+    client.batchRegisterAddresses([sponsor1, sponsor2]);
 
+    // Update the client to pull the initial balances.
     await client.update();
+
     assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
 
     // After Sending ether the balance should update accordingly.

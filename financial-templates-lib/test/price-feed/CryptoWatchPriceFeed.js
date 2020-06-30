@@ -48,7 +48,7 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     networker = new NetworkerMock();
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: []
+      transports: [new winston.transports.Console()]
     });
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       dummyLogger,

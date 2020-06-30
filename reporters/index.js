@@ -42,8 +42,21 @@ async function run(
     transports: [new winston.transports.Console()]
   });
 
-  // 1. EMP client for getting position information and ecosystem stats.
   const emp = await ExpiringMultiParty.at(address);
+  const collateralTokenAddress = await emp.collateralCurrency();
+  const collateralToken = await ExpandedERC20.at(collateralTokenAddress);
+  const syntheticTokenAddress = await emp.tokenCurrency();
+  const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
+
+  // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
+  const empProps = {
+    collateralCurrencySymbol: await collateralToken.symbol(),
+    syntheticCurrencySymbol: await syntheticToken.symbol(),
+    priceIdentifier: web3.utils.hexToUtf8(await emp.priceIdentifier()),
+    networkId: await web3.eth.net.getId()
+  };
+
+  // 1. EMP client for getting position information and ecosystem stats.
   const empClient = new ExpiringMultiPartyClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
   // 2a. Reference price feed for calculating "actual" positions CR ratios.
@@ -65,11 +78,7 @@ async function run(
     uniswapPriceFeedConfig
   );
 
-  // 3. Token balance client for getting sponsors balances.
-  const collateralTokenAddress = await emp.collateralCurrency();
-  const syntheticTokenAddress = await emp.tokenCurrency();
-
-  // 4. EMP event client for reading past events.
+  // 3. EMP event client for reading past events.
   const startBlock = 0;
   const empEventClient = new ExpiringMultiPartyEventClient(
     dummyLogger,
@@ -79,16 +88,13 @@ async function run(
     startBlock
   );
 
-  // 5. Oracle contract for fetching EMP dispute resolution prices.
+  // 4. Oracle contract for fetching EMP dispute resolution prices.
   const finder = await Finder.deployed();
   const oracle = await OracleInterface.at(
     await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
   );
 
-  // 6. Token contracts for tracking events.
-  const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
-  const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
-
+  // 5. Token balance client for getting monitored wallets balances.
   const tokenBalanceClient = new TokenBalanceClient(
     Logger,
     ExpandedERC20.abi,
@@ -98,8 +104,16 @@ async function run(
     10
   );
 
-  const sponsorReporter = new SponsorReporter(empClient, tokenBalanceClient, walletsToMonitor, referencePriceFeed);
+  // 6. Sponsor reporter to generate metrics on monitored positions.
+  const sponsorReporter = new SponsorReporter(
+    empClient,
+    tokenBalanceClient,
+    walletsToMonitor,
+    referencePriceFeed,
+    empProps
+  );
 
+  // 7. Global summary reporter reporter to generate EMP wide metrics.
   const globalSummaryReporter = new GlobalSummaryReporter(
     empClient,
     empEventClient,

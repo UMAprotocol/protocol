@@ -24,35 +24,39 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
- * @param {Number} price Price used to inform the collateralization ratio of positions.
  * @param {String} address Contract address of the EMP.
- * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
+ * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
+ *     mode which will exit after the loop.
+ * @param {Number} startingBlock Offset block number to define where the monitor bot should start searching for events
+ *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
  * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
  * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
  * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
  * @param {Object} syntheticPegMonitorObject Configuration to construct the synthetic peg monitor module.
- * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
  * @param {Object} uniswapPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @return None or throws an Error.
  */
 async function run(
   address,
-  shouldPoll,
+  pollingDelay,
+  startingBlock,
   botMonitorObject,
   walletMonitorObject,
   contractMonitorObject,
   syntheticPegMonitorObject,
-  pollingDelay,
   uniswapPriceFeedConfig,
   medianizerPriceFeedConfig
 ) {
   try {
-    Logger.info({
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
+      startingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
@@ -87,15 +91,16 @@ async function run(
     );
 
     // 1. Contract state monitor.
-    // Start the event client by looking from the most recent block number. If set to 0 will report past events.
-    const latestBlockNumber = (await web3.eth.getBlock("latest")).number;
+    // Start the event client by looking from the provided block number. If param set to null then use the latest
+    // block number. Else, use the param number to start the search from.
+    const eventsFromBlock = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
       Logger,
       ExpiringMultiParty.abi,
       web3,
       emp.address,
-      latestBlockNumber
+      eventsFromBlock
     );
     const contractMonitor = new ContractMonitor(
       Logger,
@@ -174,11 +179,12 @@ async function run(
       await syntheticPegMonitor.checkPegVolatility();
       await syntheticPegMonitor.checkSyntheticVolatility();
 
-      await delay(Number(pollingDelay));
-
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay === 0) {
+        await waitForLogger(Logger);
         break;
       }
+      await delay(Number(pollingDelay));
     }
   } catch (error) {
     Logger.error({
@@ -189,14 +195,20 @@ async function run(
     await waitForLogger(Logger);
   }
 }
-const Poll = async function(callback) {
+async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
         "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
       );
     }
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 300000;
+
+    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+
+    // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
+    // set then default to null which indicates that the bot should start at the current block number.
+    const startingBlock = process.env.STARTING_BLOCK_NUMBER;
 
     if (
       !process.env.BOT_MONITOR_OBJECT ||
@@ -253,12 +265,12 @@ const Poll = async function(callback) {
 
     await run(
       process.env.EMP_ADDRESS,
-      true,
+      pollingDelay,
+      startingBlock,
       botMonitorObject,
       walletMonitorObject,
       contractMonitorObject,
       syntheticPegMonitorObject,
-      pollingDelay,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     );
@@ -273,7 +285,7 @@ const Poll = async function(callback) {
     return;
   }
   callback();
-};
+}
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;

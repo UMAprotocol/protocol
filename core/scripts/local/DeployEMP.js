@@ -6,6 +6,10 @@
  * and mints collateral tokens to the default sponsor, `accounts[0]`. The testnet version of this script is designed
  * to be used when testing out the sponsor CLI locally. The Sponsor CLI assumes `accounts[0]` to be the default
  * sponsor account.
+ * @dev Flags:
+ * - "test": {*Boolean=false} Set to true to complete DVM-related prerequisites before a new EMP can be deployed,
+ *           and use the MockOracle as the DVM.
+ * - "identifier": {*String="ETH/BTC"} Customize the price identifier for the EMP.
  * @dev Other helpful scripts to run after this one are:
  * - `./AdvanceEMP.js`: advances EMP time forward, which is useful when testing withdrawal and liquidation requests.
  * - `./LiquidateEMP.js`: liquidates the sponsor's position with `accounts[1]` as the liquidator.
@@ -15,7 +19,7 @@
  * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
  *
- * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true
+ * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("../../utils/Constants.js");
@@ -30,7 +34,7 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["test"] });
+const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier"] });
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -52,7 +56,8 @@ const deployEMP = async callback => {
     // Use Dai as the collateral token.
     collateralToken = await TestnetERC20.deployed();
 
-    const priceFeedIdentifier = utf8ToHex("ETH/BTC");
+    const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
+    const priceFeedIdentifier = utf8ToHex(identifierBase);
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
@@ -78,13 +83,13 @@ const deployEMP = async callback => {
       expirationTimestamp: "1596240000", // 2020-08-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "ETH/BTC Synthetic Token Expiring 1 August 2020",
-      syntheticSymbol: "ETHBTC-AUG20",
-      collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.03") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.05") },
-      minSponsorTokens: { rawValue: toWei("1000") }
+      syntheticName: `${identifierBase} Synthetic Token Expiring 1 August 2020`,
+      syntheticSymbol: `${identifierBase.replace("/", "")}-AUG20`,
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.05") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.2") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") }
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });

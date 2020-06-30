@@ -19,24 +19,24 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
- * @param {Number} price Price used to determine undercollateralized positions to liquidate.
  * @param {String} address Contract address of the EMP.
- * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
- * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
- * @param {Number} [monitorPort] Monitor server port number.
+ * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
+ *     mode which will exit after the loop.
+ * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort, liquidatorConfig) {
+async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
   try {
-    Logger.info({
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
       priceFeedConfig,
-      liquidatorConfig,
-      monitorPort
+      liquidatorConfig
     });
 
     // Setup web3 accounts an contract instance.
@@ -84,14 +84,16 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     }
 
     while (true) {
-      await liquidator.queryAndLiquidate();
+      const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+      await liquidator.queryAndLiquidate(currentSyntheticBalance);
       await liquidator.queryAndWithdrawRewards();
 
-      await delay(Number(pollingDelay));
-
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay === 0) {
+        await waitForLogger(Logger);
         break;
       }
+      await delay(Number(pollingDelay));
     }
   } catch (error) {
     Logger.error({
@@ -103,7 +105,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
   }
 }
 
-const Poll = async function(callback) {
+async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
@@ -111,7 +113,8 @@ const Poll = async function(callback) {
       );
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
+    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw new Error(
@@ -126,13 +129,15 @@ const Poll = async function(callback) {
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
-    // liquidationMinPrice and txnGasLimit. EG: {"crThreshold":0.02,"liquidationDeadline":300,"liquidationMinPrice":0,
-    // "txnGasLimit":9000000}
-    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? process.env.LIQUIDATOR_CONFIG : null;
+    // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
+    // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+    //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
+    //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
+    //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
+    //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
+    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
-    const portNumber = 8888;
-
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, portNumber, liquidatorConfig);
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
@@ -144,7 +149,7 @@ const Poll = async function(callback) {
     return;
   }
   callback();
-};
+}
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;

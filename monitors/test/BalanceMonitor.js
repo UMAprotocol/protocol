@@ -86,7 +86,6 @@ contract("BalanceMonitor.js", function(accounts) {
   it("Correctly emits messages on balance threshold", async function() {
     // Update the client.
     await tokenBalanceClient.update();
-    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
     // The spy should not have been called. All positions are correctly funded and collateralized.
@@ -141,7 +140,6 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Correctly emits messages on balance threshold", async function() {
     await tokenBalanceClient.update();
-    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
     // Test the ETH balance thresholding. Transfer enough Eth away from liquidatorBot should result in alert.
@@ -179,7 +177,6 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Correctly emit messages if balance moves above and below thresholds", async function() {
     // Update the client. No messages should be sent as above threshold values on all fronts.
-    await tokenBalanceClient.update();
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 0);

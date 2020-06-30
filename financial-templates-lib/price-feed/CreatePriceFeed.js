@@ -175,6 +175,31 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
 }
 
+// Default price feed configs for currently approved identifiers.
+const defaultConfigs = {
+  "ETH/BTC": {
+    type: "medianizer",
+    pair: "ethbtc",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro" },
+      { type: "cryptowatch", exchange: "binance" },
+      { type: "cryptowatch", exchange: "bitstamp" }
+    ]
+  },
+  COMPUSD: {
+    type: "medianizer",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
+      { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
+      { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
+    ]
+  }
+};
+
 /**
  * Create a reference price feed for the EMP. Note: this is the price feed that the token is tracking.
  * @param {Object} winston logger.
@@ -182,28 +207,31 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
  * @param {Object} networker object that the price feed may use to make REST calls.
  * @param {Function} function to get the current time.
  * @param {String} string representing the address of the EMP contract.
- * @param {Object} optional config to override the defaults for this reference feed.
+ * @param {Object=} config (optional) to override the defaults for this reference feed.
+ * @param {String=} identifier (optional) allows caller to choose which default price feed config to use. Required only if the caller does not pass in an `empAddress`
  * @return {Object} an instance of PriceFeedInterface that can be used to get the reference price.
  */
-async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
-  // TODO: maybe move this default config to a better location.
-  const defaultConfigs = {
-    "ETH/BTC": {
-      type: "medianizer",
-      pair: "ethbtc",
-      lookback: 7200,
-      minTimeBetweenUpdates: 60,
-      medianizedFeeds: [
-        { type: "cryptowatch", exchange: "coinbase-pro" },
-        { type: "cryptowatch", exchange: "binance" },
-        { type: "cryptowatch", exchange: "bitstamp" }
-      ]
-    }
-  };
+async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config, identifier) {
+  // Automatically detect identifier from passed in EMP address or use `identifier`.
+  let _identifier;
+  let emp;
 
-  const emp = getEmpAtAddress(web3, empAddress);
-  const identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
-  const defaultConfig = defaultConfigs[identifier];
+  if (empAddress) {
+    emp = getEmpAtAddress(web3, empAddress);
+    _identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
+  } else if (identifier) {
+    _identifier = identifier;
+  } else {
+    throw new Error("createReferencePriceFeedForEmp: Must pass in an `empAddress` or an `identifier`");
+  }
+
+  const defaultConfig = defaultConfigs[_identifier];
+
+  // Infer lookback from liquidation liveness.
+  if (emp) {
+    const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
+    Object.assign(defaultConfig, { lookback });
+  }
 
   let combinedConfig;
   if (defaultConfig && config) {

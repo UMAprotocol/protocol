@@ -50,6 +50,8 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapMock.setPrice(toWei("1"), toWei("1"));
     await uniswapMock.setPrice(toWei("2"), toWei("1"));
     await uniswapMock.setPrice(toWei("4"), toWei("1"));
+    // Add an invalid price as the most recent price, which should be ignored.
+    await uniswapMock.setPrice(toWei("0"), toWei("1"));
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
@@ -75,9 +77,13 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
   });
 
-  it("No price", async function() {
+  it("No price or only invalid prices", async function() {
     await uniswapPriceFeed.update();
 
+    assert.equal(uniswapPriceFeed.getLastBlockPrice(), null);
+    assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
+
+    await uniswapMock.setPrice(toWei("0"), toWei("1"));
     assert.equal(uniswapPriceFeed.getLastBlockPrice(), null);
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
@@ -86,7 +92,9 @@ contract("UniswapPriceFeed.js", function(accounts) {
   it("Basic 2-price TWAP", async function() {
     // Update the prices with a small amount of time between.
     const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
-    await delay(1000);
+    await delay(1);
+    // Invalid price should be ignored.
+    await uniswapMock.setPrice(toWei("0"), toWei("1"));
     const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));
 
     const getBlockTime = async result => {
@@ -160,6 +168,14 @@ contract("UniswapPriceFeed.js", function(accounts) {
       web3,
       [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))],
       currentTime - 5400,
+      owner
+    );
+
+    // At an hour and a half ago - 1 second, set the price to an invalid one. This should be ignored.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("0"), toWei("1"))],
+      currentTime - 5399,
       owner
     );
 

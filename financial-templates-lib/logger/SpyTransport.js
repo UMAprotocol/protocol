@@ -17,11 +17,30 @@ class SpyTransport extends Transport {
 
 // Helper function used by unit tests to check if the last message sent to winston contains a particular string value.
 // Caller feeds in the spy instance and the value to check.
-const lastSpyLogIncludes = (spy, value) => {
-  // Sinon's getCall(n) function returns values sent in the nth call to the spy. Check both the mrkdown and message sent.
+function lastSpyLogIncludes(spy, value) {
+  // Sinon's getCall(n) function returns values sent in the nth (zero-indexed) call to the spy. Check both the mrkdown and message sent.
   const lastReturnedArgMrkdwn = spy.getCall(-1).lastArg.mrkdwn.toString();
   const lastReturnedArgMessage = spy.getCall(-1).lastArg.message.toString();
-  return lastReturnedArgMrkdwn.indexOf(value) != -1 || lastReturnedArgMessage.indexOf(value) != -1;
-};
+  return lastReturnedArgMrkdwn.indexOf(value) !== -1 || lastReturnedArgMessage.indexOf(value) !== -1;
+}
 
-module.exports = { SpyTransport, lastSpyLogIncludes };
+function spyLogIncludes(spy, messageIndex, value) {
+  // Sinon's getCall(n) function returns values sent in the nth (zero-indexed) call to the spy.
+  return (
+    spy
+      .getCall(messageIndex)
+      .lastArg.message.toString()
+      .indexOf(value) !== -1
+  );
+}
+
+// Helper function used by unit tests to get the most recent log level.
+function lastSpyLogLevel(spy) {
+  return spy.getCall(-1).lastArg.level.toString();
+}
+
+function spyLogLevel(spy, messageIndex) {
+  return spy.getCall(messageIndex).lastArg.level.toString();
+}
+
+module.exports = { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel, spyLogLevel };

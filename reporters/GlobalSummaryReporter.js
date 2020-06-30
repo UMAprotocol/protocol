@@ -40,6 +40,11 @@ class GlobalSummaryReporter {
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
     this.formatDecimalStringWithSign = createFormatFunction(this.web3, 2, 4, true);
+
+    // This report runs accounting on the current and historical state of EMP positions.
+    // Use `accountingVariance` to adjust how much room for error we should allow in calculations, for example to
+    // allow for FixedPoint rounding errors.
+    this.accountingVariance = this.toBN(this.toWei("0.0001"));
   }
 
   async update() {
@@ -93,7 +98,8 @@ class GlobalSummaryReporter {
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
     this.totalTokensOutstanding = await this.empContract.methods.totalTokensOutstanding().call();
-    this.collateralLockedInLiquidations = this.toBN((await this.empContract.methods.pfc().call()).toString()).sub(
+    this.totalPfc = await this.empContract.methods.pfc().call();
+    this.collateralLockedInLiquidations = this.toBN(this.totalPfc.toString()).sub(
       this.toBN(this.totalPositionCollateral.toString())
     );
 
@@ -312,7 +318,7 @@ class GlobalSummaryReporter {
       // Fetch disputed collateral & token amounts from corresponding liquidation event that with same ID and sponsor.
       const liquidationData = liquidationEvents.filter(
         e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
-      );
+      )[0];
 
       allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
       allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
@@ -341,7 +347,8 @@ class GlobalSummaryReporter {
       }
 
       // Create list of resolved prices for disputed liquidations.
-      const liquidationTimestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationData.blockNumber)).timestamp;
+      const disputeLabel = `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`;
       try {
         // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
         // but return a very high integer--a false positive. `revertWrapper` handles this case and returns the resolved price or `null`
@@ -354,14 +361,12 @@ class GlobalSummaryReporter {
           }
         );
         if (revertWrapper(resolvedPrice)) {
-          allResolvedDisputes[
-            `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`
-          ] = this.formatDecimalString(resolvedPrice);
+          allResolvedDisputes[disputeLabel] = this.formatDecimalString(resolvedPrice);
         } else {
-          throw "getPrice reverted but web3.Contract method call returned a false positive price";
+          allResolvedDisputes[disputeLabel] = "unresolved";
         }
       } catch (err) {
-        allResolvedDisputes[`Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`] = "unresolved";
+        allResolvedDisputes[disputeLabel] = "unresolved";
       }
     }
     return {
@@ -421,7 +426,7 @@ class GlobalSummaryReporter {
         }
 
         if (this.isEventInPeriod(event, period)) {
-          periodFinalFeesPaid = periodFinalFeesPaid.add(this.toBN(event.amount));
+          periodFinalFeesPaid[period.label] = periodFinalFeesPaid[period.label].add(this.toBN(event.amount));
         }
       }
     }
@@ -480,8 +485,11 @@ class GlobalSummaryReporter {
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = depositData.allCollateralTransferred.sub(withdrawData.allCollateralTransferred);
-    if (!netCollateralWithdrawn.eq(this.toBN(this.totalPositionCollateral.toString()))) {
-      throw "Net collateral deposited is not equal to current total position collateral";
+    if (
+      !netCollateralWithdrawn.lt(this.toBN(this.totalPfc.toString()).add(this.accountingVariance)) &&
+      !netCollateralWithdrawn.gt(this.toBN(this.totalPfc.toString()).sub(this.accountingVariance))
+    ) {
+      throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
     let netCollateralWithdrawnPeriod = depositData.periodCollateralTransferred["period"].sub(
       withdrawData.periodCollateralTransferred["period"]
@@ -519,7 +527,10 @@ class GlobalSummaryReporter {
 
     // - Net tokens minted:
     let netTokensMinted = tokenMintData.allTokensCreated.sub(tokenBurnData.allCollateralTransferred);
-    if (!netTokensMinted.eq(this.toBN(this.totalTokensOutstanding.toString()))) {
+    if (
+      !netTokensMinted.lt(this.toBN(this.totalTokensOutstanding.toString()).add(this.accountingVariance)) &&
+      !netTokensMinted.gt(this.toBN(this.totalTokensOutstanding.toString()).sub(this.accountingVariance))
+    ) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
     let netTokensMintedPeriod = tokenMintData.periodTokensCreated["period"].sub(
@@ -579,43 +590,54 @@ class GlobalSummaryReporter {
     const uniswapClient = getUniswapClient();
     const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
 
-    const startPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
-    ).pairs[0];
-    const endPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
-    ).pairs[0];
-    const startPrevPeriodTokenData = (
-      await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPreviousPeriod))
-    ).pairs[0];
+    // Calculate Uniswap trade count and volume data.
+    if (!allTokenData) {
+      // If there is no data for this pair, then we cannot get trade count or volume data.
+      allTokenStatsTable["# trades in Uniswap"] = {
+        cumulative: "Graph data unavailable"
+      };
+      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+        cumulative: "Graph data unavailable"
+      };
+    } else {
+      const startPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
+      ).pairs[0];
+      const endPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
+      ).pairs[0];
+      const startPrevPeriodTokenData = (
+        await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPreviousPeriod))
+      ).pairs[0];
 
-    const tradeCount = parseInt(allTokenData.txCount);
-    const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
-    const prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
+      const tradeCount = parseInt(allTokenData.txCount);
+      const periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
+      const prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
 
-    const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
-    const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
-    const periodTradeVolumeTokens =
-      parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
-    const prevPeriodTradeVolumeTokens =
-      parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
+      const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+      const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
+      const periodTradeVolumeTokens =
+        parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
+      const prevPeriodTradeVolumeTokens =
+        parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
 
-    allTokenStatsTable["# trades in Uniswap"] = {
-      cumulative: tradeCount,
-      [this.periodLabelInHours]: periodTradeCount,
-      ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
-    };
-    allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
-      cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
-      [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
-      ["Δ from prev. period"]: formatWithMaxDecimals(
-        periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
-        2,
-        4,
-        false,
-        true
-      )
-    };
+      allTokenStatsTable["# trades in Uniswap"] = {
+        cumulative: tradeCount,
+        [this.periodLabelInHours]: periodTradeCount,
+        ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
+      };
+      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
+        cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
+        [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
+        ["Δ from prev. period"]: formatWithMaxDecimals(
+          periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
+          2,
+          4,
+          false,
+          true
+        )
+      };
+    }
 
     // Get token holder stats.
     const tokenHolderStats = this._constructTokenHolderList(periods);

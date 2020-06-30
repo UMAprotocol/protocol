@@ -19,6 +19,7 @@ contract("SyntheticPegMonitor", function(accounts) {
   let spylogger;
 
   let syntheticPegMonitorConfig;
+  let empProps;
   let syntheticPegMonitor;
 
   beforeEach(async function() {
@@ -130,6 +131,30 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "0.02111")); // expected price (note: 4 units of precision)
       assert.isTrue(lastSpyLogIncludes(spy, "21.63")); // percentage error
     });
+
+    it("Does not track price deviation if threshold set to zero", async function() {
+      syntheticPegMonitorConfig = {
+        deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price deviation.
+      };
+
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        syntheticPegMonitorConfig,
+        empProps
+      );
+
+      await syntheticPegMonitor.checkPriceDeviation();
+      assert.equal(spy.callCount, 0); // There should be no messages sent.
+
+      // Create a price deviation of 25% and validate that no messages are sent.
+      medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+      uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1.25")));
+      await syntheticPegMonitor.checkPriceDeviation();
+      assert.equal(spy.callCount, 0); // There should be no messages sent.
+    });
   });
 
   describe("Pricefeed volatility", function() {
@@ -142,7 +167,7 @@ contract("SyntheticPegMonitor", function(accounts) {
         volatilityAlertThreshold: 0.3
       };
 
-      const empProps = {
+      empProps = {
         collateralCurrencySymbol: "DAI",
         syntheticCurrencySymbol: "ETHBTC",
         priceIdentifier: "ETH/BTC",
@@ -159,8 +184,9 @@ contract("SyntheticPegMonitor", function(accounts) {
     });
 
     it("Calculate price volatility returns expected values", async function() {
-      // Inject prices into pricefeed.
+      // Inject prices into pricefeed. Null prices are ignored.
       const historicalPrices = [
+        { timestamp: 99, price: null },
         { timestamp: 100, price: toBN(toWei("10")) },
         { timestamp: 101, price: toBN(toWei("11")) },
         { timestamp: 102, price: toBN(toWei("12")) },
@@ -168,7 +194,9 @@ contract("SyntheticPegMonitor", function(accounts) {
         { timestamp: 104, price: toBN(toWei("14")) },
         { timestamp: 105, price: toBN(toWei("15")) },
         { timestamp: 106, price: toBN(toWei("16")) },
-        { timestamp: 107, price: toBN(toWei("17")) }
+        { timestamp: 107, price: null },
+        { timestamp: 108, price: toBN(toWei("17")) },
+        { timestamp: 109, price: null }
       ];
       medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
 
@@ -208,7 +236,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       // Test when volatility window is smaller than the amount of historical prices. The last update time is 106,
       // so this should read the volatility from timestamps [106, 105, 104, 103, 102]. The min/max should be 12/16,
       // and the volatility should be (4 / 12 = 0.3333) or 33%.
-      medianizerPriceFeedMock.setLastUpdateTime(106);
+      medianizerPriceFeedMock.setLastUpdateTime(107);
       assert.equal(
         syntheticPegMonitor
           ._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow)

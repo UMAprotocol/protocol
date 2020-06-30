@@ -20,19 +20,21 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
  * @param {String} address Contract address of the EMP.
- * @param {bool} shouldPoll Whether to poll continuously or run a single iteration (for testing).
- * @param {Number} pollingDelay Number of seconds to delay between polls.
+ * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
+ *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerConfig) {
+async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
-    Logger.info({
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    Logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
-      pollingDelay: pollingDelay,
+      pollingDelay,
       priceFeedConfig
     });
 
@@ -72,11 +74,12 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
       await disputer.queryAndDispute();
       await disputer.queryAndWithdrawRewards();
 
-      await delay(Number(pollingDelay));
-
-      if (!shouldPoll) {
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay === 0) {
+        await waitForLogger(Logger);
         break;
       }
+      await delay(Number(pollingDelay));
     }
   } catch (error) {
     Logger.error({
@@ -88,7 +91,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, disputerC
   }
 }
 
-const Poll = async function(callback) {
+async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
@@ -96,7 +99,8 @@ const Poll = async function(callback) {
       );
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
+    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
     if (!process.env.PRICE_FEED_CONFIG) {
       throw new Error(
@@ -111,9 +115,9 @@ const Poll = async function(callback) {
 
     // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
     // {"disputeDelay":60,"txnGasLimit":9000000}
-    const disputerConfig = process.env.DISPUTER_CONFIG ? process.env.DISPUTER_CONFIG : null;
+    const disputerConfig = process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null;
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, disputerConfig);
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
   } catch (error) {
     Logger.error({
       at: "Disputer#index🚨",
@@ -125,7 +129,7 @@ const Poll = async function(callback) {
     return;
   }
   callback();
-};
+}
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;

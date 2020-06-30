@@ -1,4 +1,6 @@
-const delay = ms => new Promise(r => setTimeout(r, ms));
+function delay(s) {
+  return new Promise(r => setTimeout(r, s * 1000));
+}
 
 module.exports = {
   delay

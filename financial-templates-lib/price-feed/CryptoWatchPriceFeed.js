@@ -47,9 +47,23 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return undefined;
     }
 
+    // Set first price period in `historicalPricePeriods` to first non-null price.
+    let firstPricePeriod;
+    for (let p in this.historicalPricePeriods) {
+      if (this.historicalPricePeriods[p] && this.historicalPricePeriods[p].openTime) {
+        firstPricePeriod = this.historicalPricePeriods[p];
+        break;
+      }
+    }
+
+    // If there are no valid price periods, return null.
+    if (!firstPricePeriod) {
+      return null;
+    }
+
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
-    if (time < this.historicalPricePeriods[0].openTime) {
+    if (time < firstPricePeriod.openTime) {
       return null;
     }
 
@@ -111,7 +125,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       this.logger.error({
         at: "CryptoWatchPriceFeed",
         message: "Could not parse ohlc result🚨",
-        error: new Error(ohlcResponse)
+        error: new Error(JSON.stringify(ohlcResponse))
       });
       return;
     }
@@ -157,7 +171,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         at: "CryptoWatchPriceFeed",
         message: "Could not parse price result🚨",
         priceUrl,
-        error: new Error(priceResponse)
+        error: new Error(JSON.stringify(priceResponse))
       });
       return;
     }

@@ -38,10 +38,10 @@ class SyntheticPegMonitor {
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
-        // if the deviation in token price exceeds this value an alert is fired.
+        // if the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
         value: 0.2,
         isValid: x => {
-          return x < 100 && x > 0;
+          return x < 100 && x >= 0;
         }
       },
       volatilityWindow: {
@@ -67,8 +67,9 @@ class SyntheticPegMonitor {
   }
 
   // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
-  // if the synythetic price deviates too far from the peg.
-  checkPriceDeviation = async () => {
+  // if the synythetic price deviates too far from the peg. If deviationAlertThreshold == 0 then do nothing.
+  async checkPriceDeviation() {
+    if (this.deviationAlertThreshold == 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
@@ -77,8 +78,8 @@ class SyntheticPegMonitor {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
-        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : null,
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : null
+        uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
       return;
     }
@@ -108,11 +109,11 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
   // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time.
   // Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
-  checkPegVolatility = async () => {
+  async checkPegVolatility() {
     const pricefeed = this.medianizerPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -159,9 +160,9 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
-  checkSyntheticVolatility = async () => {
+  async checkSyntheticVolatility() {
     const pricefeed = this.uniswapPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -208,10 +209,10 @@ class SyntheticPegMonitor {
           "%."
       });
     }
-  };
+  }
 
   // Return historical volatility for pricefeed over specified time range and latest price.
-  _checkPricefeedVolatility = async pricefeed => {
+  async _checkPricefeedVolatility(pricefeed) {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
@@ -230,7 +231,7 @@ class SyntheticPegMonitor {
       min: volData.min,
       max: volData.max
     };
-  };
+  }
 
   // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
   // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
@@ -246,10 +247,7 @@ class SyntheticPegMonitor {
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
   // until `mostRecentTime`. Returns volatility as (max - min)/min %. Also Identifies the direction volatility movement.
   _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
-    // Set max and min to latest price to start.
-    let min = pricefeed.getHistoricalPrice(mostRecentTime);
-    let max = min;
-    if (!min || !max) return null;
+    let min, max;
 
     // Store the timestamp of the max and min value to infer the direction of the movement over the interval.
     let maxTimestamp = 0,
@@ -262,6 +260,14 @@ class SyntheticPegMonitor {
         continue;
       }
 
+      // Set default values for min and max to the most recent non-null price.
+      if (!min) {
+        min = _price;
+      }
+      if (!max) {
+        max = _price;
+      }
+
       if (_price.lt(min)) {
         min = _price;
         minTimestamp = timestamp;
@@ -271,6 +277,10 @@ class SyntheticPegMonitor {
         maxTimestamp = timestamp;
       }
     }
+
+    // If there are no valid prices in the time window from `mostRecentTime` to `mostRecentTime - lookback`, return null.
+    if (!min || !max) return null;
+
     // If maxTimestamp < minTimestamp then positive volatility. If minTimestamp < maxTimestamp then negative volatility.
     // Note:this inequality intuitively feels backwards. This is because the for loop above itterates from the current
     // time back over the lookback duration rather than traversing time forwards from the lookback duration to present.

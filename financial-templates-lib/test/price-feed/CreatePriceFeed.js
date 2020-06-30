@@ -358,11 +358,14 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     // Should create a valid price feed with no config.
     const priceFeed = await createReferencePriceFeedForEmp(logger, web3, networker, getTime, emp.address, {
-      lookback: 5
+      minTimeBetweenUpdates: 5
     });
 
     assert.isTrue(priceFeed != null);
-    assert.equal(priceFeed.priceFeeds[0].lookback, 5);
+    assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
+
+    // Check that the default `lookback` property is overridden.
+    assert.equal(priceFeed.priceFeeds[0].lookback, 1000);
   });
 
   it("Default reference price feed for invalid identifier", async function() {

@@ -53,34 +53,60 @@ class ExpiringMultiPartyEventClient {
     this.settleExpiredPositionEvents = [];
   };
 
-  getAllNewSponsorEvents = () => this.newSponsorEvents;
+  getAllNewSponsorEvents() {
+    return this.newSponsorEvents;
+  }
 
-  getAllLiquidationEvents = () => this.liquidationEvents;
+  getAllLiquidationEvents() {
+    return this.liquidationEvents;
+  }
 
-  getAllDisputeEvents = () => this.disputeEvents;
+  getAllDisputeEvents() {
+    return this.disputeEvents;
+  }
 
-  getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
+  getAllDisputeSettlementEvents() {
+    return this.disputeSettlementEvents;
+  }
 
-  getAllDepositEvents = () => this.depositEvents;
+  getAllDepositEvents() {
+    return this.depositEvents;
+  }
 
-  getAllCreateEvents = () => this.createEvents;
+  getAllCreateEvents() {
+    return this.createEvents;
+  }
 
-  getAllWithdrawEvents = () => this.withdrawEvents;
+  getAllWithdrawEvents() {
+    return this.withdrawEvents;
+  }
 
-  getAllRedeemEvents = () => this.redeemEvents;
+  getAllRedeemEvents() {
+    return this.redeemEvents;
+  }
 
-  getAllRegularFeeEvents = () => this.regularFeeEvents;
+  getAllRegularFeeEvents() {
+    return this.regularFeeEvents;
+  }
 
-  getAllFinalFeeEvents = () => this.finalFeeEvents;
+  getAllFinalFeeEvents() {
+    return this.finalFeeEvents;
+  }
 
-  getAllLiquidationWithdrawnEvents = () => this.liquidationWithdrawnEvents;
+  getAllLiquidationWithdrawnEvents() {
+    return this.liquidationWithdrawnEvents;
+  }
 
-  getAllSettleExpiredPositionEvents = () => this.settleExpiredPositionEvents;
+  getAllSettleExpiredPositionEvents() {
+    return this.settleExpiredPositionEvents;
+  }
 
   // Returns the last update timestamp.
-  getLastUpdateTime = () => this.lastUpdateTimestamp;
+  getLastUpdateTime() {
+    return this.lastUpdateTimestamp;
+  }
 
-  update = async () => {
+  async update() {
     const currentBlockNumber = await this.web3.eth.getBlockNumber();
     // TODO(#1540): For efficiency, we should only pass through `fromBlock` to `toBlock` once and check for
     // all of the relevant events along the way.
@@ -285,7 +311,7 @@ class ExpiringMultiPartyEventClient {
       message: "Expiring multi party event state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
-  };
+  }
 }
 
 module.exports = {

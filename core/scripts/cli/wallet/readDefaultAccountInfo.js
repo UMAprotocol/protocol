@@ -34,9 +34,13 @@ const readDefaultAccountInfo = async (web3, artifacts) => {
     console.groupEnd();
 
     if (designatedVotingContract) {
+      const designatedVotingBalanceEth = await getBalance(designatedVotingContract.address);
+      const designatedVotingBalanceVoting = await votingToken.balanceOf(designatedVotingContract.address);
+
       console.group(style.success("\n** Two Key Contract Info **"));
-      const designatedVotingBalance = await votingToken.balanceOf(designatedVotingContract.address);
-      console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalance)} UMA voting token`);
+      console.log(`- ${style.success("Address")}: ${designatedVotingContract.address}`);
+      console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalanceEth)} ETH`);
+      console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalanceVoting)} UMA voting token`);
       console.log("\n");
       console.groupEnd();
     }
