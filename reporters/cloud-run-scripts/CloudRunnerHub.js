@@ -192,6 +192,8 @@ app.listen(port, () => {
   console.log("Listening on port", port);
   // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
-    throw new Error("Bad environment! Specify a `PROTOCOL_RUNNER_URL` to point to the a cloud run instance");
+    throw new Error(
+      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a cloud run instance and Ethereum node"
+    );
   }
 });
