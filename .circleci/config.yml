@@ -116,9 +116,6 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
-      - run:
-          name: Install System Packages
-          command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev linux-headers yarn && update-ca-certificates
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
