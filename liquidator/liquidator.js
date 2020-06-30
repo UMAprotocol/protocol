@@ -14,9 +14,10 @@ class Liquidator {
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -29,15 +30,12 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
+    this.empCRRatio = empProps.crRatio;
+    this.empMinSponsorSize = empProps.minSponsorSize;
+    this.empIdentifier = empProps.priceIdentifier;
 
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
-
-    // The EMP contract collateralization Ratio is needed to calculate minCollateralPerToken.
-    this.empCRRatio = null;
-
-    // The EMP contract min sponsor position size is needed to calculate maxTokensToLiquidate.
-    this.empMinSponsorSize = null;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -107,20 +105,6 @@ class Liquidator {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-
-    // Fetch the collateral requirement requirement from the contract. Will only execute on first update execution.
-    if (!this.empCRRatio) {
-      this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
-    }
-
-    // Fetch the min sponsor position from the contract.
-    if (!this.empMinSponsorSize) {
-      this.empMinSponsorSize = await this.empContract.methods.minSponsorTokens().call();
-    }
-
-    if (!this.empIdentifier) {
-      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
-    }
 
     // Initialize DVM to query price requests. This should only be done once.
     if (!this.votingContract) {

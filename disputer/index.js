@@ -41,6 +41,9 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
+    const empProps = {
+      priceIdentifier: await emp.priceIdentifier()
+    };
 
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -53,7 +56,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
-    const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0], disputerConfig);
+    const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0], empProps, disputerConfig);
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
