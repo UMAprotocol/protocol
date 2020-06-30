@@ -10,12 +10,14 @@ const { toBN } = web3.utils;
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { DVMClient } = require("../financial-templates-lib/clients/DVMClient");
 const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -61,11 +63,13 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     }
 
     // Client and liquidator bot
+    const dvmClient = new DVMClient(Logger, Voting.abi, web3, (await Voting.deployed()).address)
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
     const liquidator = new Liquidator(
       Logger,
       empClient,
+      dvmClient,
       gasEstimator,
       priceFeed,
       accounts[0],

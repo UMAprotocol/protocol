@@ -9,6 +9,7 @@ const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { DVMClient } = require("../../financial-templates-lib/clients/DVMClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
@@ -28,6 +29,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Voting = artifacts.require("Voting");
 
 contract("Liquidator.js", function(accounts) {
   // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0].
@@ -130,6 +132,9 @@ contract("Liquidator.js", function(accounts) {
     // Create a new instance of the price feed mock.
     priceFeedMock = new PriceFeedMock();
 
+    // Create a new instance of the DVM client.
+    dvmClient = new DVMClient(Voting.abi, web3, (await Voting.deployed()).address)
+
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
       crThreshold: 0
@@ -137,6 +142,7 @@ contract("Liquidator.js", function(accounts) {
     liquidator = new Liquidator(
       spyLogger,
       empClient,
+      dvmClient,
       gasEstimator,
       priceFeedMock,
       accounts[0],
@@ -327,7 +333,7 @@ contract("Liquidator.js", function(accounts) {
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
   });
 
-  it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
+  it.only("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -692,6 +698,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          dvmClient,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -714,6 +721,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          dvmClient,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -734,6 +742,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
+        dvmClient,
         gasEstimator,
         priceFeedMock,
         accounts[0],
@@ -788,6 +797,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          dvmClient,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -808,6 +818,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
+        dvmClient,
         gasEstimator,
         priceFeedMock,
         accounts[0],

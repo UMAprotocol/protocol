@@ -11,13 +11,14 @@ class Liquidator {
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} dvmClient Module used to query DVM information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(logger, expiringMultiPartyClient, dvmClient, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -27,6 +28,9 @@ class Liquidator {
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
+
+    // DVM contract to read price request information.
+    this.votingContract = dvmClient.dvm;
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
@@ -105,14 +109,6 @@ class Liquidator {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-
-    // Initialize DVM to query price requests. This should only be done once.
-    if (!this.votingContract) {
-      this.finderContract = await Finder.at(await this.empContract.methods.finder().call());
-      this.votingContract = await Voting.at(
-        await this.finderContract.getImplementationAddress(this.utf8ToHex(interfaceName.Oracle))
-      );
-    }
   }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
@@ -393,9 +389,7 @@ class Liquidator {
       if (requestTimestamp) {
         try {
           resolvedPrice = revertWrapper(
-            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
-              from: this.empContract.options.address
-            })
+            (await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp)).call({ from: this.empContract.options.address })
           );
         } catch (error) {
           // No price available for liquidation time, likely that liquidation expired without dispute.
