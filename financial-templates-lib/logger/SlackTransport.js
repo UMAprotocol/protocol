@@ -121,6 +121,14 @@ function slackFormatter(info) {
             }
           });
         }
+      } else if (info[key] == null) {
+        formattedResponse.blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: ` • _${key}_: null`
+          }
+        });
       }
     }
     // Add a divider to the end of the message to help distinguish messages in long lists.
