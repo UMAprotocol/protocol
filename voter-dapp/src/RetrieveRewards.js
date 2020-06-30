@@ -21,7 +21,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests == null) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || !priceRequests) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -175,6 +175,8 @@ function RetrieveRewards({ votingAccount }) {
       const status = statuses[i];
       priceRequest.lastRound = status.lastVotingRound;
       if (status.status === PriceRequestStatusEnum.RESOLVED) {
+        // Note: this method needs to be called "from" the Governor contract since it's approved to "use" the DVM.
+        // Otherwise, it will revert.
         priceRequest.resolvedPrice = call("Voting", "getPrice", priceRequest.identifier, priceRequest.time, {
           from: governorAddress
         });
