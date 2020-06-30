@@ -63,7 +63,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     }
 
     // Client and liquidator bot
-    const dvmClient = new DVMClient(Logger, Voting.abi, web3, (await Voting.deployed()).address)
+    const dvmClient = new DVMClient(Logger, Voting.abi, web3, (await Voting.deployed()).address);
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
     const liquidator = new Liquidator(

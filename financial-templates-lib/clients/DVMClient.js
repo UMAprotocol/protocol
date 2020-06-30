@@ -21,5 +21,5 @@ class DVMClient {
 }
 
 module.exports = {
-    DVMClient
+  DVMClient
 };
