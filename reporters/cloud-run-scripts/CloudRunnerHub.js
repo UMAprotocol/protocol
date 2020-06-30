@@ -139,7 +139,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
   const dataBlob = {
     key: key,
     data: {
-      blockNumber: blockNumber
+      blockNumber
     }
   };
 
