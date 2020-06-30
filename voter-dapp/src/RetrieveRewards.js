@@ -62,6 +62,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
         // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
         oldestUnclaimedRound = Math.min(oldestUnclaimedRound, revealRound);
         voteState.didReveal = true;
+        voteState.priceResolutionRound = revealRound;
       }
     }
 
@@ -74,11 +75,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     const toRetrieve = [];
     const maxBatchRetrievals = BATCH_MAX_RETRIEVALS;
     for (const [key, voteState] of Object.entries(state)) {
-      if (
-        !voteState.retrievedRewards &&
-        voteState.priceResolutionRound === oldestUnclaimedRound.toString() &&
-        voteState.didReveal
-      ) {
+      if (voteState.priceResolutionRound === oldestUnclaimedRound.toString() && voteState.didReveal) {
         // If this is an eligible reward for the oldest round, extract the information and push it into the retrieval array.
         const [identifier, time] = key.split("|");
         toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
@@ -100,7 +97,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 }
 
 function RetrieveRewards({ votingAccount }) {
-  const { useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
+  const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
