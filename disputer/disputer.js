@@ -1,20 +1,22 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
+const { interfaceName } = require("../core/utils/Constants");
+
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 
 class Disputer {
   /**
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
-   * @param {Object} votingContract Deployed DVM contract.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} empProps EMP contract state values.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -25,15 +27,11 @@ class Disputer {
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
 
-    // DVM contract to read price request information.
-    this.votingContract = votingContract;
-
     // Price feed to compute the token price.
     this.priceFeed = priceFeed;
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
-    this.empIdentifier = empProps.priceIdentifier;
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
@@ -69,6 +67,18 @@ class Disputer {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
+
+    if (!this.empIdentifier) {
+      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
+    }
+
+    // Initialize DVM to query price requests. This should only be done once.
+    if (!this.votingContract) {
+      this.finderContract = await Finder.at(await this.empContract.methods.finder().call());
+      this.votingContract = await Voting.at(
+        await this.finderContract.getImplementationAddress(this.utf8ToHex(interfaceName.Oracle))
+      );
+    }
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.

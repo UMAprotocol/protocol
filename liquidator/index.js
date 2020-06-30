@@ -16,7 +16,6 @@ const { Networker } = require("../financial-templates-lib/price-feed/Networker")
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -44,15 +43,6 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
 
-    // Generate EMP properties to inform bots of important info like token symbols and price identifier.
-    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
-    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
-    const empProps = {
-      crRatio: await emp.collateralRequirement(),
-      minSponsorSize: await emp.minSponsorTokens(),
-      priceIdentifier: await emp.priceIdentifier()
-    };
-
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
@@ -64,19 +54,12 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     // Client and liquidator bot
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
-    const liquidator = new Liquidator(
-      Logger,
-      empClient,
-      await Voting.deployed(),
-      gasEstimator,
-      priceFeed,
-      accounts[0],
-      empProps,
-      liquidatorConfig
-    );
+    const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0], liquidatorConfig);
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
     const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
     const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {

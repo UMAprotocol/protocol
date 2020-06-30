@@ -25,7 +25,6 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
-const Voting = artifacts.require("Voting");
 
 contract("Disputer.js", function(accounts) {
   const disputeBot = accounts[0];
@@ -46,7 +45,6 @@ contract("Disputer.js", function(accounts) {
   let priceFeedMock;
 
   let disputerConfig;
-  let empProps;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
@@ -100,10 +98,6 @@ contract("Disputer.js", function(accounts) {
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
-    empProps = {
-      priceIdentifier: await emp.priceIdentifier()
-    };
-
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
@@ -136,16 +130,7 @@ contract("Disputer.js", function(accounts) {
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    disputer = new Disputer(
-      spyLogger,
-      empClient,
-      await Voting.deployed(),
-      gasEstimator,
-      priceFeedMock,
-      accounts[0],
-      empProps,
-      disputerConfig
-    );
+    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
   });
 
   it("Detect disputable positions and send disputes", async function() {
@@ -387,16 +372,7 @@ contract("Disputer.js", function(accounts) {
         disputerConfig = {
           disputeDelay: -1
         };
-        disputer = new Disputer(
-          spyLogger,
-          empClient,
-          await Voting.deployed(),
-          gasEstimator,
-          priceFeedMock,
-          accounts[0],
-          empProps,
-          disputerConfig
-        );
+        disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -408,16 +384,7 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(
-        spyLogger,
-        empClient,
-        await Voting.deployed(),
-        gasEstimator,
-        priceFeedMock,
-        accounts[0],
-        empProps,
-        disputerConfig
-      );
+      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
