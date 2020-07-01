@@ -15,13 +15,13 @@ function getOrCreateObj(containingObj, field) {
   return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceRequests, votingAccount) {
+function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests === undefined) {
+  if (retrievedRewardsEvents === undefined || reveals === undefined) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -48,20 +48,16 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     // is eligible for a reward claim. We track the oldestUnclaimedRound to determine which round the transaction
     // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_JS_INT;
-    for (let i = 0; i < revealedVoteEvents.length; i++) {
-      const event = revealedVoteEvents[i];
-      const priceRequest = priceRequests[i];
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
-      const revealRound = event.returnValues.roundId.toString();
-      const votedPrice = event.returnValues.price.toString();
+    for (const reveal of reveals) {
+      const voteState = getVoteState(reveal.identifier, reveal.time);
+      const revealRound = reveal.revealRound.toString();
+      const revealPrice = reveal.revealPrice.toString();
+      const lastVotingRound = reveal.lastVotingRound.toString();
+      const resolvedPrice = reveal.resolvedPrice.toString();
 
       // Note: must check that the reveal round matches the resolution round of the price request because the correct
       // vote during the wrong round doesn't earn any rewards.
-      if (
-        !voteState.retrievedRewards &&
-        priceRequest.lastRound.toString() === revealRound &&
-        votedPrice === priceRequest.resolvedPrice.toString()
-      ) {
+      if (!voteState.retrievedRewards && revealRound === lastVotingRound && revealPrice === resolvedPrice) {
         // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
         oldestUnclaimedRound = Math.min(oldestUnclaimedRound, revealRound);
         voteState.didReveal = true;
@@ -151,13 +147,15 @@ function RetrieveRewards({ votingAccount }) {
   );
 
   // Get auxillary information about all price requests that were revealed.
-  const priceRequests = useCacheCall(["Voting"], call => {
+  const reveals = useCacheCall(["Voting"], call => {
     if (!revealedVoteEvents) {
       return undefined;
     }
 
-    const priceRequests = revealedVoteEvents.map(event => {
+    const reveals = revealedVoteEvents.map(event => {
       return {
+        revealRound: event.returnValues.roundId,
+        revealPrice: event.returnValues.price,
         identifier: event.returnValues.identifier,
         time: event.returnValues.time
       };
@@ -165,7 +163,16 @@ function RetrieveRewards({ votingAccount }) {
 
     // Get each price request's status. This includes whether it has been resolved and the last round where it was
     // voted on.
-    const statuses = call("Voting", "getPriceRequestStatuses", priceRequests);
+    const statuses = call(
+      "Voting",
+      "getPriceRequestStatuses",
+      reveals.map(reveal => {
+        return {
+          identifier: reveal.identifier,
+          time: reveal.time
+        };
+      })
+    );
 
     if (!statuses) {
       return undefined;
@@ -174,27 +181,30 @@ function RetrieveRewards({ votingAccount }) {
     // Pulls down the price for every resolved request. If the request wasn't resolved, the resolved price isn't
     // queried and the field is left undefined.
     let done = true;
-    for (let i = 0; i < priceRequests.length; i++) {
-      const priceRequest = priceRequests[i];
+    for (let i = 0; i < reveals.length; i++) {
+      const reveal = reveals[i];
       const status = statuses[i];
-      priceRequest.lastRound = status.lastVotingRound;
+      reveal.lastVotingRound = status.lastVotingRound;
       if (status.status === PriceRequestStatusEnum.RESOLVED) {
         // Note: this method needs to be called "from" the Governor contract since it's approved to "use" the DVM.
         // Otherwise, it will revert.
-        priceRequest.resolvedPrice = call("Voting", "getPrice", priceRequest.identifier, priceRequest.time, {
+        reveal.resolvedPrice = call("Voting", "getPrice", reveal.identifier, reveal.time, {
           from: governorAddress
         });
 
         // Note: a resolved price should always be returned if the status is RESOLVED. No reverts are expected.
-        if (!priceRequest.resolvedPrice) done = false;
+        if (!reveal.resolvedPrice) done = false;
+      } else {
+        // Just set this to something that will never compare equal to any revealed price.
+        reveal.resolvedPrice = "No Price";
       }
     }
 
-    return done ? priceRequests : undefined;
+    return done ? reveals : undefined;
   });
 
   // Construct the claim rewards transaction.
-  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceRequests, votingAccount);
+  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount);
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
