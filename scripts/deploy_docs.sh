@@ -22,7 +22,7 @@ shift
 
 # Build the docs site.
 echo "Building docs site locally."
-npm install
+npx lerna bootstrap
 ./scripts/build_docs_site.sh
 
 # Prepare for gcloud deploy.
