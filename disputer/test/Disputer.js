@@ -1,4 +1,4 @@
-const { LiquidationStatesEnum } = require("../../common/Enums");
+const { PostWithdrawLiquidationRewardsStatusTranslations, LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../common/Constants.js");
 const winston = require("winston");
@@ -15,7 +15,7 @@ const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstim
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -45,6 +45,7 @@ contract("Disputer.js", function(accounts) {
   let priceFeedMock;
 
   let disputerConfig;
+  let empProps;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
@@ -98,6 +99,11 @@ contract("Disputer.js", function(accounts) {
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    empProps = {
+      priceIdentifier: await emp.priceIdentifier()
+    };
+
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
@@ -130,7 +136,16 @@ contract("Disputer.js", function(accounts) {
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
+    disputer = new Disputer(
+      spyLogger,
+      empClient,
+      mockOracle,
+      gasEstimator,
+      priceFeedMock,
+      accounts[0],
+      empProps,
+      disputerConfig
+    );
   });
 
   it("Detect disputable positions and send disputes", async function() {
@@ -301,6 +316,17 @@ contract("Disputer.js", function(accounts) {
     // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
+
+    // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
+    await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 3);
   });
 
   it("Too little collateral", async function() {
@@ -361,7 +387,16 @@ contract("Disputer.js", function(accounts) {
         disputerConfig = {
           disputeDelay: -1
         };
-        disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
+        disputer = new Disputer(
+          spyLogger,
+          empClient,
+          mockOracle,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          disputerConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -373,7 +408,16 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
+      disputer = new Disputer(
+        spyLogger,
+        empClient,
+        mockOracle,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        disputerConfig
+      );
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });

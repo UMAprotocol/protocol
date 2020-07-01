@@ -10,15 +10,17 @@ const { toBN } = web3.utils;
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const { createReferencePriceFeedForEmp } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
+ * @param {Object} logger Module responsible for sending logs.
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
@@ -26,11 +28,11 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
+async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorConfig) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    Logger[pollingDelay === 0 ? "debug" : "info"]({
+    logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
       empAddress: address,
@@ -42,10 +44,26 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     // Setup web3 accounts an contract instance.
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
+    const voting = await Voting.deployed();
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const empProps = {
+      crRatio: await emp.collateralRequirement(),
+      priceIdentifier: await emp.priceIdentifier(),
+      minSponsorSize: await emp.minSponsorTokens()
+    };
 
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
+
+    const priceFeed = await createReferencePriceFeedForEmp(
+      Logger,
+      web3,
+      new Networker(Logger),
+      getTime,
+      address,
+      priceFeedConfig
+    );
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
@@ -54,7 +72,16 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     // Client and liquidator bot
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
-    const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0], liquidatorConfig);
+    const liquidator = new Liquidator(
+      Logger,
+      empClient,
+      voting,
+      gasEstimator,
+      priceFeed,
+      accounts[0],
+      empProps,
+      liquidatorConfig
+    );
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -66,7 +93,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.info({
+      logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
@@ -76,7 +103,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
       const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.info({
+      logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens 💰",
         collateralApprovalTx: syntheticApprovalTx.transactionHash
@@ -90,18 +117,18 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        await waitForLogger(Logger);
+        await waitForLogger(logger);
         break;
       }
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    Logger.error({
+    logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    await waitForLogger(Logger);
+    await waitForLogger(logger);
   }
 }
 
@@ -116,17 +143,12 @@ async function Poll(callback) {
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
-    if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables."
-      );
-    }
-
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
-    // price feed Config defines the exchanges to use. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
+    // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
+    // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
     // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
     // {"type":"cryptowatch","exchange":"binance"}]}
-    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+    const priceFeedConfig = process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null;
 
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
     // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
@@ -137,7 +159,7 @@ async function Poll(callback) {
     //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
     const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
-    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig);
+    await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",

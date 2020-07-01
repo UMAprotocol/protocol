@@ -19,6 +19,14 @@ const LiquidationStatesEnum = {
   DISPUTE_FAILED: "4"
 };
 
+// Maps the `liquidationStatus` property in the `LiquidationWithdrawn` event to human readable statuses.
+const PostWithdrawLiquidationRewardsStatusTranslations = {
+  "0": "Dispute failed",
+  "1": "Liquidation expired",
+  "3": "Dispute succeeded"
+  // Post `withdrawLiquidation()`, the status cannot be "PendingDispute/2" or "DisputeFailed/4"
+};
+
 // States for an EMP's Position to be in.
 const PositionStatesEnum = {
   OPEN: "0",
@@ -37,6 +45,7 @@ module.exports = {
   RegistryRolesEnum,
   VotePhasesEnum,
   LiquidationStatesEnum,
+  PostWithdrawLiquidationRewardsStatusTranslations,
   PositionStatesEnum,
   PriceRequestStatusEnum
 };
