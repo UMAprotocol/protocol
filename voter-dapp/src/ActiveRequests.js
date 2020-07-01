@@ -409,6 +409,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     if (editState[index]) {
       return (
         <TextField
+          type="number"
           defaultValue={statusDetails[index].currentVote}
           onChange={event => editCommittedValue(index, event)}
         />
