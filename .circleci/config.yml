@@ -225,3 +225,6 @@ workflows:
           requires:
             - dapp_test
             - test
+          filters:
+            branches:
+              only: master
