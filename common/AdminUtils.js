@@ -37,8 +37,14 @@ function getAdminRequestId(identifierUtf8) {
   return parseInt(identifierUtf8.slice(adminPrefix.length), 10);
 }
 
+// Vote 1 for Yes, anything else for No.
+const translateAdminVote = voteValue => {
+  return voteValue === "1" ? "YES" : "NO";
+};
+
 module.exports = {
   decodeTransaction,
   isAdminRequest,
-  getAdminRequestId
+  getAdminRequestId,
+  translateAdminVote
 };
