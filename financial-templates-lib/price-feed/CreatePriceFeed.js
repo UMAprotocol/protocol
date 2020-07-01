@@ -197,6 +197,16 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
       { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
     ]
+  },
+  "COMP/USD": {
+    type: "medianizer",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
+      { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
+      { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
+    ]
   }
 };
 
@@ -226,6 +236,14 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
   }
 
   const defaultConfig = defaultConfigs[_identifier];
+
+  logger.debug({
+    at: "createReferencePriceFeedForEmp",
+    message: "Inferred default config from identifier or EMP address",
+    empAddress,
+    identifier: _identifier,
+    defaultConfig
+  });
 
   // Infer lookback from liquidation liveness.
   if (emp) {

@@ -29,8 +29,8 @@ COPY . ./
 
 # Install dependencies and compile contracts.
 RUN apt-get update
-RUN apt-get install -y libudev-dev libusb-1.0-0-dev jq
-RUN npm install
+RUN apt-get install -y libudev-dev libusb-1.0-0-dev jq yarn
+RUN npx lerna bootstrap
 RUN scripts/buildContracts.sh
 
 # For now all logic in the mono-repo must be executed from the `core` directory.

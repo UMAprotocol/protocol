@@ -119,6 +119,7 @@ contract("index.js", function(accounts) {
       address,
       0,
       0,
+      null,
       defaultBotMonitorConfig,
       defaultWalletMonitorConfig,
       defaultContractMonitorConfig,

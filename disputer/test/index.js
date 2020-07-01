@@ -31,11 +31,11 @@ contract("index.js", function(accounts) {
   let spyLogger;
 
   before(async function() {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UMATEST"));
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
   });
 
   beforeEach(async function() {
@@ -46,17 +46,15 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
-
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
-      priceFeedIdentifier: utf8ToHex("UMATEST"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      syntheticName: "ETH/BTC synthetic token",
+      syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },

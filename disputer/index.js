@@ -10,12 +10,13 @@ const { MAX_UINT_VAL } = require("../common/Constants");
 const { Disputer } = require("./disputer");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const { createReferencePriceFeedForEmp } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
@@ -42,19 +43,41 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
+    const voting = await Voting.deployed();
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const empProps = {
+      priceIdentifier: await emp.priceIdentifier()
+    };
 
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const priceFeed = await createPriceFeed(logger, web3, new Networker(logger), getTime, priceFeedConfig);
+    const priceFeed = await createReferencePriceFeedForEmp(
+      Logger,
+      web3,
+      new Networker(Logger),
+      getTime,
+      address,
+      priceFeedConfig
+    );
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
 
     // Client and dispute bot.
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
-    const gasEstimator = new GasEstimator(logger);
-    const disputer = new Disputer(logger, empClient, gasEstimator, priceFeed, accounts[0], disputerConfig);
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
+    const gasEstimator = new GasEstimator(Logger);
+    const disputer = new Disputer(
+      Logger,
+      empClient,
+      voting,
+      gasEstimator,
+      priceFeed,
+      accounts[0],
+      empProps,
+      disputerConfig
+    );
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -103,16 +126,12 @@ async function Poll(callback) {
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
-    if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify a `PRICE_FEED_CONFIG` for price feed config for the disputer bot to use."
-      );
-    }
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
-    // price feed Config defines the exchanges to use. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
+    // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
+    // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
     // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
     // {"type":"cryptowatch","exchange":"binance"}]}
-    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+    const priceFeedConfig = process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null;
 
     // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
     // {"disputeDelay":60,"txnGasLimit":9000000}
