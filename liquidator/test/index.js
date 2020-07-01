@@ -13,6 +13,11 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 
+// Custom winston transport module to monitor winston log outputs
+const winston = require("winston");
+const sinon = require("sinon");
+const { SpyTransport, spyLogLevel } = require("../../financial-templates-lib/logger/SpyTransport");
+
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
@@ -23,6 +28,9 @@ contract("index.js", function(accounts) {
 
   let defaultPriceFeedConfig;
 
+  let spy;
+  let spyLogger;
+
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
 
@@ -32,6 +40,13 @@ contract("index.js", function(accounts) {
   });
 
   beforeEach(async function() {
+    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
@@ -69,18 +84,20 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Completes one iteration without throwing an error", async function() {
-    let errorThrown = false;
-    try {
-      await Poll.run(emp.address, 0, defaultPriceFeedConfig);
-    } catch (err) {
-      errorThrown = true;
-    }
-    assert.isFalse(errorThrown);
+  it("Allowances are set", async function() {
+    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
     const syntheticAllowance = await syntheticToken.allowance(contractCreator, emp.address);
     assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
+  });
+
+  it("Completes one iteration without logging any errors", async function() {
+    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
   });
 });
