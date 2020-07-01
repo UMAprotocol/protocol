@@ -21,7 +21,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests === null) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests === undefined) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -153,7 +153,7 @@ function RetrieveRewards({ votingAccount }) {
   // Get auxillary information about all price requests that were revealed.
   const priceRequests = useCacheCall(["Voting"], call => {
     if (!revealedVoteEvents) {
-      return null;
+      return undefined;
     }
 
     const priceRequests = revealedVoteEvents.map(event => {
@@ -168,7 +168,7 @@ function RetrieveRewards({ votingAccount }) {
     const statuses = call("Voting", "getPriceRequestStatuses", priceRequests);
 
     if (!statuses) {
-      return null;
+      return undefined;
     }
 
     // Pulls down the price for every resolved request. If the request wasn't resolved, the resolved price isn't
@@ -190,7 +190,7 @@ function RetrieveRewards({ votingAccount }) {
       }
     }
 
-    return done ? priceRequests : null;
+    return done ? priceRequests : undefined;
   });
 
   // Construct the claim rewards transaction.
