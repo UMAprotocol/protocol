@@ -14,9 +14,13 @@ class Liquidator {
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} empProps Contains EMP contract state data. Expected:
+   *      { crRatio: 1.5e18,
+            minSponsorSize: 10e18,
+            priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -34,10 +38,12 @@ class Liquidator {
     this.priceFeed = priceFeed;
 
     // The EMP contract collateralization Ratio is needed to calculate minCollateralPerToken.
-    this.empCRRatio = null;
+    this.empCRRatio = empProps.crRatio;
 
     // The EMP contract min sponsor position size is needed to calculate maxTokensToLiquidate.
-    this.empMinSponsorSize = null;
+    this.empMinSponsorSize = empProps.minSponsorSize;
+
+    this.empIdentifier = empProps.priceIdentifier;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -107,20 +113,6 @@ class Liquidator {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-
-    // Fetch the collateral requirement requirement from the contract. Will only execute on first update execution.
-    if (!this.empCRRatio) {
-      this.empCRRatio = await this.empContract.methods.collateralRequirement().call();
-    }
-
-    // Fetch the min sponsor position from the contract.
-    if (!this.empMinSponsorSize) {
-      this.empMinSponsorSize = await this.empContract.methods.minSponsorTokens().call();
-    }
-
-    if (!this.empIdentifier) {
-      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
-    }
 
     // Initialize DVM to query price requests. This should only be done once.
     if (!this.votingContract) {
@@ -413,9 +405,7 @@ class Liquidator {
               from: this.empContract.options.address
             })
           );
-        } catch (error) {
-          // No price available for liquidation time, likely that liquidation expired without dispute.
-        }
+        } catch (error) {}
       }
 
       const logResult = {
@@ -427,6 +417,8 @@ class Liquidator {
             receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
           ]
       };
+
+      // If there is no price available for the withdrawable liquidation, likely that liquidation expired without dispute.
       if (resolvedPrice) {
         logResult.resolvedPrice = resolvedPrice.toString();
       }

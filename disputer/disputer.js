@@ -14,9 +14,11 @@ class Disputer {
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} empProps Contains EMP contract state data. Expected:
+   *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -32,6 +34,8 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
+
+    this.empIdentifier = empProps.priceIdentifier;
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
@@ -67,10 +71,6 @@ class Disputer {
     await this.empClient.update();
     await this.gasEstimator.update();
     await this.priceFeed.update();
-
-    if (!this.empIdentifier) {
-      this.empIdentifier = await this.empContract.methods.priceIdentifier().call();
-    }
 
     // Initialize DVM to query price requests. This should only be done once.
     if (!this.votingContract) {

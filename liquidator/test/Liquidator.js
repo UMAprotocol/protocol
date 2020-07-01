@@ -48,6 +48,7 @@ contract("Liquidator.js", function(accounts) {
   let spyLogger;
 
   let liquidatorConfig;
+  let empProps;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -127,7 +128,23 @@ contract("Liquidator.js", function(accounts) {
     liquidatorConfig = {
       crThreshold: 0
     };
-    liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    empProps = {
+      crRatio: await emp.collateralRequirement(),
+      priceIdentifier: await emp.priceIdentifier(),
+      minSponsorSize: await emp.minSponsorTokens()
+    };
+
+    liquidator = new Liquidator(
+      spyLogger,
+      empClient,
+      gasEstimator,
+      priceFeedMock,
+      accounts[0],
+      empProps,
+      liquidatorConfig
+    );
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -674,7 +691,15 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: 1
         };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -688,7 +713,15 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: -0.02
         };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -700,7 +733,15 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = {
         crThreshold: 0.02
       };
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+      liquidator = new Liquidator(
+        spyLogger,
+        empClient,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        liquidatorConfig
+      );
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -746,7 +787,15 @@ contract("Liquidator.js", function(accounts) {
       try {
         // Create an invalid log level override. This should be rejected.
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -758,7 +807,15 @@ contract("Liquidator.js", function(accounts) {
       // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
       // validated after the log is generated.
       liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+      liquidator = new Liquidator(
+        spyLogger,
+        empClient,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        liquidatorConfig
+      );
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
