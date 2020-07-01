@@ -16,9 +16,11 @@ const { Networker } = require("../financial-templates-lib/price-feed/Networker")
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
+ * @param {Object} logger Module responsible for sending logs.
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
@@ -26,11 +28,11 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
+async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfig) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    Logger[pollingDelay === 0 ? "debug" : "info"]({
+    logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Disputer#index",
       message: "Disputer started🔎",
       empAddress: address,
@@ -41,6 +43,12 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
     // Setup web3 accounts an contract instance
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
+    const voting = await Voting.deployed();
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const empProps = {
+      priceIdentifier: await emp.priceIdentifier()
+    };
 
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -60,7 +68,16 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(Logger);
-    const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0], disputerConfig);
+    const disputer = new Disputer(
+      Logger,
+      empClient,
+      voting,
+      gasEstimator,
+      priceFeed,
+      accounts[0],
+      empProps,
+      disputerConfig
+    );
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -70,7 +87,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0]
       });
-      Logger.info({
+      logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
@@ -83,18 +100,18 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        await waitForLogger(Logger);
+        await waitForLogger(logger);
         break;
       }
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    Logger.error({
+    logger.error({
       at: "Disputer#index🚨",
       message: "Disputer error",
       error: typeof error === "string" ? new Error(error) : error
     });
-    await waitForLogger(Logger);
+    await waitForLogger(logger);
   }
 }
 
@@ -120,7 +137,7 @@ async function Poll(callback) {
     // {"disputeDelay":60,"txnGasLimit":9000000}
     const disputerConfig = process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null;
 
-    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
+    await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
   } catch (error) {
     Logger.error({
       at: "Disputer#index🚨",
