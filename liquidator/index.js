@@ -133,6 +133,7 @@ async function Poll(callback) {
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
     // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
     // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+    //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
     //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
     //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
     //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
