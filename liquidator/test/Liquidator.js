@@ -19,7 +19,6 @@ const {
   spyLogIncludes,
   spyLogLevel
 } = require("../../financial-templates-lib/logger/SpyTransport");
-// const { assert } = require("sinon");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
