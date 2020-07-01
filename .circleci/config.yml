@@ -12,10 +12,10 @@ jobs:
             - v8-dependency-cache-
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: npx lerna bootstrap
       - save_cache:
           key: v8-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -90,7 +90,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: sudo npm install -g yarn && npx lerna bootstrap
       - save_cache:
           key: v7-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
@@ -112,34 +112,12 @@ jobs:
           command: ./ci/run_truffle_tests.sh
   coverage:
     docker:
-      # Note: we made a compromise here to get solidity-coverage to work. We're just creating a new build inside the
-      # trufflesuite/ganache-cli for solidity-coverage. This is because there were issues (not 100% sure about the
-      # cause) with getting solidity-coverage's testrpc to run correctly in the remote image. However, it cannot run
-      # locally without the opened 8545 port that this image has. So the solution we chose was to just run coverage
-      # within that docker image. Caching doesn't seem to work cross-image, so we have to re-checkout the repo and
-      # reinstall deps. We could have also run all the above tests inside this new image. However, we want to ensure
-      # that there is no implicit dependence on the bundled deps or setup inside the trufflesuite/ganache-cli image,
-      # so we want to continue generic testing against the bare node image.
-      # TODO(mrice32): we could probably fix this if we just created our own image on top of the node image that opens
-      # port 8545.
-      - image: trufflesuite/ganache-cli
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
-      - run:
-          name: Install System Packages
-          command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev linux-headers && update-ca-certificates
       - restore_cache:
-          keys:
-            - v3-coverage-dependency-cache-{{ checksum "package.json" }}
-            - v3-coverage-dependency-cache-
-      - run:
-          name: Install Dependencies
-          command: npm install --quiet
-      - save_cache:
-          key: v3-coverage-dependency-cache-{{ checksum "package.json" }}
-          paths:
-            - node_modules
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run coverage
           command: ./ci/coverage.sh ~/protocol/core
@@ -220,6 +198,8 @@ workflows:
       - checkout_and_install
       - coverage:
           context: api_keys
+          requires:
+            - checkout_and_install
       - slither
       - build:
           requires:
