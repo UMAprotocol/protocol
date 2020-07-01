@@ -57,9 +57,9 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     const priceFeed = await createReferencePriceFeedForEmp(
-      Logger,
+      logger,
       web3,
-      new Networker(Logger),
+      new Networker(logger),
       getTime,
       address,
       priceFeedConfig
@@ -70,10 +70,10 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     }
 
     // Client and liquidator bot
-    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
-    const gasEstimator = new GasEstimator(Logger);
+    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    const gasEstimator = new GasEstimator(logger);
     const liquidator = new Liquidator(
-      Logger,
+      logger,
       empClient,
       voting,
       gasEstimator,
@@ -85,13 +85,15 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+    await gasEstimator.update();
     const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
     const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
     const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
     const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-        from: accounts[0]
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Liquidator#index",
@@ -101,7 +103,8 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-        from: accounts[0]
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Liquidator#index",
