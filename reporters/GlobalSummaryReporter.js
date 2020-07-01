@@ -346,7 +346,8 @@ class GlobalSummaryReporter {
         }
       }
 
-      // Create list of resolved prices for disputed liquidations.
+      // Create list of resolved prices for disputed liquidations. Note that this `web3.getBlock().timestamp` call to get the liquidation timestamp
+      // only works on public networks. It will NOT work on local networks that use the MockOracle/Timer contract where block timestamp !== EMP timestamp.
       const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationData.blockNumber)).timestamp;
       const disputeLabel = `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`;
       try {
