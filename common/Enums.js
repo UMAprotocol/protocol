@@ -34,10 +34,18 @@ const PositionStatesEnum = {
   EXPIRED_PRICE_RECEIVED: "2"
 };
 
+const PriceRequestStatusEnum = {
+  NOT_REQUESTED: "0",
+  ACTIVE: "1",
+  RESOLVED: "2",
+  FUTURE: "3"
+};
+
 module.exports = {
   RegistryRolesEnum,
   VotePhasesEnum,
   LiquidationStatesEnum,
   PostWithdrawLiquidationRewardsStatusTranslations,
-  PositionStatesEnum
+  PositionStatesEnum,
+  PriceRequestStatusEnum
 };
