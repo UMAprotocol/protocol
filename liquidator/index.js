@@ -24,9 +24,10 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
+ * @param {String} [liquidatorOverridePrice] String encoded BigNumber to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
+async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice = null) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -36,7 +37,8 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
       empAddress: address,
       pollingDelay,
       priceFeedConfig,
-      liquidatorConfig
+      liquidatorConfig,
+      liquidatorOverridePrice
     });
 
     // Setup web3 accounts an contract instance.
@@ -85,7 +87,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
 
     while (true) {
       const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
-      await liquidator.queryAndLiquidate(currentSyntheticBalance);
+      await liquidator.queryAndLiquidate(currentSyntheticBalance, liquidatorOverridePrice);
       await liquidator.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
@@ -131,13 +133,16 @@ async function Poll(callback) {
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
     // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
     // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
-    //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
     //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
     //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
     //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
     const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
 
-    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig);
+    // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
+    // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
+    const liquidatorOverridePrice = process.env.LIQUIDATOR_OVERRIDE_PRICE;
+
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",

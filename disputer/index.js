@@ -24,9 +24,10 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
+ * @param {String} [disputerOverridePrice] String encoded BigNumber to override the disputer price feed.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
+async function run(address, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice = null) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -71,7 +72,7 @@ async function run(address, pollingDelay, priceFeedConfig, disputerConfig) {
     }
 
     while (true) {
-      await disputer.queryAndDispute();
+      await disputer.queryAndDispute(disputerOverridePrice);
       await disputer.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
@@ -117,7 +118,11 @@ async function Poll(callback) {
     // {"disputeDelay":60,"txnGasLimit":9000000}
     const disputerConfig = process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null;
 
-    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig);
+    // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
+    // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
+    const disputerOverridePrice = process.env.DISPUTER_OVERRIDE_PRICE;
+
+    await run(process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice);
   } catch (error) {
     Logger.error({
       at: "Disputer#index🚨",
