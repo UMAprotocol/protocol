@@ -16,6 +16,7 @@ const { Networker } = require("../financial-templates-lib/price-feed/Networker")
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -42,6 +43,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     // Setup web3 accounts an contract instance.
     const accounts = await web3.eth.getAccounts();
     const emp = await ExpiringMultiParty.at(address);
+    const voting = await Voting.deployed();
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const empProps = {
@@ -64,6 +66,7 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
     const liquidator = new Liquidator(
       Logger,
       empClient,
+      voting,
       gasEstimator,
       priceFeed,
       accounts[0],

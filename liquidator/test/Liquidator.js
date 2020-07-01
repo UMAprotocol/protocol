@@ -139,6 +139,7 @@ contract("Liquidator.js", function(accounts) {
     liquidator = new Liquidator(
       spyLogger,
       empClient,
+      mockOracle,
       gasEstimator,
       priceFeedMock,
       accounts[0],
@@ -694,6 +695,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          mockOracle,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -716,6 +718,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          mockOracle,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -736,6 +739,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
+        mockOracle,
         gasEstimator,
         priceFeedMock,
         accounts[0],
@@ -790,6 +794,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator = new Liquidator(
           spyLogger,
           empClient,
+          mockOracle,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -810,6 +815,7 @@ contract("Liquidator.js", function(accounts) {
       liquidator = new Liquidator(
         spyLogger,
         empClient,
+        mockOracle,
         gasEstimator,
         priceFeedMock,
         accounts[0],
