@@ -17,6 +17,11 @@ import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
 import Tooltip from "@material-ui/core/Tooltip";
 
+import Radio from "@material-ui/core/Radio";
+import RadioGroup from "@material-ui/core/RadioGroup";
+import FormControlLabel from "@material-ui/core/FormControlLabel";
+import FormControl from "@material-ui/core/FormControl";
+import FormLabel from "@material-ui/core/FormLabel";
 import HelpIcon from "@material-ui/icons/Help";
 import FileCopyIcon from "@material-ui/icons/FileCopy";
 
@@ -404,20 +409,37 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     );
     return cookies[commitKey];
   };
-  const getCurrentVoteCell = index => {
+  const getCurrentVoteCell = (index, isAdminVote) => {
     // If this cell is currently being edited.
     if (editState[index]) {
-      return (
-        <TextField
-          type="number"
-          defaultValue={statusDetails[index].currentVote}
-          onChange={event => editCommittedValue(index, event)}
-        />
-      );
+      // If the vote is an admin vote, display radio buttons: "yes" and "no".
+      if (isAdminVote) {
+        return (
+          <FormControl component="fieldset">
+            <RadioGroup
+              aria-label="admin-vote"
+              name="admin-vote"
+              value={editState[index]}
+              onChange={event => editCommittedValue(index, event)}
+            >
+              <FormControlLabel value={"1"} control={<Radio />} label="YES" />
+              <FormControlLabel value={"0"} control={<Radio />} label="NO" />
+            </RadioGroup>
+          </FormControl>
+        );
+      } else {
+        return (
+          <TextField
+            type="number"
+            defaultValue={statusDetails[index].currentVote}
+            onChange={event => editCommittedValue(index, event)}
+          />
+        );
+      }
     } else {
       return (
         <span>
-          {statusDetails[index].currentVote}{" "}
+          {isAdminVote ? (statusDetails[index].currentVote === "1" ? "YES" : "NO") : statusDetails[index].currentVote}{" "}
           {saveButtonShown ? (
             <Button
               variant="contained"
@@ -569,7 +591,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
-                <TableCell>{getCurrentVoteCell(index)}</TableCell>
+                <TableCell>{getCurrentVoteCell(index, isAdminRequest(hexToUtf8(pendingRequest.identifier)))}</TableCell>
                 <TableCell>
                   <Button variant="contained" color="primary" onClick={() => handleClickDisplayCommitBackup(index)}>
                     Display

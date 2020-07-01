@@ -8,7 +8,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const assert = require("assert");
 
-async function propose() {
+async function propose(callback) {
   try {
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     const governor = await Governor.deployed();
@@ -49,11 +49,11 @@ async function propose() {
       ${identifierBytes} (HEX)
   
     `);
-
-    return true;
   } catch (err) {
     console.error(err);
+    callback(err);
   }
+  callback();
 }
 
 module.exports = propose;
