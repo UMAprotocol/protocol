@@ -10,7 +10,7 @@ const { toBN } = web3.utils;
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const { createReferencePriceFeedForEmp } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
@@ -45,7 +45,15 @@ async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig) {
 
     // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
+
+    const priceFeed = await createReferencePriceFeedForEmp(
+      Logger,
+      web3,
+      new Networker(Logger),
+      getTime,
+      address,
+      priceFeedConfig
+    );
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
@@ -116,17 +124,12 @@ async function Poll(callback) {
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
-    if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables."
-      );
-    }
-
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
-    // price feed Config defines the exchanges to use. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
+    // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
+    // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
     // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
     // {"type":"cryptowatch","exchange":"binance"}]}
-    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+    const priceFeedConfig = process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null;
 
     // If there is a disputer config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
     // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
