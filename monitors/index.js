@@ -24,6 +24,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
+ * @param {Object} logger Module responsible for sending logs.
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
@@ -38,6 +39,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @return None or throws an Error.
  */
 async function run(
+  logger,
   address,
   pollingDelay,
   startingBlock,
@@ -51,7 +53,7 @@ async function run(
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    Logger[pollingDelay === 0 ? "debug" : "info"]({
+    logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
@@ -83,9 +85,9 @@ async function run(
     // Setup medianizer price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const medianizerPriceFeed = await createPriceFeed(
-      Logger,
+      logger,
       web3,
-      new Networker(Logger),
+      new Networker(logger),
       getTime,
       medianizerPriceFeedConfig
     );
@@ -96,14 +98,14 @@ async function run(
     const eventsFromBlock = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
-      Logger,
+      logger,
       ExpiringMultiParty.abi,
       web3,
       emp.address,
       eventsFromBlock
     );
     const contractMonitor = new ContractMonitor(
-      Logger,
+      logger,
       empEventClient,
       contractMonitorObject,
       medianizerPriceFeed,
@@ -112,30 +114,30 @@ async function run(
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
-      Logger,
+      logger,
       ExpandedERC20.abi,
       web3,
       collateralTokenAddress,
       syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject, empProps);
+    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, botMonitorObject, empProps);
 
     // 3. Collateralization Ratio monitor.
-    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
+    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
 
-    const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed, empProps);
+    const crMonitor = new CRMonitor(logger, empClient, walletMonitorObject, medianizerPriceFeed, empProps);
 
     // 4. Synthetic Peg Monitor.
     const uniswapPriceFeed = await createPriceFeed(
-      Logger,
+      logger,
       web3,
-      new Networker(Logger),
+      new Networker(logger),
       getTime,
       uniswapPriceFeedConfig
     );
     const syntheticPegMonitor = new SyntheticPegMonitor(
-      Logger,
+      logger,
       web3,
       uniswapPriceFeed,
       medianizerPriceFeed,
@@ -181,18 +183,18 @@ async function run(
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        await waitForLogger(Logger);
+        await waitForLogger(logger);
         break;
       }
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    Logger.error({
+    logger.error({
       at: "Monitor#index",
       message: "Monitor polling error. Monitor crashed🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    await waitForLogger(Logger);
+    await waitForLogger(logger);
   }
 }
 async function Poll(callback) {
@@ -264,6 +266,7 @@ async function Poll(callback) {
     const medianizerPriceFeedConfig = JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG);
 
     await run(
+      Logger,
       process.env.EMP_ADDRESS,
       pollingDelay,
       startingBlock,
