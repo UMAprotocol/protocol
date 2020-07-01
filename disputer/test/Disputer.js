@@ -136,7 +136,16 @@ contract("Disputer.js", function(accounts) {
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], empProps, disputerConfig);
+    disputer = new Disputer(
+      spyLogger,
+      empClient,
+      mockOracle,
+      gasEstimator,
+      priceFeedMock,
+      accounts[0],
+      empProps,
+      disputerConfig
+    );
   });
 
   it("Detect disputable positions and send disputes", async function() {
@@ -381,6 +390,7 @@ contract("Disputer.js", function(accounts) {
         disputer = new Disputer(
           spyLogger,
           empClient,
+          mockOracle,
           gasEstimator,
           priceFeedMock,
           accounts[0],
@@ -398,7 +408,16 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], empProps, disputerConfig);
+      disputer = new Disputer(
+        spyLogger,
+        empClient,
+        mockOracle,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        disputerConfig
+      );
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
