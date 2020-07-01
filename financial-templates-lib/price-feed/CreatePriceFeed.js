@@ -229,7 +229,6 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
   if (empAddress) {
     emp = getEmpAtAddress(web3, empAddress);
     _identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
-    console.log("_identifier", _identifier);
   } else if (identifier) {
     _identifier = identifier;
   } else {
