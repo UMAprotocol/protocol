@@ -45,8 +45,8 @@ async function propose(callback) {
   
       Newly Proposed DVM Identifier: 
   
-      ${identifierUtf8} (UTF8)
-      ${identifierBytes} (HEX)
+      - ${identifierUtf8} (UTF8)
+      - ${identifierBytes} (HEX)
   
     `);
   } catch (err) {
