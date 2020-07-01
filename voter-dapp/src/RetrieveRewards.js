@@ -21,7 +21,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || !priceRequests) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceRequests === null) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -55,6 +55,8 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
       const revealRound = event.returnValues.roundId.toString();
       const votedPrice = event.returnValues.price.toString();
 
+      // Note: must check that the reveal round matches the resolution round of the price request because the correct
+      // vote during the wrong round doesn't earn any rewards.
       if (
         !voteState.retrievedRewards &&
         priceRequest.lastRound.toString() === revealRound &&
@@ -117,7 +119,9 @@ function RetrieveRewards({ votingAccount }) {
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-      const defaultLookback = 7; // Default lookback is 7 rounds (2 weeks).
+      // Default lookback is 7 rounds (2 weeks). Rewards currently expire after 2 weeks, so there should be no reason for
+      // a user to need a longer lookback.
+      const defaultLookback = 7;
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
       const windowLength = Math.min(currentRoundId, defaultLookback);
