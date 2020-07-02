@@ -24,7 +24,7 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
- * @param {String} [disputerOverridePrice] String representing a Wei number to override the disputer price feed.
+ * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
  * @return None or throws an Error.
  */
 async function run(address, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice) {
