@@ -11,10 +11,12 @@ import Typography from "@material-ui/core/Typography";
 import { useTableStyles } from "./Styles.js";
 import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
+import { translateAdminVote, isAdminRequest } from "./common/AdminUtils";
 
 function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  const { toBN, fromWei, hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
@@ -57,8 +59,8 @@ function ResolvedRequests({ votingAccount }) {
   // TODO: add a resolved timestamp to the table so the sorting makes more sense to the user.
   // Sort the resolved requests such that they are organized from most recent to least recent round.
   const resolvedEventsSorted = resolvedEvents.sort((a, b) => {
-    const aRoundId = web3.utils.toBN(a.returnValues.roundId);
-    const bRoundId = web3.utils.toBN(b.returnValues.roundId);
+    const aRoundId = toBN(a.returnValues.roundId);
+    const bRoundId = toBN(b.returnValues.roundId);
     return bRoundId.cmp(aRoundId);
   });
 
@@ -87,15 +89,18 @@ function ResolvedRequests({ votingAccount }) {
                 event.returnValues.time === resolutionData.time
             );
 
-            const userVote = revealEvent ? drizzle.web3.utils.fromWei(revealEvent.returnValues.price) : "No Vote";
+            const userVote = revealEvent ? fromWei(revealEvent.returnValues.price) : "No Vote";
+            const correctVote = fromWei(resolutionData.price);
+
+            const isAdminVote = isAdminRequest(hexToUtf8(resolutionData.identifier));
 
             return (
               <TableRow key={index}>
-                <TableCell>{web3.utils.hexToUtf8(resolutionData.identifier)}</TableCell>
+                <TableCell>{hexToUtf8(resolutionData.identifier)}</TableCell>
                 <TableCell>{formatDate(resolutionData.time, web3)}</TableCell>
                 <TableCell>Resolved</TableCell>
-                <TableCell>{userVote}</TableCell>
-                <TableCell>{web3.utils.fromWei(resolutionData.price)}</TableCell>
+                <TableCell>{isAdminVote ? translateAdminVote(userVote) : userVote}</TableCell>
+                <TableCell>{isAdminVote ? translateAdminVote(correctVote) : correctVote}</TableCell>
               </TableRow>
             );
           })}
