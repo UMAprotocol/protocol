@@ -24,10 +24,10 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
- * @param {String} [disputerOverridePrice] String encoded BigNumber to override the disputer price feed.
+ * @param {String} [disputerOverridePrice] String representing a Wei number to override the disputer price feed.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice = null) {
+async function run(address, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.

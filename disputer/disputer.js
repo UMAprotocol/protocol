@@ -66,7 +66,7 @@ class Disputer {
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
   // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
-  async queryAndDispute(disputerOverridePrice = null) {
+  async queryAndDispute(disputerOverridePrice) {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"

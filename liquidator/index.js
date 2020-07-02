@@ -24,10 +24,10 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
- * @param {String} [liquidatorOverridePrice] String encoded BigNumber to override the liquidator price feed.
+ * @param {String} [liquidatorOverridePrice] String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice = null) {
+async function run(address, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
