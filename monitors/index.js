@@ -21,6 +21,7 @@ const { SyntheticPegMonitor } = require("./SyntheticPegMonitor");
 // Truffle contracts artifacts.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const Voting = artifacts.require("Voting");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -77,6 +78,7 @@ async function run(
     const collateralToken = await ExpandedERC20.at(collateralTokenAddress);
     const syntheticTokenAddress = await emp.tokenCurrency();
     const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
+    const votingContract = await Voting.deployed();
 
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
@@ -116,7 +118,8 @@ async function run(
       empEventClient,
       contractMonitorObject,
       medianizerPriceFeed,
-      empProps
+      empProps,
+      votingContract
     );
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.

@@ -2,6 +2,7 @@
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { revertWrapper } = require("../common/ContractUtils");
 
 class ContractMonitor {
   /**
@@ -18,8 +19,9 @@ class ContractMonitor {
             syntheticCurrencySymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             networkId:1 }
+   * @param {Object} votingContract DVM to query price requests.
    */
-  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed, empProps) {
+  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed, empProps, votingContract) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
@@ -33,6 +35,9 @@ class ContractMonitor {
     this.empEventClient = expiringMultiPartyEventClient;
     this.empContract = this.empEventClient.emp;
     this.web3 = this.empEventClient.web3;
+
+    // Voting contract to query resolved prices.
+    this.votingContract = votingContract;
 
     // Previous contract state used to check for new entries between calls.
     this.lastLiquidationBlockNumber = 0;
@@ -261,6 +266,25 @@ class ContractMonitor {
     );
 
     for (let event of newDisputeSettlementEvents) {
+      // Query resolved price for dispute price request. Note that this will return nothing if the
+      // disputed liquidation's block timestamp is not equal to the timestamp of the price request. This could be the
+      // the case if the EMP contract is using the Timer contract for example.
+      const liquidationEvent = this.empEventClient
+        .getAllLiquidationEvents()
+        .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
+      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
+      let resolvedPrice;
+      try {
+        resolvedPrice = revertWrapper(
+          await this.votingContract.getPrice(this.empProps.priceIdentifier, liquidationTimestamp, {
+            from: this.empContract.options.address
+          })
+        );
+        console.log(`MONITOR: Has price: ${resolvedPrice.toString()}`);
+      } catch (error) {
+        console.log(`MONITOR: No price for timestamp: ${liquidationTimestamp}`);
+      }
+
       // Sample message:
       // Dispute settlement alert: Dispute between liquidator [ethereum address if third party,
       // or “UMA” if it’s our bot] and disputer [ethereum address if third party, or “UMA” if
