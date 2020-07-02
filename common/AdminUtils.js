@@ -39,7 +39,14 @@ function getAdminRequestId(identifierUtf8) {
 
 // Vote 1 for Yes, anything else for No.
 const translateAdminVote = voteValue => {
-  return voteValue === "1" ? "YES" : "NO";
+  switch (voteValue) {
+    case "1":
+      return "YES";
+    case "0":
+      return "NO";
+    default:
+      return "INVALID ADMIN VOTE";
+  }
 };
 
 module.exports = {
