@@ -1,7 +1,7 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { LiquidationStatesEnum } = require("../../common/Enums");
+const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
@@ -49,6 +49,7 @@ contract("Liquidator.js", function(accounts) {
 
   let liquidatorConfig;
   let liquidatorOverridePrice;
+  let empProps;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -128,7 +129,24 @@ contract("Liquidator.js", function(accounts) {
     liquidatorConfig = {
       crThreshold: 0
     };
-    liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    empProps = {
+      crRatio: await emp.collateralRequirement(),
+      priceIdentifier: await emp.priceIdentifier(),
+      minSponsorSize: await emp.minSponsorTokens()
+    };
+
+    liquidator = new Liquidator(
+      spyLogger,
+      empClient,
+      mockOracle,
+      gasEstimator,
+      priceFeedMock,
+      accounts[0],
+      empProps,
+      liquidatorConfig
+    );
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -358,6 +376,17 @@ contract("Liquidator.js", function(accounts) {
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.UNINITIALIZED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
+
+    // After the dispute is resolved, the liquidation should no longer exist and there should be no disputes to withdraw rewards from.
+    await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2);
   });
 
   it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
@@ -402,6 +431,17 @@ contract("Liquidator.js", function(accounts) {
         .toString(),
       collateralPostWithdraw.toString()
     );
+
+    // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
+    assert.equal(
+      spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
+      PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
+    );
+    assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1"));
+
+    // After the dispute is resolved, the liquidation should still exist but the liquidator should no longer be able to withdraw any rewards.
+    await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2);
   });
 
   it("Detect if the liquidator cannot liquidate due to capital constraints", async function() {
@@ -653,7 +693,16 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: 1
         };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          mockOracle,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -667,7 +716,16 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: -0.02
         };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          mockOracle,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -679,7 +737,16 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = {
         crThreshold: 0.02
       };
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+      liquidator = new Liquidator(
+        spyLogger,
+        empClient,
+        mockOracle,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        liquidatorConfig
+      );
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -725,7 +792,16 @@ contract("Liquidator.js", function(accounts) {
       try {
         // Create an invalid log level override. This should be rejected.
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
-        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(
+          spyLogger,
+          empClient,
+          mockOracle,
+          gasEstimator,
+          priceFeedMock,
+          accounts[0],
+          empProps,
+          liquidatorConfig
+        );
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -737,7 +813,16 @@ contract("Liquidator.js", function(accounts) {
       // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
       // validated after the log is generated.
       liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
+      liquidator = new Liquidator(
+        spyLogger,
+        empClient,
+        mockOracle,
+        gasEstimator,
+        priceFeedMock,
+        accounts[0],
+        empProps,
+        liquidatorConfig
+      );
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });

@@ -1,17 +1,21 @@
 const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 const { revertWrapper } = require("../common/ContractUtils");
+const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
 
 class Disputer {
   /**
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} votingContract DVM to query price requests.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} empProps Contains EMP contract state data. Expected:
+   *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
+  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
     this.logger = logger;
     this.account = account;
 
@@ -27,10 +31,14 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
+    this.votingContract = votingContract;
+
+    this.empIdentifier = empProps.priceIdentifier;
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
     this.toBN = this.web3.utils.toBN;
+    this.utf8ToHex = this.web3.utils.utf8ToHex;
 
     // Default config settings. Disputer deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -229,6 +237,11 @@ class Disputer {
         txnConfig
       });
 
+      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
+      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
+      // is callable.
+      const requestTimestamp = liquidation.liquidationTime;
+
       // Send the transaction or report failure.
       let receipt;
       try {
@@ -242,12 +255,23 @@ class Disputer {
         continue;
       }
 
+      // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
+      // to be callable.
+      let resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+        from: this.empContract.options.address
+      });
+
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        liquidationStatus:
+          PostWithdrawLiquidationRewardsStatusTranslations[
+            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+          ],
+        resolvedPrice: resolvedPrice.toString()
       };
+
       this.logger.info({
         at: "Disputer",
         message: "Dispute withdrawn🤑",

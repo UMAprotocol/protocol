@@ -8,10 +8,11 @@ class ExpiringMultiPartyEventClient {
    * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
    * @param {Object} web3 Web3 provider from truffle instance.
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
-   * @param {Integer} latestBlockNumber Offset block number to index events from.
+   * @param {Integer} startingBlockNumber Offset block number to index events from.
+   * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress, latestBlockNumber = 0) {
+  constructor(logger, empAbi, web3, empAddress, startingBlockNumber = 0, endingBlockNumber = null) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -34,7 +35,10 @@ class ExpiringMultiPartyEventClient {
     this.settleExpiredPositionEvents = [];
 
     // First block number to begin searching for events after.
-    this.firstBlockToSearch = latestBlockNumber;
+    this.firstBlockToSearch = startingBlockNumber;
+
+    // Last block number to end the searching for events at.
+    this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
   }
   // Delete all events within the client
@@ -107,15 +111,17 @@ class ExpiringMultiPartyEventClient {
   }
 
   async update() {
-    const currentBlockNumber = await this.web3.eth.getBlockNumber();
-    // TODO(#1540): For efficiency, we should only pass through `fromBlock` to `toBlock` once and check for
-    // all of the relevant events along the way.
+    // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
+    // latest block number (if running in loop mode).
+    const lastBlockToSearch = this.lastBlockToSearchUntil
+      ? this.lastBlockToSearchUntil
+      : await this.web3.eth.getBlockNumber();
 
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
 
     // Liquidation events.
@@ -135,7 +141,7 @@ class ExpiringMultiPartyEventClient {
     // Dispute events.
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of disputeEventsObj) {
       this.disputeEvents.push({
@@ -152,7 +158,7 @@ class ExpiringMultiPartyEventClient {
     // Dispute settlement events.
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of disputeSettlementEventsObj) {
       this.disputeSettlementEvents.push({
@@ -170,7 +176,7 @@ class ExpiringMultiPartyEventClient {
     // Create events.
     const createEventsObj = await this.emp.getPastEvents("PositionCreated", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of createEventsObj) {
       this.createEvents.push({
@@ -185,7 +191,7 @@ class ExpiringMultiPartyEventClient {
     // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
     const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of newSponsorEventsObj) {
       // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
@@ -205,7 +211,7 @@ class ExpiringMultiPartyEventClient {
     // Deposit events.
     const depositEventsObj = await this.emp.getPastEvents("Deposit", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of depositEventsObj) {
       this.depositEvents.push({
@@ -219,7 +225,7 @@ class ExpiringMultiPartyEventClient {
     // Withdraw events.
     const withdrawEventsObj = await this.emp.getPastEvents("Withdrawal", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of withdrawEventsObj) {
       this.withdrawEvents.push({
@@ -233,7 +239,7 @@ class ExpiringMultiPartyEventClient {
     // Redeem events.
     const redeemEventsObj = await this.emp.getPastEvents("Redeem", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of redeemEventsObj) {
       this.redeemEvents.push({
@@ -248,7 +254,7 @@ class ExpiringMultiPartyEventClient {
     // Regular fee events.
     const regularFeeEventsObj = await this.emp.getPastEvents("RegularFeesPaid", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of regularFeeEventsObj) {
       this.regularFeeEvents.push({
@@ -262,7 +268,7 @@ class ExpiringMultiPartyEventClient {
     // Final fee events.
     const finalFeeEventsObj = await this.emp.getPastEvents("FinalFeesPaid", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of finalFeeEventsObj) {
       this.finalFeeEvents.push({
@@ -275,7 +281,7 @@ class ExpiringMultiPartyEventClient {
     // Liquidation withdrawn events.
     const liquidationWithdrawnEventsObj = await this.emp.getPastEvents("LiquidationWithdrawn", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of liquidationWithdrawnEventsObj) {
       this.liquidationWithdrawnEvents.push({
@@ -290,7 +296,7 @@ class ExpiringMultiPartyEventClient {
     // Settle expired position events.
     const settleExpiredPositionEventsObj = await this.emp.getPastEvents("SettleExpiredPosition", {
       fromBlock: this.firstBlockToSearch,
-      toBlock: currentBlockNumber
+      toBlock: lastBlockToSearch
     });
     for (let event of settleExpiredPositionEventsObj) {
       this.settleExpiredPositionEvents.push({
@@ -303,7 +309,7 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Add 1 to current block so that we do not double count the last block number seen.
-    this.firstBlockToSearch = currentBlockNumber + 1;
+    this.firstBlockToSearch = lastBlockToSearch + 1;
 
     this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({

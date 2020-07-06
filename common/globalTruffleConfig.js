@@ -26,6 +26,8 @@ const privateKey = process.env.PRIVATE_KEY
 // Fallback to a backup non-prod API key.
 const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "e34138b2db5b496ab5cc52319d2f0299";
 const customNodeUrl = process.env.CUSTOM_NODE_URL;
+const keyOffset = process.env.KEY_OFFSET ? parseInt(process.env.KEY_OFFSET) : 0; // Start at account 0 by default.
+const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Generate two wallets by default.
 let singletonProvider;
 
 // Default options
@@ -73,15 +75,21 @@ function addPublicNetwork(networks, name, networkId) {
     ...options,
     provider: function() {
       if (!singletonProvider) {
-        singletonProvider = new HDWalletProvider(mnemonic, nodeUrl, 0, 2);
+        singletonProvider = new HDWalletProvider(mnemonic, nodeUrl, keyOffset, numKeys);
       }
       return singletonProvider;
     }
   };
 
+  const legacyLedgerOptions = {
+    networkId: networkId,
+    accountsLength: numKeys,
+    accountsOffset: keyOffset
+  };
+
   // Ledger has changed their standard derivation path since this library was created, so we must override the default one.
   const ledgerOptions = {
-    networkId: networkId,
+    ...legacyLedgerOptions,
     path: "44'/60'/0'/0/0"
   };
 
@@ -96,12 +104,8 @@ function addPublicNetwork(networks, name, networkId) {
     }
   };
 
-  // The default derivation path matches the "legacy" ledger account in Ledger Live.
-  const legacyLedgerOptions = {
-    networkId: networkId
-  };
-
   // Legacy ledger wallet network.
+  // Note: the default derivation path matches the "legacy" ledger account in Ledger Live.
   networks[name + "_ledger_legacy"] = {
     ...options,
     provider: function() {

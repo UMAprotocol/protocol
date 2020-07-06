@@ -121,6 +121,16 @@ function slackFormatter(info) {
             }
           });
         }
+        // Else, if the value from the key value pair is null still show the key in the log. For example if a param is
+        // logged but empty we still want to see the key.
+      } else if (info[key] == null) {
+        formattedResponse.blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: ` • _${key}_: null`
+          }
+        });
       }
     }
     // Add a divider to the end of the message to help distinguish messages in long lists.

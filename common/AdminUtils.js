@@ -37,8 +37,21 @@ function getAdminRequestId(identifierUtf8) {
   return parseInt(identifierUtf8.slice(adminPrefix.length), 10);
 }
 
+// Vote 1 for Yes, 0 for No. Any vote > 0 is technically a Yes, but the 1 is treated as the canonical yes.
+const translateAdminVote = voteValue => {
+  switch (voteValue) {
+    case "1":
+      return "YES";
+    case "0":
+      return "NO";
+    default:
+      return "INVALID ADMIN VOTE";
+  }
+};
+
 module.exports = {
   decodeTransaction,
   isAdminRequest,
-  getAdminRequestId
+  getAdminRequestId,
+  translateAdminVote
 };

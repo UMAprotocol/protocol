@@ -77,7 +77,7 @@ Finally, we are ready to mint the actual synthetic tokens. You might want to add
 
 1. Go to the Write Contract Tab on the token minting contract page (for ETHBTC click [here](https://etherscan.io/address/0x3f2d9edd9702909cf1f8c4237b7c4c5931f9c944#writeContract), for yCOMP click [here](https://etherscan.io/address/0x67DD35EaD67FcD184C8Ff6D0251DF4241F309ce1#writeContract)).
 2. Search for the `create` function.
-3. For the first argument, input the collateral amount in Wei wrapped in double-quotes and square brackets. For example, 40 DAI of collateral would mean inputting `[“40000000000000000000”]`.
+3. For the first argument, input the collateral amount in Wei wrapped in double-quotes and square brackets. For example, 40 DAI of collateral would mean inputting `["40000000000000000000"]`.
 4. For the second argument, input the number of tokens (in Wei) that you want to mint, and wrap it in double-quotes with square brackets just like above.
 
 ![create](mint_create.png)
