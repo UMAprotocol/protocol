@@ -53,6 +53,7 @@ class ContractMonitor {
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
+    this.utf8ToHex = this.web3.utils.utf8ToHex;
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
@@ -178,7 +179,7 @@ class ContractMonitor {
       // initiated liquidation for for [x][collateral currency] (liquidated collateral = [y]) of sponsor collateral
       // backing[n] tokens. Sponsor collateralization was[y] %, using [p] as the estimated price at liquidation time.
       // With a collateralization requirement of [r]%, this liquidation would be disputable at a price below [l]. [etherscan link to txn]
-      const mrkdwn =
+      let mrkdwn =
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
@@ -193,17 +194,23 @@ class ContractMonitor {
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
         this.empProps.syntheticCurrencySymbol +
-        " tokens. Sponsor collateralization was " +
-        collateralizationString +
-        "%, using " +
-        this.formatDecimalString(price) +
-        " as the estimated price at liquidation time. With a collateralization requirement of " +
-        this.formatDecimalString(crRequirementString) +
-        "%, this liquidation would be disputable at a price below " +
-        maxPriceToBeDisputableString +
-        ". tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
-
+        " tokens. ";
+      // Add details about the liquidation price if historical data from the pricefeed is available.
+      if (price) {
+        mrkdwn +=
+          "Sponsor collateralization was " +
+          collateralizationString +
+          "%. " +
+          "Using " +
+          this.formatDecimalString(price) +
+          " as the estimated price at liquidation time. With a collateralization requirement of " +
+          this.formatDecimalString(crRequirementString) +
+          "%, this liquidation would be disputable at a price below " +
+          maxPriceToBeDisputableString +
+          ". ";
+      }
+      // Add etherscan link.
+      mrkdwn += `Tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId)}`;
       this.logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
@@ -276,30 +283,36 @@ class ContractMonitor {
       let resolvedPrice;
       try {
         resolvedPrice = revertWrapper(
-          await this.votingContract.getPrice(this.empProps.priceIdentifier, liquidationTimestamp, {
+          await this.votingContract.getPrice(this.utf8ToHex(this.empProps.priceIdentifier), liquidationTimestamp, {
             from: this.empContract.options.address
           })
         );
-        console.log(`MONITOR: Has price: ${resolvedPrice.toString()}`);
       } catch (error) {
-        console.log(`MONITOR: No price for timestamp: ${liquidationTimestamp}`);
+        // No price available.
       }
 
       // Sample message:
       // Dispute settlement alert: Dispute between liquidator [ethereum address if third party,
       // or “UMA” if it’s our bot] and disputer [ethereum address if third party, or “UMA” if
       // it’s our bot]has resolved as [success or failed] [etherscan link to txn]
-      const mrkdwn =
+      let mrkdwn =
         "Dispute between liquidator " +
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
-        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? "(Monitored liquidator bot)" : "") +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " and disputer " +
         createEtherscanLinkMarkdown(event.disputer, this.empProps.networkId) +
-        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? "(Monitored dispute bot)" : "") +
-        " has been resolved as " +
-        (event.disputeSucceeded == true ? "success" : "failed") +
-        ". tx: " +
-        createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
+        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? " (Monitored dispute bot)" : "") +
+        " has settled. ";
+      // Add details about the resolved price request if available.
+      if (resolvedPrice) {
+        mrkdwn += `The disputed liquidation price resolved to: ${this.formatDecimalString(
+          resolvedPrice
+        )}, which resulted in a ${event.disputeSucceeded ? "successful" : "failed"} dispute. `;
+      } else {
+        mrkdwn += `The disputed liquidation ${event.disputeSucceeded ? "succeeded" : "failed"}. `;
+      }
+      // Add etherscan link.
+      mrkdwn += `Tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId)}`;
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
