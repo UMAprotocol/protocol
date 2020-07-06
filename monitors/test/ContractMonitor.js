@@ -330,7 +330,6 @@ contract("ContractMonitor.js", function(accounts) {
     // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
     let disputePrice = toWei("2.5");
     await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
-    console.log(`TEST: Pushed a price for liquidation timestamp ${liquidationTime}`);
 
     // Withdraw from liquidation to settle the dispute event.
     const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -373,7 +372,6 @@ contract("ContractMonitor.js", function(accounts) {
     // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
     disputePrice = toWei("2.0");
     await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
-    console.log(`TEST: Pushed a price for liquidation timestamp ${liquidationTime}`);
 
     // Withdraw from liquidation to settle the dispute event.
     const txObject2 = await emp.withdrawLiquidation("0", sponsor2, { from: sponsor2 });
