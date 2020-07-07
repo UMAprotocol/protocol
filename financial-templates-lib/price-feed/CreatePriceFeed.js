@@ -159,20 +159,27 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   // Note: order doesn't matter.
   const { pairAddress, inverted } = await getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress);
 
-  if (!pairAddress) {
+  if (!pairAddress && !config) {
     throw new Error(
-      "No Uniswap Pair address found. Either set UNISWAP_ADDRESS or use a network where there is an official Uniswap V2 deployment."
+      "No Uniswap Pair address found and no override config provided. Either set UNISWAP_ADDRESS, use a network where there is an official Uniswap V2 deployment or set a default `config` value"
     );
   }
 
-  // TODO: maybe move this default config to a better location.
-  const defaultConfig = {
-    type: "uniswap",
-    twapLength: 2, // Essentially turns the TWAP off since block times are >> 2 seconds.
-    lookback: 7200,
-    invertPrice: inverted,
-    uniswapAddress: pairAddress
-  };
+  let defaultConfig;
+  if (pairAddress) {
+    // TODO: maybe move this default config to a better location.
+    defaultConfig = {
+      type: "uniswap",
+      twapLength: 2, // Essentially turns the TWAP off since block times are >> 2 seconds.
+      lookback: 7200,
+      invertPrice: inverted,
+      uniswapAddress: pairAddress
+    };
+  } else {
+    defaultConfig = {};
+  }
+
+  const userConfig = config || {};
 
   logger.debug({
     at: "createUniswapPriceFeedForEmp",
@@ -181,8 +188,6 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
     defaultConfig,
     userConfig
   });
-
-  const userConfig = config || {};
 
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
 }

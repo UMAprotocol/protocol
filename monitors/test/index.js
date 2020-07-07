@@ -73,9 +73,14 @@ contract("index.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
-    // Run with empty configs for all input values
+    // Run with empty configs for all input values, except for uniswap mock which is needed as no uniswap market in test env.
     defaultMonitorConfig = {};
-    defaultUniswapPricefeedConfig = {};
+    defaultUniswapPricefeedConfig = {
+      type: "uniswap",
+      uniswapAddress: uniswap.address,
+      twapLength: 1,
+      lookback: 1
+    };
     defaultMedianizerPricefeedConfig = {};
 
     // Set two uniswap prices to give it a little history.

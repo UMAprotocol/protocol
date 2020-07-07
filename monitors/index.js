@@ -124,23 +124,23 @@ async function run(
 
     const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
 
-    // // 4. Synthetic Peg Monitor.
-    // const uniswapPriceFeed = await createUniswapPriceFeedForEmp(
-    //   logger,
-    //   web3,
-    //   new Networker(logger),
-    //   getTime,
-    //   address,
-    //   uniswapPriceFeedConfig
-    // );
-    // const syntheticPegMonitor = new SyntheticPegMonitor(
-    //   logger,
-    //   web3,
-    //   uniswapPriceFeed,
-    //   medianizerPriceFeed,
-    //   monitorConfig,
-    //   empProps
-    // );
+    // 4. Synthetic Peg Monitor.
+    const uniswapPriceFeed = await createUniswapPriceFeedForEmp(
+      logger,
+      web3,
+      new Networker(logger),
+      getTime,
+      address,
+      uniswapPriceFeedConfig
+    );
+    const syntheticPegMonitor = new SyntheticPegMonitor(
+      logger,
+      web3,
+      uniswapPriceFeed,
+      medianizerPriceFeed,
+      monitorConfig,
+      empProps
+    );
 
     while (true) {
       // 1.  Contract monitor
@@ -168,15 +168,15 @@ async function run(
       // 3.b Check for positions below their CR
       await crMonitor.checkWalletCrRatio();
 
-      // // 4. Synthetic peg monitor
-      // // 4.a Update the price feeds
-      // await uniswapPriceFeed.update();
-      // await medianizerPriceFeed.update();
-      // // 4.b Check for synthetic peg deviation
-      // await syntheticPegMonitor.checkPriceDeviation();
-      // // 4.c Check for price feed volatility
-      // await syntheticPegMonitor.checkPegVolatility();
-      // await syntheticPegMonitor.checkSyntheticVolatility();
+      // 4. Synthetic peg monitor
+      // 4.a Update the price feeds
+      await uniswapPriceFeed.update();
+      await medianizerPriceFeed.update();
+      // 4.b Check for synthetic peg deviation
+      await syntheticPegMonitor.checkPriceDeviation();
+      // 4.c Check for price feed volatility
+      await syntheticPegMonitor.checkPegVolatility();
+      await syntheticPegMonitor.checkSyntheticVolatility();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
