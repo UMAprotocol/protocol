@@ -10,7 +10,7 @@ class ContractMonitor {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyEventClient Client used to query EMP events for contract state updates.
    * @param {Object} priceFeed Module used to query the current token price.
-   * @param {Object} config Object containing two arrays of monitored liquidator and disputer bots to inform logs EG:
+   * @param {Object} config Object containing two arrays of monitored liquidator and disputer bots to inform logs Example:
    *      { "monitoredLiquidators": ["0x1234","0x5678"],
    *        "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
