@@ -9,12 +9,12 @@ class CRMonitor {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Client used to query EMP status for monitored wallets position info.
    * @param {Object} priceFeed Module used to query the current token price.
-   * @param {List} config Object containing an array of wallets to Monitor. Each wallet's `walletName`, `address`,
+   * @param {Object} config Object containing an array of wallets to Monitor. Each wallet's `walletName`, `address`,
    * `crAlert` must be given. Example:
-   *      {walletsToMonitor:[{ name: "Market Making bot", // Friendly bot name
-   *            address: "0x12345",                       // Bot address
-   *            crAlert: 1.50 },                          // CR alerting threshold to generate an alert message; 1.5=150%
-   *       ...]};
+   *      { walletsToMonitor: [{ name: "Market Making bot", // Friendly bot name
+   *            address: "0x12345",                         // Bot address
+   *            crAlert: 1.50 },                            // CR alerting threshold to generate an alert message; 1.5=150%
+   *       ...] };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",

@@ -11,7 +11,12 @@ class SyntheticPegMonitor {
    * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults. This includes:
+  *      { deviationAlertThreshold:0.2,           // Threshold used to compare observed and expected token prices.
+           volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
+           pegVolatilityAlertThreshold: 0.2,      // Threshold for synthetic peg price volatility.
+           syntheticVolatilityAlertThreshold: 0.2 // Threshold for synthetic price volatility.
+          }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",

@@ -12,12 +12,12 @@ class BalanceMonitor {
    * @param {Object} config Object containing configuration for the balance monitor. Only option is a `botsToMonitor` 
    * which is defines an array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
    *      and`syntheticThreshold` must be given. Example:
-   *      {botsToMonitor:[{ name: "Liquidator Bot",
+   *      { botsToMonitor:[{ name: "Liquidator Bot",
    *         address: "0x12345"
    *         collateralThreshold: x1,
    *         syntheticThreshold: x2,
    *         etherThreshold: x3 },
-   *      ..]}
+   *      ..] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
