@@ -841,8 +841,6 @@ contract("Liquidator.js", function(accounts) {
     });
 
     it("Can correctly override price feed input", async function() {
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0]);
-
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
