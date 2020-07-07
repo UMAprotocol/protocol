@@ -18,7 +18,7 @@ contract("SyntheticPegMonitor", function(accounts) {
   let spy;
   let spylogger;
 
-  let syntheticPegMonitorConfig;
+  let monitorConfig;
   let empProps;
   let syntheticPegMonitor;
 
@@ -38,7 +38,7 @@ contract("SyntheticPegMonitor", function(accounts) {
   describe("Synthetic price deviation from peg", function() {
     beforeEach(async function() {
       // Tested module that uses the two price feeds.
-      syntheticPegMonitorConfig = {
+      monitorConfig = {
         deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
       };
 
@@ -54,7 +54,7 @@ contract("SyntheticPegMonitor", function(accounts) {
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        syntheticPegMonitorConfig,
+        monitorConfig,
         empProps
       );
     });
@@ -133,7 +133,7 @@ contract("SyntheticPegMonitor", function(accounts) {
     });
 
     it("Does not track price deviation if threshold set to zero", async function() {
-      syntheticPegMonitorConfig = {
+      monitorConfig = {
         deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price deviation.
       };
 
@@ -142,7 +142,7 @@ contract("SyntheticPegMonitor", function(accounts) {
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        syntheticPegMonitorConfig,
+        monitorConfig,
         empProps
       );
 
@@ -160,11 +160,12 @@ contract("SyntheticPegMonitor", function(accounts) {
   describe("Pricefeed volatility", function() {
     beforeEach(async function() {
       // Tested module that uses the two price feeds.
-      syntheticPegMonitorConfig = {
+      monitorConfig = {
         volatilityWindow: 3650,
         // Not divisible by 3600 in order to test that "volatility window in hours" is printed
         // correctly by Logger.
-        volatilityAlertThreshold: 0.3
+        pegVolatilityAlertThreshold: 0.3,
+        syntheticVolatilityAlertThreshold: 0.3
       };
 
       empProps = {
@@ -178,7 +179,7 @@ contract("SyntheticPegMonitor", function(accounts) {
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        syntheticPegMonitorConfig,
+        monitorConfig,
         empProps
       );
     });
@@ -343,5 +344,113 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility
     });
+    it("Does not track price volatility if threshold set to zero", async function() {
+      monitorConfig = {
+        volatilityWindow: 60,
+        pegVolatilityAlertThreshold: 0,
+        syntheticVolatilityAlertThreshold: 0
+      };
+
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        monitorConfig,
+        empProps
+      );
+
+      // Inject prices into pricefeed.
+      const historicalPrices = [
+        { timestamp: 100, price: toBN(toWei("10")) },
+        { timestamp: 101, price: toBN(toWei("11")) },
+        { timestamp: 102, price: toBN(toWei("12")) },
+        { timestamp: 103, price: toBN(toWei("13")) },
+        { timestamp: 104, price: toBN(toWei("14")) } // Increasing price until timestamp 104
+      ];
+      medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+      uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+      // Test when volatility is over threshold. Monitor should emit an no error message as threshold set to 0.
+      // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%. First test peg volatility.
+      medianizerPriceFeedMock.setLastUpdateTime(104);
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.equal(spy.callCount, 0); // No longs should be sent as monitor threshold set to 0.
+
+      // Next, test synthetic volatility.
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.equal(spy.callCount, 0); // No longs should be sent as monitor threshold set to 0.
+    });
+  });
+  it("Cannot set invalid config", async function() {
+    let errorThrown1;
+    try {
+      // Create an invalid config. A valid config expects  1 > deviationAlertThreshold >=0, volatilityWindow >=0,
+      // 1 > pegVolatilityAlertThreshold >= 0, 1 > syntheticVolatilityAlertThreshold >= 0.
+      const invalidConfig1 = {
+        // Invalid as deviationAlertThreshold set to above 1.
+        deviationAlertThreshold: 1.5,
+        volatilityWindow: 0,
+        pegVolatilityAlertThreshold: 0,
+        syntheticVolatilityAlertThreshold: 0
+      };
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        invalidConfig1,
+        empProps
+      );
+      errorThrown1 = false;
+    } catch (err) {
+      errorThrown1 = true;
+    }
+    assert.isTrue(errorThrown1);
+
+    let errorThrown2;
+    try {
+      const invalidConfig2 = {
+        // Invalid as volatilityWindow set to -1 && pegVolatilityAlertThreshold set to null.
+        deviationAlertThreshold: 0,
+        volatilityWindow: -1,
+        pegVolatilityAlertThreshold: null,
+        syntheticVolatilityAlertThreshold: 0
+      };
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        invalidConfig2,
+        empProps
+      );
+      errorThrown2 = false;
+    } catch (err) {
+      errorThrown2 = true;
+    }
+    assert.isTrue(errorThrown2);
+  });
+  it("Can correctly create synthetic peg monitor with no config provided", async function() {
+    let errorThrown;
+    try {
+      // Create an invalid config. A valid config expects two arrays of addresses.
+      const emptyConfig = {};
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        emptyConfig,
+        empProps
+      );
+      await syntheticPegMonitor.checkPriceDeviation();
+      await syntheticPegMonitor.checkPegVolatility();
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      errorThrown = false;
+    } catch (err) {
+      errorThrown = true;
+    }
+    assert.isFalse(errorThrown);
   });
 });

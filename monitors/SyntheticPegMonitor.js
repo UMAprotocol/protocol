@@ -34,28 +34,36 @@ class SyntheticPegMonitor {
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
-    // before resetting any config settings. `isValid` must return a Boolean.
+    // before resetting any config settings. `isValid` must return a Boolean. If the associated price feed is missing
+    // then the defaults to 0 thresholds. This will skip the check in the respective functions.
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
-        // if the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
-        value: 0.2,
+        // If the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
+        value: uniswapPriceFeed && medianizerPriceFeed ? 0.2 : 0,
         isValid: x => {
-          return x < 100 && x >= 0;
+          return x != null && x < 1 && x >= 0;
         }
       },
       volatilityWindow: {
         // `volatilityWindow`: Length of time (in seconds) to snapshot volatility.
-        value: 60 * 60, // 1 hour.
+        value: uniswapPriceFeed || medianizerPriceFeed ? 60 * 10 : 0, // 10 minutes
         isValid: x => {
-          return x >= 0;
+          return x != null && x >= 0;
         }
       },
-      volatilityAlertThreshold: {
-        // `volatilityAlertThreshold`: Error threshold for pricefeed's price volatility over `volatilityWindow`.
-        value: 0.05,
+      pegVolatilityAlertThreshold: {
+        // `pegVolatilityAlertThreshold`: Error threshold for synthetic peg price volatility over `volatilityWindow`.
+        value: uniswapPriceFeed ? 0.1 : 0,
         isValid: x => {
-          return x < 100 && x > 0;
+          return x != null && x < 1 && x >= 0;
+        }
+      },
+      syntheticVolatilityAlertThreshold: {
+        // `syntheticVolatilityAlertThreshold`: Error threshold for synthetic price volatility over `volatilityWindow`.
+        value: medianizerPriceFeed ? 0.1 : 0,
+        isValid: x => {
+          return x != null && x < 1 && x >= 0;
         }
       }
     };
@@ -112,8 +120,10 @@ class SyntheticPegMonitor {
   }
 
   // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time.
-  // Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
+  // Fires a message if the difference exceeds the `volatilityAlertThreshold` %. `checkPegVolatility` checks if the
+  // reference medianizer price feed has a large % change over the window.
   async checkPegVolatility() {
+    if (this.pegVolatilityAlertThreshold == 0) return; // Exit early if not monitoring peg volatility.
     const pricefeed = this.medianizerPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -142,7 +152,7 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
+    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.pegVolatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Peg price volatility alert 🌋",
@@ -156,13 +166,15 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.volatilityAlertThreshold * 100 +
+          this.pegVolatilityAlertThreshold * 100 +
           "%."
       });
     }
   }
 
+  // `checkSyntheticVolatility` checks if the synthetic uniswap price feed has a large % change over the window.
   async checkSyntheticVolatility() {
+    if (this.syntheticVolatilityAlertThreshold == 0) return; // Exit early if not monitoring synthetic volatility.
     const pricefeed = this.uniswapPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
@@ -191,7 +203,7 @@ class SyntheticPegMonitor {
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.volatilityAlertThreshold.toString())))) {
+    if (pricefeedVolatility.abs().gt(this.toBN(this.toWei(this.syntheticVolatilityAlertThreshold.toString())))) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Synthetic price volatility alert 🌋",
@@ -205,7 +217,7 @@ class SyntheticPegMonitor {
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
-          this.volatilityAlertThreshold * 100 +
+          this.syntheticVolatilityAlertThreshold * 100 +
           "%."
       });
     }
@@ -221,8 +233,9 @@ class SyntheticPegMonitor {
       return null;
     }
 
-    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from precisely the
-    // same timestamp as the "latest price". This would prevent inaccurate volatility readings where `currentTime` differs from `lastUpdateTime`.
+    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
+    // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
+    // `currentTime` differs from `lastUpdateTime`.
     const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
 
     return {

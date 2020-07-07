@@ -147,6 +147,10 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
 }
 
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  if (!empAddress) {
+    throw new Error("createUniswapPriceFeedForEmp: Must pass in an `empAddress`");
+  }
+
   const emp = getEmpAtAddress(web3, empAddress);
 
   const collateralCurrencyAddress = await emp.methods.collateralCurrency().call();
@@ -169,6 +173,14 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
     invertPrice: inverted,
     uniswapAddress: pairAddress
   };
+
+  logger.debug({
+    at: "createUniswapPriceFeedForEmp",
+    message: "Inferred default config from identifier or EMP address",
+    empAddress,
+    defaultConfig,
+    userConfig
+  });
 
   const userConfig = config || {};
 

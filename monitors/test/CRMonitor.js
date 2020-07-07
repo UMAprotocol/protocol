@@ -47,6 +47,11 @@ contract("CRMonitor.js", function(accounts) {
   let expirationTime;
   let constructorParams;
   let currentTime;
+  let spyLogger;
+  let empClient;
+  let monitorConfig;
+  let crMonitor;
+  let empProps;
 
   const spy = sinon.spy();
 
@@ -90,7 +95,7 @@ contract("CRMonitor.js", function(accounts) {
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
     // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
@@ -99,28 +104,30 @@ contract("CRMonitor.js", function(accounts) {
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
     priceFeedMock = new PriceFeedMock();
 
-    const walletMonitorObject = [
-      {
-        name: "Monitored trader wallet",
-        address: monitoredTrader,
-        crAlert: 2.0 // if the collateralization ratio of this wallet drops below 200% send an alert
-      },
-      {
-        name: "Monitored sponsor wallet",
-        address: monitoredSponsor,
-        crAlert: 1.5 // if the collateralization ratio of this wallet drops below 150% send an alert
-      }
-    ];
+    monitorConfig = {
+      walletsToMonitor: [
+        {
+          name: "Monitored trader wallet",
+          address: monitoredTrader,
+          crAlert: 2.0 // if the collateralization ratio of this wallet drops below 200% send an alert
+        },
+        {
+          name: "Monitored sponsor wallet",
+          address: monitoredSponsor,
+          crAlert: 1.5 // if the collateralization ratio of this wallet drops below 150% send an alert
+        }
+      ]
+    };
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
-    const empProps = {
+    empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),
       priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
       networkId: await web3.eth.net.getId()
     };
 
-    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject, priceFeedMock, empProps);
+    crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, monitorConfig, empProps);
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -158,7 +165,7 @@ contract("CRMonitor.js", function(accounts) {
     await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
+    assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `monitorConfig`
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
@@ -214,12 +221,68 @@ contract("CRMonitor.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1")));
     await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 6); // a new message is sent.
-    assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
+    assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `MonitorConfig`
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
     assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
     assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Synthetic token symbol
+  });
+  it("Cannot set invalid config", async function() {
+    let errorThrown1;
+    try {
+      // Create an invalid config. A valid config expects an array of objects with keys in the object of `name` `address`
+      // and `crAlert`.
+      const invalidMonitorConfig1 = {
+        // Config missing `crAlert`.
+        walletsToMonitor: [
+          {
+            name: "Sponsor wallet",
+            address: tokenSponsor
+          }
+        ]
+      };
+
+      balanceMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, invalidMonitorConfig1, empProps);
+      errorThrown1 = false;
+    } catch (err) {
+      errorThrown1 = true;
+    }
+    assert.isTrue(errorThrown1);
+
+    let errorThrown2;
+    try {
+      // Create an invalid config. A valid config expects an array of objects with keys in the object of `name` `address`
+      // `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
+      const invalidMonitorConfig2 = {
+        // Config has an invalid address for the monitored bot.
+        walletsToMonitor: [
+          {
+            name: "Sponsor wallet",
+            address: "INVALID_ADDRESS",
+            crAlert: 1.5
+          }
+        ]
+      };
+
+      crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, invalidMonitorConfig2, empProps);
+      errorThrown2 = false;
+    } catch (err) {
+      errorThrown2 = true;
+    }
+    assert.isTrue(errorThrown2);
+  });
+  it("Can correctly CR Monitor and check wallet CR Ratios with no config provided", async function() {
+    const emptyConfig = {};
+    let errorThrown;
+    try {
+      crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, emptyConfig, empProps);
+      await crMonitor.checkWalletCrRatio();
+      errorThrown = false;
+    } catch (err) {
+      errorThrown = true;
+    }
+    assert.isFalse(errorThrown);
   });
 });

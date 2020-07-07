@@ -2,29 +2,25 @@
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class ContractMonitor {
   /**
   * @notice Constructs new contract monitor module.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyEventClient Client used to query EMP events for contract state updates.
-   * @param {Object} contractMonitorConfigObject Config object containing two arrays of monitored liquidator and disputer
-   *      bots to inform log messages. Example:
-   *      { "monitoredLiquidators": ["0x1234","0x5678"],
-  *         "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} priceFeed Module used to query the current token price.
+   * @param {Object} config Object containing two arrays of monitored liquidator and disputer bots to inform logs EG:
+   *      { "monitoredLiquidators": ["0x1234","0x5678"],
+   *        "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, expiringMultiPartyEventClient, contractMonitorConfigObject, priceFeed, empProps) {
+  constructor(logger, expiringMultiPartyEventClient, priceFeed, config, empProps) {
     this.logger = logger;
-
-    // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
-    this.monitoredLiquidators = contractMonitorConfigObject.monitoredLiquidators;
-    this.monitoredDisputers = contractMonitorConfigObject.monitoredDisputers;
 
     // Offchain price feed to get the price for liquidations.
     this.priceFeed = priceFeed;
@@ -44,6 +40,27 @@ class ContractMonitor {
     this.empProps = empProps;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+
+    // Bot and ecosystem accounts to monitor, overridden by config parameter.
+    const defaultConfig = {
+      // By default monitor no liquidator bots (empty array).
+      monitoredLiquidators: {
+        value: [],
+        isValid: x => {
+          // For the config to be valid it must be an array of address.
+          return Array.isArray(x) && x.every(y => this.web3.utils.isAddress(y));
+        }
+      },
+      monitoredDisputers: {
+        value: [],
+        isValid: x => {
+          // For the config to be valid it must be an array of address.
+          return Array.isArray(x) && x.every(y => this.web3.utils.isAddress(y));
+        }
+      }
+    };
+
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
