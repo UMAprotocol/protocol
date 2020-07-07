@@ -143,7 +143,7 @@ async function Poll(callback) {
     // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
     // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
     const disputerOverridePrice = process.env.DISPUTER_OVERRIDE_PRICE;
-    
+
     await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice);
   } catch (error) {
     Logger.error({

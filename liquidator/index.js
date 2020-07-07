@@ -168,7 +168,14 @@ async function Poll(callback) {
     // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
     const liquidatorOverridePrice = process.env.LIQUIDATOR_OVERRIDE_PRICE;
 
-    await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice);
+    await run(
+      Logger,
+      process.env.EMP_ADDRESS,
+      pollingDelay,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    );
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
