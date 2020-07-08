@@ -10,7 +10,6 @@
     "sinon": "^9.0.2",
     "winston": "^3.2.1"
   },
-  "author": "Matt Rice <matthewcrice32@gmail.com>",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
