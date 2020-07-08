@@ -9,7 +9,7 @@ The following steps require the `git` CLI to be installed. If you are on Windows
 Clone the UMA [repo](https://github.com/UMAprotocol/protocol). Start in the top-level directory in this repository, `protocol/`.
 
 1. Install the latest stable version of [Node.js](https://nodejs.org/) and ensure that `npm` is installed along with it.
-2. Run `npm install` in `protocol/`.
+2. Run `npx lerna bootstrap` in `protocol/`.
 
 We should be able to compile the smart contracts from `protocol/core`:
 
@@ -22,7 +22,7 @@ If everything worked, we should see the line "> Compiled successfully using:" in
 
 ## Ganache
 
-Ganache-CLI was already installed via `npm install` and now we will use it to run a test-chain with this command:
+Ganache-CLI was already installed via `npx lerna bootstrap` and now we will use it to run a test-chain with this command:
 
 ```bash
 npx ganache-cli -p 9545 -e 1000000 -l 10000000
