@@ -1,0 +1,31 @@
+{
+  "name": "@umaprotocol/reporters",
+  "version": "1.0.0",
+  "description": "Displays Expiring MultiParty on-chain analytics",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^6.2.0",
+    "sinon": "^9.0.2",
+    "winston": "^3.2.1",
+    "chalk-pipe": "^3.0.0",
+    "graphql-request": "^1.8.2",
+    "express": "^4.17.1",
+    "web3": "^1.2.4",
+    "@google-cloud/storage": "^2.4.2",
+    "@google-cloud/datastore": "^6.0.0",
+    "google-auth-library": "^6.0.2",
+    "node-fetch": "^2.3.0"
+  },
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  }
+}
