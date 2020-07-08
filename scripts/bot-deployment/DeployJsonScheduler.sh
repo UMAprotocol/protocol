@@ -1,5 +1,5 @@
 if [ $# -ne 6 ]; then
-    echo "Incorrect number of arguments supplied! arguments are:"
+    echo "Incorrect number of arguments supplied! You provided $# arguments are:"
     echo "1) Scheduler name"
     echo "2) Schedular cron time"
     echo "3) Target HTTP URL"

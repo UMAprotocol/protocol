@@ -57,6 +57,7 @@ app.post("/", async (req, res) => {
 function execShellCommand(cmd, inputEnv) {
   return new Promise((resolve, reject) => {
     exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
+      const processedReturns = stdout.split("\n");
       resolve({ error, stdout, stderr });
     });
   });

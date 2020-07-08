@@ -40,16 +40,17 @@ const Web3 = require("web3");
 
 // Helpers
 // TODO integrate with winston logger.
-// const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
+const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
 
 app.post("/", async (req, res) => {
   try {
-    console.log("Running Cloud runner hub query");
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Running cloud runner hub query",
+      reqBody: req.body
+    });
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
-      res.status(400).send({
-        message: "ERROR: Body missing json bucket or file parameters!"
-      });
       throw new Error("ERROR: Body missing json bucket or file parameters!");
     }
 
@@ -70,33 +71,56 @@ app.post("/", async (req, res) => {
     let promiseArray = [];
     for (const botName in configObject) {
       const botConfig = appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      console.log("Appending to promise array", botName); // TODO: refine this logging with a winston log
       // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
-      // promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
-      promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      // promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
     }
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Executing cloud run query from config file",
+      lastQueriedBlockNumber,
+      latestBlockNumber,
+      botsExecuted: Object.keys(configObject)
+    });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     const results = await Promise.allSettled(promiseArray);
-    console.log(JSON.stringify(results)); // TODO: refine this logging with a winston log
+
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Batch execution promise resolved",
+      results: JSON.stringify(results)
+    });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
     let thrownErrors = [];
     results.forEach(result => {
-      if (result.status == "rejected") {
-        thrownErrors.push(result);
+      console.log(result.value.execResponse.error);
+      if (result.status == "rejected" || result.value.execResponse.error) {
+        thrownErrors.push({ status: result.status, execResponse: result.value.execResponse });
       }
     });
-
+    console.log("THROWN ERRORS");
+    console.log(thrownErrors);
     if (thrownErrors.length > 0) {
       throw thrownErrors;
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "All calls returned correctly",
+      error: null
+    });
     res.status(200).send({ message: "All calls returned correctly", error: null });
-  } catch (error) {
-    console.log("error", error);
-    res.status(400).send({ message: "One or more calls failed with error", error: error });
+  } catch (execResponse) {
+    Logger.error({
+      at: "CloudRunnerHub",
+      message: "Error in Cloud run hub execution 🌩",
+      execResponse: execResponse
+    });
+    await waitForLogger(Logger); // Wait until the logger has yielded before returning the 400 error.
+    res.status(400).send({ message: "Something went wrong in cloud runner hub execution", execResponse });
   }
 });
 
@@ -189,7 +213,12 @@ async function _postJson(url, body) {
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log("Listening on port", port);
+  Logger.debug({
+    at: "CloudRunnerHub",
+    message: "Initalized Cloud Runner hub instance",
+    processEnvironment: process.env,
+    port
+  });
   // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
     throw new Error(
