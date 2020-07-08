@@ -1,9 +1,9 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { getRandomUnsignedInt } = require("../../../common/Random.js");
+const { didContractThrow } = require("@umaprotocol/common");
+const { getRandomUnsignedInt } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("../../utils/Constants.js");
-const { computeVoteHash } = require("../../../common/EncryptionHelper");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { computeVoteHash } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");

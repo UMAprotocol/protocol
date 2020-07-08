@@ -1,0 +1,24 @@
+{
+  "name": "@umaproject/common",
+  "version": "1.0.0",
+  "description": "Common js utilities used by other UMA packages",
+  "homepage": "http://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests configured\""
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "dependencies": {
+    "abi-decoder": "github:UMAprotocol/abi-decoder"
+  }
+}

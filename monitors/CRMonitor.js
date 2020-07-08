@@ -1,7 +1,10 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class CRMonitor {
   /**

@@ -1,8 +1,8 @@
 const WETH9 = artifacts.require("WETH9");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
-const { deploy, setToExistingAddress, getKeysForNetwork } = require("../../common/MigrationUtils.js");
-const publicNetworks = require("../../common/PublicNetworks.js");
+const { deploy, setToExistingAddress, getKeysForNetwork } = require("@umaprotocol/common");
+const publicNetworks = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL } = require("../../common/Constants");
+const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
 const Poll = require("../index.js");

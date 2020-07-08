@@ -3,10 +3,10 @@
 
 const assert = require("assert").strict;
 
-const { getRandomUnsignedInt } = require("../../../common/Random.js");
-const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
-const { computeVoteHash } = require("../../../common/EncryptionHelper.js");
+const { getRandomUnsignedInt } = require("@umaprotocol/common");
+const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { computeVoteHash } = require("@umaprotocol/common");
 
 const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");
@@ -23,7 +23,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 const { interfaceName } = require("../../utils/Constants.js");
 
-const publicNetworks = require("../../../common/PublicNetworks.js");
+const publicNetworks = require("@umaprotocol/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";

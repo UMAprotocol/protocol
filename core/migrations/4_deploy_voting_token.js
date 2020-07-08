@@ -5,7 +5,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["token_convers
 
 const VotingToken = artifacts.require("VotingToken");
 const TokenMigrator = artifacts.require("TokenMigrator");
-const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
 
 const minterRoleEnumValue = 1;
 

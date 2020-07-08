@@ -23,7 +23,7 @@
 //    The amount is a string value. This is shown as a bullet point item.
 
 const SlackHook = require("winston-slack-webhook-transport");
-const { createEtherscanLinkMarkdown } = require("../../common/FormattingUtils");
+const { createEtherscanLinkMarkdown } = require("@umaprotocol/common");
 
 function slackFormatter(info) {
   try {

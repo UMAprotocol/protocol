@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("@umaprotocol/common");
 
 // Tested Contract
 const TokenFactory = artifacts.require("TokenFactory");

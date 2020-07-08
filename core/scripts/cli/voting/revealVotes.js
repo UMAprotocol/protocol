@@ -2,8 +2,8 @@ const inquirer = require("inquirer");
 const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
-const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructReveal, batchRevealVotes, getVotingRoles } = require("../../../../common/VotingUtils");
+const { VotePhasesEnum } = require("@umaprotocol/common");
+const { constructReveal, batchRevealVotes, getVotingRoles } = require("@umaprotocol/common");
 
 /**
  * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.

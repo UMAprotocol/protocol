@@ -1,9 +1,12 @@
 // This module monitors Expiring Multi Party contracts and produce logs when: 1) new sponsors are detected,
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  revertWrapper,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class ContractMonitor {
   /**

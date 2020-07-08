@@ -1,5 +1,5 @@
 const TokenFactory = artifacts.require("TokenFactory");
-const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

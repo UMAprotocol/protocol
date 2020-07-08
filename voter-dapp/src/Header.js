@@ -2,7 +2,7 @@ import React from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import logo from "./logo.png";
 import Grid from "@material-ui/core/Grid";
-import { formatWei, formatWithMaxDecimals } from "./common/FormattingUtils.js";
+import { formatWei, formatWithMaxDecimals } from "@umaprotocol/common";
 import BigNumber from "bignumber.js";
 
 // MaterialUI has a number of options for styling which seem to be

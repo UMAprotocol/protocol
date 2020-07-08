@@ -1,5 +1,5 @@
 const style = require("../textStyle");
-const PublicNetworks = require("../../../../common/PublicNetworks");
+const PublicNetworks = require("@umaprotocol/common");
 
 const submitTransaction = async (web3, submitFn, message, transactionNum, totalTransactions) => {
   const networkId = await web3.eth.net.getId();

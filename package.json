@@ -1,6 +1,6 @@
 {
   "name": "protocol",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "UMA Protocol Smart Contracts",
   "private": true,
   "scripts": {
@@ -49,8 +49,8 @@
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
+    "@umaprotocol/common": "^1.0.0",
     "@uniswap/sdk": "^2.0.5",
-    "abi-decoder": "github:UMAprotocol/abi-decoder",
     "acorn": "^7.1.1",
     "babel-eslint": "10.0.1",
     "bignumber.js": "^8.0.1",
@@ -103,6 +103,7 @@
     "core",
     "liquidator",
     "monitors",
-    "financial-templates-lib"
+    "financial-templates-lib",
+    "common"
   ]
 }

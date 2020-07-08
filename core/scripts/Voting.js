@@ -1,7 +1,7 @@
 const Voting = artifacts.require("Voting");
-const { VotePhasesEnum } = require("../../common/Enums");
-const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../common/Constants");
-const publicNetworks = require("../../common/PublicNetworks");
+const { VotePhasesEnum } = require("@umaprotocol/common");
+const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("@umaprotocol/common");
+const publicNetworks = require("@umaprotocol/common");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
@@ -13,7 +13,7 @@ const {
   batchRevealVotes,
   batchCommitVotes,
   getLatestEvent
-} = require("../../common/VotingUtils");
+} = require("@umaprotocol/common");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 

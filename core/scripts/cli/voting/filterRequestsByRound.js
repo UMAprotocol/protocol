@@ -1,6 +1,6 @@
-const { computeTopicHash } = require("../../../../common/EncryptionHelper");
-const { VotePhasesEnum } = require("../../../../common/Enums");
-const { getLatestEvent } = require("../../../../common/VotingUtils");
+const { computeTopicHash } = require("@umaprotocol/common");
+const { VotePhasesEnum } = require("@umaprotocol/common");
+const { getLatestEvent } = require("@umaprotocol/common");
 
 /**
  * First, sorts all price requests chronologically from earliest to latest.
