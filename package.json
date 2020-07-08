@@ -96,5 +96,7 @@
   "lint-staged": {
     "*.js": "eslint --cache --fix"
   },
-  "workspaces": []
+  "workspaces": [
+    "disputer"
+  ]
 }
