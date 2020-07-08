@@ -8,7 +8,7 @@
     "sinon": "^9.0.2",
     "winston": "^3.2.1"
   },
-  "homepage": "http://umaproject.org",
+  "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "publishConfig": {
