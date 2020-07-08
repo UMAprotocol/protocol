@@ -1,7 +1,7 @@
 {
   "name": "@umaprotocol/liquidator",
   "version": "1.0.0",
-  "description": "Liquidator",
+  "description": "UMA Liquidator",
   "private": true,
   "dependencies": {
     "dotenv": "^6.2.0"
