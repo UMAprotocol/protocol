@@ -2,7 +2,7 @@
   "name": "@umaprotocol/monitors",
   "version": "1.0.0",
   "description": "UMA Monitors",
-  "homepage": "https://github.com/UMAprotocol/protocol#readme",
+  "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "private": true,
