@@ -38,7 +38,7 @@ For information on how to initialize and interact with our smart contracts, plea
 You'll need the latest LTS release of nodejs and npm installed. Assuming that's done, run:
 
 ```
-npm install
+npx lerna bootstrap
 ```
 
 ### Running the linter 🧽
