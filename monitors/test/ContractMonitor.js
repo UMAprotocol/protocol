@@ -122,7 +122,14 @@ contract("ContractMonitor.js", function(accounts) {
       networkId: await web3.eth.net.getId()
     };
 
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock, empProps);
+    contractMonitor = new ContractMonitor(
+      spyLogger,
+      eventClient,
+      contractMonitorConfig,
+      priceFeedMock,
+      empProps,
+      mockOracle
+    );
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -319,11 +326,6 @@ contract("ContractMonitor.js", function(accounts) {
       from: disputer
     });
 
-    // Advance time and settle
-    let timeAfterLiquidationLiveness = liquidationTime + 10;
-    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
-
     // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
     // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
     let disputePrice = toWei("2.5");
@@ -346,6 +348,10 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "failed")); // the disputed was not successful based on settlement price
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
 
+    // Advance time so that price request is for a different timestamp.
+    const nextLiquidationTimestamp = liquidationTime + 1;
+    await emp.setCurrentTime(nextLiquidationTimestamp.toString());
+
     // Create a second liquidation from a non-monitored address (sponsor1).
     liquidationTime = (await emp.getCurrentTime()).toNumber();
     await emp.createLiquidation(
@@ -361,11 +367,6 @@ contract("ContractMonitor.js", function(accounts) {
     await emp.dispute("0", sponsor2, {
       from: sponsor2
     });
-
-    // Advance time and settle
-    timeAfterLiquidationLiveness = liquidationTime + 10;
-    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
     // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
     // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
@@ -385,7 +386,7 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // This liquidator is not monitored
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // disputer address
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored dispute bot)")); // This disputer is not monitored
-    assert.isTrue(lastSpyLogIncludes(spy, "success")); // the disputed was successful based on settlement price
+    assert.isTrue(lastSpyLogIncludes(spy, "succeeded")); // the disputed was successful based on settlement price
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
   });
 });

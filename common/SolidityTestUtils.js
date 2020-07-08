@@ -115,26 +115,34 @@ async function revertToSnapshot(web3, id) {
 async function mineTransactionsAtTime(web3, transactions, time, sender) {
   await stopMining(web3);
 
-  const receiptPromises = [];
-  for (const transaction of transactions) {
-    const result = transaction.send({ from: sender });
+  try {
+    const receiptPromises = [];
+    for (const transaction of transactions) {
+      const result = transaction.send({ from: sender });
 
-    // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
-    await new Promise((resolve, reject) => {
-      result.on("transactionHash", function() {
-        resolve();
+      // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
+      await new Promise((resolve, reject) => {
+        result.on("transactionHash", function() {
+          resolve();
+        });
+        result.on("error", function(error) {
+          reject(error);
+        });
       });
-    });
 
-    // result, itself, is a promise that will resolve to the receipt.
-    receiptPromises.push(result);
+      // result, itself, is a promise that will resolve to the receipt.
+      receiptPromises.push(result);
+    }
+
+    await advanceBlockAndSetTime(web3, time);
+    const receipts = await Promise.all(receiptPromises);
+    return receipts;
+  } catch (err) {
+    throw new Error(err.message);
+  } finally {
+    // We need to restart Ganache's mining no matter what, otherwise the caller would have to restart their Ganache instance.
+    await startMining(web3);
   }
-
-  await advanceBlockAndSetTime(web3, time);
-  const receipts = await Promise.all(receiptPromises);
-  await startMining(web3);
-
-  return receipts;
 }
 
 module.exports = {
