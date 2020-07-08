@@ -48,8 +48,14 @@ class BalanceMonitor {
                 Object.keys(y).includes("address") &&
                 this.web3.utils.isAddress(y.address) && // `address` must be a valid Ethereum address.
                 Object.keys(y).includes("collateralThreshold") &&
+                // Note this expects a string input as this should be a wei encoded version of the input number. If the
+                // collateralThreshold was 5000 Dai this would be represented as 5000e18 or 5000000000000000000000 which
+                // does not play well with JS as a number. As a result, these inputs should be strings.
+                typeof y.collateralThreshold === "string" &&
                 Object.keys(y).includes("syntheticThreshold") &&
-                Object.keys(y).includes("etherThreshold")
+                typeof y.syntheticThreshold === "string" &&
+                Object.keys(y).includes("etherThreshold") &&
+                typeof y.etherThreshold === "string"
               );
             })
           );

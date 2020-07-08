@@ -47,9 +47,11 @@ class CRMonitor {
               // Each object within the array must have the following keys.
               return (
                 Object.keys(y).includes("name") &&
+                typeof y.name === "string" &&
                 Object.keys(y).includes("address") &&
                 this.web3.utils.isAddress(y.address) && // `address` must be a valid Ethereum address.
-                Object.keys(y).includes("crAlert")
+                Object.keys(y).includes("crAlert") &&
+                typeof y.crAlert === "number"
               );
             })
           );
