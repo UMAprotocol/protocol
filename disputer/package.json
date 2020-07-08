@@ -1,10 +1,26 @@
 {
-  "name": "disputer",
-  "version": "0.1.0",
+  "name": "@umaprotocol/disputer",
+  "version": "1.0.0",
   "description": "UMA Disputer",
   "private": true,
   "dependencies": {
     "winston": "^3.2.1",
     "winston-transport": "^4.3.0"
+  },
+  "homepage": "http://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
   }
 }
