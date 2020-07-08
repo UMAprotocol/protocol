@@ -5,6 +5,7 @@ import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
 import { MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "./common/Constants.js";
+import { PriceRequestStatusEnum } from "./common/Enums.js";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -14,13 +15,13 @@ function getOrCreateObj(containingObj, field) {
   return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceResolvedEvents, votingAccount) {
+function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents === undefined) {
+  if (retrievedRewardsEvents === undefined || reveals === undefined) {
     // Requests haven't been completed.
     return { ready: false, status };
   } else {
@@ -43,24 +44,24 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
       voteState.retrievedRewards = true;
     }
 
-    for (const event of priceResolvedEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
-
-      voteState.priceResolutionRound = event.returnValues.roundId.toString();
-    }
-
     // Since this loop is the last one, we can use the state to determine if this identifer, time, roundId combo
     // is eligible for a reward claim. We track the oldestUnclaimedRound to determine which round the transaction
     // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_JS_INT;
-    for (const event of revealedVoteEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
-      const revealRound = event.returnValues.roundId.toString();
+    for (const reveal of reveals) {
+      const voteState = getVoteState(reveal.identifier, reveal.time);
+      const revealRound = reveal.revealRound.toString();
+      const revealPrice = reveal.revealPrice.toString();
+      const lastVotingRound = reveal.lastVotingRound.toString();
+      const resolvedPrice = reveal.resolvedPrice.toString();
 
-      if (!voteState.retrievedRewards && voteState.priceResolutionRound === revealRound) {
+      // Note: must check that the reveal round matches the resolution round of the price request because the correct
+      // vote during the wrong round doesn't earn any rewards.
+      if (!voteState.retrievedRewards && revealRound === lastVotingRound && revealPrice === resolvedPrice) {
         // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
         oldestUnclaimedRound = Math.min(oldestUnclaimedRound, revealRound);
         voteState.didReveal = true;
+        voteState.priceResolutionRound = revealRound;
       }
     }
 
@@ -73,11 +74,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     const toRetrieve = [];
     const maxBatchRetrievals = BATCH_MAX_RETRIEVALS;
     for (const [key, voteState] of Object.entries(state)) {
-      if (
-        !voteState.retrievedRewards &&
-        voteState.priceResolutionRound === oldestUnclaimedRound.toString() &&
-        voteState.didReveal
-      ) {
+      if (voteState.priceResolutionRound === oldestUnclaimedRound.toString() && voteState.didReveal) {
         // If this is an eligible reward for the oldest round, extract the information and push it into the retrieval array.
         const [identifier, time] = key.split("|");
         toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
@@ -99,10 +96,11 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 }
 
 function RetrieveRewards({ votingAccount }) {
-  const { useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
+  const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
+  const governorAddress = drizzle.contracts.Governor.address;
 
   // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
@@ -117,7 +115,9 @@ function RetrieveRewards({ votingAccount }) {
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-      const defaultLookback = 10; // Default lookback is 10 rounds.
+      // Default lookback is 7 rounds (2 weeks). Rewards currently expire after 2 weeks, so there should be no reason for
+      // a user to need a longer lookback.
+      const defaultLookback = 7;
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
       const windowLength = Math.min(currentRoundId, defaultLookback);
@@ -138,14 +138,6 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
-  const priceResolvedEvents = useCacheEvents(
-    "Voting",
-    "PriceResolved",
-    useMemo(() => {
-      return { filter: { roundId: roundIds }, fromBlock: 0 };
-    }, [roundIds])
-  );
-
   const revealedVoteEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
@@ -154,13 +146,65 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
+  // Get auxillary information about all price requests that were revealed.
+  const reveals = useCacheCall(["Voting"], call => {
+    if (!revealedVoteEvents) {
+      return undefined;
+    }
+
+    const reveals = revealedVoteEvents.map(event => {
+      return {
+        revealRound: event.returnValues.roundId,
+        revealPrice: event.returnValues.price,
+        identifier: event.returnValues.identifier,
+        time: event.returnValues.time
+      };
+    });
+
+    // Get each price request's status. This includes whether it has been resolved and the last round where it was
+    // voted on.
+    const statuses = call(
+      "Voting",
+      "getPriceRequestStatuses",
+      reveals.map(reveal => {
+        return {
+          identifier: reveal.identifier,
+          time: reveal.time
+        };
+      })
+    );
+
+    if (!statuses) {
+      return undefined;
+    }
+
+    // Pulls down the price for every resolved request. If the request wasn't resolved, the resolved price isn't
+    // queried and the field is left undefined.
+    let done = true;
+    for (let i = 0; i < reveals.length; i++) {
+      const reveal = reveals[i];
+      const status = statuses[i];
+      reveal.lastVotingRound = status.lastVotingRound;
+      if (status.status === PriceRequestStatusEnum.RESOLVED) {
+        // Note: this method needs to be called "from" the Governor contract since it's approved to "use" the DVM.
+        // Otherwise, it will revert.
+        reveal.resolvedPrice = call("Voting", "getPrice", reveal.identifier, reveal.time, {
+          from: governorAddress
+        });
+
+        // Note: a resolved price should always be returned if the status is RESOLVED. No reverts are expected.
+        if (!reveal.resolvedPrice) done = false;
+      } else {
+        // Just set this to something that will never compare equal to any revealed price.
+        reveal.resolvedPrice = "No Price";
+      }
+    }
+
+    return done ? reveals : undefined;
+  });
+
   // Construct the claim rewards transaction.
-  const rewardsTxn = useRetrieveRewardsTxn(
-    retrievedRewardsEvents,
-    revealedVoteEvents,
-    priceResolvedEvents,
-    votingAccount
-  );
+  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount);
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
