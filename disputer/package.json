@@ -4,7 +4,9 @@
   "description": "UMA Disputer",
   "private": true,
   "dependencies": {
-    "dotenv": "^6.2.0"
+    "dotenv": "^6.2.0",
+    "sinon": "^9.0.2",
+    "winston": "^3.2.1"
   },
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
