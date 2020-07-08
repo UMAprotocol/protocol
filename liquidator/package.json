@@ -1,10 +1,30 @@
 {
-  "name": "liquidator",
-  "version": "0.1.0",
+  "name": "@umaprotocol/liquidator",
+  "version": "1.0.0",
   "description": "Liquidator",
   "private": true,
   "dependencies": {
-    "winston": "^3.2.1",
-    "winston-transport": "^4.3.0"
+    "dotenv": "^6.2.0"
+  },
+  "devDependencies": {
+    "sinon": "^9.0.2",
+    "winston": "^3.2.1"
+  },
+  "author": "Matt Rice <matthewcrice32@gmail.com>",
+  "homepage": "http://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
   }
 }

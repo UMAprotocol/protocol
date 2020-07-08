@@ -1,18 +1,18 @@
 {
-  "name": "@umaprotocol/disputer",
+  "name": "@umaprotocol/reporters",
   "version": "1.0.0",
-  "description": "UMA Disputer",
-  "private": true,
-  "dependencies": {
-    "dotenv": "^6.2.0"
-  },
-  "devDependencies": {
-    "sinon": "^9.0.2",
-    "winston": "^3.2.1"
-  },
-  "homepage": "https://umaproject.org",
+  "description": "> TODO: description",
+  "author": "Matt Rice <matthewcrice32@gmail.com>",
+  "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.com/"
   },
