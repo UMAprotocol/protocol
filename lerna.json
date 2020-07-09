@@ -1,5 +1,5 @@
 {
-  "packages": ["voter-dapp", "disputer", "liquidator", "monitors"],
+  "packages": ["voter-dapp", "disputer", "liquidator", "monitors", "reporters"],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "version": "independent"
