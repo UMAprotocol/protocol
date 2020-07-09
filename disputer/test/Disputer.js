@@ -457,5 +457,46 @@ contract("Disputer.js", function(accounts) {
       assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
       assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
     });
+
+    it("Can provide an override price to disputer", async function() {
+      // sponsor1 creates a position with 130 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("130") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // The liquidator creates a position to have synthetic tokens.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+      // The sponsor1 submits a valid withdrawal request of withdrawing 5e18 collateral. This places their
+      // position at collateral of 125 and debt of 100.
+      await emp.requestWithdrawal({ rawValue: toWei("5") }, { from: sponsor1 });
+
+      // Next, we will create an invalid liquidation to liquidate the whole position.
+      await emp.createLiquidation(
+        sponsor1,
+        { rawValue: "0" },
+        { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+        { rawValue: toWei("100") },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+
+      // Say the price feed reports a price of 1 USD per token. This makes the liquidation invalid and the disputer should
+      // dispute the liquidation: 125/(100*1.0)=1.25 CR -> Position was collateralized and invalid liquidation.
+      priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
+
+      // However, say disputer operator has provided an override price of 1.2 USD per token. This makes the liquidation
+      // valid and the disputer should do nothing: 125/(100*1.2)=1.0
+      await disputer.queryAndDispute(toWei("1.2"));
+      assert.equal(spy.callCount, 0); // 0 info level logs should be sent as no dispute.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+
+      // Next assume that the override price is in fact 1 USD per token. At this price point the liquidation is now
+      // invalid that the disputer should try dispute the tx.
+      await disputer.queryAndDispute(toWei("1.0"));
+      assert.equal(spy.callCount, 1); // 1 info level logs should be sent for the dispute
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+
+      // The disputeBot should be the disputer in sponsor1  liquidations.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+    });
   });
 });

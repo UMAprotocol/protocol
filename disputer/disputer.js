@@ -37,6 +37,7 @@ class Disputer {
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
+    this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
     // Default config settings. Disputer deployer can override these settings by passing in new
@@ -71,8 +72,9 @@ class Disputer {
     await this.priceFeed.update();
   }
 
-  // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  async queryAndDispute() {
+  // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
+  // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
+  async queryAndDispute(disputerOverridePrice) {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
@@ -83,7 +85,10 @@ class Disputer {
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
     const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
-      const price = this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
+      // If an override is provided, use that price. Else, get the historic price at the liquidation time.
+      const price = disputerOverridePrice
+        ? this.toBN(disputerOverridePrice)
+        : this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
       if (!price) {
         this.logger.warn({
           at: "Disputer",
