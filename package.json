@@ -102,6 +102,7 @@
     "reporters",
     "core",
     "liquidator",
-    "monitors"
+    "monitors",
+    "financial-templates-lib"
   ]
 }
