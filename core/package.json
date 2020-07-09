@@ -6,19 +6,13 @@
   "dependencies": {
     "@openzeppelin/contracts": "3.0.0",
     "minimist": "^1.2.0",
-    "inquirer": "^7.0.4",
-    "dotenv": "^6.2.0",
-    "winston": "^3.2.1",
-    "chalk-pipe": "^3.0.0",
-    "ora": "^4.0.3",
-    "moment": "^2.24.0",
-    "bignumber.js": "^8.0.1",
     "@sendgrid/mail": "^6.4.0",
     "node-fetch": "^2.3.0",
     "gmail-send": "^1.2.14",
     "express": "^4.17.1",
     "@awaitjs/express": "^0.3.0",
-    "web3": "^1.2.4"
+    "web3": "^1.2.4",
+    "truffle": "^5.1.14"
   },
   "devDependencies": {
     "truffle-assertions": "^0.9.2"
