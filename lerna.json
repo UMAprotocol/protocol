@@ -1,5 +1,5 @@
 {
-  "packages": [],
+  "packages": ["voter-dapp", "disputer", "reporters"],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "version": "independent"
