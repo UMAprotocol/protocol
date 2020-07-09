@@ -16,6 +16,7 @@
     "node-fetch": "^2.3.0"
   },
   "homepage": "https://umaproject.org",
+  "main": "index.js",
   "license": "AGPL-3.0-or-later",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/"
