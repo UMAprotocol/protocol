@@ -20,9 +20,6 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
-  "scripts": {
-    "test": "echo \"Error: run tests from root\" && exit 1"
-  },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
   }

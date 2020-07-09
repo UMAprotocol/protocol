@@ -21,7 +21,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"Error: run tests from root\" && exit 1"
+    "test": "echo \"No tests currently configured\""
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
