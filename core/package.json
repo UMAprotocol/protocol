@@ -15,7 +15,8 @@
     "truffle": "^5.1.14"
   },
   "devDependencies": {
-    "truffle-assertions": "^0.9.2"
+    "truffle-assertions": "^0.9.2",
+    "truffle-deploy-registry": "^0.5.1"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
