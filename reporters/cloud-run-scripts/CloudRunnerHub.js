@@ -38,8 +38,6 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-// Helpers
-// TODO integrate with winston logger.
 const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
 
 app.post("/", async (req, res) => {
@@ -89,7 +87,7 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerHub",
       message: "Batch execution promise resolved",
-      results: JSON.stringify(results)
+      results: JSON.stringify(results, null, 2)
     });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
@@ -100,8 +98,6 @@ app.post("/", async (req, res) => {
         thrownErrors.push({ status: result.status, execResponse: result.value.execResponse });
       }
     });
-    console.log("THROWN ERRORS");
-    console.log(thrownErrors);
     if (thrownErrors.length > 0) {
       throw thrownErrors;
     }
@@ -116,8 +112,8 @@ app.post("/", async (req, res) => {
   } catch (execResponse) {
     Logger.error({
       at: "CloudRunnerHub",
-      message: "Error in Cloud run hub execution 🌩",
-      execResponse: execResponse
+      message: "CloudRunner hub error 🌩 ",
+      execResponse
     });
     await waitForLogger(Logger); // Wait until the logger has yielded before returning the 400 error.
     res.status(400).send({ message: "Something went wrong in cloud runner hub execution", execResponse });
