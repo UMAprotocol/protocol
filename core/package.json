@@ -1,22 +1,27 @@
 {
-  "name": "@umaprotocol/reporters",
+  "name": "@umaprotocol/core",
   "version": "1.0.0",
-  "description": "Displays Expiring MultiParty on-chain analytics",
+  "description": "UMA smart contracts and unit tests",
   "private": true,
   "dependencies": {
+    "@openzeppelin/contracts": "3.0.0",
+    "minimist": "^1.2.0",
+    "inquirer": "^7.0.4",
     "dotenv": "^6.2.0",
     "winston": "^3.2.1",
     "chalk-pipe": "^3.0.0",
-    "graphql-request": "^1.8.2",
+    "ora": "^4.0.3",
+    "moment": "^2.24.0",
+    "bignumber.js": "^8.0.1",
+    "@sendgrid/mail": "^6.4.0",
+    "node-fetch": "^2.3.0",
+    "gmail-send": "^1.2.14",
+    "truffle-assertions": "^0.9.2",
     "express": "^4.17.1",
-    "web3": "^1.2.4",
-    "@google-cloud/storage": "^2.4.2",
-    "@google-cloud/datastore": "^6.0.0",
-    "google-auth-library": "^6.0.2",
-    "node-fetch": "^2.3.0"
+    "@awaitjs/express": "^0.3.0",
+    "web3": "^1.2.4"
   },
   "homepage": "https://umaproject.org",
-  "main": "index.js",
   "license": "AGPL-3.0-or-later",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/"
