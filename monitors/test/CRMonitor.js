@@ -7,13 +7,13 @@ const { interfaceName } = require("../../core/utils/Constants.js");
 const { CRMonitor } = require("../CRMonitor");
 
 // Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
 
 // Price feed mock
-const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
+const { PriceFeedMock } = require("@umaprotocol/financial-templates-lib");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

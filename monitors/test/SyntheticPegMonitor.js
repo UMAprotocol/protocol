@@ -3,13 +3,13 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Price feed mock.
-const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock.js");
+const { PriceFeedMock } = require("@umaprotocol/financial-templates-lib");
 
 // Tested module
 const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 contract("SyntheticPegMonitor", function(accounts) {
   let uniswapPriceFeedMock;

@@ -3,16 +3,16 @@ const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
 const boldUnderlineRed = chalkPipe("bold.underline.red");
 
-const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { Logger } = require("@umaprotocol/financial-templates-lib");
 const winston = require("winston");
 
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
-const { Networker } = require("../financial-templates-lib/price-feed/Networker");
+const { createPriceFeed } = require("@umaprotocol/financial-templates-lib");
+const { Networker } = require("@umaprotocol/financial-templates-lib");
 
 // Clients to retrieve on-chain data.
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
+const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
+const { ExpiringMultiPartyEventClient } = require("@umaprotocol/financial-templates-lib");
+const { TokenBalanceClient } = require("@umaprotocol/financial-templates-lib");
 
 // DVM utils.
 const { interfaceName } = require("../core/utils/Constants");
