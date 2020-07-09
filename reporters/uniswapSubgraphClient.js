@@ -10,13 +10,13 @@ const { GraphQLClient } = require("graphql-request");
 let uniswapClient;
 function getUniswapClient() {
   if (!uniswapClient) {
-    uniswapClient = new GraphQLClient("https://api.thegraph.com/subgraphs/name/ianlapham/unsiwap3");
+    uniswapClient = new GraphQLClient("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2");
   }
   return uniswapClient;
 }
 
 /**
- * @notice Return query to get pair data for uniswap pair @ `pairAddress` up to `block`-3 height. Default block height
+ * @notice Return query to get pair data for uniswap pair @ `pairAddress` up to `block`-5 height. Default block height
  * is latest block available in subgraph. This should not be assumed to be the latest mined block for the network,
  * which might be higher than the latest block available in the subgraph.
  * @dev We subtract from the `block` height conservatively because we have observed a delay between the latest network block # (i.e. web3.eth.getBlockNumber),
