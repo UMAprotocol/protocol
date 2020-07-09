@@ -4,6 +4,7 @@
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "private": true,
   "dependencies": {
+    "@umaprotocol/core": "^1.0.0",
     "@uniswap/sdk": "^2.0.5",
     "dotenv": "^6.2.0",
     "minimist": "^1.2.0",
