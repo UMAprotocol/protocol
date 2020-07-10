@@ -7,13 +7,16 @@ const { interfaceName } = require("../../core/utils/Constants.js");
 // Script to test
 const { Liquidator } = require("../liquidator.js");
 
-// Helper client script
-const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
-const { GasEstimator } = require("@umaprotocol/financial-templates-lib");
-const { PriceFeedMock } = require("@umaprotocol/financial-templates-lib");
-
-// Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogLevel, spyLogIncludes, spyLogLevel } = require("@umaprotocol/financial-templates-lib");
+// Helper clients and custom winston transport module to monitor winston log outputs
+const {
+  ExpiringMultiPartyClient,
+  GasEstimator,
+  PriceFeedMock,
+  SpyTransport,
+  lastSpyLogLevel,
+  spyLogIncludes,
+  spyLogLevel
+} = require("@umaprotocol/financial-templates-lib");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

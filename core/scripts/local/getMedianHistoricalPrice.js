@@ -7,8 +7,7 @@
  * @dev How to run: $(npm bin)/truffle exec ./scripts/local/GetMedianHistoricalPrice.js --network mainnet --identifier <PRICE-FEED IDENTIFIER> --time <TIMESTAMP IN SECONDS>
  */
 const { fromWei } = web3.utils;
-const { createReferencePriceFeedForEmp } = require("@umaprotocol/financial-templates-lib");
-const { Networker } = require("@umaprotocol/financial-templates-lib");
+const { createReferencePriceFeedForEmp, Networker } = require("@umaprotocol/financial-templates-lib");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
 

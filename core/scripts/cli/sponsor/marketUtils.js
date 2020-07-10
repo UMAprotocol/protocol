@@ -2,8 +2,7 @@ const style = require("../textStyle");
 const winston = require("winston");
 const PublicNetworks = require("../../../../common/PublicNetworks");
 const { getCurrencySymbol } = require("./currencyUtils.js");
-const { createReferencePriceFeedForEmp } = require("@umaprotocol/financial-templates-lib");
-const { Networker } = require("@umaprotocol/financial-templates-lib");
+const { createReferencePriceFeedForEmp, Networker } = require("@umaprotocol/financial-templates-lib");
 const { computeCollateralizationRatio } = require("../../../../common/EmpUtils.js");
 const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
 

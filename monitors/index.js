@@ -1,16 +1,17 @@
 require("dotenv").config();
 const { hexToUtf8 } = web3.utils;
 
-// Helpers.
-const { delay } = require("@umaprotocol/financial-templates-lib");
-const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
-const { createPriceFeed } = require("@umaprotocol/financial-templates-lib");
-const { Networker } = require("@umaprotocol/financial-templates-lib");
-
-// Clients to retrieve on-chain data.
-const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
-const { ExpiringMultiPartyEventClient } = require("@umaprotocol/financial-templates-lib");
-const { TokenBalanceClient } = require("@umaprotocol/financial-templates-lib");
+// Clients to retrieve on-chain data and helpers.
+const {
+  ExpiringMultiPartyClient,
+  ExpiringMultiPartyEventClient,
+  TokenBalanceClient,
+  Networker,
+  Logger,
+  createPriceFeed,
+  waitForLogger,
+  delay
+} = require("@umaprotocol/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
 const { ContractMonitor } = require("./ContractMonitor");

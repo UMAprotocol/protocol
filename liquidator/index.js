@@ -1,17 +1,20 @@
 require("dotenv").config();
 
 // Helpers
-const { delay } = require("@umaprotocol/financial-templates-lib");
-const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
 const { MAX_UINT_VAL } = require("../common/Constants");
 const { toBN } = web3.utils;
 
 // JS libs
 const { Liquidator } = require("./liquidator");
-const { GasEstimator } = require("@umaprotocol/financial-templates-lib");
-const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
-const { createReferencePriceFeedForEmp } = require("@umaprotocol/financial-templates-lib");
-const { Networker } = require("@umaprotocol/financial-templates-lib");
+const {
+  GasEstimator,
+  ExpiringMultiPartyClient,
+  Networker,
+  Logger,
+  createReferencePriceFeedForEmp,
+  waitForLogger,
+  delay
+} = require("@umaprotocol/financial-templates-lib");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

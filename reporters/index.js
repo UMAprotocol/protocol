@@ -3,16 +3,17 @@ const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
 const boldUnderlineRed = chalkPipe("bold.underline.red");
 
-const { Logger } = require("@umaprotocol/financial-templates-lib");
 const winston = require("winston");
 
-const { createPriceFeed } = require("@umaprotocol/financial-templates-lib");
-const { Networker } = require("@umaprotocol/financial-templates-lib");
-
-// Clients to retrieve on-chain data.
-const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
-const { ExpiringMultiPartyEventClient } = require("@umaprotocol/financial-templates-lib");
-const { TokenBalanceClient } = require("@umaprotocol/financial-templates-lib");
+// Clients and helpers.
+const {
+  ExpiringMultiPartyClient,
+  ExpiringMultiPartyEventClient,
+  TokenBalanceClient,
+  Networker,
+  Logger,
+  createPriceFeed
+} = require("@umaprotocol/financial-templates-lib");
 
 // DVM utils.
 const { interfaceName } = require("../core/utils/Constants");

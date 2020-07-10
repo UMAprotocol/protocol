@@ -9,13 +9,13 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 // Script to test
 const { Disputer } = require("../disputer.js");
 
-// Helper client script
-const { ExpiringMultiPartyClient } = require("@umaprotocol/financial-templates-lib");
-const { GasEstimator } = require("@umaprotocol/financial-templates-lib");
-const { PriceFeedMock } = require("@umaprotocol/financial-templates-lib");
-
-// Custom winston transport module to monitor winston log outputs
-const { SpyTransport } = require("@umaprotocol/financial-templates-lib");
+// Helper clients and custom winston transport module to monitor winston log outputs
+const {
+  ExpiringMultiPartyClient,
+  GasEstimator,
+  PriceFeedMock,
+  SpyTransport
+} = require("@umaprotocol/financial-templates-lib");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
