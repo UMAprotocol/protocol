@@ -97,6 +97,8 @@ contract("Liquidatable", function(accounts) {
     const timer = await Timer.deployed();
     await timer.setCurrentTime(startTime);
 
+    const tokenFactory = await TokenFactory.deployed();
+
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
 
@@ -109,7 +111,7 @@ contract("Liquidatable", function(accounts) {
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, (await Timer.deployed()).address, {
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
       from: contractDeployer
     });
 
@@ -122,8 +124,8 @@ contract("Liquidatable", function(accounts) {
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
-      finderAddress: (await Finder.deployed()).address,
-      tokenFactoryAddress: (await TokenFactory.deployed()).address,
+      finderAddress: finder.address,
+      tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
@@ -133,7 +135,7 @@ contract("Liquidatable", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
-      timerAddress: (await Timer.deployed()).address
+      timerAddress: timer.address
     };
 
     // Deploy liquidation contract and set global params

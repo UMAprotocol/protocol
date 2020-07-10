@@ -18,6 +18,8 @@ contract("Voting", function(accounts) {
   let voting;
   let votingToken;
   let registry;
+  let timer;
+  let finder;
 
   const account1 = accounts[0];
   const account2 = accounts[1];
@@ -60,6 +62,11 @@ contract("Voting", function(accounts) {
     // Register contract with Registry.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
     await registry.registerContract([], registeredContract, { from: account1 });
+  });
+
+  beforeEach(async () => {
+    finder = await Finder.deployed();
+    timer = await Timer.deployed();
   });
 
   it("Constructor", async function() {

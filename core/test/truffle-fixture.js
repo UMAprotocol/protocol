@@ -13,24 +13,21 @@ const deployTokenfactory = require("../migrations/13_deploy_tokenfactory.js");
 const deployExpiringMultiPartyCreator = require("../migrations/14_deploy_expiring_multi_party_creator.js");
 const deployLocalWeth = require("../migrations/15_deploy_local_weth.js");
 
-const { getKeysForNetwork } = require("../../common/MigrationUtils.js");
-
 module.exports = async ({ network, web3 }) => {
   const accounts = await web3.eth.getAccounts();
-  const { deployer } = getKeysForNetwork(network, accounts);
 
-  await deployFinder(deployer, network.name, accounts);
-  await deployTimer(deployer, network.name, accounts);
-  await deployVotingToken(deployer, network.name, accounts);
-  await deployVoting(deployer, network.name, accounts);
-  await deployRegistry(deployer, network.name, accounts);
-  await deployFinancialContractsAdmin(deployer, network.name, accounts);
-  await deployStore(deployer, network.name, accounts);
-  await deployGovernor(deployer, network.name, accounts);
-  await deployDesignatedVotingFactory(deployer, network.name, accounts);
-  await deploySupportIdentifiers(deployer, network.name, accounts);
-  await deployTestnetToken(deployer, network.name, accounts);
-  await deployTokenfactory(deployer, network.name, accounts);
-  await deployExpiringMultiPartyCreator(deployer, network.name, accounts);
-  await deployLocalWeth(deployer, network.name, accounts);
+  await deployFinder(null, network.name, accounts);
+  await deployTimer(null, network.name, accounts);
+  await deployVotingToken(null, network.name, accounts);
+  await deployVoting(null, network.name, accounts);
+  await deployRegistry(null, network.name, accounts);
+  await deployFinancialContractsAdmin(null, network.name, accounts);
+  await deployStore(null, network.name, accounts);
+  await deployGovernor(null, network.name, accounts);
+  await deployDesignatedVotingFactory(null, network.name, accounts);
+  await deploySupportIdentifiers(null, network.name, accounts);
+  await deployTestnetToken(null, network.name, accounts);
+  await deployTokenfactory(null, network.name, accounts);
+  await deployExpiringMultiPartyCreator(null, network.name, accounts);
+  await deployLocalWeth(null, network.name, accounts);
 };
