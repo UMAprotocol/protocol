@@ -2,11 +2,11 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { unwrapToEth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
+const SyntheticToken = require("@umaprotocol/core/build/contracts/SyntheticToken.json");
 
 const redeem = async (web3, artifacts, emp) => {
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { BN, fromWei, toWei, toBN } = web3.utils;
-  const SyntheticToken = artifacts.require("SyntheticToken");
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const position = await emp.positions(sponsorAddress);

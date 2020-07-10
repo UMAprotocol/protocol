@@ -2,9 +2,9 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { wrapToWeth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
 
 const deposit = async (web3, artifacts, emp) => {
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { toWei } = web3.utils;
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);

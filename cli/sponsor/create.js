@@ -3,6 +3,7 @@ const inquirer = require("inquirer");
 const { wrapToWeth, getCurrencySymbol, getIsWeth } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -12,7 +13,6 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
 const create = async (web3, artifacts, emp, hasExistingPosition) => {
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { toWei, fromWei } = web3.utils;
   const account = await getDefaultAccount(web3);
 

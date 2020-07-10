@@ -2,6 +2,8 @@ const style = require("../textStyle");
 const getDefaultAccount = require("./getDefaultAccount");
 const getTwoKeyContract = require("./getTwoKeyContract");
 
+const VotingToken = require("@umaprotocol/core/build/contracts/VotingToken.json");
+
 /**
  * Displays information about the default account:
  * - Address
@@ -14,7 +16,6 @@ const getTwoKeyContract = require("./getTwoKeyContract");
 const readDefaultAccountInfo = async (web3, artifacts) => {
   const { fromWei } = web3.utils;
   const { getBalance } = web3.eth;
-  const VotingToken = artifacts.require("VotingToken");
 
   try {
     style.spinnerReadingContracts.start();

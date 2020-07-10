@@ -4,8 +4,9 @@ const { unwrapToEth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.j
 const { submitTransaction } = require("./transactionUtils");
 const { getCollateralizationRatio } = require("./marketUtils.js");
 
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
+
 const withdraw = async (web3, artifacts, emp) => {
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei, toWei, toBN } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();

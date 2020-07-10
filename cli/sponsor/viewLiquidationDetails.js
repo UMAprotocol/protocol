@@ -2,9 +2,13 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
-const { LiquidationStatesEnum } = require("../../../../common/Enums");
+const { LiquidationStatesEnum } = require("../../common/Enums");
 const { liquidationStateToDisplay } = require("./liquidationUtils");
-const { interfaceName } = require("../../../utils/Constants");
+const { interfaceName } = require("../../core/utils/Constants");
+
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
+const Finder = require("@umaprotocol/core/build/contracts/Finder.json");
+const OracleInterface = require("@umaprotocol/core/build/contracts/OracleInterface.json");
 
 /**
  * @notice Display details about all liquidation events for this sponsor.
@@ -67,7 +71,6 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
 
   // Now we know that the liquidation still has rewards to be withdrawn, but we need to check if the sponsor is eligible
   // to receive rewards.
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const sponsorAddress = await getDefaultAccount(web3);
   const liquidationTimeReadable = new Date(Number(liquidation.liquidationTime.toString()) * 1000);
   const display = `Liquidated at time ${liquidationTimeReadable} by ${liquidation.liquidator}`;
@@ -104,9 +107,7 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
       // a price has not resolved yet, or a price has resolved that indicates that the dispute will FAIL.
 
       // Fetch oracle price and use it to customize error message.
-      const Finder = artifacts.require("Finder");
       let finder = await Finder.deployed();
-      const OracleInterface = artifacts.require("OracleInterface");
       let oracle = await OracleInterface.at(
         await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
       );

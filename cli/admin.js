@@ -1,10 +1,9 @@
 const inquirer = require("inquirer");
-const abiDecoder = require("../../../common/AbiUtils.js").getAbiDecoder();
 const style = require("./textStyle");
 const { isAdminRequest, getAdminRequestId, decodeTransaction } = require("../../../common/AdminUtils.js");
+const Governor = require("@umaprotocol/core/build/contracts/Governor.json");
 
 async function decodeGovernorProposal(artifacts, id) {
-  const Governor = artifacts.require("Governor");
   const governor = await Governor.deployed();
   const proposal = await governor.getProposal(id);
 

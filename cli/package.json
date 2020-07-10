@@ -1,0 +1,29 @@
+{
+  "name": "@umaprotocol/cli",
+  "version": "1.0.0",
+  "description": "CLI interface for voting and managing financial contracts",
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "cli.js",
+  "private": true,
+  "dependencies": {
+    "inquirer": "^7.0.4",
+    "dotenv": "^6.2.0",
+    "chalk-pipe": "^3.0.0",
+    "ora": "^4.0.3",
+    "moment": "^2.24.0",
+    "bignumber.js": "^8.0.1",
+    "winston": "^3.2.1",
+    "minimist": "^1.2.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  }
+}

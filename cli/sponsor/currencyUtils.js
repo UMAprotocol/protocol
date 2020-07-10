@@ -1,7 +1,7 @@
 const { submitTransaction } = require("./transactionUtils");
+const WETH9 = require("@umaprotocol/core/build/contracts/WETH9.json");
 
 const wrapToWeth = async (web3, artifacts, emp, amount, transactionNum, totalTransactions) => {
-  const WETH9 = artifacts.require("WETH9");
   const weth = await WETH9.deployed();
 
   await submitTransaction(
@@ -14,7 +14,6 @@ const wrapToWeth = async (web3, artifacts, emp, amount, transactionNum, totalTra
 };
 
 const unwrapToEth = async (web3, artifacts, emp, amount, transactionNum, totalTransactions) => {
-  const WETH9 = artifacts.require("WETH9");
   const weth = await WETH9.deployed();
 
   await submitTransaction(
@@ -27,7 +26,6 @@ const unwrapToEth = async (web3, artifacts, emp, amount, transactionNum, totalTr
 };
 
 const getIsWeth = async (web3, artifacts, collateralCurrency) => {
-  const WETH9 = artifacts.require("WETH9");
   return collateralCurrency.address === WETH9.address;
 };
 

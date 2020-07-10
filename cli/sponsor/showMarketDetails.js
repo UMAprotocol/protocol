@@ -9,10 +9,10 @@ const { viewLiquidationDetailsMenu } = require("./viewLiquidationDetails");
 const { getLiquidationEvents } = require("./liquidationUtils");
 const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { getCollateralizationRatio } = require("./marketUtils.js");
-const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
+const { createFormatFunction } = require("../../common/FormattingUtils.js");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei, toBN } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());

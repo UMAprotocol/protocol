@@ -11,9 +11,7 @@ set -e
 SCRIPT_FILE=$(/usr/bin/env python -c "import os; print(os.path.realpath(\"$0\"))")
 SCRIPT_DIR=$(dirname $SCRIPT_FILE)
 
-# cd into the directory containing the cli file.
-# This file is in protocol/core/scripts -- so we need to go up one directory to get to the base truffle directory.
-cd $SCRIPT_DIR/../..
+# This file is in protocol/ -- so we are already currently in the base truffle directory.
 
 # Execute the script from within the scripts directory so all project artifacts/scripts are available.
 # Note: if the user needs to pass in a file path, we will need to pass the original working directory to the script so
@@ -24,4 +22,4 @@ $(npm bin)/apply-registry > /dev/null || (echo "Could not read contract addresse
 echo "...UMA contracts set up successfully!"
 
 echo "Starting Truffle..."
-$(npm bin)/truffle exec ./scripts/cli/cli.js "$@"
+$(npm bin)/truffle exec ./cli/cli.js "$@"

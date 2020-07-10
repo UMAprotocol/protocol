@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const { getMarketSummary } = require("./marketUtils");
-const { PositionStatesEnum } = require("../../../../common/Enums");
+const { PositionStatesEnum } = require("../../common/Enums");
 const showExpiredMarketDetails = require("./showExpiredMarketDetails");
 
 const listExpiredMarkets = async (web3, artifacts) => {

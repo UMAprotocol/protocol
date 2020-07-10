@@ -1,4 +1,4 @@
-const { LiquidationStatesEnum } = require("../../../../common/Enums.js");
+const { LiquidationStatesEnum } = require("../../common/Enums.js");
 
 /**
  * @notice Fetch all liquidation events for a given sponsor. Use this instead of reading `emp.getLiquidations(sponsor)`

@@ -1,20 +1,19 @@
 const style = require("../textStyle");
 const winston = require("winston");
-const PublicNetworks = require("../../../../common/PublicNetworks");
+const PublicNetworks = require("../../common/PublicNetworks");
 const { getCurrencySymbol } = require("./currencyUtils.js");
-const { createReferencePriceFeedForEmp } = require("../../../../financial-templates-lib/price-feed/CreatePriceFeed.js");
-const { Networker } = require("../../../../financial-templates-lib/price-feed/Networker.js");
-const { computeCollateralizationRatio } = require("../../../../common/EmpUtils.js");
-const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
+const { createReferencePriceFeedForEmp } = require("../../financial-templates-lib/price-feed/CreatePriceFeed.js");
+const { Networker } = require("../../financial-templates-lib/price-feed/Networker.js");
+const { computeCollateralizationRatio } = require("../../common/EmpUtils.js");
+const { createFormatFunction } = require("../../common/FormattingUtils.js");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
+const ExpiringMultiParty = require("@umaprotocol/core/build/contracts/ExpiringMultiParty.json");
+const Registry = require("@umaprotocol/core/build/contracts/Registry.json");
+const SyntheticToken = require("@umaprotocol/core/build/contracts/SyntheticToken.json");
+const Governor = require("@umaprotocol/core/build/contracts/Governor.json");
 
 const getMarketSummary = async (web3, artifacts) => {
   style.spinnerReadingContracts.start();
-  const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-  const Registry = artifacts.require("Registry");
-
-  const SyntheticToken = artifacts.require("SyntheticToken");
-  const Governor = artifacts.require("Governor");
 
   const registry = await Registry.deployed();
   const contractAddresses = await registry.getAllRegisteredContracts();

@@ -1,10 +1,8 @@
-const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
-const { PositionStatesEnum } = require("../../../../common/Enums");
+const { PositionStatesEnum } = require("../../common/Enums");
+const SyntheticToken = require("@umaprotocol/core/build/contracts/SyntheticToken.json");
 
 const showExpiredMarketDetails = async (web3, artifacts, emp) => {
-  const SyntheticToken = artifacts.require("SyntheticToken");
-
   const { fromWei } = web3.utils;
 
   const contractState = (await emp.contractState()).toString();

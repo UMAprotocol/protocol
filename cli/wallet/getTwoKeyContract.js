@@ -3,9 +3,10 @@
  */
 const getDefaultAccount = require("./getDefaultAccount");
 
+const DesignatedVoting = require("@umaprotocol/core/build/contracts/DesignatedVoting.json");
+const DesignatedVotingFactory = require("@umaprotocol/core/build/contracts/DesignatedVotingFactory.json");
+
 const getTwoKeyContract = async (web3, artifacts) => {
-  const DesignatedVoting = artifacts.require("DesignatedVoting");
-  const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
   try {
     const designatedVotingFactory = await DesignatedVotingFactory.deployed();
     const voterAccount = await getDefaultAccount(web3);
