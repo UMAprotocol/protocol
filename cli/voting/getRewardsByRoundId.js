@@ -33,17 +33,19 @@ const getRewardsByRound = async (web3, votingContract, account) => {
   const rewardsByRoundId = {};
 
   for (let i = 0; i < revealedVotes.length; i++) {
-    const identifier = revealedVotes[i].args.identifier.toString();
-    const time = revealedVotes[i].args.time.toString();
-    const roundId = revealedVotes[i].args.roundId.toString();
+    const identifier = revealedVotes[i].returnValues.identifier.toString();
+    const time = revealedVotes[i].returnValues.time.toString();
+    const roundId = revealedVotes[i].returnValues.roundId.toString();
 
     try {
-      const price = (await votingContract.getPrice(identifier, time)).toString();
+      const price = (await votingContract.methods.getPrice(identifier, time).call()).toString();
 
       // If retrieveRewards returns 0, then the rewards have already been retrieved
-      let potentialRewards = await votingContract.retrieveRewards.call(account, roundId, [{ identifier, time }], {
-        from: account
-      });
+      let potentialRewards = await votingContract.methods
+        .retrieveRewards(account, roundId, [{ identifier, time }])
+        .call({
+          from: account
+        });
       potentialRewards = potentialRewards.toString();
 
       if (potentialRewards !== "0") {
@@ -86,7 +88,7 @@ const getRewardsByRound = async (web3, votingContract, account) => {
     });
   });
   roundIds = roundIds.sort((a, b) => {
-    return parseInt(a.id) - parseInt(a.id);
+    return parseInt(a.id) - parseInt(b.id);
   });
 
   return { rewardsByRoundId, roundIds };

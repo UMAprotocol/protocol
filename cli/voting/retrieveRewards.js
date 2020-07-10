@@ -1,6 +1,7 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const style = require("../textStyle");
-const { batchRetrieveRewards, getVotingRoles } = require("../../common/VotingUtils");
+const { batchRetrieveRewards } = require("../../common/VotingUtils");
+const { getVotingRoles } = require("./utils");
 const getAvailableRewards = require("./getRewardsByRoundId");
 const inquirer = require("inquirer");
 const argv = require("minimist")(process.argv.slice());

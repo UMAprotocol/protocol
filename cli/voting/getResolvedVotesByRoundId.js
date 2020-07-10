@@ -25,7 +25,7 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
   // Construct list of round ID's participated in by voter
   const roundIds = {};
   for (let i = 0; i < revealedVotes.length; i++) {
-    const roundId = revealedVotes[i].args.roundId.toString();
+    const roundId = revealedVotes[i].returnValues.roundId.toString();
     // If this is a new roundId, count it
     if (!roundIds[roundId]) {
       roundIds[roundId] = [];
@@ -42,12 +42,12 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
     });
 
     resolvedPrices.forEach(price => {
-      const roundId = price.args.roundId;
+      const roundId = price.returnValues.roundId;
       const resolvedPrice = {
         roundId: roundId.toString(),
-        identifier: web3.utils.hexToUtf8(price.args.identifier),
-        time: style.formatSecondsToUtc(price.args.time),
-        price: web3.utils.fromWei(price.args.price)
+        identifier: web3.utils.hexToUtf8(price.returnValues.identifier),
+        time: style.formatSecondsToUtc(price.returnValues.time),
+        price: web3.utils.fromWei(price.returnValues.price)
       };
       roundIds[roundId].push(resolvedPrice);
     });

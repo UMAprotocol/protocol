@@ -10,31 +10,7 @@ const { getRandomUnsignedInt } = require("./Random.js");
 
 const argv = require("minimist")(process.argv.slice());
 
-/**
- * Return voting contract, voting account, and signing account based on whether user is using a
- * designated voting proxy.
- * @param {String} account current default signing account
- * @param {Object} voting DVM contract
- * @param {Object} [designatedVoting] designated voting proxy contract
- * @return votingContract Contract to send votes to.
- * @return votingAccount address that votes are attributed to.
- * @return signingAddress address used to sign encrypted messages.
- */
-const getVotingRoles = (account, voting, designatedVoting) => {
-  if (designatedVoting) {
-    return {
-      votingContract: designatedVoting,
-      votingAccount: designatedVoting.address,
-      signingAddress: account
-    };
-  } else {
-    return {
-      votingContract: voting,
-      votingAccount: account,
-      signingAddress: account
-    };
-  }
-};
+const gasToSendTransactions = 600000;
 
 /**
  * Generate a salt and use it to encrypt a committed vote in response to a price request
@@ -116,20 +92,20 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
     const maxBatchSize = newCommitments.slice(k, Math.min(k + BATCH_MAX_COMMITS, newCommitments.length));
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-    const { receipt } = await votingContract.batchCommit(
-      maxBatchSize.map(commitment => {
-        // This filters out the parts of the commitment that we don't need to send to solidity.
-        // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-        // the solidity struct.
-        const { price, salt, ...rest } = commitment;
-        return rest;
-      }),
-      { from: account }
-    );
-
+    const { transactionHash } = await votingContract.methods
+      .batchCommit(
+        maxBatchSize.map(commitment => {
+          // This filters out the parts of the commitment that we don't need to send to solidity.
+          // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+          // the solidity struct.
+          const { price, salt, ...rest } = commitment;
+          return rest;
+        })
+      )
+      .send({ from: account, gas: gasToSendTransactions });
     // Add the batch transaction hash to each commitment.
     maxBatchSize.forEach(commitment => {
-      commitment.txnHash = receipt.transactionHash;
+      commitment.txnHash = transactionHash;
     });
 
     // Append any of new batch's commitments to running commitment list
@@ -153,11 +129,13 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
     const maxBatchSize = newReveals.slice(k, Math.min(k + BATCH_MAX_REVEALS, newReveals.length));
 
     // Always call `batchReveal`, even if there's only one reveal. Difference in gas cost is negligible.
-    const { receipt } = await votingContract.batchReveal(maxBatchSize, { from: account });
+    const { transactionHash } = await votingContract.methods
+      .batchReveal(maxBatchSize)
+      .send({ from: account, gas: gasToSendTransactions });
 
     // Add the batch transaction hash to each reveal.
     maxBatchSize.forEach(reveal => {
-      reveal.txnHash = receipt.transactionHash;
+      reveal.txnHash = transactionHash;
     });
 
     // Append any of new batch's commitments to running commitment list
@@ -188,13 +166,16 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
     }
 
     // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
-    const { receipt } = await votingContract.retrieveRewards(votingAccount, roundId, pendingRequests, {
-      from: signingAccount
-    });
+    const { transactionHash } = await votingContract.methods
+      .retrieveRewards(votingAccount, roundId, pendingRequests)
+      .send({
+        from: signingAccount,
+        gas: gasToSendTransactions
+      });
 
     // Add the batch transaction hash to each reveal.
     maxBatchSize.forEach(retrieve => {
-      retrieve.txnHash = receipt.transactionHash;
+      retrieve.txnHash = transactionHash;
     });
 
     // Append any of new batch's commitments to running commitment list
@@ -236,7 +217,6 @@ const getLatestEvent = async (eventName, request, roundId, account, votingContra
 };
 
 module.exports = {
-  getVotingRoles,
   getLatestEvent,
   constructCommitment,
   constructReveal,

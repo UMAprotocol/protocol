@@ -40,7 +40,7 @@ async function run() {
     const choice = await topMenu();
     switch (choice) {
       case ACTIONS.wallet:
-        await wallet(web3, artifacts);
+        await wallet(web3);
         break;
       case ACTIONS.vote:
         await vote(web3);

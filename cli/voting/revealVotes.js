@@ -3,7 +3,8 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../common/Enums");
-const { constructReveal, batchRevealVotes, getVotingRoles } = require("../../common/VotingUtils");
+const { constructReveal, batchRevealVotes } = require("../../common/VotingUtils");
+const { getVotingRoles } = require("./utils");
 
 /**
  * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.
@@ -14,9 +15,9 @@ const { constructReveal, batchRevealVotes, getVotingRoles } = require("../../com
  */
 const revealVotes = async (web3, oracle, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const pendingRequests = await oracle.getPendingRequests();
-  const roundId = await oracle.getCurrentRoundId();
-  const roundPhase = await oracle.getVotePhase();
+  const pendingRequests = await oracle.methods.getPendingRequests().call();
+  const roundId = await oracle.methods.getCurrentRoundId().call();
+  const roundPhase = await oracle.methods.getVotePhase().call();
   const account = await getDefaultAccount(web3);
 
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.

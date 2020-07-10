@@ -3,7 +3,8 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../common/Enums");
-const { constructCommitment, batchCommitVotes, getVotingRoles } = require("../../common/VotingUtils");
+const { constructCommitment, batchCommitVotes } = require("../../common/VotingUtils");
+const { getVotingRoles } = require("./utils");
 const networkUtils = require("../../common/PublicNetworks");
 
 /**
@@ -20,9 +21,9 @@ const networkUtils = require("../../common/PublicNetworks");
  */
 const commitVotes = async (web3, oracle, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const pendingRequests = await oracle.getPendingRequests();
-  const roundId = await oracle.getCurrentRoundId();
-  const roundPhase = (await oracle.getVotePhase()).toString();
+  const pendingRequests = await oracle.methods.getPendingRequests().call();
+  const roundId = await oracle.methods.getCurrentRoundId().call();
+  const roundPhase = (await oracle.methods.getVotePhase().call()).toString();
   const account = await getDefaultAccount(web3);
 
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.

@@ -1,4 +1,3 @@
-const { computeTopicHash } = require("../../common/EncryptionHelper");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { getLatestEvent } = require("../../common/VotingUtils");
 
