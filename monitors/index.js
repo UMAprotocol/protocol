@@ -4,7 +4,10 @@ const { hexToUtf8 } = web3.utils;
 // Helpers.
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const {
+  createReferencePriceFeedForEmp,
+  createUniswapPriceFeedForEmp
+} = require("../financial-templates-lib/price-feed/CreatePriceFeed");
 const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Clients to retrieve on-chain data.
@@ -33,10 +36,7 @@ const Voting = artifacts.require("Voting");
  *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
  * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
  *     If `null` then will search up until the latest block number in each loop.
- * @param {Object} botMonitorObject Configuration to construct the balance monitor module.
- * @param {Object} walletMonitorObject Configuration to construct the collateralization ratio monitor module.
- * @param {Object} contractMonitorObject Configuration to construct the contract monitor module.
- * @param {Object} syntheticPegMonitorObject Configuration to construct the synthetic peg monitor module.
+ * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} uniswapPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the uniswap price feed object.
  * @return None or throws an Error.
@@ -47,10 +47,7 @@ async function run(
   pollingDelay,
   startingBlock,
   endingBlock,
-  botMonitorObject,
-  walletMonitorObject,
-  contractMonitorObject,
-  syntheticPegMonitorObject,
+  monitorConfig,
   uniswapPriceFeedConfig,
   medianizerPriceFeedConfig
 ) {
@@ -64,10 +61,7 @@ async function run(
       pollingDelay,
       startingBlock,
       endingBlock,
-      botMonitorObject,
-      walletMonitorObject,
-      contractMonitorObject,
-      syntheticPegMonitorObject,
+      monitorConfig,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     });
@@ -90,11 +84,12 @@ async function run(
 
     // Setup medianizer price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const medianizerPriceFeed = await createPriceFeed(
+    const medianizerPriceFeed = await createReferencePriceFeedForEmp(
       logger,
       web3,
       new Networker(logger),
       getTime,
+      address,
       medianizerPriceFeedConfig
     );
 
@@ -113,11 +108,12 @@ async function run(
       eventsFromBlockNumber,
       endingBlock
     );
+
     const contractMonitor = new ContractMonitor(
       logger,
       empEventClient,
-      contractMonitorObject,
       medianizerPriceFeed,
+      monitorConfig,
       empProps,
       votingContract
     );
@@ -131,19 +127,20 @@ async function run(
       syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, botMonitorObject, empProps);
+    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, monitorConfig, empProps);
 
     // 3. Collateralization Ratio monitor.
     const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
 
-    const crMonitor = new CRMonitor(logger, empClient, walletMonitorObject, medianizerPriceFeed, empProps);
+    const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
 
     // 4. Synthetic Peg Monitor.
-    const uniswapPriceFeed = await createPriceFeed(
+    const uniswapPriceFeed = await createUniswapPriceFeedForEmp(
       logger,
       web3,
       new Networker(logger),
       getTime,
+      address,
       uniswapPriceFeedConfig
     );
     const syntheticPegMonitor = new SyntheticPegMonitor(
@@ -151,7 +148,7 @@ async function run(
       web3,
       uniswapPriceFeed,
       medianizerPriceFeed,
-      syntheticPegMonitorObject,
+      monitorConfig,
       empProps
     );
 
@@ -226,58 +223,39 @@ async function Poll(callback) {
     // until. If not set the default to null which indicates that the bot should search up to 'latest'.
     const endingBlock = process.env.ENDING_BLOCK_NUMBER;
 
-    if (
-      !process.env.BOT_MONITOR_OBJECT ||
-      !process.env.WALLET_MONITOR_OBJECT ||
-      !process.env.CONTRACT_MONITOR_OBJECT ||
-      !process.env.SYNTHETIC_PEG_MONITOR_OBJECT
-    ) {
-      throw new Error(
-        "Bad input arg! Specify a: `BOT_MONITOR_OBJECT`, `WALLET_MONITOR_OBJECT`, `CONTRACT_MONITOR_OBJECT` & `SYNTHETIC_PEG_OBJECT` to track."
-      );
-    }
-
-    // Bots to monitor. Each bot can be have a collateralThreshold, syntheticThreshold and etherThreshold. EG:
-    // [{ name: "Liquidator Bot",
-    //    address: "0x12345"
-    //    collateralThreshold: 500000000000000000000, // 500e18 collateral token currency.
-    //    syntheticThreshold: 200000000000000000000000, // 20000e18 synthetic token currency.
-    //    etherThreshold: 500000000000000000 }, //0.5e18 Wei.
-    // ...]
-    const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
-
-    // Wallet objects to monitor. Each wallet has a friendly name and a crAlert. EG:
-    // [{ name: "Market Making bot",
-    //    address: "0x12345",
-    //    crAlert: 1.50 }, // Note 150% is represented as 1.5
-    //  ...];
-    const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
-
-    // Contract monitor. The monitor needs the addresses of the liquidator and disute bots to inform logs. EG:
-    // { "monitoredLiquidators": ["0x1234","0x5678"],
-    //   "monitoredDisputers": ["0x1234","0x5678"] }
-    const contractMonitorObject = JSON.parse(process.env.CONTRACT_MONITOR_OBJECT);
-
-    // Synthetic Peg monitor. Specify the deviationAlertThreshold, volatilityWindow and volatilityAlertThreshold. EG:
-    // { "deviationAlertThreshold": 0.5, // if the deviation in token price exceeds this value an alert is fired.
-    //   "volatilityWindow": 600 // Length of time (in seconds) to snapshot volatility.
-    //   "volatilityAlertThreshold": 0.1 } // Error threshold for pricefeed's price volatility over `volatilityWindow`.
-    const syntheticPegMonitorObject = JSON.parse(process.env.SYNTHETIC_PEG_MONITOR_OBJECT);
-
-    if (!process.env.UNISWAP_PRICE_FEED_CONFIG || !process.env.MEDIANIZER_PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings."
-      );
-    }
+    // Monitor config contains all configuration settings for all monitor modules. This includes the following:
+    // MONITOR_CONFIG={
+    //  "botsToMonitor": [{ name: "Liquidator Bot",       // Friendly bot name
+    //     address: "0x12345"                             // Bot address
+    //    "collateralThreshold": "500000000000000000000", // 500e18 collateral token currency.
+    //    "syntheticThreshold": "2000000000000000000000", // 200e18 synthetic token currency.
+    //    "etherThreshold": "500000000000000000" },       // 0.5e18 Wei alert
+    //  ...],
+    //  "walletsToMonitor": [{ name: "Market Making bot", // Friendly bot name
+    //    address: "0x12345",                             // bot address
+    //    crAlert: 1.50 },                                // CR monitoring threshold. 1.5=150%
+    //  ...],
+    //  "monitoredLiquidators": ["0x1234","0x5678"],       // Array of liquidator bots of interest.
+    //  "monitoredDisputers": ["0x1234","0x5678"],         // Array of disputer bots of interest.
+    //  "deviationAlertThreshold": 0.5,                    // If deviation in token price exceeds this fire alert.
+    //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
+    //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
+    //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
+    // }
+    const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 
     // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
     // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
-    const uniswapPriceFeedConfig = JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG);
+    const uniswapPriceFeedConfig = process.env.UNISWAP_PRICE_FEED_CONFIG
+      ? JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG)
+      : null;
 
     // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
     // to use. EG: {"type":"medianizer","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
     // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
-    const medianizerPriceFeedConfig = JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG);
+    const medianizerPriceFeedConfig = process.env.MEDIANIZER_PRICE_FEED_CONFIG
+      ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
+      : null;
 
     await run(
       Logger,
@@ -285,10 +263,7 @@ async function Poll(callback) {
       pollingDelay,
       startingBlock,
       endingBlock,
-      botMonitorObject,
-      walletMonitorObject,
-      contractMonitorObject,
-      syntheticPegMonitorObject,
+      monitorConfig,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     );

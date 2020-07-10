@@ -1,30 +1,28 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class CRMonitor {
   /**
    * @notice Constructs new Collateral Requirement Monitor.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Client used to query EMP status for monitored wallets position info.
-   * @param {List} walletsToMonitor Array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
-   *      must be given. Example:
-   *      [{ name: "Market Making bot",
-   *         address: "0x12345",
-   *         crAlert: 1.50 }, // Note 150% is represented as 1.5
-   *       ...];
    * @param {Object} priceFeed Module used to query the current token price.
+   * @param {Object} config Object containing an array of wallets to Monitor. Each wallet's `walletName`, `address`,
+   * `crAlert` must be given. Example:
+   *      { walletsToMonitor: [{ name: "Market Making bot", // Friendly bot name
+   *            address: "0x12345",                         // Bot address
+   *            crAlert: 1.50 },                            // CR alerting threshold to generate an alert message; 1.5=150%
+   *       ...] };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed, empProps) {
+  constructor(logger, expiringMultiPartyClient, priceFeed, config, empProps) {
     this.logger = logger;
-
-    // Wallet addresses and thresholds to monitor.
-    this.walletsToMonitor = walletsToMonitor;
 
     this.empClient = expiringMultiPartyClient;
     this.web3 = this.empClient.web3;
@@ -32,10 +30,36 @@ class CRMonitor {
     // Offchain price feed to compute the current collateralization ratio for the monitored positions.
     this.priceFeed = priceFeed;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
-
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
+
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+
+    // Wallets to monitor collateralization ratio.
+    const defaultConfig = {
+      // By default monitor no wallets for correct collateralization ratio.
+      walletsToMonitor: {
+        value: [],
+        isValid: x => {
+          return (
+            Array.isArray(x) && // the value of `walletsToMonitor` must be an array of objects.
+            x.every(y => {
+              // Each object within the array must have the following keys.
+              return (
+                Object.keys(y).includes("name") &&
+                typeof y.name === "string" &&
+                Object.keys(y).includes("address") &&
+                this.web3.utils.isAddress(y.address) && // `address` must be a valid Ethereum address.
+                Object.keys(y).includes("crAlert") &&
+                typeof y.crAlert === "number"
+              );
+            })
+          );
+        }
+      }
+    };
+
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -44,6 +68,7 @@ class CRMonitor {
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
   async checkWalletCrRatio() {
+    if (this.walletsToMonitor.length == 0) return; // If there are no wallets to monitor exit early
     // yield the price feed at the current time.
     const price = this.priceFeed.getCurrentPrice();
 
