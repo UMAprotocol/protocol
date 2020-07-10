@@ -1,6 +1,7 @@
 const style = require("../textStyle");
 const getDefaultAccount = require("./getDefaultAccount");
 const getTwoKeyContract = require("./getTwoKeyContract");
+const { contractFromArtifact } = require("../../common/ContractUtils");
 
 const VotingToken = require("@umaprotocol/core/build/contracts/VotingToken.json");
 
@@ -13,7 +14,7 @@ const VotingToken = require("@umaprotocol/core/build/contracts/VotingToken.json"
  * @param {* Object} web3 Web3 provider
  * @param {* Object} artifacts Contract artifacts
  */
-const readDefaultAccountInfo = async (web3, artifacts) => {
+const readDefaultAccountInfo = async web3 => {
   const { fromWei } = web3.utils;
   const { getBalance } = web3.eth;
 
@@ -22,9 +23,9 @@ const readDefaultAccountInfo = async (web3, artifacts) => {
     const account = await getDefaultAccount(web3);
     const address = account;
     const balance = await getBalance(address);
-    const votingToken = await VotingToken.deployed();
-    const votingBalance = await votingToken.balanceOf(address);
-    let designatedVotingContract = await getTwoKeyContract(web3, artifacts);
+    const votingToken = await contractFromArtifact(VotingToken, web3);
+    const votingBalance = await votingToken.methods.balanceOf(address).call();
+    let designatedVotingContract = await getTwoKeyContract(web3);
     style.spinnerReadingContracts.stop();
 
     console.group(style.success("\n** Ethereum Account Info **"));
@@ -35,11 +36,13 @@ const readDefaultAccountInfo = async (web3, artifacts) => {
     console.groupEnd();
 
     if (designatedVotingContract) {
-      const designatedVotingBalanceEth = await getBalance(designatedVotingContract.address);
-      const designatedVotingBalanceVoting = await votingToken.balanceOf(designatedVotingContract.address);
+      const designatedVotingBalanceEth = await getBalance(designatedVotingContract.options.address);
+      const designatedVotingBalanceVoting = await votingToken.methods
+        .balanceOf(designatedVotingContract.options.address)
+        .call();
 
       console.group(style.success("\n** Two Key Contract Info **"));
-      console.log(`- ${style.success("Address")}: ${designatedVotingContract.address}`);
+      console.log(`- ${style.success("Address")}: ${designatedVotingContract.options.address}`);
       console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalanceEth)} ETH`);
       console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalanceVoting)} UMA voting token`);
       console.log("\n");

@@ -5,6 +5,9 @@ const commitVotes = require("./voting/commitVotes");
 const revealVotes = require("./voting/revealVotes");
 const retrieveRewards = require("./voting/retrieveRewards");
 const getTwoKeyContract = require("./wallet/getTwoKeyContract");
+const { contractFromArtifact } = require("../common/ContractUtils");
+
+const Voting = require("@umaprotocol/core/build/contracts/Voting.json");
 
 const ACTIONS = {
   info: "Info",
@@ -31,11 +34,10 @@ const vote = async () => {
 /**
  * Menu for Voting subactions of CLI
  */
-const votingMenu = async function(web3, artifacts) {
+const votingMenu = async function(web3) {
   try {
-    const Voting = artifacts.require("Voting");
-    const votingContract = await Voting.deployed();
-    const designatedVotingContract = await getTwoKeyContract(web3, artifacts);
+    const votingContract = await contractFromArtifact(Voting, web3);
+    const designatedVotingContract = await getTwoKeyContract(web3);
 
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {

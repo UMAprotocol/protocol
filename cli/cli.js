@@ -43,7 +43,7 @@ async function run() {
         await wallet(web3, artifacts);
         break;
       case ACTIONS.vote:
-        await vote(web3, artifacts);
+        await vote(web3);
         break;
       case ACTIONS.sponsor:
         await sponsor(web3, artifacts);

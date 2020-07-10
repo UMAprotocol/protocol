@@ -27,6 +27,17 @@ const revertWrapper = result => {
   return result;
 };
 
+// Web3.js
+const contractFromArtifact = async (artifact, web3, address) => {
+  const networkId = await web3.eth.net.getId();
+  const deployedAddress = address
+    ? address
+    : artifact.networks && artifact.networks[networkId] && artifact.networks[networkId].address;
+  const instance = new web3.eth.Contract(artifact.abi, deployedAddress);
+  return instance;
+};
+
 module.exports = {
-  revertWrapper
+  revertWrapper,
+  contractFromArtifact
 };

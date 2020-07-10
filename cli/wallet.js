@@ -26,13 +26,13 @@ const wallet = async () => {
 /**
  * Menu for Wallet subactions of CLI
  */
-const walletMenu = async function(web3, artifacts) {
+const walletMenu = async function(web3) {
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
       // INFO: Display default account information for user
       case ACTIONS.info:
-        await readDefaultAccount(web3, artifacts);
+        await readDefaultAccount(web3);
         break;
 
       // GENERATE: Create a new account for user
