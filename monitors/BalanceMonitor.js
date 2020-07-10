@@ -1,6 +1,7 @@
 // This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class BalanceMonitor {
   /**
@@ -8,29 +9,61 @@ class BalanceMonitor {
    * @param {Object} tokenBalanceClient Client used to query token balances for monitored bots and wallets.
    * @param tokenBalanceClient Instance of the TokenBalanceClient from the `financial-templates lib.
    * which provides synchronous access to address balances for a given expiring multi party contract.
-   * @param {List} botsToMonitor Array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
+   * @param {Object} config Object containing configuration for the balance monitor. Only option is a `botsToMonitor` 
+   * which is defines an array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
    *      and`syntheticThreshold` must be given. Example:
-   *      [{ name: "Liquidator Bot",
+   *      { botsToMonitor:[{ name: "Liquidator Bot",
    *         address: "0x12345"
    *         collateralThreshold: x1,
    *         syntheticThreshold: x2,
    *         etherThreshold: x3 },
-   *      ..]
+   *      ..] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, tokenBalanceClient, botsToMonitor, empProps) {
+  constructor(logger, tokenBalanceClient, config, empProps) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
     this.client = tokenBalanceClient;
     this.web3 = this.client.web3;
 
-    // Bot addresses and thresholds to monitor.
-    this.botsToMonitor = botsToMonitor;
+    // Bot addresses and thresholds to monitor. If none provided then defaults to monitoring nothing. Configuration
+    // object must conform to correct structure with the right key valued pairs.
+    const defaultConfig = {
+      botsToMonitor: {
+        value: [],
+        isValid: x => {
+          // For the config to be valid it must be an array of objects with the right keys within the object as being
+          // the `name`, `address`, `collateralThreshold`, `syntheticThreshold` and `etherThreshold`.
+          return (
+            Array.isArray(x) && // the value of `botsToMonitor` must be an array of objects.
+            x.every(y => {
+              // Each object within the array must have the following keys.
+              return (
+                Object.keys(y).includes("name") &&
+                Object.keys(y).includes("address") &&
+                this.web3.utils.isAddress(y.address) && // `address` must be a valid Ethereum address.
+                Object.keys(y).includes("collateralThreshold") &&
+                // Note this expects a string input as this should be a wei encoded version of the input number. If the
+                // collateralThreshold was 5000 Dai this would be represented as 5000e18 or 5000000000000000000000 which
+                // does not play well with JS as a number. As a result, these inputs should be strings.
+                typeof y.collateralThreshold === "string" &&
+                Object.keys(y).includes("syntheticThreshold") &&
+                typeof y.syntheticThreshold === "string" &&
+                Object.keys(y).includes("etherThreshold") &&
+                typeof y.etherThreshold === "string"
+              );
+            })
+          );
+        }
+      }
+    };
+
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
     // Loop over all bots in the provided config and register them in the tokenBalanceClient. This will ensure that
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.

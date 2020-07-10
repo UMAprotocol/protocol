@@ -27,20 +27,17 @@ contract("index.js", function(accounts) {
 
   let defaultUniswapPricefeedConfig;
   let defaultMedianizerPricefeedConfig;
-  let defaultBotMonitorConfig;
-  let defaultWalletMonitorConfig;
-  let defaultContractMonitorConfig;
-  let defaultSyntheticPegMonitorConfig;
+  let defaultMonitorConfig;
 
   let spy;
   let spyLogger;
 
   before(async function() {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UMATEST"));
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
   });
 
   beforeEach(async function() {
@@ -57,9 +54,9 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
-      priceFeedIdentifier: utf8ToHex("UMATEST"),
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
       syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
+      syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -76,35 +73,15 @@ contract("index.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
+    // Run with empty configs for all input values, except for uniswap mock which is needed as no uniswap market in test env.
+    defaultMonitorConfig = {};
     defaultUniswapPricefeedConfig = {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
       lookback: 1
     };
-
-    defaultMedianizerPricefeedConfig = {
-      type: "medianizer",
-      apiKey: "test-apikey",
-      pair: "ethbtc",
-      lookback: 1,
-      minTimeBetweenUpdates: 1,
-      medianizedFeeds: [
-        {
-          type: "cryptowatch",
-          exchange: "binance"
-        }
-      ]
-    };
-
-    defaultBotMonitorConfig = [];
-    defaultWalletMonitorConfig = [];
-    defaultContractMonitorConfig = { monitoredLiquidators: [], monitoredDisputers: [] };
-    defaultSyntheticPegMonitorConfig = {
-      deviationAlertThreshold: 0.5,
-      volatilityWindow: 600,
-      volatilityAlertThreshold: 0.1
-    };
+    defaultMedianizerPricefeedConfig = {};
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
@@ -120,10 +97,7 @@ contract("index.js", function(accounts) {
       0,
       0,
       null,
-      defaultBotMonitorConfig,
-      defaultWalletMonitorConfig,
-      defaultContractMonitorConfig,
-      defaultSyntheticPegMonitorConfig,
+      defaultMonitorConfig,
       defaultUniswapPricefeedConfig,
       defaultMedianizerPricefeedConfig
     );
