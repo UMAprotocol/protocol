@@ -1,12 +1,33 @@
 {
-  "name": "financial-templates-lib",
-  "version": "0.1.0",
+  "name": "@umaprotocol/financial-templates-lib",
+  "version": "1.0.0",
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "private": true,
   "dependencies": {
+    "@umaprotocol/core": "^1.0.0",
+    "@uniswap/sdk": "^2.0.5",
+    "dotenv": "^6.2.0",
+    "minimist": "^1.2.0",
     "node-fetch": "^2.6.0",
+    "node-pagerduty": "^1.2.0",
     "winston": "^3.2.1",
     "winston-slack-webhook-transport": "^1.2.1",
     "winston-transport": "^4.3.0"
+  },
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests currently configured\""
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
   }
 }

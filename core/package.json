@@ -4,15 +4,16 @@
   "description": "UMA smart contracts and unit tests",
   "private": true,
   "dependencies": {
-    "@openzeppelin/contracts": "3.0.0",
-    "minimist": "^1.2.0",
-    "@sendgrid/mail": "^6.4.0",
-    "node-fetch": "^2.3.0",
-    "gmail-send": "^1.2.14",
-    "express": "^4.17.1",
     "@awaitjs/express": "^0.3.0",
-    "web3": "^1.2.4",
-    "truffle": "^5.1.14"
+    "@openzeppelin/contracts": "3.0.0",
+    "@sendgrid/mail": "^6.4.0",
+    "@umaprotocol/financial-templates-lib": "^1.0.0",
+    "express": "^4.17.1",
+    "gmail-send": "^1.2.14",
+    "minimist": "^1.2.0",
+    "node-fetch": "^2.3.0",
+    "truffle": "^5.1.14",
+    "web3": "^1.2.4"
   },
   "devDependencies": {
     "coveralls": "^3.1.0",
@@ -27,6 +28,13 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "files": [
+    "./contracts/**/*.sol",
+    "./build/contracts/*.js"
+  ],
+  "scripts": {
+    "test": "echo \"No tests currently configured\""
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

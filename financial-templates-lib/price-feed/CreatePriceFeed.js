@@ -3,7 +3,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
-const Uniswap = require("../../core/build/contracts/Uniswap.json");
+const Uniswap = require("@umaprotocol/core/build/contracts/Uniswap.json");
 const ExpiringMultiParty = require("../../core/build/contracts/ExpiringMultiParty.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {

@@ -7,16 +7,13 @@ const { MAX_UINT_VAL } = require("../../common/Constants.js");
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
 
-// Helper client script
+// Helpers and custom winston transport module to monitor winston log outputs
 const {
-  ExpiringMultiPartyEventClient
-} = require("../../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
-
-// Price feed mock
-const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
-
-// Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+  ExpiringMultiPartyEventClient,
+  PriceFeedMock,
+  SpyTransport,
+  lastSpyLogIncludes
+} = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
