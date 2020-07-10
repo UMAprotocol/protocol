@@ -38,8 +38,8 @@ run_tests() {
     # Check the ci deployment.
     check_deployment ./ 1234 ci
 
-    # Run standard truffle tests
-    $(npm bin)/truffle test --network ci
+    # Run standard buidler tests
+    $(npm bin)/buidler test
 }
 
 # Run tests for core.
