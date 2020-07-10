@@ -1,4 +1,10 @@
-const { createFormatFunction, formatDateShort, formatWithMaxDecimals, addSign } = require("../common/FormattingUtils");
+const {
+  createFormatFunction,
+  formatDateShort,
+  formatDate,
+  formatWithMaxDecimals,
+  addSign
+} = require("../common/FormattingUtils");
 const { revertWrapper } = require("../common/ContractUtils");
 const { ZERO_ADDRESS } = require("../common/Constants");
 const { averageBlockTimeSeconds } = require("../common/TimeUtils");
@@ -110,10 +116,31 @@ class GlobalSummaryReporter {
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
 
-    // Initialize Uniswap pair to get trade data for. Default pair token is the collateral token.
+    // Initialize Uniswap pair address to get trade data for. Default pair token is the collateral token.
     this.uniswapPairToken = this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
       ? this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
       : this.collateralContract;
+    this.uniswapPairDetails = await getUniswapPairDetails(
+      this.web3,
+      this.syntheticContract.address,
+      this.uniswapPairToken.address
+    );
+    this.uniswapPairAddress = this.uniswapPairDetails.pairAddress.toLowerCase();
+
+    // Set up Uniswap subgraph client and query latest update stats.
+    // If the `latestSwapBlockNumber` < `endBlockNumberForPeriod`, then set `endBlockNumberForPeriod = latestSwapBlockNumber`
+    // otherwise the graphQL client will throw an error when trying to access a block that it has not indexed yet.
+    // Its ok to use the latest swap's block number as the end-period block number because we are only querying swap data for this pair.
+    // If we were using `endBlockNumberForPeriod` to query data for some other pair as well,
+    // then we wouldn't be able to set `endBlockNumberForPeriod = latestSwapBlockNumber`
+    this.uniswapClient = getUniswapClient();
+    const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress))).pairs[0]
+      .swaps[0].transaction;
+    this.latestSwapTimestamp = latestSwap.timestamp;
+    this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
+    if (this.endBlockNumberForPeriod > this.latestSwapBlockNumber) {
+      this.endBlockNumberForPeriod = this.latestSwapBlockNumber;
+    }
   }
 
   async generateSummaryStatsTable() {
@@ -129,7 +156,7 @@ class GlobalSummaryReporter {
 
     // 1. Sponsor stats table
     console.group();
-    console.log(bold("Sponsor summary stats"));
+    console.log(bold(`Sponsor summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
     console.log(
       italic(
         "- Collateral deposited counts collateral transferred into contract from creates, deposits, final fee bonds, and dispute bonds"
@@ -163,7 +190,10 @@ class GlobalSummaryReporter {
     console.group();
     console.log(
       bold(
-        `Uniswap pair summary stats: ${await this.syntheticContract.symbol()}-${await this.uniswapPairToken.symbol()}`
+        `Synthetic Token Ownership and Uniswap pair (${await this.syntheticContract.symbol()}-${await this.uniswapPairToken.symbol()}) summary stats (as of ${formatDate(
+          this.latestSwapTimestamp,
+          this.web3
+        )})`
       )
     );
     console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
@@ -175,7 +205,7 @@ class GlobalSummaryReporter {
 
     // 3. Liquidation stats table
     console.group();
-    console.log(bold("Liquidation summary stats"));
+    console.log(bold(`Liquidation summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
     console.log(italic("- Unique liquidations count # of unique sponsors that have been liquidated"));
     console.log(italic("- Collateral & tokens liquidated counts aggregate amounts from all partial liquidations"));
     console.log(italic("- Current collateral liquidated includes any collateral locked in pending liquidations"));
@@ -184,13 +214,13 @@ class GlobalSummaryReporter {
 
     // 4. Dispute stats table
     console.group();
-    console.log(bold("Dispute summary stats"));
+    console.log(bold(`Dispute summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
     await this._generateDisputeStats(periods);
     console.groupEnd();
 
     // 5. DVM stats table
     console.group();
-    console.log(bold("DVM summary stats"));
+    console.log(bold(`DVM summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
     this._generateDvmStats(periods);
     console.groupEnd();
   }
@@ -594,16 +624,9 @@ class GlobalSummaryReporter {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
-    // Get uniswap data via graphql.
-    const uniswapPairDetails = await getUniswapPairDetails(
-      this.web3,
-      this.syntheticContract.address,
-      this.uniswapPairToken.address
-    );
-    const uniswapPairAddress = uniswapPairDetails.pairAddress.toLowerCase();
-    const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
-    const uniswapClient = getUniswapClient();
-    const allTokenData = (await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress))).pairs[0];
+    // Get uniswap trade data via graphql.
+    const volumeTokenLabel = this.uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+    const allTokenData = (await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress))).pairs[0];
     const tradeCount = parseInt(allTokenData.txCount);
     const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
 
@@ -622,13 +645,15 @@ class GlobalSummaryReporter {
       let periodTradeVolumeTokens, prevPeriodTradeVolumeTokens;
       try {
         const startPeriodTokenData = (
-          await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPeriod))
+          await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPeriod))
         ).pairs[0];
         const endPeriodTokenData = (
-          await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.endBlockNumberForPeriod))
+          await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.endBlockNumberForPeriod))
         ).pairs[0];
         const startPrevPeriodTokenData = (
-          await uniswapClient.request(queries.PAIR_DATA(uniswapPairAddress, this.startBlockNumberForPreviousPeriod))
+          await this.uniswapClient.request(
+            queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPreviousPeriod)
+          )
         ).pairs[0];
 
         periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
@@ -749,9 +774,8 @@ class GlobalSummaryReporter {
 
       console.table(allDisputeStatsTable);
 
-      console.group("Dispute resolution prices");
+      console.log(italic("- Dispute resolution prices"));
       console.table(disputeData.allResolvedDisputes);
-      console.groupEnd();
     }
   }
 
