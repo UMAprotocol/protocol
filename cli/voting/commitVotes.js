@@ -2,9 +2,9 @@ const inquirer = require("inquirer");
 const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
-const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructCommitment, batchCommitVotes, getVotingRoles } = require("../../../../common/VotingUtils");
-const networkUtils = require("../../../../common/PublicNetworks");
+const { VotePhasesEnum } = require("../../common/Enums");
+const { constructCommitment, batchCommitVotes, getVotingRoles } = require("../../common/VotingUtils");
+const networkUtils = require("../../common/PublicNetworks");
 
 /**
  * This prompts the user twice from the command line interface:

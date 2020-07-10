@@ -1,6 +1,6 @@
 const style = require("../textStyle");
-const { getVotingRoles } = require("../../../../common/VotingUtils");
-const { VotePhasesEnum } = require("../../../../common/Enums");
+const { getVotingRoles } = require("../../common/VotingUtils");
+const { VotePhasesEnum } = require("../../common/Enums");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");

@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
-const { isAdminRequest, getAdminRequestId, decodeTransaction } = require("../../../common/AdminUtils.js");
+const { isAdminRequest, getAdminRequestId, decodeTransaction } = require("../common/AdminUtils.js");
 const Governor = require("@umaprotocol/core/build/contracts/Governor.json");
 
 async function decodeGovernorProposal(artifacts, id) {
