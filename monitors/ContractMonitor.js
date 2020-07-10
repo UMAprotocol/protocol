@@ -2,7 +2,8 @@
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { revertWrapper, createObjectFromDefaultProps } = require("../common/ContractUtils");
+const { revertWrapper } = require("../common/ContractUtils");
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class ContractMonitor {
   /**

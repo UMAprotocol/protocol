@@ -108,7 +108,7 @@ async function run(
       eventsFromBlockNumber,
       endingBlock
     );
-    
+
     const contractMonitor = new ContractMonitor(
       logger,
       empEventClient,
@@ -225,22 +225,22 @@ async function Poll(callback) {
 
     // Monitor config contains all configuration settings for all monitor modules. This includes the following:
     // MONITOR_CONFIG={
-    //  "botsToMonitor": [{ name: "Liquidator Bot",       // friendly bot name
-    //     address: "0x12345"                             // bot address
+    //  "botsToMonitor": [{ name: "Liquidator Bot",       // Friendly bot name
+    //     address: "0x12345"                             // Bot address
     //    "collateralThreshold": "500000000000000000000", // 500e18 collateral token currency.
     //    "syntheticThreshold": "2000000000000000000000", // 200e18 synthetic token currency.
-    //    "etherThreshold": "500000000000000000" },       //0.5e18 Wei alert
+    //    "etherThreshold": "500000000000000000" },       // 0.5e18 Wei alert
     //  ...],
-    //  "walletsToMonitor": [{ name: "Market Making bot",  // friendly bot name
+    //  "walletsToMonitor": [{ name: "Market Making bot", // Friendly bot name
     //    address: "0x12345",                             // bot address
     //    crAlert: 1.50 },                                // CR monitoring threshold. 1.5=150%
     //  ...],
-    //  "monitoredLiquidators": ["0x1234","0x5678"],       // array of liquidator bots of interest.
-    //  "monitoredDisputers": ["0x1234","0x5678"],         // array of disputer bots of interest.
-    //  "deviationAlertThreshold": 0.5,                    // if deviation in token price exceeds this fire alert.
+    //  "monitoredLiquidators": ["0x1234","0x5678"],       // Array of liquidator bots of interest.
+    //  "monitoredDisputers": ["0x1234","0x5678"],         // Array of disputer bots of interest.
+    //  "deviationAlertThreshold": 0.5,                    // If deviation in token price exceeds this fire alert.
     //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
     //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
-    //  "syntheticVolatilityAlertThreshold": 0.1,           // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
+    //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 

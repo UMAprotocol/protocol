@@ -124,14 +124,7 @@ contract("ContractMonitor.js", function(accounts) {
       networkId: await web3.eth.net.getId()
     };
 
-    contractMonitor = new ContractMonitor(
-      spyLogger,
-      eventClient,
-      priceFeedMock,
-      monitorConfig,
-      empProps,
-      mockOracle
-    );
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, monitorConfig, empProps, mockOracle);
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
