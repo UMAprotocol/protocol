@@ -138,6 +138,7 @@ class GlobalSummaryReporter {
       .swaps[0].transaction;
     this.latestSwapTimestamp = latestSwap.timestamp;
     this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
+    // Note: `endBlockNumberForPeriod` is the highest block number that we will manually query for.
     if (this.endBlockNumberForPeriod > this.latestSwapBlockNumber) {
       this.endBlockNumberForPeriod = this.latestSwapBlockNumber;
     }
