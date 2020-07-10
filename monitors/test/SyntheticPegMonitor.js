@@ -2,13 +2,11 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-// Tested module, mock, and custom winston transport module to monitor winston log outputs
-const {
-  SyntheticPegMonitor,
-  PriceFeedMock,
-  SpyTransport,
-  lastSpyLogIncludes
-} = require("@umaprotocol/financial-templates-lib");
+// Tested module
+const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
+
+// Mock and custom winston transport module to monitor winston log outputs
+const { PriceFeedMock, SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 contract("SyntheticPegMonitor", function(accounts) {
   let uniswapPriceFeedMock;
