@@ -5,7 +5,7 @@ const Timer = artifacts.require("Timer");
 
 contract("Testable", function() {
   it("isTest on", async function() {
-    const testable = await TestableTest.new(Timer.address);
+    const testable = await TestableTest.new((await Timer.deployed()).address);
 
     await testable.setCurrentTime(0);
     assert.equal(await testable.getCurrentTime(), 0);
@@ -23,8 +23,8 @@ contract("Testable", function() {
   });
 
   it("In test environment, different Testable contracts reference the same Timer", async function() {
-    const testable1 = await TestableTest.new(Timer.address);
-    const testable2 = await TestableTest.new(Timer.address);
+    const testable1 = await TestableTest.new((await Timer.deployed()).address);
+    const testable2 = await TestableTest.new((await Timer.deployed()).address);
 
     // Set time on testable1, should be the same on testable2.
     await testable1.setCurrentTime(0);

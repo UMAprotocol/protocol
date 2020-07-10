@@ -290,17 +290,17 @@ contract("Store", function(accounts) {
     const normalFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 
     // Regular fee cannot be set above 1.
-    assert(await didContractThrow(Store.new(highFee, normalFee, Timer.address, { from: rando })));
+    assert(await didContractThrow(Store.new(highFee, normalFee, (await Timer.deployed()).address, { from: rando })));
 
     // Late fee cannot be set above 1.
-    assert(await didContractThrow(Store.new(normalFee, highFee, Timer.address, { from: rando })));
+    assert(await didContractThrow(Store.new(normalFee, highFee, (await Timer.deployed()).address, { from: rando })));
   });
 
   it("Initialization", async function() {
     const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
     const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 
-    const newStore = await Store.new(regularFee, lateFee, Timer.address, { from: rando });
+    const newStore = await Store.new(regularFee, lateFee, (await Timer.deployed()).address, { from: rando });
 
     // Fees should be set as they were initialized.
     assert.equal((await newStore.fixedOracleFeePerSecondPerPfc()).toString(), regularFee.rawValue.toString());

@@ -73,8 +73,8 @@ contract("Voting", function(accounts) {
           { rawValue: web3.utils.toWei("1") },
           1,
           votingToken.address,
-          Finder.address,
-          Timer.address
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
         )
       )
     );
@@ -1653,7 +1653,7 @@ contract("Voting", function(accounts) {
       "86400",
       votingToken.address,
       (await Finder.deployed()).address,
-      Timer.address
+      (await Timer.deployed()).address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1698,8 +1698,8 @@ contract("Voting", function(accounts) {
       { rawValue: "0" }, // No inflation
       "1209600", // 2 week reward expiration
       votingToken.address,
-      Finder.address,
-      Timer.address
+      (await Finder.deployed()).address,
+      (await Timer.deployed()).address
     );
 
     await moveToNextRound(votingTest);

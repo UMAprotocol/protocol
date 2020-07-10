@@ -92,7 +92,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, (await Timer.deployed()).address, {
       from: contractDeployer
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
@@ -106,13 +106,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      (await Finder.deployed()).address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      (await TokenFactory.deployed()).address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      (await Timer.deployed()).address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -126,13 +126,13 @@ contract("PricelessPositionManager", function(accounts) {
           startTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
-          Finder.address, // _finderAddress
+          (await Finder.deployed()).address, // _finderAddress
           priceFeedIdentifier, // _priceFeedIdentifier
           syntheticName, // _syntheticName
           syntheticSymbol, // _syntheticSymbol
-          TokenFactory.address, // _tokenFactoryAddress
+          (await TokenFactory.deployed()).address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
-          Timer.address, // _timerAddress
+          (await Timer.deployed()).address, // _timerAddress
           { from: contractDeployer }
         )
       )
@@ -145,13 +145,13 @@ contract("PricelessPositionManager", function(accounts) {
           expirationTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
-          Finder.address, // _finderAddress
+          (await Finder.deployed()).address, // _finderAddress
           web3.utils.utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           syntheticName, // _syntheticName
           syntheticSymbol, // _syntheticSymbol
-          TokenFactory.address, // _tokenFactoryAddress
+          (await TokenFactory.deployed()).address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
-          Timer.address, // _timerAddress
+          (await Timer.deployed()).address, // _timerAddress
           { from: contractDeployer }
         )
       )
@@ -200,13 +200,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      (await Finder.deployed()).address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      (await TokenFactory.deployed()).address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      (await Timer.deployed()).address, // _timerAddress
       { from: contractDeployer }
     );
 
@@ -1346,7 +1346,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(finder.address, Timer.address);
+    const newMockOracle = await MockOracle.new(finder.address, (await Timer.deployed()).address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
@@ -1580,13 +1580,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      (await Finder.deployed()).address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      (await TokenFactory.deployed()).address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      (await Timer.deployed()).address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());

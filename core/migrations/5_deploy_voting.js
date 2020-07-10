@@ -10,6 +10,8 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
+  const timer = await Timer.deployed();
+
   // Deploy whitelist of identifiers
   const { contract: identifierWhitelist } = await deploy(deployer, network, IdentifierWhitelist, {
     from: keys.deployer
@@ -41,7 +43,7 @@ module.exports = async function(deployer, network, accounts) {
     rewardsExpirationTimeout,
     votingToken.address,
     finder.address,
-    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
+    controllableTiming ? timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 

@@ -18,8 +18,8 @@ contract("ExpiringMultiParty", function(accounts) {
       expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: (await Finder.deployed()).address,
+      tokenFactoryAddress: (await TokenFactory.deployed()).address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -29,7 +29,7 @@ contract("ExpiringMultiParty", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: (await Timer.deployed()).address
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();

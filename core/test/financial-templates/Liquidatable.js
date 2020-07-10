@@ -109,7 +109,7 @@ contract("Liquidatable", function(accounts) {
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, (await Timer.deployed()).address, {
       from: contractDeployer
     });
 
@@ -122,8 +122,8 @@ contract("Liquidatable", function(accounts) {
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: (await Finder.deployed()).address,
+      tokenFactoryAddress: (await TokenFactory.deployed()).address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
@@ -133,7 +133,7 @@ contract("Liquidatable", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
-      timerAddress: Timer.address
+      timerAddress: (await Timer.deployed()).address
     };
 
     // Deploy liquidation contract and set global params
