@@ -18,7 +18,7 @@ class GlobalSummaryReporter {
     oracle,
     collateralToken,
     syntheticToken,
-    empToUniswapTokenMap,
+    uniswapPairOverride,
     endDateOffsetSeconds,
     periodLengthSeconds
   ) {
@@ -33,6 +33,7 @@ class GlobalSummaryReporter {
     this.web3 = this.empEventClient.web3;
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+    this.toChecksumAddress = this.web3.utils.toChecksumAddress;
 
     this.empContract = this.empEventClient.emp;
     this.collateralContract = collateralToken;
@@ -42,12 +43,12 @@ class GlobalSummaryReporter {
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
     this.formatDecimalStringWithSign = createFormatFunction(this.web3, 2, 4, true);
 
-    this.empToUniswapTokenMap = empToUniswapTokenMap;
-
     // This report runs accounting on the current and historical state of EMP positions.
     // Use `accountingVariance` to adjust how much room for error we should allow in calculations, for example to
     // allow for FixedPoint rounding errors.
     this.accountingVariance = this.toBN(this.toWei("0.0001"));
+
+    this.uniswapPairOverride = uniswapPairOverride;
   }
 
   async update() {
@@ -108,6 +109,11 @@ class GlobalSummaryReporter {
 
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
+
+    // Initialize Uniswap pair to get trade data for. Default pair token is the collateral token.
+    this.uniswapPairToken = this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
+      ? this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
+      : this.collateralContract;
   }
 
   async generateSummaryStatsTable() {
@@ -157,9 +163,7 @@ class GlobalSummaryReporter {
     console.group();
     console.log(
       bold(
-        `Uniswap pair summary stats: ${await this.syntheticContract.symbol()}-${
-          this.empToUniswapTokenMap[this.empContract.options.address].name
-        }`
+        `Uniswap pair summary stats: ${await this.syntheticContract.symbol()}-${await this.uniswapPairToken.symbol()}`
       )
     );
     console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
@@ -594,7 +598,7 @@ class GlobalSummaryReporter {
     const uniswapPairDetails = await getUniswapPairDetails(
       this.web3,
       this.syntheticContract.address,
-      this.empToUniswapTokenMap[this.empContract.options.address].address
+      this.uniswapPairToken.address
     );
     const uniswapPairAddress = uniswapPairDetails.pairAddress.toLowerCase();
     const volumeTokenLabel = uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";

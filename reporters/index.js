@@ -28,7 +28,7 @@ const Finder = artifacts.require("Finder");
 
 async function run(
   address,
-  empToUniswapTokenMap,
+  uniswapPairOverride,
   walletsToMonitor,
   referencePriceFeedConfig,
   uniswapPriceFeedConfig,
@@ -123,7 +123,7 @@ async function run(
     oracle,
     collateralToken,
     syntheticToken,
-    empToUniswapTokenMap,
+    uniswapPairOverride,
     endDateOffsetSeconds,
     periodLengthSeconds
   );
@@ -173,22 +173,18 @@ async function Poll(callback) {
       ? parseInt(process.env.PERIOD_REPORT_LENGTH)
       : 24 * 60 * 60;
 
-    // Maps mainnet EMP address of synthetic to the token address that it trades against, for the Uniswap pair that we want to track.
-    // This is neccessary because each synthetic can be part of multiple Uniswap pairs.
-    const empToUniswapTokenMap = {
-      "0x67DD35EaD67FcD184C8Ff6D0251DF4241F309ce1": {
-        name: "COMP",
-        address: web3.utils.toChecksumAddress("0xc00e94cb662c3520282e6f5717214004a7f26888")
-      },
-      "0x3f2D9eDd9702909Cf1F8C4237B7c4c5931F9C944": {
-        name: "DAI",
-        address: web3.utils.toChecksumAddress("0x6b175474e89094c44da98b954eedeac495271d0f")
-      }
+    // Overrides the Uniswap pair that we want to query trade data for. The assumption is that the GlobalSummaryReporter fetches
+    // data for only one Uniswap pair, and the default pair tokens are the emp-synthetic-token and the emp-collateral-token.
+    const uniswapPairOverride = {
+      // yCOMP <--> COMP
+      [web3.utils.toChecksumAddress("0x67DD35EaD67FcD184C8Ff6D0251DF4241F309ce1")]: await ExpandedERC20.at(
+        web3.utils.toChecksumAddress("0xc00e94cb662c3520282e6f5717214004a7f26888")
+      )
     };
 
     await run(
       empAddress,
-      empToUniswapTokenMap,
+      uniswapPairOverride,
       walletsToMonitor,
       referencePriceFeedConfig,
       uniswapPriceFeedConfig,
