@@ -31,6 +31,7 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TestnetERC20 = artifacts.require("TestnetERC20");
+const WETH9 = artifacts.require("WETH9");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -44,6 +45,12 @@ let identifierWhitelist;
 let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
 
+const empCollateralTokenMap = {
+  "COMP/USD": TestnetERC20,
+  "ETH/BTC": TestnetERC20,
+  "USD/ETH": WETH9
+};
+
 /** ***************************************************
  * Main Script
  /*****************************************************/
@@ -53,11 +60,10 @@ const deployEMP = async callback => {
     const deployer = accounts[0];
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
-    // Use Dai as the collateral token.
-    collateralToken = await TestnetERC20.deployed();
-
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
     const priceFeedIdentifier = utf8ToHex(identifierBase);
+
+    collateralToken = await empCollateralTokenMap[identifierBase].deployed();
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
@@ -80,16 +86,16 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: "1596240000", // 2020-08-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
+      expirationTimestamp: "1598918400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: `${identifierBase} Synthetic Token Expiring 1 August 2020`,
-      syntheticSymbol: `${identifierBase.replace("/", "")}-AUG20`,
-      collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.05") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.2") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      syntheticName: "USD synthetic token backed by ETH expiring September 2020",
+      syntheticSymbol: "yUSD-SEP20",
+      collateralRequirement: { rawValue: toWei("1.25") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.2") },
+      minSponsorTokens: { rawValue: toWei("100") }
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });

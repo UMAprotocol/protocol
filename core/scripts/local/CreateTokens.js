@@ -9,6 +9,7 @@ const { MAX_UINT_VAL } = require("../../../common/Constants");
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const WETH9 = artifacts.require("WETH9");
 const argv = require("minimist")(process.argv.slice(), { string: ["emp", "tokens", "collateral"] });
 
 async function createPosition(callback) {
@@ -23,6 +24,13 @@ async function createPosition(callback) {
 
     const emp = await ExpiringMultiParty.at(argv.emp);
     const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
+
+    if ((await collateralToken.symbol()) === "WETH") {
+      const weth = await WETH9.at(collateralToken.address);
+      await weth.deposit({ value: toWei(argv.collateral) });
+      console.log(`Wrapped ${argv.collateral} ETH ==> WETH`);
+    }
+
     const account = (await web3.eth.getAccounts())[0];
     const collateral = toBN(toWei(argv.collateral));
     const collateralBalance = await collateralToken.balanceOf(account);

@@ -63,6 +63,55 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     );
   });
 
+  describe("Inverted pricefeed", function() {
+    beforeEach(async function() {
+      // The only thing difference about this initialization is that the `invertPrice` param is set to `true`.
+      networker = new NetworkerMock();
+      const dummyLogger = winston.createLogger({
+        level: "info",
+        transports: [new winston.transports.Console()]
+      });
+      cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+        dummyLogger,
+        web3,
+        apiKey,
+        exchange,
+        pair,
+        lookback,
+        networker,
+        getTime,
+        minTimeBetweenUpdates,
+        true
+      );
+    });
+
+    it("Current price", async function() {
+      networker.getJsonReturns = [...validResponses];
+      await cryptoWatchPriceFeed.update();
+      assert.isTrue(cryptoWatchPriceFeed.getCurrentPrice().eq(toBN(1).div(toBN(toWei("1.5")))));
+    });
+
+    it("Historical price", async function() {
+      networker.getJsonReturns = [...validResponses];
+      await cryptoWatchPriceFeed.update();
+
+      // Before period 1 should return null.
+      assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376339), null);
+
+      // During period 1.
+      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(toBN(1).div(toBN(toWei("1.1")))));
+
+      // During period 2.
+      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(toBN(1).div(toBN(toWei("1.2")))));
+
+      // During period 3.
+      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(toBN(1).div(toBN(toWei("1.3")))));
+
+      // After period 3 should return the most recent price.
+      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(toBN(1).div(toBN(toWei("1.5")))));
+    });
+  });
+
   it("No update", async function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1000), undefined);

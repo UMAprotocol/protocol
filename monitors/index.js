@@ -250,7 +250,7 @@ async function Poll(callback) {
       : null;
 
     // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
-    // to use. EG: {"type":"medianizer","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
+    // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
     // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
     const medianizerPriceFeedConfig = process.env.MEDIANIZER_PRICE_FEED_CONFIG
       ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
