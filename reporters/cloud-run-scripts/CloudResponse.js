@@ -73,7 +73,6 @@ function _execShellCommand(cmd, inputEnv) {
   return new Promise((resolve, reject) => {
     exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
-      // This Regex removes these and formats the output in a digestible fashion.
       stdout = _stripExecOutput(stdout);
       stderr = _stripExecOutput(stderr);
       resolve({ error, stdout, stderr });
@@ -81,6 +80,7 @@ function _execShellCommand(cmd, inputEnv) {
   });
 }
 
+// This Regex removes these and formats the output in a digestible fashion.
 function _stripExecOutput(output) {
   if (!output) return output;
   return output
