@@ -175,6 +175,10 @@ async function Poll(callback) {
 
     // Overrides the Uniswap pair that we want to query trade data for. The assumption is that the GlobalSummaryReporter fetches
     // data for only one Uniswap pair, and the default pair tokens are the emp-synthetic-token and the emp-collateral-token.
+    //
+    // TODO: This object could take a long time to initialize if each `contract.at()` makes a network call to check if code exists
+    // at the address. We could make this more efficient by either parallelizing via `Promise.all()` or convert this into an address-to-address
+    // map and initialize lazily once we determine an address.
     const uniswapPairOverride = {
       // yCOMP <--> COMP
       [web3.utils.toChecksumAddress("0x67DD35EaD67FcD184C8Ff6D0251DF4241F309ce1")]: await ExpandedERC20.at(
