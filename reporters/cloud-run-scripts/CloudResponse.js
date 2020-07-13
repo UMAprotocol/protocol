@@ -21,7 +21,8 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Executing GCP Cloud Run API Call",
-      reqBody: req.body
+      reqBody: req.body,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
     });
     if (!req.body.cloudRunCommand) {
       throw "ERROR: Missing cloudRunCommand";
@@ -41,7 +42,7 @@ app.post("/", async (req, res) => {
       });
     }
 
-    const execResponse = await execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
+    const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
       throw execResponse;
@@ -49,28 +50,43 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Process exited with no error",
-      execResponse
+      execResponse,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
     });
 
     res.status(200).send({ message: "Process exited with no error", execResponse });
   } catch (execResponse) {
+    // If there is an error, send a debug log. We dont want to trigger a `Logger.error` here as this will be dealt with
+    // one layer up in the Hub implementation.
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Process exited with error",
-      execResponse
+      execResponse,
+      jsonBody: req.body,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
     });
     res.status(400).send({ message: "Process exited with error", execResponse });
   }
 });
 
-function execShellCommand(cmd, inputEnv) {
+function _execShellCommand(cmd, inputEnv) {
   return new Promise((resolve, reject) => {
     exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
-      stdout = stdout ? stdout.replace(/\r?\n|\r/g, "").replace(/\s\s+/g, " ") : stdout;
-      stderr = stderr ? stderr.replace(/\r?\n|\r/g, "").replace(/\s\s+/g, " ") : stderr;
+      // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
+      // This Regex removes these and formats the output in a digestible fashion.
+      stdout = _stripExecOutput(stdout);
+      stderr = _stripExecOutput(stderr);
       resolve({ error, stdout, stderr });
     });
   });
+}
+
+function _stripExecOutput(output) {
+  if (!output) return output;
+  return output
+    .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
+    .replace(/\s\s+/g, " ") // Remove move tabbed chars
+    .replace(/\"/g, ""); // Remove escaped quotes
 }
 const port = process.env.PORT || 8080;
 app.listen(port, () => {

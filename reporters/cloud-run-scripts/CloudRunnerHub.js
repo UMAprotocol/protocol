@@ -68,10 +68,13 @@ app.post("/", async (req, res) => {
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
     for (const botName in configObject) {
-      const botConfig = appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
+      const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
       // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
-      promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
-      // promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      if (process.env.ENVIRONMENT == "production") {
+        promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      } else {
+        promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      }
     }
     Logger.debug({
       at: "CloudRunnerHub",
@@ -87,15 +90,24 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerHub",
       message: "Batch execution promise resolved",
-      results: JSON.stringify(results, null, 2)
+      results
     });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
     let thrownErrors = [];
-    results.forEach(result => {
-      console.log(result.value.execResponse.error);
-      if (result.status == "rejected" || result.value.execResponse.error) {
-        thrownErrors.push({ status: result.status, execResponse: result.value.execResponse });
+    results.forEach((result, index) => {
+      if (result.status == "rejected") {
+        thrownErrors.push({
+          status: result.status,
+          execResponse: result.reason.response.data,
+          botIdentifier: Object.keys(configObject)[index]
+        });
+      } else if (result.value.execResponse.error) {
+        thrownErrors.push({
+          status: result.status,
+          execResponse: result.value.execResponse,
+          botIdentifier: Object.keys(configObject)[index]
+        });
       }
     });
     if (thrownErrors.length > 0) {
@@ -106,17 +118,17 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerHub",
       message: "All calls returned correctly",
-      error: null
+      thrownErrors: null
     });
     res.status(200).send({ message: "All calls returned correctly", error: null });
-  } catch (execResponse) {
+  } catch (thrownErrors) {
     Logger.error({
       at: "CloudRunnerHub",
       message: "CloudRunner hub error 🌩 ",
-      execResponse
+      thrownErrors
     });
-    await waitForLogger(Logger); // Wait until the logger has yielded before returning the 400 error.
-    res.status(400).send({ message: "Something went wrong in cloud runner hub execution", execResponse });
+    // await waitForLogger(Logger); // Wait until the logger has yielded before returning the 400 error.
+    res.status(400).send({ message: "Something went wrong in cloud runner hub execution", thrownErrors });
   }
 });
 
@@ -185,7 +197,7 @@ async function _getLatestBlockNumber() {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
+function _appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;

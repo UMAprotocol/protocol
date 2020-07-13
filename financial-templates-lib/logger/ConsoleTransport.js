@@ -5,7 +5,6 @@ const { combine, timestamp, colorize, printf } = format;
 
 const customFormat = combine(
   // Adds level-based coloring.
-  colorize(),
   // Adds timestamp.
   timestamp(),
   printf(info => {
