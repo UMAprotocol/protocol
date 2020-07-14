@@ -85,7 +85,7 @@ COMMAND=npx truffle exec ../disputer/index.js --network kovan_mnemonic
 
 The monitor bots are used to monitor the UMA ecosystem for key events. They have a number of monitor modules built into them that enable real time reporting on key events for a given EMP contract. The monitor can report on the following:
 
-- **Balance Monitor**: specify a list of addresses to monitor. Send alerts if their collateral synthetic or ether balance drops below define thresholds.
+- **Balance Monitor**: specify a list of addresses to monitor. Send alerts if their collateral synthetic or ether balance drops below defined thresholds.
 - **Contract Monitor**: send alerts when liquidation, dispute, and dispute settlement events occur.
 - **Collateralization ratio monitor**: monitor a given position's CR and send alerts if it drops below a given threshold.
 - **Synthetic peg monitor**: monitor an EMP's synthetic and reports when the synthetic is trading off peg and there is high volatility in the synthetic price or there is high volatility in the reference price.
