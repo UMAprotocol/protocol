@@ -1,11 +1,27 @@
+const chalkPipe = require("chalk-pipe");
+const { usePlugin, task } = require("@nomiclabs/buidler/config");
+
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("solidity-coverage");
+
+task("test")
+  .addFlag("debug", "Compile without optimizer")
+  .setAction(async (taskArgs, bre, runSuper) => {
+    const { debug } = taskArgs;
+
+    if (debug) {
+      bre.config.solc.optimizer.enabled = false;
+      console.log(chalkPipe("bold.underline")("Running tests in debug mode"));
+    }
+
+    await runSuper(taskArgs);
+  });
 
 module.exports = {
   solc: {
     version: "0.6.6",
     optimizer: {
-      enabled: false,
+      enabled: true,
       runs: 200
     }
   },
