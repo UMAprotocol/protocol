@@ -1,6 +1,9 @@
-const { PostWithdrawLiquidationRewardsStatusTranslations, LiquidationStatesEnum } = require("@umaprotocol/common");
+const {
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  LiquidationStatesEnum,
+  MAX_UINT_VAL
+} = require("@umaprotocol/common");
 const { interfaceName } = require("../../core/utils/Constants.js");
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const winston = require("winston");
 const sinon = require("sinon");
 

@@ -1,7 +1,6 @@
 // Libraries and helpers
-const { didContractThrow } = require("@umaprotocol/common");
+const { PositionStatesEnum, didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
-const { PositionStatesEnum } = require("@umaprotocol/common");
 const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test

@@ -1,3 +1,1 @@
-const globalConfig = require("@umaprotocol/common");
-
-module.exports = globalConfig;
+module.exports = require("@umaprotocol/common").TruffleConfig;

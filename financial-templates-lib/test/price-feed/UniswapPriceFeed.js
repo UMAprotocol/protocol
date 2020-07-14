@@ -2,9 +2,8 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
-const { mineTransactionsAtTime } = require("@umaprotocol/common");
+const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@umaprotocol/common");
 const { delay } = require("../../helpers/delay.js");
-const { MAX_SAFE_JS_INT } = require("@umaprotocol/common");
 
 const UniswapMock = artifacts.require("UniswapMock");
 const Uniswap = artifacts.require("Uniswap");

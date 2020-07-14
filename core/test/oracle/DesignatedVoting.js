@@ -1,4 +1,10 @@
-const { didContractThrow } = require("@umaprotocol/common");
+const {
+  RegistryRolesEnum,
+  didContractThrow,
+  getRandomSignedInt,
+  getRandomUnsignedInt,
+  computeVoteHash
+} = require("@umaprotocol/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const Finder = artifacts.require("Finder");
@@ -6,10 +12,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
-const { RegistryRolesEnum } = require("@umaprotocol/common");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash, computeVoteHash, getKeyGenMessage } = require("@umaprotocol/common");
 
 contract("DesignatedVoting", function(accounts) {
   const umaAdmin = accounts[0];

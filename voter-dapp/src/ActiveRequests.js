@@ -24,14 +24,24 @@ import FormControl from "@material-ui/core/FormControl";
 import HelpIcon from "@material-ui/icons/Help";
 import FileCopyIcon from "@material-ui/icons/FileCopy";
 
-import { formatDate, formatWei } from "@umaprotocol/common";
-import { VotePhasesEnum } from "@umaprotocol/common";
-import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "@umaprotocol/common";
+import {
+  VotePhasesEnum,
+  formatDate,
+  formatWei,
+  decryptMessage,
+  deriveKeyPairFromSignatureMetamask,
+  encryptMessage,
+  getKeyGenMessage,
+  computeVoteHash,
+  getRandomUnsignedInt,
+  BATCH_MAX_COMMITS,
+  BATCH_MAX_REVEALS,
+  getAdminRequestId,
+  isAdminRequest,
+  decodeTransaction,
+  translateAdminVote
+} from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
-import { getKeyGenMessage, computeVoteHash } from "@umaprotocol/common";
-import { getRandomUnsignedInt } from "@umaprotocol/common";
-import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "@umaprotocol/common";
-import { getAdminRequestId, isAdminRequest, decodeTransaction, translateAdminVote } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {

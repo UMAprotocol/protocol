@@ -3,11 +3,8 @@ const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
-const { RegistryRolesEnum, VotePhasesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum, BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash } = require("@umaprotocol/common");
-const { createVisibleAccount } = require("@umaprotocol/common");
-const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("@umaprotocol/common");
 
 // Set this to TRUE to print out logs that a production AVS would display
 const USE_PROD_LOGS = false;

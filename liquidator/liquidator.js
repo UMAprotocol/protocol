@@ -1,6 +1,8 @@
-const { createObjectFromDefaultProps } = require("@umaprotocol/common");
-const { revertWrapper } = require("@umaprotocol/common");
-const { PostWithdrawLiquidationRewardsStatusTranslations } = require("@umaprotocol/common");
+const {
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  createObjectFromDefaultProps,
+  revertWrapper
+} = require("@umaprotocol/common");
 
 class Liquidator {
   /**

@@ -1,3 +1,1 @@
-const globalSolcoverConfig = require("@umaprotocol/common");
-
-module.exports = globalSolcoverConfig;
+module.exports = require("@umaprotocol/common").SolcoverConfig;

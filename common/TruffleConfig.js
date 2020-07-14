@@ -173,7 +173,7 @@ addLocalNetwork(networks, "metamask", {
 
 addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
 
-module.exports = {
+const TruffleConfig = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: networks,
@@ -194,3 +194,5 @@ module.exports = {
     }
   }
 };
+
+module.exports = { TruffleConfig };

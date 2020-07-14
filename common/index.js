@@ -7,13 +7,13 @@ mudule.exports = {
   ...require("./EncryptionHelper"),
   ...require("./Enums"),
   ...require("./FormattingUtils"),
-  solcoverConfig: require("./globalSolcoverConfig"),
-  truffleConfig: require("./globalTruffleConfig"),
-  MetamaskTruffleProvider: require("./MetaMaskTruffleProvider"),
+  ...require("./SolcoverConfig"),
+  ...require("./TruffleConfig"),
+  ...require("./MetaMaskTruffleProvider"),
   ...require("./MigrationUtils"),
   ...require("./ObjectUtils"),
-  publicNetworks: require("./PublicNetworks"),
+  ...require("./PublicNetworks"),
   ...require("./Random"),
   ...require("./SolidityTestUtils"),
-  ManagedSecretProvider: require("./gckms/ManagedSecretProvider")
+  ...require("./gckms/ManagedSecretProvider")
 };

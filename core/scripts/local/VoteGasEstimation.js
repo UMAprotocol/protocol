@@ -1,7 +1,5 @@
-const { RegistryRolesEnum } = require("@umaprotocol/common");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("@umaprotocol/common");
+const { RegistryRolesEnum, getRandomSignedInt, getRandomUnsignedInt, computeVoteHash } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeVoteHash } = require("@umaprotocol/common");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");

@@ -1,7 +1,4 @@
 const Voting = artifacts.require("Voting");
-const { VotePhasesEnum } = require("@umaprotocol/common");
-const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("@umaprotocol/common");
-const publicNetworks = require("@umaprotocol/common");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
@@ -10,6 +7,10 @@ const moment = require("moment");
 const {
   constructCommitment: _constructCommitment,
   constructReveal: _constructReveal,
+  VotePhasesEnum,
+  BATCH_MAX_COMMITS,
+  BATCH_MAX_REVEALS,
+  PublicNetworks,
   batchRevealVotes,
   batchCommitVotes,
   getLatestEvent
@@ -377,7 +378,7 @@ async function fetchPrice(request, isProd) {
 // Returns an html link to the transaction.
 // If the network is not recognized/not public, just returns the txn hash in plaintext.
 function getTxnLink(txnHash) {
-  const networkConfig = publicNetworks[Voting.network_id];
+  const networkConfig = PublicNetworks[Voting.network_id];
   if (networkConfig && networkConfig.etherscan) {
     // If there is an etherscan link, add it to the txn hash element.
     const url = `${networkConfig.etherscan}tx/${txnHash}`;

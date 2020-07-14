@@ -114,4 +114,4 @@ class ManagedSecretProvider {
   }
 }
 
-module.exports = ManagedSecretProvider;
+module.exports = { ManagedSecretProvider };

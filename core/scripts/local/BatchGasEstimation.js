@@ -7,10 +7,15 @@
 // Before you can run this script you must migrate all contracts to your local Ganache instance.
 // Then, run the script with `truffle exec scripts/local/BatchGasEstimation.js --network test`
 
-const { RegistryRolesEnum } = require("@umaprotocol/common");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("@umaprotocol/common");
-const { encryptMessage, deriveKeyPairFromSignatureTruffle } = require("@umaprotocol/common");
-const { getKeyGenMessage, computeVoteHash } = require("@umaprotocol/common");
+const {
+  RegistryRolesEnum,
+  getRandomSignedInt,
+  getRandomUnsignedInt,
+  encryptMessage,
+  deriveKeyPairFromSignatureTruffle,
+  getKeyGenMessage,
+  computeVoteHash
+} = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");

@@ -1,9 +1,6 @@
-const { didContractThrow } = require("@umaprotocol/common");
-const { getRandomUnsignedInt } = require("@umaprotocol/common");
+const { RegistryRolesEnum, didContractThrow, getRandomUnsignedInt, computeVoteHash } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("../../utils/Constants.js");
-const { computeVoteHash } = require("@umaprotocol/common");
-const { RegistryRolesEnum } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -18,7 +15,7 @@ const Registry = artifacts.require("Registry");
 const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
+const { toBN, toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
 contract("Governor", function(accounts) {
   let voting;

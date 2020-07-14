@@ -1,8 +1,7 @@
 // This module monitors the synthetic peg of a given expiring multiparty contract and reports when: 1) the synthetic is
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
-const { createFormatFunction, formatHours } = require("@umaprotocol/common");
-const { createObjectFromDefaultProps } = require("@umaprotocol/common");
+const { createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@umaprotocol/common");
 
 class SyntheticPegMonitor {
   /**

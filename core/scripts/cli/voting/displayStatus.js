@@ -1,6 +1,5 @@
 const style = require("../textStyle");
-const { getVotingRoles } = require("@umaprotocol/common");
-const { VotePhasesEnum } = require("@umaprotocol/common");
+const { getVotingRoles, VotePhasesEnum } = require("@umaprotocol/common");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");
