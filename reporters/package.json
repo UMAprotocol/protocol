@@ -6,6 +6,7 @@
   "dependencies": {
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",
+    "@umaprotocol/common": "^1.0.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
