@@ -88,7 +88,14 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     it("Current price", async function() {
       networker.getJsonReturns = [...validResponses];
       await cryptoWatchPriceFeed.update();
-      assert.isTrue(cryptoWatchPriceFeed.getCurrentPrice().eq(toBN(1).div(toBN(toWei("1.5")))));
+      assert.isTrue(
+        // Should be equal to: toWei(1/1.5)
+        cryptoWatchPriceFeed.getCurrentPrice().eq(
+          toBN(toWei("1"))
+            .mul(toBN(toWei("1")))
+            .div(toBN(toWei("1.5")))
+        )
+      );
     });
 
     it("Historical price", async function() {
@@ -99,16 +106,44 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376339), null);
 
       // During period 1.
-      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(toBN(1).div(toBN(toWei("1.1")))));
+      assert.isTrue(
+        // Should be equal to: toWei(1/1.1)
+        cryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(
+          toBN(toWei("1"))
+            .mul(toBN(toWei("1")))
+            .div(toBN(toWei("1.1")))
+        )
+      );
 
       // During period 2.
-      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(toBN(1).div(toBN(toWei("1.2")))));
+      assert.isTrue(
+        // Should be equal to: toWei(1/1.2)
+        cryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(
+          toBN(toWei("1"))
+            .mul(toBN(toWei("1")))
+            .div(toBN(toWei("1.2")))
+        )
+      );
 
       // During period 3.
-      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(toBN(1).div(toBN(toWei("1.3")))));
+      assert.isTrue(
+        // Should be equal to: toWei(1/1.3)
+        cryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(
+          toBN(toWei("1"))
+            .mul(toBN(toWei("1")))
+            .div(toBN(toWei("1.3")))
+        )
+      );
 
       // After period 3 should return the most recent price.
-      assert.isTrue(cryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(toBN(1).div(toBN(toWei("1.5")))));
+      assert.isTrue(
+        // Should be equal to: toWei(1/1.5)
+        cryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(
+          toBN(toWei("1"))
+            .mul(toBN(toWei("1")))
+            .div(toBN(toWei("1.5")))
+        )
+      );
     });
   });
 
