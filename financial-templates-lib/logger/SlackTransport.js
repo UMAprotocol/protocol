@@ -89,16 +89,11 @@ function slackFormatter(info) {
           // If the value within the object itself is an object we dont want to spread it any further. Rather,
           // convert the object to a string and print it along side it's key value pair.
           else if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
-            const stringifyLine = JSON.stringify(info[key][subKey], null, 2);
-            // formattedResponse.blocks[
-            //   formattedResponse.blocks.length - 1
-            // ].text.text += `    - _${subKey}_: ${stringifyLine.replace(/['"]+/g, "").replace(/(^[ \t]*\n)/gm, "")}\n`;
-
             formattedResponse.blocks.push({
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `    - _${subKey}_: ${stringifyLine}\n`
+                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey], null, 2)}\n`
               }
             });
             // Else if not a address, transaction or object then print as ` - key: value`
