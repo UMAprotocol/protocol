@@ -98,14 +98,14 @@ app.post("/", async (req, res) => {
     let thrownErrors = [];
     results.forEach((result, index) => {
       if (result.status == "rejected") {
-        // If the child process in the spoke crashed it will return 400 (rejected)
+        // If the child process in the spoke crashed it will return 400 (rejected).
         thrownErrors.push({
           status: result.status,
           execResponse: result.reason.response.data,
           botIdentifier: Object.keys(configObject)[index]
         });
       } else if (result.value.execResponse.error) {
-        // If the child process exited correctly but contained an error
+        // If the child process exited correctly but contained an error.
         thrownErrors.push({
           status: result.status,
           execResponse: result.value.execResponse,
@@ -207,7 +207,6 @@ function _appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNu
 }
 
 // Execute a post query on a arbitrary `url` with a given json `body. Used to test the hub script locally.
-// TODO: wire this in for unit testing.
 async function _postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
