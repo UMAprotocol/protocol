@@ -80,7 +80,7 @@ function _execShellCommand(cmd, inputEnv) {
   });
 }
 
-// This Regex removes these and formats the output in a digestible fashion.
+// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
 function _stripExecOutput(output) {
   if (!output) return output;
   return output
