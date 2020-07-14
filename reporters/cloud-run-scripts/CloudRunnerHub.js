@@ -127,7 +127,6 @@ app.post("/", async (req, res) => {
       message: "CloudRunner hub error 🌩 ",
       thrownErrors
     });
-    // await waitForLogger(Logger); // Wait until the logger has yielded before returning the 400 error.
     res.status(400).send({ message: "Something went wrong in cloud runner hub execution", thrownErrors });
   }
 });
