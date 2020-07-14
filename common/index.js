@@ -8,13 +8,15 @@ module.exports = {
   ...require("./EncryptionHelper"),
   ...require("./Enums"),
   ...require("./FormattingUtils"),
-  ...require("./SolcoverConfig"),
-  ...require("./TruffleConfig"),
   ...require("./MetaMaskTruffleProvider"),
   ...require("./MigrationUtils"),
   ...require("./ObjectUtils"),
   ...require("./PublicNetworks"),
   ...require("./Random"),
+  ...require("./SolcoverConfig"),
   ...require("./SolidityTestUtils"),
+  ...require("./TimeUtils"),
+  ...require("./TruffleConfig"),
+  ...require("./VotingUtils"),
   ...require("./gckms/ManagedSecretProvider")
 };
