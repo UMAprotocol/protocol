@@ -1,4 +1,4 @@
-mudule.exports = {
+module.exports = {
   ...require("./AbiUtils"),
   ...require("./AdminUtils"),
   ...require("./ContractUtils"),
