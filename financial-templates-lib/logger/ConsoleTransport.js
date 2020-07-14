@@ -4,7 +4,6 @@ const { format } = winston;
 const { combine, timestamp, colorize, printf } = format;
 
 const customFormat = combine(
-  // Adds level-based coloring.
   // Adds timestamp.
   timestamp(),
   printf(info => {
@@ -24,10 +23,10 @@ const customFormat = combine(
   })
 );
 
-function createConsoleTransport() {
+function createConsoleTransport(shouldColorize = true) {
   return new winston.transports.Console({
     handleExceptions: true,
-    format: customFormat
+    format: shouldColorize ? combine(customFormat, colorize()) : customFormat
   });
 }
 
