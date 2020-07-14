@@ -5,11 +5,8 @@ const sinon = require("sinon");
 // Script to test
 const { BalanceMonitor } = require("../BalanceMonitor");
 
-// Helper client script
-const { TokenBalanceClient } = require("../../financial-templates-lib/clients/TokenBalanceClient");
-
-// Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+// Helper client script and custom winston transport module to monitor winston log outputs
+const { TokenBalanceClient, SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
@@ -22,7 +19,10 @@ contract("BalanceMonitor.js", function(accounts) {
   // Test object for EMP event client
   let balanceMonitor;
   let tokenBalanceClient;
+  let monitorConfig;
   let spy;
+  let spyLogger;
+  let empProps;
 
   beforeEach(async function() {
     // Create new tokens for every test to reset balances of all accounts
@@ -34,7 +34,7 @@ contract("BalanceMonitor.js", function(accounts) {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
     // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
     spy = sinon.spy(); // new spy per test to reset all counters and emited messages.
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
@@ -47,31 +47,33 @@ contract("BalanceMonitor.js", function(accounts) {
     );
 
     // Create two bot objects to monitor a liquidator bot with a lot of tokens and Eth and a disputer with less.
-    const botMonitorObject = [
-      {
-        name: "Liquidator bot",
-        address: liquidatorBot,
-        collateralThreshold: toWei("10000"), // 10,000.00 tokens of collateral threshold
-        syntheticThreshold: toWei("10000"), // 10,000.00 tokens of debt threshold
-        etherThreshold: toWei("10")
-      },
-      {
-        name: "Disputer bot",
-        address: disputerBot,
-        collateralThreshold: toWei("500"), // 500.00 tokens of collateral threshold
-        syntheticThreshold: toWei("100"), // 100.00 tokens of debt threshold
-        etherThreshold: toWei("1")
-      }
-    ];
+    const monitorConfig = {
+      botsToMonitor: [
+        {
+          name: "Liquidator bot",
+          address: liquidatorBot,
+          collateralThreshold: toWei("10000"), // 10,000.00 tokens of collateral threshold
+          syntheticThreshold: toWei("10000"), // 10,000.00 tokens of debt threshold
+          etherThreshold: toWei("10")
+        },
+        {
+          name: "Disputer bot",
+          address: disputerBot,
+          collateralThreshold: toWei("500"), // 500.00 tokens of collateral threshold
+          syntheticThreshold: toWei("100"), // 100.00 tokens of debt threshold
+          etherThreshold: toWei("1")
+        }
+      ]
+    };
 
-    const empProps = {
+    empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),
       priceIdentifier: "ETH/BTC",
       networkId: await web3.eth.net.getId()
     };
 
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, botMonitorObject, empProps);
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, monitorConfig, empProps);
 
     // setup the positions to the initial happy state.
     // Liquidator threshold is 10000 for both collateral and synthetic so mint a bit more to start above this
@@ -219,5 +221,64 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,995.00")); // Correctly formatted number of actual collateral
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+  });
+  it("Cannot set invalid config", async function() {
+    let errorThrown1;
+    try {
+      // Create an invalid config. A valid config expects an array of objects with keys in the object of `name` `address`
+      // `syntheticThreshold`, `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
+      const invalidMonitorConfig1 = {
+        // Config missing `name` and `syntheticThreshold`.
+        botsToMonitor: [
+          {
+            address: liquidatorBot,
+            collateralThreshold: toWei("10000"), // 10,000.00 tokens of collateral threshold
+            etherThreshold: toWei("10")
+          }
+        ]
+      };
+
+      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, invalidMonitorConfig1, empProps);
+      errorThrown1 = false;
+    } catch (err) {
+      errorThrown1 = true;
+    }
+    assert.isTrue(errorThrown1);
+
+    let errorThrown2;
+    try {
+      // Create an invalid config. A valid config expects an array of objects with keys in the object of `name` `address`
+      // `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
+      const invalidMonitorConfig2 = {
+        // Config has an invalid address for the monitored bot.
+        botsToMonitor: [
+          {
+            name: "Monitored liquidator bot",
+            address: "INVALID_ADDRESS",
+            collateralThreshold: toWei("10000"), // 10,000.00 tokens of collateral threshold
+            syntheticThreshold: toWei("10000"), // 10,000.00 tokens of debt threshold
+            etherThreshold: toWei("10")
+          }
+        ]
+      };
+
+      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, invalidMonitorConfig2, empProps);
+      errorThrown2 = false;
+    } catch (err) {
+      errorThrown2 = true;
+    }
+    assert.isTrue(errorThrown2);
+  });
+  it("Can correctly create balance monitor and query balances with no config provided", async function() {
+    const emptyConfig = {};
+    let errorThrown;
+    try {
+      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, emptyConfig, empProps);
+      await balanceMonitor.checkBotBalances();
+      errorThrown = false;
+    } catch (err) {
+      errorThrown = true;
+    }
+    assert.isFalse(errorThrown);
   });
 });

@@ -1,4 +1,4 @@
-const { PriceFeedInterface } = require("../../price-feed/PriceFeedInterface");
+const { PriceFeedInterface } = require("./PriceFeedInterface");
 
 // An implementation of PriceFeedInterface that medianizes other price feeds.
 class PriceFeedMock extends PriceFeedInterface {

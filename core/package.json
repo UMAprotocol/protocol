@@ -1,19 +1,27 @@
 {
-  "name": "@umaprotocol/liquidator",
+  "name": "@umaprotocol/core",
   "version": "1.0.0",
-  "description": "UMA Liquidator",
+  "description": "UMA smart contracts and unit tests",
   "private": true,
   "dependencies": {
+    "@awaitjs/express": "^0.3.0",
+    "@openzeppelin/contracts": "3.0.0",
+    "@sendgrid/mail": "^6.4.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0",
-    "dotenv": "^6.2.0"
+    "express": "^4.17.1",
+    "gmail-send": "^1.2.14",
+    "minimist": "^1.2.0",
+    "node-fetch": "^2.3.0",
+    "truffle": "^5.1.14",
+    "web3": "^1.2.4"
   },
   "devDependencies": {
-    "sinon": "^9.0.2",
-    "winston": "^3.2.1"
+    "coveralls": "^3.1.0",
+    "truffle-assertions": "^0.9.2",
+    "truffle-deploy-registry": "^0.5.1"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
-  "main": "index.js",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/"
   },
@@ -21,6 +29,10 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
+  "files": [
+    "./contracts/**/*.sol",
+    "./build/contracts/*.js"
+  ],
   "scripts": {
     "test": "echo \"No tests currently configured\""
   },

@@ -7,16 +7,13 @@ const { MAX_UINT_VAL } = require("../../common/Constants.js");
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
 
-// Helper client script
+// Helpers and custom winston transport module to monitor winston log outputs
 const {
-  ExpiringMultiPartyEventClient
-} = require("../../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
-
-// Price feed mock
-const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
-
-// Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+  ExpiringMultiPartyEventClient,
+  PriceFeedMock,
+  SpyTransport,
+  lastSpyLogIncludes
+} = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -51,6 +48,8 @@ contract("ContractMonitor.js", function(accounts) {
 
   // Price feed mock
   let priceFeedMock;
+  let spyLogger;
+  let empProps;
 
   // re-used variables
   let expirationTime;
@@ -101,7 +100,7 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
     // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
@@ -111,18 +110,18 @@ contract("ContractMonitor.js", function(accounts) {
     priceFeedMock = new PriceFeedMock();
 
     // Define a configuration object. In this config only monitor one liquidator and one disputer.
-    const contractMonitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
+    const monitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
-    const empProps = {
+    empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),
       priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
       networkId: await web3.eth.net.getId()
     };
 
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, contractMonitorConfig, priceFeedMock, empProps);
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, monitorConfig, empProps, mockOracle);
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -319,11 +318,6 @@ contract("ContractMonitor.js", function(accounts) {
       from: disputer
     });
 
-    // Advance time and settle
-    let timeAfterLiquidationLiveness = liquidationTime + 10;
-    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
-
     // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
     // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
     let disputePrice = toWei("2.5");
@@ -346,6 +340,10 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "failed")); // the disputed was not successful based on settlement price
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
 
+    // Advance time so that price request is for a different timestamp.
+    const nextLiquidationTimestamp = liquidationTime + 1;
+    await emp.setCurrentTime(nextLiquidationTimestamp.toString());
+
     // Create a second liquidation from a non-monitored address (sponsor1).
     liquidationTime = (await emp.getCurrentTime()).toNumber();
     await emp.createLiquidation(
@@ -361,11 +359,6 @@ contract("ContractMonitor.js", function(accounts) {
     await emp.dispute("0", sponsor2, {
       from: sponsor2
     });
-
-    // Advance time and settle
-    timeAfterLiquidationLiveness = liquidationTime + 10;
-    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
     // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
     // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
@@ -385,7 +378,46 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // This liquidator is not monitored
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // disputer address
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored dispute bot)")); // This disputer is not monitored
-    assert.isTrue(lastSpyLogIncludes(spy, "success")); // the disputed was successful based on settlement price
+    assert.isTrue(lastSpyLogIncludes(spy, "succeeded")); // the disputed was successful based on settlement price
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
+  });
+  it("Cannot set invalid config", async function() {
+    let errorThrown1;
+    try {
+      // Create an invalid config. A valid config expects two arrays of addresses.
+      const invalidConfig1 = { monitoredLiquidators: liquidator, monitoredDisputers: [disputer] };
+      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, invalidConfig1, empProps);
+      errorThrown1 = false;
+    } catch (err) {
+      errorThrown1 = true;
+    }
+    assert.isTrue(errorThrown1);
+
+    let errorThrown2;
+    try {
+      // Create an invalid config. A valid config expects two arrays of addresses.
+      const invalidConfig2 = { monitoredLiquidators: "NOT AN ADDRESS" };
+      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, invalidConfig2, empProps);
+      errorThrown2 = false;
+    } catch (err) {
+      errorThrown2 = true;
+    }
+    assert.isTrue(errorThrown2);
+  });
+  it("Can correctly create contract monitor with no config provided", async function() {
+    let errorThrown;
+    try {
+      // Create an invalid config. A valid config expects two arrays of addresses.
+      const emptyConfig = {};
+      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, emptyConfig, empProps);
+      await contractMonitor.checkForNewSponsors();
+      await contractMonitor.checkForNewLiquidations();
+      await contractMonitor.checkForNewDisputeEvents();
+      await contractMonitor.checkForNewDisputeSettlementEvents();
+      errorThrown = false;
+    } catch (err) {
+      errorThrown = true;
+    }
+    assert.isFalse(errorThrown);
   });
 });

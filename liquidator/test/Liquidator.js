@@ -7,18 +7,16 @@ const { interfaceName } = require("../../core/utils/Constants.js");
 // Script to test
 const { Liquidator } = require("../liquidator.js");
 
-// Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
-const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
-
-// Custom winston transport module to monitor winston log outputs
+// Helper clients and custom winston transport module to monitor winston log outputs
 const {
+  ExpiringMultiPartyClient,
+  GasEstimator,
+  PriceFeedMock,
   SpyTransport,
   lastSpyLogLevel,
   spyLogIncludes,
   spyLogLevel
-} = require("../../financial-templates-lib/logger/SpyTransport");
+} = require("@umaprotocol/financial-templates-lib");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -48,6 +46,7 @@ contract("Liquidator.js", function(accounts) {
   let spyLogger;
 
   let liquidatorConfig;
+  let liquidatorOverridePrice;
   let empProps;
 
   before(async function() {
@@ -837,6 +836,46 @@ contract("Liquidator.js", function(accounts) {
       await liquidator.queryAndLiquidate();
       assert.equal(spy.callCount, 1); // 1 log events after liquidation query.
       assert.equal(lastSpyLogLevel(spy), "warn"); // most recent log level should be "warn"
+    });
+
+    it("Can correctly override price feed input", async function() {
+      // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+      // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      // specify an override price of 0.5e18.
+      liquidatorOverridePrice = toWei("0.5");
+      // At a price point of 1 sponsor 1 is undercollateralized and sponsor 2 is overcollateralized. However, there
+      // is an override price present at 0.5. At this price point neither position is undercollateralized and so
+      // there should be no liquidation events generated from the liquidation call.
+      priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+      assert.equal(spy.callCount, 0); // No log events before liquidation query
+
+      // Next, call the `queryAndLiquidate` function with the override price. The `null` param is for
+      // `maxTokensToLiquidateWei` which null will attempt to liquidate the full position, if undercollateralized.
+      await liquidator.queryAndLiquidate(null, liquidatorOverridePrice);
+      assert.equal(spy.callCount, 0); // still no liquidation events generated as price override is set to 0.5.
+
+      let liquidationObject = await emp.getLiquidations(sponsor1);
+      // There should be no liquidation's created.
+      assert.equal(liquidationObject.length, 0);
+
+      // Specifying a new override price that places one of the positions undercollateralized should initiate a liquidation.
+      // This should again be independent of the price feed.
+      priceFeedMock.setCurrentPrice(toBN(toWei("0.5"))); // set the price feed to something that should not create a liquidation.
+
+      liquidatorOverridePrice = toWei("1.0"); // specify an override price of 1.0e18. This should place sponsor 1 underwater.
+      await liquidator.queryAndLiquidate(null, liquidatorOverridePrice);
+      assert.equal(spy.callCount, 1); // This should initiate the liquidation event and so there should be 1 log.
+
+      liquidationObject = await emp.getLiquidations(sponsor1);
+      // There should be one liquidation created.
+      assert.equal(liquidationObject.length, 1);
     });
   });
 });

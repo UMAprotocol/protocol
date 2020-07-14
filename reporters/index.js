@@ -3,16 +3,17 @@ const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");
 const boldUnderlineRed = chalkPipe("bold.underline.red");
 
-const { Logger } = require("../financial-templates-lib/logger/Logger");
 const winston = require("winston");
 
-const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
-const { Networker } = require("../financial-templates-lib/price-feed/Networker");
-
-// Clients to retrieve on-chain data.
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
-const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
+// Clients and helpers.
+const {
+  ExpiringMultiPartyClient,
+  ExpiringMultiPartyEventClient,
+  TokenBalanceClient,
+  Networker,
+  Logger,
+  createPriceFeed
+} = require("@umaprotocol/financial-templates-lib");
 
 // DVM utils.
 const { interfaceName } = require("../core/utils/Constants");
@@ -28,6 +29,7 @@ const Finder = artifacts.require("Finder");
 
 async function run(
   address,
+  uniswapPairOverride,
   walletsToMonitor,
   referencePriceFeedConfig,
   uniswapPriceFeedConfig,
@@ -122,6 +124,7 @@ async function run(
     oracle,
     collateralToken,
     syntheticToken,
+    uniswapPairOverride,
     endDateOffsetSeconds,
     periodLengthSeconds
   );
@@ -171,8 +174,22 @@ async function Poll(callback) {
       ? parseInt(process.env.PERIOD_REPORT_LENGTH)
       : 24 * 60 * 60;
 
+    // Overrides the Uniswap pair that we want to query trade data for. The assumption is that the GlobalSummaryReporter fetches
+    // data for only one Uniswap pair, and the default pair tokens are the emp-synthetic-token and the emp-collateral-token.
+    //
+    // TODO: This object could take a long time to initialize if each `contract.at()` makes a network call to check if code exists
+    // at the address. We could make this more efficient by either parallelizing via `Promise.all()` or convert this into an address-to-address
+    // map and initialize lazily once we determine an address.
+    const uniswapPairOverride = {
+      // yCOMP <--> COMP
+      [web3.utils.toChecksumAddress("0x67DD35EaD67FcD184C8Ff6D0251DF4241F309ce1")]: await ExpandedERC20.at(
+        web3.utils.toChecksumAddress("0xc00e94cb662c3520282e6f5717214004a7f26888")
+      )
+    };
+
     await run(
       empAddress,
+      uniswapPairOverride,
       walletsToMonitor,
       referencePriceFeedConfig,
       uniswapPriceFeedConfig,

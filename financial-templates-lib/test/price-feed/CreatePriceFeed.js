@@ -18,7 +18,7 @@ const {
 const { CryptoWatchPriceFeed } = require("../../price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
 const { MedianizerPriceFeed } = require("../../price-feed/MedianizerPriceFeed");
-const { NetworkerMock } = require("./NetworkerMock");
+const { NetworkerMock } = require("../../price-feed/NetworkerMock");
 const winston = require("winston");
 
 contract("CreatePriceFeed.js", function(accounts) {
