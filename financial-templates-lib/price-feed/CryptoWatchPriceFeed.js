@@ -195,8 +195,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return this.toBN(this.toWei("1"))
         .mul(this.toBN(this.toWei("1")))
         .div(priceBN);
-    } else {
-      return null;
     }
   }
 }
