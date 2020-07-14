@@ -69,7 +69,6 @@ app.post("/", async (req, res) => {
     let promiseArray = [];
     for (const botName in configObject) {
       const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
       if (process.env.ENVIRONMENT == "production") {
         promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
       } else {
