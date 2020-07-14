@@ -84,6 +84,8 @@ app.post("/", async (req, res) => {
     });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
+    // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
+    // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
 
     Logger.debug({
@@ -96,12 +98,14 @@ app.post("/", async (req, res) => {
     let thrownErrors = [];
     results.forEach((result, index) => {
       if (result.status == "rejected") {
+        // If the child process in the spoke crashed it will return 400 (rejected)
         thrownErrors.push({
           status: result.status,
           execResponse: result.reason.response.data,
           botIdentifier: Object.keys(configObject)[index]
         });
       } else if (result.value.execResponse.error) {
+        // If the child process exited correctly but contained an error
         thrownErrors.push({
           status: result.status,
           execResponse: result.value.execResponse,
@@ -119,7 +123,7 @@ app.post("/", async (req, res) => {
       message: "All calls returned correctly",
       thrownErrors: null
     });
-    res.status(200).send({ message: "All calls returned correctly", error: null });
+    res.status(200).send({ message: "All calls returned correctly", error: thrownErrors });
   } catch (thrownErrors) {
     Logger.error({
       at: "CloudRunnerHub",
