@@ -1,21 +1,21 @@
 # Liquidator, disputer and monitor bot parameterization
 
-The UMA liquidator, disputer and monitor bots are highly configurable enabling their operation to be fine tuned in different deployment environments. Additionally, the bots are designed to be runnable in a config light fraomework through aggressive defaulting. This makes the bots simple to set up if you don't need all the settings that come with the more involved configs.
+The UMA liquidator, disputer, and monitor bots are highly configurable enabling their operation to be fine tuned in different deployment environments. Additionally, the bots are designed to be runnable with very little configuration out of the box due to ample use of sensible defaults. This makes the bots simple to setup if you don't need all the settings that come with a more involved configuration.
 
 This doc outlines possible configuration options for bot deployment.
 
 ## Common configuration settings
 
-Across the three bots (liquidator, disputer and monitor) there is a fair amount of shared configuration. This shared logic is first outlined. After this, bot specific configs are listed.
+All three bots (liquidator, disputer, and monitor) share some configuration options, but each also have bot-specific options as well.
 
 ### Common config
 
-- `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you want to connect to. This config defines the synthetic that the bot will be liquidating.
+- `EMP_ADDRESS`**[required]**: address of the deployed expiring multi party contract on the given network you want to connect to. This config will determine the synthetic token that the bot will be concerned with.
 - `MNEMONIC`**[required OR `PRIVATE_KEY`]**: defines the wallet for the bots to use. Generate and seed with Ether & synthetics before running the bot.
 - `PRIVATE_KEY`**[required OR `MNEMONIC`]**: defines the wallet for the bots to use. Generate and seed with Ether & synthetics before running the bot.
 - `COMMAND`**[required if using Docker]**: initial entry point the bot uses when the bot's Docker container starts running.
-- `INFURA_API_KEY` [optional]: specify an infura API key for the bot to use. By default this uses a shared key stored in the repo. If you experience issues with accessing infura try adding your own key.
-- `CUSTOM_NODE_URL` [optional]: specify a Ethereum RPC node URL. This can run over `https` or `wss` depending on your preference.
+- `INFURA_API_KEY` [optional]: specify an Infura API key for the bot to use. By default this uses a shared key stored in the repo. If you experience issues with accessing Infura try adding your own key.
+- `CUSTOM_NODE_URL` [optional]: specify an Ethereum RPC node URL. This can run over `https` or `wss` depending on your preference.
 - `POLLING_DELAY`[optional]: how long the bot should wait (in seconds) before running a polling cycle. If excluded the bot defaults to polling every 60 seconds.
 - `PRICE_FEED_CONFIG`[optional]: configuration object used to parameterize the bot's price feed. If excluded then the bot will try and infer the price feed based on the identifer name. Optionally, you can override this. This config, if provided, contains the following:
   - `type` specifies the configuration of the price feed. The `medianizer` provides the median of the price of the identifier over a set of different exchanges.
@@ -25,7 +25,7 @@ Across the three bots (liquidator, disputer and monitor) there is a fair amount 
   - `minTimeBetweenUpdates` minimum number of seconds between updates. If update is called more frequently, no new price data will be fetched.
   - `medianizedFeeds` is an array of type `priceFeed` that defines the feeds overwhich the medianizer will take the median of. Each of these have their own components which are defined as:
     - `type` Each instance of the medianizer is also a type. This could be a `medianizer`, `uniswap` or `cryptowatch` depending on the configuration of the bot. The sample bot is using only `cryptowatch` price feeds to compute the median.
-    - `exchange` a string identifier for the exchange to pull prices from. This should be the identifier used to identify the exchange in CW's REST API.
+    - `exchange` a string identifier for the exchange to pull prices from. This should be the identifier used to identify the exchange in CryptoWatch's REST API.
 - `ENVIRONMENT`[optional]: when set to `production`, will pipe logs to GCP stackdriver.
 - `SLACK_WEBHOOK`[optional]: can be included to send messages to a slack channel.
 - `PAGERDUTY_API_KEY`[optional]: if you want to configure your bot to send pager duty messages(sms, phone calls, or emails) when they crash or have `error` level logs you'll need an API key here.
@@ -51,7 +51,7 @@ COMMAND=npx truffle exec ../liquidator/index.js --network kovan_mnemonic
 ### Possible liquidator config options
 
 - `LIQUIDATOR_CONFIG` [optional]: enables the override of specific bot settings. Contains the following sub-settings:
-  - `crThreshold`: Liquidate if a positions collateral falls more than this % below the min CR requirement.
+  - `crThreshold`: Liquidate if a position's collateral falls more than this % below the min CR requirement.
   - `liquidationDeadline`: Aborts if the transaction is mined this amount of time after the last update (in seconds).
   - `liquidationMinPrice`: Aborts if the amount of collateral in the position per token is below this ratio.
   - `txnGasLimit` Gas limit to set for sending on-chain transactions.
@@ -77,7 +77,7 @@ COMMAND=npx truffle exec ../disputer/index.js --network kovan_mnemonic
 ### Possible disputer config options
 
 - `DISPUTER_CONFIG` [optional]: enables the override of specific bot settings. Contains the following sub-settings:
-  - `disputeDelay`: Amount of time to wait after the request timestamp of the liquidation to be disputed. This makes the reading of the historical price more reliable. Denominated in seconds.
+  - `disputeDelay`: Amount of time (in seconds) to wait after the request timestamp of the liquidation to be disputed. This makes the reading of the historical price more reliable.
   - `txnGasLimit`: Gas limit to set for sending on-chain transactions.
 - `DISPUTER_OVERRIDE_PRICE`[optional]: override the disputer input price. Can be used if there is an error in the bots price feed to force disputes at a given price.
 
@@ -86,13 +86,13 @@ COMMAND=npx truffle exec ../disputer/index.js --network kovan_mnemonic
 The monitor bots are used to monitor the UMA ecosystem for key events. They have a number of monitor modules built into them that enable real time reporting on key events for a given EMP contract. The monitor can report on the following:
 
 - **Balance Monitor**: specify a list of set of key wallets to monitor. Send alerts if their collateral synthetic or ether balance drops below define thresholds.
-- **Contract Monitor**: send alerts when liquidation, dispute & dispute settlement events occure.
-- **Collateralization ratio monitor**: monitor a given positions CR and send alerts if it drops below a given threshold.
-- **Synthetic peg monitor**: monitor an EMP's synthetic and reports when the synthetic trading off peg there is high volatility in the synthetic price or there is high volatility in the reference price.
+- **Contract Monitor**: send alerts when liquidation, dispute, and dispute settlement events occur.
+- **Collateralization ratio monitor**: monitor a given position's CR and send alerts if it drops below a given threshold.
+- **Synthetic peg monitor**: monitor an EMP's synthetic and reports when the synthetic is trading off peg and there is high volatility in the synthetic price or there is high volatility in the reference price.
 
 ### Minimum viable monitor config:
 
-The config below will start up a monitor bot that will: 1) send messages when new liquidations, alerts or disputes occur, 2) fire if there is large volatility in the synthetic or underlier price. It wont report on any wallet or CR monitoring as no params have been defined.
+The config below will start up a monitor bot that will: (1) send messages when new liquidations, alerts, or disputes occur and (2) fire if there is large volatility in the synthetic or price of the underlying. It wont report on any wallet or CR monitoring as no params have been defined.
 
 ```bash
 EMP_ADDRESS=0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1
