@@ -1,6 +1,7 @@
 module.exports = {
   ...require("./AbiUtils"),
   ...require("./AdminUtils"),
+  ...require("./Constants"),
   ...require("./ContractUtils"),
   ...require("./Crypto"),
   ...require("./EmpUtils"),
