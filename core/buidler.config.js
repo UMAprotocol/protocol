@@ -11,6 +11,10 @@ task("test")
 
     if (debug) {
       bre.config.solc.optimizer.enabled = false;
+      bre.config.solc.optimizer.allowUnlimitedContractSize = true;
+      bre.config.solc.optimizer.blockGasLimit = 0x1fffffffffffff;
+      bre.config.solc.optimizer.gas = 12000000;
+
       console.log(chalkPipe("bold.underline")("Running tests in debug mode"));
     }
 
@@ -27,9 +31,9 @@ module.exports = {
   },
   networks: {
     buidlerevm: {
-      gas: 12000000,
-      blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true,
+      gas: 11500000,
+      blockGasLimit: 11500000,
+      allowUnlimitedContractSize: false,
       timeout: 1800000
     },
     localhost: {
