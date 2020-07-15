@@ -46,9 +46,9 @@ let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
 
 const empCollateralTokenMap = {
-  "COMP/USD": TestnetERC20,
+  COMPUSD: TestnetERC20,
   "ETH/BTC": TestnetERC20,
-  "USD/ETH": WETH9
+  USDETH: WETH9
 };
 
 /** ***************************************************
