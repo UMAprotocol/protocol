@@ -131,6 +131,16 @@ const deployEMP = async callback => {
       // Mint accounts[0] collateral.
       await collateralToken.allocateTo(accounts[0], toWei("1000000"));
       console.log("Minted accounts[0] 1,000,000 collateral tokens");
+    } else if (argv.test && collateralToken.address === (await WETH9.deployed()).address) {
+      const initialSponsor = accounts[1];
+      await collateralToken.deposit({ value: toWei("1200"), from: initialSponsor });
+      await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
+      await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
+      console.log("Created an initial position with CR = 120 % for the sponsor: ", initialSponsor);
+
+      // Mint accounts[0] collateral.
+      await collateralToken.deposit({ value: toWei("1000000"), from: accounts[0] });
+      console.log("Converted 1,000,000 collateral WETH for accounts[0]");
     }
   } catch (err) {
     console.error(err);
