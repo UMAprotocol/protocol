@@ -18,7 +18,9 @@ abstract contract ContractCreator {
 
     function _requireWhitelistedCollateral(address collateralAddress) internal view {
         FinderInterface finder = FinderInterface(finderAddress);
-        AddressWhitelist collateralWhitelist = AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+        AddressWhitelist collateralWhitelist = AddressWhitelist(
+            finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist)
+        );
         require(collateralWhitelist.isOnWhitelist(collateralAddress), "Collateral not whitelisted");
     }
 

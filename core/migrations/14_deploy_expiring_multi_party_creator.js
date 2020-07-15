@@ -10,7 +10,6 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 const { interfaceName } = require("../utils/Constants.js");
 
-
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
@@ -22,9 +21,13 @@ module.exports = async function(deployer, network, accounts) {
 
   // Add CollateralWhitelist to finder.
   const finder = await Finder.deployed();
-  await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address, {
-    from: keys.deployer
-  });
+  await finder.changeImplementationAddress(
+    web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+    collateralWhitelist.address,
+    {
+      from: keys.deployer
+    }
+  );
 
   // Add the testnet ERC20 as the default collateral currency (this is the DAI address on mainnet).
   const testnetERC20 = await TestnetERC20.deployed();

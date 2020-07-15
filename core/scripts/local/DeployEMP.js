@@ -89,7 +89,9 @@ const deployEMP = async callback => {
       disputeBondPct: { rawValue: toWei("0.05") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.2") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      liquidationLiveness: 7200,
+      withdrawalLiveness: 7200
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });

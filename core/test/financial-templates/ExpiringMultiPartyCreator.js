@@ -34,7 +34,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     // Whitelist collateral currency
-    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+    collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
@@ -63,23 +63,12 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), tokenFactory.address);
   });
 
-  it("Expiration timestamp must be one of the allowed timestamps", async function() {
-    // Change only expiration timestamp.
-    const validExpiration = "1598918400";
+  it("Arbitrary expiration timestamps should work", async function() {
+    // Change to arbitrary expiration timestamp
+    const arbitraryExpiration = "1598918401";
     // Set to a valid expiry.
-    constructorParams.expirationTimestamp = validExpiration.toString();
+    constructorParams.expirationTimestamp = arbitraryExpiration.toString();
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
-    // Set to an invalid expiry.
-    constructorParams.expirationTimestamp = toBN(validExpiration)
-      .add(toBN("1"))
-      .toString();
-    assert(
-      await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator
-        })
-      )
-    );
   });
 
   it("Cannot have empty synthetic token symbol", async function() {
@@ -143,12 +132,10 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
 
     assert.equal(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
-    // Liquidation liveness should be strictly set by EMP creator.
-    const enforcedLiquidationLiveness = await expiringMultiPartyCreator.STRICT_LIQUIDATION_LIVENESS();
-    assert.equal(await expiringMultiParty.liquidationLiveness(), enforcedLiquidationLiveness.toString());
-    // Withdrawal liveness should be strictly set by EMP creator.
-    const enforcedWithdrawalLiveness = await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS();
-    assert.equal(await expiringMultiParty.withdrawalLiveness(), enforcedWithdrawalLiveness.toString());
+    // Liquidation liveness should be the same value as set in the constructor params.
+    assert.equal(await expiringMultiParty.liquidationLiveness(), constructorParams.liquidationLiveness.toString());
+    // Withdrawal liveness should be the same value as set in the constructor params.
+    assert.equal(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness.toString());
     assert.equal(
       hexToUtf8(await expiringMultiParty.priceIdentifier()),
       hexToUtf8(constructorParams.priceFeedIdentifier)
