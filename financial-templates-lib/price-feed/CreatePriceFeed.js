@@ -235,7 +235,8 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
-      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" }
+      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
     ]
   }
 };
