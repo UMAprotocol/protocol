@@ -141,7 +141,7 @@ class CRMonitor {
           ", the position can be liquidated.";
 
         this.logger.warn({
-          at: "ContractMonitor",
+          at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn
         });
