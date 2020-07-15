@@ -16,6 +16,9 @@
     "url": "https://github.com/UMAprotocol/protocol.git"
   },
   "devDependencies": {
+    "@nomiclabs/buidler": "^1.3.8",
+    "@nomiclabs/buidler-truffle5": "^1.3.4",
+    "@nomiclabs/buidler-web3": "^1.3.4",
     "coveralls": "^3.1.0",
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^6.10.1",

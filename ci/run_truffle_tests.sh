@@ -39,7 +39,7 @@ run_tests() {
     check_deployment ./ 1234 ci
 
     # Run standard truffle tests
-    $(npm bin)/truffle test --network ci
+    $(npm bin)/buidler test
 }
 
 # Run tests for core.

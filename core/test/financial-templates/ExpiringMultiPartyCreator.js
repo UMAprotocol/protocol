@@ -57,7 +57,8 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
   });
 
   it("TokenFactory address should be set on construction", async function() {
-    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
+    const tokenFactory = await TokenFactory.deployed();
+    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), tokenFactory.address);
   });
 
   it("Expiration timestamp must be one of the allowed timestamps", async function() {
