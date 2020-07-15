@@ -100,6 +100,12 @@ class Disputer {
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
         ) {
+          this.logger.debug({
+            at: "Disputer",
+            message: "Detected a disputable liquidation",
+            price: price.toString(),
+            liquidation: JSON.stringify(liquidation)
+          });
           return true;
         } else {
           return false;
@@ -126,6 +132,7 @@ class Disputer {
         this.logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
+          disputer: this.account,
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
           error
