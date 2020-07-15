@@ -207,6 +207,7 @@ const defaultConfigs = {
     ]
   },
   "COMP/USD": {
+    // Kovan uses the "/"
     type: "medianizer",
     lookback: 7200,
     minTimeBetweenUpdates: 60,
@@ -216,7 +217,18 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
     ]
   },
-  "USD/ETH": {
+  COMPUSD: {
+    // Mainnet has no "/"
+    type: "medianizer",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
+      { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
+      { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
+    ]
+  },
+  USDETH: {
     type: "medianizer",
     lookback: 7200,
     invertPrice: true,
