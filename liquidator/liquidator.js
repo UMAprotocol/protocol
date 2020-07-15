@@ -133,8 +133,8 @@ class Liquidator {
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
     // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
-    const scaledPrice = this.fromWei(
-      price.mul(this.toBN(this.toWei("1")).sub(this.toBN(this.toWei(this.crThreshold.toString()))))
+    const scaledPrice = Math.round(
+      this.fromWei(price.mul(this.toBN(this.toWei("1")).sub(this.toBN(this.toWei(this.crThreshold.toString())))))
     );
 
     // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation

@@ -96,7 +96,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
       logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApprovalTx.tx
       });
     }
 
