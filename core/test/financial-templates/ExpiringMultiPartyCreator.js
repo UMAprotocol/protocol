@@ -47,7 +47,9 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      liquidationLiveness: 7200,
+      withdrawalLiveness: 7200
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
