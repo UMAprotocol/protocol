@@ -10,10 +10,16 @@
     "@umaprotocol/react-plugin": "^1.5.5",
     "@umaprotocol/store": "^1.5.6",
     "bignumber.js": "^8.0.1",
+    "bufferutil": "^4.0.1",
+    "core-js": "^3.6.5",
+    "fast-crc32c": "^2.0.0",
+    "http2": "^3.3.7",
     "react": "^16.8.6",
     "react-cookie": "^4.0.3",
     "react-dom": "^16.8.6",
-    "react-scripts": "3.0.1"
+    "react-scripts": "3.0.1",
+    "regenerator-runtime": "^0.13.5",
+    "utf-8-validate": "^5.0.2"
   },
   "scripts": {
     "start": "react-scripts start",
