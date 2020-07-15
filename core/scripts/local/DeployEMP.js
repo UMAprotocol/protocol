@@ -63,6 +63,12 @@ const deployEMP = async callback => {
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
     const priceFeedIdentifier = utf8ToHex(identifierBase);
 
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    if (!(await identifierWhitelist.isIdentifierSupported(priceFeedIdentifier))) {
+      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
+      console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
+    }
+
     collateralToken = await empCollateralTokenMap[identifierBase].deployed();
 
     if (argv.test) {
@@ -72,11 +78,6 @@ const deployEMP = async callback => {
       console.log("Mock Oracle deployed:", mockOracle.address);
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-
-      // Whitelist the pricefeed identifier.
-      identifierWhitelist = await IdentifierWhitelist.deployed();
-      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
-      console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
 
       // Whitelist collateral currency
       collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
@@ -120,7 +121,7 @@ const deployEMP = async callback => {
 
     // If in test environment, create an initial position so that we can create additional positions via the sponsor CLI.
     // This step assumes that the web3 has access to the account at index 1 (i.e. accounts[1]).
-    if (argv.test) {
+    if (argv.test && collateralToken.address === (await TestnetERC20.deployed()).address) {
       const initialSponsor = accounts[1];
       await collateralToken.allocateTo(initialSponsor, toWei("1200"));
       await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
