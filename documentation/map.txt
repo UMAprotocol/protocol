@@ -8,7 +8,8 @@
 *** prerequisites.md
 *** creating_from_truffle.md
 *** using_the_uma_sponsor_cli_tool.md
-*** liquidation.md
+*** liquidation_and_dispute_bots.md
+*** bot_parameterization.md
 *** mint_tokens_via_etherscan.md
 ** known_issues.md
 ** glossary.md
