@@ -187,6 +187,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         liquidatedCollateral: toWei("100"),
         lockedCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
+        state: "1",
         liquidator: sponsor1,
         disputer: zeroAddress
       }
@@ -336,6 +337,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         {
           sponsor: sponsor1,
           id: "0",
+          state: "1",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           liquidatedCollateral: toWei("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
@@ -361,6 +363,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         {
           sponsor: sponsor1,
           id: "0",
+          state: "1",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           liquidatedCollateral: toWei("140"),
@@ -420,6 +423,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         {
           sponsor: sponsor1,
           id: "0",
+          state: "2",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           liquidatedCollateral: toWei("150"),
