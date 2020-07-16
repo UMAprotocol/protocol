@@ -1,7 +1,10 @@
 {
-  "name": "@umaprotocol/disputer",
+  "name": "@umaprotocol/monitors",
   "version": "1.0.0",
-  "description": "UMA Disputer",
+  "description": "UMA Monitors",
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
   "private": true,
   "dependencies": {
     "dotenv": "^6.2.0"
@@ -10,15 +13,15 @@
     "sinon": "^9.0.2",
     "winston": "^3.2.1"
   },
-  "homepage": "https://umaproject.org",
-  "license": "AGPL-3.0-or-later",
-  "main": "index.js",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests currently configured\""
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

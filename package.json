@@ -99,6 +99,8 @@
   "workspaces": [
     "voter-dapp",
     "disputer",
+    "liquidator",
+    "monitors",
     "reporters"
   ]
 }

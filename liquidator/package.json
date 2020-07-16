@@ -1,10 +1,30 @@
 {
-  "name": "liquidator",
-  "version": "0.1.0",
-  "description": "Liquidator",
+  "name": "@umaprotocol/liquidator",
+  "version": "1.0.0",
+  "description": "UMA Liquidator",
   "private": true,
   "dependencies": {
-    "winston": "^3.2.1",
-    "winston-transport": "^4.3.0"
+    "dotenv": "^6.2.0",
+    "web3": "^1.2.9"
+  },
+  "devDependencies": {
+    "sinon": "^9.0.2",
+    "winston": "^3.2.1"
+  },
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests currently configured\""
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
   }
 }
