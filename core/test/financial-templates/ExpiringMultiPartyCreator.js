@@ -107,6 +107,30 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     );
   });
 
+  it("Withdrawal liveness must not be 0", async function() {
+    // Change only the withdrawal liveness
+    constructorParams.withdrawalLiveness = 0;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Liquidation liveness must not be 0", async function() {
+    // Change only the liquidation liveness
+    constructorParams.liquidationLiveness = 0;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
   it("Can create new instances of ExpiringMultiParty", async function() {
     // Use `.call` to get the returned value from the function.
     let functionReturnedAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {

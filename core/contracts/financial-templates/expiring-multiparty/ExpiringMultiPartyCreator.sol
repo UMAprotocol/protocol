@@ -91,6 +91,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // Enforce configuration constraints.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
+        require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
+        require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
         _requireWhitelistedCollateral(params.collateralAddress);
 
         // Input from function call.
