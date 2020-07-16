@@ -99,7 +99,7 @@ let umaPerSnapshot;
     }
     progressBar.stop();
 
-    console.log("🎉 Finished calculating payouts!\nSaving shareholder payout file...");
+    console.log("🎉 Finished calculating payouts!");
     _saveShareHolderPayout(shareHolderPayout);
   } catch (err) {
     console.error(err);
@@ -150,6 +150,6 @@ function _saveShareHolderPayout(shareHolderPayout) {
   const savePath = `${path.resolve(__dirname)}/weekly-payouts/${argv.week}_week_UMAsToDistribute.json`;
   fs.writeFile(savePath, JSON.stringify(shareHolderPayout), err => {
     if (err) return console.error(err);
-    console.log("🗄   File successfully written to", savePath);
+    console.log("🗄  File successfully written to", savePath);
   });
 }
