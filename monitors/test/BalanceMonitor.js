@@ -52,7 +52,7 @@ contract("BalanceMonitor.js", function(accounts) {
     );
 
     // Create two bot objects to monitor a liquidator bot with a lot of tokens and Eth and a disputer with less.
-    const monitorConfig = {
+    monitorConfig = {
       botsToMonitor: [
         {
           name: "Liquidator bot",
@@ -90,7 +90,7 @@ contract("BalanceMonitor.js", function(accounts) {
     await syntheticToken.mint(disputerBot, toWei("100"), { from: tokenCreator });
   });
 
-  it("Correctly emits messages on balance threshold", async function() {
+  it("Correctly emits messages on token balances threshold", async function() {
     // Update the client.
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
@@ -152,7 +152,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Message should include the Synthetic currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
   });
-  it("Correctly emits messages on balance threshold", async function() {
+  it("Correctly emits messages on ETH balance threshold", async function() {
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
@@ -294,21 +294,18 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isFalse(errorThrown);
   });
   it("Can override the synthetic-threshold log level", async function() {
-    const alertOverrideConfig = { logOverrides: { syntheticThreshold: "error" } };
+    const alertOverrideConfig = { ...monitorConfig, logOverrides: { syntheticThreshold: "error" } };
     balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
 
     // Lower the liquidator bot's synthetic balance.
-    await syntheticToken.transfer(tokenCreator, "1", { from: liquidatorBot });
-    assert.equal(
-      (await syntheticToken.balanceOf(liquidatorBot)).toString(),
-      toBN(toWei("100"))
-        .sub(toBN("1"))
-        .toString()
-    );
+    await syntheticToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
+    assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("9999")).toString());
 
+    // Update monitors.
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
-    assert.equal(spy.callCount, 5);
+
+    assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
     assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
     assert.equal(lastSpyLogLevel(spy), "error");
