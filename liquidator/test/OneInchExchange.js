@@ -1,8 +1,13 @@
+const Token = artifacts.require("ExpandedERC20");
+
 const assert = require("assert");
 const { toWei, toBN } = web3.utils;
 const { OneInchExchange } = require("../OneInchExchange");
 
-const erc20Abi = require("../abi/IERC20.json");
+// Custom winston transport module to monitor winston log outputs
+const winston = require("winston");
+const sinon = require("sinon");
+const { GasEstimator, SpyTransport } = require("@umaprotocol/financial-templates-lib");
 
 const assertBNGreaterThan = (a, b) => {
   const [aBN, bBN] = [a, b].map(x => toBN(x));
@@ -16,15 +21,24 @@ contract("OneInch", function(accounts) {
   const DAI_ADDRESS = "0x6b175474e89094c44da98b954eedeac495271d0f";
   const BAT_ADDRESS = "0x0d8775f648430679a709e98d2b0cb6250d2887ef";
 
-  const oneInch = new OneInchExchange({ web3 });
+  const spy = sinon.spy();
+
+  const spyLogger = winston.createLogger({
+    level: "info",
+    transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+  });
+
+  const gasEstimator = new GasEstimator(spyLogger);
+
+  const oneInch = new OneInchExchange({ web3, gasEstimator });
 
   const getBalance = async ({ tokenAddress, userAddress }) => {
     if (tokenAddress === ETH_ADDRESS) {
       return web3.eth.getBalance(userAddress);
     }
 
-    const contract = new web3.eth.Contract(erc20Abi, tokenAddress);
-    return contract.methods.balanceOf(userAddress).call();
+    const erc20 = await Token.at(tokenAddress);
+    return erc20.balanceOf.call(userAddress);
   };
 
   const swapAndCheck = async ({ fromToken, toToken, amountWei }) => {
