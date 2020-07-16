@@ -95,7 +95,7 @@ let umaPerSnapshot;
 
     for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += BLOCKS_PER_SNAPSHOT) {
       shareHolderPayout = await _updatePayoutAtBlock(currentBlock, shareHolderPayout, bPool);
-      progressBar.update(Math.floor((currentBlock - fromBlock) / BLOCKS_PER_SNAPSHOT));
+      progressBar.update(Math.ceil((currentBlock - fromBlock) / BLOCKS_PER_SNAPSHOT));
     }
     progressBar.stop();
 
