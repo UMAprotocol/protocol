@@ -17,7 +17,7 @@ function getAllContracts() {
 
   // Note: we use a try here because we don't want to install the require-context package in node.js contexts where
   // it won't work.
-  try {
+  if (process.browser) {
     // This only works in webpack.
     const requireContext = require("require-context");
 
@@ -26,7 +26,7 @@ function getAllContracts() {
     const contractContext = require.context("@umaprotocol/core/build/contracts/", true, /\.json$/);
 
     importedObjects = importAll(contractContext);
-  } catch (e) {
+  } else {
     // This only works in node.js.
     const fs = require("fs");
     const path = require("path");
