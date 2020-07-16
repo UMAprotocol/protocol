@@ -1,6 +1,8 @@
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
+const {
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  revertWrapper,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class Disputer {
   /**

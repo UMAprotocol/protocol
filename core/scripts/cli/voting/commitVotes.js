@@ -2,9 +2,13 @@ const inquirer = require("inquirer");
 const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
-const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructCommitment, batchCommitVotes, getVotingRoles } = require("../../../../common/VotingUtils");
-const networkUtils = require("../../../../common/PublicNetworks");
+const {
+  constructCommitment,
+  batchCommitVotes,
+  getVotingRoles,
+  VotePhasesEnum,
+  PublicNetworks
+} = require("@umaprotocol/common");
 
 /**
  * This prompts the user twice from the command line interface:
@@ -89,8 +93,8 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
         // Construct etherscan link based on network
         const networkId = web3.networkId;
         let url;
-        if (networkUtils[networkId]) {
-          url = `${networkUtils[networkId].etherscan}/tx/`;
+        if (PublicNetworks[networkId]) {
+          url = `${PublicNetworks[networkId].etherscan}/tx/`;
         } else {
           // No URL for localhost, just show transaction ID
           url = "";

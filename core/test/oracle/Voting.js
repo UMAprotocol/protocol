@@ -1,9 +1,16 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../common/Crypto");
+const {
+  RegistryRolesEnum,
+  VotePhasesEnum,
+  didContractThrow,
+  getRandomSignedInt,
+  getRandomUnsignedInt,
+  decryptMessage,
+  encryptMessage,
+  deriveKeyPairFromSignatureTruffle,
+  computeVoteHash,
+  getKeyGenMessage
+} = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash, computeVoteHash, getKeyGenMessage } = require("../../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
 const Finder = artifacts.require("Finder");

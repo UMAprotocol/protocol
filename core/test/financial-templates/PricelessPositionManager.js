@@ -1,7 +1,6 @@
 // Libraries and helpers
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { PositionStatesEnum, didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
-const { PositionStatesEnum } = require("../../../common/Enums");
 const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test

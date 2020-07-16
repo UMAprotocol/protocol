@@ -1,6 +1,6 @@
 const web3 = require("web3");
 
-const { VotePhasesEnum } = require("../../common/Enums.js");
+const { VotePhasesEnum } = require("@umaprotocol/common");
 
 const secondsPerDay = web3.utils.toBN(86400);
 

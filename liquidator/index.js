@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 // Helpers
-const { MAX_UINT_VAL } = require("../common/Constants");
+const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const { toBN } = web3.utils;
 
 // JS libs

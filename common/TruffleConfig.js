@@ -6,11 +6,11 @@
  */
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
-const GckmsConfig = require("./gckms/GckmsConfig.js");
-const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
-const publicNetworks = require("./PublicNetworks.js");
 const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
-const MetaMaskTruffleProvider = require("./MetaMaskTruffleProvider.js");
+const { GckmsConfig } = require("./gckms/GckmsConfig.js");
+const { ManagedSecretProvider } = require("./gckms/ManagedSecretProvider.js");
+const { PublicNetworks } = require("./PublicNetworks.js");
+const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
@@ -146,7 +146,7 @@ function addLocalNetwork(networks, name, customOptions) {
 let networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
-for (const [id, { name }] of Object.entries(publicNetworks)) {
+for (const [id, { name }] of Object.entries(PublicNetworks)) {
   addPublicNetwork(networks, name, id);
 }
 
@@ -173,7 +173,7 @@ addLocalNetwork(networks, "metamask", {
 
 addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
 
-module.exports = {
+const TruffleConfig = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: networks,
@@ -194,3 +194,5 @@ module.exports = {
     }
   }
 };
+
+module.exports = { TruffleConfig };

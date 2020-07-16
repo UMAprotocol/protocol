@@ -136,18 +136,6 @@ jobs:
           name: Deploy Contracts
           working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
-      - restore_cache:
-          keys:
-            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
-            - v6-dapp-dep-cache-
-      - run:
-          name: Install Voter dApp Dependencies
-          working_directory: ~/protocol/voter-dapp
-          command: npm install
-      - save_cache:
-          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
-          paths:
-            - voter-dapp/node_modules
       - save_cache:
           key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:

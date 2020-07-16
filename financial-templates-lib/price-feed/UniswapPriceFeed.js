@@ -1,7 +1,7 @@
 // An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { MAX_SAFE_JS_INT } = require("../../common/Constants");
+const { MAX_SAFE_JS_INT } = require("@umaprotocol/common");
 
 class UniswapPriceFeed extends PriceFeedInterface {
   /**

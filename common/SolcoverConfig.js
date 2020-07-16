@@ -1,4 +1,4 @@
-module.exports = {
+const SolcoverConfig = {
   providerOptions: {
     network_id: 1234
   },
@@ -10,3 +10,5 @@ module.exports = {
     "oracle/implementation/test"
   ]
 };
+
+module.exports = { SolcoverConfig };

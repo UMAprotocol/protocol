@@ -1,5 +1,4 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum, didContractThrow } = require("@umaprotocol/common");
 
 const truffleAssert = require("truffle-assertions");
 
