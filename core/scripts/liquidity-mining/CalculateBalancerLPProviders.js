@@ -79,25 +79,24 @@ let umaPerSnapshot;
 
     let bPool = new web3.eth.Contract(poolAbi, argv.poolAddress);
 
-    console.log("🏃‍♂️Iterating over block range to generate payouts...");
+    console.log("🏃‍♂️Iterating over block range and calculating payouts...");
 
-    // create new progress bar
+    // create new progress bar to show the status of blocks traversed.
     const progressBar = new cliProgress.SingleBar(
       {
-        clearOnComplete: false,
-        format: "[{bar}] {percentage}% | | Blocks traversed: {value}/{total}"
+        format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
       },
       cliProgress.Presets.shades_classic
     );
-    progressBar.start(toBlock - fromBlock, 0);
+    progressBar.start(snapshotsToTake, 0);
 
     for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += BLOCKS_PER_SNAPSHOT) {
       shareHolderPayout = await _updatePayoutAtBlock(currentBlock, shareHolderPayout, bPool);
-      progressBar.update(currentBlock - fromBlock);
+      progressBar.update(Math.floor((currentBlock - fromBlock) / BLOCKS_PER_SNAPSHOT));
     }
     progressBar.stop();
 
-    console.log("🎉Finished calculating payouts!\nSaving shareholder payout file...");
+    console.log("🎉 Finished calculating payouts!\nSaving shareholder payout file...");
     _saveShareHolderPayout(shareHolderPayout);
   } catch (err) {
     console.error(err);
@@ -148,6 +147,6 @@ function _saveShareHolderPayout(shareHolderPayout) {
   const savePath = `${path.resolve(__dirname)}/weekly-payouts/${argv.week}_week_UMAsToDistribute.json`;
   fs.writeFile(savePath, JSON.stringify(shareHolderPayout), err => {
     if (err) return console.error(err);
-    console.log("🗄File successfully written to", savePath);
+    console.log("🗄   File successfully written to", savePath);
   });
 }
