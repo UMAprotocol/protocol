@@ -63,13 +63,16 @@ let umaPerSnapshot;
     console.log(
       `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
         umaPerSnapshot
-      )} $UMA per snapshot.\nTotal $UMA to be distributed distributed ${fromWei(umaPerSnapshot.muln(snapshotsToTake))}`
+      )} $UMA per snapshot.\n💸 Total $UMA to be distributed distributed: ${fromWei(
+        umaPerSnapshot.muln(snapshotsToTake)
+      )}`
     );
 
+    console.log("⚖️  Finding balancer pool info...");
     const poolInfo = await utils.fetchBalancerPoolInfo(argv.poolAddress);
 
     const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
-    console.log("🤑 Total number of historic liquidity providers:", shareHolders.length);
+    console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
     // Create a structure to store the payouts for all historic shareholders.
     let shareHolderPayout = {};

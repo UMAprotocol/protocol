@@ -2,16 +2,13 @@ require("dotenv").config();
 const fetch = require("node-fetch");
 
 const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
-const MARKET_API_URL = process.env.MARKET_API_URL || "https://api.coingecko.com/api/v3";
 
+// Find information about a given balancer pool `shares` returns a list of all historic LP providers.
 async function fetchBalancerPoolInfo(poolAddress) {
   const query = `
         {
           pools (where: {id: "${poolAddress}"}) {
             id
-            createTime
-            tokensList
-            totalShares
             shares (first: 1000) {
               userAddress {
                 id
