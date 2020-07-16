@@ -2,7 +2,7 @@
 module.exports = async (web3, targetTimestamp, lowerLimitStamp, higherLimitStamp) => {
   // decreasing average block size will decrease precision and also
   // decrease the amount of requests made in order to find the closest block
-  let averageBlockTime = 17;
+  let averageBlockTime = 15;
 
   // get current block number
   const currentBlockNumber = await web3.eth.getBlockNumber();
