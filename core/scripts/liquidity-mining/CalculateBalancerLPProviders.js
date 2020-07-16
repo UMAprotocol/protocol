@@ -33,7 +33,7 @@ let umaPerSnapshot;
 (async function() {
   try {
     // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
-    // will parse to 12:00am UTC
+    // will parse to 12:00am UTC.
     const fromDate = moment.utc(argv.fromDate, "YYYY-MM-DD");
     const toDate = moment.utc(argv.toDate, "YYYY-MM-DD");
     if (!web3.utils.isAddress(argv.poolAddress) || !fromDate.isValid() || !toDate.isValid() || !argv.week) {
