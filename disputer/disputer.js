@@ -211,6 +211,12 @@ class Disputer {
     }
 
     for (const liquidation of disputedLiquidations) {
+      this.logger.debug({
+        at: "Disputer",
+        message: "Detected a disputed liquidation",
+        liquidation: JSON.stringify(liquidation)
+      });
+
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
