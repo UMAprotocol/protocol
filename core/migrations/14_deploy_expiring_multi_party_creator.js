@@ -33,7 +33,10 @@ module.exports = async function(deployer, network, accounts) {
   const testnetERC20 = await TestnetERC20.deployed();
   await collateralWhitelist.addToWhitelist(testnetERC20.address);
 
-  const timer = await Timer.deployed();
+  // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
+  const timerAddress = controllableTiming
+    ? (await Timer.deployed()).address
+    : "0x0000000000000000000000000000000000000000";
   const tokenFactory = await TokenFactory.deployed();
   const registry = await Registry.deployed();
 
@@ -60,7 +63,7 @@ module.exports = async function(deployer, network, accounts) {
     ExpiringMultiPartyCreator,
     finder.address,
     tokenFactory.address,
-    controllableTiming ? timer.address : "0x0000000000000000000000000000000000000000",
+    timerAddress,
     { from: keys.deployer }
   );
 
