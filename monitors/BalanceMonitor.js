@@ -60,6 +60,16 @@ class BalanceMonitor {
             })
           );
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { syntheticThreshold:'error' } would override the default `warn` behaviour for synthetic-balance-threshold events.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
 
@@ -105,7 +115,7 @@ class BalanceMonitor {
         });
       }
       if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.syntheticThreshold ? this.logOverrides.syntheticThreshold : "warn"]({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(

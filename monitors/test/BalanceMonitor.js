@@ -110,6 +110,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,000.00")); // Correctly formatted number of actual collateral
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
 
     // Querying the balance again should emit a second message as the balance is still below the threshold.
     await tokenBalanceClient.update();
@@ -139,6 +140,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "100.00")); // Correctly formatted number of threshold Synthetic
     assert.isTrue(lastSpyLogIncludes(spy, "99.99")); // Correctly formatted number of Synthetic
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Message should include the Synthetic currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
   });
   it("Correctly emits messages on balance threshold", async function() {
     await tokenBalanceClient.update();
@@ -280,5 +282,20 @@ contract("BalanceMonitor.js", function(accounts) {
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
+  });
+  it("Can override the synthetic-threshold log level", async function() {
+    const alertOverrideConfig = { logOverrides: { syntheticThreshold: "error" } };
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+
+    // Lower the liquidator bot's synthetic balance.
+    await syntheticToken.transfer(tokenCreator, "1", { from: liquidatorBot });
+    assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("100")).sub(toBN("1")));
+
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 5);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
+    assert.equal(lastSpyLogLevel(spy), "error");
   });
 });
