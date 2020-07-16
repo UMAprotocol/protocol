@@ -133,7 +133,12 @@ contract("BalanceMonitor.js", function(accounts) {
     // is set to 100e18, with a balance of 100e18 so moving just 1 wei units of synthetic should trigger an alert.
     // The liquidator bot is still below its threshold we should expect two messages to fire (total calls should be 3 + 2).
     await syntheticToken.transfer(tokenCreator, "1", { from: disputerBot });
-    assert.equal((await syntheticToken.balanceOf(disputerBot)).toString(), toBN(toWei("100")).sub(toBN("1")));
+    assert.equal(
+      (await syntheticToken.balanceOf(disputerBot)).toString(),
+      toBN(toWei("100"))
+        .sub(toBN("1"))
+        .toString()
+    );
 
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
@@ -294,7 +299,12 @@ contract("BalanceMonitor.js", function(accounts) {
 
     // Lower the liquidator bot's synthetic balance.
     await syntheticToken.transfer(tokenCreator, "1", { from: liquidatorBot });
-    assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("100")).sub(toBN("1")));
+    assert.equal(
+      (await syntheticToken.balanceOf(liquidatorBot)).toString(),
+      toBN(toWei("100"))
+        .sub(toBN("1"))
+        .toString()
+    );
 
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
