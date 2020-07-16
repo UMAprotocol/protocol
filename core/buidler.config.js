@@ -10,10 +10,13 @@ task("test")
     const { debug } = taskArgs;
 
     if (debug) {
+      // Optmizer config changes.
       bre.config.solc.optimizer.enabled = false;
-      bre.config.solc.optimizer.allowUnlimitedContractSize = true;
-      bre.config.solc.optimizer.blockGasLimit = 0x1fffffffffffff;
-      bre.config.solc.optimizer.gas = 12000000;
+
+      // Network config changes
+      bre.config.networks.buidlerevm.allowUnlimitedContractSize = true;
+      bre.config.networks.buidlerevm.blockGasLimit = 0x1fffffffffffff;
+      bre.config.networks.buidlerevm.gas = 12000000;
 
       console.log(chalkPipe("bold.underline")("Running tests in debug mode"));
     }
