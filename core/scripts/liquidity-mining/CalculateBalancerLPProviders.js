@@ -76,7 +76,7 @@ let umaPerSnapshot;
 
     // Create a structure to store the payouts for all historic shareholders.
     let shareHolderPayout = {};
-    for (let shareHolder of shareHolders) {
+    for (shareHolder of shareHolders) {
       shareHolderPayout[shareHolder] = toBN("0");
     }
 
@@ -113,7 +113,7 @@ async function _updatePayoutAtBlock(blockNumber, shareHolderPayout, bPool) {
   const bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   let promiseArray = [];
-  for (const shareHolder of Object.keys(shareHolderPayout)) {
+  for (shareHolder of Object.keys(shareHolderPayout)) {
     promiseArray.push(await bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber));
   }
 
@@ -142,7 +142,7 @@ async function _updatePayoutAtBlock(blockNumber, shareHolderPayout, bPool) {
 // Generate a json file containing the shareholder output address and associated $UMA token payouts.
 function _saveShareHolderPayout(shareHolderPayout) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
-  for (const shareHolder of Object.keys(shareHolderPayout)) {
+  for (shareHolder of Object.keys(shareHolderPayout)) {
     if (shareHolderPayout[shareHolder] == "0") delete shareHolderPayout[shareHolder];
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }
