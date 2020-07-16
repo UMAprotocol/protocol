@@ -9,6 +9,8 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
+  const timer = await Timer.deployed();
+
   // Initialize both fees to 0.
   const initialFixedOracleFeePerSecondPerPfc = { rawValue: "0" };
   const initialWeeklyDelayFeePerSecondPerPfc = { rawValue: "0" };
@@ -19,7 +21,7 @@ module.exports = async function(deployer, network, accounts) {
     Store,
     initialFixedOracleFeePerSecondPerPfc,
     initialWeeklyDelayFeePerSecondPerPfc,
-    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
+    controllableTiming ? timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 

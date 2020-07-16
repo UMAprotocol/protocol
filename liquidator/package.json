@@ -4,8 +4,8 @@
   "description": "UMA Liquidator",
   "private": true,
   "dependencies": {
-    "dotenv": "^6.2.0",
-    "web3": "^1.2.9"
+    "@umaprotocol/financial-templates-lib": "^1.0.0",
+    "dotenv": "^6.2.0"
   },
   "devDependencies": {
     "sinon": "^9.0.2",

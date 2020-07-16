@@ -85,15 +85,26 @@ async function deploy(deployer, network, contractType, ...args) {
   const willDeploy = txnOptions.overwrite || !contractType.isDeployed();
 
   // Deploy contract.
-  await deployer.deploy(contractType, ...args);
-  const contractInstance = await contractType.deployed();
+  let contractInstance;
+
+  // Buidler
+  if (contractType.setAsDeployed) {
+    contractInstance = await contractType.new(...args);
+    contractType.setAsDeployed(contractInstance);
+  }
+
+  // Truffle
+  else {
+    await deployer.deploy(contractType, ...args);
+    contractInstance = await contractType.deployed();
+  }
 
   // Add to the registry.
   await addToTdr(contractInstance, network);
 
   // Return relevant info about the contract.
   return {
-    contract: await contractType.deployed(),
+    contract: contractInstance,
     didDeploy: willDeploy
   };
 }

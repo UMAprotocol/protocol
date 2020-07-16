@@ -5,5 +5,7 @@ const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
-  await deploy(deployer, network, DesignatedVotingFactory, Finder.address, { from: keys.deployer });
+  const finder = await Finder.deployed();
+
+  await deploy(deployer, network, DesignatedVotingFactory, finder.address, { from: keys.deployer });
 };

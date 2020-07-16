@@ -3,7 +3,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
-const Uniswap = require("../../core/build/contracts/Uniswap.json");
+const Uniswap = require("@umaprotocol/core/build/contracts/Uniswap.json");
 const ExpiringMultiParty = require("../../core/build/contracts/ExpiringMultiParty.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
@@ -147,6 +147,10 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
 }
 
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
+  if (!empAddress) {
+    throw new Error("createUniswapPriceFeedForEmp: Must pass in an `empAddress`");
+  }
+
   const emp = getEmpAtAddress(web3, empAddress);
 
   const collateralCurrencyAddress = await emp.methods.collateralCurrency().call();
@@ -155,22 +159,35 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   // Note: order doesn't matter.
   const { pairAddress, inverted } = await getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress);
 
-  if (!pairAddress) {
+  if (!pairAddress && !config) {
     throw new Error(
-      "No Uniswap Pair address found. Either set UNISWAP_ADDRESS or use a network where there is an official Uniswap V2 deployment."
+      "No Uniswap Pair address found and no override config provided. Either set UNISWAP_ADDRESS, use a network where there is an official Uniswap V2 deployment or set a default `config` value"
     );
   }
 
-  // TODO: maybe move this default config to a better location.
-  const defaultConfig = {
-    type: "uniswap",
-    twapLength: 2, // Essentially turns the TWAP off since block times are >> 2 seconds.
-    lookback: 7200,
-    invertPrice: inverted,
-    uniswapAddress: pairAddress
-  };
+  let defaultConfig;
+  if (pairAddress) {
+    // TODO: maybe move this default config to a better location.
+    defaultConfig = {
+      type: "uniswap",
+      twapLength: 2, // Essentially turns the TWAP off since block times are >> 2 seconds.
+      lookback: 7200,
+      invertPrice: inverted,
+      uniswapAddress: pairAddress
+    };
+  } else {
+    defaultConfig = {};
+  }
 
   const userConfig = config || {};
+
+  logger.debug({
+    at: "createUniswapPriceFeedForEmp",
+    message: "Inferred default config from identifier or EMP address",
+    empAddress,
+    defaultConfig,
+    userConfig
+  });
 
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
 }

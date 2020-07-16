@@ -4,6 +4,7 @@
   "description": "UMA Disputer",
   "private": true,
   "dependencies": {
+    "@umaprotocol/financial-templates-lib": "^1.0.0",
     "dotenv": "^6.2.0"
   },
   "devDependencies": {
@@ -19,6 +20,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests currently configured\""
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

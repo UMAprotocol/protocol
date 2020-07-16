@@ -40,7 +40,7 @@ const Web3 = require("web3");
 
 // Helpers
 // TODO integrate with winston logger.
-// const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
+// const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
 
 app.post("/", async (req, res) => {
   try {

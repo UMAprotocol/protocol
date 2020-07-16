@@ -1,7 +1,7 @@
 const { toWei, toBN } = web3.utils;
 
 const { MedianizerPriceFeed } = require("../../price-feed/MedianizerPriceFeed");
-const { PriceFeedMock } = require("./PriceFeedMock.js");
+const { PriceFeedMock } = require("../../price-feed/PriceFeedMock");
 
 contract("MedianizerPriceFeed.js", function(accounts) {
   it("Update", async function() {
