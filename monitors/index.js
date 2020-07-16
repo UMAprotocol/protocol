@@ -240,6 +240,7 @@ async function Poll(callback) {
     //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
     //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
     //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
+    //  "logOverrides":{"deviation":"error","syntheticThreshold":"error"}} -> override specific events log levels.
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 

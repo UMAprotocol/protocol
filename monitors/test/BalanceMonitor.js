@@ -6,7 +6,12 @@ const sinon = require("sinon");
 const { BalanceMonitor } = require("../BalanceMonitor");
 
 // Helper client script and custom winston transport module to monitor winston log outputs
-const { TokenBalanceClient, SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+const {
+  TokenBalanceClient,
+  SpyTransport,
+  lastSpyLogIncludes,
+  lastSpyLogLevel
+} = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
