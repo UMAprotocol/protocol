@@ -191,10 +191,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   _invertPriceSafely(priceBN) {
-    if (priceBN && priceBN.gt(this.toBN("0"))) {
+    if (priceBN && !priceBN.isZero()) {
       return this.toBN(this.toWei("1"))
         .mul(this.toBN(this.toWei("1")))
         .div(priceBN);
+    } else {
+      return undefined;
     }
   }
 }
