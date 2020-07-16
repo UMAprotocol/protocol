@@ -15,6 +15,7 @@ class OneInchExchange {
    * */
   constructor({ web3 }) {
     this.web3 = web3;
+    this.web3.currentProvider.timeout = 120000;
     this.oneSplitContract = new web3.eth.Contract(oneSplitAbi, oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
@@ -105,26 +106,26 @@ const main = async () => {
     assertBNGreaterThan(finalBal, initialBal);
   };
 
-  await swapAndCheck({
-    fromToken: ETH_ADDRESS,
-    toToken: DAI_ADDRESS,
-    amountWei: toWei("5")
-  });
-  console.log("Swapped ETH for DAI!");
+  // await swapAndCheck({
+  //   fromToken: ETH_ADDRESS,
+  //   toToken: DAI_ADDRESS,
+  //   amountWei: toWei("5")
+  // });
+  // console.log("Swapped ETH for DAI!");
 
-  await swapAndCheck({
-    fromToken: DAI_ADDRESS,
-    toToken: BAT_ADDRESS,
-    amountWei: toWei("5")
-  });
-  console.log("Swapped DAI for BAT!");
+  // await swapAndCheck({
+  //   fromToken: DAI_ADDRESS,
+  //   toToken: BAT_ADDRESS,
+  //   amountWei: toWei("5")
+  // });
+  // console.log("Swapped DAI for BAT!");
 
-  await swapAndCheck({
-    fromToken: DAI_ADDRESS,
-    toToken: ETH_ADDRESS,
-    amountWei: toWei("10")
-  });
-  console.log("Swapped DAI for ETH!");
+  // await swapAndCheck({
+  //   fromToken: DAI_ADDRESS,
+  //   toToken: ETH_ADDRESS,
+  //   amountWei: toWei("10")
+  // });
+  console.log(web3.currentProvider);
 };
 
 // main();

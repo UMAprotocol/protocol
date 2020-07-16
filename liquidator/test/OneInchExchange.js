@@ -1,8 +1,8 @@
+const assert = require("assert");
 const { toWei, toBN } = web3.utils;
 const { OneInchExchange } = require("../OneInchExchange");
 
 const erc20Abi = require("../abi/IERC20.json");
-const { assert } = require("sinon");
 
 const assertBNGreaterThan = (a, b) => {
   const [aBN, bBN] = [a, b].map(x => toBN(x));
@@ -20,7 +20,7 @@ contract("OneInch", function(accounts) {
 
   const getBalance = async ({ tokenAddress, userAddress }) => {
     if (tokenAddress === ETH_ADDRESS) {
-      return web3.getBalance();
+      return web3.eth.getBalance(userAddress);
     }
 
     const contract = new web3.eth.Contract(erc20Abi, tokenAddress);
