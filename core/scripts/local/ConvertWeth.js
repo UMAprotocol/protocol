@@ -1,5 +1,5 @@
 /**
- * @notice Wrap or unwrap --collateral amount of WETH. Unwrap by passing in `--unwrap true` flag.
+ * @notice Wrap or unwrap --collateral amount of WETH. Unwrap by passing in `--unwrap` flag.
  *
  * Example: `$(npm bin)/truffle exec ./scripts/local/ConvertWeth.js --network test --collateral 25 --emp 0x0`
  */

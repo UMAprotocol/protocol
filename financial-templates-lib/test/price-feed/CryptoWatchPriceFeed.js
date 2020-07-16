@@ -202,9 +202,12 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     ];
 
     await cryptoWatchPriceFeed.update();
+    await invertedCryptoWatchPriceFeed.update();
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
 
     // Bad historical ohlc response.
     networker.getJsonReturns = [
@@ -222,6 +225,23 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+
+    // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
+    networker.getJsonReturns = [
+      {
+        error: "test"
+      },
+      {
+        result: {
+          price: 0
+        }
+      }
+    ];
+
+    await invertedCryptoWatchPriceFeed.update();
+
+    assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
   });
 
   it("Update frequency", async function() {
