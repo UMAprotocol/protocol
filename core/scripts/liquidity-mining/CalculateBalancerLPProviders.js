@@ -13,7 +13,7 @@ const fs = require("fs");
 const path = require("path");
 const Web3 = require("web3");
 const utils = require("./utils");
-const poolAbi = require("./abi/BPool.json");
+const poolAbi = require("../../build/contracts/ERC20.json");
 require("dotenv").config();
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
@@ -80,7 +80,7 @@ let umaPerSnapshot;
       shareHolderPayout[shareHolder] = toBN("0");
     }
 
-    let bPool = new web3.eth.Contract(poolAbi, argv.poolAddress);
+    let bPool = new web3.eth.Contract(poolAbi.abi, argv.poolAddress);
 
     console.log("🏃‍♂️Iterating over block range and calculating payouts...");
 
