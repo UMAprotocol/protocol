@@ -25,7 +25,7 @@ app.post("/", async (req, res) => {
       childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
     });
     if (!req.body.cloudRunCommand) {
-      throw "ERROR: Missing cloudRunCommand";
+      throw new Error("ERROR: Missing cloudRunCommand");
     }
 
     // Iterate over the provided environment variables and ensure that they are all strings. This enables json configs

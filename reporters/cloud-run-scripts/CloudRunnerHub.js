@@ -123,7 +123,7 @@ app.post("/", async (req, res) => {
       message: "All calls returned correctly",
       thrownErrors: null
     });
-    res.status(200).send({ message: "All calls returned correctly", error: thrownErrors });
+    res.status(200).send({ message: "All calls returned correctly", error: null });
   } catch (thrownErrors) {
     Logger.error({
       at: "CloudRunnerHub",
