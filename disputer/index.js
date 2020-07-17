@@ -113,8 +113,8 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
     }
   } catch (error) {
     logger.error({
-      at: "Disputer#index🚨",
-      message: "Disputer error",
+      at: "Disputer#index",
+      message: "Disputer error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(logger);
@@ -150,8 +150,8 @@ async function Poll(callback) {
     await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice);
   } catch (error) {
     Logger.error({
-      at: "Disputer#index🚨",
-      message: "Disputer configuration error",
+      at: "Disputer#index",
+      message: "Disputer configuration error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
