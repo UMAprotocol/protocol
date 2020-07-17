@@ -4,7 +4,8 @@ const interfaceName = {
   Oracle: "Oracle",
   Registry: "Registry",
   Store: "Store",
-  IdentifierWhitelist: "IdentifierWhitelist"
+  IdentifierWhitelist: "IdentifierWhitelist",
+  CollateralWhitelist: "CollateralWhitelist"
 };
 
 module.exports = {
