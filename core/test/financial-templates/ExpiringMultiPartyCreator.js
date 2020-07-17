@@ -1,7 +1,6 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 // Tested Contract
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

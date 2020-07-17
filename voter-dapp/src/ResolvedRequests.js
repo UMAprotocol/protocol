@@ -9,9 +9,7 @@ import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate } from "./common/FormattingUtils.js";
-import { MAX_UINT_VAL } from "./common/Constants.js";
-import { translateAdminVote, isAdminRequest } from "./common/AdminUtils";
+import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL } from "@umaprotocol/common";
 
 function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();

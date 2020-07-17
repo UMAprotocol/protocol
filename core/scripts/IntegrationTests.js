@@ -15,9 +15,8 @@
 
 // Helpers
 const { toWei, toBN } = web3.utils;
-const { RegistryRolesEnum } = require("../../common/Enums.js");
+const { RegistryRolesEnum, MAX_UINT_VAL } = require("@umaprotocol/common");
 const { interfaceName } = require("../utils/Constants.js");
-const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

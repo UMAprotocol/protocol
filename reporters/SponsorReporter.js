@@ -1,4 +1,4 @@
-const { createFormatFunction, createShortHexString } = require("../common/FormattingUtils");
+const { createFormatFunction, createShortHexString } = require("@umaprotocol/common");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");

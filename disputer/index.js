@@ -2,7 +2,7 @@ require("dotenv").config();
 const { toBN } = web3.utils;
 
 // Helpers
-const { MAX_UINT_VAL } = require("../common/Constants");
+const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // JS libs
 const { Disputer } = require("./disputer");
@@ -96,7 +96,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
       logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApprovalTx.tx
       });
     }
 

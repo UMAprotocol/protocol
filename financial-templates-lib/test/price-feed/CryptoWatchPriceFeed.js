@@ -4,6 +4,7 @@ const winston = require("winston");
 
 contract("CryptoWatchPriceFeed.js", function(accounts) {
   let cryptoWatchPriceFeed;
+  let invertedCryptoWatchPriceFeed;
   let mockTime = 1588376548;
   let networker;
 
@@ -60,6 +61,80 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       networker,
       getTime,
       minTimeBetweenUpdates
+    );
+    invertedCryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      dummyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      true
+    );
+  });
+
+  it("Inverted current price", async function() {
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    assert.isTrue(
+      // Should be equal to: toWei(1/1.5)
+      invertedCryptoWatchPriceFeed.getCurrentPrice().eq(
+        toBN(toWei("1"))
+          .mul(toBN(toWei("1")))
+          .div(toBN(toWei("1.5")))
+      )
+    );
+  });
+
+  it("Inverted historical price", async function() {
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    // Before period 1 should return null.
+    assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376339), null);
+
+    // During period 1.
+    assert.isTrue(
+      // Should be equal to: toWei(1/1.1)
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(
+        toBN(toWei("1"))
+          .mul(toBN(toWei("1")))
+          .div(toBN(toWei("1.1")))
+      )
+    );
+
+    // During period 2.
+    assert.isTrue(
+      // Should be equal to: toWei(1/1.2)
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(
+        toBN(toWei("1"))
+          .mul(toBN(toWei("1")))
+          .div(toBN(toWei("1.2")))
+      )
+    );
+
+    // During period 3.
+    assert.isTrue(
+      // Should be equal to: toWei(1/1.3)
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(
+        toBN(toWei("1"))
+          .mul(toBN(toWei("1")))
+          .div(toBN(toWei("1.3")))
+      )
+    );
+
+    // After period 3 should return the most recent price.
+    assert.isTrue(
+      // Should be equal to: toWei(1/1.5)
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(
+        toBN(toWei("1"))
+          .mul(toBN(toWei("1")))
+          .div(toBN(toWei("1.5")))
+      )
     );
   });
 
@@ -127,9 +202,12 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     ];
 
     await cryptoWatchPriceFeed.update();
+    await invertedCryptoWatchPriceFeed.update();
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
 
     // Bad historical ohlc response.
     networker.getJsonReturns = [
@@ -147,6 +225,23 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+
+    // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
+    networker.getJsonReturns = [
+      {
+        error: "test"
+      },
+      {
+        result: {
+          price: 0
+        }
+      }
+    ];
+
+    await invertedCryptoWatchPriceFeed.update();
+
+    assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
   });
 
   it("Update frequency", async function() {

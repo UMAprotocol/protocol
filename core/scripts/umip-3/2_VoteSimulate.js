@@ -6,9 +6,13 @@
 
 const assert = require("assert").strict;
 
-const { getRandomUnsignedInt } = require("../../../common/Random.js");
-const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
-const { computeVoteHash } = require("../../../common/EncryptionHelper");
+const {
+  getRandomUnsignedInt,
+  advanceBlockAndSetTime,
+  takeSnapshot,
+  revertToSnapshot,
+  computeVoteHash
+} = require("@umaprotocol/common");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
 // Address which holds a lot of UMA tokens to mock a majority vote

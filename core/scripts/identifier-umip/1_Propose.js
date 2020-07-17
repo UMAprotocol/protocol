@@ -7,7 +7,7 @@
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("@umaprotocol/common");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
 const tdr = require("truffle-deploy-registry");

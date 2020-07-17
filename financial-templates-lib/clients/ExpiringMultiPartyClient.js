@@ -1,7 +1,7 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { LiquidationStatesEnum } = require("../../common/Enums");
+const { LiquidationStatesEnum } = require("@umaprotocol/common");
 
 class ExpiringMultiPartyClient {
   /**
@@ -121,6 +121,7 @@ class ExpiringMultiPartyClient {
         const liquidationData = {
           sponsor: liquidation.sponsor,
           id: id.toString(),
+          state: liquidation.state,
           numTokens: liquidation.tokensOutstanding.toString(),
           liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
           lockedCollateral: liquidation.lockedCollateral.toString(),

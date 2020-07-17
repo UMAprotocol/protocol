@@ -9,7 +9,7 @@ const tdr = require("truffle-deploy-registry");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["keep_finder", "keep_token", "keep_system"] });
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("./PublicNetworks.js")).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("./PublicNetworks.js").PublicNetworks).map(elt => elt.name);
 
 function isPublicNetwork(network) {
   return publicNetworkNames.some(name => network.startsWith(name));

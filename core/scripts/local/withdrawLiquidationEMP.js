@@ -6,7 +6,7 @@
  * Example: `$(npm bin)/truffle exec ./scripts/local/WithdrawLiquidationEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
  */
 const { fromWei, toBN, utf8ToHex } = web3.utils;
-const { LiquidationStatesEnum } = require("../../../common/Enums.js");
+const { LiquidationStatesEnum } = require("@umaprotocol/common");
 const { interfaceName } = require("../../utils/Constants");
 
 // Deployed contract ABI's and addresses we need to fetch.

@@ -68,4 +68,4 @@ class MetaMaskTruffleProvider {
   }
 }
 
-module.exports = MetaMaskTruffleProvider;
+module.exports = { MetaMaskTruffleProvider };
