@@ -57,14 +57,12 @@ async function findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax 
     }
 
     blockNumber -= decreaseBlocks;
-
     block = await web3.eth.getBlock(blockNumber);
   }
 
   if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
     while (block.timestamp < lowerLimitStamp) {
       blockNumber += 1;
-
       block = await web3.eth.getBlock(blockNumber);
     }
   }
@@ -74,7 +72,6 @@ async function findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax 
     if (block.timestamp >= higherLimitStamp) {
       while (block.timestamp >= higherLimitStamp) {
         blockNumber -= 1;
-
         block = await web3.eth.getBlock(blockNumber);
       }
     }
@@ -83,11 +80,8 @@ async function findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax 
     if (block.timestamp < higherLimitStamp) {
       while (block.timestamp < higherLimitStamp) {
         blockNumber += 1;
-
         if (blockNumber > currentBlockNumber) break;
-
         const tempBlock = await web3.eth.getBlock(blockNumber);
-
         // Can't be equal or higher than upper limit as we want to find the last block before that limit.
         if (tempBlock.timestamp >= higherLimitStamp) {
           break;
