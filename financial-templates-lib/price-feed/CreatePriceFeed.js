@@ -29,7 +29,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback,
       networker,
       getTime,
-      config.minTimeBetweenUpdates
+      config.minTimeBetweenUpdates,
+      config.invertPrice // Not checked in config because this parameter just defaults to false.
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];
@@ -205,7 +206,8 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitstamp" }
     ]
   },
-  COMPUSD: {
+  "COMP/USD": {
+    // Kovan uses the "/"
     type: "medianizer",
     lookback: 7200,
     minTimeBetweenUpdates: 60,
@@ -215,7 +217,8 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
     ]
   },
-  "COMP/USD": {
+  COMPUSD: {
+    // Mainnet has no "/"
     type: "medianizer",
     lookback: 7200,
     minTimeBetweenUpdates: 60,
@@ -223,6 +226,17 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
       { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
       { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
+    ]
+  },
+  USDETH: {
+    type: "medianizer",
+    lookback: 7200,
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
     ]
   }
 };

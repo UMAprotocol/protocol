@@ -69,6 +69,16 @@ class SyntheticPegMonitor {
         isValid: x => {
           return typeof x === "number" && x < 1 && x >= 0;
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { deviation:'error' } would override the default `warn` behaviour for synthetic-peg deviation events.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
@@ -106,7 +116,7 @@ class SyntheticPegMonitor {
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
-      this.logger.warn({
+      this.logger[this.logOverrides.deviation ? this.logOverrides.deviation : "warn"]({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:
