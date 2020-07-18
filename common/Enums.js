@@ -25,7 +25,7 @@ const PostWithdrawLiquidationRewardsStatusTranslations = {
   "0": "Liquidation deleted; All rewards have been withdrawn",
   "3": "Dispute succeeded; Not all rewards have been withdrawn"
   // @dev: Post `withdrawLiquidation()`, the status cannot be "2:PendingDispute", "1:PreDispute" or "4:DisputeFailed"
-  // @dev: If a liquidation has expired, is pre-dispute, or a dispute has failed, then the first withdrawLiquidation() call will delete the liquidation
+  // @dev: If a liquidation has expired (i.e. is pre-dispute) or a dispute has failed, then the first withdrawLiquidation() call will delete the liquidation
   // and reset its state to 0.
 };
 
