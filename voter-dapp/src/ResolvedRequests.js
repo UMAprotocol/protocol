@@ -13,75 +13,34 @@ import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 
-import { useQuery } from "@apollo/client";
-import { PRICE_REQUEST_VOTING_DATA } from "./apollo/queries";
-
 import { useTableStyles } from "./Styles.js";
 import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL } from "@umaprotocol/common";
+
+import VoteData from "./containers/VoteData";
 
 function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  const { toBN, fromWei, toWei, hexToUtf8 } = web3.utils;
+  const { toBN, fromWei, hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
+
+  const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
   const [showAllResolvedRequests, setShowAllResolvedRequests] = useState(false);
   const [openVoteStatsDialog, setOpenVoteStatsDialog] = useState(false);
   const [voteStatsDialogData, setVoteStatDialogData] = useState(null);
 
-  // Retrieve vote data per price request from graphQL API.
-  // Because apollo caches results of queries, we will poll/refresh this query periodically.
-  // We set the poll interval to a very slow 5 seconds for now since the position states
-  // are not expected to change much.
-  // Source: https://www.apollographql.com/docs/react/data/queries/#polling
-  const { loading: voteDataLoading, error: voteDataError, data: voteDataResult } = useQuery(PRICE_REQUEST_VOTING_DATA, {
-    pollInterval: 5000
-  });
-
   const getVoteStats = resolutionData => {
-    if (voteDataError) {
-      console.error("Failed to get data:", voteDataError);
-    }
-    if (!voteDataLoading && voteDataResult && resolutionData) {
-      const dataForRequest = voteDataResult.priceRequestRounds.find(roundData => {
-        return (
-          roundData.time === resolutionData.time &&
-          roundData.identifier.id === hexToUtf8(resolutionData.identifier) &&
-          roundData.roundId === resolutionData.roundId
-        );
-      });
-      if (dataForRequest) {
-        // Revealed votes:
-        let totalVotesRevealed = toBN("0");
-        let correctVotesRevealed = toBN("0");
-        dataForRequest.revealedVotes.forEach(e => {
-          totalVotesRevealed = totalVotesRevealed.add(toBN(e.numTokens));
-          if (e.price === dataForRequest.request.price) {
-            correctVotesRevealed = correctVotesRevealed.add(toBN(e.numTokens));
-          }
-        });
-        const pctOfVotesRevealed = totalVotesRevealed
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei(dataForRequest.totalSupplyAtSnapshot)));
-        const pctOfCorrectRevealedVotes = correctVotesRevealed.mul(toBN(toWei("1"))).div(totalVotesRevealed);
-
-        // Rewards claimed:
-        let rewardsClaimed = toBN("0");
-        dataForRequest.rewardsClaimed.forEach(e => {
-          rewardsClaimed = rewardsClaimed.add(toBN(e.numTokens));
-        });
-
-        return {
-          totalSupplyAtSnapshot: dataForRequest.totalSupplyAtSnapshot,
-          revealedVotes: fromWei(totalVotesRevealed.toString()),
-          revealedVotesPct: fromWei(pctOfVotesRevealed.mul(toBN("100")).toString()),
-          correctVotes: fromWei(correctVotesRevealed.toString()),
-          correctlyRevealedVotesPct: fromWei(pctOfCorrectRevealedVotes.mul(toBN("100")).toString()),
-          rewardsClaimed: fromWei(rewardsClaimed.toString()),
-          rewardsClaimedPct: dataForRequest.claimedPercentage
-        };
+    if (resolutionData) {
+      const voteDataKey = getRequestKey(
+        resolutionData.time,
+        hexToUtf8(resolutionData.identifier),
+        resolutionData.roundId
+      );
+      if (roundVoteData?.[voteDataKey]) {
+        return roundVoteData[voteDataKey];
       }
     }
   };

@@ -21,6 +21,7 @@
     "react-dom": "^16.8.6",
     "react-scripts": "3.0.1",
     "regenerator-runtime": "^0.13.5",
+    "unstated-next": "^1.1.0",
     "utf-8-validate": "^5.0.2"
   },
   "scripts": {
