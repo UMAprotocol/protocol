@@ -1,5 +1,14 @@
 {
-  "packages": ["voter-dapp", "disputer", "liquidator", "monitors", "reporters", "core", "financial-templates-lib", "common"],
+  "packages": [
+    "voter-dapp",
+    "disputer",
+    "liquidator",
+    "monitors",
+    "reporters",
+    "core",
+    "financial-templates-lib",
+    "common"
+  ],
   "npmClient": "yarn",
   "useWorkspaces": true,
   "version": "independent"
