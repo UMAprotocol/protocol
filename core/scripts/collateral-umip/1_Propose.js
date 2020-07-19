@@ -47,7 +47,7 @@ async function runExport() {
         data: addCollateralToWhitelistTx
       }
     ],
-    { from: proposerWallet, gas: 2000000 }
+    { from: proposerWallet }
   );
 
   console.log(`

@@ -85,6 +85,9 @@ const deployEMP = async callback => {
       console.log("Whitelisted collateral currency");
     }
 
+    const liquidationLiveness = 7200;
+    const withdrawalLiveness = 7200;
+
     // Create a new EMP
     const constructorParams = {
       expirationTimestamp: "1598918400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
@@ -97,8 +100,8 @@ const deployEMP = async callback => {
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
       disputerDisputeRewardPct: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
-      liquidationLiveness: 7200,
-      withdrawalLiveness: 7200
+      liquidationLiveness,
+      withdrawalLiveness
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
@@ -108,9 +111,7 @@ const deployEMP = async callback => {
       ...constructorParams,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress(),
-      withdrawalLiveness: (await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS()).toString(),
-      liquidationLiveness: (await expiringMultiPartyCreator.STRICT_LIQUIDATION_LIVENESS()).toString()
+      timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
     const encodedParameters = web3.eth.abi.encodeParameters(ExpiringMultiParty.abi[0].inputs, [empConstructorParams]);

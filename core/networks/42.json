@@ -62,5 +62,97 @@
   {
     "contractName": "TestnetERC20",
     "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+  },
+  {
+    "contractName": "Migrations",
+    "address": "0xB92AB037b6D6d33814b670eE8991aD68676D61f8"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xaeb574B8dEa827eC5819238707a17508e406599B"
+  },
+  {
+    "contractName": "VotingToken",
+    "address": "0xe2F94cD99dBacD4c4c2E709bd2253d491d182dE9"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x72e6bb75Cf68D1f5670B5Cb0c11d219172f3Da2A"
+  },
+  {
+    "contractName": "Voting",
+    "address": "0xcF5cbC5452cFCcD1EA26a79aAC3A9766369eeD3e"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x4f64f059c55D0fe0604Ce6dc89799AEF41DC48e2"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0x858F2207EC14De9eFa7424f0C281374f5Ccc578d"
+  },
+  {
+    "contractName": "Store",
+    "address": "0xae07c458a9fdEAC8C72A1bF6Fd10CcA2F3C2FA8C"
+  },
+  {
+    "contractName": "Governor",
+    "address": "0xaa9369a3c9fC80231E2cbfB842aB934B7d5Ff80c"
+  },
+  {
+    "contractName": "DesignatedVotingFactory",
+    "address": "0x5539CD02026F58f42DaAB5E75CAd25260688FD96"
+  },
+  {
+    "contractName": "TestnetERC20",
+    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x1056Bd2a96737B305E15FCCB1d81D3E57416C85C"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x32Fd178b78d46310E2E92256856C7bEeb2e0DdCe"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0xeC5d33cD8F8ef7936406FD429f47545A868B3737"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0x1907b2FF04377f815fd17d5989Ef1c13033FCf39"
+  },
+  {
+    "contractName": "WETH9",
+    "address": "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
+  },
+  {
+    "contractName": "Migrations",
+    "address": "0x92a68cde65422da5499b31eD70996F643Fc5C777"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0x9BFdA35d22ee2c5C086F291e61120a805635948A"
+  },
+  {
+    "contractName": "Migrations",
+    "address": "0xCa59bB2F92a7Da9dd97b4A74B73bc57Bb2dfA14d"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x536A190790891776a45864D46A8794b4e69724e9"
+  },
+  {
+    "contractName": "Migrations",
+    "address": "0x6B84BD0788f6F045a95a711bf0c27BE660667a9a"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x29360a5671CB0d32c9F6543089Ce45Bccbf4c239"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0x336dF32A2e95be6B5c6dE870f1Ce4d3b92eB9879"
   }
 ]

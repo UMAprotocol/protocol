@@ -31,7 +31,7 @@ const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Ge
 let singletonProvider;
 
 // Default options
-const gasPx = 20000000000; // 20 gwei
+const gasPx = 75000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // Adds a public network.
