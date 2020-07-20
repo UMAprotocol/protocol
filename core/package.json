@@ -17,7 +17,7 @@
     "minimist": "^1.2.0",
     "node-fetch": "^2.3.0",
     "truffle": "^5.1.14",
-    "web3": "^1.2.4"
+    "web3": "1.2.7"
   },
   "devDependencies": {
     "coveralls": "^3.1.0",

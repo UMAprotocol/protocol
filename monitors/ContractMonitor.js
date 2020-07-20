@@ -167,9 +167,7 @@ class ContractMonitor {
     );
 
     for (let event of newLiquidationEvents) {
-      const { liquidationTime } = await this.empContract.methods
-        .liquidations(event.sponsor, event.liquidationId)
-        .call();
+      const liquidationTime = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
 
       let collateralizationString;
