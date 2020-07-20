@@ -8,24 +8,35 @@ const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { interfaceName } = require("../utils/Constants.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
-  // Deploy whitelists.
-  const { contract: collateralCurrencyWhitelist } = await deploy(deployer, network, AddressWhitelist, {
+  // Deploy CollateralWhitelist.
+  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, {
     from: keys.deployer
   });
 
+  // Add CollateralWhitelist to finder.
+  const finder = await Finder.deployed();
+  await finder.changeImplementationAddress(
+    web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+    collateralWhitelist.address,
+    {
+      from: keys.deployer
+    }
+  );
+
+  // Add the testnet ERC20 as the default collateral currency (this is the DAI address on mainnet).
   const testnetERC20 = await TestnetERC20.deployed();
-  await collateralCurrencyWhitelist.addToWhitelist(testnetERC20.address);
+  await collateralWhitelist.addToWhitelist(testnetERC20.address);
 
   // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
   const timerAddress = controllableTiming
     ? (await Timer.deployed()).address
     : "0x0000000000000000000000000000000000000000";
-  const finder = await Finder.deployed();
   const tokenFactory = await TokenFactory.deployed();
   const registry = await Registry.deployed();
 
@@ -51,7 +62,6 @@ module.exports = async function(deployer, network, accounts) {
     network,
     ExpiringMultiPartyCreator,
     finder.address,
-    collateralCurrencyWhitelist.address,
     tokenFactory.address,
     timerAddress,
     { from: keys.deployer }

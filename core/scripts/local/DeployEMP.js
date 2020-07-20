@@ -31,6 +31,7 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TestnetERC20 = artifacts.require("TestnetERC20");
+const WETH9 = artifacts.require("WETH9");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -44,6 +45,12 @@ let identifierWhitelist;
 let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
 
+const empCollateralTokenMap = {
+  COMPUSD: TestnetERC20,
+  "ETH/BTC": TestnetERC20,
+  USDETH: WETH9
+};
+
 /** ***************************************************
  * Main Script
  /*****************************************************/
@@ -53,11 +60,16 @@ const deployEMP = async callback => {
     const deployer = accounts[0];
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
-    // Use Dai as the collateral token.
-    collateralToken = await TestnetERC20.deployed();
-
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
     const priceFeedIdentifier = utf8ToHex(identifierBase);
+
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    if (!(await identifierWhitelist.isIdentifierSupported(priceFeedIdentifier))) {
+      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
+      console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
+    }
+
+    collateralToken = await empCollateralTokenMap[identifierBase].deployed();
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
@@ -67,11 +79,6 @@ const deployEMP = async callback => {
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
-      // Whitelist the pricefeed identifier.
-      identifierWhitelist = await IdentifierWhitelist.deployed();
-      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
-      console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
-
       // Whitelist collateral currency
       collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
       await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
@@ -80,16 +87,18 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: "1596240000", // 2020-08-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
+      expirationTimestamp: "1598918400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: `${identifierBase} Synthetic Token Expiring 1 August 2020`,
-      syntheticSymbol: `${identifierBase.replace("/", "")}-AUG20`,
-      collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.05") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.2") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      syntheticName: "USD synthetic token backed by ETH expiring September 2020",
+      syntheticSymbol: "yUSD-SEP20",
+      collateralRequirement: { rawValue: toWei("1.25") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.2") },
+      minSponsorTokens: { rawValue: toWei("100") },
+      liquidationLiveness: 7200,
+      withdrawalLiveness: 7200
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
@@ -114,7 +123,7 @@ const deployEMP = async callback => {
 
     // If in test environment, create an initial position so that we can create additional positions via the sponsor CLI.
     // This step assumes that the web3 has access to the account at index 1 (i.e. accounts[1]).
-    if (argv.test) {
+    if (argv.test && collateralToken.address === (await TestnetERC20.deployed()).address) {
       const initialSponsor = accounts[1];
       await collateralToken.allocateTo(initialSponsor, toWei("1200"));
       await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
@@ -124,6 +133,16 @@ const deployEMP = async callback => {
       // Mint accounts[0] collateral.
       await collateralToken.allocateTo(accounts[0], toWei("1000000"));
       console.log("Minted accounts[0] 1,000,000 collateral tokens");
+    } else if (argv.test && collateralToken.address === (await WETH9.deployed()).address) {
+      const initialSponsor = accounts[1];
+      await collateralToken.deposit({ value: toWei("1200"), from: initialSponsor });
+      await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
+      await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
+      console.log("Created an initial position with CR = 120 % for the sponsor: ", initialSponsor);
+
+      // Mint accounts[0] collateral.
+      await collateralToken.deposit({ value: toWei("1000000"), from: accounts[0] });
+      console.log("Converted 1,000,000 collateral WETH for accounts[0]");
     }
   } catch (err) {
     console.error(err);

@@ -121,6 +121,7 @@ class ExpiringMultiPartyClient {
         const liquidationData = {
           sponsor: liquidation.sponsor,
           id: id.toString(),
+          state: liquidation.state,
           numTokens: liquidation.tokensOutstanding.toString(),
           liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
           lockedCollateral: liquidation.lockedCollateral.toString(),
