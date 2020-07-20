@@ -20,7 +20,9 @@ class BalanceMonitor {
    *         collateralThreshold: x1,
    *         syntheticThreshold: x2,
    *         etherThreshold: x3 },
-   *      ..] }
+   *      ..],
+   *        logOverrides: {syntheticThreshold: "error"}
+   *      }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
