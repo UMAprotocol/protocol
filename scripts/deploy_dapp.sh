@@ -32,7 +32,7 @@ cd $PROTOCOL_DIR/core
 
 # Compile contracts, load deployed addresses for mainnet and testnets.
 echo "Compiling contracts."
-$(npm bin)/truffle compile
+yarn run truffle compile
 
 # Turn on custom error handling while calling apply-registry.
 set +e
@@ -40,7 +40,7 @@ set +e
 # Apply the registry - since the registry doesn't produce a nonzero error code, we have to grep the printout for
 # errors.
 echo "Applying saved deployments to truffle artifacts."
-APPLY_REGISTRY_OUTPUT=$($(npm bin)/apply-registry)
+APPLY_REGISTRY_OUTPUT=$(yarn run apply-registry)
 NUM_FAILURES=$(echo $APPLY_REGISTRY_OUTPUT | grep -ci "missing")
 echo "$APPLY_REGISTRY_OUTPUT"
 if [ $NUM_FAILURES -ne 0 ]
@@ -57,7 +57,7 @@ set -e
 cd $DAPP_DIR
 echo "Building dapp."
 # Due a webpack build warning from AbiUtils.js, we have to set `CI=false` to allow the build to not error out.
-CI=false npm run build
+CI=false yarn run build
 
 # Make sure to cleanup the temp directory for any exits after this line.
 function cleanup() {
