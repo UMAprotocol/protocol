@@ -49,6 +49,10 @@ run_tests $PROTOCOL_DIR/core
 cd $PROTOCOL_DIR/core
 
 $(npm bin)/truffle test $(find ../financial-templates-lib/test -name '*.js') --network ci
-$(npm bin)/truffle test $(find ../liquidator/test -name '*.js') --network ci
+$(npm bin)/truffle test $(find ../liquidator/test -name '*.js' ! -name 'OneInchExchange.js') --network ci
 $(npm bin)/truffle test $(find ../disputer/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../monitors/test -name '*.js') --network ci
+
+# Only run tests that needs the mainnet forking here
+ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -i 1234 -p 9545 -e 1000 &
+$(npm bin)/truffle test ../liquidator/test/OneInchExchange.js

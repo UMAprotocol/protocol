@@ -102,7 +102,7 @@ jobs:
     docker:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
-        command: ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -i 1234
+        command: ganache-cli -i 1234 -l 9000000
     working_directory: ~/protocol
     steps:
       - restore_cache:
