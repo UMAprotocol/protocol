@@ -6,6 +6,11 @@ import DrizzleLogin from "./DrizzleLogin.js";
 import { createMuiTheme } from "@material-ui/core/styles";
 import { ThemeProvider } from "@material-ui/styles";
 
+import { ApolloProvider } from "@apollo/client";
+import { client } from "./apollo/client";
+
+import VoteData from "./containers/VoteData";
+
 function App() {
   const theme = createMuiTheme({
     palette: {
@@ -41,7 +46,11 @@ function App() {
     return (
       <drizzleReactHooks.DrizzleProvider drizzle={drizzle}>
         <ThemeProvider theme={theme}>
-          <Dashboard />
+          <ApolloProvider client={client}>
+            <VoteData.Provider>
+              <Dashboard />
+            </VoteData.Provider>
+          </ApolloProvider>
         </ThemeProvider>
       </drizzleReactHooks.DrizzleProvider>
     );
