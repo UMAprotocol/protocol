@@ -78,13 +78,13 @@ function useVoteData() {
         // Rewards claimed data:
         let rewardsClaimed = toBN("0");
         let rewardsClaimedPct = toBN("0");
-        let uniqueClaimers = {};
+        let uniqueRewardClaimers = {};
 
         // If the total supply was not snapshotted yet, then rewards could not have been claimed yet.
         if (dataForRequest.totalSupplyAtSnapshot) {
           dataForRequest.rewardsClaimed.forEach(e => {
             rewardsClaimed = rewardsClaimed.add(toBN(e.numTokens));
-            uniqueClaimers[toChecksumAddress(e.claimer.address)] = true;
+            uniqueRewardClaimers[toChecksumAddress(e.claimer.address)] = true;
           });
 
           const roundInflationRate = roundInflationRates[dataForRequest.roundId];
@@ -97,22 +97,27 @@ function useVoteData() {
           }
         }
 
+        // Data on unique users:
+        const uniqueCommits = Object.keys(uniqueVotersCommitted).length;
+        const uniqueReveals = Object.keys(uniqueVotersRevealed).length;
+        const uniqueClaimers = Object.keys(uniqueRewardClaimers).length;
+        const uniqueRevealsPctOfCommits = uniqueCommits > 0 ? (100 * uniqueCommits) / uniqueReveals : 0;
+        const uniqueClaimersPctOfReveals = 100 * uniqueReveals > 0 ? uniqueClaimers / uniqueReveals : 0;
+
         // Insert round data into new object.
         newVoteData[newRoundKey] = {
           totalSupplyAtSnapshot: dataForRequest.totalSupplyAtSnapshot,
-          uniqueCommits: Object.keys(uniqueVotersCommitted).length,
+          uniqueCommits: uniqueCommits,
           revealedVotes: fromWei(totalVotesRevealed.toString()),
           revealedVotesPct: fromWei(pctOfVotesRevealed.mul(toBN("100")).toString()),
-          uniqueReveals: Object.keys(uniqueVotersRevealed).length,
-          uniqueRevealsPctOfCommits:
-            100 * (Object.keys(uniqueVotersRevealed).length / Object.keys(uniqueVotersCommitted).length),
+          uniqueReveals: uniqueReveals,
+          uniqueRevealsPctOfCommits: uniqueRevealsPctOfCommits,
           correctVotes: fromWei(correctVotesRevealed.toString()),
           correctlyRevealedVotesPct: fromWei(pctOfCorrectRevealedVotes.mul(toBN("100")).toString()),
           rewardsClaimed: fromWei(rewardsClaimed.toString()),
           rewardsClaimedPct: fromWei(rewardsClaimedPct.mul(toBN("100")).toString()),
-          uniqueClaimers: Object.keys(uniqueClaimers).length,
-          uniqueClaimersPctOfReveals:
-            100 * (Object.keys(uniqueClaimers).length / Object.keys(uniqueVotersRevealed).length)
+          uniqueClaimers: uniqueClaimers,
+          uniqueClaimersPctOfReveals: uniqueClaimersPctOfReveals
         };
       });
 
