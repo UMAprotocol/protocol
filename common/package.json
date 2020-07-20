@@ -33,6 +33,6 @@
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "node-metamask": "github:UMAprotocol/node-metamask",
-    "web3": "^1.2.4"
+    "web3": "1.2.7"
   }
 }
