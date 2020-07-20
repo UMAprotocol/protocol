@@ -24,14 +24,26 @@ function useVoteData() {
   const getRequestKey = (time, identifier, roundId) => {
     return identifier + "-" + time + "-" + roundId;
   };
-  const getVoteStats = () => {
+  const getVoteStats = async () => {
     if (error) {
       console.error("Failed to get data:", error);
     }
     if (!loading && data) {
       const newVoteData = {};
 
-      data.priceRequestRounds.forEach(async dataForRequest => {
+      // TODO: round inflationRate is not available yet on the subgraph, but we will query this from the subgraph instead of
+      // making an on-chain call when it is added. For now, grab round inflation rates in parallel since these are contract calls.
+      const roundInflationRates = {};
+      await Promise.all(
+        data.priceRequestRounds.map(async dataForRequest => {
+          roundInflationRates[dataForRequest.roundId] = (
+            await VotingContract.methods.rounds(dataForRequest.roundId).call()
+          ).inflationRate;
+        })
+      );
+
+      // Load data into `newVoteData` synchronously
+      data.priceRequestRounds.forEach(dataForRequest => {
         const newRoundKey = getRequestKey(dataForRequest.time, dataForRequest.identifier.id, dataForRequest.roundId);
 
         // Commit vote data:
@@ -75,14 +87,14 @@ function useVoteData() {
             uniqueClaimers[toChecksumAddress(e.claimer.address)] = true;
           });
 
-          // TODO: round inflationRate is not available yet on the subgraph, but we will query this from the subgraph instead of
-          // making an on-chain call when it is added.
-          const roundInflationRate = (await VotingContract.methods.rounds(dataForRequest.roundId).call()).inflationRate;
+          const roundInflationRate = roundInflationRates[dataForRequest.roundId];
           const roundInflationPct = toBN(roundInflationRate.rawValue.toString());
           const roundInflationRewardsAvailable = roundInflationPct
             .mul(toBN(toWei(dataForRequest.totalSupplyAtSnapshot)))
             .div(toBN(toWei("1")));
-          rewardsClaimedPct = rewardsClaimed.mul(toBN(toWei("1"))).div(roundInflationRewardsAvailable);
+          if (!roundInflationRewardsAvailable.isZero()) {
+            rewardsClaimedPct = rewardsClaimed.mul(toBN(toWei("1"))).div(roundInflationRewardsAvailable);
+          }
         }
 
         // Insert round data into new object.
