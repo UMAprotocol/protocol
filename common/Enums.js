@@ -20,11 +20,13 @@ const LiquidationStatesEnum = {
 };
 
 // Maps the `liquidationStatus` property in the `LiquidationWithdrawn` event to human readable statuses.
+// Note that these are status translations AFTER a withdrawLiquidation method is called
 const PostWithdrawLiquidationRewardsStatusTranslations = {
-  "0": "Dispute failed",
-  "1": "Liquidation expired",
-  "3": "Dispute succeeded"
-  // Post `withdrawLiquidation()`, the status cannot be "PendingDispute/2" or "DisputeFailed/4"
+  "0": "Liquidation deleted; All rewards have been withdrawn",
+  "3": "Dispute succeeded; Not all rewards have been withdrawn"
+  // @dev: Post `withdrawLiquidation()`, the status cannot be "2:PendingDispute", "1:PreDispute" or "4:DisputeFailed"
+  // @dev: If a liquidation has expired (i.e. is pre-dispute) or a dispute has failed, then the first withdrawLiquidation() call will delete the liquidation
+  // and reset its state to 0.
 };
 
 // States for an EMP's Position to be in.

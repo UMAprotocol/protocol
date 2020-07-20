@@ -115,8 +115,21 @@ function ResolvedRequests({ votingAccount }) {
             </ListItem>
             <ListItem>
               <ListItemText
+                primary={"Unique Commit Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueCommits)}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
                 primary={"Revealed Votes: " + prettyFormatNumber(voteStatsDialogData.revealedVotes)}
                 secondary={prettyFormatNumber(voteStatsDialogData.revealedVotesPct) + "% of Total Supply"}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Reveal Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueReveals)}
+                secondary={
+                  prettyFormatNumber(voteStatsDialogData.uniqueRevealsPctOfCommits) + "% of Unique Commit Addresses"
+                }
               />
             </ListItem>
             <ListItem>
@@ -129,6 +142,14 @@ function ResolvedRequests({ votingAccount }) {
               <ListItemText
                 primary={"Rewards Claimed: " + prettyFormatNumber(voteStatsDialogData.rewardsClaimed)}
                 secondary={prettyFormatNumber(voteStatsDialogData.rewardsClaimedPct) + "% of Rewards Available"}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Claimer Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueClaimers)}
+                secondary={
+                  prettyFormatNumber(voteStatsDialogData.uniqueClaimersPctOfReveals) + "% of Unique Reveal Addresses"
+                }
               />
             </ListItem>
           </List>
