@@ -15,7 +15,7 @@ class OneInchExchange {
     this.gasEstimator = gasEstimator;
 
     this.web3 = web3;
-    this.web3.currentProvider.timeout = 120000;
+    this.web3.currentProvider.timeout = 1200000;
     this.oneSplitContract = new web3.eth.Contract(oneSplitAbi, oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
