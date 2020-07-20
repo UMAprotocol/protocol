@@ -30,82 +30,77 @@ const UMA_PER_WEEK = toBN(toWei("25000"));
 const BLOCKS_PER_SNAPSHOT = 64;
 let umaPerSnapshot;
 
-(async function() {
-  try {
-    // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
-    // will parse to 12:00am UTC.
-    const fromDate = moment.utc(argv.fromDate, "YYYY-MM-DD");
-    const toDate = moment.utc(argv.toDate, "YYYY-MM-DD");
-    if (!web3.utils.isAddress(argv.poolAddress) || !fromDate.isValid() || !toDate.isValid() || !argv.week) {
-      throw "Missing or invalid parameter! Provide poolAddress, fromDate, toDate & week. fromDate and toDate must be strings formatted YYYY-MM-DD";
-    }
-
-    console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
-    // Get the closet block numbers on each side of the from and to date, within an error band of 30 seconds (~2 blocks).
-    const fromBlock = await utils.findBlockNumberAtTimestamp(web3, fromDate.unix());
-
-    const toBlock = await utils.findBlockNumberAtTimestamp(web3, toDate.unix());
-    console.table({
-      "Search from": {
-        Date: fromDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-        "Unix timestamp": fromDate.unix(),
-        "Block number": fromBlock
-      },
-      "Search until": {
-        Date: toDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-        "Unix timestamp": toDate.unix(),
-        "Block number": toBlock
-      }
-    });
-
-    const snapshotsToTake = Math.ceil((toBlock - fromBlock) / BLOCKS_PER_SNAPSHOT);
-    umaPerSnapshot = UMA_PER_WEEK.div(toBN(snapshotsToTake.toString()));
-    console.log(
-      `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
-        umaPerSnapshot
-      )} $UMA per snapshot.\n💸 Total $UMA to be distributed distributed: ${fromWei(
-        umaPerSnapshot.muln(snapshotsToTake)
-      )}`
-    );
-
-    console.log("⚖️  Finding balancer pool info...");
-    const poolInfo = await utils.fetchBalancerPoolInfo(argv.poolAddress);
-
-    const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
-    console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
-
-    // Create a structure to store the payouts for all historic shareholders.
-    let shareHolderPayout = {};
-    for (shareHolder of shareHolders) {
-      shareHolderPayout[shareHolder] = toBN("0");
-    }
-
-    let bPool = new web3.eth.Contract(poolAbi.abi, argv.poolAddress);
-
-    console.log("🏃‍♂️Iterating over block range and calculating payouts...");
-
-    // create new progress bar to show the status of blocks traversed.
-    const progressBar = new cliProgress.SingleBar(
-      {
-        format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
-      },
-      cliProgress.Presets.shades_classic
-    );
-    progressBar.start(snapshotsToTake, 0);
-
-    for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += BLOCKS_PER_SNAPSHOT) {
-      shareHolderPayout = await _updatePayoutAtBlock(currentBlock, shareHolderPayout, bPool);
-      progressBar.update(Math.ceil((currentBlock - fromBlock) / BLOCKS_PER_SNAPSHOT));
-    }
-    progressBar.stop();
-
-    console.log("🎉 Finished calculating payouts!");
-    _saveShareHolderPayout(shareHolderPayout);
-  } catch (err) {
-    console.error(err);
-    process.exit();
+async function main() {
+  // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
+  // will parse to 12:00am UTC.
+  const fromDate = moment.utc(argv.fromDate, "YYYY-MM-DD");
+  const toDate = moment.utc(argv.toDate, "YYYY-MM-DD");
+  if (!web3.utils.isAddress(argv.poolAddress) || !fromDate.isValid() || !toDate.isValid() || !argv.week) {
+    throw "Missing or invalid parameter! Provide poolAddress, fromDate, toDate & week. fromDate and toDate must be strings formatted YYYY-MM-DD";
   }
-})();
+
+  console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
+  // Get the closet block numbers on each side of the from and to date, within an error band of 30 seconds (~2 blocks).
+  const fromBlock = await utils.findBlockNumberAtTimestamp(web3, fromDate.unix());
+
+  const toBlock = await utils.findBlockNumberAtTimestamp(web3, toDate.unix());
+  console.table({
+    "Search from": {
+      Date: fromDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
+      "Unix timestamp": fromDate.unix(),
+      "Block number": fromBlock
+    },
+    "Search until": {
+      Date: toDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
+      "Unix timestamp": toDate.unix(),
+      "Block number": toBlock
+    }
+  });
+
+  const snapshotsToTake = Math.ceil((toBlock - fromBlock) / BLOCKS_PER_SNAPSHOT);
+  umaPerSnapshot = UMA_PER_WEEK.div(toBN(snapshotsToTake.toString()));
+  console.log(
+    `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
+      umaPerSnapshot
+    )} $UMA per snapshot.\n💸 Total $UMA to be distributed distributed: ${fromWei(
+      umaPerSnapshot.muln(snapshotsToTake)
+    )}`
+  );
+
+  console.log("⚖️  Finding balancer pool info...");
+  const poolInfo = await utils.fetchBalancerPoolInfo(argv.poolAddress);
+
+  const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
+  console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
+
+  // Create a structure to store the payouts for all historic shareholders.
+  let shareHolderPayout = {};
+  for (shareHolder of shareHolders) {
+    shareHolderPayout[shareHolder] = toBN("0");
+  }
+
+  let bPool = new web3.eth.Contract(poolAbi.abi, argv.poolAddress);
+
+  console.log("🏃‍♂️Iterating over block range and calculating payouts...");
+
+  // create new progress bar to show the status of blocks traversed.
+  const progressBar = new cliProgress.SingleBar(
+    {
+      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
+    },
+    cliProgress.Presets.shades_classic
+  );
+  progressBar.start(snapshotsToTake, 0);
+
+  for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += BLOCKS_PER_SNAPSHOT) {
+    shareHolderPayout = await _updatePayoutAtBlock(currentBlock, shareHolderPayout, bPool);
+    progressBar.update(Math.ceil((currentBlock - fromBlock) / BLOCKS_PER_SNAPSHOT));
+  }
+  progressBar.stop();
+
+  console.log("🎉 Finished calculating payouts!");
+  _saveShareHolderPayout(shareHolderPayout);
+}
 
 // For a given block number, return an updated shareHolderPayout object that has appended payouts for a given bPool.
 async function _updatePayoutAtBlock(blockNumber, shareHolderPayout, bPool) {
@@ -153,3 +148,10 @@ function _saveShareHolderPayout(shareHolderPayout) {
     console.log("🗄  File successfully written to", savePath);
   });
 }
+
+main()
+  .then(() => {})
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
