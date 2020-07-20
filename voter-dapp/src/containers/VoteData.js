@@ -14,7 +14,7 @@ function useVoteData() {
   const [roundVoteData, setRoundVoteData] = useState({});
 
   // Because apollo caches results of queries, we will poll/refresh this query periodically.
-  // We set the poll interval to a very slow 5 seconds for now since the position states
+  // We set the poll interval to a very slow 5 seconds for now since the vote states
   // are not expected to change much.
   // Source: https://www.apollographql.com/docs/react/data/queries/#polling
   const { loading, error, data } = useQuery(PRICE_REQUEST_VOTING_DATA, {
