@@ -1,7 +1,6 @@
 // Libraries and helpers
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { PositionStatesEnum, didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
-const { PositionStatesEnum } = require("../../../common/Enums");
 const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test
@@ -35,6 +34,7 @@ contract("PricelessPositionManager", function(accounts) {
   let mockOracle;
   let financialContractsAdmin;
   let timer;
+  let tokenFactory;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -77,6 +77,7 @@ contract("PricelessPositionManager", function(accounts) {
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
     store = await Store.deployed();
+    tokenFactory = await TokenFactory.deployed();
   });
 
   beforeEach(async function() {
@@ -92,7 +93,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
       from: contractDeployer
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
@@ -106,13 +107,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -126,13 +127,13 @@ contract("PricelessPositionManager", function(accounts) {
           startTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
-          Finder.address, // _finderAddress
+          finder.address, // _finderAddress
           priceFeedIdentifier, // _priceFeedIdentifier
           syntheticName, // _syntheticName
           syntheticSymbol, // _syntheticSymbol
-          TokenFactory.address, // _tokenFactoryAddress
+          tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
-          Timer.address, // _timerAddress
+          timer.address, // _timerAddress
           { from: contractDeployer }
         )
       )
@@ -145,13 +146,13 @@ contract("PricelessPositionManager", function(accounts) {
           expirationTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
-          Finder.address, // _finderAddress
+          finder.address, // _finderAddress
           web3.utils.utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           syntheticName, // _syntheticName
           syntheticSymbol, // _syntheticSymbol
-          TokenFactory.address, // _tokenFactoryAddress
+          tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
-          Timer.address, // _timerAddress
+          timer.address, // _timerAddress
           { from: contractDeployer }
         )
       )
@@ -200,13 +201,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      timer.address, // _timerAddress
       { from: contractDeployer }
     );
 
@@ -1346,7 +1347,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(finder.address, Timer.address);
+    const newMockOracle = await MockOracle.new(finder.address, timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
@@ -1580,13 +1581,13 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
-      Finder.address, // _finderAddress
+      finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
+      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      Timer.address, // _timerAddress
+      timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());

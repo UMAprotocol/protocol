@@ -3,7 +3,7 @@
 // Example:
 // $(npm bin)/truffle exec --network test ./scripts/DecodeTransactionData.js --data 0x10a7e2014554482f55534400000000000000000000000000000000000000000000000000
 
-const { getAbiDecoder } = require("../../common/AbiUtils.js");
+const { getAbiDecoder } = require("@umaprotocol/common");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["data"] });
 

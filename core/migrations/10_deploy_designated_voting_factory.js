@@ -1,9 +1,11 @@
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
 const Finder = artifacts.require("Finder");
-const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
-  await deploy(deployer, network, DesignatedVotingFactory, Finder.address, { from: keys.deployer });
+  const finder = await Finder.deployed();
+
+  await deploy(deployer, network, DesignatedVotingFactory, finder.address, { from: keys.deployer });
 };

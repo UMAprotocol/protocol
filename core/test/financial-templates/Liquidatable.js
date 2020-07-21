@@ -1,8 +1,6 @@
 // Helper scripts
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { LiquidationStatesEnum, didContractThrow, MAX_UINT_VAL } = require("@umaprotocol/common");
 const { interfaceName } = require("../../utils/Constants.js");
-const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
@@ -97,6 +95,8 @@ contract("Liquidatable", function(accounts) {
     const timer = await Timer.deployed();
     await timer.setCurrentTime(startTime);
 
+    const tokenFactory = await TokenFactory.deployed();
+
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
 
@@ -109,7 +109,7 @@ contract("Liquidatable", function(accounts) {
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
       from: contractDeployer
     });
 
@@ -122,8 +122,8 @@ contract("Liquidatable", function(accounts) {
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: finder.address,
+      tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
@@ -133,7 +133,7 @@ contract("Liquidatable", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
-      timerAddress: Timer.address
+      timerAddress: timer.address
     };
 
     // Deploy liquidation contract and set global params
@@ -361,14 +361,16 @@ contract("Liquidatable", function(accounts) {
         unreachableDeadline,
         { from: liquidator }
       );
+      const liquidationTime = await liquidationContract.getCurrentTime();
       truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
         return (
-          ev.sponsor == sponsor,
-          ev.liquidator == liquidator,
-          ev.liquidationId == 0,
-          ev.tokensOutstanding == amountOfSynthetic.toString(),
-          ev.lockedCollateral == amountOfCollateral.toString(),
-          ev.liquidatedCollateral == amountOfCollateral.toString()
+          ev.sponsor == sponsor &&
+          ev.liquidator == liquidator &&
+          ev.liquidationId == 0 &&
+          ev.tokensOutstanding == amountOfSynthetic.toString() &&
+          ev.lockedCollateral == amountOfCollateral.toString() &&
+          ev.liquidatedCollateral == amountOfCollateral.toString() &&
+          ev.liquidationTime == liquidationTime.toString()
         );
       });
       truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsorPosition", ev => {
@@ -816,7 +818,8 @@ contract("Liquidatable", function(accounts) {
           return (
             ev.caller == liquidator &&
             ev.withdrawalAmount.toString() == expectedPayout.toString() &&
-            ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
+            ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
+            ev.settlementPrice.toString() == "0"
           );
         });
       });
@@ -851,7 +854,8 @@ contract("Liquidatable", function(accounts) {
           return (
             ev.caller == disputer &&
             ev.withdrawalAmount.toString() == expectedPayout.toString() &&
-            ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
+            ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED &&
+            ev.settlementPrice.toString() == settlementPrice.toString()
           );
         });
       });
@@ -1092,7 +1096,8 @@ contract("Liquidatable", function(accounts) {
             return (
               ev.caller == sponsor &&
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
-              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED &&
+              ev.settlementPrice.toString() == settlementPrice.toString()
             );
           });
         });
@@ -1222,7 +1227,8 @@ contract("Liquidatable", function(accounts) {
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
               // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
               // Once a dispute fails and the liquidator withdraws the struct is removed from state.
-              ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
+              ev.settlementPrice.toString() == "0"
             );
           });
         });
@@ -1268,14 +1274,16 @@ contract("Liquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidator)).toString(), "0");
 
       // Liquidated collateral and tokens both equal 0.
+      const liquidationTime = await liquidationContract.getCurrentTime();
       truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
         return (
-          ev.sponsor == sponsor,
-          ev.liquidator == liquidator,
-          ev.liquidationId == 0,
-          ev.tokensOutstanding == "0",
-          ev.lockedCollateral == "0",
-          ev.liquidatedCollateral == "0"
+          ev.sponsor == sponsor &&
+          ev.liquidator == liquidator &&
+          ev.liquidationId == 0 &&
+          ev.tokensOutstanding == "0" &&
+          ev.lockedCollateral == "0" &&
+          ev.liquidatedCollateral == "0" &&
+          ev.liquidationTime == liquidationTime.toString()
         );
       });
 
@@ -1293,7 +1301,6 @@ contract("Liquidatable", function(accounts) {
       // the dispute will always be successful. This is because the required collateral is (TRV * CR) = 0 because tokensOutstanding = 0.
       // So regardless, the liquidated collateral will always be enough to cover the required collateral (even if the liquidated collateral is
       // also 0 in this case).
-      const liquidationTime = await liquidationContract.getCurrentTime();
       await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, "0");
 
       // Disputer reward is 0 since TRV = 0, so disputer gets back their final fee bond.
@@ -1410,20 +1417,21 @@ contract("Liquidatable", function(accounts) {
         unreachableDeadline,
         { from: liquidator }
       );
+      const liquidationTime = await liquidationContract.getCurrentTime();
       truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
         return (
-          ev.sponsor == sponsor,
-          ev.liquidator == liquidator,
-          ev.liquidationId == 0,
-          ev.tokensOutstanding == amountOfSynthetic.toString(),
-          ev.lockedCollateral == amountOfCollateral.toString(),
-          ev.liquidatedCollateral == "0"
+          ev.sponsor == sponsor &&
+          ev.liquidator == liquidator &&
+          ev.liquidationId == liquidationParams.liquidationId &&
+          ev.tokensOutstanding == amountOfSynthetic.toString() &&
+          ev.lockedCollateral == amountOfCollateral.toString() &&
+          ev.liquidatedCollateral == "0" &&
+          ev.liquidationTime == liquidationTime.toString()
         );
       });
       // Since the liquidated collateral:synthetic ratio is 0, even the lowest price (amount of collateral each synthetic is worth)
       // above 0 should result in a failed dispute because the liquidator was correct: there is not enough collateral backing the tokens.
       await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
-      const liquidationTime = await liquidationContract.getCurrentTime();
       const disputePrice = "1";
       await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
       const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
@@ -1439,7 +1447,8 @@ contract("Liquidatable", function(accounts) {
           ev.withdrawalAmount.toString() == expectedPayment.toString() &&
           // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
           // Once a dispute fails and the liquidator withdraws the struct is removed from state.
-          ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
+          ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
+          ev.settlementPrice.toString() == "0"
         );
       });
     });

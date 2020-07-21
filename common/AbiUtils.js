@@ -17,20 +17,21 @@ function getAllContracts() {
 
   // Note: we use a try here because we don't want to install the require-context package in node.js contexts where
   // it won't work.
-  try {
+  if (process.browser) {
     // This only works in webpack.
     const requireContext = require("require-context");
 
     // Note: all arguments must be hardcoded here for webpack to bundle the files correctly.
     // This line also generates a few build warnings that should be ignored.
-    const contractContext = require.context("../core/build/contracts/", true, /\.json$/);
+    const contractContext = require.context("@umaprotocol/core/build/contracts/", true, /\.json$/);
 
     importedObjects = importAll(contractContext);
-  } catch (e) {
+  } else {
     // This only works in node.js.
     const fs = require("fs");
     const path = require("path");
-    const contractsPath = path.join(__dirname, "../core/build/contracts/");
+    const packageDir = path.dirname(require.resolve("@umaprotocol/core/package.json"));
+    const contractsPath = path.join(packageDir, "build/contracts/");
 
     const fileList = fs.readdirSync(contractsPath).filter(name => name.match(/\.json$/));
     importedObjects = fileList.map(filename => {

@@ -14,14 +14,18 @@ const app = express();
 app.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
+const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
+
 app.post("/", async (req, res) => {
   try {
-    console.log("Executing GCP Cloud Run API Call");
+    Logger.debug({
+      at: "CloudRunnerResponse",
+      message: "Executing GCP Cloud Run API Call",
+      reqBody: req.body,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+    });
     if (!req.body.cloudRunCommand) {
-      res.status(400).send({
-        message: "ERROR: Body missing json cloudRunCommand!"
-      });
-      throw "ERROR: Missing cloudRunCommand";
+      throw new Error("ERROR: Missing cloudRunCommand");
     }
 
     // Iterate over the provided environment variables and ensure that they are all strings. This enables json configs
@@ -38,28 +42,51 @@ app.post("/", async (req, res) => {
       });
     }
 
-    const execResponse = await execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
-    // TODO: refactor this to send a more graceful winston log.
-    console.log("execResponse:", execResponse);
+    const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
-      console.log("Process exited with error");
       throw execResponse;
     }
-    console.log("Process exited with no error");
+    Logger.debug({
+      at: "CloudRunnerResponse",
+      message: "Process exited with no error",
+      execResponse,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+    });
 
-    res.status(200).send({ message: "Process exited correctly!", execResponse: execResponse });
+    res.status(200).send({ message: "Process exited with no error", execResponse });
   } catch (execResponse) {
-    res.status(400).send({ message: "Process exited with error!", execResponse: execResponse });
+    // If there is an error, send a debug log. We dont want to trigger a `Logger.error` here as this will be dealt with
+    // one layer up in the Hub implementation.
+    Logger.debug({
+      at: "CloudRunnerResponse",
+      message: "Process exited with error",
+      execResponse,
+      jsonBody: req.body,
+      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+    });
+    res.status(400).send({ message: "Process exited with error", execResponse });
   }
 });
 
-function execShellCommand(cmd, inputEnv) {
+function _execShellCommand(cmd, inputEnv) {
   return new Promise((resolve, reject) => {
     exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
+      // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
+      stdout = _stripExecOutput(stdout);
+      stderr = _stripExecOutput(stderr);
       resolve({ error, stdout, stderr });
     });
   });
+}
+
+// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
+function _stripExecOutput(output) {
+  if (!output) return output;
+  return output
+    .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
+    .replace(/\s\s+/g, " ") // Remove move tabbed chars
+    .replace(/\"/g, ""); // Remove escaped quotes
 }
 const port = process.env.PORT || 8080;
 app.listen(port, () => {

@@ -1,9 +1,6 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { getRandomUnsignedInt } = require("../../../common/Random.js");
+const { RegistryRolesEnum, didContractThrow, getRandomUnsignedInt, computeVoteHash } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("../../utils/Constants.js");
-const { computeVoteHash } = require("../../../common/EncryptionHelper");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -18,13 +15,15 @@ const Registry = artifacts.require("Registry");
 const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
+const { toBN, toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
 contract("Governor", function(accounts) {
   let voting;
   let governor;
   let testToken;
   let supportedIdentifiers;
+  let finder;
+  let timer;
 
   const proposer = accounts[0];
   const account2 = accounts[1];
@@ -66,6 +65,9 @@ contract("Governor", function(accounts) {
     // Make sure the governor time and voting time are aligned before each test case.
     let currentTime = await voting.getCurrentTime();
     await governor.setCurrentTime(currentTime);
+
+    finder = await Finder.deployed();
+    timer = await Timer.deployed();
   });
 
   it("Proposal permissions", async function() {
@@ -713,7 +715,8 @@ contract("Governor", function(accounts) {
     const startingId = 910284;
 
     // Create new governor contract.
-    const newGovernor = await Governor.new(Finder.address, startingId, Timer.address, { from: proposer });
+    finder = await Finder.deployed();
+    const newGovernor = await Governor.new(finder.address, startingId, timer.address, { from: proposer });
 
     // Approve the new governor in the Registry.
     const registry = await Registry.deployed();
@@ -723,7 +726,6 @@ contract("Governor", function(accounts) {
     const identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.transferOwnership(newGovernor.address);
 
-    const finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
     // The number of proposals should be equal to the starting id.
@@ -799,15 +801,23 @@ contract("Governor", function(accounts) {
 
   it("startingId size", async function() {
     // Starting id of 10^18 is the upper limit -- that should be the largest that will work.
-    await Governor.new(Finder.address, toWei("1"), Timer.address, { from: proposer });
+    await Governor.new(finder.address, toWei("1"), timer.address, {
+      from: proposer
+    });
 
     // Anything above 10^18 is rejected.
-    assert(await didContractThrow(Governor.new(Finder.address, toWei("1.1"), Timer.address, { from: proposer })));
+    assert(
+      await didContractThrow(
+        Governor.new(finder.address, toWei("1.1"), timer.address, {
+          from: proposer
+        })
+      )
+    );
   });
 
   // _uintToUtf8() tests.
   it("Low-level _uintToUtf8(): 0 input", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     const input = "0";
     const output = await governorTest.uintToUtf8(input);
@@ -816,7 +826,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): nonzero input", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // Arbitrary nonzero input.
     const input = "177203972462008655";
@@ -826,7 +836,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): largest input before truncation", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // The largest representable number in 32 digits is 32 9s.
     const input = "9".repeat(32);
@@ -836,7 +846,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): truncates at least significant digit", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // The smallest number to be truncated is 1 followed by 32 0s.
     const input = "1" + "0".repeat(32);
@@ -851,7 +861,7 @@ contract("Governor", function(accounts) {
 
   // _addPrefix() tests.
   it("Low-level _addPrefix(): no truncation", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     const input = utf8ToHex("input");
     const prefix = utf8ToHex("prefix ");
@@ -862,7 +872,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _addPrefix(): output truncation", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // Prefix output cannot be longer than 32 characters or the function will truncate.
     const input = utf8ToHex(" truncated");
@@ -878,7 +888,7 @@ contract("Governor", function(accounts) {
 
   // _constructIdentifier() tests.
   it("Low-level _constructIdentifier(): normal proposal id", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // Construct an arbitrary identifier.
     const proposalId = "1234567890";
@@ -888,7 +898,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): correctly identifier for 26 characters", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
@@ -900,7 +910,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): proposal id truncates after 26 characters", async function() {
-    const governorTest = await GovernorTest.new(Timer.address);
+    const governorTest = await GovernorTest.new(timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.

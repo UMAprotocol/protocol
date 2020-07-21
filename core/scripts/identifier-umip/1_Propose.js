@@ -2,18 +2,14 @@
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
-// Then execute the script as: truffle exec ./scripts/umip-2/1_Propose.js --network mainnet-fork from core
+// Then execute the script as: truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
-const tdr = require("truffle-deploy-registry");
-
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 async function runExport() {
   console.log("Running Upgrade🔥");
@@ -23,34 +19,42 @@ async function runExport() {
     throw new Error("Must specify --identifier");
   }
 
+  // argv.identifier may be an array or a single string (if only one is desired).
+  // In either case, `identifiers` should be an array.
+  let identifiers;
+  if (Array.isArray(argv.identifier)) {
+    identifiers = argv.identifier;
+  } else {
+    identifiers = [argv.identifier];
+  }
+
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const governor = await Governor.deployed();
 
-  // After it's given ownership, the upgrade transaction needs to be executed.
-  const identifierBytes = web3.utils.utf8ToHex(argv.identifier);
-  const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
+  // Generate the list of transactions from the list of identifiers.
+  const transactions = identifiers.map(identifier => {
+    const identifierBytes = web3.utils.utf8ToHex(identifier);
+    const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
+    console.log("addIdentifierTx", addIdentifierTx);
+    return {
+      to: identifierWhitelist.address,
+      value: 0,
+      data: addIdentifierTx
+    };
+  });
 
-  console.log("addIdentifierTx", addIdentifierTx);
+  await governor.propose(transactions, { from: proposerWallet });
 
-  await governor.propose(
-    [
-      {
-        to: identifierWhitelist.address,
-        value: 0,
-        data: addIdentifierTx
-      }
-    ],
-    { from: proposerWallet }
-  );
+  const identifierTable = identifiers.map(identifier => {
+    return {
+      identifier,
+      hex: web3.utils.utf8ToHex(identifier)
+    };
+  });
 
   console.log(`
-
-Newly Proposed DVM Identifier: 
-
-${argv.identifier} (UTF8)
-${identifierBytes} (HEX)
-
-`);
+  Identifiers Proposed`);
+  console.table(identifierTable);
 }
 
 run = async function(callback) {

@@ -1,7 +1,10 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class CRMonitor {
   /**
@@ -14,7 +17,9 @@ class CRMonitor {
    *      { walletsToMonitor: [{ name: "Market Making bot", // Friendly bot name
    *            address: "0x12345",                         // Bot address
    *            crAlert: 1.50 },                            // CR alerting threshold to generate an alert message; 1.5=150%
-   *       ...] };
+   *       ...],
+   *        logLevelOverrides: {crThreshold: "error"}       // Log level overrides
+   *      };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
@@ -55,6 +60,16 @@ class CRMonitor {
               );
             })
           );
+        }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { crThreshold:'error' } would override the default `warn` behaviour for CR threshold events.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
         }
       }
     };
@@ -140,8 +155,8 @@ class CRMonitor {
           this.formatDecimalString(liquidationPrice) +
           ", the position can be liquidated.";
 
-        this.logger.warn({
-          at: "ContractMonitor",
+        this.logger[this.logOverrides.crThreshold || "warn"]({
+          at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn
         });

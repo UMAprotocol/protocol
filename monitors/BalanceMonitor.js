@@ -1,7 +1,10 @@
 // This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class BalanceMonitor {
   /**
@@ -17,7 +20,9 @@ class BalanceMonitor {
    *         collateralThreshold: x1,
    *         syntheticThreshold: x2,
    *         etherThreshold: x3 },
-   *      ..] }
+   *      ..],
+   *        logOverrides: {syntheticThreshold: "error", collateralThreshold: "error", ethThreshold: "error"}
+   *      }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
@@ -60,6 +65,16 @@ class BalanceMonitor {
             })
           );
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { syntheticThreshold:'error' } would override the default `warn` behaviour for synthetic-balance-threshold events.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
 
@@ -92,7 +107,7 @@ class BalanceMonitor {
       const monitoredAddress = this.web3.utils.toChecksumAddress(bot.address);
 
       if (this.toBN(this.client.getCollateralBalance(monitoredAddress)).lt(this.toBN(bot.collateralThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.collateralThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -105,7 +120,7 @@ class BalanceMonitor {
         });
       }
       if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.syntheticThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -118,7 +133,7 @@ class BalanceMonitor {
         });
       }
       if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.ethThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(

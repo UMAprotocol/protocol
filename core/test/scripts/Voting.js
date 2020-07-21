@@ -3,11 +3,8 @@ const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum, BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash } = require("../../../common/EncryptionHelper.js");
-const { createVisibleAccount } = require("../../../common/Crypto");
-const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../../common/Constants");
 
 // Set this to TRUE to print out logs that a production AVS would display
 const USE_PROD_LOGS = false;
@@ -225,45 +222,6 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(await voting.getPrice(identifier1, time1), hardcodedPrice);
     assert.equal(await voting.getPrice(identifier1, time2), hardcodedPrice);
     assert.equal(await voting.getPrice(identifier2, time2), hardcodedPrice);
-  });
-
-  it("Intrinio price", async function() {
-    const identifier = TEST_IDENTIFIERS["TSLA"].key;
-    const time = TEST_IDENTIFIERS["TSLA"].hardcodedTimestamp;
-
-    // Request an Oracle price.
-    await voting.requestPrice(identifier, time);
-
-    // Move to the round in which voters will vote on the requested price.
-    await moveToNextRound(voting);
-
-    // Sanity check.
-    assert.isFalse(await voting.hasPrice(identifier, time));
-
-    const notifier = new MockNotifier();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
-
-    // The vote should have been committed.
-    let result = await votingSystem.runIteration(USE_PROD_LOGS);
-    assert.equal(result.batches, 1);
-    assert.equal(result.updates.length, 1);
-    assert.equal(result.skipped.length, 0);
-    assert.equal(result.failures.length, 0);
-
-    // Move to the reveal phase.
-    await moveToNextPhase(voting);
-
-    // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
-
-    // This vote should have been removed from the persistence layer so we don't re-reveal.
-    result = await votingSystem.runIteration(USE_PROD_LOGS);
-    assert.equal(result.batches, 1);
-    assert.equal(result.updates.length, 1);
-
-    await moveToNextRound(voting);
-    // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["TSLA"].expectedPrice);
   });
 
   it("Notification on crash", async function() {

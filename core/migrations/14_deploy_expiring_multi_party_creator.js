@@ -3,38 +3,67 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 const ExpiringMultiPartyLib = artifacts.require("ExpiringMultiPartyLib");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
-const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("@umaprotocol/common");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const { RegistryRolesEnum } = require("../../common/Enums.js");
+const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { interfaceName } = require("../utils/Constants.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
-  // Deploy whitelists.
-  const { contract: collateralCurrencyWhitelist } = await deploy(deployer, network, AddressWhitelist, {
+  // Deploy CollateralWhitelist.
+  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, {
     from: keys.deployer
   });
 
-  await collateralCurrencyWhitelist.addToWhitelist(TestnetERC20.address);
+  // Add CollateralWhitelist to finder.
   const finder = await Finder.deployed();
+  await finder.changeImplementationAddress(
+    web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+    collateralWhitelist.address,
+    {
+      from: keys.deployer
+    }
+  );
+
+  // Add the testnet ERC20 as the default collateral currency (this is the DAI address on mainnet).
+  const testnetERC20 = await TestnetERC20.deployed();
+  await collateralWhitelist.addToWhitelist(testnetERC20.address);
+
+  // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
+  const timerAddress = controllableTiming
+    ? (await Timer.deployed()).address
+    : "0x0000000000000000000000000000000000000000";
   const tokenFactory = await TokenFactory.deployed();
   const registry = await Registry.deployed();
 
   // Deploy EMPLib and link to EMPCreator.
-  await deploy(deployer, network, ExpiringMultiPartyLib);
-  await deployer.link(ExpiringMultiPartyLib, ExpiringMultiPartyCreator);
+
+  // Buidler
+  if (ExpiringMultiPartyLib.setAsDeployed) {
+    const { contract: empLib } = await deploy(deployer, network, ExpiringMultiPartyLib);
+
+    // Due to how truffle-plugin works, it statefully links it
+    // and throws an error if its already linked. So we'll just ignore it...
+    try {
+      await ExpiringMultiPartyCreator.link(empLib);
+    } catch (e) {}
+  } else {
+    // Truffle
+    await deploy(deployer, network, ExpiringMultiPartyLib);
+    await deployer.link(ExpiringMultiPartyLib, ExpiringMultiPartyCreator);
+  }
 
   const { contract: expiringMultiPartyCreator } = await deploy(
     deployer,
     network,
     ExpiringMultiPartyCreator,
     finder.address,
-    collateralCurrencyWhitelist.address,
     tokenFactory.address,
-    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
+    timerAddress,
     { from: keys.deployer }
   );
 

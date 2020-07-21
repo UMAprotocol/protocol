@@ -1,9 +1,12 @@
 // This module monitors Expiring Multi Party contracts and produce logs when: 1) new sponsors are detected,
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
-const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  revertWrapper,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class ContractMonitor {
   /**
@@ -164,9 +167,7 @@ class ContractMonitor {
     );
 
     for (let event of newLiquidationEvents) {
-      const { liquidationTime } = await this.empContract.methods
-        .liquidations(event.sponsor, event.liquidationId)
-        .call();
+      const liquidationTime = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
 
       let collateralizationString;

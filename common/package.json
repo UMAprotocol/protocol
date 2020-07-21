@@ -1,0 +1,38 @@
+{
+  "name": "@umaprotocol/common",
+  "version": "1.0.0",
+  "description": "Common js utilities used by other UMA packages",
+  "homepage": "http://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "scripts": {
+    "test": "echo \"No tests configured\""
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "devDependencies": {
+    "truffle-deploy-registry": "^0.5.1"
+  },
+  "dependencies": {
+    "@google-cloud/kms": "^0.3.0",
+    "@google-cloud/storage": "^2.4.2",
+    "@truffle/hdwallet-provider": "^1.0.25",
+    "@umaprotocol/truffle-ledger-provider": "^1.0.3",
+    "abi-decoder": "github:UMAprotocol/abi-decoder",
+    "bignumber.js": "^8.0.1",
+    "dotenv": "^6.2.0",
+    "eth-crypto": "^1.6.0",
+    "minimist": "^1.2.0",
+    "moment": "^2.24.0",
+    "node-metamask": "github:UMAprotocol/node-metamask",
+    "web3": "1.2.7"
+  }
+}

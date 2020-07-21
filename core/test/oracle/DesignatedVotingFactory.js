@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("@umaprotocol/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");

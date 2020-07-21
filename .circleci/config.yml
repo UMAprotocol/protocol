@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v8-dependency-cache-{{ checksum "package.json" }}
-            - v8-dependency-cache-
+            - v11-dependency-cache-{{ checksum "package.json" }}
+            - v11-dependency-cache-
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npx lerna bootstrap
       - save_cache:
-          key: v8-dependency-cache-{{ checksum "package.json" }}
+          key: v11-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -135,19 +135,7 @@ jobs:
       - run:
           name: Deploy Contracts
           working_directory: ~/protocol/core
-          command: $(npm bin)/truffle migrate --reset --network test
-      - restore_cache:
-          keys:
-            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
-            - v6-dapp-dep-cache-
-      - run:
-          name: Install Voter dApp Dependencies
-          working_directory: ~/protocol/voter-dapp
-          command: npm install
-      - save_cache:
-          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
-          paths:
-            - voter-dapp/node_modules
+          command: yarn run truffle migrate --reset --network test
       - save_cache:
           key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -166,11 +154,11 @@ jobs:
       - run:
           name: Apply Deployment Registry
           working_directory: ~/protocol/core
-          command: $(npm bin)/apply-registry
+          command: yarn run apply-registry
       - run:
           name: Build Voter dApp
           working_directory: ~/protocol/voter-dapp
-          command: CI=false npm run build
+          command: CI=false yarn run build
       - store_artifacts:
           path: ~/protocol/voter-dapp/build
           destination: voter-dapp-build

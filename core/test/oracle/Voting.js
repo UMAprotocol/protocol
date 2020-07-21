@@ -1,9 +1,16 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../common/Crypto");
+const {
+  RegistryRolesEnum,
+  VotePhasesEnum,
+  didContractThrow,
+  getRandomSignedInt,
+  getRandomUnsignedInt,
+  decryptMessage,
+  encryptMessage,
+  deriveKeyPairFromSignatureTruffle,
+  computeVoteHash,
+  getKeyGenMessage
+} = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash, computeVoteHash, getKeyGenMessage } = require("../../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
 const Finder = artifacts.require("Finder");
@@ -18,6 +25,8 @@ contract("Voting", function(accounts) {
   let voting;
   let votingToken;
   let registry;
+  let timer;
+  let finder;
 
   const account1 = accounts[0];
   const account2 = accounts[1];
@@ -62,6 +71,11 @@ contract("Voting", function(accounts) {
     await registry.registerContract([], registeredContract, { from: account1 });
   });
 
+  beforeEach(async () => {
+    finder = await Finder.deployed();
+    timer = await Timer.deployed();
+  });
+
   it("Constructor", async function() {
     // GAT must be <= 1.0 (100%)
     const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
@@ -73,8 +87,8 @@ contract("Voting", function(accounts) {
           { rawValue: web3.utils.toWei("1") },
           1,
           votingToken.address,
-          Finder.address,
-          Timer.address
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
         )
       )
     );
@@ -1653,7 +1667,7 @@ contract("Voting", function(accounts) {
       "86400",
       votingToken.address,
       (await Finder.deployed()).address,
-      Timer.address
+      (await Timer.deployed()).address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1698,8 +1712,8 @@ contract("Voting", function(accounts) {
       { rawValue: "0" }, // No inflation
       "1209600", // 2 week reward expiration
       votingToken.address,
-      Finder.address,
-      Timer.address
+      (await Finder.deployed()).address,
+      (await Timer.deployed()).address
     );
 
     await moveToNextRound(votingTest);

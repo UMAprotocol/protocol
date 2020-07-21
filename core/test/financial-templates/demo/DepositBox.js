@@ -1,7 +1,6 @@
 const { toWei, utf8ToHex, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow } = require("../../../../common/SolidityTestUtils.js");
+const { RegistryRolesEnum, didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
-const { RegistryRolesEnum } = require("../../../../common/Enums.js");
 const { interfaceName } = require("../../../utils/Constants.js");
 
 // Tested Contract
@@ -57,7 +56,7 @@ contract("DepositBox", function(accounts) {
 
     // Deploy a new DepositBox contract that will connect to the mockOracle for price requests.
     registry = await Registry.deployed();
-    depositBox = await DepositBox.new(collateralToken.address, finder.address, priceFeedIdentifier, Timer.address);
+    depositBox = await DepositBox.new(collateralToken.address, finder.address, priceFeedIdentifier, timer.address);
 
     // Note: Upon calling `initialize()`, the DepositBox will attempt to register itself with the Registry in order to make price requests in production environments,
     // but the MockOracle in test environments does not require contracts to be registered in order to make price requests.

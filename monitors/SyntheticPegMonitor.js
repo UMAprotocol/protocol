@@ -1,8 +1,7 @@
 // This module monitors the synthetic peg of a given expiring multiparty contract and reports when: 1) the synthetic is
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
-const { createFormatFunction, formatHours } = require("../common/FormattingUtils");
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+const { createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@umaprotocol/common");
 
 class SyntheticPegMonitor {
   /**
@@ -16,6 +15,7 @@ class SyntheticPegMonitor {
            volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
            pegVolatilityAlertThreshold: 0.2,      // Threshold for synthetic peg price volatility.
            syntheticVolatilityAlertThreshold: 0.2 // Threshold for synthetic price volatility.
+           logOverrides: {deviation: "error"}     // Log level overrides.
           }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
@@ -70,6 +70,16 @@ class SyntheticPegMonitor {
         isValid: x => {
           return typeof x === "number" && x < 1 && x >= 0;
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { deviation:'error' } would override the default `warn` behaviour for synthetic-peg deviation events.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
@@ -107,7 +117,7 @@ class SyntheticPegMonitor {
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
-      this.logger.warn({
+      this.logger[this.logOverrides.deviation || "warn"]({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:

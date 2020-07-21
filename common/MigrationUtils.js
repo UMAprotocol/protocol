@@ -9,7 +9,7 @@ const tdr = require("truffle-deploy-registry");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["keep_finder", "keep_token", "keep_system"] });
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("./PublicNetworks.js")).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("./PublicNetworks.js").PublicNetworks).map(elt => elt.name);
 
 function isPublicNetwork(network) {
   return publicNetworkNames.some(name => network.startsWith(name));
@@ -85,15 +85,26 @@ async function deploy(deployer, network, contractType, ...args) {
   const willDeploy = txnOptions.overwrite || !contractType.isDeployed();
 
   // Deploy contract.
-  await deployer.deploy(contractType, ...args);
-  const contractInstance = await contractType.deployed();
+  let contractInstance;
+
+  // Buidler
+  if (contractType.setAsDeployed) {
+    contractInstance = await contractType.new(...args);
+    contractType.setAsDeployed(contractInstance);
+  }
+
+  // Truffle
+  else {
+    await deployer.deploy(contractType, ...args);
+    contractInstance = await contractType.deployed();
+  }
 
   // Add to the registry.
   await addToTdr(contractInstance, network);
 
   // Return relevant info about the contract.
   return {
-    contract: await contractType.deployed(),
+    contract: contractInstance,
     didDeploy: willDeploy
   };
 }

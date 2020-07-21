@@ -240,6 +240,13 @@ async function Poll(callback) {
     //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
     //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
     //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
+    //  "logOverrides":{                                   // override specific events log levels.
+    //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
+    //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
+    //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
+    //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
+    //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
+    //   }
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 
@@ -250,7 +257,7 @@ async function Poll(callback) {
       : null;
 
     // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
-    // to use. EG: {"type":"medianizer","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
+    // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
     // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
     const medianizerPriceFeedConfig = process.env.MEDIANIZER_PRICE_FEED_CONFIG
       ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
