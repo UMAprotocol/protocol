@@ -1,4 +1,6 @@
-const abiDecoder = require("./AbiUtils.js").getAbiDecoder();
+const { getAbiDecoder } = require("./AbiUtils.js");
+
+let abiDecoder;
 
 function decodeTransaction(transaction) {
   let returnValue = "";
@@ -11,6 +13,9 @@ function decodeTransaction(transaction) {
     // No data -> simple ETH send.
     returnValue += "\nTransaction is a simple ETH send (no data).";
   } else {
+    // Loading the abi decoder is expensive, so do it only if called and cache it for repeated use.
+    abiDecoder = abiDecoder || getAbiDecoder();
+
     // Txn data isn't empty -- attempt to decode.
     const decodedTxn = abiDecoder.decodeMethod(transaction.data);
     if (!decodedTxn) {

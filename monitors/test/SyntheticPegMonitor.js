@@ -6,14 +6,19 @@ const sinon = require("sinon");
 const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
 
 // Mock and custom winston transport module to monitor winston log outputs
-const { PriceFeedMock, SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+const {
+  PriceFeedMock,
+  SpyTransport,
+  lastSpyLogIncludes,
+  lastSpyLogLevel
+} = require("@umaprotocol/financial-templates-lib");
 
-contract("SyntheticPegMonitor", function(accounts) {
+contract("SyntheticPegMonitor", function() {
   let uniswapPriceFeedMock;
   let medianizerPriceFeedMock;
 
   let spy;
-  let spylogger;
+  let spyLogger;
 
   let monitorConfig;
   let empProps;
@@ -22,6 +27,13 @@ contract("SyntheticPegMonitor", function(accounts) {
   beforeEach(async function() {
     uniswapPriceFeedMock = new PriceFeedMock();
     medianizerPriceFeedMock = new PriceFeedMock();
+
+    empProps = {
+      collateralCurrencySymbol: "DAI",
+      syntheticCurrencySymbol: "ETHBTC",
+      priceIdentifier: "ETH/BTC",
+      networkId: await web3.eth.net.getId()
+    };
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     // Note that only `info` level messages are captured.
@@ -37,13 +49,6 @@ contract("SyntheticPegMonitor", function(accounts) {
       // Tested module that uses the two price feeds.
       monitorConfig = {
         deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
-      };
-
-      const empProps = {
-        collateralCurrencySymbol: "DAI",
-        syntheticCurrencySymbol: "ETHBTC",
-        priceIdentifier: "ETH/BTC",
-        networkId: await web3.eth.net.getId()
       };
 
       syntheticPegMonitor = new SyntheticPegMonitor(
@@ -101,6 +106,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "1.25")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
       assert.isTrue(lastSpyLogIncludes(spy, "25.00")); // percentage error
+      assert.equal(lastSpyLogLevel(spy), "warn");
 
       // Price deviation at the threshold of 20% should send a message.
       medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
@@ -117,6 +123,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "0.7000")); // uniswap price
       assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
       assert.isTrue(lastSpyLogIncludes(spy, "-30.00")); // percentage error (note negative sign)
+      assert.equal(lastSpyLogLevel(spy), "warn");
 
       // Small values (<0.1) should be scaled correctly in logs.
       medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("0.021111"))); // Note 5 units of precision provided.
@@ -127,6 +134,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.isTrue(lastSpyLogIncludes(spy, "0.02567")); // uniswap price (note: 4 units of precision)
       assert.isTrue(lastSpyLogIncludes(spy, "0.02111")); // expected price (note: 4 units of precision)
       assert.isTrue(lastSpyLogIncludes(spy, "21.63")); // percentage error
+      assert.equal(lastSpyLogLevel(spy), "warn");
     });
 
     it("Does not track price deviation if threshold set to zero", async function() {
@@ -165,12 +173,6 @@ contract("SyntheticPegMonitor", function(accounts) {
         syntheticVolatilityAlertThreshold: 0.3
       };
 
-      empProps = {
-        collateralCurrencySymbol: "DAI",
-        syntheticCurrencySymbol: "ETHBTC",
-        priceIdentifier: "ETH/BTC",
-        networkId: await web3.eth.net.getId()
-      };
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
         web3,
@@ -379,75 +381,115 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.equal(spy.callCount, 0); // No longs should be sent as monitor threshold set to 0.
     });
   });
-  it("Cannot set invalid config", async function() {
-    let errorThrown1;
-    try {
-      // Create an invalid config. A valid config expects  1 > deviationAlertThreshold >=0, volatilityWindow >=0,
-      // 1 > pegVolatilityAlertThreshold >= 0, 1 > syntheticVolatilityAlertThreshold >= 0.
-      const invalidConfig1 = {
-        // Invalid as deviationAlertThreshold set to above 1.
-        deviationAlertThreshold: 1.5,
-        volatilityWindow: 0,
-        pegVolatilityAlertThreshold: 0,
-        syntheticVolatilityAlertThreshold: 0
-      };
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
-        web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        invalidConfig1,
-        empProps
-      );
-      errorThrown1 = false;
-    } catch (err) {
-      errorThrown1 = true;
-    }
-    assert.isTrue(errorThrown1);
+  describe("Overrides the default monitor configuration settings", function() {
+    it("Cannot set invalid config", async function() {
+      let errorThrown1;
+      try {
+        // Create an invalid config. A valid config expects  1 > deviationAlertThreshold >=0, volatilityWindow >=0,
+        // 1 > pegVolatilityAlertThreshold >= 0, 1 > syntheticVolatilityAlertThreshold >= 0.
+        const invalidConfig1 = {
+          // Invalid as deviationAlertThreshold set to above 1.
+          deviationAlertThreshold: 1.5,
+          volatilityWindow: 0,
+          pegVolatilityAlertThreshold: 0,
+          syntheticVolatilityAlertThreshold: 0
+        };
+        syntheticPegMonitor = new SyntheticPegMonitor(
+          spyLogger,
+          web3,
+          uniswapPriceFeedMock,
+          medianizerPriceFeedMock,
+          invalidConfig1,
+          empProps
+        );
+        errorThrown1 = false;
+      } catch (err) {
+        errorThrown1 = true;
+      }
+      assert.isTrue(errorThrown1);
 
-    let errorThrown2;
-    try {
-      const invalidConfig2 = {
-        // Invalid as volatilityWindow set to -1 && pegVolatilityAlertThreshold set to null.
-        deviationAlertThreshold: 0,
-        volatilityWindow: -1,
-        pegVolatilityAlertThreshold: null,
-        syntheticVolatilityAlertThreshold: 0
-      };
+      let errorThrown2;
+      try {
+        const invalidConfig2 = {
+          // Invalid as volatilityWindow set to -1 && pegVolatilityAlertThreshold set to null.
+          deviationAlertThreshold: 0,
+          volatilityWindow: -1,
+          pegVolatilityAlertThreshold: null,
+          syntheticVolatilityAlertThreshold: 0
+        };
+        syntheticPegMonitor = new SyntheticPegMonitor(
+          spyLogger,
+          web3,
+          uniswapPriceFeedMock,
+          medianizerPriceFeedMock,
+          invalidConfig2,
+          empProps
+        );
+        errorThrown2 = false;
+      } catch (err) {
+        errorThrown2 = true;
+      }
+      assert.isTrue(errorThrown2);
+    });
+    it("Can correctly create synthetic peg monitor with no config provided", async function() {
+      let errorThrown;
+      try {
+        // Create an invalid config. A valid config expects two arrays of addresses.
+        const emptyConfig = {};
+        syntheticPegMonitor = new SyntheticPegMonitor(
+          spyLogger,
+          web3,
+          uniswapPriceFeedMock,
+          medianizerPriceFeedMock,
+          emptyConfig,
+          empProps
+        );
+        await syntheticPegMonitor.checkPriceDeviation();
+        await syntheticPegMonitor.checkPegVolatility();
+        await syntheticPegMonitor.checkSyntheticVolatility();
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isFalse(errorThrown);
+    });
+    it("Cannot set invalid alerting overrides", async function() {
+      let errorThrown;
+      try {
+        // Create an invalid log level override. This should be rejected.
+        const invalidConfig = { logOverrides: { deviation: "not a valid log level" } };
+        syntheticPegMonitor = new SyntheticPegMonitor(
+          spyLogger,
+          web3,
+          uniswapPriceFeedMock,
+          medianizerPriceFeedMock,
+          invalidConfig,
+          empProps
+        );
+
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+    it("Overriding threshold correctly effects generated logs", async function() {
+      const alertOverrideConfig = { logOverrides: { deviation: "error" } };
       syntheticPegMonitor = new SyntheticPegMonitor(
         spyLogger,
         web3,
         uniswapPriceFeedMock,
         medianizerPriceFeedMock,
-        invalidConfig2,
+        alertOverrideConfig,
         empProps
       );
-      errorThrown2 = false;
-    } catch (err) {
-      errorThrown2 = true;
-    }
-    assert.isTrue(errorThrown2);
-  });
-  it("Can correctly create synthetic peg monitor with no config provided", async function() {
-    let errorThrown;
-    try {
-      // Create an invalid config. A valid config expects two arrays of addresses.
-      const emptyConfig = {};
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
-        web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        emptyConfig,
-        empProps
-      );
+
+      // Price deviation above the threshold of 20% should send a message.
+      medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+      uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1.25")));
       await syntheticPegMonitor.checkPriceDeviation();
-      await syntheticPegMonitor.checkPegVolatility();
-      await syntheticPegMonitor.checkSyntheticVolatility();
-      errorThrown = false;
-    } catch (err) {
-      errorThrown = true;
-    }
-    assert.isFalse(errorThrown);
+      assert.equal(spy.callCount, 1); // There should be one message sent at this point.
+      assert.equal(lastSpyLogLevel(spy), "error");
+    });
   });
 });

@@ -6,7 +6,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
 const { interfaceName } = require("../../utils/Constants.js");
 const { triggerOnRequest } = require("../../utils/Serving.js");
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("@umaprotocol/common");
 
 async function getDeployAddress() {
   const accounts = await web3.eth.getAccounts();

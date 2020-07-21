@@ -1,6 +1,8 @@
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
+const {
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  createObjectFromDefaultProps,
+  revertWrapper
+} = require("@umaprotocol/common");
 
 class Liquidator {
   /**
@@ -133,9 +135,9 @@ class Liquidator {
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
     // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
-    const scaledPrice = this.fromWei(
-      price.mul(this.toBN(this.toWei("1")).sub(this.toBN(this.toWei(this.crThreshold.toString()))))
-    );
+    const scaledPrice = price
+      .mul(this.toBN(this.toWei("1")).sub(this.toBN(this.toWei(this.crThreshold.toString()))))
+      .div(this.toBN(this.toWei("1")));
 
     // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation
     // to be accepted by the contract the position's collateralization ratio must be between [minCollateralPerToken,
@@ -169,6 +171,13 @@ class Liquidator {
     }
 
     for (const position of underCollateralizedPositions) {
+      this.logger.debug({
+        at: "Liquidator",
+        message: "Detected a liquidatable position",
+        scaledPrice: scaledPrice.toString(),
+        position: JSON.stringify(position)
+      });
+
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
 
@@ -337,6 +346,12 @@ class Liquidator {
     }
 
     for (const liquidation of potentialWithdrawableLiquidations) {
+      this.logger.debug({
+        at: "Liquidator",
+        message: "Detected a pending or expired liquidation",
+        liquidation: JSON.stringify(liquidation)
+      });
+
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 

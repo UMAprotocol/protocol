@@ -35,7 +35,6 @@ contract("CreatePriceFeed.js", function(accounts) {
   const minTimeBetweenUpdates = 60;
   const twapLength = 180;
   const uniswapAddress = toChecksumAddress(randomHex(20));
-  const invertPrice = true;
 
   beforeEach(async function() {
     networker = new NetworkerMock();
@@ -74,6 +73,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validCryptoWatchFeed.pair, pair);
     assert.equal(validCryptoWatchFeed.lookback, lookback);
     assert.equal(validCryptoWatchFeed.getTime(), getTime());
+    assert.equal(validCryptoWatchFeed.invertPrice, undefined);
   });
 
   it("Valid CryptoWatch config without apiKey", async function() {

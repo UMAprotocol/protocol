@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 // Helpers
-const { MAX_UINT_VAL } = require("../common/Constants");
+const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const { toBN } = web3.utils;
 
 // JS libs
@@ -103,7 +103,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
       logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApprovalTx.tx
       });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
@@ -114,7 +114,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
       logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        collateralApprovalTx: syntheticApprovalTx.transactionHash
+        collateralApprovalTx: syntheticApprovalTx.tx
       });
     }
 

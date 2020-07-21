@@ -1,10 +1,8 @@
 const style = require("../textStyle");
 const winston = require("winston");
-const PublicNetworks = require("../../../../common/PublicNetworks");
 const { getCurrencySymbol } = require("./currencyUtils.js");
 const { createReferencePriceFeedForEmp, Networker } = require("@umaprotocol/financial-templates-lib");
-const { computeCollateralizationRatio } = require("../../../../common/EmpUtils.js");
-const { createFormatFunction } = require("../../../../common/FormattingUtils.js");
+const { computeCollateralizationRatio, createFormatFunction, PublicNetworks } = require("@umaprotocol/common");
 
 const getMarketSummary = async (web3, artifacts) => {
   style.spinnerReadingContracts.start();

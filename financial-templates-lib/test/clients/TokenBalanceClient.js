@@ -7,7 +7,7 @@ const { TokenBalanceClient } = require("../../clients/TokenBalanceClient");
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
 
-contract("BalanceMonitor.js", function(accounts) {
+contract("TokenBalanceClient.js", function(accounts) {
   const tokenCreator = accounts[0];
   const sponsor1 = accounts[1];
   const sponsor2 = accounts[2];

@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("@umaprotocol/common");
 
 const FixedPointTest = artifacts.require("FixedPointTest");
 

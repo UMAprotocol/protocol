@@ -13,8 +13,16 @@ const argv = require("minimist")(process.argv.slice(), {});
 // Transports array to store all winston transports.
 let transports = [];
 
+// If the logger is running in serverless mode then add the GCP winston transport and console transport.
+if (process.env.ENVIRONMENT == "serverless") {
+  const { LoggingWinston } = require("@google-cloud/logging-winston");
+  require("@google-cloud/trace-agent").start();
+  transports.push(new LoggingWinston());
+  transports.push(ConsoleTransport.createConsoleTransport(false));
+}
+
 // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
-if (process.env.ENVIRONMENT == "production") {
+else if (process.env.ENVIRONMENT == "production") {
   const { LoggingWinston } = require("@google-cloud/logging-winston");
   require("@google-cloud/trace-agent").start();
   transports.push(new LoggingWinston());

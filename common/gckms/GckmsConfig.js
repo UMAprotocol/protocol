@@ -6,7 +6,7 @@ const fs = require("fs");
 require("dotenv").config();
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("../PublicNetworks.js")).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map(elt => elt.name);
 
 let configOverride = {};
 
@@ -104,4 +104,4 @@ const keyConfigs = keys.map(keyName => {
 });
 
 // Export the requested config.
-module.exports = keyConfigs;
+module.exports = { GckmsConfig: keyConfigs };

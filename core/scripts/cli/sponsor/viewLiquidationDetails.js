@@ -2,7 +2,7 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
-const { LiquidationStatesEnum } = require("../../../../common/Enums");
+const { LiquidationStatesEnum } = require("@umaprotocol/common");
 const { liquidationStateToDisplay } = require("./liquidationUtils");
 const { interfaceName } = require("../../../utils/Constants");
 

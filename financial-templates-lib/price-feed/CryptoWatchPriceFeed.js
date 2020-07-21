@@ -16,8 +16,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
    * @param {Function} getTime Returns the current time.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
+   * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
    */
-  constructor(logger, web3, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
+  constructor(logger, web3, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates, invertPrice) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -29,6 +30,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
+    this.invertPrice = invertPrice;
 
     // Use CryptoWatch's most granular option, one minute.
     this.ohlcPeriod = 60;
@@ -39,7 +41,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   getCurrentPrice() {
-    return this.currentPrice;
+    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
   getHistoricalPrice(time) {
@@ -76,10 +78,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // If there is no match, that means that the time was past the last data point.
     // In this case, the best match for this price is the current price.
     if (match === undefined) {
-      return this.currentPrice;
+      return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
     }
 
-    return match.openPrice;
+    return this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
   }
 
   getLastUpdateTime() {
@@ -186,6 +188,16 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.historicalPricePeriods = newHistoricalPricePeriods;
     this.lastUpdateTime = currentTime;
+  }
+
+  _invertPriceSafely(priceBN) {
+    if (priceBN && !priceBN.isZero()) {
+      return this.toBN(this.toWei("1"))
+        .mul(this.toBN(this.toWei("1")))
+        .div(priceBN);
+    } else {
+      return undefined;
+    }
   }
 }
 

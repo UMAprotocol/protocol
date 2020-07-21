@@ -38,18 +38,17 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-// Helpers
-// TODO integrate with winston logger.
-// const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
+const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
 
 app.post("/", async (req, res) => {
   try {
-    console.log("Running Cloud runner hub query");
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Running cloud runner hub query",
+      reqBody: req.body
+    });
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
-      res.status(400).send({
-        message: "ERROR: Body missing json bucket or file parameters!"
-      });
       throw new Error("ERROR: Body missing json bucket or file parameters!");
     }
 
@@ -69,34 +68,69 @@ app.post("/", async (req, res) => {
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
     for (const botName in configObject) {
-      const botConfig = appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      console.log("Appending to promise array", botName); // TODO: refine this logging with a winston log
-      // TODO: when running locally we can execute a JSON call to a local restful API. Refactor this for intergration tests.
-      // promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
-      promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
+      if (process.env.ENVIRONMENT == "production") {
+        promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      } else {
+        promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
+      }
     }
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Executing cloud run query from config file",
+      lastQueriedBlockNumber,
+      latestBlockNumber,
+      botsExecuted: Object.keys(configObject)
+    });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
+    // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
+    // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
-    console.log(JSON.stringify(results)); // TODO: refine this logging with a winston log
+
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "Batch execution promise resolved",
+      results
+    });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
     let thrownErrors = [];
-    results.forEach(result => {
+    results.forEach((result, index) => {
       if (result.status == "rejected") {
-        thrownErrors.push(result);
+        // If the child process in the spoke crashed it will return 400 (rejected).
+        thrownErrors.push({
+          status: result.status,
+          execResponse: result.reason.response.data,
+          botIdentifier: Object.keys(configObject)[index]
+        });
+      } else if (result.value.execResponse.error) {
+        // If the child process exited correctly but contained an error.
+        thrownErrors.push({
+          status: result.status,
+          execResponse: result.value.execResponse,
+          botIdentifier: Object.keys(configObject)[index]
+        });
       }
     });
-
     if (thrownErrors.length > 0) {
       throw thrownErrors;
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
+    Logger.debug({
+      at: "CloudRunnerHub",
+      message: "All calls returned correctly",
+      thrownErrors: null
+    });
     res.status(200).send({ message: "All calls returned correctly", error: null });
-  } catch (error) {
-    console.log("error", error);
-    res.status(400).send({ message: "One or more calls failed with error", error: error });
+  } catch (thrownErrors) {
+    Logger.error({
+      at: "CloudRunnerHub",
+      message: "CloudRunner hub error 🌩 ",
+      thrownErrors
+    });
+    res.status(400).send({ message: "Something went wrong in cloud runner hub execution", thrownErrors });
   }
 });
 
@@ -154,7 +188,7 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
   const [dataField] = await datastore.get(key);
 
   // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
-  if (dataField == undefined) return await this._getLatestBlockNumber();
+  if (dataField == undefined) return await _getLatestBlockNumber();
   return dataField.blockNumber;
 }
 
@@ -165,7 +199,7 @@ async function _getLatestBlockNumber() {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
+function _appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
@@ -173,7 +207,6 @@ function appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNum
 }
 
 // Execute a post query on a arbitrary `url` with a given json `body. Used to test the hub script locally.
-// TODO: wire this in for unit testing.
 async function _postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
@@ -189,7 +222,12 @@ async function _postJson(url, body) {
 
 const port = process.env.PORT || 8080;
 app.listen(port, () => {
-  console.log("Listening on port", port);
+  Logger.debug({
+    at: "CloudRunnerHub",
+    message: "Initalized Cloud Runner hub instance",
+    processEnvironment: process.env,
+    port
+  });
   // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
     throw new Error(

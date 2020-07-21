@@ -1,6 +1,8 @@
-const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { PostWithdrawLiquidationRewardsStatusTranslations } = require("../common/Enums");
+const {
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  revertWrapper,
+  createObjectFromDefaultProps
+} = require("@umaprotocol/common");
 
 class Disputer {
   /**
@@ -100,6 +102,12 @@ class Disputer {
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
         ) {
+          this.logger.debug({
+            at: "Disputer",
+            message: "Detected a disputable liquidation",
+            price: price.toString(),
+            liquidation: JSON.stringify(liquidation)
+          });
           return true;
         } else {
           return false;
@@ -126,6 +134,7 @@ class Disputer {
         this.logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
+          disputer: this.account,
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
           error
@@ -204,6 +213,12 @@ class Disputer {
     }
 
     for (const liquidation of disputedLiquidations) {
+      this.logger.debug({
+        at: "Disputer",
+        message: "Detected a disputed liquidation",
+        liquidation: JSON.stringify(liquidation)
+      });
+
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 

@@ -3,11 +3,11 @@ const {
   formatDateShort,
   formatDate,
   formatWithMaxDecimals,
-  addSign
-} = require("../common/FormattingUtils");
-const { revertWrapper } = require("../common/ContractUtils");
-const { ZERO_ADDRESS } = require("../common/Constants");
-const { averageBlockTimeSeconds } = require("../common/TimeUtils");
+  addSign,
+  revertWrapper,
+  ZERO_ADDRESS,
+  averageBlockTimeSeconds
+} = require("@umaprotocol/common");
 const { getUniswapClient, queries } = require("./uniswapSubgraphClient");
 const { getUniswapPairDetails } = require("@umaprotocol/financial-templates-lib");
 const chalkPipe = require("chalk-pipe");
