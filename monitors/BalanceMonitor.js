@@ -20,7 +20,9 @@ class BalanceMonitor {
    *         collateralThreshold: x1,
    *         syntheticThreshold: x2,
    *         etherThreshold: x3 },
-   *      ..] }
+   *      ..],
+   *        logOverrides: {syntheticThreshold: "error", collateralThreshold: "error", ethThreshold: "error"}
+   *      }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
@@ -105,7 +107,7 @@ class BalanceMonitor {
       const monitoredAddress = this.web3.utils.toChecksumAddress(bot.address);
 
       if (this.toBN(this.client.getCollateralBalance(monitoredAddress)).lt(this.toBN(bot.collateralThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.collateralThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -118,7 +120,7 @@ class BalanceMonitor {
         });
       }
       if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
-        this.logger[this.logOverrides.syntheticThreshold ? this.logOverrides.syntheticThreshold : "warn"]({
+        this.logger[this.logOverrides.syntheticThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -131,7 +133,7 @@ class BalanceMonitor {
         });
       }
       if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
-        this.logger.warn({
+        this.logger[this.logOverrides.ethThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
