@@ -352,17 +352,5 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
     assert.isTrue(lastSpyLogIncludes(spy, "Ether balance warning"));
     assert.equal(lastSpyLogLevel(spy), "error");
-
-    // await syntheticToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
-    // assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("9999")).toString());
-
-    // // Update monitors.
-    // await tokenBalanceClient.update();
-    // await balanceMonitor.checkBotBalances();
-
-    // assert.equal(spy.callCount, 1);
-    // assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
-    // assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
-    // assert.equal(lastSpyLogLevel(spy), "error");
   });
 });
