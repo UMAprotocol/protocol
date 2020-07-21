@@ -49,9 +49,9 @@ run_tests $PROTOCOL_DIR/core
 cd $PROTOCOL_DIR/core
 
 $(npm bin)/truffle test $(find ../financial-templates-lib/test -name '*.js') --network ci
-$(npm bin)/truffle test $(find ../liquidator/test -name '*.js' ! -name 'OneInchExchange.js') --network ci
+$(npm bin)/truffle test $(find ../liquidator/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../disputer/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../monitors/test -name '*.js') --network ci
 
 # Only run tests that needs the mainnet forking here
-$(npm bin)/truffle test ../liquidator/test/OneInchExchange.js
+$(npm bin)/truffle test ../liquidator/test-fork/

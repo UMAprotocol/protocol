@@ -9,9 +9,10 @@ const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 class OneInchExchange {
   /**
    * @notice Creates OneInchExchange client
-   * @param {Object} web3 Web3 instance
+   * @param {Object} args.web3 Web3 instance
+   * @param {Object} args.gasEstimator GasEstimator instance
    * */
-  constructor({ web3, gasEstimator }) {
+  constructor(args = { web3, gasEstimator }) {
     this.gasEstimator = gasEstimator;
 
     this.web3 = web3;
@@ -23,15 +24,15 @@ class OneInchExchange {
 
   /**
    * @notice Swaps token on one inch
-   * @param {string} fromToken Address of token to swap from
-   * @param {string} toToken Address of token to swap to.
-   * @param {string} amountWei String amount to swap, in Wei.
+   * @param {string} swapParams.fromToken Address of token to swap from
+   * @param {string} swapParams.toToken Address of token to swap to.
+   * @param {string} swapParams.amountWei String amount to swap, in Wei.
    * @param {Object} options Web3 options to supply to send, e.g.
    *      { from: '0x0...',
             value: '1000',
             gasPrice: '... }
    */
-  async swap({ fromToken, toToken, amountWei }, options = {}) {
+  async swap(swapParams = { fromToken, toToken, amountWei }, options = {}) {
     // Implicit update to get the gasPrice :|
     await this.gasEstimator.update();
 
