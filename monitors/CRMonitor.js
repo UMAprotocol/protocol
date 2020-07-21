@@ -155,7 +155,7 @@ class CRMonitor {
           this.formatDecimalString(liquidationPrice) +
           ", the position can be liquidated.";
 
-        this.logger[this.logOverrides.crThreshold ? this.logOverrides.crThreshold : "warn"]({
+        this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn

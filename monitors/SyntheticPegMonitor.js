@@ -117,7 +117,7 @@ class SyntheticPegMonitor {
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
-      this.logger[this.logOverrides.deviation ? this.logOverrides.deviation : "warn"]({
+      this.logger[this.logOverrides.deviation || "warn"]({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:

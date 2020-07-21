@@ -306,7 +306,7 @@ class Liquidator {
       };
 
       // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
-      this.logger[this.logOverrides.positionLiquidated ? this.logOverrides.positionLiquidated : "info"]({
+      this.logger[this.logOverrides.positionLiquidated || "info"]({
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
