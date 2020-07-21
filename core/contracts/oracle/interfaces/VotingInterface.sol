@@ -69,7 +69,7 @@ abstract contract VotingInterface {
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
      */
-    function snapshotCurrentRound() external virtual;
+    function snapshotCurrentRound(bytes calldata signature) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.

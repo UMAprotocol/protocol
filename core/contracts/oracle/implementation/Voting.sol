@@ -15,6 +15,7 @@ import "./Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
 
 /**
@@ -123,6 +124,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     // Max value of an unsigned integer.
     uint256 private constant UINT_MAX = ~uint256(0);
+
+    bytes32 public snapshotMessage = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked("Sign For Snapshot")));
 
     /***************************************
      *                EVENTS                *
@@ -347,11 +350,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
      * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
+     * @param signature  signature required to prove you are EOA to prevent flash loan issue.
      */
-    function snapshotCurrentRound() external override onlyIfNotMigrated() {
+    function snapshotCurrentRound(bytes calldata signature) external override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
-
+        // require public snapshot require signature to ensure EOA caller
+        require(ECDSA.recover(snapshotMessage, signature) == msg.sender, "Signature must match sender");
         uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
     }
@@ -388,14 +393,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             keccak256(abi.encodePacked(price, salt, msg.sender, time, roundId, identifier)) == voteSubmission.commit,
             "Revealed data != commit hash"
         );
-        delete voteSubmission.commit;
 
-        // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
-        // if the `snapshotCurrentRound` function was not already called for this round.
-        _freezeRoundVariables(roundId);
+        // to protect against flash loans, we require snapshot be validated as EOA
+        require(rounds[roundId].snapshotId != 0, "Round must be snapshotted before reveal can happen");
 
         // Get the frozen snapshotId
         uint256 snapshotId = rounds[roundId].snapshotId;
+
+        delete voteSubmission.commit;
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
