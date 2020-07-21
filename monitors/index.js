@@ -243,7 +243,9 @@ async function Poll(callback) {
     //  "logOverrides":{                                   // override specific events log levels.
     //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
     //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
-    //       "crThreshold":"error"}                        // CRMonitor CR threshold alert.
+    //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
+    //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
+    //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
     //   }
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;

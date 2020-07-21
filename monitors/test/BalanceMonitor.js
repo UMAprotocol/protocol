@@ -181,6 +181,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "4.99")); // Correctly formatted number of actual number of Ether, rounded
     assert.isTrue(lastSpyLogIncludes(spy, "Ether")); // Message should include the collateral currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
 
     // At the end of the test transfer back the eth to the liquidatorBot to clean up
     await web3.eth.sendTransaction({
@@ -207,6 +208,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // Correctly formatted number of actual collateral
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
 
     // Updating again should emit another message
     await tokenBalanceClient.update();
@@ -233,6 +235,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,995.00")); // Correctly formatted number of actual collateral
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
   });
   it("Cannot set invalid config", async function() {
     let errorThrown1;
@@ -309,5 +312,57 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
     assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
     assert.equal(lastSpyLogLevel(spy), "error");
+  });
+  it("Can override the collateral-threshold log level", async function() {
+    const alertOverrideConfig = { ...monitorConfig, logOverrides: { collateralThreshold: "error" } };
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+
+    // Lower the liquidator bot's collateral balance.
+    await collateralToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("9999")).toString());
+
+    // Update monitors.
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+
+    assert.equal(spy.callCount, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
+    assert.equal(lastSpyLogLevel(spy), "error");
+  });
+  it("Can override the ether-threshold log level", async function() {
+    const alertOverrideConfig = { ...monitorConfig, logOverrides: { ethThreshold: "error" } };
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+
+    // Lower the liquidator bot's ETH balance.
+    const startLiquidatorBotETH = await web3.eth.getBalance(liquidatorBot);
+    const amountToTransfer = toBN(startLiquidatorBotETH).sub(toBN(toWei("5")));
+    await web3.eth.sendTransaction({
+      from: liquidatorBot,
+      to: tokenCreator,
+      value: amountToTransfer.toString()
+    });
+    assert.isTrue(toBN(await web3.eth.getBalance(liquidatorBot)).lt(toBN(toWei("5"))));
+
+    // Update monitors.
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+
+    assert.equal(spy.callCount, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, "Ether balance warning"));
+    assert.equal(lastSpyLogLevel(spy), "error");
+
+    // await syntheticToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
+    // assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), toBN(toWei("9999")).toString());
+
+    // // Update monitors.
+    // await tokenBalanceClient.update();
+    // await balanceMonitor.checkBotBalances();
+
+    // assert.equal(spy.callCount, 1);
+    // assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    // assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
+    // assert.equal(lastSpyLogLevel(spy), "error");
   });
 });
