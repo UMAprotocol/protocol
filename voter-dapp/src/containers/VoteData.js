@@ -8,7 +8,6 @@ import { PRICE_REQUEST_VOTING_DATA } from "../apollo/queries";
 // Retrieve vote data per price request from graphQL API.
 function useVoteData() {
   const { drizzle } = drizzleReactHooks.useDrizzle();
-  const VotingContract = drizzle.contracts.Voting;
   const { web3 } = drizzle;
   const { toBN, fromWei, toWei, toChecksumAddress } = web3.utils;
   const [roundVoteData, setRoundVoteData] = useState({});
@@ -24,23 +23,12 @@ function useVoteData() {
   const getRequestKey = (time, identifier, roundId) => {
     return identifier + "-" + time + "-" + roundId;
   };
-  const getVoteStats = async () => {
+  const getVoteStats = () => {
     if (error) {
       console.error("Failed to get data:", error);
     }
     if (!loading && data) {
       const newVoteData = {};
-
-      // TODO: round inflationRate is not available yet on the subgraph, but we will query this from the subgraph instead of
-      // making an on-chain call when it is added. For now, grab round inflation rates in parallel since these are contract calls.
-      const roundInflationRates = {};
-      await Promise.all(
-        data.priceRequestRounds.map(async dataForRequest => {
-          roundInflationRates[dataForRequest.roundId] = (
-            await VotingContract.methods.rounds(dataForRequest.roundId).call()
-          ).inflationRate;
-        })
-      );
 
       // Load data into `newVoteData` synchronously
       data.priceRequestRounds.forEach(dataForRequest => {
@@ -48,7 +36,7 @@ function useVoteData() {
 
         // Commit vote data:
         let uniqueVotersCommitted = {};
-        dataForRequest.commitedVotes.forEach(e => {
+        dataForRequest.committedVotes.forEach(e => {
           uniqueVotersCommitted[toChecksumAddress(e.voter.address)] = true;
         });
 
@@ -78,18 +66,20 @@ function useVoteData() {
         // Rewards claimed data:
         let rewardsClaimed = toBN("0");
         let rewardsClaimedPct = toBN("0");
+        let roundInflationRate = toBN("0");
+        let roundInflationRewardsAvailable = toBN("0");
         let uniqueClaimers = {};
 
-        // If the total supply was not snapshotted yet, then rewards could not have been claimed yet.
-        if (dataForRequest.totalSupplyAtSnapshot) {
+        // If the inflation rate was not snapshotted yet, then rewards could not have been claimed yet.
+        if (dataForRequest.inflationRate) {
           dataForRequest.rewardsClaimed.forEach(e => {
             rewardsClaimed = rewardsClaimed.add(toBN(e.numTokens));
             uniqueClaimers[toChecksumAddress(e.claimer.address)] = true;
           });
 
-          const roundInflationRate = roundInflationRates[dataForRequest.roundId];
-          const roundInflationPct = toBN(roundInflationRate.rawValue.toString());
-          const roundInflationRewardsAvailable = roundInflationPct
+          // @dev: `inflationRate` is the inflation % applied each round, so "0.05" means 0.05% or 5 basis points.
+          roundInflationRate = toBN(toWei(dataForRequest.inflationRate)).div(toBN("100"));
+          roundInflationRewardsAvailable = roundInflationRate
             .mul(toBN(toWei(dataForRequest.totalSupplyAtSnapshot)))
             .div(toBN(toWei("1")));
           if (!roundInflationRewardsAvailable.isZero()) {
@@ -108,6 +98,8 @@ function useVoteData() {
             100 * (Object.keys(uniqueVotersRevealed).length / Object.keys(uniqueVotersCommitted).length),
           correctVotes: fromWei(correctVotesRevealed.toString()),
           correctlyRevealedVotesPct: fromWei(pctOfCorrectRevealedVotes.mul(toBN("100")).toString()),
+          roundInflationRate: fromWei(roundInflationRate.toString()),
+          roundInflationRewardsAvailable: fromWei(roundInflationRewardsAvailable.toString()),
           rewardsClaimed: fromWei(rewardsClaimed.toString()),
           rewardsClaimedPct: fromWei(rewardsClaimedPct.mul(toBN("100")).toString()),
           uniqueClaimers: Object.keys(uniqueClaimers).length,

@@ -96,7 +96,7 @@ function ResolvedRequests({ votingAccount }) {
   });
 
   const prettyFormatNumber = x => {
-    return Number(x).toLocaleString({ minimumFractionDigits: 2 });
+    return Number(x).toLocaleString({ minimumFractionDigits: 4 });
   };
 
   return (
@@ -136,6 +136,12 @@ function ResolvedRequests({ votingAccount }) {
               <ListItemText
                 primary={"Correct Votes: " + prettyFormatNumber(voteStatsDialogData.correctVotes)}
                 secondary={prettyFormatNumber(voteStatsDialogData.correctlyRevealedVotesPct) + "% of Revealed Votes"}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Rewards Available: " + prettyFormatNumber(voteStatsDialogData.roundInflationRewardsAvailable)}
+                secondary={`Round inflation rate: ${voteStatsDialogData.roundInflationRate}% of Total Supply Snapshot`}
               />
             </ListItem>
             <ListItem>

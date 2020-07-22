@@ -9,7 +9,7 @@ export const PRICE_REQUEST_VOTING_DATA = gql`
       roundId
       time
       totalSupplyAtSnapshot
-      commitedVotes {
+      committedVotes {
         voter {
           address
         }
@@ -21,7 +21,7 @@ export const PRICE_REQUEST_VOTING_DATA = gql`
           address
         }
       }
-      claimedPercentage
+      inflationRate
       rewardsClaimed {
         numTokens
         claimer {
