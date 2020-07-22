@@ -1,6 +1,6 @@
 const Token = artifacts.require("ExpandedERC20");
+const OneSplit = artifacts.require("OneSplit");
 
-const oneSplitAbi = require("./abi/OneSplit.json");
 const oneSplitAddress = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
 
 // As defined in 1inch
@@ -12,27 +12,27 @@ class OneInchExchange {
    * @param {Object} args.web3 Web3 instance
    * @param {Object} args.gasEstimator GasEstimator instance
    * */
-  constructor(args = { web3, gasEstimator }) {
+  constructor({ web3, gasEstimator }) {
     this.gasEstimator = gasEstimator;
 
     this.web3 = web3;
     this.web3.currentProvider.timeout = 1200000;
-    this.oneSplitContract = new web3.eth.Contract(oneSplitAbi, oneSplitAddress);
+    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
   }
 
   /**
    * @notice Swaps token on one inch
-   * @param {string} swapParams.fromToken Address of token to swap from
-   * @param {string} swapParams.toToken Address of token to swap to.
-   * @param {string} swapParams.amountWei String amount to swap, in Wei.
+   * @param {string} args.fromToken Address of token to swap from
+   * @param {string} args.toToken Address of token to swap to.
+   * @param {string} args.amountWei String amount to swap, in Wei.
    * @param {Object} options Web3 options to supply to send, e.g.
    *      { from: '0x0...',
             value: '1000',
             gasPrice: '... }
    */
-  async swap(swapParams = { fromToken, toToken, amountWei }, options = {}) {
+  async swap({ fromToken, toToken, amountWei }, options = {}) {
     // Implicit update to get the gasPrice :|
     await this.gasEstimator.update();
 
@@ -53,6 +53,12 @@ class OneInchExchange {
 
     // 1 Split config
     const flags = 0; // Enables all exchanges
+
+    // Number of pieces source volume could be splitted
+    // (Works like granularity, higly affects gas usage.
+    // Should be called offchain, but could be called onchain
+    // if user swaps not his own funds, but this is still considered
+    // as not safe)
     const parts = 2;
 
     const expectedReturn = await this.oneSplitContract.methods
