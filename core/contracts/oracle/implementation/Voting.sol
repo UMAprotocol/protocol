@@ -350,12 +350,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
      * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
-     * @param signature  signature required to prove you are EOA to prevent flash loan issue.
+     * @param signature  signature required to prove caller is an EOA to prevent flash loans from being included in the
+     * snapshot.
      */
     function snapshotCurrentRound(bytes calldata signature) external override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
-        // require public snapshot require signature to ensure EOA caller
+        // Require public snapshot require signature to ensure caller is an EOA.
         require(ECDSA.recover(snapshotMessage, signature) == msg.sender, "Signature must match sender");
         uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
@@ -394,7 +395,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             "Revealed data != commit hash"
         );
 
-        // to protect against flash loans, we require snapshot be validated as EOA
+        // To protect against flash loans, we require snapshot be validated as EOA.
         require(rounds[roundId].snapshotId != 0, "Round must be snapshotted before reveal can happen");
 
         // Get the frozen snapshotId
