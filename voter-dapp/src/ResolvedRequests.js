@@ -141,6 +141,7 @@ function ResolvedRequests({ votingAccount }) {
             <ListItem>
               <ListItemText
                 primary={"Rewards Available: " + prettyFormatNumber(voteStatsDialogData.roundInflationRewardsAvailable)}
+                // I don't use `prettyFormatNumber` here because for some reason it rounds 0.0005 to 0.001
                 secondary={`Round inflation rate: ${voteStatsDialogData.roundInflationRate}% of Total Supply Snapshot`}
               />
             </ListItem>
