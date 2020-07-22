@@ -108,9 +108,7 @@ const deployEMP = async callback => {
       ...constructorParams,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress(),
-      withdrawalLiveness: (await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS()).toString(),
-      liquidationLiveness: (await expiringMultiPartyCreator.STRICT_LIQUIDATION_LIVENESS()).toString()
+      timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
     const encodedParameters = web3.eth.abi.encodeParameters(ExpiringMultiParty.abi[0].inputs, [empConstructorParams]);
