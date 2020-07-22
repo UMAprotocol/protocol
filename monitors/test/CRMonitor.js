@@ -11,7 +11,8 @@ const {
   ExpiringMultiPartyClient,
   PriceFeedMock,
   SpyTransport,
-  lastSpyLogIncludes
+  lastSpyLogIncludes,
+  lastSpyLogLevel
 } = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
@@ -173,6 +174,7 @@ contract("CRMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Synthetic token symbol
     assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
     assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
+    assert.equal(lastSpyLogLevel(spy), "warn");
 
     // The message should be sent every time the bot is polled and there is a crossing of the threshold line. At a price
     // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
@@ -283,5 +285,16 @@ contract("CRMonitor.js", function(accounts) {
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
+  });
+  it("Can override the synthetic-threshold log level", async function() {
+    const alertOverrideConfig = { ...monitorConfig, logOverrides: { crThreshold: "error" } };
+    crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, alertOverrideConfig, empProps);
+
+    // Increase price to lower wallet CR below threshold
+    await empClient.update();
+    priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
+    await crMonitor.checkWalletCrRatio();
+    assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
+    assert.equal(lastSpyLogLevel(spy), "error");
   });
 });

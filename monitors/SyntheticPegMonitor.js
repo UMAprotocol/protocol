@@ -15,6 +15,7 @@ class SyntheticPegMonitor {
            volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
            pegVolatilityAlertThreshold: 0.2,      // Threshold for synthetic peg price volatility.
            syntheticVolatilityAlertThreshold: 0.2 // Threshold for synthetic price volatility.
+           logOverrides: {deviation: "error"}     // Log level overrides.
           }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
@@ -116,7 +117,7 @@ class SyntheticPegMonitor {
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
     if (deviationError.abs().gt(this.toBN(this.toWei(this.deviationAlertThreshold.toString())))) {
-      this.logger[this.logOverrides.deviation ? this.logOverrides.deviation : "warn"]({
+      this.logger[this.logOverrides.deviation || "warn"]({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
         mrkdwn:

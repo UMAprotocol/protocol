@@ -240,7 +240,13 @@ async function Poll(callback) {
     //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
     //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
     //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
-    //  "logOverrides":{"deviation":"error","syntheticThreshold":"error"}} -> override specific events log levels.
+    //  "logOverrides":{                                   // override specific events log levels.
+    //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
+    //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
+    //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
+    //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
+    //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
+    //   }
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 
