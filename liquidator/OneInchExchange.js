@@ -12,7 +12,7 @@ class OneInchExchange {
    * @param {Object} args.web3 Web3 instance
    * @param {Object} args.gasEstimator GasEstimator instance
    * */
-  constructor({ web3, gasEstimator }) {
+  constructor(args = { web3, gasEstimator }) {
     this.gasEstimator = gasEstimator;
 
     this.web3 = web3;
@@ -32,7 +32,7 @@ class OneInchExchange {
             value: '1000',
             gasPrice: '... }
    */
-  async swap({ fromToken, toToken, amountWei }, options = {}) {
+  async swap(args = { fromToken, toToken, amountWei }, options = {}) {
     // Implicit update to get the gasPrice :|
     await this.gasEstimator.update();
 
