@@ -396,7 +396,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         );
 
         // To protect against flash loans, we require snapshot be validated as EOA.
-        require(rounds[roundId].snapshotId != 0, "Round must be snapshotted before reveal can happen");
+        require(rounds[roundId].snapshotId != 0, "Round has no snapshot");
 
         // Get the frozen snapshotId
         uint256 snapshotId = rounds[roundId].snapshotId;
