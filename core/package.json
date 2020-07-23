@@ -35,7 +35,8 @@
   },
   "files": [
     "./contracts/**/*.sol",
-    "./build/contracts/*.js"
+    "./build/contracts/*.js",
+    "./migrations/*.js"
   ],
   "scripts": {
     "test": "buidler test"
