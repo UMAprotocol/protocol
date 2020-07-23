@@ -134,8 +134,8 @@ class GlobalSummaryReporter {
     // If we were using `endBlockNumberForPeriod` to query data for some other pair as well,
     // then we wouldn't be able to set `endBlockNumberForPeriod = latestSwapBlockNumber`
     this.uniswapClient = getUniswapClient();
-    const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress))).pairs[0]
-      .swaps[0].transaction;
+    const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress))).swaps[0]
+      .transaction;
     this.latestSwapTimestamp = latestSwap.timestamp;
     this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
     // Note: `endBlockNumberForPeriod` is the highest block number that we will manually query for.
