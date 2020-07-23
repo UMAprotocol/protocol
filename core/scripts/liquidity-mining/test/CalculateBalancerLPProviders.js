@@ -1,13 +1,6 @@
-// These unit tests validate that the Balancer LP provider script correctly calculates token payouts.
-
 const { toWei, toBN } = web3.utils;
 
-const {
-  mineTransactionsAtTime,
-  advanceBlockAndSetTime,
-  takeSnapshot,
-  revertToSnapshot
-} = require("@umaprotocol/common");
+const { advanceBlockAndSetTime } = require("@umaprotocol/common");
 
 const Main = require("../CalculateBalancerLPProviders"); // Script to test.
 const { _updatePayoutAtBlock } = require("../CalculateBalancerLPProviders");
@@ -246,7 +239,9 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       }
     });
     it("Correctly splits rewards over blocks including inter-snapshot transfers", async function() {
-      // Create 10e18 tokens. Start with all LPs owning 1/5 of the supply (2e18 each).
+      // Create 10e18 tokens. Start with all LPs owning 1/5 of the supply (2e18 each). For this test we will move tokens
+      // around over a number of blocks and validate that the LPs get paid the correct output. This test will update a
+      // "local" expectoration of the payouts as blocks progress and then compare it to what the script returns.
       for (shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
       }
@@ -262,72 +257,71 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const startingBlockNumber = await web3.eth.getBlockNumber();
       const startingBlockTimestamp = await web3.eth.getBlock(startingBlockNumber).timestamp;
       // We will generate 10 snapshots with each covering 10 blocks. This is equivalent to 100 blocks traversed.
-      // Each time ganache accepts a transaction it will advance by 1 block. ¸
+      // Each time ganache accepts a transaction it will advance by 1 block.
       const snapshotsToTake = 10;
       const blocksPerSnapshot = 10;
-      let transactionsMadeCount = 0; // Keep track of how many blocks have been advanced.
-      const totalBlocksToAdvance = snapshotsToTake * blocksPerSnapshot;
+      const totalBlocksToAdvance = snapshotsToTake * blocksPerSnapshot; // Used at the end to validate traversal.
 
-      // Advance over 2.5 snapshot windows.
+      // Advance over 2.5 snapshot windows. This is equivalent to 25 blocks. Block count: 0 -> 24
       const blocksToAdvance = 2.5 * blocksPerSnapshot;
       for (i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, startingBlockTimestamp + 15 * (1 + i));
-        transactionsMadeCount += 1;
       }
 
-      // At this point each shareholder has earned 1/5 of all rewards for 2 snapshot periods (1 & 2). As the time was
-      // advanced 2.5 blocks, the last 5 blocks are not counted at this point.
+      // At this point each shareholder has earned 1/5 of all rewards for 3 snapshot periods (0, 1 & 2). As the time was
+      // advanced 2.5 blocks, the last 5 blocks are not counted at this point as it is between snapshots (for snapshot 3).
       for (shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN(rewardsPerSnapshot)
-          .muln(2) // 2 periods captured,
+          .muln(3) // 3 periods captured,
           .divn(5); // 1/5 of the rewards.
       }
 
-      // Next, let's assume that all shareholders transfer all of their tokens to one LP (shareHolder0)
+      // Next, let's assume that all shareholders transfer all of their tokens to one LP (shareHolder0). This will
+      // create another 5 transactions bringing the block count: 25 -> 30
       for (shareHolder of shareHolders.slice(1, shareHolders.length)) {
         await bpToken.transfer(shareHolders[0], (await bpToken.balanceOf(shareHolder)).toString(), {
           from: shareHolder
         });
-        transactionsMadeCount += 1;
       }
 
-      // Advance over another 2.5 snapshot windows.
+      // Advance over another 2.5 snapshot windows. This takes the block cound from 30 -> 55
       let recentBlockTimestamp = await web3.eth.getBlock(await web3.eth.getBlockNumber()).timestamp;
       for (i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, recentBlockTimestamp + 15 * (1 + i));
-        transactionsMadeCount += 1;
       }
 
-      // From the last shareholderPayoutUpdate snapshots 3,4 and 5 have elapsed. Over this duration shareholder[0] held all LP tokens.
+      // From the last shareholder payout update snapshots 3,4 and 5 have elapsed. Over this duration shareholder[0]
+      // held all LP tokens.
       shareHolderPayout[shareHolders[0]] = toBN(shareHolderPayout[shareHolders[0]]).add(
         toBN(rewardsPerSnapshot).muln(3)
       );
 
-      // Then, all token holders transfer their tokens to a new wallet (who is a _new_ shareholder).
+      // Then, all token holders transfer their tokens to a new wallet. This will advance the block count from 55 -> 60
       const newShareHolder = accounts[9];
       for (shareHolder of shareHolders) {
         await bpToken.transfer(newShareHolder, (await bpToken.balanceOf(shareHolder)).toString(), {
           from: shareHolder
         });
-        transactionsMadeCount += 1;
       }
 
-      // Finally, advance the timestamp until the end of the period.
+      // Finally, advance the timestamp until the end of the period. This will advance blocks from 60 -> 100
       recentBlockTimestamp = await web3.eth.getBlock(await web3.eth.getBlockNumber()).timestamp;
-      const finalBlocksToAdvance = startingBlockNumber - recentBlockTimestamp;
+      const finalBlocksToAdvance = startingBlockNumber + totalBlocksToAdvance - (await web3.eth.getBlockNumber());
       for (i = 0; i < finalBlocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, recentBlockTimestamp + 15 * (1 + i));
       }
 
-      // Update this new newShareHolder's balance in the mapping. He held all tokens from snapshots 6 -> 10
-      shareHolderPayout[newShareHolder] = toBN(rewardsPerSnapshot).muln(5);
+      // Update this new newShareHolder's balance in the mapping. He held all tokens from snapshots 7 -> 10.
+      shareHolderPayout[newShareHolder] = toBN(rewardsPerSnapshot).muln(4);
       const endingBlockNumber = await web3.eth.getBlockNumber();
-      assert.equal(endingBlockNumber, startingBlockNumber + blocksToAdvance);
+
+      // Check that we have traversed the right number of blocks.
+      assert.equal(endingBlockNumber, startingBlockNumber + totalBlocksToAdvance);
 
       let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
       const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
         bPool,
-        shareHolders,
+        [...shareHolders, newShareHolder],
         startingBlockNumber,
         endingBlockNumber,
         blocksPerSnapshot,
