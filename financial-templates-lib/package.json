@@ -26,7 +26,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "truffle test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

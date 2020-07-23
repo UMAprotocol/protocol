@@ -38,7 +38,7 @@
     "./build/contracts/*.js"
   ],
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "echo \"oops\" || buidler test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
