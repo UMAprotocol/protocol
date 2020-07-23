@@ -68,6 +68,8 @@ abstract contract VotingInterface {
      * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
+     * @param signature  signature required to prove caller is an EOA to prevent flash loans from being included in the
+     * snapshot.
      */
     function snapshotCurrentRound(bytes calldata signature) external virtual;
 

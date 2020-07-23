@@ -13,7 +13,8 @@ const {
   PublicNetworks,
   batchRevealVotes,
   batchCommitVotes,
-  getLatestEvent
+  getLatestEvent,
+  signMessage
 } = require("@umaprotocol/common");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
@@ -453,12 +454,13 @@ class SendgridNotifier {
 }
 
 class VotingSystem {
-  constructor(voting, account, notifiers) {
+  constructor(voting, account, notifiers, signature, snapshotMessage = "Sign For Snapshot") {
     this.voting = voting;
     this.account = account;
     this.notifiers = notifiers;
     this.maxBatchCommits = BATCH_MAX_COMMITS;
     this.maxBatchReveals = BATCH_MAX_REVEALS;
+    this.snapshotMessage = snapshotMessage;
   }
 
   async hasCommit(request, roundId) {
@@ -544,6 +546,16 @@ class VotingSystem {
       }
       return null;
     }
+  }
+
+  async runSnapshot() {
+    // initialize signature if we havent yet
+    if (this.signature == null) {
+      // the account which makes the call is not the same account which class is constructed with
+      const account = (await web3.eth.getAccounts())[0];
+      this.signature = await signMessage(web3, this.snapshotMessage, account);
+    }
+    return this.voting.snapshotCurrentRound(this.signature);
   }
 
   async runBatchReveal(requests, roundId, isProd) {

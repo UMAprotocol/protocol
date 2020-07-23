@@ -72,7 +72,7 @@ contract("Voting", function(accounts) {
     // Register contract with Registry.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
     await registry.registerContract([], registeredContract, { from: account1 });
-    signature = await signMessage(web3, account1, snapshotMessage);
+    signature = await signMessage(web3, snapshotMessage, account1);
   });
 
   beforeEach(async () => {
@@ -121,6 +121,31 @@ contract("Voting", function(accounts) {
     // A second shift should go back to commit.
     await moveToNextPhase(voting);
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
+  });
+
+  it("Should snapshot only with valid EOA", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+    await moveToNextPhase(voting);
+
+    // no sig passed should fail
+    assert(await didContractThrow(voting.snapshotCurrentRound()));
+
+    // random bytes shoudl fail
+    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(32))));
+
+    // wrong signer
+    const badsig1 = await signMessage(web3, snapshotMessage, account2);
+    assert(await didContractThrow(voting.snapshotCurrentRound(badsig1)));
+
+    // right signer, wrong message
+    const badsig2 = await signMessage(web3, snapshotMessage.toLowerCase(), account1);
+    assert(await didContractThrow(voting.snapshotCurrentRound(badsig2)));
+
+    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(32))));
+
+    // this should not throw
+    voting.snapshotCurrentRound(signature);
   });
 
   it("One voter, one request", async function() {
@@ -173,9 +198,6 @@ contract("Voting", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
-
-    // Can't snapshot unless you prove you are EOA with signature
-    assert(await didContractThrow(voting.snapshotCurrentRound()));
 
     // Can't reveal if snapshot has not been taken yet, even if all data is correct
     assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
@@ -267,7 +289,6 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.revealVote(identifier1, time1, price1, salt1)));
     assert(await didContractThrow(voting.revealVote(identifier1, time1, price2, salt2)));
 
-    const signature = await signMessage(web3, account1, snapshotMessage);
     await voting.snapshotCurrentRound(signature);
 
     // Can reveal the right combos.
@@ -1169,8 +1190,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time2, hash2, { from: account1 });
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
-
+    assert(await didContractThrow(voting.snapshotCurrentRound(signature)));
     assert(await didContractThrow(voting.revealVote(identifier, time2, price, salt2, { from: account1 })));
 
     // Reset the inflation rate and rewards expiration time.
@@ -1771,7 +1791,7 @@ contract("Voting", function(accounts) {
     // Reveal phase.
     await moveToNextPhase(votingTest);
 
-    await voting.snapshotCurrentRound(signature);
+    await votingTest.snapshotCurrentRound(signature);
     // Reveal vote.
     await votingTest.revealVote(identifier, time, price, salt);
 

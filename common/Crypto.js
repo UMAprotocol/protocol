@@ -69,9 +69,9 @@ async function deriveKeyPairFromSignatureTruffle(web3, messageToSign, signingAcc
 }
 
 // Signs a message in a way where it can be verified onchain by the openzeppelin ECDSA library.
-async function signMessage(web3, account, message) {
+async function signMessage(web3, message, account) {
   // Must hash the inner message because Solidity requires a fixed length message to verify a signature.
-  const innerMessageHash = web3.utils.soliditySha3(message);
+  const innerMessageHash = await web3.utils.soliditySha3(message);
 
   // Construct a signature that will be accepted by openzeppelin.
   // See https://github.com/OpenZeppelin/openzeppelin-solidity/blob/1e584e495782ebdb5096fe65037d99dae1cbe940/contracts/cryptography/ECDSA.sol#L53
@@ -94,5 +94,6 @@ module.exports = {
   recoverPublicKey,
   deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask,
+  getMessageSignatureTruffle,
   signMessage
 };
