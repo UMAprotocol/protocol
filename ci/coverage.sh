@@ -12,6 +12,6 @@ cd $TRUFFLE_DIR
 # so I explicitly increase the javascript heap size.
 # More details here: https://github.com/trufflesuite/truffle/issues/957
 # Truffle compile for DecodeTransactionData
-node --max-old-space-size=4096 yarn run truffle compile
-node --max-old-space-size=4096 yarn run buidler coverage && cat coverage/lcov.info | yarn run coveralls --verbose
+node --max-old-space-size=4096 $(npm bin)/truffle compile
+node --max-old-space-size=4096 $(npm bin)/buidler coverage && cat coverage/lcov.info | $(npm bin)/coveralls --verbose
 
