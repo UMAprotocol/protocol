@@ -52,12 +52,10 @@ function PAIR_DATA(pairAddress, block) {
 function LAST_TRADE_FOR_PAIR(pairAddress) {
   return `
     query pairs {
-      pairs(where: {id: "${pairAddress}"}) {
-        swaps(orderBy: timestamp, orderDirection: desc, first: 1) {
-          transaction {
-            blockNumber
-            timestamp
-          }
+      swaps(orderBy: timestamp, orderDirection: desc, first: 1, where: {pair: "${pairAddress}"}) {
+        transaction {
+          blockNumber
+          timestamp
         }
       }
     }
