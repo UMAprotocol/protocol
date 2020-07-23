@@ -454,7 +454,7 @@ class SendgridNotifier {
 }
 
 class VotingSystem {
-  constructor(voting, account, notifiers, signature, snapshotMessage = "Sign For Snapshot") {
+  constructor(voting, account, notifiers, snapshotMessage = "Sign For Snapshot") {
     this.voting = voting;
     this.account = account;
     this.notifiers = notifiers;

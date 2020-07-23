@@ -131,8 +131,8 @@ contract("Voting", function(accounts) {
     // no sig passed should fail
     assert(await didContractThrow(voting.snapshotCurrentRound()));
 
-    // random bytes shoudl fail
-    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(32))));
+    // random bytes should fail
+    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(65))));
 
     // wrong signer
     const badsig1 = await signMessage(web3, snapshotMessage, account2);
@@ -142,10 +142,8 @@ contract("Voting", function(accounts) {
     const badsig2 = await signMessage(web3, snapshotMessage.toLowerCase(), account1);
     assert(await didContractThrow(voting.snapshotCurrentRound(badsig2)));
 
-    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(32))));
-
     // this should not throw
-    voting.snapshotCurrentRound(signature);
+    await voting.snapshotCurrentRound(signature);
   });
 
   it("One voter, one request", async function() {
