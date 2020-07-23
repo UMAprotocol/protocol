@@ -54,4 +54,4 @@ $(npm bin)/truffle test $(find ../disputer/test -name '*.js') --network ci
 $(npm bin)/truffle test $(find ../monitors/test -name '*.js') --network ci
 
 # Only run tests that needs the mainnet forking here
-$(npm bin)/truffle test ../liquidator/test-fork/
+$(npm bin)/truffle test ../liquidator/test-fork/ --network mainnet-fork
