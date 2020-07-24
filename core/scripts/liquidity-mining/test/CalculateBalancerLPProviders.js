@@ -41,8 +41,12 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const tokensPerSnapShot = toWei("5");
 
       // Call the `_updatePayoutAtBlock` to get the distribution at a given `blockNumber`.
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
-      const payoutAtBlock = await _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, tokensPerSnapShot);
+      const payoutAtBlock = await _updatePayoutAtBlock(
+        bpToken.contract,
+        blockNumber,
+        shareHolderPayout,
+        tokensPerSnapShot
+      );
 
       // Validate that each shareholder got the right number of tokens for the given block. Expecting 1/5 of all rewards
       // per shareholder as equal token distribution.
@@ -68,8 +72,12 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const tokensPerSnapShot = toWei("5");
 
       // Call the `_updatePayoutAtBlock` to get the distribution at a given `blockNumber`.
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
-      const payoutAtBlock = await _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, tokensPerSnapShot);
+      const payoutAtBlock = await _updatePayoutAtBlock(
+        bpToken.contract,
+        blockNumber,
+        shareHolderPayout,
+        tokensPerSnapShot
+      );
 
       // Validate that the single shareholder got all rewards and all other shareholders got none at the given block.
       assert.equal(payoutAtBlock[shareHolders[0]].toString(), tokensPerSnapShot);
@@ -99,8 +107,12 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const tokensPerSnapShot = toWei("10");
 
       // Call the `_updatePayoutAtBlock` to get the distribution at a given `blockNumber`.
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
-      const payoutAtBlock = await _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, tokensPerSnapShot);
+      const payoutAtBlock = await _updatePayoutAtBlock(
+        bpToken.contract,
+        blockNumber,
+        shareHolderPayout,
+        tokensPerSnapShot
+      );
 
       // Validate the two shareholders got the correct proportion of token rewards.
       // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool prevision(10e18+100).
@@ -161,10 +173,9 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       assert.equal(endingBlockNumber, startingBlockNumber + blocksToAdvance); // Should have advanced 10 blocks.
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
 
       const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
-        bPool,
+        bpToken.contract,
         shareHolders,
         startingBlockNumber,
         endingBlockNumber,
@@ -213,9 +224,9 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       assert.equal(endingBlockNumber, startingBlockNumber + blocksToAdvance);
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
+
       const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
-        bPool,
+        bpToken.contract,
         shareHolders,
         startingBlockNumber,
         endingBlockNumber,
@@ -318,9 +329,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Check that we have traversed the right number of blocks.
       assert.equal(endingBlockNumber, startingBlockNumber + totalBlocksToAdvance);
 
-      let bPool = new web3.eth.Contract(bpToken.abi, bpToken.address);
       const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
-        bPool,
+        bpToken.contract,
         [...shareHolders, newShareHolder],
         startingBlockNumber,
         endingBlockNumber,
