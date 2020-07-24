@@ -7,7 +7,8 @@
     "lint": "npm run eslint && npm run prettier -- --list-different",
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
-    "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'"
+    "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
+    "test": "lerna run --stream --concurrency=1 test"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -31,6 +32,7 @@
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
     "husky": "^4.2.3",
+    "lerna": "^3.22.1",
     "lint-staged": "^10.1.3",
     "prettier": "1.19.1",
     "prettier-plugin-solidity": "1.0.0-alpha.49",
@@ -51,8 +53,8 @@
     "@sendgrid/mail": "^6.4.0",
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
-    "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "@umaprotocol/common": "^1.0.0",
+    "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "@uniswap/sdk": "^2.0.5",
     "acorn": "^7.1.1",
     "babel-eslint": "10.0.1",
