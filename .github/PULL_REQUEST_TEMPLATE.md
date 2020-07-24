@@ -14,16 +14,24 @@
 -->
 
 
-## Motivation
+**Motivation**
 
-<!-- Explain the motivation for making this change. What existing problem does the pull request solve? It may be sufficient to just link to an issue, but please explain if more details are needed. -->
-
-
-## Summary
-
-<!-- Briefly summarize what changes were made to accomplish the motivation above. -->
+Explain the motivation for making this change.
+What existing problem does the pull request solve?
+It may be sufficient to just link to an issue, but please explain if more details are needed.
 
 
-## Issue(s)
+**Summary**
 
-<!-- This PR should fix or refer to one or more issues. Please list them here. -->
+Briefly summarize what changes were made to accomplish the motivation above.
+
+
+**Details**
+
+This may be unnecessary for some PRs. Catch-all for detailed explanations about the implementation decisions and implications of the change.
+
+
+**Issue(s)**
+
+<!-- This PR must fix or refer to one or more issues. Please list them here. -->
+Fixes #XXXX
