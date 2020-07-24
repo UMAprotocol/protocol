@@ -93,7 +93,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       }); // shareholder0 gets 10e18 tokens
       await bpToken.mint(shareHolders[1], "100", {
         from: contractCreator
-      }); // Shareholder1 gets 100 token. (100 wei)
+      }); // Shareholder1 gets 100 tokens. (100 wei)
 
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
@@ -115,7 +115,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       );
 
       // Validate the two shareholders got the correct proportion of token rewards.
-      // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool prevision(10e18+100).
+      // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool provision(10e18+100).
       const shareHolder0Frac = toBN(toWei("10")) // fraction of the pool is their contribution/total pool
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("10")).addn(100));
