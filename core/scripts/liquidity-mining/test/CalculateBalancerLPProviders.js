@@ -103,7 +103,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const payoutAtBlock = await _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, tokensPerSnapShot);
 
       // Validate the two shareholders got the correct proportion of token rewards.
-      // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool prevision(10e18+100).
+      // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool provision(10e18+100).
       const shareHolder0Frac = toBN(toWei("10")) // fraction of the pool is their contribution/total pool
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("10")).addn(100));
