@@ -85,7 +85,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       }); // shareholder0 gets 10e18 tokens
       await bpToken.mint(shareHolders[1], "100", {
         from: contractCreator
-      }); // Shareholder1 gets 100 token. (100 wei)
+      }); // Shareholder1 gets 100 tokens. (100 wei)
 
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
