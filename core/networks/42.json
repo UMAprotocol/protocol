@@ -48,19 +48,19 @@
     "address": "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
   },
   {
+    "contractName": "TestnetERC20",
+    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+  },
+  {
     "contractName": "AddressWhitelist",
-    "address": "0x47AaC2e4563c2557A39D8c73Fc977F07bFF15b5f"
+    "address": "0x5c59D86Dc278E424E657773c89aFD77c9983Ee67"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0xbCe5654047A98405B94Ad342EF3136B179C75890"
+    "address": "0x7EACB85A07ACbF44Ea6600A93BC0C11E130E49fB"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0x0139d00c416e9F40465a95481F4E36422a0A5fcc"
-  },
-  {
-    "contractName": "TestnetERC20",
-    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+    "address": "0x2f8a36BAD7e3E08D5FBAE3460423b881C6253fC4"
   }
 ]
