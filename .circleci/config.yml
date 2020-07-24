@@ -109,7 +109,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: npx lerna run --stream --concurrency=1 test
+          command: yarn run test
   coverage:
     docker:
       - image: circleci/node:lts
