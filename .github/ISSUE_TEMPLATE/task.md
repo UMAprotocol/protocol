@@ -21,7 +21,7 @@ What is the deliverable to consider this task done?
 
 **Difficulty Score [1-9]**
 
-This is a measure of the amount of developer time this task will require to be completed. Note: this does not need to be exact. The scale is not linear:
+This is a measure of the amount of developer time this task will require to be completed. Note: this should include design and planning time in addition to implementation time. The scale is not linear:
 
 - 1: <5 minutes
 - 2: ~1 hour
