@@ -55,6 +55,9 @@ class GlobalSummaryReporter {
     this.accountingVariance = this.toBN(this.toWei("0.0001"));
 
     this.exchangePairOverride = exchangePairOverride;
+
+    // If we have data from one of the swap exchanges to display, then this will be `true`.
+    this.hasExchangeData = false;
   }
 
   async update() {
@@ -149,6 +152,9 @@ class GlobalSummaryReporter {
     }
 
     // TODO: Balancer data:
+
+    // Have we successfully fetched any exchange data from the graph API?
+    this.hasExchangeData = this.latestSwapTimestamp;
   }
 
   async generateSummaryStatsTable() {
@@ -195,7 +201,7 @@ class GlobalSummaryReporter {
     console.groupEnd();
 
     // 2a. Tokens Swaps table
-    if (this.latestSwapTimestamp) {
+    if (this.hasExchangeData) {
       console.group();
       console.log(
         bold(
