@@ -890,6 +890,11 @@ class GlobalSummaryReporter {
       const sender = event.returnValues.from;
       const receiver = event.returnValues.to;
 
+      // Ignore transfers for 0 tokens like the final transfer in this transaction: https://etherscan.io/tx/0x0ceebc33f9057e37a187895ad0dd07d8905da49c0c228474975018ca5f044948
+      if (event.returnValues.value === "0") {
+        return;
+      }
+
       if (receiver !== ZERO_ADDRESS) {
         // Add to token holder list.
         countAllTokenHolders[receiver] = true;
