@@ -1,18 +1,20 @@
+require("../test/mocha.env");
+
 const Token = artifacts.require("ExpandedERC20");
 
 const assert = require("assert");
 const { toWei, toBN } = web3.utils;
-const { OneInchExchange } = require("../OneInchExchange");
 
 // Custom winston transport module to monitor winston log outputs
-const winston = require("winston");
-const sinon = require("sinon");
-const { GasEstimator, SpyTransport } = require("@umaprotocol/financial-templates-lib");
+const { GasEstimator } = require("@umaprotocol/financial-templates-lib");
 
 const assertBNGreaterThan = (a, b) => {
   const [aBN, bBN] = [a, b].map(x => toBN(x));
   assert.ok(aBN.gt(bBN), `${aBN.toString()} is not greater than ${bBN.toString()}`);
 };
+
+const { getLogger } = require("../src/common");
+const { OneInchExchange } = require("../src/one-inch");
 
 contract("OneInch", function(accounts) {
   const user = accounts[0];
@@ -21,14 +23,7 @@ contract("OneInch", function(accounts) {
   const DAI_ADDRESS = "0x6b175474e89094c44da98b954eedeac495271d0f";
   const BAT_ADDRESS = "0x0d8775f648430679a709e98d2b0cb6250d2887ef";
 
-  const spy = sinon.spy();
-
-  const spyLogger = winston.createLogger({
-    level: "info",
-    transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-  });
-
-  const gasEstimator = new GasEstimator(spyLogger);
+  const gasEstimator = new GasEstimator(getLogger());
 
   const oneInch = new OneInchExchange({ web3, gasEstimator });
 
@@ -58,7 +53,7 @@ contract("OneInch", function(accounts) {
     assertBNGreaterThan(finalBal, initialBal);
   };
 
-  it("Swap ETH -> DAI", async () => {
+  it("Swap ETH -> DAI", async function() {
     await swapAndCheck({
       fromToken: ETH_ADDRESS,
       toToken: DAI_ADDRESS,
@@ -66,7 +61,7 @@ contract("OneInch", function(accounts) {
     });
   });
 
-  it("Swap DAI -> BAT", async () => {
+  it("Swap DAI -> BAT", async function() {
     await swapAndCheck({
       fromToken: DAI_ADDRESS,
       toToken: BAT_ADDRESS,
@@ -74,7 +69,7 @@ contract("OneInch", function(accounts) {
     });
   });
 
-  it("Swap DAI -> ETH", async () => {
+  it("Swap DAI -> ETH", async function() {
     await swapAndCheck({
       fromToken: DAI_ADDRESS,
       toToken: ETH_ADDRESS,

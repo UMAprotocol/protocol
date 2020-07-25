@@ -4,10 +4,12 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
+const { LIQUIDATOR_CONFIG } = require("./settings");
+const { getLogger } = require("./common");
+
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
-   * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} votingContract DVM to query price requests.
@@ -17,9 +19,17 @@ class Liquidator {
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor({
+    logger = getLogger(),
+    expiringMultiPartyClient,
+    votingContract,
+    gasEstimator,
+    priceFeed,
+    account,
+    empProps,
+    config = LIQUIDATOR_CONFIG
+  }) {
     this.logger = logger;
     this.account = account;
 
@@ -413,7 +423,15 @@ class Liquidator {
               from: this.empContract.options.address
             })
           );
-        } catch (error) {}
+        } catch (error) {
+          this.logger.error({
+            at: "Liquidator",
+            message: "Unable to resolve voting contract price",
+            empContract: this.empContract.options.address,
+            error: typeof error === "string" ? new Error(error) : error
+          });
+          continue;
+        }
       }
 
       const logResult = {

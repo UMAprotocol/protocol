@@ -1,10 +1,10 @@
 const Token = artifacts.require("ExpandedERC20");
 const OneSplit = artifacts.require("OneSplit");
 
-const oneSplitAddress = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
-
 // As defined in 1inch
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+const { ONE_SPLIT_ADDRESS } = require("./settings");
 
 class OneInchExchange {
   /**
@@ -12,12 +12,13 @@ class OneInchExchange {
    * @param {Object} args.web3 Web3 instance
    * @param {Object} args.gasEstimator GasEstimator instance
    * */
-  constructor(args = { web3, gasEstimator }) {
+  constructor({ web3, gasEstimator, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
     this.gasEstimator = gasEstimator;
+    this.oneSplitAddress = oneSplitAddress;
 
     this.web3 = web3;
     this.web3.currentProvider.timeout = 1200000;
-    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, oneSplitAddress);
+    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, this.oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
   }
@@ -32,7 +33,7 @@ class OneInchExchange {
             value: '1000',
             gasPrice: '... }
    */
-  async swap(args = { fromToken, toToken, amountWei }, options = {}) {
+  async swap({ fromToken, toToken, amountWei }, options = {}) {
     // Implicit update to get the gasPrice :|
     await this.gasEstimator.update();
 
@@ -45,7 +46,7 @@ class OneInchExchange {
     // Need to approve ERC20 tokens
     if (fromToken !== ETH_ADDRESS) {
       const erc20 = await Token.at(fromToken);
-      await erc20.approve(oneSplitAddress, amountWei, {
+      await erc20.approve(this.oneSplitAddress, amountWei, {
         from: options.from,
         gasPrice
       });

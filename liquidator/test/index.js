@@ -1,3 +1,5 @@
+require("./mocha.env");
+
 const { toWei, utf8ToHex } = web3.utils;
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
@@ -13,23 +15,22 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 
-// Custom winston transport module to monitor winston log outputs
-const winston = require("winston");
-const sinon = require("sinon");
-const { SpyTransport, spyLogLevel } = require("@umaprotocol/financial-templates-lib");
+const { spyLogLevel } = require("@umaprotocol/financial-templates-lib");
+
+const { getLogger } = require("../src/common");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
+
+  let identifierWhitelist;
 
   let collateralToken;
   let syntheticToken;
   let emp;
   let uniswap;
+  let logger;
 
   let defaultPriceFeedConfig;
-
-  let spy;
-  let spyLogger;
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
@@ -40,13 +41,6 @@ contract("index.js", function(accounts) {
   });
 
   beforeEach(async function() {
-    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
-    spy = sinon.spy(); // Create a new spy for each test.
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-    });
-
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
@@ -79,13 +73,19 @@ contract("index.js", function(accounts) {
       lookback: 1
     };
 
+    logger = getLogger();
+
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run({
+      empAddress: emp.address,
+      pollingDelay: 0,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -94,10 +94,14 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run({
+      empAddress: emp.address,
+      pollingDelay: 0,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
 
-    for (let i = 0; i < spy.callCount; i++) {
-      assert.notEqual(spyLogLevel(spy, i), "error");
+    for (let i = 0; i < logger.spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(logger.spy, i), "error");
     }
   });
 });

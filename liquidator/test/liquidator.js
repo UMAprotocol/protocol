@@ -1,18 +1,14 @@
-const { toWei, toBN } = web3.utils;
-const winston = require("winston");
-const sinon = require("sinon");
-const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("@umaprotocol/common");
-const { interfaceName } = require("../../core/utils/Constants.js");
+require("./mocha.env");
 
-// Script to test
-const { Liquidator } = require("../liquidator.js");
+const { toWei, toBN } = web3.utils;
+const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("@umaprotocol/common");
+const { interfaceName } = require("@umaprotocol/core/utils/Constants");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {
   ExpiringMultiPartyClient,
   GasEstimator,
   PriceFeedMock,
-  SpyTransport,
   lastSpyLogLevel,
   spyLogIncludes,
   spyLogLevel
@@ -27,6 +23,9 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
+const { Liquidator } = require("../src/liquidator.js");
+const { getLogger } = require("../src/common");
+
 contract("Liquidator.js", function(accounts) {
   // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0].
   const liquidatorBot = accounts[0];
@@ -35,16 +34,20 @@ contract("Liquidator.js", function(accounts) {
   const sponsor3 = accounts[3];
   const contractCreator = accounts[4];
 
+  let finder;
   let collateralToken;
   let emp;
   let liquidator;
   let syntheticToken;
   let mockOracle;
   let priceFeedMock;
+  let identifierWhitelist;
 
+  let empClient;
+  let gasEstimator;
+
+  let logger;
   let spy;
-  let spyLogger;
-
   let liquidatorConfig;
   let liquidatorOverridePrice;
   let empProps;
@@ -69,6 +72,9 @@ contract("Liquidator.js", function(accounts) {
   });
 
   beforeEach(async function() {
+    logger = getLogger();
+    spy = logger.spy;
+
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
@@ -109,16 +115,9 @@ contract("Liquidator.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
-    spy = sinon.spy();
-
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-    });
-
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
-    empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator(spyLogger);
+    empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    gasEstimator = new GasEstimator(logger);
 
     // Create a new instance of the price feed mock.
     priceFeedMock = new PriceFeedMock();
@@ -135,16 +134,16 @@ contract("Liquidator.js", function(accounts) {
       minSponsorSize: await emp.minSponsorTokens()
     };
 
-    liquidator = new Liquidator(
-      spyLogger,
-      empClient,
-      mockOracle,
+    liquidator = new Liquidator({
+      logger,
+      expiringMultiPartyClient: empClient,
+      votingContract: mockOracle,
       gasEstimator,
-      priceFeedMock,
-      accounts[0],
+      priceFeed: priceFeedMock,
+      account: accounts[0],
       empProps,
-      liquidatorConfig
-    );
+      config: liquidatorConfig
+    });
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -691,16 +690,16 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: 1
         };
-        liquidator = new Liquidator(
-          spyLogger,
-          empClient,
-          mockOracle,
+        liquidator = new Liquidator({
+          logger,
+          expiringMultiPartyClient: empClient,
+          votingContract: mockOracle,
           gasEstimator,
-          priceFeedMock,
-          accounts[0],
+          priceFeed: priceFeedMock,
+          account: accounts[0],
           empProps,
-          liquidatorConfig
-        );
+          config: liquidatorConfig
+        });
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -714,16 +713,16 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: -0.02
         };
-        liquidator = new Liquidator(
-          spyLogger,
-          empClient,
-          mockOracle,
+        liquidator = new Liquidator({
+          logger,
+          expiringMultiPartyClient: empClient,
+          votingContract: mockOracle,
           gasEstimator,
-          priceFeedMock,
-          accounts[0],
+          priceFeed: priceFeedMock,
+          account: accounts[0],
           empProps,
-          liquidatorConfig
-        );
+          config: liquidatorConfig
+        });
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -735,16 +734,16 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = {
         crThreshold: 0.02
       };
-      liquidator = new Liquidator(
-        spyLogger,
-        empClient,
-        mockOracle,
+      liquidator = new Liquidator({
+        logger,
+        expiringMultiPartyClient: empClient,
+        votingContract: mockOracle,
         gasEstimator,
-        priceFeedMock,
-        accounts[0],
+        priceFeed: priceFeedMock,
+        account: accounts[0],
         empProps,
-        liquidatorConfig
-      );
+        config: liquidatorConfig
+      });
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -790,16 +789,16 @@ contract("Liquidator.js", function(accounts) {
       try {
         // Create an invalid log level override. This should be rejected.
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
-        liquidator = new Liquidator(
-          spyLogger,
-          empClient,
-          mockOracle,
+        liquidator = new Liquidator({
+          logger,
+          expiringMultiPartyClient: empClient,
+          votingContract: mockOracle,
           gasEstimator,
-          priceFeedMock,
-          accounts[0],
+          priceFeed: priceFeedMock,
+          account: accounts[0],
           empProps,
-          liquidatorConfig
-        );
+          config: liquidatorConfig
+        });
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -811,16 +810,16 @@ contract("Liquidator.js", function(accounts) {
       // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
       // validated after the log is generated.
       liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
-      liquidator = new Liquidator(
-        spyLogger,
-        empClient,
-        mockOracle,
+      liquidator = new Liquidator({
+        logger,
+        expiringMultiPartyClient: empClient,
+        votingContract: mockOracle,
         gasEstimator,
-        priceFeedMock,
-        accounts[0],
+        priceFeed: priceFeedMock,
+        account: accounts[0],
         empProps,
-        liquidatorConfig
-      );
+        config: liquidatorConfig
+      });
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
