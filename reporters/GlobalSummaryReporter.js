@@ -24,7 +24,7 @@ class GlobalSummaryReporter {
     oracle,
     collateralToken,
     syntheticToken,
-    uniswapPairOverride,
+    exchangePairOverride,
     endDateOffsetSeconds,
     periodLengthSeconds
   ) {
@@ -54,14 +54,16 @@ class GlobalSummaryReporter {
     // allow for FixedPoint rounding errors.
     this.accountingVariance = this.toBN(this.toWei("0.0001"));
 
-    this.uniswapPairOverride = uniswapPairOverride;
+    this.exchangePairOverride = exchangePairOverride;
+
+    // If we have data from one of the swap exchanges to display, then this will be `true`.
+    this.hasExchangeData = false;
   }
 
   async update() {
     await this.empClient.update();
     await this.empEventClient.update();
     await this.referencePriceFeed.update();
-    await this.uniswapPriceFeed.update();
 
     // Block number stats.
     this.currentBlockNumber = await this.web3.eth.getBlockNumber();
@@ -116,32 +118,43 @@ class GlobalSummaryReporter {
     // Pricefeed stats.
     this.priceEstimate = this.referencePriceFeed.getCurrentPrice();
 
-    // Initialize Uniswap pair address to get trade data for. Default pair token is the collateral token.
-    this.uniswapPairToken = this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
-      ? this.uniswapPairOverride[this.toChecksumAddress(this.empContract.options.address)]
+    // Initialize exchange pair address to get trade data for. Default pair token is the collateral token.
+    this.exchangePairToken = this.exchangePairOverride[this.toChecksumAddress(this.empContract.options.address)]
+      ? this.exchangePairOverride[this.toChecksumAddress(this.empContract.options.address)]
       : this.collateralContract;
-    this.uniswapPairDetails = await getUniswapPairDetails(
-      this.web3,
-      this.syntheticContract.address,
-      this.uniswapPairToken.address
-    );
-    this.uniswapPairAddress = this.uniswapPairDetails.pairAddress.toLowerCase();
 
-    // Set up Uniswap subgraph client and query latest update stats.
-    // If the `latestSwapBlockNumber` < `endBlockNumberForPeriod`, then set `endBlockNumberForPeriod = latestSwapBlockNumber`
-    // otherwise the graphQL client will throw an error when trying to access a block that it has not indexed yet.
-    // Its ok to use the latest swap's block number as the end-period block number because we are only querying swap data for this pair.
-    // If we were using `endBlockNumberForPeriod` to query data for some other pair as well,
-    // then we wouldn't be able to set `endBlockNumberForPeriod = latestSwapBlockNumber`
-    this.uniswapClient = getUniswapClient();
-    const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress))).swaps[0]
-      .transaction;
-    this.latestSwapTimestamp = latestSwap.timestamp;
-    this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
-    // Note: `endBlockNumberForPeriod` is the highest block number that we will manually query for.
-    if (this.endBlockNumberForPeriod > this.latestSwapBlockNumber) {
-      this.endBlockNumberForPeriod = this.latestSwapBlockNumber;
+    // Uniswap data:
+    if (this.uniswapPriceFeed) {
+      await this.uniswapPriceFeed.update();
+
+      this.uniswapPairDetails = await getUniswapPairDetails(
+        this.web3,
+        this.syntheticContract.address,
+        this.exchangePairToken.address
+      );
+      this.uniswapPairAddress = this.uniswapPairDetails.pairAddress.toLowerCase();
+
+      // Set up Uniswap subgraph client and query latest update stats.
+      // If the `latestSwapBlockNumber` < `endBlockNumberForPeriod`, then set `endBlockNumberForPeriod = latestSwapBlockNumber`
+      // otherwise the graphQL client will throw an error when trying to access a block that it has not indexed yet.
+      // Its ok to use the latest swap's block number as the end-period block number because we are only querying swap data for this pair.
+      // If we were using `endBlockNumberForPeriod` to query data for some other pair as well,
+      // then we wouldn't be able to set `endBlockNumberForPeriod = latestSwapBlockNumber`
+      this.uniswapClient = getUniswapClient();
+      const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress)))
+        .swaps[0].transaction;
+      this.latestSwapTimestamp = latestSwap.timestamp;
+      this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
+      // Note: `endBlockNumberForPeriod` is the highest block number that we will manually query for.
+      if (this.endBlockNumberForPeriod > this.latestSwapBlockNumber) {
+        this.endBlockNumberForPeriod = this.latestSwapBlockNumber;
+      }
     }
+
+    // TODO: Balancer data:
+
+    // Have we successfully fetched any exchange data from the graph API?
+    this.hasExchangeData = this.latestSwapTimestamp;
   }
 
   async generateSummaryStatsTable() {
@@ -187,21 +200,33 @@ class GlobalSummaryReporter {
     this._generateSponsorStats(periods);
     console.groupEnd();
 
-    // 2. Tokens stats table
+    // 2a. Tokens Swaps table
+    if (this.hasExchangeData) {
+      console.group();
+      console.log(
+        bold(
+          `Exchange pair (${await this.syntheticContract.symbol()}-${await this.exchangePairToken.symbol()}) summary stats (as of ${formatDate(
+            this.latestSwapTimestamp,
+            this.web3
+          )})`
+        )
+      );
+      console.log(
+        italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap, Balancer)")
+      );
+      await this._generateExchangeStats();
+      console.groupEnd();
+    }
+
+    // 2b. Tokens Holder table
     console.group();
     console.log(
-      bold(
-        `Synthetic Token Ownership and Uniswap pair (${await this.syntheticContract.symbol()}-${await this.uniswapPairToken.symbol()}) summary stats (as of ${formatDate(
-          this.latestSwapTimestamp,
-          this.web3
-        )})`
-      )
+      bold(`Synthetic Token Ownership stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`)
     );
-    console.log(italic("- Token price is sourced from exchange where synthetic token is traded (i.e. Uniswap)"));
     console.log(
       italic("- Token holder counts are equal to the # of unique token holders who held any balance during a period")
     );
-    await this._generateTokenStats(periods);
+    await this._generateTokenHolderStats(periods);
     console.groupEnd();
 
     // 3. Liquidation stats table
@@ -611,86 +636,16 @@ class GlobalSummaryReporter {
     console.table(allSponsorStatsTable);
   }
 
-  async _generateTokenStats(periods) {
-    let allTokenStatsTable = {};
+  async _generateTokenHolderStats(periods) {
+    let allTokenHolderStatsTable = {};
 
-    const currentTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
-    const twapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
-    allTokenStatsTable["Token price"] = {
-      current: this.formatDecimalString(currentTokenPrice),
-      TWAP: this.formatDecimalString(twapTokenPrice)
-    };
-
-    allTokenStatsTable["# tokens outstanding"] = {
+    allTokenHolderStatsTable["# tokens outstanding"] = {
       current: this.formatDecimalString(this.totalTokensOutstanding)
     };
 
-    // Get uniswap trade data via graphql.
-    const volumeTokenLabel = this.uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
-    const allTokenData = (await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress))).pairs[0];
-    const tradeCount = parseInt(allTokenData.txCount);
-    const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
-
-    // Calculate Uniswap trade count and volume data.
-    if (!allTokenData) {
-      // If there is no data for this pair, then we cannot get trade count or volume data.
-      allTokenStatsTable["# trades in Uniswap"] = {
-        cumulative: "Graph data unavailable"
-      };
-      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
-        cumulative: "Graph data unavailable"
-      };
-    } else {
-      // Try to get sub period data from graph. This might fail if subgraph latest block is too far behind actual latest block.
-      let periodTradeCount, prevPeriodTradeCount;
-      let periodTradeVolumeTokens, prevPeriodTradeVolumeTokens;
-      try {
-        const startPeriodTokenData = (
-          await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPeriod))
-        ).pairs[0];
-        const endPeriodTokenData = (
-          await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.endBlockNumberForPeriod))
-        ).pairs[0];
-        const startPrevPeriodTokenData = (
-          await this.uniswapClient.request(
-            queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPreviousPeriod)
-          )
-        ).pairs[0];
-
-        periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
-        prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
-
-        periodTradeVolumeTokens =
-          parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
-        prevPeriodTradeVolumeTokens =
-          parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
-      } catch (error) {
-        console.error("Could not get data for subperiod:", error.message);
-        // Ignore error, mark data as unavailable.
-      }
-
-      // Display data in table.
-      allTokenStatsTable["# trades in Uniswap"] = {
-        cumulative: tradeCount,
-        [this.periodLabelInHours]: periodTradeCount,
-        ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
-      };
-      allTokenStatsTable["volume of trades in Uniswap in # of tokens"] = {
-        cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
-        [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
-        ["Δ from prev. period"]: formatWithMaxDecimals(
-          periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
-          2,
-          4,
-          false,
-          true
-        )
-      };
-    }
-
     // Get token holder stats.
     const tokenHolderStats = this._constructTokenHolderList(periods);
-    allTokenStatsTable["# of token holders"] = {
+    allTokenHolderStatsTable["# of token holders"] = {
       current: Object.keys(tokenHolderStats.currentTokenHolders).length,
       cumulative: Object.keys(tokenHolderStats.countAllTokenHolders).length,
       [this.periodLabelInHours]: Object.keys(tokenHolderStats.countPeriodTokenHolders["period"]).length,
@@ -699,7 +654,85 @@ class GlobalSummaryReporter {
           Object.keys(tokenHolderStats.countPeriodTokenHolders["prevPeriod"]).length
       )
     };
-    console.table(allTokenStatsTable);
+    console.table(allTokenHolderStatsTable);
+  }
+
+  async _generateExchangeStats() {
+    let allExchangeStatsTable = {};
+
+    if (this.uniswapPriceFeed) {
+      const currentTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
+      const twapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
+      allExchangeStatsTable["Token price"] = {
+        current: this.formatDecimalString(currentTokenPrice),
+        TWAP: this.formatDecimalString(twapTokenPrice)
+      };
+
+      // Get uniswap trade data via graphql.
+      const volumeTokenLabel = this.uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
+      const allTokenData = (await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress))).pairs[0];
+      const tradeCount = parseInt(allTokenData.txCount);
+      const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
+
+      // Calculate Uniswap trade count and volume data.
+      if (!allTokenData) {
+        // If there is no data for this pair, then we cannot get trade count or volume data.
+        allExchangeStatsTable["# trades in Uniswap"] = {
+          cumulative: "Graph data unavailable"
+        };
+        allExchangeStatsTable["volume of trades in Uniswap in # of tokens"] = {
+          cumulative: "Graph data unavailable"
+        };
+      } else {
+        // Try to get sub period data from graph. This might fail if subgraph latest block is too far behind actual latest block.
+        let periodTradeCount, prevPeriodTradeCount;
+        let periodTradeVolumeTokens, prevPeriodTradeVolumeTokens;
+        try {
+          const startPeriodTokenData = (
+            await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPeriod))
+          ).pairs[0];
+          const endPeriodTokenData = (
+            await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.endBlockNumberForPeriod))
+          ).pairs[0];
+          const startPrevPeriodTokenData = (
+            await this.uniswapClient.request(
+              queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPreviousPeriod)
+            )
+          ).pairs[0];
+
+          periodTradeCount = parseInt(endPeriodTokenData.txCount) - parseInt(startPeriodTokenData.txCount);
+          prevPeriodTradeCount = parseInt(startPeriodTokenData.txCount) - parseInt(startPrevPeriodTokenData.txCount);
+
+          periodTradeVolumeTokens =
+            parseFloat(endPeriodTokenData[volumeTokenLabel]) - parseFloat(startPeriodTokenData[volumeTokenLabel]);
+          prevPeriodTradeVolumeTokens =
+            parseFloat(startPeriodTokenData[volumeTokenLabel]) - parseFloat(startPrevPeriodTokenData[volumeTokenLabel]);
+        } catch (error) {
+          console.error("Could not get data for subperiod:", error.message);
+          // Ignore error, mark data as unavailable.
+        }
+
+        // Display data in table.
+        allExchangeStatsTable["# trades in Uniswap"] = {
+          cumulative: tradeCount,
+          [this.periodLabelInHours]: periodTradeCount,
+          ["Δ from prev. period"]: addSign(periodTradeCount - prevPeriodTradeCount)
+        };
+        allExchangeStatsTable["volume of trades in Uniswap in # of tokens"] = {
+          cumulative: formatWithMaxDecimals(tradeVolumeTokens, 2, 4, false),
+          [this.periodLabelInHours]: formatWithMaxDecimals(periodTradeVolumeTokens, 2, 4, false),
+          ["Δ from prev. period"]: formatWithMaxDecimals(
+            periodTradeVolumeTokens - prevPeriodTradeVolumeTokens,
+            2,
+            4,
+            false,
+            true
+          )
+        };
+      }
+    }
+
+    console.table(allExchangeStatsTable);
   }
 
   _generateLiquidationStats(periods) {
@@ -856,6 +889,11 @@ class GlobalSummaryReporter {
     allTransferEvents.forEach(event => {
       const sender = event.returnValues.from;
       const receiver = event.returnValues.to;
+
+      // Ignore transfers for 0 tokens like the final transfer in this transaction: https://etherscan.io/tx/0x0ceebc33f9057e37a187895ad0dd07d8905da49c0c228474975018ca5f044948
+      if (event.returnValues.value === "0") {
+        return;
+      }
 
       if (receiver !== ZERO_ADDRESS) {
         // Add to token holder list.
