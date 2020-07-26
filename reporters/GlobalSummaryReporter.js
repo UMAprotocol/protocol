@@ -8,7 +8,8 @@ const {
   ZERO_ADDRESS,
   averageBlockTimeSeconds
 } = require("@umaprotocol/common");
-const { getUniswapClient, queries } = require("./uniswapSubgraphClient");
+const { getUniswapClient, queries: uniswapQueries } = require("./graphql/uniswapSubgraph");
+const { getUmaClient, queries: umaQueries } = require("./graphql/umaSubgraph");
 const { getUniswapPairDetails } = require("@umaprotocol/financial-templates-lib");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
@@ -103,9 +104,28 @@ class GlobalSummaryReporter {
     this.createEvents = this.empEventClient.getAllCreateEvents();
     this.regularFeeEvents = this.empEventClient.getAllRegularFeeEvents();
     this.finalFeeEvents = this.empEventClient.getAllFinalFeeEvents();
-    this.liquidationEvents = this.empEventClient.getAllLiquidationEvents();
     this.disputeEvents = this.empEventClient.getAllDisputeEvents();
     this.disputeSettledEvents = this.empEventClient.getAllDisputeSettlementEvents();
+
+    // Events queried from UMA subgraph
+    this.umaClient = getUmaClient();
+    this.liquidationRelatedEvents = (
+      await this.umaClient.request(
+        umaQueries.LIQUIDATION_EVENTS_FOR_EMP(this.empContract.options.address.toLowerCase())
+      )
+    ).financialContracts[0].liquidations;
+    this.liquidationCreatedEvents = [];
+    this.liquidationRelatedEvents.forEach(liq => {
+      liq.events.forEach(e => {
+        if (e.__typename === "LiquidationCreatedEvent") {
+          this.liquidationCreatedEvents.push({
+            ...e.liquidation,
+            // Add event block # to liquidation data
+            block: Number(e.block)
+          });
+        }
+      });
+    });
 
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
@@ -141,13 +161,15 @@ class GlobalSummaryReporter {
       // If we were using `endBlockNumberForPeriod` to query data for some other pair as well,
       // then we wouldn't be able to set `endBlockNumberForPeriod = latestSwapBlockNumber`
       this.uniswapClient = getUniswapClient();
-      const latestSwap = (await this.uniswapClient.request(queries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress)))
+      const latestSwap = (await this.uniswapClient.request(uniswapQueries.LAST_TRADE_FOR_PAIR(this.uniswapPairAddress)))
         .swaps[0].transaction;
       this.latestSwapTimestamp = latestSwap.timestamp;
       this.latestSwapBlockNumber = Number(latestSwap.blockNumber);
-      // Note: `endBlockNumberForPeriod` is the highest block number that we will manually query for.
+      // Note: `lastExchangeBlockNumberForPeriod` is the highest block number that we will manually query the uniswap subgraph for.
       if (this.endBlockNumberForPeriod > this.latestSwapBlockNumber) {
-        this.endBlockNumberForPeriod = this.latestSwapBlockNumber;
+        this.lastExchangeBlockNumberForPeriod = this.latestSwapBlockNumber;
+      } else {
+        this.lastExchangeBlockNumberForPeriod = this.endBlockNumberForPeriod;
       }
     }
 
@@ -165,8 +187,9 @@ class GlobalSummaryReporter {
       { label: "period", start: this.startBlockNumberForPeriod, end: this.endBlockNumberForPeriod },
       { label: "prevPeriod", start: this.startBlockNumberForPreviousPeriod, end: this.startBlockNumberForPeriod }
     ];
-    this.isEventInPeriod = (event, period) =>
-      Boolean(event.blockNumber >= period.start && event.blockNumber < period.end);
+    this.isBlockInPeriod = (blockNum, period) => {
+      return Boolean(blockNum >= period.start && blockNum < period.end);
+    };
 
     // 1. Sponsor stats table
     console.group();
@@ -205,7 +228,7 @@ class GlobalSummaryReporter {
       console.group();
       console.log(
         bold(
-          `Exchange pair (${await this.syntheticContract.symbol()}-${await this.exchangePairToken.symbol()}) summary stats (as of ${formatDate(
+          `Exchange pair (${await this.syntheticContract.symbol()}-${await this.exchangePairToken.symbol()}) summary stats (as of the latest swap @ ${formatDate(
             this.latestSwapTimestamp,
             this.web3
           )})`
@@ -268,7 +291,7 @@ class GlobalSummaryReporter {
           periodUniqueSponsors[period.label] = {};
         }
 
-        if (this.isEventInPeriod(event, period)) {
+        if (this.isBlockInPeriod(event.blockNumber, period)) {
           periodUniqueSponsors[period.label][event.sponsor] = true;
         }
       }
@@ -291,7 +314,7 @@ class GlobalSummaryReporter {
           periodCollateralTransferred[period.label] = this.toBN("0");
         }
 
-        if (this.isEventInPeriod(event, period)) {
+        if (this.isBlockInPeriod(event.blockNumber, period)) {
           periodCollateralTransferred[period.label] = periodCollateralTransferred[period.label].add(
             this.toBN(event.returnValues.value)
           );
@@ -316,7 +339,7 @@ class GlobalSummaryReporter {
           periodTokensCreated[period.label] = this.toBN("0");
         }
 
-        if (this.isEventInPeriod(event, period)) {
+        if (this.isBlockInPeriod(event.blockNumber, period)) {
           periodTokensCreated[period.label] = periodTokensCreated[period.label].add(this.toBN(event.tokenAmount));
         }
       }
@@ -330,36 +353,32 @@ class GlobalSummaryReporter {
   _filterLiquidationData(periods, liquidateEvents) {
     let allUniqueLiquidations = {};
     let periodUniqueLiquidations = {};
-    let allTokensLiquidated = this.toBN("0");
+    let allTokensLiquidated = 0;
     const periodTokensLiquidated = {};
-    let allCollateralLiquidated = this.toBN("0");
+    let allCollateralLiquidated = 0;
     const periodCollateralLiquidated = {};
 
     for (let event of liquidateEvents) {
-      allTokensLiquidated = allTokensLiquidated.add(this.toBN(event.tokensOutstanding));
+      allTokensLiquidated += parseFloat(event.tokensLiquidated);
       // We count "lockedCollateral" instead of "liquidatedCollateral" because this is the amount of the collateral that the liquidator is elegible to draw from
       // the contract.
-      allCollateralLiquidated = allCollateralLiquidated.add(this.toBN(event.lockedCollateral));
-      allUniqueLiquidations[event.sponsor] = true;
+      allCollateralLiquidated += parseFloat(event.lockedCollateral);
+      allUniqueLiquidations[event.sponsor.id] = true;
 
       for (let period of periods) {
         if (!periodTokensLiquidated[period.label]) {
-          periodTokensLiquidated[period.label] = this.toBN("0");
+          periodTokensLiquidated[period.label] = 0;
         }
         if (!periodCollateralLiquidated[period.label]) {
-          periodCollateralLiquidated[period.label] = this.toBN("0");
+          periodCollateralLiquidated[period.label] = 0;
         }
         if (!periodUniqueLiquidations[period.label]) {
           periodUniqueLiquidations[period.label] = {};
         }
 
-        if (this.isEventInPeriod(event, period)) {
-          periodTokensLiquidated[period.label] = periodTokensLiquidated[period.label].add(
-            this.toBN(event.tokensOutstanding)
-          );
-          periodCollateralLiquidated[period.label] = periodCollateralLiquidated[period.label].add(
-            this.toBN(event.lockedCollateral)
-          );
+        if (this.isBlockInPeriod(event.block, period)) {
+          periodTokensLiquidated[period.label] += parseFloat(event.tokensLiquidated);
+          periodCollateralLiquidated[period.label] += parseFloat(event.lockedCollateral);
           periodUniqueLiquidations[period.label][event.sponsor] = true;
         }
       }
@@ -377,47 +396,43 @@ class GlobalSummaryReporter {
   async _filterDisputeData(periods, disputeEvents, liquidationEvents) {
     let allUniqueDisputes = {};
     let periodUniqueDisputes = {};
-    let allTokensDisputed = this.toBN("0");
+    let allTokensDisputed = 0;
     const periodTokensDisputed = {};
-    let allCollateralDisputed = this.toBN("0");
+    let allCollateralDisputed = 0;
     const periodCollateralDisputed = {};
     const allResolvedDisputes = {};
 
     for (let event of disputeEvents) {
       // Fetch disputed collateral & token amounts from corresponding liquidation event that with same ID and sponsor.
       const liquidationData = liquidationEvents.filter(
-        e => e.liquidationId === event.liquidationId && e.sponsor === event.sponsor
+        e => e.liquidationId === event.liquidationId && e.sponsor.id === event.sponsor.toLowerCase()
       )[0];
 
-      allTokensDisputed = allTokensDisputed.add(this.toBN(liquidationData.tokensOutstanding));
-      allCollateralDisputed = allCollateralDisputed.add(this.toBN(liquidationData.lockedCollateral));
+      allTokensDisputed += parseFloat(liquidationData.tokensLiquidated);
+      allCollateralDisputed += parseFloat(liquidationData.lockedCollateral);
       allUniqueDisputes[event.sponsor] = true;
 
       for (let period of periods) {
         if (!periodTokensDisputed[period.label]) {
-          periodTokensDisputed[period.label] = this.toBN("0");
+          periodTokensDisputed[period.label] = 0;
         }
         if (!periodCollateralDisputed[period.label]) {
-          periodCollateralDisputed[period.label] = this.toBN("0");
+          periodCollateralDisputed[period.label] = 0;
         }
         if (!periodUniqueDisputes[period.label]) {
           periodUniqueDisputes[period.label] = {};
         }
 
-        if (this.isEventInPeriod(event, period)) {
-          periodTokensDisputed[period.label] = periodTokensDisputed[period.label].add(
-            this.toBN(liquidationData.tokensOutstanding)
-          );
-          periodCollateralDisputed[period.label] = periodCollateralDisputed[period.label].add(
-            this.toBN(liquidationData.lockedCollateral)
-          );
+        if (this.isBlockInPeriod(event.blockNumber, period)) {
+          periodTokensDisputed[period.label] += parseFloat(liquidationData.tokensLiquidated);
+          periodCollateralDisputed[period.label] += parseFloat(liquidationData.lockedCollateral);
           periodUniqueDisputes[period.label][event.sponsor] = true;
         }
       }
 
       // Create list of resolved prices for disputed liquidations. Note that this `web3.getBlock().timestamp` call to get the liquidation timestamp
       // only works on public networks. It will NOT work on local networks that use the MockOracle/Timer contract where block timestamp !== EMP timestamp.
-      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationData.blockNumber)).timestamp;
+      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationData.block)).timestamp;
       const disputeLabel = `Liquidation ID ${event.liquidationId} for sponsor ${event.sponsor}`;
       try {
         // `getPrice` will revert or return the resolved price. Due to a web3 bug, it is possible that `getPrice` won't revert as expected
@@ -468,7 +483,7 @@ class GlobalSummaryReporter {
           periodLateFeesPaid[period.label] = this.toBN("0");
         }
 
-        if (this.isEventInPeriod(event, period)) {
+        if (this.isBlockInPeriod(event.blockNum, period)) {
           periodRegFeesPaid = periodRegFeesPaid.add(this.toBN(event.regularFee));
           periodLateFeesPaid = periodLateFeesPaid.add(this.toBN(event.lateFee));
         }
@@ -495,7 +510,7 @@ class GlobalSummaryReporter {
           periodFinalFeesPaid[period.label] = this.toBN("0");
         }
 
-        if (this.isEventInPeriod(event, period)) {
+        if (this.isBlockInPeriod(event.blockNumber, period)) {
           periodFinalFeesPaid[period.label] = periodFinalFeesPaid[period.label].add(this.toBN(event.amount));
         }
       }
@@ -670,7 +685,8 @@ class GlobalSummaryReporter {
 
       // Get uniswap trade data via graphql.
       const volumeTokenLabel = this.uniswapPairDetails.inverted ? "volumeToken1" : "volumeToken0";
-      const allTokenData = (await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress))).pairs[0];
+      const allTokenData = (await this.uniswapClient.request(uniswapQueries.PAIR_DATA(this.uniswapPairAddress)))
+        .pairs[0];
       const tradeCount = parseInt(allTokenData.txCount);
       const tradeVolumeTokens = parseFloat(allTokenData[volumeTokenLabel]);
 
@@ -689,14 +705,18 @@ class GlobalSummaryReporter {
         let periodTradeVolumeTokens, prevPeriodTradeVolumeTokens;
         try {
           const startPeriodTokenData = (
-            await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPeriod))
+            await this.uniswapClient.request(
+              uniswapQueries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPeriod)
+            )
           ).pairs[0];
           const endPeriodTokenData = (
-            await this.uniswapClient.request(queries.PAIR_DATA(this.uniswapPairAddress, this.endBlockNumberForPeriod))
+            await this.uniswapClient.request(
+              uniswapQueries.PAIR_DATA(this.uniswapPairAddress, this.lastExchangeBlockNumberForPeriod)
+            )
           ).pairs[0];
           const startPrevPeriodTokenData = (
             await this.uniswapClient.request(
-              queries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPreviousPeriod)
+              uniswapQueries.PAIR_DATA(this.uniswapPairAddress, this.startBlockNumberForPreviousPeriod)
             )
           ).pairs[0];
 
@@ -738,10 +758,10 @@ class GlobalSummaryReporter {
   _generateLiquidationStats(periods) {
     let allLiquidationStatsTable = {};
 
-    if (this.liquidationEvents.length === 0) {
+    if (this.liquidationCreatedEvents.length === 0) {
       console.log(dim("\tNo liquidation events found for this EMP."));
     } else {
-      const liquidationData = this._filterLiquidationData(periods, this.liquidationEvents);
+      const liquidationData = this._filterLiquidationData(periods, this.liquidationCreatedEvents);
       allLiquidationStatsTable = {
         ["# of liquidations"]: {
           cumulative: Object.keys(liquidationData.allUniqueLiquidations).length,
@@ -752,21 +772,20 @@ class GlobalSummaryReporter {
           )
         },
         ["tokens liquidated"]: {
-          cumulative: this.formatDecimalString(liquidationData.allTokensLiquidated),
-          [this.periodLabelInHours]: this.formatDecimalString(liquidationData.periodTokensLiquidated["period"]),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            liquidationData.periodTokensLiquidated["period"].sub(liquidationData.periodTokensLiquidated["prevPeriod"])
-          )
+          cumulative: liquidationData.allTokensLiquidated.toLocaleString(),
+          [this.periodLabelInHours]: liquidationData.periodTokensLiquidated["period"].toLocaleString(),
+          ["Δ from prev. period"]: (
+            liquidationData.periodTokensLiquidated["period"] - liquidationData.periodTokensLiquidated["prevPeriod"]
+          ).toLocaleString()
         },
         ["collateral liquidated"]: {
-          cumulative: this.formatDecimalString(liquidationData.allCollateralLiquidated),
-          [this.periodLabelInHours]: this.formatDecimalString(liquidationData.periodCollateralLiquidated["period"]),
+          cumulative: liquidationData.allCollateralLiquidated.toLocaleString(),
+          [this.periodLabelInHours]: liquidationData.periodCollateralLiquidated["period"].toLocaleString(),
           current: this.formatDecimalString(this.collateralLockedInLiquidations),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            liquidationData.periodCollateralLiquidated["period"].sub(
-              liquidationData.periodCollateralLiquidated["prevPeriod"]
-            )
-          )
+          ["Δ from prev. period"]: (
+            liquidationData.periodCollateralLiquidated["period"] -
+            liquidationData.periodCollateralLiquidated["prevPeriod"]
+          ).toLocaleString()
         }
       };
 
@@ -780,7 +799,7 @@ class GlobalSummaryReporter {
     if (this.disputeEvents.length === 0) {
       console.log(dim("\tNo dispute events found for this EMP."));
     } else {
-      const disputeData = await this._filterDisputeData(periods, this.disputeEvents, this.liquidationEvents);
+      const disputeData = await this._filterDisputeData(periods, this.disputeEvents, this.liquidationCreatedEvents);
       allDisputeStatsTable = {
         ["# of disputes"]: {
           cumulative: Object.keys(disputeData.allUniqueDisputes).length,
@@ -791,18 +810,18 @@ class GlobalSummaryReporter {
           )
         },
         ["tokens disputed"]: {
-          cumulative: this.formatDecimalString(disputeData.allTokensDisputed),
-          [this.periodLabelInHours]: this.formatDecimalString(disputeData.periodTokensDisputed["period"]),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            disputeData.periodTokensDisputed["period"].sub(disputeData.periodTokensDisputed["prevPeriod"])
-          )
+          cumulative: disputeData.allTokensDisputed.toLocaleString(),
+          [this.periodLabelInHours]: disputeData.periodTokensDisputed["period"].toLocaleString(),
+          ["Δ from prev. period"]: (
+            disputeData.periodTokensDisputed["period"] - disputeData.periodTokensDisputed["prevPeriod"]
+          ).toLocaleString()
         },
         ["collateral disputed"]: {
-          cumulative: this.formatDecimalString(disputeData.allCollateralDisputed),
-          [this.periodLabelInHours]: this.formatDecimalString(disputeData.periodCollateralDisputed["period"]),
-          ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-            disputeData.periodCollateralDisputed["period"].sub(disputeData.periodCollateralDisputed["prevPeriod"])
-          )
+          cumulative: disputeData.allCollateralDisputed.toLocaleString(),
+          [this.periodLabelInHours]: disputeData.periodCollateralDisputed["period"].toLocaleString(),
+          ["Δ from prev. period"]: (
+            disputeData.periodCollateralDisputed["period"] - disputeData.periodCollateralDisputed["prevPeriod"]
+          ).toLocaleString()
         }
       };
 
@@ -917,7 +936,7 @@ class GlobalSummaryReporter {
             countPeriodTokenHolders[period.label] = {};
           }
 
-          if (this.isEventInPeriod(event, period)) {
+          if (this.isBlockInPeriod(event.blockNumber, period)) {
             countPeriodTokenHolders[period.label][receiver] = true;
             periodTokenHolders[period.label][receiver] = currentTokenHolders[receiver];
           }
@@ -929,7 +948,7 @@ class GlobalSummaryReporter {
         // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
         // before we update its cumulative balance.
         for (let period of periods) {
-          if (this.isEventInPeriod(event, period)) {
+          if (this.isBlockInPeriod(event.blockNumber, period)) {
             countPeriodTokenHolders[period.label][sender] = true;
 
             if (!currentTokenHolders[sender]) {
