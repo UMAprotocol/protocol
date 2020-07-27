@@ -9,8 +9,10 @@ const { ONE_SPLIT_ADDRESS } = require("./settings");
 class OneInchExchange {
   /**
    * @notice Creates OneInchExchange client
-   * @param {Object} args.web3 Web3 instance
-   * @param {Object} args.gasEstimator GasEstimator instance
+   * @param {Object} param - Constructor params
+   * @param {Object} param.web3 - Web3 instance
+   * @param {Object} param.gasEstimator - GasEstimator instance
+   * @param {string} param.oneSplitAddress - Address of the One Split
    * */
   constructor({ web3, gasEstimator, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
     this.gasEstimator = gasEstimator;
@@ -25,9 +27,10 @@ class OneInchExchange {
 
   /**
    * @notice Swaps token on one inch
-   * @param {string} args.fromToken Address of token to swap from
-   * @param {string} args.toToken Address of token to swap to.
-   * @param {string} args.amountWei String amount to swap, in Wei.
+   * @param {Object} swapArgs - Swap arguments
+   * @param {string} swapArgs.fromToken Address of token to swap from
+   * @param {string} swapArgs.toToken Address of token to swap to.
+   * @param {string} swapArgs.amountWei String amount to swap, in Wei.
    * @param {Object} options Web3 options to supply to send, e.g.
    *      { from: '0x0...',
             value: '1000',

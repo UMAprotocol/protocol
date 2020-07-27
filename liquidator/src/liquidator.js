@@ -10,12 +10,13 @@ const { getLogger } = require("./common");
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
-   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
-   * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
-   * @param {Object} votingContract DVM to query price requests.
-   * @param {Object} priceFeed Module used to query the current token price.
-   * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} empProps Contains EMP contract state data. Expected:
+   * @param {Object} param - Constructor params
+   * @param {Object} param.expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} param.gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {Object} param.votingContract DVM to query price requests.
+   * @param {Object} param.priceFeed Module used to query the current token price.
+   * @param {String} param.account Ethereum account from which to send txns.
+   * @param {Object} param.empProps Contains EMP contract state data. Expected:
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
