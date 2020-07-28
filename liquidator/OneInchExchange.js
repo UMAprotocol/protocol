@@ -33,7 +33,7 @@ class OneInchExchange {
             gasPrice: '... }
    */
   async swap(args = { fromToken, toToken, amountWei }, options = {}) {
-    // Implicit update to get the gasPrice :|
+    // Update gasEstimator state
     await this.gasEstimator.update();
 
     const gasPrice = this.gasEstimator.getCurrentFastPrice();
@@ -59,6 +59,7 @@ class OneInchExchange {
     // Should be called offchain, but could be called onchain
     // if user swaps not his own funds, but this is still considered
     // as not safe)
+    // More info: https://github.com/CryptoManiacsZone/1inchProtocol#getexpectedreturn
     const parts = 2;
 
     const expectedReturn = await this.oneSplitContract.methods
@@ -67,6 +68,7 @@ class OneInchExchange {
 
     const { returnAmount, distribution } = expectedReturn;
 
+    // TODO: Remove hardcoded gas
     const tx = await this.oneSplitContract.methods
       .swap(fromToken, toToken, amountWei, returnAmount, distribution, flags)
       .send({ ...options, gasPrice, gas: 8000000 });
