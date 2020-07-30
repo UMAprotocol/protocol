@@ -307,7 +307,7 @@ class Liquidator {
           minGasPrice,
           maxGasPrice,
           gasPriceScalingFunction,
-          delay: 60000 // Tries and bump gasPrice by 10 GWEI every 60 minutes, if promise hasn't resolve
+          delay: 120000 // Tries and bump gasPrice by 10 GWEI every 2 minutes if the tx hasn't gone through
         });
       } catch (error) {
         this.logger.error({
