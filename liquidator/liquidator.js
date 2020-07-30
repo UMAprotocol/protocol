@@ -1,3 +1,5 @@
+const ynatm = require("ynatm");
+
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
@@ -285,7 +287,28 @@ class Liquidator {
       // Send the transaction or report failure.
       let receipt;
       try {
-        receipt = await liquidation.send(txnConfig);
+        // Make sure to keep trying with this nonce
+        const nonce = await this.web3.eth.getTransactionCount(this.account);
+
+        // Min Gas Price, with a max gasPrice of double
+        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
+        const maxGasPrice = 2 * minGasPrice;
+
+        // Increment by 10 gwei per trial
+        const gasPriceScalingFunction = ynatm.LINEAR(10);
+
+        receipt = await ynatm.send({
+          transaction: {
+            ...txnConfig,
+            nonce,
+            data: liquidation.encodeABI()
+          },
+          sendTransactionFunction: tx => this.web3.eth.sendTransaction(tx),
+          minGasPrice,
+          maxGasPrice,
+          gasPriceScalingFunction,
+          delay: 60000 // Tries and bump gasPrice by 10 GWEI every 60 minutes, if promise hasn't resolve
+        });
       } catch (error) {
         this.logger.error({
           at: "Liquidator",

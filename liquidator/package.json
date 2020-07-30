@@ -6,7 +6,8 @@
   "dependencies": {
     "@umaprotocol/common": "^1.0.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0",
-    "dotenv": "^6.2.0"
+    "dotenv": "^6.2.0",
+    "ynatm": "^0.1.1"
   },
   "devDependencies": {
     "sinon": "^9.0.2",
