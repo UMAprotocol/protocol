@@ -300,6 +300,7 @@ class Liquidator {
         receipt = await ynatm.send({
           transaction: {
             ...txnConfig,
+            to: this.empContract.options.address,
             nonce,
             data: liquidation.encodeABI()
           },
