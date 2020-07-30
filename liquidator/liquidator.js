@@ -286,6 +286,7 @@ class Liquidator {
 
       // Send the transaction or report failure.
       let receipt;
+
       try {
         // Make sure to keep trying with this nonce
         const nonce = await this.web3.eth.getTransactionCount(this.account);
@@ -297,14 +298,13 @@ class Liquidator {
         // Increment by 10 gwei per trial
         const gasPriceScalingFunction = ynatm.LINEAR(10);
 
+        // Receipt without events
         receipt = await ynatm.send({
           transaction: {
             ...txnConfig,
-            to: this.empContract.options.address,
-            nonce,
-            data: liquidation.encodeABI()
+            nonce
           },
-          sendTransactionFunction: tx => this.web3.eth.sendTransaction(tx),
+          sendTransactionFunction: txnConfig => liquidation.send(txnConfig),
           minGasPrice,
           maxGasPrice,
           gasPriceScalingFunction,
