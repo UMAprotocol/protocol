@@ -91,25 +91,35 @@ class ExpiringMultiPartyClient {
   }
 
   async update() {
-    this.collateralRequirement = this.toBN((await this.emp.methods.collateralRequirement().call()).toString());
-    this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call());
+    // Since this function can have a relatively long run-time, we should be safe and check contract state explicitly at the same block height.
+    // This way we won't experience errors where the contract state changes between calls.
+    this.latestBlock = await this.web3.eth.getBlockNumber();
 
-    const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0 });
+    this.collateralRequirement = this.toBN(
+      (await this.emp.methods.collateralRequirement().call({ defaultBlock: this.latestBlock })).toString()
+    );
+    this.liquidationLiveness = Number(
+      await this.emp.methods.liquidationLiveness().call({ defaultBlock: this.latestBlock })
+    );
+
+    const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0, toBlock: this.latestBlock });
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
 
     // Fetch information about each sponsor.
     const positions = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call())
+      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call({ defaultBlock: this.latestBlock }))
     );
     const collateral = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.getCollateral(address).call())
+      this.sponsorAddresses.map(address =>
+        this.emp.methods.getCollateral(address).call({ defaultBlock: this.latestBlock })
+      )
     );
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
     const disputedLiquidations = [];
     for (const address of this.sponsorAddresses) {
-      const liquidations = await this.emp.methods.getLiquidations(address).call();
+      const liquidations = await this.emp.methods.getLiquidations(address).call({ defaultBlock: this.latestBlock });
       for (const [id, liquidation] of liquidations.entries()) {
         // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
         // set to default values. We can skip them.
@@ -165,7 +175,7 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call({ defaultBlock: this.latestBlock });
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "Expiring multi party state updated",
@@ -188,7 +198,7 @@ class ExpiringMultiPartyClient {
   }
 
   async _isExpired(liquidation) {
-    const currentTime = await this.emp.methods.getCurrentTime().call();
+    const currentTime = await this.emp.methods.getCurrentTime().call({ defaultBlock: this.latestBlock });
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 
