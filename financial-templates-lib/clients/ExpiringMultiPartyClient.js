@@ -96,30 +96,26 @@ class ExpiringMultiPartyClient {
     this.latestBlock = await this.web3.eth.getBlockNumber();
 
     this.collateralRequirement = this.toBN(
-      (await this.emp.methods.collateralRequirement().call({ defaultBlock: this.latestBlock })).toString()
+      (await this.emp.methods.collateralRequirement().call(undefined, this.latestBlock)).toString()
     );
-    this.liquidationLiveness = Number(
-      await this.emp.methods.liquidationLiveness().call({ defaultBlock: this.latestBlock })
-    );
+    this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call(undefined, this.latestBlock));
 
     const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0, toBlock: this.latestBlock });
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
 
     // Fetch information about each sponsor.
     const positions = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call({ defaultBlock: this.latestBlock }))
+      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call(undefined, this.latestBlock))
     );
     const collateral = await Promise.all(
-      this.sponsorAddresses.map(address =>
-        this.emp.methods.getCollateral(address).call({ defaultBlock: this.latestBlock })
-      )
+      this.sponsorAddresses.map(address => this.emp.methods.getCollateral(address).call(undefined, this.latestBlock))
     );
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
     const disputedLiquidations = [];
     for (const address of this.sponsorAddresses) {
-      const liquidations = await this.emp.methods.getLiquidations(address).call({ defaultBlock: this.latestBlock });
+      const liquidations = await this.emp.methods.getLiquidations(address).call(undefined, this.latestBlock);
       for (const [id, liquidation] of liquidations.entries()) {
         // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
         // set to default values. We can skip them.
@@ -175,7 +171,7 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call({ defaultBlock: this.latestBlock });
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call(undefined, this.latestBlock);
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "Expiring multi party state updated",
@@ -198,7 +194,7 @@ class ExpiringMultiPartyClient {
   }
 
   async _isExpired(liquidation) {
-    const currentTime = await this.emp.methods.getCurrentTime().call({ defaultBlock: this.latestBlock });
+    const currentTime = await this.emp.methods.getCurrentTime().call(undefined, this.latestBlock);
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 
