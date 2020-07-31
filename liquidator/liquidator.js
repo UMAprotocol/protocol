@@ -295,20 +295,16 @@ class Liquidator {
         const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
         const maxGasPrice = 2 * minGasPrice;
 
-        // Increment by 10 gwei per trial
-        const gasPriceScalingFunction = ynatm.LINEAR(10);
+        // Increment by 15 gwei per trial
+        const gasPriceScalingFunction = ynatm.LINEAR(15);
 
         // Receipt without events
         receipt = await ynatm.send({
-          transaction: {
-            ...txnConfig,
-            nonce
-          },
-          sendTransactionFunction: txnConfig => liquidation.send(txnConfig),
+          sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
           minGasPrice,
           maxGasPrice,
           gasPriceScalingFunction,
-          delay: 120000 // Tries and bump gasPrice by 10 GWEI every 2 minutes if the tx hasn't gone through
+          delay: 60000 // Tries and bump gasPrice by 10 GWEI every minute if the tx hasn't gone through
         });
       } catch (error) {
         this.logger.error({
