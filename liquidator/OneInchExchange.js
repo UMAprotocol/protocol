@@ -37,7 +37,7 @@ class OneInchExchange {
             gasPrice: '... }
    */
   async swap({ fromToken, toToken, amountWei }, options = {}) {
-    // Implicit update to get the gasPrice :|
+    // Update gasEstimator state
     await this.gasEstimator.update();
 
     const gasPrice = this.gasEstimator.getCurrentFastPrice();
