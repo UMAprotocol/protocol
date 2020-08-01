@@ -171,7 +171,7 @@ addLocalNetwork(networks, "metamask", {
   }
 });
 
-addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
+addLocalNetwork(networks, "mainnet-fork", { port: 1235, network_id: 1 });
 
 const TruffleConfig = {
   // See <http://truffleframework.com/docs/advanced/configuration>
@@ -184,11 +184,11 @@ const TruffleConfig = {
   },
   compilers: {
     solc: {
-      version: "0.6.6",
+      version: "0.6.12",
       settings: {
         optimizer: {
           enabled: true,
-          runs: 200
+          runs: 199
         }
       }
     }

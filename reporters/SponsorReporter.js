@@ -34,7 +34,7 @@ class SponsorReporter {
     // Define the table rows beforehand to re-use the variables.
     const rowNames = [
       `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
-      `Backing collateral${this.empProps.collateralCurrencySymbol})`,
+      `Backing collateral(${this.empProps.collateralCurrencySymbol})`,
       "Position CR %",
       `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`,
       `Collateral balance(${this.empProps.collateralCurrencySymbol})`,
@@ -57,7 +57,7 @@ class SponsorReporter {
         tableInfo[rowNames[2]][wallet.name] = "";
       } else {
         tableInfo[rowNames[0]][wallet.name] = this.formatDecimalString(position[0].numTokens);
-        tableInfo[rowNames[1]][wallet.name] = this.formatDecimalString(position[0].numTokens);
+        tableInfo[rowNames[1]][wallet.name] = this.formatDecimalString(position[0].amountCollateral);
         tableInfo[rowNames[2]][wallet.name] = this.formatDecimalString(
           this._calculatePositionCRPercent(position[0].amountCollateral, position[0].numTokens, currentPrice)
         );

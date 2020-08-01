@@ -103,6 +103,8 @@ jobs:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -p 1235
     working_directory: ~/protocol
     steps:
       - restore_cache:

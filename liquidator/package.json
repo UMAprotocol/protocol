@@ -25,7 +25,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "truffle test"
+    "test": "truffle test && truffle test test-fork"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
