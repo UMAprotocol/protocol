@@ -44,7 +44,7 @@ contract OneSplitMock is OneSplit {
     ) public override payable returns (uint256 returnAmount) {
         uint256 amountReturn = prices[keccak256(abi.encodePacked(fromToken, destToken))] * amount;
 
-        require(amountReturn < minReturn, "Min Amount not reached");
+        require(amountReturn > minReturn, "Min Amount not reached");
 
         if (destToken == ETH_ADDRESS) {
             msg.sender.transfer(amountReturn);
