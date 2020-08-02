@@ -39,7 +39,8 @@
     "./migrations/*.js"
   ],
   "scripts": {
-    "test": "buidler test"
+    "test": "buidler test",
+    "load-addresses": "yarn run apply-registry"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

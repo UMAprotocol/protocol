@@ -8,7 +8,8 @@
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
-    "test": "lerna run --stream --concurrency=1 test"
+    "test": "lerna run --stream --concurrency=1 test",
+    "load-addresses": "yarn workspace @umaprotocol/core load-addresses"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
