@@ -550,38 +550,30 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         <DialogTitle>Voting Statistics</DialogTitle>
         {voteStatsDialogData && (
           <List>
-            {voteStatsDialogData.totalSupplyAtSnapshot && (
-              <ListItem>
-                <ListItemText
-                  primary={"Total Supply Snapshot: " + prettyFormatNumber(voteStatsDialogData.totalSupplyAtSnapshot)}
-                />
-              </ListItem>
-            )}
-            {voteStatsDialogData.uniqueCommits && (
-              <ListItem>
-                <ListItemText
-                  primary={"Unique Commit Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueCommits)}
-                />
-              </ListItem>
-            )}
-            {voteStatsDialogData.revealedVotes && (
-              <ListItem>
-                <ListItemText
-                  primary={"Revealed Votes: " + prettyFormatNumber(voteStatsDialogData.revealedVotes)}
-                  secondary={prettyFormatNumber(voteStatsDialogData.revealedVotesPct) + "% of Total Supply"}
-                />
-              </ListItem>
-            )}
-            {voteStatsDialogData.uniqueReveals && (
-              <ListItem>
-                <ListItemText
-                  primary={"Unique Reveal Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueReveals)}
-                  secondary={
-                    prettyFormatNumber(voteStatsDialogData.uniqueRevealsPctOfCommits) + "% of Unique Commit Addresses"
-                  }
-                />
-              </ListItem>
-            )}
+            <ListItem>
+              <ListItemText
+                primary={"Total Supply Snapshot: " + prettyFormatNumber(voteStatsDialogData.totalSupplyAtSnapshot)}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Commit Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueCommits)}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Revealed Votes: " + prettyFormatNumber(voteStatsDialogData.revealedVotes)}
+                secondary={prettyFormatNumber(voteStatsDialogData.revealedVotesPct) + "% of Total Supply"}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Reveal Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueReveals)}
+                secondary={
+                  prettyFormatNumber(voteStatsDialogData.uniqueRevealsPctOfCommits) + "% of Unique Commit Addresses"
+                }
+              />
+            </ListItem>
           </List>
         )}
       </Dialog>
