@@ -631,6 +631,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 </IconButton>
               </Tooltip>
             </TableCell>
+            <TableCell className={classes.tableHeaderCell}>Stats</TableCell>
             <TableCell className={classes.tableHeaderCell}>
               Local Commit Data Backup
               <Tooltip
@@ -668,15 +669,13 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
+                <TableCell>{getCurrentVoteCell(index, isAdminRequest(hexToUtf8(pendingRequest.identifier)))}</TableCell>
                 <TableCell>
-                  {getCurrentVoteCell(index, isAdminRequest(hexToUtf8(pendingRequest.identifier)))}
-                  {votePhase.toString() === VotePhasesEnum.REVEAL && (
-                    <span>
-                      <Button variant="contained" color="primary" onClick={() => handleClickStats(index)}>
-                        Vote Stats
-                      </Button>
-                    </span>
-                  )}
+                  <span>
+                    <Button variant="contained" color="primary" onClick={() => handleClickStats(index)}>
+                      Vote Stats
+                    </Button>
+                  </span>
                 </TableCell>
                 <TableCell>
                   <Button variant="contained" color="primary" onClick={() => handleClickDisplayCommitBackup(index)}>

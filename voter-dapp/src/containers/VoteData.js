@@ -91,25 +91,25 @@ function useVoteData() {
         const uniqueCommits = Object.keys(uniqueVotersCommitted).length;
         const uniqueReveals = Object.keys(uniqueVotersRevealed).length;
         const uniqueClaimers = Object.keys(uniqueRewardClaimers).length;
-        const uniqueRevealsPctOfCommits = uniqueCommits > 0 ? (100 * uniqueCommits) / uniqueReveals : 0;
-        const uniqueClaimersPctOfReveals = 100 * uniqueReveals > 0 ? uniqueClaimers / uniqueReveals : 0;
+        const uniqueRevealsPctOfCommits = uniqueCommits > 0 ? (100 * uniqueReveals) / uniqueCommits : 0;
+        const uniqueClaimersPctOfReveals = uniqueReveals > 0 ? (100 * uniqueClaimers) / uniqueReveals : 0;
 
         // Insert round data into new object.
         newVoteData[newRoundKey] = {
           totalSupplyAtSnapshot: dataForRequest.totalSupplyAtSnapshot,
-          uniqueCommits: uniqueCommits,
+          uniqueCommits: uniqueCommits.toString(),
           revealedVotes: fromWei(totalVotesRevealed.toString()),
           revealedVotesPct: fromWei(pctOfVotesRevealed.mul(toBN("100")).toString()),
-          uniqueReveals: uniqueReveals,
-          uniqueRevealsPctOfCommits: uniqueRevealsPctOfCommits,
+          uniqueReveals: uniqueReveals.toString(),
+          uniqueRevealsPctOfCommits: uniqueRevealsPctOfCommits.toString(),
           correctVotes: fromWei(correctVotesRevealed.toString()),
           correctlyRevealedVotesPct: fromWei(pctOfCorrectRevealedVotes.mul(toBN("100")).toString()),
           roundInflationRate: fromWei(roundInflationRate.toString()),
           roundInflationRewardsAvailable: fromWei(roundInflationRewardsAvailable.toString()),
           rewardsClaimed: fromWei(rewardsClaimed.toString()),
           rewardsClaimedPct: fromWei(rewardsClaimedPct.mul(toBN("100")).toString()),
-          uniqueClaimers: uniqueClaimers,
-          uniqueClaimersPctOfReveals: uniqueClaimersPctOfReveals
+          uniqueClaimers: uniqueClaimers.toString(),
+          uniqueClaimersPctOfReveals: uniqueClaimersPctOfReveals.toString()
         };
       });
 
