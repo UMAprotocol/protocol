@@ -1,18 +1,15 @@
-// TODO: We should group together graphql related modules but I'm using this location
-// for now because this is the only use case.
-
 const { GraphQLClient } = require("graphql-request");
 
 /**
  * Return created graphql client or create a new one.
  * @return `createdClient` singleton graphql client.
  */
-let uniswapClient;
+let subgraphClient;
 function getUniswapClient() {
-  if (!uniswapClient) {
-    uniswapClient = new GraphQLClient("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2");
+  if (!subgraphClient) {
+    subgraphClient = new GraphQLClient("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2");
   }
-  return uniswapClient;
+  return subgraphClient;
 }
 
 /**
@@ -52,12 +49,10 @@ function PAIR_DATA(pairAddress, block) {
 function LAST_TRADE_FOR_PAIR(pairAddress) {
   return `
     query pairs {
-      pairs(where: {id: "${pairAddress}"}) {
-        swaps(orderBy: timestamp, orderDirection: desc, first: 1) {
-          transaction {
-            blockNumber
-            timestamp
-          }
+      swaps(orderBy: timestamp, orderDirection: desc, first: 1, where: {pair: "${pairAddress}"}) {
+        transaction {
+          blockNumber
+          timestamp
         }
       }
     }

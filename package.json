@@ -59,6 +59,7 @@
     "bignumber.js": "^8.0.1",
     "bip39": "^3.0.2",
     "chalk-pipe": "^3.0.0",
+    "cli-progress": "^3.8.2",
     "dotenv": "^6.2.0",
     "eth-crypto": "^1.6.0",
     "express": "^4.17.1",

@@ -5,7 +5,7 @@ import ActiveRequests from "./ActiveRequests.js";
 import ResolvedRequests from "./ResolvedRequests.js";
 import DesignatedVotingDeployment from "./DesignatedVotingDeployment.js";
 import DesignatedVotingTransfer from "./DesignatedVotingTransfer.js";
-import DesignatedVoting from "./contracts/DesignatedVoting.json";
+import DesignatedVoting from "@umaprotocol/core/build/contracts/DesignatedVoting.json";
 import RetrieveRewards from "./RetrieveRewards.js";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 
