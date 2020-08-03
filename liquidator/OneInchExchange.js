@@ -15,6 +15,7 @@ class OneInchExchange {
    * @param {string} param.oneSplitAddress - Address of the One Split
    * */
   constructor({ web3, gasEstimator, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
+    this.logger = gasEstimator.logger;
     this.gasEstimator = gasEstimator;
     this.oneSplitAddress = oneSplitAddress;
 
@@ -39,6 +40,9 @@ class OneInchExchange {
   async swap({ fromToken, toToken, amountWei }, options = {}) {
     // Update gasEstimator state
     await this.gasEstimator.update();
+
+    // Current time for debugging
+    const currentTime = Math.floor(Date.now() / 1000);
 
     const gasPrice = this.gasEstimator.getCurrentFastPrice();
 
@@ -72,10 +76,24 @@ class OneInchExchange {
 
     const { returnAmount, distribution } = expectedReturn;
 
+    this.logger.debug({
+      at: "OneInchExchange",
+      message: "GetExpectedReturn",
+      returnAmount,
+      distribution
+    });
+
     // TODO: Remove hardcoded gas
     const tx = await this.oneSplitContract.methods
       .swap(fromToken, toToken, amountWei, returnAmount, distribution, flags)
       .send({ ...options, gasPrice, gas: 8000000 });
+
+    this.logger.debug({
+      at: "OneInchExchange",
+      message: "Swapped",
+      fromToken,
+      toToken
+    });
 
     return tx;
   }
