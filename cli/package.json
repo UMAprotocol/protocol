@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@umaprotocol/common": "^1.0.0",
+    "@umaprotocol/core": "^1.0.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
