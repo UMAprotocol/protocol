@@ -7,6 +7,7 @@
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",
     "@umaprotocol/common": "^1.0.0",
+    "@umaprotocol/core": "^1.0.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
@@ -14,6 +15,7 @@
     "google-auth-library": "^6.0.2",
     "graphql-request": "^1.8.2",
     "node-fetch": "^2.3.0",
+    "truffle": "^5.1.35",
     "web3": "^1.2.4",
     "winston": "^3.2.1"
   },
