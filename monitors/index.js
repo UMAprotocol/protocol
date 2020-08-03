@@ -250,18 +250,15 @@ async function Poll(callback) {
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 
+    // Deprecate UNISWAP_PRICE_FEED_CONFIG to favor TOKEN_PRICE_FEED_CONFIG, leaving in for compatibility.
+    // If nothing defined, it will default to uniswap within createPriceFeed
+    const tokenPriceFeedConfigEnv = process.env.TOKEN_PRICE_FEED_CONFIG || process.env.UNISWAP_PRICE_FEED_CONFIG;
+
     // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
     // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
-    const uniswapPriceFeedConfig = process.env.UNISWAP_PRICE_FEED_CONFIG
-      ? JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG)
-      : null;
-
-    // Read price feed configuration from an environment variable. Balancer price feed contains information about the
     // Requires the address of the balancer pool where price is available.
     // Balancer market. EG: {"type":"balancer", "balancerAddress":"0x1234"}
-    const balancerPriceFeedConfig = process.env.BALANCER_PRICE_FEED_CONFIG
-      ? JSON.parse(process.env.BALANCER_PRICE_FEED_CONFIG)
-      : null;
+    const tokenPriceFeedConfig = tokenPriceFeedConfigEnv ? JSON.parse(tokenPriceFeedConfigEnv) : null;
 
     // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
     // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
@@ -277,8 +274,7 @@ async function Poll(callback) {
       startingBlock,
       endingBlock,
       monitorConfig,
-      // Use uniswap if included otherwise balancer
-      uniswapPriceFeedConfig || balancerPriceFeedConfig,
+      tokenPriceFeedConfig,
       medianizerPriceFeedConfig
     );
   } catch (error) {

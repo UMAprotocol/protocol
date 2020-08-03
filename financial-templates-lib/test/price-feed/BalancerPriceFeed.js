@@ -42,4 +42,12 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(balancerPriceFeed.getCurrentPrice(), "0");
     assert.equal(balancerPriceFeed.getLastUpdateTime(), mockTime);
   });
+  it("set new price", async function() {
+    const newPrice = 100;
+    mockTime = 100;
+    await balancerMock.setPrice(newPrice);
+    await balancerPriceFeed.update();
+    assert.equal(balancerPriceFeed.getCurrentPrice(), newPrice);
+    assert.equal(balancerPriceFeed.getLastUpdateTime(), mockTime);
+  });
 });

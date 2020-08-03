@@ -173,11 +173,10 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
 }
 
 async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
-  assert(empAddress, "createUniswapPriceFeedForEmp: Must pass in an `empAddress`");
+  assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
   const emp = getEmpAtAddress(web3, empAddress);
-  const balancerTokenOut = await emp.methods.collateralCurrency().call();
   const balancerTokenIn = await emp.methods.tokenCurrency().call();
-  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, balancerTokenOut, ...config });
+  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, ...config });
 }
 
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
@@ -229,10 +228,9 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
 function createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
   if (config.type == "balancer") {
     return createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
-  } else if (config.type == "uniswap") {
+  } else {
     return createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
   }
-  throw new Error("Invalid PriceFeed Type: " + config.type);
 }
 
 // Default price feed configs for currently approved identifiers.
