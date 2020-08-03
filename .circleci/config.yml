@@ -149,7 +149,7 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Pandoc
           command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
