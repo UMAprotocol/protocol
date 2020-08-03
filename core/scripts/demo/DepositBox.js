@@ -28,7 +28,7 @@
 
 // Helper modules
 const { toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const { interfaceName } = require("../../utils/Constants");
+const { interfaceName } = require("@umaprotocol/common");
 const { RegistryRolesEnum } = require("@umaprotocol/common");
 
 const DepositBox = artifacts.require("DepositBox");
