@@ -1,6 +1,5 @@
 // This script calculates $UMA liquidity mining rewards for Balancer Pools. This is done with the following process:
-// -> Define the starting and ending blockheight of each week. Both are chosen as the block with the closest timestamp
-// to a fixed weekly time(e.g.2020-06-06 00:00pm UTC).
+// -> Define the starting and ending blockheight of each week.
 // -> Define snapshot blocks (eg every 64 blocks ~15min). For each snapshot block, calculate the proportional liquidity
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
@@ -8,15 +7,13 @@
 // Example usage from core: truffle exec ./scripts/liquidity-mining/calculateBalancerLPProviders.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
 
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
-
-const moment = require("moment");
 const cliProgress = require("cli-progress");
+require("dotenv").config();
+const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 const Web3 = require("web3");
-const utils = require("./utils");
 const poolAbi = require("../../build/contracts/ERC20.json");
-require("dotenv").config();
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
@@ -32,32 +29,14 @@ const UMA_PER_WEEK = toBN(toWei("25000"));
 const BLOCKS_PER_SNAPSHOT = 64;
 let umaPerSnapshot;
 
-async function calculateBalancerLPProviders(fromDate, toDate, poolAddress, week) {
+async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, week) {
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
-  fromDate = moment.utc(fromDate, "YYYY-MM-DD");
-  toDate = moment.utc(toDate, "YYYY-MM-DD");
-  if (!web3.utils.isAddress(poolAddress) || !fromDate.isValid() || !toDate.isValid() || !week) {
-    throw "Missing or invalid parameter! Provide poolAddress, fromDate, toDate & week. fromDate and toDate must be strings formatted YYYY-MM-DD";
+  if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week) {
+    throw "Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock & week.";
   }
 
   console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
-  // Get the closet block numbers on each side of the from and to date, within an error band of 30 seconds (~2 blocks).
-  const fromBlock = await utils.findBlockNumberAtTimestamp(web3, fromDate.unix());
-
-  const toBlock = await utils.findBlockNumberAtTimestamp(web3, toDate.unix());
-  console.table({
-    "Search from": {
-      Date: fromDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-      "Unix timestamp": fromDate.unix(),
-      "Block number": fromBlock
-    },
-    "Search until": {
-      Date: toDate.format("dddd, MMMM Do YYYY, h:mm:ss a"),
-      "Unix timestamp": toDate.unix(),
-      "Block number": toBlock
-    }
-  });
 
   // Calculate the total number of snapshots over the interval.
   const snapshotsToTake = Math.ceil((toBlock - fromBlock) / BLOCKS_PER_SNAPSHOT);
@@ -74,7 +53,7 @@ async function calculateBalancerLPProviders(fromDate, toDate, poolAddress, week)
 
   console.log("⚖️  Finding balancer pool info...");
   // Get the information on a particular pool. This includes a mapping of all previous token holders (shareholders).
-  const poolInfo = await utils.fetchBalancerPoolInfo(poolAddress);
+  const poolInfo = await _fetchBalancerPoolInfo(poolAddress);
 
   // Extract the addresses of all historic shareholders.
   const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
@@ -140,11 +119,9 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   let promiseArray = [];
   for (shareHolder of Object.keys(shareHolderPayout)) {
-    promiseArray.push(await bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber));
+    promiseArray.push(bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber));
   }
-
   const balanceResults = await Promise.allSettled(promiseArray);
-
   // For each balance result, calculate their associated payment addition.
   balanceResults.forEach(function(balanceResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
@@ -169,22 +146,88 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
 function _saveShareHolderPayout(shareHolderPayout, week) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
   for (shareHolder of Object.keys(shareHolderPayout)) {
-    if (shareHolderPayout[shareHolder] == "0") delete shareHolderPayout[shareHolder];
+    if (shareHolderPayout[shareHolder].toString() == "0") delete shareHolderPayout[shareHolder];
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }
 
   const savePath = `${path.resolve(__dirname)}/weekly-payouts/${week}_week_UMAsToDistribute.json`;
-  fs.writeFile(savePath, JSON.stringify(shareHolderPayout), err => {
-    if (err) return console.error(err);
-    console.log("🗄  File successfully written to", savePath);
+  fs.writeFileSync(savePath, JSON.stringify(shareHolderPayout));
+  console.log("🗄  File successfully written to", savePath);
+}
+
+// Find information about a given balancer pool `shares` returns a list of all historic LP providers. First tries to
+// query the pool directly based off the pool address. If this does not work then gets the addresses of the tokens
+// the pool holds and uses this to query the graph.
+async function _fetchBalancerPoolInfo(poolAddress) {
+  const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
+  const poolAddressQuery = `
+        {
+          pools (where: {id: "${poolAddress}"}) {
+            id
+            shares (first: 1000) {
+              userAddress {
+                id
+              }
+            }
+          }
+        }
+    `;
+
+  const poolAddressQueryResponse = await fetch(SUBGRAPH_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ query: poolAddressQuery })
   });
+
+  const poolAddressQueryData = (await poolAddressQueryResponse.json()).data;
+  if (poolAddressQueryData.pools.length > 0) {
+    return poolAddressQueryData.pools[0];
+  }
+  console.log("⚠️  Balancer pool provided is not indexed in the subgraph! Using direct token address query.");
+  const tokenBalanceQuery = await fetch(`https://api.ethplorer.io/getAddressInfo/${poolAddress}?apiKey=freekey`);
+  const tokenData = await tokenBalanceQuery.json();
+  const tokensArray = tokenData.tokens.map(token => token.tokenInfo.address);
+  if (tokensArray.length === 0) {
+    throw "Balancer pool holds no tokens!";
+  }
+  console.log(`🧙‍♂️ Found balancer pool's tokens: ${JSON.stringify(tokensArray)}`);
+  const tokenAddressQuery = `{
+      pools(where: {tokensList: ${JSON.stringify(tokensArray)}}) {
+        id
+        shares(first: 1000) {
+          userAddress {
+            id
+          }
+        }
+      }
+    }`;
+
+  const tokenAddressQueryResponse = await fetch(SUBGRAPH_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ query: tokenAddressQuery })
+  });
+
+  const tokenAddressQueryData = (await tokenAddressQueryResponse.json()).data;
+
+  if (tokenAddressQueryData.pools.length > 0) {
+    console.log("🔎 Found pool info via direct token query method.");
+    return tokenAddressQueryData.pools[0];
+  }
+  throw "Direct token query also returned empty pool!";
 }
 
 // Function with a callback structured like this is required to enable `truffle exec` to run this script.
 async function Main(callback) {
   try {
     // Pull the parameters from process arguments. specifying them like this lets tests add its own.
-    await calculateBalancerLPProviders(argv.fromDate, argv.toDate, argv.poolAddress, argv.week);
+    await calculateBalancerLPProviders(argv.fromBlock, argv.toBlock, argv.poolAddress, argv.week);
   } catch (error) {
     console.error(error);
   }
