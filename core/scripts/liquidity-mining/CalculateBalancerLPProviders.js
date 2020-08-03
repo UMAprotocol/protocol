@@ -160,9 +160,9 @@ function _saveShareHolderPayout(shareHolderPayout, week) {
 // the pool holds and uses this to query the graph.
 async function _fetchBalancerPoolInfo(poolAddress) {
   const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
-  const poolAddressQuery = `
+  const query = `
         {
-          pools (where: {id: "${poolAddress}"}) {
+          pools (where: {id: "${poolAddress.toLowerCase()}"}) {
             id
             shares (first: 1000) {
               userAddress {
@@ -173,54 +173,20 @@ async function _fetchBalancerPoolInfo(poolAddress) {
         }
     `;
 
-  const poolAddressQueryResponse = await fetch(SUBGRAPH_URL, {
+  const response = await fetch(SUBGRAPH_URL, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ query: poolAddressQuery })
+    body: JSON.stringify({ query })
   });
 
-  const poolAddressQueryData = (await poolAddressQueryResponse.json()).data;
-  if (poolAddressQueryData.pools.length > 0) {
-    return poolAddressQueryData.pools[0];
+  const data = (await response.json()).data;
+  if (data.pools.length > 0) {
+    return data.pools[0];
   }
-  console.log("⚠️  Balancer pool provided is not indexed in the subgraph! Using direct token address query.");
-  const tokenBalanceQuery = await fetch(`https://api.ethplorer.io/getAddressInfo/${poolAddress}?apiKey=freekey`);
-  const tokenData = await tokenBalanceQuery.json();
-  const tokensArray = tokenData.tokens.map(token => token.tokenInfo.address);
-  if (tokensArray.length === 0) {
-    throw "Balancer pool holds no tokens!";
-  }
-  console.log(`🧙‍♂️ Found balancer pool's tokens: ${JSON.stringify(tokensArray)}`);
-  const tokenAddressQuery = `{
-      pools(where: {tokensList: ${JSON.stringify(tokensArray)}}) {
-        id
-        shares(first: 1000) {
-          userAddress {
-            id
-          }
-        }
-      }
-    }`;
-
-  const tokenAddressQueryResponse = await fetch(SUBGRAPH_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query: tokenAddressQuery })
-  });
-
-  const tokenAddressQueryData = (await tokenAddressQueryResponse.json()).data;
-
-  if (tokenAddressQueryData.pools.length > 0) {
-    console.log("🔎 Found pool info via direct token query method.");
-    return tokenAddressQueryData.pools[0];
-  }
-  throw "Direct token query also returned empty pool!";
+  throw "⚠️  Balancer pool provided is not indexed in the subgraph or bad address!";
 }
 
 // Function with a callback structured like this is required to enable `truffle exec` to run this script.
