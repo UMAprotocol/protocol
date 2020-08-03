@@ -111,6 +111,7 @@
     "liquidator",
     "monitors",
     "financial-templates-lib",
-    "common"
+    "common",
+    "cli"
   ]
 }
