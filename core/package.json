@@ -35,10 +35,12 @@
   },
   "files": [
     "./contracts/**/*.sol",
-    "./build/contracts/*.js"
+    "./build/contracts/*.js",
+    "./migrations/*.js"
   ],
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "buidler test",
+    "load-addresses": "yarn run apply-registry"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

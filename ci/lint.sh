@@ -5,4 +5,4 @@ PROTOCOL_DIR=$(pwd)
 
 # Lint JS
 echo "Linting Solidity and js"
-npm run lint
+yarn run lint

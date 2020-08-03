@@ -102,7 +102,7 @@ jobs:
     docker:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 9000000
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
       - image: trufflesuite/ganache-cli
         command: ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -p 1235
     working_directory: ~/protocol
@@ -111,7 +111,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: ./ci/run_truffle_tests.sh
+          command: yarn run test
   coverage:
     docker:
       - image: circleci/node:lts
@@ -125,34 +125,13 @@ jobs:
           command: ./ci/coverage.sh ~/protocol/core
       - store_artifacts:
           path: core/coverage
-  dapp_test:
-    docker:
-      - image: circleci/node:lts
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 9000000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Deploy Contracts
-          working_directory: ~/protocol/core
-          command: yarn run truffle migrate --reset --network test
-      - save_cache:
-          key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/protocol
-      - run:
-          name: Test Voter DApp
-          working_directory: ~/protocol
-          command: ./ci/run_dapp_tests.sh
   dapp_build:
     docker:
       - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Apply Deployment Registry
           working_directory: ~/protocol/core
@@ -204,16 +183,13 @@ workflows:
       - docs:
           requires:
             - checkout_and_install
-      - dapp_test:
-          requires:
-            - build
       - dapp_build:
           requires:
-            - dapp_test
+            - build
       - deploy_to_staging:
           context: gcloud
           requires:
-            - dapp_test
+            - dapp_build
             - test
           filters:
             branches:

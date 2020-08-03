@@ -15,6 +15,9 @@
     "winston-slack-webhook-transport": "^1.2.1",
     "winston-transport": "^4.3.0"
   },
+  "devDependencies": {
+    "truffle": "^5.1.37"
+  },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
@@ -26,7 +29,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "truffle test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
