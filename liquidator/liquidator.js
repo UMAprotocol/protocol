@@ -291,7 +291,7 @@ class Liquidator {
         // Make sure to keep trying with this nonce
         const nonce = await this.web3.eth.getTransactionCount(this.account);
 
-        // Min Gas Price, with a max gasPrice of double
+        // Min Gas Price, with a max gasPrice of x4
         const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
         const maxGasPrice = 4 * minGasPrice;
 
@@ -304,7 +304,7 @@ class Liquidator {
           minGasPrice,
           maxGasPrice,
           gasPriceScalingFunction,
-          delay: 60000 // Tries and bump gasPrice by 10 GWEI every minute if the tx hasn't gone through
+          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
         });
       } catch (error) {
         this.logger.error({
