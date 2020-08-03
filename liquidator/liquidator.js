@@ -293,10 +293,10 @@ class Liquidator {
 
         // Min Gas Price, with a max gasPrice of double
         const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 2 * minGasPrice;
+        const maxGasPrice = 4 * minGasPrice;
 
-        // Increment by 15 gwei per trial
-        const gasPriceScalingFunction = ynatm.LINEAR(15);
+        // Doubles gasPrice every iteration
+        const gasPriceScalingFunction = ynatm.DOUBLES;
 
         // Receipt without events
         receipt = await ynatm.send({
