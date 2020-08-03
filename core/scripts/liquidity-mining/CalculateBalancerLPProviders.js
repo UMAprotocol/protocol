@@ -155,9 +155,7 @@ function _saveShareHolderPayout(shareHolderPayout, week) {
   console.log("🗄  File successfully written to", savePath);
 }
 
-// Find information about a given balancer pool `shares` returns a list of all historic LP providers. First tries to
-// query the pool directly based off the pool address. If this does not work then gets the addresses of the tokens
-// the pool holds and uses this to query the graph.
+// Find information about a given balancer `poolAddress` `shares` returns a list of all historic LP providers.
 async function _fetchBalancerPoolInfo(poolAddress) {
   const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
   const query = `
