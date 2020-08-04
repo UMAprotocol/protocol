@@ -120,7 +120,6 @@ async function run(
 
   // 7. Global summary reporter reporter to generate EMP wide metrics.
   const globalSummaryReporter = new GlobalSummaryReporter(
-    empClient,
     empEventClient,
     referencePriceFeed,
     uniswapPriceFeed,
