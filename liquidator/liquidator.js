@@ -265,10 +265,10 @@ class Liquidator {
         });
         continue;
       }
-
+      const gasEstimation = await liquidation.estimateGas({ from: this.account });
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.floor(gasEstimation * 1.5),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -372,9 +372,10 @@ class Liquidator {
         continue;
       }
 
+      const gasEstimation = await withdraw.estimateGas({ from: this.account });
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.floor(gasEstimation * 1.5),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({

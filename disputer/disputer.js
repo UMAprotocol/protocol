@@ -129,7 +129,7 @@ class Disputer {
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
-        await dispute.call({ from: this.account, gasPrice: this.gasEstimator.getCurrentFastPrice() });
+        await dispute.call({ from: this.account });
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -142,9 +142,10 @@ class Disputer {
         continue;
       }
 
+      const gasEstimation = await dispute.estimateGas({ from: this.account });
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.floor(gasEstimation * 1.5),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
@@ -239,9 +240,10 @@ class Disputer {
         continue;
       }
 
+      const gasEstimation = await withdraw.estimateGas({ from: this.account });
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.floor(gasEstimation * 1.5),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
