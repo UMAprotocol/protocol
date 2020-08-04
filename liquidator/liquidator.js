@@ -248,8 +248,10 @@ class Liquidator {
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      let gasLimit;
       try {
         await liquidation.call({ from: this.account });
+        gasLimit = (await liquidation.estimateGas({ from: this.account })) * 1.5;
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -266,7 +268,6 @@ class Liquidator {
         continue;
       }
 
-      const gasLimit = (await liquidation.estimateGas({ from: this.account })) * 1.5;
       const txnConfig = {
         from: this.account,
         gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
@@ -357,9 +358,10 @@ class Liquidator {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawAmount;
+      let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        gasLimit = (await withdraw.estimateGas({ from: this.account })) * 1.5;
         if (!withdrawAmount) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -373,7 +375,6 @@ class Liquidator {
         continue;
       }
 
-      const gasLimit = (await withdraw.estimateGas({ from: this.account })) * 1.5;
       const txnConfig = {
         from: this.account,
         gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,

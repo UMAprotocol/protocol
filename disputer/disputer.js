@@ -128,8 +128,10 @@ class Disputer {
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      let gasLimit;
       try {
         await dispute.call({ from: this.account });
+        gasLimit = (await dispute.estimateGas({ from: this.account })) * 1.5;
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -142,7 +144,6 @@ class Disputer {
         continue;
       }
 
-      const gasLimit = (await dispute.estimateGas({ from: this.account })) * 1.5;
       const txnConfig = {
         from: this.account,
         gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
@@ -224,9 +225,10 @@ class Disputer {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawAmount;
+      let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        gasLimit = (await withdraw.estimateGas({ from: this.account })) * 1.5;
         if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -240,7 +242,6 @@ class Disputer {
         continue;
       }
 
-      const gasLimit = (await liquidation.estimateGas({ from: this.account })) * 1.5;
       const txnConfig = {
         from: this.account,
         gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
