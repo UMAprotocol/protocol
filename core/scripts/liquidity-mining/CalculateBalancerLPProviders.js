@@ -26,7 +26,7 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 const UMA_PER_WEEK = toBN(toWei("25000"));
-const BLOCKS_PER_SNAPSHOT = 64;
+const BLOCKS_PER_SNAPSHOT = 256;
 let umaPerSnapshot;
 
 async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, week) {
