@@ -14,8 +14,8 @@ class OneInchExchange {
    * @param {Object} param.gasEstimator - GasEstimator instance
    * @param {string} param.oneSplitAddress - Address of the One Split
    * */
-  constructor({ web3, gasEstimator, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
-    this.logger = gasEstimator.logger;
+  constructor({ web3, gasEstimator, logger, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
+    this.logger = logger;
     this.gasEstimator = gasEstimator;
     this.oneSplitAddress = oneSplitAddress;
 
@@ -92,7 +92,8 @@ class OneInchExchange {
       at: "OneInchExchange",
       message: "Swapped",
       fromToken,
-      toToken
+      toToken,
+      ...tx
     });
 
     return tx;

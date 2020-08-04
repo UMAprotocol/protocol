@@ -23,7 +23,7 @@ contract("OneInch", function(accounts) {
 
   const gasEstimator = new GasEstimator(spyLogger);
 
-  const oneInch = new OneInchExchange({ web3, gasEstimator });
+  const oneInch = new OneInchExchange({ web3, logger: spyLogger, gasEstimator });
   const swapAndCheck = oneInchSwapAndCheck(oneInch);
 
   it("Swap ETH -> DAI", async function() {
