@@ -1,6 +1,6 @@
 // Helper scripts
 const { LiquidationStatesEnum, didContractThrow, MAX_UINT_VAL } = require("@umaprotocol/common");
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 

@@ -1,7 +1,7 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { interfaceName } = require("../../../core/utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 const { ExpiringMultiPartyEventClient } = require("../../clients/ExpiringMultiPartyEventClient");
