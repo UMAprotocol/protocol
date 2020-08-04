@@ -131,7 +131,7 @@ class Disputer {
       let gasLimit;
       try {
         await dispute.call({ from: this.account });
-        gasLimit = (await dispute.estimateGas({ from: this.account })) * 1.5;
+        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * 1.5);
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -139,6 +139,7 @@ class Disputer {
           disputer: this.account,
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
+          totalPaid,
           error
         });
         continue;
@@ -228,7 +229,7 @@ class Disputer {
       let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = (await withdraw.estimateGas({ from: this.account })) * 1.5;
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.5);
         if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
