@@ -150,7 +150,7 @@ function _saveShareHolderPayout(shareHolderPayout, week) {
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }
 
-  const savePath = `${path.resolve(__dirname)}/weekly-payouts/${week}_week_UMAsToDistribute.json`;
+  const savePath = `${path.resolve(__dirname)}/weekly-payouts/${week}_week_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(shareHolderPayout));
   console.log("🗄  File successfully written to", savePath);
 }
