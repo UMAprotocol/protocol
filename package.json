@@ -93,7 +93,7 @@
     "winston-transport": "^4.3.0"
   },
   "bin": {
-    "uma": "./core/scripts/cli/cli_entry.sh"
+    "uma": "./cli/cli_entry.sh"
   },
   "husky": {
     "hooks": {
@@ -111,6 +111,7 @@
     "liquidator",
     "monitors",
     "financial-templates-lib",
-    "common"
+    "common",
+    "cli"
   ]
 }

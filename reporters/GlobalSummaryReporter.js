@@ -5,7 +5,6 @@ const {
   formatWithMaxDecimals,
   addSign,
   revertWrapper,
-  ZERO_ADDRESS,
   averageBlockTimeSeconds
 } = require("@umaprotocol/common");
 const { getUniswapClient, queries: uniswapQueries } = require("./graphql/uniswapSubgraph");
@@ -15,10 +14,10 @@ const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
 const dim = chalkPipe("dim");
+const fetch = require("node-fetch");
 
 class GlobalSummaryReporter {
   constructor(
-    expiringMultiPartyClient,
     expiringMultiPartyEventClient,
     referencePriceFeed,
     uniswapPriceFeed,
@@ -29,7 +28,6 @@ class GlobalSummaryReporter {
     endDateOffsetSeconds,
     periodLengthSeconds
   ) {
-    this.empClient = expiringMultiPartyClient;
     this.empEventClient = expiringMultiPartyEventClient;
     this.referencePriceFeed = referencePriceFeed;
     this.uniswapPriceFeed = uniswapPriceFeed;
@@ -62,7 +60,6 @@ class GlobalSummaryReporter {
   }
 
   async update() {
-    await this.empClient.update();
     await this.empEventClient.update();
     await this.referencePriceFeed.update();
 
@@ -80,25 +77,6 @@ class GlobalSummaryReporter {
       this.endBlockTimestamp
     )}`;
 
-    // Query events not already queried by EMPEventClient
-    this.collateralDepositEvents = await this.collateralContract.getPastEvents("Transfer", {
-      fromBlock: 0,
-      toBlock: this.currentBlockNumber,
-      filter: { to: this.empContract.options.address }
-    });
-    this.collateralWithdrawEvents = await this.collateralContract.getPastEvents("Transfer", {
-      fromBlock: 0,
-      toBlock: this.currentBlockNumber,
-      filter: { from: this.empContract.options.address }
-    });
-    this.syntheticTransferEvents = await this.syntheticContract.getPastEvents("Transfer", {
-      fromBlock: 0,
-      toBlock: this.currentBlockNumber
-    });
-    this.syntheticBurnedEvents = this.syntheticTransferEvents.filter(
-      event => event.returnValues.from === this.empContract.options.address && event.returnValues.to === ZERO_ADDRESS
-    );
-
     // Events loaded by EMPEventClient.update()
     this.newSponsorEvents = this.empEventClient.getAllNewSponsorEvents();
     this.createEvents = this.empEventClient.getAllCreateEvents();
@@ -109,23 +87,28 @@ class GlobalSummaryReporter {
 
     // Events queried from UMA subgraph
     this.umaClient = getUmaClient();
-    this.liquidationRelatedEvents = (
-      await this.umaClient.request(
-        umaQueries.LIQUIDATION_EVENTS_FOR_EMP(this.empContract.options.address.toLowerCase())
-      )
-    ).financialContracts[0].liquidations;
+    const empData = (await this.umaClient.request(umaQueries.EMP_STATS(this.empContract.options.address.toLowerCase())))
+      .financialContracts[0];
+    this.liquidationRelatedEvents = empData.liquidations;
     this.liquidationCreatedEvents = [];
-    this.liquidationRelatedEvents.forEach(liq => {
-      liq.events.forEach(e => {
-        if (e.__typename === "LiquidationCreatedEvent") {
-          this.liquidationCreatedEvents.push({
-            ...e.liquidation,
-            // Add event block # to liquidation data
-            block: Number(e.block)
-          });
-        }
+    if (this.liquidationRelatedEvents) {
+      this.liquidationRelatedEvents.forEach(liq => {
+        liq.events.forEach(e => {
+          if (e.__typename === "LiquidationCreatedEvent") {
+            this.liquidationCreatedEvents.push({
+              ...e.liquidation,
+              // Add event block # to liquidation data
+              block: Number(e.block)
+            });
+          }
+        });
       });
-    });
+    }
+    this.totalCollateralDeposited = empData.totalCollateralDeposited;
+    this.totalCollateralWithdrawn = empData.totalCollateralWithdrawn;
+    this.totalSyntheticTokensBurned = empData.totalSyntheticTokensBurned;
+    this.totalSyntheticTokensCreated = empData.totalSyntheticTokensCreated;
+    this.currentUniqueSponsors = empData.positions.length;
 
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
@@ -193,7 +176,9 @@ class GlobalSummaryReporter {
 
     // 1. Sponsor stats table
     console.group();
-    console.log(bold(`Sponsor summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
+    console.log(
+      bold(`Sponsor summary stats (as of ${formatDate(this.empEventClient.lastUpdateTimestamp, this.web3)})`)
+    );
     console.log(
       italic(
         "- Collateral deposited counts collateral transferred into contract from creates, deposits, final fee bonds, and dispute bonds"
@@ -244,17 +229,19 @@ class GlobalSummaryReporter {
     // 2b. Tokens Holder table
     console.group();
     console.log(
-      bold(`Synthetic Token Ownership stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`)
+      bold(`Synthetic Token Ownership stats (as of ${formatDate(this.empEventClient.lastUpdateTimestamp, this.web3)})`)
     );
     console.log(
       italic("- Token holder counts are equal to the # of unique token holders who held any balance during a period")
     );
-    await this._generateTokenHolderStats(periods);
+    await this._generateTokenHolderStats();
     console.groupEnd();
 
     // 3. Liquidation stats table
     console.group();
-    console.log(bold(`Liquidation summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
+    console.log(
+      bold(`Liquidation summary stats (as of ${formatDate(this.empEventClient.lastUpdateTimestamp, this.web3)})`)
+    );
     console.log(italic("- Unique liquidations count # of unique sponsors that have been liquidated"));
     console.log(italic("- Collateral & tokens liquidated counts aggregate amounts from all partial liquidations"));
     console.log(italic("- Current collateral liquidated includes any collateral locked in pending liquidations"));
@@ -263,13 +250,15 @@ class GlobalSummaryReporter {
 
     // 4. Dispute stats table
     console.group();
-    console.log(bold(`Dispute summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
+    console.log(
+      bold(`Dispute summary stats (as of ${formatDate(this.empEventClient.lastUpdateTimestamp, this.web3)})`)
+    );
     await this._generateDisputeStats(periods);
     console.groupEnd();
 
     // 5. DVM stats table
     console.group();
-    console.log(bold(`DVM summary stats (as of ${formatDate(this.empClient.lastUpdateTimestamp, this.web3)})`));
+    console.log(bold(`DVM summary stats (as of ${formatDate(this.empEventClient.lastUpdateTimestamp, this.web3)})`));
     this._generateDvmStats(periods);
     console.groupEnd();
   }
@@ -537,10 +526,10 @@ class GlobalSummaryReporter {
 
     // - Lifetime # of unique sponsors.
     const newSponsorData = this._filterNewSponsorData(periods, this.newSponsorEvents);
-    const currentUniqueSponsors = this.empClient.getAllPositions();
+    const currentUniqueSponsors = this.currentUniqueSponsors;
     allSponsorStatsTable["# of unique sponsors"] = {
       cumulative: Object.keys(newSponsorData.allUniqueSponsors).length,
-      current: Object.keys(currentUniqueSponsors).length,
+      current: currentUniqueSponsors,
       [this.periodLabelInHours]: Object.keys(newSponsorData.periodUniqueSponsors["period"]).length,
       ["Δ from prev. period"]: addSign(
         Object.keys(newSponsorData.periodUniqueSponsors["period"]).length -
@@ -549,85 +538,51 @@ class GlobalSummaryReporter {
     };
 
     // - Cumulative collateral deposited into contract
-    const depositData = this._filterTransferData(periods, this.collateralDepositEvents);
     allSponsorStatsTable["collateral deposited"] = {
-      cumulative: this.formatDecimalString(depositData.allCollateralTransferred),
-      [this.periodLabelInHours]: this.formatDecimalString(depositData.periodCollateralTransferred["period"]),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        depositData.periodCollateralTransferred["period"].sub(depositData.periodCollateralTransferred["prevPeriod"])
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralDeposited))
     };
 
     // - Cumulative collateral withdrawn from contract
-    const withdrawData = this._filterTransferData(periods, this.collateralWithdrawEvents);
     allSponsorStatsTable["collateral withdrawn"] = {
-      cumulative: this.formatDecimalString(withdrawData.allCollateralTransferred),
-      [this.periodLabelInHours]: this.formatDecimalString(withdrawData.periodCollateralTransferred["period"]),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        withdrawData.periodCollateralTransferred["period"].sub(withdrawData.periodCollateralTransferred["prevPeriod"])
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralWithdrawn))
     };
 
     // - Net collateral deposited into contract:
-    let netCollateralWithdrawn = depositData.allCollateralTransferred.sub(withdrawData.allCollateralTransferred);
+    let netCollateralWithdrawn = this.toBN(this.toWei(this.totalCollateralDeposited)).sub(
+      this.toBN(this.toWei(this.totalCollateralWithdrawn))
+    );
     if (
       !netCollateralWithdrawn.lt(this.toBN(this.totalPfc.toString()).add(this.accountingVariance)) &&
       !netCollateralWithdrawn.gt(this.toBN(this.totalPfc.toString()).sub(this.accountingVariance))
     ) {
       throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
-    let netCollateralWithdrawnPeriod = depositData.periodCollateralTransferred["period"].sub(
-      withdrawData.periodCollateralTransferred["period"]
-    );
-    let netCollateralWithdrawnPrevPeriod = depositData.periodCollateralTransferred["prevPeriod"].sub(
-      withdrawData.periodCollateralTransferred["prevPeriod"]
-    );
     allSponsorStatsTable["net collateral deposited"] = {
-      cumulative: this.formatDecimalString(netCollateralWithdrawn),
-      [this.periodLabelInHours]: this.formatDecimalString(netCollateralWithdrawnPeriod),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        netCollateralWithdrawnPeriod.sub(netCollateralWithdrawnPrevPeriod)
-      )
+      cumulative: this.formatDecimalString(netCollateralWithdrawn)
     };
 
     // - Tokens minted: tracked via Create events.
-    const tokenMintData = this._filterCreateData(periods, this.createEvents);
     allSponsorStatsTable["tokens minted"] = {
-      cumulative: this.formatDecimalString(tokenMintData.allTokensCreated),
-      [this.periodLabelInHours]: this.formatDecimalString(tokenMintData.periodTokensCreated["period"]),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        tokenMintData.periodTokensCreated["period"].sub(tokenMintData.periodTokensCreated["prevPeriod"])
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensCreated))
     };
 
     // - Tokens burned
-    const tokenBurnData = this._filterTransferData(periods, this.syntheticBurnedEvents);
     allSponsorStatsTable["tokens burned"] = {
-      cumulative: this.formatDecimalString(tokenBurnData.allCollateralTransferred),
-      [this.periodLabelInHours]: this.formatDecimalString(tokenBurnData.periodCollateralTransferred["period"]),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        tokenBurnData.periodCollateralTransferred["period"].sub(tokenBurnData.periodCollateralTransferred["prevPeriod"])
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensBurned))
     };
 
     // - Net tokens minted:
-    let netTokensMinted = tokenMintData.allTokensCreated.sub(tokenBurnData.allCollateralTransferred);
+    let netTokensMinted = this.toBN(this.toWei(this.totalSyntheticTokensCreated)).sub(
+      this.toBN(this.toWei(this.totalSyntheticTokensBurned))
+    );
     if (
       !netTokensMinted.lt(this.toBN(this.totalTokensOutstanding.toString()).add(this.accountingVariance)) &&
       !netTokensMinted.gt(this.toBN(this.totalTokensOutstanding.toString()).sub(this.accountingVariance))
     ) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
-    let netTokensMintedPeriod = tokenMintData.periodTokensCreated["period"].sub(
-      tokenBurnData.periodCollateralTransferred["period"]
-    );
-    let netTokensMintedPrevPeriod = tokenMintData.periodTokensCreated["prevPeriod"].sub(
-      tokenBurnData.periodCollateralTransferred["prevPeriod"]
-    );
     allSponsorStatsTable["net tokens minted"] = {
-      cumulative: this.formatDecimalString(netTokensMinted),
-      [this.periodLabelInHours]: this.formatDecimalString(netTokensMintedPeriod),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(netTokensMintedPeriod.sub(netTokensMintedPrevPeriod))
+      cumulative: this.formatDecimalString(netTokensMinted)
     };
 
     // - GCR (collateral / tokens outstanding):
@@ -651,7 +606,7 @@ class GlobalSummaryReporter {
     console.table(allSponsorStatsTable);
   }
 
-  async _generateTokenHolderStats(periods) {
+  async _generateTokenHolderStats() {
     let allTokenHolderStatsTable = {};
 
     allTokenHolderStatsTable["# tokens outstanding"] = {
@@ -659,15 +614,9 @@ class GlobalSummaryReporter {
     };
 
     // Get token holder stats.
-    const tokenHolderStats = this._constructTokenHolderList(periods);
+    const tokenHolderCount = await this._getTokenHolderCount();
     allTokenHolderStatsTable["# of token holders"] = {
-      current: Object.keys(tokenHolderStats.currentTokenHolders).length,
-      cumulative: Object.keys(tokenHolderStats.countAllTokenHolders).length,
-      [this.periodLabelInHours]: Object.keys(tokenHolderStats.countPeriodTokenHolders["period"]).length,
-      ["Δ from prev. period"]: addSign(
-        Object.keys(tokenHolderStats.countPeriodTokenHolders["period"]).length -
-          Object.keys(tokenHolderStats.countPeriodTokenHolders["prevPeriod"]).length
-      )
+      current: tokenHolderCount
     };
     console.table(allTokenHolderStatsTable);
   }
@@ -885,109 +834,19 @@ class GlobalSummaryReporter {
    *
    * *******************************************************/
 
-  // Returns token holder statistics since synthetic token inception and for the periods input.
-  // Statistics include:
-  // - count of unique token holders during a period
-  // - final account balance at the end of the period
-  _constructTokenHolderList(periods) {
-    // Unique token holders who held any balance during a period:
-    const countAllTokenHolders = {};
-    const countPeriodTokenHolders = {};
-
-    // Net balances during a period:
-    const currentTokenHolders = {};
-    const periodTokenHolders = {};
-
-    let allTransferEvents = this.syntheticTransferEvents;
-
-    // Sort events from oldest first to newest last.
-    allTransferEvents.sort((a, b) => {
-      return a.blockNumber < b.blockNumber;
-    });
-
-    allTransferEvents.forEach(event => {
-      const sender = event.returnValues.from;
-      const receiver = event.returnValues.to;
-
-      // Ignore transfers for 0 tokens like the final transfer in this transaction: https://etherscan.io/tx/0x0ceebc33f9057e37a187895ad0dd07d8905da49c0c228474975018ca5f044948
-      if (event.returnValues.value === "0") {
-        return;
-      }
-
-      if (receiver !== ZERO_ADDRESS) {
-        // Add to token holder list.
-        countAllTokenHolders[receiver] = true;
-
-        // Initialize balance if we have not seen this receiver yet.
-        if (!currentTokenHolders[receiver]) {
-          currentTokenHolders[receiver] = this.toBN("0");
-        }
-
-        // Update balances for periods.
-        currentTokenHolders[receiver] = currentTokenHolders[receiver].add(this.toBN(event.returnValues.value));
-
-        // Since we are searching from oldest to newest block, the receiver account's balance for this period will always
-        // be equal to its cumulative balance.
-        for (let period of periods) {
-          if (!periodTokenHolders[period.label]) {
-            periodTokenHolders[period.label] = {};
-          }
-          if (!countPeriodTokenHolders[period.label]) {
-            countPeriodTokenHolders[period.label] = {};
-          }
-
-          if (this.isBlockInPeriod(event.blockNumber, period)) {
-            countPeriodTokenHolders[period.label][receiver] = true;
-            periodTokenHolders[period.label][receiver] = currentTokenHolders[receiver];
-          }
-        }
-      }
-
-      if (sender !== ZERO_ADDRESS) {
-        // Since we are searching from oldest to newest block, it is possible that the sender has not been seen yet
-        // as a receiver despite it having a balance. So, we need to initialize the sender's balance for this period
-        // before we update its cumulative balance.
-        for (let period of periods) {
-          if (this.isBlockInPeriod(event.blockNumber, period)) {
-            countPeriodTokenHolders[period.label][sender] = true;
-
-            if (!currentTokenHolders[sender]) {
-              // If we have not seen this sender yet, then we can initialize its balance to 0.
-              periodTokenHolders[period.label][sender] = this.toBN("0");
-            } else {
-              // If we have seen this sender, but we have not seen the sender as a receiver within this period,
-              // then its balance should be get initialized to its cumulative balance.
-              periodTokenHolders[period.label][sender] = currentTokenHolders[sender];
-            }
-
-            periodTokenHolders[period.label][sender] = periodTokenHolders[period.label][sender].sub(
-              this.toBN(event.returnValues.value)
-            );
-
-            if (periodTokenHolders[period.label][sender].isZero()) {
-              delete periodTokenHolders[period.label][sender];
-            }
-          }
-        }
-
-        // Since we are searching from oldest events first, the sender must already have a balance since we are ignoring
-        // events where the sender is the zero address.
-        currentTokenHolders[sender] = currentTokenHolders[sender].sub(this.toBN(event.returnValues.value));
-
-        // If sender transferred full balance, delete it from the dictionary.
-        if (currentTokenHolders[sender].isZero()) {
-          delete currentTokenHolders[sender];
-        }
-      }
-    });
-
-    return {
-      countAllTokenHolders,
-      countPeriodTokenHolders,
-      currentTokenHolders,
-      periodTokenHolders
-    };
-  }
+  _getTokenHolderCount = async () => {
+    try {
+      // Rate limiting for free tier ("freekey"):
+      // - Requests are limited to 5 per second, 50/min, 200/hour, 2000/24hours, 3000/week.
+      const ethplorerTokenInfoUrl = `https://api.ethplorer.io/getTokenInfo/${this.syntheticContract.address}?apiKey=freekey`;
+      const response = await fetch(ethplorerTokenInfoUrl);
+      const json = await response.json();
+      return Number(json.holdersCount);
+    } catch (err) {
+      console.error(err);
+      return -1;
+    }
+  };
 
   // Converts an interval in seconds to block height
   async _getLookbackTimeInBlocks(lookbackTimeInSeconds) {

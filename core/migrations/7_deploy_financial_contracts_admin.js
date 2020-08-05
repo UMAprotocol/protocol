@@ -1,7 +1,7 @@
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
 const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
-const { interfaceName } = require("../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

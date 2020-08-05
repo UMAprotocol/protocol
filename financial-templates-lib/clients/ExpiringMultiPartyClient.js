@@ -91,24 +91,20 @@ class ExpiringMultiPartyClient {
   }
 
   async update() {
-    // Since this function can have a relatively long run-time, we should be safe and check contract state explicitly at the same block height.
-    // This way we won't experience errors where the contract state changes between calls.
-    this.latestBlock = await this.web3.eth.getBlockNumber();
-
-    this.collateralRequirement = this.toBN(
-      (await this.emp.methods.collateralRequirement().call(undefined, this.latestBlock)).toString()
-    );
-    this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call(undefined, this.latestBlock));
-
-    const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0, toBlock: this.latestBlock });
+    const [collateralRequirement, liquidationLiveness, events, cumulativeFeeMultiplier] = await Promise.all([
+      this.emp.methods.collateralRequirement().call(),
+      this.emp.methods.liquidationLiveness().call(),
+      this.emp.getPastEvents("NewSponsor", { fromBlock: 0 }),
+      this.emp.methods.cumulativeFeeMultiplier().call()
+    ]);
+    this.collateralRequirement = this.toBN(collateralRequirement.toString());
+    this.liquidationLiveness = Number(liquidationLiveness);
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
+    this.cumulativeFeeMultiplier = this.toBN(cumulativeFeeMultiplier.toString());
 
     // Fetch information about each sponsor.
     const positions = await Promise.all(
       this.sponsorAddresses.map(address => this.emp.methods.positions(address).call(undefined, this.latestBlock))
-    );
-    const collateral = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.getCollateral(address).call(undefined, this.latestBlock))
     );
 
     const undisputedLiquidations = [];
@@ -153,25 +149,24 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = expiredLiquidations;
     this.disputedLiquidations = disputedLiquidations;
 
-    this.positions = this.sponsorAddresses.reduce(
-      (acc, address, i) =>
-        // Filter out empty positions.
-        positions[i].rawCollateral.toString() === "0"
-          ? acc
-          : /* eslint-disable indent */
-            acc.concat([
-              {
-                sponsor: address,
-                withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
-                withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
-                numTokens: positions[i].tokensOutstanding.toString(),
-                amountCollateral: collateral[i].toString(),
-                hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
-              }
-            ]),
-      []
-    );
-    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call(undefined, this.latestBlock);
+    this.positions = this.sponsorAddresses.reduce((acc, address, i) => {
+      const rawCollateral = this.toBN(positions[i].rawCollateral.toString());
+      // Filter out empty positions.
+      return rawCollateral.isZero()
+        ? acc
+        : /* eslint-disable indent */
+          acc.concat([
+            {
+              sponsor: address,
+              withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
+              withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
+              numTokens: positions[i].tokensOutstanding.toString(),
+              amountCollateral: rawCollateral.mul(this.cumulativeFeeMultiplier).div(this.toBN(this.toWei("1"))),
+              hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
+            }
+          ]);
+    }, []);
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "Expiring multi party state updated",

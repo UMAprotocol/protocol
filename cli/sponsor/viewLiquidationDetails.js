@@ -4,7 +4,7 @@ const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils")
 const { submitTransaction } = require("./transactionUtils");
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
 const { liquidationStateToDisplay } = require("./liquidationUtils");
-const { interfaceName } = require("../../../utils/Constants");
+const { interfaceName } = require("@umaprotocol/common");
 
 /**
  * @notice Display details about all liquidation events for this sponsor.

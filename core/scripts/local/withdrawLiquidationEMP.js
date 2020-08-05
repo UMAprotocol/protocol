@@ -7,7 +7,7 @@
  */
 const { fromWei, toBN, utf8ToHex } = web3.utils;
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
-const { interfaceName } = require("../../utils/Constants");
+const { interfaceName } = require("@umaprotocol/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

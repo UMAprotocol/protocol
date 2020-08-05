@@ -10,7 +10,7 @@ const Finder = artifacts.require("Finder");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Governor = artifacts.require("Governor");
 
-const { interfaceName } = require("../../utils/Constants");
+const { interfaceName } = require("@umaprotocol/common");
 const { PublicNetworks } = require("@umaprotocol/common");
 
 async function runExport() {
