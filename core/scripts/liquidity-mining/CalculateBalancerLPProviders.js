@@ -26,7 +26,7 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 const UMA_PER_WEEK = toBN(toWei("25000"));
-const BLOCKS_PER_SNAPSHOT = 64;
+const BLOCKS_PER_SNAPSHOT = 256;
 let umaPerSnapshot;
 
 async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, week) {
@@ -72,7 +72,7 @@ async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, wee
   );
 
   console.log("🎉 Finished calculating payouts!");
-  _saveShareHolderPayout(shareHolderPayout, week);
+  _saveShareHolderPayout(shareHolderPayout, week, fromBlock, toBlock);
 }
 
 // Calculate the payout to a list of `shareHolders` between `fromBlock` and `toBlock`. Split the block window up into
@@ -143,15 +143,17 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
 }
 
 // Generate a json file containing the shareholder output address and associated $UMA token payouts.
-function _saveShareHolderPayout(shareHolderPayout, week) {
+function _saveShareHolderPayout(shareHolderPayout, week, fromBlock, toBlock) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
   for (shareHolder of Object.keys(shareHolderPayout)) {
     if (shareHolderPayout[shareHolder].toString() == "0") delete shareHolderPayout[shareHolder];
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }
 
-  const savePath = `${path.resolve(__dirname)}/weekly-payouts/${week}_week_UMAsToDistribute.json`;
-  fs.writeFileSync(savePath, JSON.stringify(shareHolderPayout));
+  // Format output and save to file.
+  const outputObject = { week, fromBlock, toBlock, shareHolderPayout };
+  const savePath = `${path.resolve(__dirname)}/weekly-payouts/Week_${week}_Mining_Rewards.json`;
+  fs.writeFileSync(savePath, JSON.stringify(outputObject));
   console.log("🗄  File successfully written to", savePath);
 }
 
