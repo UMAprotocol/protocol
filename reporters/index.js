@@ -109,16 +109,7 @@ async function run(
     10
   );
 
-  // 6. Sponsor reporter to generate metrics on monitored positions.
-  const sponsorReporter = new SponsorReporter(
-    empClient,
-    tokenBalanceClient,
-    walletsToMonitor,
-    referencePriceFeed,
-    empProps
-  );
-
-  // 7. Global summary reporter reporter to generate EMP wide metrics.
+  // 6. Global summary reporter reporter to generate EMP wide metrics.
   const globalSummaryReporter = new GlobalSummaryReporter(
     empEventClient,
     referencePriceFeed,
@@ -131,14 +122,23 @@ async function run(
     periodLengthSeconds
   );
 
+  // 7. Sponsor reporter to generate metrics on monitored positions.
+  const sponsorReporter = new SponsorReporter(
+    empClient,
+    tokenBalanceClient,
+    walletsToMonitor,
+    referencePriceFeed,
+    empProps
+  );
+
   console.log(boldUnderline("1. Monitored wallets risk metrics🔎"));
   await sponsorReporter.generateMonitoredWalletMetrics();
 
-  console.log(boldUnderline("2. Sponsor table💸"));
-  await sponsorReporter.generateSponsorsTable();
-
-  console.log(boldUnderline("3. Global summary stats🌎"));
+  console.log(boldUnderline("2. Global summary stats🌎"));
   await globalSummaryReporter.generateSummaryStatsTable();
+
+  console.log(boldUnderline("3. Sponsor table💸"));
+  await sponsorReporter.generateSponsorsTable();
 }
 
 async function Poll(callback) {
