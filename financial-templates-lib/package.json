@@ -7,6 +7,7 @@
     "@umaprotocol/common": "^1.0.0",
     "@umaprotocol/core": "^1.0.0",
     "@uniswap/sdk": "^2.0.5",
+    "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
     "minimist": "^1.2.0",
     "node-fetch": "^2.6.0",

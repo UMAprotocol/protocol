@@ -16,12 +16,21 @@ class SponsorReporter {
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
+    this.lastUpdateTimestamp = 0;
+    this.updateThresholdSeconds = 60;
+
     this.empProps = empProps;
   }
 
   async update() {
-    await this.empClient.update();
-    await this.priceFeed.update();
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (currentTimestamp < this.lastUpdateTimestamp + this.updateThresholdSeconds) {
+      return;
+    } else {
+      await this.empClient.update();
+      await this.priceFeed.update();
+      this.lastUpdateTimestamp = this.empClient.lastUpdateTimestamp;
+    }
   }
 
   // Iterate over monitored wallets and generate key metrics.
@@ -71,11 +80,18 @@ class SponsorReporter {
 
   async generateSponsorsTable() {
     await this.update();
+    console.log(italic(`- There are ${this.empClient.getAllPositions().length} current sponsors`));
     console.log(italic("- All current token sponsors within the specified EMP are printed"));
 
     // For all positions current open in the UMA ecosystem, generate a table.
-    const allPositions = this.empClient.getAllPositions();
     const currentPrice = this.priceFeed.getCurrentPrice();
+    const allPositions = this.empClient.getAllPositions().sort((p1, p2) => {
+      return Number(
+        this._calculatePositionCRPercent(p1.amountCollateral, p1.numTokens, currentPrice)
+          .sub(this._calculatePositionCRPercent(p2.amountCollateral, p2.numTokens, currentPrice))
+          .div(this.web3.utils.toBN(this.web3.utils.toWei("1")))
+      );
+    });
 
     // Define the table column headings before hand to re-use the variables.
     const colHeadings = [
