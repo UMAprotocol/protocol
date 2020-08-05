@@ -91,6 +91,7 @@ class ExpiringMultiPartyClient {
   }
 
   async update() {
+    // Fetch contract state variables in parallel.
     const [collateralRequirement, liquidationLiveness, events, cumulativeFeeMultiplier] = await Promise.all([
       this.emp.methods.collateralRequirement().call(),
       this.emp.methods.liquidationLiveness().call(),
@@ -102,16 +103,21 @@ class ExpiringMultiPartyClient {
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
     this.cumulativeFeeMultiplier = this.toBN(cumulativeFeeMultiplier.toString());
 
-    // Fetch information about each sponsor.
-    const positions = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call(undefined, this.latestBlock))
+    // Fetch sponsor position, liquidation, and current time data in parallel.
+    const res = await Promise.all(
+      this.sponsorAddresses
+        .map(address => this.emp.methods.positions(address).call())
+        .concat(this.sponsorAddresses.map(address => this.emp.methods.getLiquidations(address).call()))
+        .concat(this.emp.methods.getCurrentTime().call())
     );
+    const positions = res.slice(0, this.sponsorAddresses.length);
+    const allLiquidations = res.slice(this.sponsorAddresses.length, res.length - 1);
+    const currentTime = res[res.length - 1];
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
     const disputedLiquidations = [];
-    for (const address of this.sponsorAddresses) {
-      const liquidations = await this.emp.methods.getLiquidations(address).call(undefined, this.latestBlock);
+    for (let liquidations of allLiquidations) {
       for (const [id, liquidation] of liquidations.entries()) {
         // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
         // set to default values. We can skip them.
@@ -135,7 +141,7 @@ class ExpiringMultiPartyClient {
         // Get all undisputed liquidations.
         if (this._isLiquidationPreDispute(liquidation)) {
           // Determine whether liquidation has expired.
-          if (!(await this._isExpired(liquidation))) {
+          if (!(await this._isExpired(liquidation, currentTime))) {
             undisputedLiquidations.push(liquidationData);
           } else {
             expiredLiquidations.push(liquidationData);
@@ -169,7 +175,7 @@ class ExpiringMultiPartyClient {
             }
           ]);
     }, []);
-    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
+    this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "Expiring multi party state updated",
@@ -191,8 +197,7 @@ class ExpiringMultiPartyClient {
       );
   }
 
-  async _isExpired(liquidation) {
-    const currentTime = await this.emp.methods.getCurrentTime().call(undefined, this.latestBlock);
+  async _isExpired(liquidation, currentTime) {
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 
