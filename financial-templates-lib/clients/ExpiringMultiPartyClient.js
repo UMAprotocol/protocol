@@ -2,6 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
+const Promise = require("bluebird");
 
 class ExpiringMultiPartyClient {
   /**
@@ -103,10 +104,15 @@ class ExpiringMultiPartyClient {
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
     this.cumulativeFeeMultiplier = this.toBN(cumulativeFeeMultiplier.toString());
 
-    // Fetch sponsor position, liquidation, and current time data in parallel.
+    // Fetch sponsor position, liquidation, and current time data in parallel batches, 20 at a time, to be safe and not overload the web3 node.
+    const WEB3_CALLS_BATCH_SIZE = 20;
     const [positions, allLiquidations, currentTime] = await Promise.all([
-      Promise.all(this.sponsorAddresses.map(address => this.emp.methods.positions(address).call())),
-      Promise.all(this.sponsorAddresses.map(address => this.emp.methods.getLiquidations(address).call())),
+      Promise.map(this.sponsorAddresses, address => this.emp.methods.positions(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE
+      }),
+      Promise.map(this.sponsorAddresses, address => this.emp.methods.getLiquidations(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE
+      }),
       this.emp.methods.getCurrentTime().call()
     ]);
 
