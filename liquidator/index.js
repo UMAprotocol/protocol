@@ -96,31 +96,32 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
     const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.tx
-      });
+      // const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+      //   from: accounts[0],
+      //   gasPrice: gasEstimator.getCurrentFastPrice()
+      // });
+      // logger.info({
+      //   at: "Liquidator#index",
+      //   message: "Approved EMP to transfer unlimited collateral tokens 💰",
+      //   collateralApprovalTx: collateralApprovalTx.tx
+      // });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        collateralApprovalTx: syntheticApprovalTx.tx
-      });
+      // const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+      //   from: accounts[0],
+      //   gasPrice: gasEstimator.getCurrentFastPrice()
+      // });
+      // logger.info({
+      //   at: "Liquidator#index",
+      //   message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+      //   collateralApprovalTx: syntheticApprovalTx.tx
+      // });
     }
 
     while (true) {
       const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
-      await liquidator.queryAndLiquidate(currentSyntheticBalance, liquidatorOverridePrice);
+      await liquidator.update();
+      await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
       await liquidator.queryAndWithdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
