@@ -161,7 +161,10 @@ class ExpiringMultiPartyClient {
               withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
               withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
               numTokens: positions[i].tokensOutstanding.toString(),
-              amountCollateral: rawCollateral.mul(this.cumulativeFeeMultiplier).div(this.toBN(this.toWei("1"))),
+              amountCollateral: rawCollateral
+                .mul(this.cumulativeFeeMultiplier)
+                .div(this.toBN(this.toWei("1")))
+                .toString(),
               hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
             }
           ]);
