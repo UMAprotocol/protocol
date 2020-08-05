@@ -104,15 +104,11 @@ class ExpiringMultiPartyClient {
     this.cumulativeFeeMultiplier = this.toBN(cumulativeFeeMultiplier.toString());
 
     // Fetch sponsor position, liquidation, and current time data in parallel.
-    const res = await Promise.all(
-      this.sponsorAddresses
-        .map(address => this.emp.methods.positions(address).call())
-        .concat(this.sponsorAddresses.map(address => this.emp.methods.getLiquidations(address).call()))
-        .concat(this.emp.methods.getCurrentTime().call())
-    );
-    const positions = res.slice(0, this.sponsorAddresses.length);
-    const allLiquidations = res.slice(this.sponsorAddresses.length, res.length - 1);
-    const currentTime = res[res.length - 1];
+    const [positions, allLiquidations, currentTime] = await Promise.all([
+      Promise.all(this.sponsorAddresses.map(address => this.emp.methods.positions(address).call())),
+      Promise.all(this.sponsorAddresses.map(address => this.emp.methods.getLiquidations(address).call())),
+      this.emp.methods.getCurrentTime().call()
+    ]);
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
