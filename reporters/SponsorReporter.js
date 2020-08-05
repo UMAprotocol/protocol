@@ -17,7 +17,7 @@ class SponsorReporter {
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     this.lastUpdateTimestamp = 0;
-    this.updateThresholdSeconds = 5;
+    this.updateThresholdSeconds = 60;
 
     this.empProps = empProps;
   }
