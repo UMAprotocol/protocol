@@ -128,9 +128,9 @@ class Disputer {
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let gasLimit;
+      let gasLimit, totalPaid;
       try {
-        const totalPaid = await dispute.call({ from: this.account });
+        totalPaid = await dispute.call({ from: this.account });
         gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * 1.25);
       } catch (error) {
         this.logger.error({
