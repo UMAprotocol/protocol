@@ -131,7 +131,7 @@ class Disputer {
       let gasLimit;
       try {
         await dispute.call({ from: this.account });
-        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * 1.5);
+        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * 1.25);
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -147,7 +147,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
@@ -229,7 +229,7 @@ class Disputer {
       let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.5);
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.25);
         if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -245,7 +245,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({

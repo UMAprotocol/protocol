@@ -251,7 +251,7 @@ class Liquidator {
       let gasLimit;
       try {
         await liquidation.call({ from: this.account });
-        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * 1.5);
+        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * 1.25);
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -270,7 +270,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -361,7 +361,7 @@ class Liquidator {
       let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.5);
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.25);
         if (!withdrawAmount) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -377,7 +377,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: gasLimit <= this.txnGasLimit ? gasLimit : this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
