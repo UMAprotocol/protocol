@@ -174,24 +174,6 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = expiredLiquidations;
     this.disputedLiquidations = disputedLiquidations;
 
-    console.log("activePositions", activePositions);
-    console.log("activeSponsors", this.activeSponsors);
-
-    // this.positions = this.activeSponsors.reduce((acc, address, i) => {
-    //   acc.concat([
-    //     {
-    //       sponsor: address,
-    //       withdrawalRequestPassTimestamp: activePositions[i].withdrawalRequestPassTimestamp,
-    //       withdrawalRequestAmount: activePositions[i].withdrawalRequestAmount.toString(),
-    //       numTokens: activePositions[i].tokensOutstanding.toString(),
-    //       amountCollateral: this.toBN(activePositions[i].rawCollateral.toString())
-    //         .mul(this.cumulativeFeeMultiplier)
-    //         .div(this.toBN(this.toWei("1")))
-    //         .toString(),
-    //       hasPendingWithdrawal: activePositions[i].withdrawalRequestPassTimestamp > 0
-    //     }
-    //   ]);
-    // }, []);
     this.positions = activePositions.map((position, index) => {
       return {
         sponsor: this.activeSponsors[index],
