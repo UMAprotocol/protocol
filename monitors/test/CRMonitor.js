@@ -1,7 +1,7 @@
 const { toWei, toBN, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { interfaceName } = require("../../core/utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
 const { CRMonitor } = require("../CRMonitor");

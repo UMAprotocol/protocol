@@ -1,5 +1,5 @@
 const assert = require("assert");
-const { interfaceName } = require("../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");

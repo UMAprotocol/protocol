@@ -104,14 +104,14 @@ class ExpiringMultiPartyClient {
 
     // Fetch information about each sponsor.
     const positions = await Promise.all(
-      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call())
+      this.sponsorAddresses.map(address => this.emp.methods.positions(address).call(undefined, this.latestBlock))
     );
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
     const disputedLiquidations = [];
     for (const address of this.sponsorAddresses) {
-      const liquidations = await this.emp.methods.getLiquidations(address).call();
+      const liquidations = await this.emp.methods.getLiquidations(address).call(undefined, this.latestBlock);
       for (const [id, liquidation] of liquidations.entries()) {
         // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
         // set to default values. We can skip them.
@@ -189,7 +189,7 @@ class ExpiringMultiPartyClient {
   }
 
   async _isExpired(liquidation) {
-    const currentTime = await this.emp.methods.getCurrentTime().call();
+    const currentTime = await this.emp.methods.getCurrentTime().call(undefined, this.latestBlock);
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 

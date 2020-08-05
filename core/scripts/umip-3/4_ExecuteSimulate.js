@@ -26,7 +26,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";

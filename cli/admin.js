@@ -1,7 +1,6 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
 const { isAdminRequest, getAdminRequestId, decodeTransaction, getAbiDecoder } = require("@umaprotocol/common");
-const abiDecoder = getAbiDecoder();
 
 async function decodeGovernorProposal(artifacts, id) {
   const Governor = artifacts.require("Governor");

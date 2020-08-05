@@ -3,7 +3,7 @@ const {
   LiquidationStatesEnum,
   MAX_UINT_VAL
 } = require("@umaprotocol/common");
-const { interfaceName } = require("../../core/utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const winston = require("winston");
 const sinon = require("sinon");
 

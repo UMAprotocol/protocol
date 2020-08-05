@@ -4,7 +4,7 @@ const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const { triggerOnRequest } = require("../../utils/Serving.js");
 const { RegistryRolesEnum } = require("@umaprotocol/common");
 

@@ -1,40 +1,48 @@
 const Token = artifacts.require("ExpandedERC20");
 const OneSplit = artifacts.require("OneSplit");
 
-const oneSplitAddress = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
-
 // As defined in 1inch
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+const ONE_SPLIT_ADDRESS = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
 
 class OneInchExchange {
   /**
    * @notice Creates OneInchExchange client
-   * @param {Object} args.web3 Web3 instance
-   * @param {Object} args.gasEstimator GasEstimator instance
+   * @param {Object} param - Constructor params
+   * @param {Object} param.web3 - Web3 instance
+   * @param {Object} param.gasEstimator - GasEstimator instance
+   * @param {string} param.oneSplitAddress - Address of the One Split
    * */
-  constructor(args = { web3, gasEstimator }) {
+  constructor({ web3, gasEstimator, logger, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
+    this.logger = logger;
     this.gasEstimator = gasEstimator;
+    this.oneSplitAddress = oneSplitAddress;
 
     this.web3 = web3;
     this.web3.currentProvider.timeout = 1200000;
-    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, oneSplitAddress);
+    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, this.oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
   }
 
   /**
    * @notice Swaps token on one inch
-   * @param {string} args.fromToken Address of token to swap from
-   * @param {string} args.toToken Address of token to swap to.
-   * @param {string} args.amountWei String amount to swap, in Wei.
+   * @param {Object} swapArgs - Swap arguments
+   * @param {string} swapArgs.fromToken Address of token to swap from
+   * @param {string} swapArgs.toToken Address of token to swap to.
+   * @param {string} swapArgs.amountWei String amount to swap, in Wei.
    * @param {Object} options Web3 options to supply to send, e.g.
    *      { from: '0x0...',
             value: '1000',
             gasPrice: '... }
    */
-  async swap(args = { fromToken, toToken, amountWei }, options = {}) {
+  async swap({ fromToken, toToken, amountWei }, options = {}) {
     // Update gasEstimator state
     await this.gasEstimator.update();
+
+    // Current time for debugging
+    const currentTime = Math.floor(Date.now() / 1000);
 
     const gasPrice = this.gasEstimator.getCurrentFastPrice();
 
@@ -45,7 +53,7 @@ class OneInchExchange {
     // Need to approve ERC20 tokens
     if (fromToken !== ETH_ADDRESS) {
       const erc20 = await Token.at(fromToken);
-      await erc20.approve(oneSplitAddress, amountWei, {
+      await erc20.approve(this.oneSplitAddress, amountWei, {
         from: options.from,
         gasPrice
       });
@@ -68,10 +76,25 @@ class OneInchExchange {
 
     const { returnAmount, distribution } = expectedReturn;
 
+    this.logger.debug({
+      at: "OneInchExchange",
+      message: "GetExpectedReturn",
+      returnAmount,
+      distribution
+    });
+
     // TODO: Remove hardcoded gas
     const tx = await this.oneSplitContract.methods
       .swap(fromToken, toToken, amountWei, returnAmount, distribution, flags)
       .send({ ...options, gasPrice, gas: 8000000 });
+
+    this.logger.debug({
+      at: "OneInchExchange",
+      message: "Swapped",
+      fromToken,
+      toToken,
+      ...tx
+    });
 
     return tx;
   }
