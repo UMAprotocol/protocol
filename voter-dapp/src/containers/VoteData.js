@@ -104,7 +104,7 @@ function useVoteData() {
           uniqueRevealsPctOfCommits: uniqueRevealsPctOfCommits.toString(),
           correctVotes: fromWei(correctVotesRevealed.toString()),
           correctlyRevealedVotesPct: fromWei(pctOfCorrectRevealedVotes.mul(toBN("100")).toString()),
-          roundInflationRate: fromWei(roundInflationRate.toString()),
+          roundInflationRate: fromWei(roundInflationRate.mul(toBN("100")).toString()),
           roundInflationRewardsAvailable: fromWei(roundInflationRewardsAvailable.toString()),
           rewardsClaimed: fromWei(rewardsClaimed.toString()),
           rewardsClaimedPct: fromWei(rewardsClaimedPct.mul(toBN("100")).toString()),
