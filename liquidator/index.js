@@ -32,14 +32,14 @@ const Voting = artifacts.require("Voting");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice) {
+async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
-      empAddress: address,
+      empAddress,
       pollingDelay,
       priceFeedConfig,
       liquidatorConfig,
@@ -47,9 +47,11 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     });
 
     // Setup web3 accounts an contract instance.
-    const accounts = await web3.eth.getAccounts();
-    const emp = await ExpiringMultiParty.at(address);
-    const voting = await Voting.deployed();
+    const [accounts, emp, voting] = await Promise.all([
+      web3.eth.getAccounts(),
+      ExpiringMultiParty.at(empAddress),
+      Voting.deployed()
+    ]);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const empProps = {
@@ -66,7 +68,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
       web3,
       new Networker(logger),
       getTime,
-      address,
+      empAddress,
       priceFeedConfig
     );
 
@@ -75,7 +77,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     }
 
     // Client and liquidator bot
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
     const liquidator = new Liquidator(
       logger,
@@ -90,39 +92,51 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    await gasEstimator.update();
-    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
-    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
-    const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
-    const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
+    const [collateralToken, syntheticToken] = await Promise.all([
+      ExpandedERC20.at(await emp.collateralCurrency()),
+      ExpandedERC20.at(await emp.tokenCurrency())
+    ]);
+
+    const [currentCollateralAllowance, currentSyntheticAllowance] = await Promise.all([
+      collateralToken.allowance(accounts[0], empAddress),
+      syntheticToken.allowance(accounts[0], empAddress)
+    ]);
+
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      // const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-      //   from: accounts[0],
-      //   gasPrice: gasEstimator.getCurrentFastPrice()
-      // });
-      // logger.info({
-      //   at: "Liquidator#index",
-      //   message: "Approved EMP to transfer unlimited collateral tokens 💰",
-      //   collateralApprovalTx: collateralApprovalTx.tx
-      // });
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.approve(empAddress, MAX_UINT_VAL, {
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.tx
+      });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      // const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
-      //   from: accounts[0],
-      //   gasPrice: gasEstimator.getCurrentFastPrice()
-      // });
-      // logger.info({
-      //   at: "Liquidator#index",
-      //   message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-      //   collateralApprovalTx: syntheticApprovalTx.tx
-      // });
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.approve(empAddress, MAX_UINT_VAL, {
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        collateralApprovalTx: syntheticApprovalTx.tx
+      });
     }
 
     while (true) {
+      // Get the current synthetic balance. Used to define the max tokens to liquidate.
       const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+      // Update the liquidators state. This will update the clients, price feeds and gas estimator.
       await liquidator.update();
+      // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and considers the
+      // override price if the user has specified one.
       await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
-      await liquidator.queryAndWithdrawRewards();
+      // Check for any finished liquidations that can be withdrawn.
+      await liquidator.withdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {

@@ -318,9 +318,6 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we created new liquidations.
-    await this.empClient.update();
   }
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
@@ -441,9 +438,6 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we withdrew rewards.
-    await this.empClient.update();
   }
 }
 

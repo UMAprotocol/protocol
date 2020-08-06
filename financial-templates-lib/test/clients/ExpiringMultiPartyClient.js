@@ -30,9 +30,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
     await client.update();
-
-    console.log("client.getAllSponsors()", client.getAllSponsors());
-    console.log("client.getAllPositions()", client.getAllPositions());
     assert.deepStrictEqual(expectedSponsors.sort(), client.getAllSponsors().sort());
     assert.deepStrictEqual(expectedPositions.sort(), client.getAllPositions().sort());
   };
@@ -358,7 +355,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await client.update();
 
     // The liquidation is registered by the EMP client as expired.
-    console.log("client.getUndisputedLiquidations().sort()", client.getUndisputedLiquidations().sort());
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
     const expiredLiquidations = client.getExpiredLiquidations();
     assert.deepStrictEqual(
