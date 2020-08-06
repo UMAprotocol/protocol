@@ -45,6 +45,7 @@ import {
   translateAdminVote
 } from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
+import { REQUEST_WHITELIST } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -81,9 +82,24 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
   };
 
-  const pendingRequests = useCacheCall("Voting", "getPendingRequests");
+  const allPendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
+
+  // Only display whitelisted price requests (uniquely identifier by identifier name and timestamp)
+  const [pendingRequests, setPendingRequests] = useState([]);
+  useEffect(() => {
+    if (allPendingRequests) {
+      const _pendingRequests = allPendingRequests.filter(req => {
+        return (
+          REQUEST_WHITELIST[hexToUtf8(req.identifier)] &&
+          REQUEST_WHITELIST[hexToUtf8(req.identifier)].includes(req.time)
+        );
+      });
+
+      setPendingRequests(_pendingRequests);
+    }
+  }, [allPendingRequests]);
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 

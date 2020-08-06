@@ -14,7 +14,8 @@ const browserSafe = {
   ...require("./SolcoverConfig"),
   ...require("./SolidityTestUtils"),
   ...require("./TimeUtils"),
-  ...require("./VotingUtils")
+  ...require("./VotingUtils"),
+  ...require("./WhitelistedPriceRequests")
 };
 
 // Note: there are some webpack performance downsides to stripping the module this way, but for now it's more readable

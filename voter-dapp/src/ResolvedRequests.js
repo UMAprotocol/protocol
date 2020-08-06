@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import Button from "@material-ui/core/Button";
 import Table from "@material-ui/core/Table";
@@ -14,7 +14,7 @@ import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL } from "@umaprotocol/common";
+import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_WHITELIST } from "@umaprotocol/common";
 
 import VoteData from "./containers/VoteData";
 
@@ -54,7 +54,7 @@ function ResolvedRequests({ votingAccount }) {
     setOpenVoteStatsDialog(false);
   };
 
-  const resolvedEvents =
+  const allResolvedEvents =
     useCacheEvents(
       "Voting",
       "PriceResolved",
@@ -64,6 +64,21 @@ function ResolvedRequests({ votingAccount }) {
         return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
+
+  // Only display whitelisted price requests (uniquely identifier by identifier name and timestamp)
+  const [resolvedEvents, setResolvedEvents] = useState([]);
+  useEffect(() => {
+    if (allResolvedEvents) {
+      const _resolvedEvents = allResolvedEvents.filter(ev => {
+        return (
+          REQUEST_WHITELIST[hexToUtf8(ev.returnValues.identifier)] &&
+          REQUEST_WHITELIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)
+        );
+      });
+
+      setResolvedEvents(_resolvedEvents);
+    }
+  }, [allResolvedEvents]);
 
   const revealedVoteEvents =
     useCacheEvents(
