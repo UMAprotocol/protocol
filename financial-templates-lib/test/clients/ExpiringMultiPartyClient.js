@@ -215,7 +215,68 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Remove the pending withdrawal and ensure it is removed from the client.
     await emp.cancelWithdrawal({ from: sponsor1 });
     await client.update();
-    // assert.deepStrictEqual([], client.getPendingWithdrawals());
+    await updateAndVerify(
+      client,
+      [sponsor1],
+      [
+        {
+          sponsor: sponsor1,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("20"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        }
+      ]
+    );
+
+    // Correctly returns sponsors who create, redeem.
+    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
+    // as created and redeemed sponsor should not show up in table as they are no longer an active sponsor.
+    await updateAndVerify(
+      client,
+      [sponsor1],
+      [
+        {
+          sponsor: sponsor1,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("20"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        }
+      ]
+    );
+    // If sponsor, creates, redeemes and then creates again they should now appear in the table.
+    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+
+    await updateAndVerify(
+      client,
+      [sponsor1, sponsor2],
+      [
+        {
+          sponsor: sponsor1,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("20"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        },
+        {
+          sponsor: sponsor2,
+          numTokens: toWei("45"),
+          amountCollateral: toWei("100"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        }
+      ]
+    );
   });
 
   it("Returns undercollateralized positions", async function() {

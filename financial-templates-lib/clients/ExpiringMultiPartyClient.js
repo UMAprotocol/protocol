@@ -115,16 +115,26 @@ class ExpiringMultiPartyClient {
       this.emp.methods.getCurrentTime().call()
     ]);
 
-    // Array of all sponsors, over all time.
-    const allSponsors = [...new Set(newSponsorEvents.map(e => e.returnValues.sponsor))];
+    // Array of all sponsors, over all time. Can contain repeats for every `NewSponsor` event.
+    const newSponsorAddresses = [...newSponsorEvents.map(e => e.returnValues.sponsor)];
 
-    // Array of ended sponsors.
-    const endedSponsors = [...new Set(endedSponsorEvents.map(e => e.returnValues.sponsor))];
+    // Array of ended sponsors. Can contain repeats for every `EndedSponsorPosition` event.
+    const endedSponsorAddresses = [...endedSponsorEvents.map(e => e.returnValues.sponsor)];
 
-    // Filter out the active sponsors by removing the ended sponsors from all historic sponsors.
-    this.activeSponsors = allSponsors.filter(address => !endedSponsors.includes(address));
+    // Filter out the active sponsors by removing ended sponsors from all historic sponsors. Note that a sponsor could
+    // create a position, end their position and then create another one. They could potentially do this multiple times.
+    // As a result, create a temp array `sponsorsToRemove` which is updated as sponsors are removed from the array.
+    let sponsorsToRemove = endedSponsorAddresses; // temp array to contain address to remove.
+    this.activeSponsors = newSponsorAddresses.filter(address => {
+      // If the sponsorsToRemove contains the current address, then that address should be removed from newSponsorAddresses.
+      const shouldRemoveSponsor = !sponsorsToRemove.includes(address);
+      // Update the `sponsorsToRemove` by removing the first instance of the address from the sponsorsToRemove array.
+      const index = sponsorsToRemove.indexOf(address);
+      if (index !== -1) sponsorsToRemove = [...sponsorsToRemove.slice(0, index), ...sponsorsToRemove.slice(index + 1)];
+      return shouldRemoveSponsor;
+    });
 
-    // Array of all liquidated sponsors, over all time.
+    // Array of all liquidated sponsors, over all time. Use a Set to ensure only contains unique elements.
     const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
 
     // Fetch sponsor position & liquidation in parallel batches, 20 at a time, to be safe and not overload the web3 node.
