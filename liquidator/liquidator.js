@@ -52,6 +52,9 @@ class Liquidator {
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
+    // Multiplier to scale the amount of gas send with a transaction over and above the estimated gas from Truffle.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -251,7 +254,7 @@ class Liquidator {
       let gasLimit;
       try {
         await liquidation.call({ from: this.account });
-        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * 1.25);
+        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -361,7 +364,7 @@ class Liquidator {
       let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.25);
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
         if (!withdrawAmount) {
           throw new Error("Simulated reward withdrawal failed");
         }

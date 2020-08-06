@@ -42,6 +42,9 @@ class Disputer {
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
+    // Multiplier to scale the amount of gas send with a transaction over and above the estimated gas from Truffle.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
     // Default config settings. Disputer deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -131,7 +134,7 @@ class Disputer {
       let gasLimit, totalPaid;
       try {
         totalPaid = await dispute.call({ from: this.account });
-        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * 1.25);
+        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -229,7 +232,7 @@ class Disputer {
       let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * 1.25);
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
         if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
