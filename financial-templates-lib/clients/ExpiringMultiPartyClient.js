@@ -2,6 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
+const Promise = require("bluebird");
 
 class ExpiringMultiPartyClient {
   /**
@@ -21,13 +22,12 @@ class ExpiringMultiPartyClient {
     this.empAddress = empAddress;
 
     // EMP Data structures & values to enable synchronous returns of the emp state seen by the client.
-    this.activeSponsors = [];
+    this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
-    this.liquidationLiveness = null;
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
@@ -83,7 +83,7 @@ class ExpiringMultiPartyClient {
 
   // Returns an array of sponsor addresses.
   getAllSponsors() {
-    return this.activeSponsors;
+    return this.sponsorAddresses;
   }
 
   // Returns the last update timestamp.
@@ -91,53 +91,36 @@ class ExpiringMultiPartyClient {
     return this.lastUpdateTimestamp;
   }
 
-  async initialSetup() {
-    const [collateralRequirement, liquidationLiveness, cumulativeFeeMultiplier] = await Promise.all([
+  async update() {
+    // Fetch contract state variables in parallel.
+    const [collateralRequirement, liquidationLiveness, events, cumulativeFeeMultiplier] = await Promise.all([
       this.emp.methods.collateralRequirement().call(),
       this.emp.methods.liquidationLiveness().call(),
+      this.emp.getPastEvents("NewSponsor", { fromBlock: 0 }),
       this.emp.methods.cumulativeFeeMultiplier().call()
     ]);
     this.collateralRequirement = this.toBN(collateralRequirement.toString());
     this.liquidationLiveness = Number(liquidationLiveness);
+    this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
     this.cumulativeFeeMultiplier = this.toBN(cumulativeFeeMultiplier.toString());
-  }
 
-  async update() {
-    if (!this.collateralRequirement) {
-      await this.initialSetup();
-    }
-    const [newSponsorEvents, endedSponsorEvents, liquidationCreatedEvents, currentTime] = await Promise.all([
-      this.emp.getPastEvents("NewSponsor", { fromBlock: 0 }),
-      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock: 0 }),
-      this.emp.getPastEvents("LiquidationCreated", { fromBlock: 0 }),
-      await this.emp.methods.getCurrentTime().call()
+    // Fetch sponsor position, liquidation, and current time data in parallel batches, 20 at a time, to be safe and not overload the web3 node.
+    const WEB3_CALLS_BATCH_SIZE = 20;
+    const [positions, allLiquidations, currentTime] = await Promise.all([
+      Promise.map(this.sponsorAddresses, address => this.emp.methods.positions(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE
+      }),
+      Promise.map(this.sponsorAddresses, address => this.emp.methods.getLiquidations(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE
+      }),
+      this.emp.methods.getCurrentTime().call()
     ]);
-
-    // Array of all sponsors, over all time.
-    const allSponsors = [...new Set(newSponsorEvents.map(e => e.returnValues.sponsor))];
-    console.log("this.allSponsors", this.allSponsors);
-
-    // Array of ended sponsors.
-    const endedSponsors = [...new Set(endedSponsorEvents.map(e => e.returnValues.sponsor))];
-
-    // Filter out the active sponsors by removing the ended sponsors from all historic sponsors.
-    this.activeSponsors = allSponsors.filter(address => !endedSponsors.includes(address));
-    console.log("this.activeSponsors", this.activeSponsors);
-
-    // Fetch information about each sponsor.
-    const activePositions = await Promise.all(this.activeSponsors.map(addr => this.emp.methods.positions(addr).call()));
-
-    // Array of all liquidated sponsors, over all time.
-    const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
-    const liquidationData = await Promise.all(
-      liquidatedSponsors.map(address => this.emp.methods.getLiquidations(address).call())
-    );
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
     const disputedLiquidations = [];
-    for (const sponsorLiquidationArray of liquidationData) {
-      for (const [id, liquidation] of sponsorLiquidationArray.entries()) {
+    for (let liquidations of allLiquidations) {
+      for (const [id, liquidation] of liquidations.entries()) {
         // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties
         // set to default values. We can skip them.
         if (liquidation.state === LiquidationStatesEnum.UNINITIALIZED) {
@@ -160,7 +143,7 @@ class ExpiringMultiPartyClient {
         // Get all undisputed liquidations.
         if (this._isLiquidationPreDispute(liquidation)) {
           // Determine whether liquidation has expired.
-          if (!this._isExpired(liquidation, currentTime)) {
+          if (!(await this._isExpired(liquidation, currentTime))) {
             undisputedLiquidations.push(liquidationData);
           } else {
             expiredLiquidations.push(liquidationData);
@@ -174,22 +157,26 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = expiredLiquidations;
     this.disputedLiquidations = disputedLiquidations;
 
-    this.positions = activePositions.map((position, index) => {
-      return {
-        sponsor: this.activeSponsors[index],
-        withdrawalRequestPassTimestamp: position.withdrawalRequestPassTimestamp,
-        withdrawalRequestAmount: position.withdrawalRequestAmount.toString(),
-        numTokens: position.tokensOutstanding.toString(),
-        amountCollateral: this.toBN(position.rawCollateral.toString())
-          .mul(this.cumulativeFeeMultiplier)
-          .div(this.toBN(this.toWei("1")))
-          .toString(),
-        hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
-      };
-    });
-
-    console.log("this.positions", this.positions);
-
+    this.positions = this.sponsorAddresses.reduce((acc, address, i) => {
+      const rawCollateral = this.toBN(positions[i].rawCollateral.toString());
+      // Filter out empty positions.
+      return rawCollateral.isZero()
+        ? acc
+        : /* eslint-disable indent */
+          acc.concat([
+            {
+              sponsor: address,
+              withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
+              withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
+              numTokens: positions[i].tokensOutstanding.toString(),
+              amountCollateral: rawCollateral
+                .mul(this.cumulativeFeeMultiplier)
+                .div(this.toBN(this.toWei("1")))
+                .toString(),
+              hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
+            }
+          ]);
+    }, []);
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
@@ -212,7 +199,7 @@ class ExpiringMultiPartyClient {
       );
   }
 
-  _isExpired(liquidation, currentTime) {
+  async _isExpired(liquidation, currentTime) {
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 
