@@ -42,6 +42,9 @@ class Disputer {
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
+    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
     // Default config settings. Disputer deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -128,8 +131,10 @@ class Disputer {
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      let gasLimit, totalPaid;
       try {
-        await dispute.call({ from: this.account, gasPrice: this.gasEstimator.getCurrentFastPrice() });
+        totalPaid = await dispute.call({ from: this.account });
+        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -137,6 +142,7 @@ class Disputer {
           disputer: this.account,
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
+          totalPaid,
           error
         });
         continue;
@@ -144,7 +150,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
@@ -223,9 +229,10 @@ class Disputer {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawAmount;
+      let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
         if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -241,7 +248,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({

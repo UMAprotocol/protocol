@@ -52,6 +52,9 @@ class Liquidator {
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
+    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -248,8 +251,10 @@ class Liquidator {
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      let gasLimit;
       try {
         await liquidation.call({ from: this.account });
+        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -268,7 +273,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -356,9 +361,10 @@ class Liquidator {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawAmount;
+      let withdrawAmount, gasLimit;
       try {
         withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
+        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
         if (!withdrawAmount) {
           throw new Error("Simulated reward withdrawal failed");
         }
@@ -374,7 +380,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.min(gasLimit, this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
