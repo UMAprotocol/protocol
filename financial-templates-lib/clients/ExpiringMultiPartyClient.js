@@ -138,7 +138,7 @@ class ExpiringMultiPartyClient {
     const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
 
     // Fetch sponsor position & liquidation in parallel batches, 20 at a time, to be safe and not overload the web3 node.
-    const WEB3_CALLS_BATCH_SIZE = 20;
+    const WEB3_CALLS_BATCH_SIZE = 150;
     const [activePositions, allLiquidations] = await Promise.all([
       Promise.map(this.activeSponsors, address => this.emp.methods.positions(address).call(), {
         concurrency: WEB3_CALLS_BATCH_SIZE
