@@ -52,7 +52,7 @@ class Liquidator {
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
-    // Multiplier to scale the amount of gas send with a transaction over and above the estimated gas from Truffle.
+    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
     this.GAS_LIMIT_BUFFER = 1.25;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
