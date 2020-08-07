@@ -623,7 +623,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
-      {Object.keys(REQUEST_BLACKLIST).length > 0 && (
+      {/* Only render this spam filter switch if some pending spam requests have been filtered out */}
+      {allPendingRequests.length >= pendingRequests.length && (
         <FormGroup>
           <FormControlLabel
             control={

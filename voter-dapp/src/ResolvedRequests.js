@@ -184,7 +184,8 @@ function ResolvedRequests({ votingAccount }) {
           </List>
         )}
       </Dialog>
-      {Object.keys(REQUEST_BLACKLIST).length > 0 && (
+      {/* Only render this spam filter switch if some resolved spam requests have been filtered out */}
+      {allResolvedEvents.length >= resolvedEvents.length && (
         <FormGroup>
           <FormControlLabel
             control={
