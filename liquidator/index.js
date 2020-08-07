@@ -46,37 +46,35 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
       liquidatorOverridePrice
     });
 
-    // Setup web3 accounts an contract instance.
-    const [accounts, emp, voting] = await Promise.all([
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+
+    // Setup web3 accounts, account instance and pricefeed for EMP.
+    const [accounts, emp, voting, priceFeed] = await Promise.all([
       web3.eth.getAccounts(),
       ExpiringMultiParty.at(empAddress),
-      Voting.deployed()
+      Voting.deployed(),
+      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const [collateralRequirement, priceIdentifier, minSponsorTokens] = await Promise.all([
+      emp.collateralRequirement(),
+      emp.priceIdentifier(),
+      emp.minSponsorTokens()
+    ]);
+
     const empProps = {
-      crRatio: await emp.collateralRequirement(),
-      priceIdentifier: await emp.priceIdentifier(),
-      minSponsorSize: await emp.minSponsorTokens()
+      crRatio: collateralRequirement,
+      priceIdentifier: priceIdentifier,
+      minSponsorSize: minSponsorTokens
     };
-
-    // Setup price feed.
-    const getTime = () => Math.round(new Date().getTime() / 1000);
-
-    const priceFeed = await createReferencePriceFeedForEmp(
-      logger,
-      web3,
-      new Networker(logger),
-      getTime,
-      empAddress,
-      priceFeedConfig
-    );
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
 
-    // Client and liquidator bot
+    // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
+    // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
     const liquidator = new Liquidator(
