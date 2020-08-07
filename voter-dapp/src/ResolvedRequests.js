@@ -184,14 +184,16 @@ function ResolvedRequests({ votingAccount }) {
           </List>
         )}
       </Dialog>
-      <FormGroup>
-        <FormControlLabel
-          control={
-            <Switch size="small" checked={showSpamRequests} onChange={() => setShowSpamRequests(!showSpamRequests)} />
-          }
-          label="Show spam price requests"
-        />
-      </FormGroup>
+      {Object.keys(REQUEST_BLACKLIST).length > 0 && (
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch size="small" checked={showSpamRequests} onChange={() => setShowSpamRequests(!showSpamRequests)} />
+            }
+            label="Show spam price requests"
+          />
+        </FormGroup>
+      )}
       <Table style={{ marginBottom: "10px" }}>
         <TableHead className={classes.tableHeader}>
           <TableRow>
