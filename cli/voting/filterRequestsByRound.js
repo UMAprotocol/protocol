@@ -1,4 +1,4 @@
-const { VotePhasesEnum, getLatestEvent, REQUEST_WHITELIST } = require("@umaprotocol/common");
+const { VotePhasesEnum, getLatestEvent, REQUEST_BLACKLIST } = require("@umaprotocol/common");
 
 /**
  * First, sorts all price requests chronologically from earliest to latest.
@@ -17,12 +17,13 @@ const { VotePhasesEnum, getLatestEvent, REQUEST_WHITELIST } = require("@umaproto
 const filterRequestsByRound = async (web3, allPendingRequests, account, roundId, roundPhase, votingContract) => {
   let filteredRequests = [];
   if (allPendingRequests.length > 0) {
-    // Only display whitelisted price requests (uniquely identifier by identifier name and timestamp)
+    // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
     const pendingRequests = allPendingRequests.filter(req => {
-      return (
-        REQUEST_WHITELIST[web3.utils.hexToUtf8(req.identifier)] &&
-        REQUEST_WHITELIST[web3.utils.hexToUtf8(req.identifier)].includes(req.time)
-      );
+      if (!REQUEST_BLACKLIST[web3.utils.hexToUtf8(req.identifier)]) return true;
+      else {
+        if (!REQUEST_BLACKLIST[web3.utils.hexToUtf8(req.identifier)].includes(req.time)) return true;
+        else return false;
+      }
     });
 
     if (pendingRequests.length > 0) {

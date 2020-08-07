@@ -13,6 +13,7 @@ import {
   ListItemText,
   Radio,
   RadioGroup,
+  FormGroup,
   FormControlLabel,
   FormControl,
   Tooltip,
@@ -22,7 +23,8 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableRow
+  TableRow,
+  Switch
 } from "@material-ui/core";
 import { Help as HelpIcon, FileCopy as FileCopyIcon } from "@material-ui/icons";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
@@ -45,7 +47,7 @@ import {
   translateAdminVote
 } from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
-import { REQUEST_WHITELIST } from "@umaprotocol/common";
+import { REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -86,20 +88,22 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
 
-  // Only display whitelisted price requests (uniquely identifier by identifier name and timestamp)
+  // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
+  const [showSpamRequests, setShowSpamRequests] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
   useEffect(() => {
     if (allPendingRequests) {
       const _pendingRequests = allPendingRequests.filter(req => {
-        return (
-          REQUEST_WHITELIST[hexToUtf8(req.identifier)] &&
-          REQUEST_WHITELIST[hexToUtf8(req.identifier)].includes(req.time)
-        );
+        if (showSpamRequests || !REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
+        else {
+          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) return true;
+          else return false;
+        }
       });
 
       setPendingRequests(_pendingRequests);
     }
-  }, [allPendingRequests]);
+  }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
@@ -619,6 +623,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
+      <FormGroup>
+        <FormControlLabel
+          control={
+            <Switch size="small" checked={showSpamRequests} onChange={() => setShowSpamRequests(!showSpamRequests)} />
+          }
+          label="Show spam price requests"
+        />
+      </FormGroup>
       <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
