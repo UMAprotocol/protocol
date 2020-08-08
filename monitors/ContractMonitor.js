@@ -307,7 +307,7 @@ class ContractMonitor {
           })
         );
       } catch (error) {
-        // No price or matching available.
+        // No price or matching liquidation available.
       }
 
       // Sample message:
