@@ -104,7 +104,7 @@ class ExpiringMultiPartyClient {
 
   async update() {
     // If it is the first run then get contract contestants. This only needs to be called once.
-    if (!this.collateralRequirement) {
+    if (!this.collateralRequirement || !this.liquidationLiveness || !this.cumulativeFeeMultiplier) {
       await this.initialSetup();
     }
     // Fetch contract state variables in parallel.
@@ -116,10 +116,10 @@ class ExpiringMultiPartyClient {
     ]);
 
     // Array of all sponsors, over all time. Can contain repeats for every `NewSponsor` event.
-    const newSponsorAddresses = [...newSponsorEvents.map(e => e.returnValues.sponsor)];
+    const newSponsorAddresses = newSponsorEvents.map(e => e.returnValues.sponsor);
 
     // Array of ended sponsors. Can contain repeats for every `EndedSponsorPosition` event.
-    const endedSponsorAddresses = [...endedSponsorEvents.map(e => e.returnValues.sponsor)];
+    const endedSponsorAddresses = endedSponsorEvents.map(e => e.returnValues.sponsor);
 
     // Filter out the active sponsors by removing ended sponsors from all historic sponsors. Note that a sponsor could
     // create a position, end their position and then create another one. They could potentially do this multiple times.
@@ -127,11 +127,13 @@ class ExpiringMultiPartyClient {
     let sponsorsToRemove = endedSponsorAddresses; // temp array to contain address to remove.
     this.activeSponsors = newSponsorAddresses.filter(address => {
       // If the sponsorsToRemove contains the current address, then that address should be removed from newSponsorAddresses.
-      const shouldRemoveSponsor = !sponsorsToRemove.includes(address);
-      // Update the `sponsorsToRemove` by removing the first instance of the address from the sponsorsToRemove array.
       const index = sponsorsToRemove.indexOf(address);
-      if (index !== -1) sponsorsToRemove = [...sponsorsToRemove.slice(0, index), ...sponsorsToRemove.slice(index + 1)];
-      return shouldRemoveSponsor;
+      // Update the `sponsorsToRemove` by removing the first instance of the address from the sponsorsToRemove array.
+      if (index !== -1) {
+        sponsorsToRemove = [...sponsorsToRemove.slice(0, index), ...sponsorsToRemove.slice(index + 1)];
+        return false; // return false means that the filter will remove the current address from newSponsorAddresses
+      }
+      return true; // returning true means that the filter will keep the current address from newSponsorAddresses
     });
 
     // Array of all liquidated sponsors, over all time. Use a Set to ensure only contains unique elements.

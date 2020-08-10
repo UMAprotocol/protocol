@@ -57,10 +57,18 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
     ]);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [collateralRequirement, priceIdentifier, minSponsorTokens] = await Promise.all([
+    const [
+      collateralRequirement,
+      priceIdentifier,
+      minSponsorTokens,
+      collateralToken,
+      syntheticToken
+    ] = await Promise.all([
       emp.collateralRequirement(),
       emp.priceIdentifier(),
-      emp.minSponsorTokens()
+      emp.minSponsorTokens(),
+      ExpandedERC20.at(await emp.collateralCurrency()),
+      ExpandedERC20.at(await emp.tokenCurrency())
     ]);
 
     const empProps = {
@@ -90,11 +98,6 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const [collateralToken, syntheticToken] = await Promise.all([
-      ExpandedERC20.at(await emp.collateralCurrency()),
-      ExpandedERC20.at(await emp.tokenCurrency())
-    ]);
-
     const [currentCollateralAllowance, currentSyntheticAllowance] = await Promise.all([
       collateralToken.allowance(accounts[0], empAddress),
       syntheticToken.allowance(accounts[0], empAddress)
