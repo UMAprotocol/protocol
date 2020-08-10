@@ -1,75 +1,67 @@
 # How to contribute
 
-## Issues and PRs
+We really appreciate contributions to the UMA ecosystem. The guidelines below are meant to help increase the odds that
+the process works smoothly and your contributions can be merged as quickly and efficiently as possible.
 
-To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be changed and why.
+## Maintainers
 
-Once an issue is open and one or more maintainers have expressed corroborating opinions, anyone can open a PR to close the issue. No PRs should be opened that are not associated with one or more issues.
+Everyone on the @UMAprotocol/eng team is considered a maintainer of the protocol repository.
+
+## Communication
+
+- Before starting work on a significant change, please open a GitHub issue outlining what you would like to change,
+  how, and why. There are issue templates to guide you.
+- The issue process should be used as a precursor to drive consensus around whether a change should be made and how it
+  should be made. It may feel like a formality in some cases, but it often helps avoid wasted time, both on the part of
+  reviewers and contributors.
+
+## Issues
+
+- Issues should be used to open a discussion about something that you want to see changed.
+- To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be
+  changed and why.
+- Maintainers will generally assign the issue to a particular person to avoid multiple people working on the same issue
+  at the same time.
+- Once an issue is open and one or more maintainers have expressed corroborating opinions, the assigned person should
+  feel comfortable beginning work on the issue.
+- If an issue is a major project, consider working the maintainers to break it down into sub-issues and creating a
+  milestone to track progress.
+
+## PRs
+
+- No PRs should be opened that are not associated with one or more issues.
+- If you are not sure who to assign as reviewers on your PR, please assign @UMAprotocol/eng.
+- PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult on reviewers
+  and can often slow PR progress. If this is the case, you may be asked to split the PR up.
+- PRs must get approval from _at least_ one maintainer. However, it is considered best practice to make sure all
+  comments are completely resolved before merging.
+- PRs can only be merged by maintainers. If a maintainer opened the PR, it's preferred (although, not required) to
+  allow them to merge it, themselves.
+- PR titles should be in [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format. This helps
+  inform versioning and changelogs. Please include a breaking change footer in your PR description if the change will
+  break consumers of any package. If you don't know how to correctly title your PR, this can be addressed in the review
+  process.
+
+Note on conventional commit titles: the [angular](https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type) types
+are a good guideline to follow:
+
+- build: Changes that affect the build system or external dependencies
+- ci: Changes to our CI configuration files and scripts
+- docs: Documentation only changes
+- feat: A new feature
+- fix: A bug fix
+- perf: A code change that improves performance
+- refactor: A code change that neither fixes a bug nor adds a feature
+- style: Changes that do not affect the meaning of the code
+- test: Adding missing tests or correcting existing tests
+
+A few examples of good conventional commit PR titles:
+
+- feat(dvm): adds a new function to compute voting rewards offchain
+- fix(monitor): fixes broken link in liquidation log
+- feat(voter-dapp): adds countdown timer component to the header
+- build(solc): updated solc version to 0.6.12
 
 ## Style guide
 
 You can find the style guide [here](./STYLE.md).
-
-## Voter dApp
-
-This is a browser client that UMA token holders can use to vote on price requests. The dApp interacts with the deployed [DVM](https://docs.umaproject.org/uma/oracle/technical_architecture.html) code using MetaMask's browser extension. The source code was bootstrapped from [Create React App](https://github.com/facebook/create-react-app).
-
-Features currently include:
-
-- Deploy a [designated voting proxy contract](https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html)
-- Commit an encrypted vote
-- Backup salts associated with latest encrypted votes
-- Reveal an encrypted vote
-- Retrieve rewards for resolved votes
-- View results of resolved votes
-
-### Making changes to the Voter dApp
-
-The source code for this React app can be found in `./voter-dapp/src/`. At a minimum, you must ensure that a user can go through a simple commit and reveal flow, both using a voting proxy and not using one.
-
-#### Prerequisites
-
-Run `npm install` from `./protocol/` to install the monorepo's dependencies and from `./protocol/voter-dapp` to install the voter-dapp's dependencies. Compile contracts from the `./protocol/core` directory by running `$(npm bin)/truffle compile`.
-
-#### Steps to generate price requests
-
-0. Change your directory to `./protocol/`
-1. Start a local blockchain on port `9545` with enough starting ETH balances and a high enough gas limit:
-   ```bash
-   ganache-cli -p 9545 -e 10000000000 -l 9000000
-   ```
-   This seeds every account with `10000000000` ETH and sets the block gas limit to 9 million wei. This tool should also
-   display all of the private keys associated with the ganache default accounts. You should keep the private keys handy
-   because you will want to import some of them into MetaMask to test the dApp locally.
-1. Open another window and deploy all contracts:
-   ```bash
-   cd core && $(npm bin)/truffle migrate --reset --network test
-   ```
-1. Make a price request for the "BTC/USD" identifier at the timestamp `1570000000`. Note that the timestamp passed in denotes the Unix Epoch time. This script will take care of registering the chosen price identifier and requesting a price:
-   ```bash
-   $(npm bin)/truffle exec ./scripts/local/RequestOraclePrice.js --network test --identifier BTC/USD --time 1570000000
-   ```
-1. Advance time to the next voting round's commit phase so that the price request becomes available to vote on. The default starting phase is the reveal phase so you need to run this script once:
-   ```bash
-   $(npm bin)/truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
-   ```
-
-At this point, the price request is ready to be voted on.
-
-### Steps to vote on price requests through the dApp
-
-0. Open a new console tab and change your directory to `./protocol/voter-dapp` via `cd ../voter-dapp`. At this point, you should have three console tabs open: one that is running `ganache-cli` locally, one for running helper scripts from the previous section, and one to run the voter dapp React app.
-1. Start the application: `npm start`
-1. Navigate to `localhost:3000` on your browser, sign-in to MetaMask (make sure that the network is pointing to your localhost at port `9545`), and click "Connect to your Ethereum wallet" and sign the authentication message. You will need to import the first account generated from ganache into Metamask; ganache displays all default account private keys upon starting. The reason that you will want to use the first account is that this account is seeded with UMA voting tokens by the migration script `4_deploy_voting_token.js`.
-1. The price request should appear under "Active Requests" with the correct "Price Feed", "Timestamp" in readable format, the "Status" should be "Commit" (if it says "Reveal", then you need to advance to the next voting phase), and "Current Vote" should just show an "Edit" button
-1. To commit a vote, click "Edit", enter a number, check the box in the column to the right of the price feed identifier, and click "Save" below the "Active Requests" dashboard. You can commit several votes at once. Clicking "Save" will prompt you to sign and submit a [`batchCommit` transaction ](https://docs.umaproject.org/uma/contracts/VotingInterface.html#VotingInterface-batchCommit-struct-VotingInterface-Commitment---).
-1. Once you are done committing votes, advance to the reveal phase in your other console tab: `$(npm bin)/truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test`
-1. Either refresh the page or wait for the dApp to prompt you to sign another message. You will need to sign a message at the beginning of each voting phase. Now, you should see an option to reveal your committed vote.
-1. To reveal your vote, check the checkbox and click "Reveal Selected". This will prompt you to sign and submit a [`batchReveal` transaction](https://docs.umaproject.org/uma/contracts/VotingInterface.html#VotingInterface-batchReveal-struct-VotingInterface-Reveal---)
-1. If your vote was successfully revealed, the "Status" column should switch to "Revealed"
-
-### Vote through the designated voting proxy
-
-Voting by proxy is identical to voting on price requests without proxy but you first need to deploy and set up the designated voting proxy contract. To do that, find the "Two key voting" component on the dApp. Enter a cold storage account into the form and deploy the contract by clicking "Deploy". For testing purposes, its reasonable to use your current hot wallet as your cold wallet. The dApp should detect your newly deployed voting proxy and display it in the top right corner: "Voting with contract...". Finally, a new button, "Transfer", should appear which will prompt you to transfer your voting tokens to the proxy contract. At this point, all voting actions (`batchCommit` and `batchReveal`) will be submitted from the proxy contract.
-
-More information about cold versus hot wallets can be found [here](https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html).
