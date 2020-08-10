@@ -96,7 +96,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     setHasSpamRequests(false);
 
     if (allPendingRequests) {
-      const _nonBlacklistedRequests = allPendingRequests.filter(req => {
+      const nonBlacklistedRequests = allPendingRequests.filter(req => {
         if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
         else {
           if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
@@ -105,14 +105,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         }
       });
       // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
-      if (_nonBlacklistedRequests.length < allPendingRequests.length) {
+      if (nonBlacklistedRequests.length < allPendingRequests.length) {
         setHasSpamRequests(true);
       }
 
       if (showSpamRequests) {
         setPendingRequests(allPendingRequests);
       } else {
-        setPendingRequests(_nonBlacklistedRequests);
+        setPendingRequests(nonBlacklistedRequests);
       }
     }
   }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);

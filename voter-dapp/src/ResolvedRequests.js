@@ -78,7 +78,7 @@ function ResolvedRequests({ votingAccount }) {
     setHasSpamRequests(false);
 
     if (allResolvedEvents) {
-      const _nonBlacklistedRequests = allResolvedEvents.filter(ev => {
+      const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
         if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
           if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
@@ -87,14 +87,14 @@ function ResolvedRequests({ votingAccount }) {
         }
       });
       // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
-      if (_nonBlacklistedRequests.length < allResolvedEvents.length) {
-        setHasSpamRequests(true);
+      if (nonBlacklistedRequests.length < allResolvedEvents.length) {
+        nonBlacklistedRequests(true);
       }
 
       if (showSpamRequests) {
         setResolvedEvents(allResolvedEvents);
       } else {
-        setResolvedEvents(_nonBlacklistedRequests);
+        setResolvedEvents(nonBlacklistedRequests);
       }
     }
   }, [allResolvedEvents, REQUEST_BLACKLIST, showSpamRequests]);
