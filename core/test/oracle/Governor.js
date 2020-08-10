@@ -1,6 +1,12 @@
-const { RegistryRolesEnum, didContractThrow, getRandomUnsignedInt, computeVoteHash } = require("@umaprotocol/common");
+const {
+  RegistryRolesEnum,
+  didContractThrow,
+  getRandomUnsignedInt,
+  computeVoteHash,
+  signMessage
+} = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -16,6 +22,7 @@ const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const snapshotMessage = "Sign For Snapshot";
 
 contract("Governor", function(accounts) {
   let voting;
@@ -24,6 +31,7 @@ contract("Governor", function(accounts) {
   let supportedIdentifiers;
   let finder;
   let timer;
+  let signature;
 
   const proposer = accounts[0];
   const account2 = accounts[1];
@@ -59,6 +67,8 @@ contract("Governor", function(accounts) {
     // To work, the governor must be the owner of the IdentifierWhitelist contracts. This is not the default setup in the test
     // environment, so ownership must be transferred.
     await supportedIdentifiers.transferOwnership(governor.address);
+
+    signature = await signMessage(web3, snapshotMessage, proposer);
   });
 
   beforeEach(async function() {
@@ -198,6 +208,7 @@ contract("Governor", function(accounts) {
     await voting.commitVote(request1.identifier, request1.time, hash1);
     await voting.commitVote(request2.identifier, request2.time, hash2);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request1.identifier, request1.time, vote, salt);
     await voting.revealVote(request2.identifier, request2.time, vote, salt);
     await moveToNextRound(voting);
@@ -239,6 +250,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -282,6 +294,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -328,6 +341,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -380,6 +394,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -422,6 +437,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -466,6 +482,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -511,6 +528,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -554,6 +572,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash2, { from: account2 });
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt, { from: account2 });
     await moveToNextRound(voting);
 
@@ -574,6 +593,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash1);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
   });
@@ -609,6 +629,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -658,6 +679,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -703,6 +725,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
@@ -784,6 +807,7 @@ contract("Governor", function(accounts) {
     });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 

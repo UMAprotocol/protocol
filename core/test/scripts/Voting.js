@@ -116,6 +116,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.skipped.length, 0);
     assert.equal(result.failures.length, 0);
     assert.equal(notifier.notificationsSent, 1);
+
     // Running again should send more emails but not execute any batch commits.
     result = await votingSystem.runIteration(USE_PROD_LOGS);
     assert.equal(result.batches, 0);
@@ -126,6 +127,8 @@ contract("scripts/Voting.js", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
+
+    await votingSystem.runSnapshot();
 
     // Replace the voting system object with a new one so the class can't persist the commit.
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
@@ -172,6 +175,8 @@ contract("scripts/Voting.js", function(accounts) {
     // Move to the reveal phase.
     await moveToNextPhase(voting);
 
+    await votingSystem.runSnapshot();
+
     // Replace the voting system object with a new one so the class can't persist the commit.
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
     result = await votingSystem.runIteration(USE_PROD_LOGS);
@@ -207,6 +212,8 @@ contract("scripts/Voting.js", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
+
+    await votingSystem.runSnapshot();
 
     // Replace the voting system object with a new one so the class can't persist the commits.
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
@@ -254,6 +261,7 @@ contract("scripts/Voting.js", function(accounts) {
     votingSystem.voting.batchCommit = temp;
     await votingSystem.runIteration(USE_PROD_LOGS);
     await moveToNextPhase(voting);
+    await votingSystem.runSnapshot();
     await votingSystem.runIteration(USE_PROD_LOGS);
     await moveToNextRound(voting);
   });
@@ -272,7 +280,10 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.updates.length, 1);
     assert.equal(result.skipped.length, 0);
     assert.equal(result.failures.length, 0);
+
     await moveToNextPhase(voting);
+    await votingSystem.runSnapshot();
+
     result = await votingSystem.runIteration(USE_PROD_LOGS);
     assert.equal(result.batches, 1);
     assert.equal(result.updates.length, 1);
@@ -311,6 +322,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.skipped.length, 0);
     assert.equal(result.failures.length, 0);
     await moveToNextPhase(voting);
+    await votingSystem.runSnapshot();
     result = await votingSystem.runIteration(USE_PROD_LOGS);
     assert.equal(result.batches, 1);
     assert.equal(result.updates.length, 1);
@@ -355,6 +367,7 @@ contract("scripts/Voting.js", function(accounts) {
 
     // Move to reveal phase.
     await moveToNextPhase(voting);
+    await votingSystem.runSnapshot();
     pendingVotes = await voting.getPendingRequests();
     assert.equal(
       pendingVotes.length,

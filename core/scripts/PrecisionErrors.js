@@ -14,7 +14,7 @@
 const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
-const { interfaceName } = require("../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const unreachableDeadline = MAX_UINT_VAL;
 

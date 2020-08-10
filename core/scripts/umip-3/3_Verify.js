@@ -14,7 +14,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 

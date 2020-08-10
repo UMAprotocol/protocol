@@ -22,7 +22,7 @@
  * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const { interfaceName } = require("../../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

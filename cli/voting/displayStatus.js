@@ -32,7 +32,7 @@ const displayVoteStatus = async (web3, oracle, designatedVoting) => {
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.
   const { votingAccount } = getVotingRoles(account, oracle, designatedVoting);
 
-  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, oracle);
+  const filteredRequests = await filterRequests(web3, pendingRequests, votingAccount, roundId, roundPhase, oracle);
   const resolvedPrices = await getResolvedPrices(web3, oracle, votingAccount);
   const rewards = await getAvailableRewards(web3, oracle, votingAccount);
   style.spinnerReadingContracts.stop();

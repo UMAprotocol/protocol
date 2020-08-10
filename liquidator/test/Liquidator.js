@@ -2,7 +2,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("@umaprotocol/common");
-const { interfaceName } = require("../../core/utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");

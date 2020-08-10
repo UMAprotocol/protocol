@@ -8,7 +8,8 @@ const {
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
   computeVoteHash,
-  getKeyGenMessage
+  getKeyGenMessage,
+  signMessage
 } = require("@umaprotocol/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
@@ -20,6 +21,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
 const Timer = artifacts.require("Timer");
+const snapshotMessage = "Sign For Snapshot";
 
 contract("Voting", function(accounts) {
   let voting;
@@ -35,6 +37,7 @@ contract("Voting", function(accounts) {
   const registeredContract = accounts[4];
   const unregisteredContract = accounts[5];
   const migratedVoting = accounts[6];
+  let signature;
 
   const setNewInflationRate = async inflationRate => {
     await voting.setInflationRate({ rawValue: inflationRate.toString() });
@@ -69,6 +72,7 @@ contract("Voting", function(accounts) {
     // Register contract with Registry.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
     await registry.registerContract([], registeredContract, { from: account1 });
+    signature = await signMessage(web3, snapshotMessage, account1);
   });
 
   beforeEach(async () => {
@@ -117,6 +121,29 @@ contract("Voting", function(accounts) {
     // A second shift should go back to commit.
     await moveToNextPhase(voting);
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
+  });
+
+  it("Should snapshot only with valid EOA", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+    await moveToNextPhase(voting);
+
+    // no sig passed should fail
+    assert(await didContractThrow(voting.snapshotCurrentRound()));
+
+    // random bytes should fail
+    assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(65))));
+
+    // wrong signer
+    const badsig1 = await signMessage(web3, snapshotMessage, account2);
+    assert(await didContractThrow(voting.snapshotCurrentRound(badsig1)));
+
+    // right signer, wrong message
+    const badsig2 = await signMessage(web3, snapshotMessage.toLowerCase(), account1);
+    assert(await didContractThrow(voting.snapshotCurrentRound(badsig2)));
+
+    // this should not throw
+    await voting.snapshotCurrentRound(signature);
   });
 
   it("One voter, one request", async function() {
@@ -169,6 +196,12 @@ contract("Voting", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
+
+    // Can't reveal if snapshot has not been taken yet, even if all data is correct
+    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
+
+    // This is now required before reveal
+    await voting.snapshotCurrentRound(signature);
 
     // Can't commit during the reveal phase.
     assert(await didContractThrow(voting.commitVote(identifier, time, newHash)));
@@ -254,6 +287,8 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.revealVote(identifier1, time1, price1, salt1)));
     assert(await didContractThrow(voting.revealVote(identifier1, time1, price2, salt2)));
 
+    await voting.snapshotCurrentRound(signature);
+
     // Can reveal the right combos.
     await voting.revealVote(identifier1, time2, price1, salt1);
     await voting.revealVote(identifier2, time1, price2, salt2);
@@ -319,6 +354,8 @@ contract("Voting", function(accounts) {
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
 
+    await voting.snapshotCurrentRound(signature);
+
     // Reveal both votes.
     await voting.revealVote(identifier1, time1, price1, salt1);
     await voting.revealVote(identifier2, time2, price2, salt2);
@@ -380,6 +417,9 @@ contract("Voting", function(accounts) {
 
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, timeSucceed, price, salt);
   });
 
@@ -420,6 +460,9 @@ contract("Voting", function(accounts) {
 
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt);
 
     // Cannot get the price during the reveal phase.
@@ -500,6 +543,7 @@ contract("Voting", function(accounts) {
     await moveToNextPhase(voting);
     assert.equal((await voting.getPendingRequests()).length, 2);
 
+    await voting.snapshotCurrentRound(signature);
     // Reveal vote.
     await voting.revealVote(identifier1, time1, price1, salt1);
     await voting.revealVote(identifier2, time2, price2, salt2);
@@ -566,6 +610,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the vote.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt);
 
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
@@ -613,6 +660,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
     await voting.revealVote(identifier, time, price2, salt2, { from: account2 });
 
@@ -632,6 +682,9 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
   });
 
@@ -687,6 +740,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
     await voting.revealVote(identifier, time, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
@@ -735,6 +791,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the vote.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
     const initialRoundId = await voting.getCurrentRoundId();
 
@@ -767,6 +826,9 @@ contract("Voting", function(accounts) {
 
     // Reveal votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
 
     await moveToNextRound(voting);
@@ -809,6 +871,9 @@ contract("Voting", function(accounts) {
 
     // Reveal votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
 
@@ -883,7 +948,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
 
     // Directly snapshot the current round to lock in token balances.
-    await voting.snapshotCurrentRound();
+    await voting.snapshotCurrentRound(signature);
 
     // The snapshotId of the current round should be non zero after the snapshot is taken
     assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
@@ -912,61 +977,6 @@ contract("Voting", function(accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
   });
 
-  it("Snapshotting from initial reveal", async function() {
-    const identifier = web3.utils.utf8ToHex("basic-snapshotting2");
-    const time = "1000";
-
-    // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
-
-    // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
-    await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
-
-    // Commit votes
-    const price = 456;
-    const salt1 = getRandomUnsignedInt();
-    const hash1 = computeVoteHash({
-      price: price,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
-
-    const salt2 = getRandomUnsignedInt();
-    const hash2 = computeVoteHash({
-      price: price,
-      salt: salt2,
-      account: account2,
-      time,
-      roundId,
-      identifier
-    });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
-
-    // Move to the reveal phase, where the snapshot should be taken.
-    await moveToNextPhase(voting);
-
-    // The snapshotId of the current round should be zero before initiating the snapshot.
-    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
-
-    // The first revealer should result in a snapshot being taken.
-    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
-
-    // The snapshotId of the current round should be non zero after the snapshot is taken.
-    const snapShotId = (await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString();
-    assert.notEqual(snapShotId, "0");
-
-    // A second reveal should or a direct snapshot call should not modify the shapshot id.
-    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
-    await voting.snapshotCurrentRound();
-    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), snapShotId);
-  });
-
   it("Only registered contracts", async function() {
     const identifier = web3.utils.utf8ToHex("only-registered");
     const time = "1000";
@@ -993,6 +1003,9 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time, hash, { from: account1 });
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
     await moveToNextRound(voting);
 
@@ -1064,6 +1077,8 @@ contract("Voting", function(accounts) {
 
     await moveToNextPhase(voting);
 
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt1, { from: account1 });
     await voting.revealVote(identifier, time, price, salt2, { from: account2 });
 
@@ -1109,6 +1124,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
 
     // This should have no effect because the expiration has been captured.
@@ -1169,6 +1187,8 @@ contract("Voting", function(accounts) {
     const hash2 = web3.utils.soliditySha3(price, salt2);
     await voting.commitVote(identifier, time2, hash2, { from: account1 });
     await moveToNextPhase(voting);
+
+    assert(await didContractThrow(voting.snapshotCurrentRound(signature)));
     assert(await didContractThrow(voting.revealVote(identifier, time2, price, salt2, { from: account1 })));
 
     // Reset the inflation rate and rewards expiration time.
@@ -1238,6 +1258,9 @@ contract("Voting", function(accounts) {
 
     // Reveal the votes.
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time1, losingPrice, salt1, { from: account1 });
     await voting.revealVote(identifier, time1, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time1, winningPrice, salt3, { from: account3 });
@@ -1342,6 +1365,9 @@ contract("Voting", function(accounts) {
     await moveToNextPhase(voting);
 
     const account4Balance = await votingToken.balanceOf(account4);
+
+    await voting.snapshotCurrentRound(signature);
+
     result = await voting.revealVote(identifier, time, price, salt, { from: account4 });
     truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
       return (
@@ -1379,6 +1405,8 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     result = await voting.commitVote(identifier, time, hash4, { from: account4 });
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
     await voting.revealVote(identifier, time, wrongPrice, salt, { from: account4 });
     const initialTotalSupply = await votingToken.totalSupply();
@@ -1470,6 +1498,8 @@ contract("Voting", function(accounts) {
 
     const decryptedMessage = await decryptMessage(privateKey, retrievedEncryptedMessage);
     const retrievedVote = JSON.parse(decryptedMessage);
+
+    await voting.snapshotCurrentRound(signature);
 
     assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
     await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
@@ -1619,6 +1649,8 @@ contract("Voting", function(accounts) {
 
     await moveToNextPhase(voting);
 
+    await voting.snapshotCurrentRound(signature);
+
     // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
     const result = await voting.batchReveal([
       {
@@ -1687,6 +1719,9 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time1, hash, { from: account1 });
     await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
     await voting.revealVote(identifier, time1, price, salt, { from: account1 });
     await moveToNextRound(voting);
 
@@ -1754,6 +1789,7 @@ contract("Voting", function(accounts) {
     // Reveal phase.
     await moveToNextPhase(votingTest);
 
+    await votingTest.snapshotCurrentRound(signature);
     // Reveal vote.
     await votingTest.revealVote(identifier, time, price, salt);
 

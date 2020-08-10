@@ -5,6 +5,8 @@
  * stored in plain text.
  */
 
+const path = require("path");
+
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
 const { GckmsConfig } = require("./gckms/GckmsConfig.js");
@@ -171,28 +173,33 @@ addLocalNetwork(networks, "metamask", {
   }
 });
 
-addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
+addLocalNetwork(networks, "mainnet-fork", { port: 1235, network_id: 1 });
 
-const TruffleConfig = {
-  // See <http://truffleframework.com/docs/advanced/configuration>
-  // for more about customizing your Truffle configuration!
-  networks: networks,
-  plugins: ["solidity-coverage"],
-  mocha: {
-    enableTimeouts: false,
-    before_timeout: 1800000
-  },
-  compilers: {
-    solc: {
-      version: "0.6.6",
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 200
+function getTruffleConfig(truffleContextDir = "./") {
+  return {
+    // See <http://truffleframework.com/docs/advanced/configuration>
+    // for more about customizing your Truffle configuration!
+    networks: networks,
+    plugins: ["solidity-coverage"],
+    mocha: {
+      enableTimeouts: false,
+      before_timeout: 1800000
+    },
+    compilers: {
+      solc: {
+        version: "0.6.12",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 199
+          }
         }
       }
-    }
-  }
-};
+    },
+    migrations_directory: path.join(truffleContextDir, "migrations"),
+    contracts_directory: path.join(truffleContextDir, "contracts"),
+    contracts_build_directory: path.join(truffleContextDir, "build/contracts")
+  };
+}
 
-module.exports = { TruffleConfig };
+module.exports = { getTruffleConfig };

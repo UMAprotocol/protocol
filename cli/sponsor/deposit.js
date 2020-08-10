@@ -1,5 +1,4 @@
 const inquirer = require("inquirer");
-const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { wrapToWeth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
 

@@ -3,7 +3,8 @@ const {
   didContractThrow,
   getRandomSignedInt,
   getRandomUnsignedInt,
-  computeVoteHash
+  computeVoteHash,
+  signMessage
 } = require("@umaprotocol/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
@@ -13,6 +14,7 @@ const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const snapshotMessage = "Sign For Snapshot";
 
 contract("DesignatedVoting", function(accounts) {
   const umaAdmin = accounts[0];
@@ -23,6 +25,7 @@ contract("DesignatedVoting", function(accounts) {
   let voting;
   let votingToken;
   let designatedVoting;
+  let signature;
 
   let tokenBalance;
 
@@ -44,6 +47,7 @@ contract("DesignatedVoting", function(accounts) {
     const registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, umaAdmin);
     await registry.registerContract([], registeredContract, { from: umaAdmin });
+    signature = await signMessage(web3, snapshotMessage, umaAdmin);
   });
 
   it("Deposit and withdraw", async function() {
@@ -117,6 +121,7 @@ contract("DesignatedVoting", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
 
     // Only the voter can reveal a vote.
     assert(await didContractThrow(designatedVoting.revealVote(identifier, time, price, salt, { from: tokenOwner })));
@@ -199,6 +204,7 @@ contract("DesignatedVoting", function(accounts) {
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
+    await voting.snapshotCurrentRound(signature);
 
     // Check messages in emitted events.
     let events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0, filter: { identifier } });

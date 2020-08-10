@@ -1,42 +1,33 @@
-require("dotenv").config();
-const fetch = require("node-fetch");
+// This script calculates the block number closet to a given timestamp.
+// Script can be run as: truffle exec ./scripts/liquidity-mining/FindBlockAtTimeStamp.js --dateTime="2020-05-05 00:00"
 
-const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
+const moment = require("moment");
 
-// Find information about a given balancer pool `shares` returns a list of all historic LP providers.
-async function fetchBalancerPoolInfo(poolAddress) {
-  const query = `
-        {
-          pools (where: {id: "${poolAddress}"}) {
-            id
-            shares (first: 1000) {
-              userAddress {
-                id
-              }
-            }
-          }
-        }
-    `;
+const argv = require("minimist")(process.argv.slice(), {
+  string: ["dateTime"]
+});
 
-  const response = await fetch(SUBGRAPH_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      query
-    })
-  });
+const FindBlockAtTimeStamp = async callback => {
+  try {
+    const dateTime = moment.utc(argv.dateTime, "YYYY-MM-DD  HH:mm Z");
+    if (!dateTime.isValid()) {
+      throw "Missing or invalid parameter! Provide `dateTime` must be strings formatted `YYYY-MM-DD  HH:mm`";
+    }
+    console.log(`⏱  Finding closest block to ${argv.dateTime}. Note time is interpreted as UTC time.`);
+    // Get the closet block number to the dateTime provided.
+    const blockNumber = await _findBlockNumberAtTimestamp(web3, dateTime.unix());
+    console.log(`👀 Closest block to ${argv.dateTime} is ${blockNumber}`);
+  } catch (err) {
+    console.error(err);
+    callback(err);
+    return;
+  }
+  callback();
+};
 
-  const { data } = await response.json();
+module.exports = FindBlockAtTimeStamp;
 
-  return data.pools[0];
-}
-
-// Finds the block number closest to a given timestamp. `higherLimitMax` & `lowerLimitMax` place bounds
-// on the time stamp error on either side of the found blocknumber.
-async function findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax = 30, lowerLimitMax = 30) {
+async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax = 15, lowerLimitMax = 15) {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
   // Decreasing average block size will decrease precision and also decrease the amount of
@@ -92,8 +83,3 @@ async function findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax 
   }
   return block.number;
 }
-
-module.exports = {
-  fetchBalancerPoolInfo,
-  findBlockNumberAtTimestamp
-};
