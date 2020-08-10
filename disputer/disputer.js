@@ -76,13 +76,11 @@ class Disputer {
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
   // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
-  async queryAndDispute(disputerOverridePrice) {
+  async dispute(disputerOverridePrice) {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
     });
-
-    await this.update();
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
@@ -191,13 +189,11 @@ class Disputer {
   }
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
-  async queryAndWithdrawRewards() {
+  async withdrawRewards() {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
     });
-
-    await this.update();
 
     // Can only derive rewards from disputed liquidations that this account disputed.
     const disputedLiquidations = this.empClient
