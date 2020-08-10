@@ -44,6 +44,8 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerCo
       priceFeedConfig
     });
 
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+
     // Setup web3 accounts, account instance and pricefeed for EMP.
     const [accounts, emp, voting, priceFeed] = await Promise.all([
       web3.eth.getAccounts(),
@@ -66,9 +68,6 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerCo
     const empProps = {
       priceIdentifier: priceIdentifier
     };
-
-    // Setup price feed.
-    const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
