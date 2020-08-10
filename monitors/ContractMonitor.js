@@ -291,22 +291,23 @@ class ContractMonitor {
     );
 
     for (let event of newDisputeSettlementEvents) {
-      // Query resolved price for dispute price request. Note that this will return nothing if the
-      // disputed liquidation's block timestamp is not equal to the timestamp of the price request. This could be the
-      // the case if the EMP contract is using the Timer contract for example.
-      const liquidationEvent = this.empEventClient
-        .getAllLiquidationEvents()
-        .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
-      const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
       let resolvedPrice;
       try {
+        // Query resolved price for dispute price request. Note that this will return nothing if the
+        // disputed liquidation's block timestamp is not equal to the timestamp of the price request. This could be the
+        // the case if the EMP contract is using the Timer contract for example.
+        const liquidationEvent = this.empEventClient
+          .getAllLiquidationEvents()
+          .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
+        const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
+
         resolvedPrice = revertWrapper(
           await this.votingContract.getPrice(this.utf8ToHex(this.empProps.priceIdentifier), liquidationTimestamp, {
             from: this.empContract.options.address
           })
         );
       } catch (error) {
-        // No price available.
+        // No price or matching liquidation available.
       }
 
       // Sample message:
