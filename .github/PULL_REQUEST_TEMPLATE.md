@@ -6,7 +6,10 @@
 <!--
   Title
   Please include a concise title that briefly describes the change.
-  Titles should be prefixed with the area of code that the change affects and they should be in the present simple tense. Examples:
+  Titles should follow https://www.conventionalcommits.org/.
+  They should also be in the present simple tense.
+
+  Examples:
   
   feat(dvm): adds a new function to compute voting rewards offchain
   fix(monitor): fixes broken link in liquidation log
