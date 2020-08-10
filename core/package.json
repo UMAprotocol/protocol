@@ -34,6 +34,7 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
+  "main": "index.js",
   "files": [
     "./contracts/**/*.sol",
     "./build/contracts/*.js",
