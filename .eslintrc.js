@@ -1,14 +1,21 @@
 module.exports = {
   env: {
-    browser: true
+    browser: true,
+    es6: true,
+    node: true,
+    mocha: true
   },
-  extends: ["plugin:prettier/recommended"],
+  extends: ["plugin:prettier/recommended", "eslint:recommended"],
   plugins: ["prettier", "mocha"],
   parserOptions: {
     ecmaFeatures: {
       jsx: true,
       modules: true
     }
+  },
+  globals: {
+    web3: "writable",
+    artifacts: "readonly"
   },
   parser: "babel-eslint",
   rules: {
