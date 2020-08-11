@@ -75,7 +75,7 @@ exports.BlockHistory = (web3, blocks = []) => {
 exports.PriceHistory = (getPrice, prices = {}) => {
   assert(getPrice, "requires getPrice(blockNumber) function");
 
-  // Get the latest known price from currenty block
+  // Get the latest known price from current block
   function currentPrice() {
     const result = list().reduce((result, [timestamp, price]) => {
       if (result.price == null) return { timestamp, price };
