@@ -1,15 +1,15 @@
 [
   {
     "contractName": "Migrations",
-    "address": "0xC278606d5Ee02eDADd3237f4750Da2e9ED70306A"
+    "address": "0x6c53E7C7443af8C2D0C628808BC03fb37A45227A"
   },
   {
     "contractName": "Finder",
-    "address": "0x6850e2B45D2951301a0BFED44F0a80E9F32fAfEe"
+    "address": "0xc149Fd2ebb4c7d11b84604745Cef72e2A12B0640"
   },
   {
     "contractName": "VotingToken",
-    "address": "0xbFD3F61F3dd2AFBd8a0B9Ab081620352268913F4"
+    "address": "0xc7D48bbf3BC7ca7F3b3DB6894F2Ef005d722122F"
   },
   {
     "contractName": "IdentifierWhitelist",
@@ -17,7 +17,7 @@
   },
   {
     "contractName": "Voting",
-    "address": "0x473C5F35Bab382DCef3EA34180E13c74C1428401"
+    "address": "0x58F43A993Ea40ccE2Fd16620D9bfD55C40E05167"
   },
   {
     "contractName": "Registry",
@@ -64,24 +64,8 @@
     "address": "0x2f8a36BAD7e3E08D5FBAE3460423b881C6253fC4"
   },
   {
-    "contractName": "Migrations",
-    "address": "0xceb2EeB9c6A5050D7e0c8DcE310fEF1f75B9c75F"
-  },
-  {
-    "contractName": "Finder",
-    "address": "0xe6c3EF6103a8751202e7D2752150C2598AF32f84"
-  },
-  {
-    "contractName": "VotingToken",
-    "address": "0x17e5cFA770B2FaF0Fd3c3998ba6AeC85B8688122"
-  },
-  {
     "contractName": "IdentifierWhitelist",
     "address": "0xE3CbA390Be82c57526b062f80e8c0863E5330A84"
-  },
-  {
-    "contractName": "Voting",
-    "address": "0x0acA1A608D2fF615369177E778F8ce29158F388F"
   },
   {
     "contractName": "Registry",
@@ -122,6 +106,54 @@
   {
     "contractName": "ExpiringMultiPartyCreator",
     "address": "0x5176c2575DB39054dC1aFe1C8337C7ea02dc5331"
+  },
+  {
+    "contractName": "WETH9",
+    "address": "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x58F43A993Ea40ccE2Fd16620D9bfD55C40E05167"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0xA665b09a09dA163f890E806524da338708B9C2cD"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xBBa23876C06f0E7a3Bbd33E93Ab213b441b187bd"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x3B32cfADC77C0425AB33F490c8220aEF987cea51"
+  },
+  {
+    "contractName": "Governor",
+    "address": "0xC48eFD9f3E12AAB69335d9fB257Bdf09Bb3a8e85"
+  },
+  {
+    "contractName": "DesignatedVotingFactory",
+    "address": "0x88655467De949282875fb14242fc9995A5794DFa"
+  },
+  {
+    "contractName": "TestnetERC20",
+    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x427c700b1094CE7d93D94c251F8dbC3076BD07e2"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x754A08f5684214C6341EEE6bf2c33740E794bbe4"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0xe48C1519ae2FF5049C6E248c2Cdf35FA14A35a40"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0x2853CCd07ac41c005400e66D10Df69c154eDaE6C"
   },
   {
     "contractName": "WETH9",
