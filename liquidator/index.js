@@ -139,13 +139,15 @@ async function run(
       });
     }
 
+    // Enter into a while loop that will run indefinitely while the bot runs. This is wrapped in retry logic that will
+    // re-start the loop errorRetries number of times if the execution fails
     await retry(
-      async bail => {
+      async () => {
         while (true) {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and considers the
-          // override price if the user has specified one.
+          // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
+          // considers override price if the user has specified one.
           const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
           await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           // Check for any finished liquidations that can be withdrawn.
@@ -157,7 +159,7 @@ async function run(
               at: "Liquidator#index",
               message: "End of severless execution loop - Yielding process"
             });
-            // await waitForLogger(logger);
+            await waitForLogger(logger);
             break;
           }
           logger.debug({
@@ -184,7 +186,7 @@ async function run(
       message: "Liquidator polling error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    // await waitForLogger(logger);
+    await waitForLogger(logger);
   }
 }
 
@@ -237,7 +239,7 @@ async function Poll(callback) {
       message: "Liquidator configuration error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    // await waitForLogger(Logger);
+    await waitForLogger(Logger);
     callback(error);
     return;
   }
