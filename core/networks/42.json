@@ -1,47 +1,47 @@
 [
   {
     "contractName": "Migrations",
-    "address": "0x6c53E7C7443af8C2D0C628808BC03fb37A45227A"
+    "address": "0xB851449bC030F08E0f1Aa57A0a7cAEFE73030De0"
   },
   {
     "contractName": "Finder",
-    "address": "0xc149Fd2ebb4c7d11b84604745Cef72e2A12B0640"
+    "address": "0xeD0169a88d267063184b0853BaAAAe66c3c154B2"
   },
   {
     "contractName": "VotingToken",
-    "address": "0xc7D48bbf3BC7ca7F3b3DB6894F2Ef005d722122F"
+    "address": "0x489Bf230d4Ab5c2083556E394a28276C22c3B580"
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x58F43A993Ea40ccE2Fd16620D9bfD55C40E05167"
+    "address": "0x2Fe2C263Be8FD45971934EB2421Fc59761dda343"
   },
   {
     "contractName": "Voting",
-    "address": "0x2DcF9D2f73111185d6E0B240e5B0ba2E41ee7B91"
+    "address": "0x24BE89E098d6F65A924142d93013A84281F6296B"
   },
   {
     "contractName": "Registry",
-    "address": "0xA665b09a09dA163f890E806524da338708B9C2cD"
+    "address": "0x7b1c04D2826B140779e2B97d5783AF05cf00Fbab"
   },
   {
     "contractName": "FinancialContractsAdmin",
-    "address": "0xBBa23876C06f0E7a3Bbd33E93Ab213b441b187bd"
+    "address": "0xe101B874431B5dc96f6d19fC1DE16eAD922D639b"
   },
   {
     "contractName": "Store",
-    "address": "0x3B32cfADC77C0425AB33F490c8220aEF987cea51"
+    "address": "0x41AF40Eb92Bec4dD8DA77103597838b3dBBD3B6f"
   },
   {
     "contractName": "Governor",
-    "address": "0xC48eFD9f3E12AAB69335d9fB257Bdf09Bb3a8e85"
+    "address": "0xca4575EE197308c9D2aBF813A5f064f44898b7a4"
   },
   {
     "contractName": "DesignatedVotingFactory",
-    "address": "0x88655467De949282875fb14242fc9995A5794DFa"
+    "address": "0xF988f9f62f355966a758c5936C9080183C176585"
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x427c700b1094CE7d93D94c251F8dbC3076BD07e2"
+    "address": "0xe7e87f89e3D15617261Fd52188Ca64803165f8Af"
   },
   {
     "contractName": "WETH9",
@@ -53,14 +53,14 @@
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0x754A08f5684214C6341EEE6bf2c33740E794bbe4"
+    "address": "0xf8bdAb5d675F76eD863fF9Fa35B129A6e43e71cA"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0xe48C1519ae2FF5049C6E248c2Cdf35FA14A35a40"
+    "address": "0xB6693A4cB6CFd70680145e733388C7FE8b778841"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0x2853CCd07ac41c005400e66D10Df69c154eDaE6C"
+    "address": "0x2bc9485Ea587Ac7A9b9e2747555DD37c36466ea1"
   }
 ]
