@@ -121,8 +121,11 @@ class Liquidator {
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   // If `maxTokensToLiquidateWei` is not passed in, then the bot will only attempt to liquidate the full position.
   // If liquidatorOverridePrice is provided then the liquidator bot will override the price feed with this input price.
-  async queryAndLiquidate(maxTokensToLiquidateWei, liquidatorOverridePrice) {
-    await this.update();
+  async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Checking for liquidatable positions and preforming liquidations"
+    });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPrice();
@@ -320,19 +323,14 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we created new liquidations.
-    await this.empClient.update();
   }
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
-  async queryAndWithdrawRewards() {
+  async withdrawRewards() {
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
-
-    await this.update();
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
@@ -446,9 +444,6 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we withdrew rewards.
-    await this.empClient.update();
   }
 }
 

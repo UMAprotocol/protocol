@@ -90,18 +90,30 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
   const [showSpamRequests, setShowSpamRequests] = useState(false);
+  const [hasSpamRequests, setHasSpamRequests] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
   useEffect(() => {
+    setHasSpamRequests(false);
+
     if (allPendingRequests) {
-      const _pendingRequests = allPendingRequests.filter(req => {
-        if (showSpamRequests || !REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
+      const nonBlacklistedRequests = allPendingRequests.filter(req => {
+        if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
         else {
-          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) return true;
-          else return false;
+          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
+            return true;
+          } else return false;
         }
       });
+      // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
+      if (nonBlacklistedRequests.length < allPendingRequests.length) {
+        setHasSpamRequests(true);
+      }
 
-      setPendingRequests(_pendingRequests);
+      if (showSpamRequests) {
+        setPendingRequests(allPendingRequests);
+      } else {
+        setPendingRequests(nonBlacklistedRequests);
+      }
     }
   }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);
 
@@ -624,7 +636,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         </DialogContent>
       </Dialog>
       {/* Only render this spam filter switch if some pending spam requests have been filtered out */}
-      {allPendingRequests.length >= pendingRequests.length && (
+      {hasSpamRequests && (
         <FormGroup>
           <FormControlLabel
             control={
