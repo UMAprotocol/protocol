@@ -9,25 +9,26 @@ const { delay } = require("../../helpers/delay.js");
 const BalancerMock = artifacts.require("BalancerMock");
 const Balancer = artifacts.require("Balancer");
 
-contract("BalancerPriceFeed.js", function(accounts) {
+contract("BalancerPriceFeed.js", async function(accounts) {
   const owner = accounts[0];
 
   let balancerMock;
   let balancerPriceFeed;
   let dummyLogger;
 
-  let now = Math.floor(Date.now() / 1000);
+  let startTime, endTime;
   let premine = 5;
   let blocktime = 15;
   let lookback = premine * blocktime;
 
   before(async function() {
+    startTime = (await web3.eth.getBlock("latest")).timestamp + blocktime;
     balancerMock = await BalancerMock.new({ from: owner });
     for (i of lodash.times(premine)) {
-      const ts = Math.floor(now - blocktime * (premine - i));
+      endTime = startTime + blocktime * i;
       // we are artificially setting price to block mined index
       const tx = await balancerMock.contract.methods.setPrice(i);
-      await mineTransactionsAtTime(web3, [tx], ts, accounts[0]);
+      await mineTransactionsAtTime(web3, [tx], endTime, accounts[0]);
     }
 
     // DummyLogger will not print anything to console as only capture `info` level events.
@@ -39,7 +40,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     balancerPriceFeed = new BalancerPriceFeed(
       dummyLogger,
       web3,
-      () => now,
+      () => endTime,
       Balancer.abi,
       balancerMock.address,
       // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
@@ -53,11 +54,10 @@ contract("BalancerPriceFeed.js", function(accounts) {
   it("Basic current price", async function() {
     // last price is basically the last premine block index
     assert.equal(balancerPriceFeed.getCurrentPrice(), (premine - 1).toString());
-    assert.equal(balancerPriceFeed.getLastUpdateTime(), now);
+    assert.equal(balancerPriceFeed.getLastUpdateTime(), endTime);
   });
   it("historical price", async function() {
     // get first block, price should be 0
-    const pastTime = now - premine * blocktime;
-    assert.equal(balancerPriceFeed.getHistoricalPrice(pastTime), "0");
+    assert.equal(balancerPriceFeed.getHistoricalPrice(startTime), "0");
   });
 });

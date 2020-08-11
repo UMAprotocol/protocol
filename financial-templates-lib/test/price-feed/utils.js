@@ -5,7 +5,7 @@ const { advanceBlockAndSetTime, stopMining, startMining } = require("@umaprotoco
 
 contract("Price Feed Utils", function(accounts) {
   let blockHistory, priceHistory;
-  let now = Math.floor(Date.now() / 1000);
+  let startTime, endTime;
   let premine = 5;
   let blocktime = 15;
   let age = premine * blocktime;
@@ -17,18 +17,19 @@ contract("Price Feed Utils", function(accounts) {
   before(async function() {
     blockHistory = BlockHistory(web3);
     priceHistory = PriceHistory(getPrice);
+    startTime = (await web3.eth.getBlock("latest")).timestamp + blocktime;
     for (i of lodash.times(premine)) {
-      const ts = Math.floor(now - blocktime * (premine - i));
-      await advanceBlockAndSetTime(web3, ts);
+      endTime = startTime + blocktime * i;
+      await advanceBlockAndSetTime(web3, endTime);
     }
-    await blockHistory.update(age, now);
+    await blockHistory.update(age, endTime);
   });
 
   it("listBlocks", async function() {
     assert.isAbove(blockHistory.listBlocks().length, 0);
   });
   it("getClosestTime", function() {
-    const time = now - Math.floor(age / 2);
+    const time = endTime - Math.floor(age / 2);
     const block = blockHistory.getClosestTime(time);
     assert.isOk(block);
     assert.isOk(blockHistory.has(block.number));
@@ -44,14 +45,13 @@ contract("Price Feed Utils", function(accounts) {
   });
   it("priceHistory.getBetween", async function() {
     await priceHistory.update(blockHistory.listBlocks());
-    const result = priceHistory.getBetween(now - age, now);
+    const result = priceHistory.getBetween(endTime - age, endTime);
     assert.isOk(result);
     assert.isOk(result.length);
   });
   it("get price by timestamp", async function() {
-    const time = now - age;
     await priceHistory.update(blockHistory.listBlocks());
-    const block = blockHistory.getClosestTime(time);
+    const block = blockHistory.getClosestTime(startTime);
     const result = priceHistory.get(block.timestamp);
     assert.equal(result, await getPrice(block.number));
   });
