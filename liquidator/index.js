@@ -67,6 +67,10 @@ async function run(
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
 
+    if (!priceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
+
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const [
       collateralRequirement,
@@ -87,10 +91,6 @@ async function run(
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens
     };
-
-    if (!priceFeed) {
-      throw new Error("Price feed config is invalid");
-    }
 
     // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
@@ -114,40 +114,39 @@ async function run(
       syntheticToken.allowance(accounts[0], empAddress)
     ]);
 
-    // if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-    //   await gasEstimator.update();
-    //   const collateralApprovalTx = await collateralToken.approve(empAddress, MAX_UINT_VAL, {
-    //     from: accounts[0],
-    //     gasPrice: gasEstimator.getCurrentFastPrice()
-    //   });
-    //   logger.info({
-    //     at: "Liquidator#index",
-    //     message: "Approved EMP to transfer unlimited collateral tokens 💰",
-    //     collateralApprovalTx: collateralApprovalTx.tx
-    //   });
-    // }
-    // if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-    //   await gasEstimator.update();
-    //   const syntheticApprovalTx = await syntheticToken.approve(empAddress, MAX_UINT_VAL, {
-    //     from: accounts[0],
-    //     gasPrice: gasEstimator.getCurrentFastPrice()
-    //   });
-    //   logger.info({
-    //     at: "Liquidator#index",
-    //     message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-    //     collateralApprovalTx: syntheticApprovalTx.tx
-    //   });
-    // }
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.approve(empAddress, MAX_UINT_VAL, {
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.tx
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.approve(empAddress, MAX_UINT_VAL, {
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        collateralApprovalTx: syntheticApprovalTx.tx
+      });
+    }
 
-    while (true) {
-      await retry(
-        async bail => {
-          // Get the current synthetic balance. Used to define the max tokens to liquidate.
-          const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+    await retry(
+      async bail => {
+        while (true) {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
           // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and considers the
           // override price if the user has specified one.
+          const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
           await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           // Check for any finished liquidations that can be withdrawn.
           await liquidator.withdrawRewards();
@@ -156,37 +155,36 @@ async function run(
           if (pollingDelay === 0) {
             logger.debug({
               at: "Liquidator#index",
-              message: "End of severless execution loop. Yielding process"
+              message: "End of severless execution loop - Yielding process"
             });
-            await waitForLogger(logger);
-            bail();
+            // await waitForLogger(logger);
+            break;
           }
           logger.debug({
             at: "Liquidator#index",
-            message: "End of execution loop. Waiting pollingDelay."
+            message: "End of execution loop - Waiting pollingDelay"
           });
           await delay(Number(pollingDelay));
-        },
-        {
-          retries: errorRetries,
-          onRetry: error => {
-            console.log("here");
-            logger.debug({
-              at: "Liquidator#index",
-              message: "An error was thrown in an execution loop.",
-              error: typeof error === "string" ? new Error(error) : error
-            });
-          }
         }
-      );
-    }
+      },
+      {
+        retries: errorRetries,
+        onRetry: error => {
+          logger.debug({
+            at: "Liquidator#index",
+            message: "An error was thrown in an execution loop",
+            error: typeof error === "string" ? new Error(error) : error
+          });
+        }
+      }
+    );
   } catch (error) {
     logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    await waitForLogger(logger);
+    // await waitForLogger(logger);
   }
 }
 
@@ -239,7 +237,7 @@ async function Poll(callback) {
       message: "Liquidator configuration error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
-    await waitForLogger(Logger);
+    // await waitForLogger(Logger);
     callback(error);
     return;
   }

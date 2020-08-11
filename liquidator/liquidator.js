@@ -116,7 +116,7 @@ class Liquidator {
   }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  // If `maxTokensToLiquidateWei` is not passed in, then the bot will only attempt to liquidate the full position.
+  // If `maxTokensToLiquidateWei` is not passed in, then the bot will attempt to liquidate the full position.
   // If liquidatorOverridePrice is provided then the liquidator bot will override the price feed with this input price.
   async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
     this.logger.debug({
@@ -125,7 +125,9 @@ class Liquidator {
     });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
-    const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPricze();
+    const price = liquidatorOverridePrice
+      ? this.toBN(liquidatorOverridePrice.toString())
+      : this.priceFeed.getCurrentPrice();
 
     if (!price) {
       this.logger.warn({

@@ -85,7 +85,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, 0, 3, defaultPriceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -94,7 +94,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, 0, 3, defaultPriceFeedConfig);
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
