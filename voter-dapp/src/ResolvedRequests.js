@@ -72,18 +72,30 @@ function ResolvedRequests({ votingAccount }) {
 
   // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
   const [showSpamRequests, setShowSpamRequests] = useState(false);
+  const [hasSpamRequests, setHasSpamRequests] = useState(false);
   const [resolvedEvents, setResolvedEvents] = useState([]);
   useEffect(() => {
+    setHasSpamRequests(false);
+
     if (allResolvedEvents) {
-      const _resolvedEvents = allResolvedEvents.filter(ev => {
-        if (showSpamRequests || !REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
+      const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
+        if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
-          if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) return true;
-          else return false;
+          if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
+            return true;
+          } else return false;
         }
       });
+      // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
+      if (nonBlacklistedRequests.length < allResolvedEvents.length) {
+        nonBlacklistedRequests(true);
+      }
 
-      setResolvedEvents(_resolvedEvents);
+      if (showSpamRequests) {
+        setResolvedEvents(allResolvedEvents);
+      } else {
+        setResolvedEvents(nonBlacklistedRequests);
+      }
     }
   }, [allResolvedEvents, REQUEST_BLACKLIST, showSpamRequests]);
 
@@ -185,7 +197,7 @@ function ResolvedRequests({ votingAccount }) {
         )}
       </Dialog>
       {/* Only render this spam filter switch if some resolved spam requests have been filtered out */}
-      {allResolvedEvents.length >= resolvedEvents.length && (
+      {hasSpamRequests && (
         <FormGroup>
           <FormControlLabel
             control={
