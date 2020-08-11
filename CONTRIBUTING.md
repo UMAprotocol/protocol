@@ -5,7 +5,10 @@ the process works smoothly and your contributions can be merged as quickly and e
 
 ## Maintainers
 
-Everyone on the @UMAprotocol/eng team is considered a maintainer of the protocol repository.
+- Everyone on the @UMAprotocol/eng team is considered a maintainer of the protocol repository.
+- If you are a maintainer and your review is requested, you are expected to either provide a review within 1 business
+  day (in your time zone) or reassign the review to another maintainer.
+- The same expectations apply for follow-up reviews where your review is re-requested after an update has been made.
 
 ## Communication
 
@@ -18,6 +21,8 @@ Everyone on the @UMAprotocol/eng team is considered a maintainer of the protocol
 ## Issues
 
 - Issues should be used to open a discussion about something that you want to see changed.
+- Please tag individual maintainers if you would like thier input. If you don't know which maintainer to tag, just tag
+  @UMAprotocol/eng.
 - To make a change, add a feature, or fix a bug, one should start by opening an issue briefly describing what should be
   changed and why.
 - Maintainers will generally assign the issue to a particular person to avoid multiple people working on the same issue
@@ -30,7 +35,11 @@ Everyone on the @UMAprotocol/eng team is considered a maintainer of the protocol
 ## PRs
 
 - No PRs should be opened that are not associated with one or more issues.
-- If you are not sure who to assign as reviewers on your PR, please assign @UMAprotocol/eng.
+- If you are not sure who to request as reviewers on your PR, request a review from @UMAprotocol/eng.
+- If you have one maintainer in mind, but do not know who else to add, you can always add @UMAprotocol/eng to
+  auto-select a second.
+- If you make updates and would like another round of reviews, use the cycle icon next to the reviewers names to
+  request a follow-up review.
 - PRs should be narrow and focused. Making multiple, unrelated changes in the same PR makes things difficult on reviewers
   and can often slow PR progress. If this is the case, you may be asked to split the PR up.
 - PRs must get approval from _at least_ one maintainer. However, it is considered best practice to make sure all
