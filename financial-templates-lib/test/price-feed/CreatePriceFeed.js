@@ -249,7 +249,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       type: "balancer",
       balancerAddress,
       balancerTokenIn: accounts[1],
-      balancerTokenOut: accounts[2]
+      balancerTokenOut: accounts[2],
+      lookback: 7200
     };
 
     const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);

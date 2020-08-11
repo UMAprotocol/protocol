@@ -101,7 +101,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new MedianizerPriceFeed(priceFeeds);
   } else if (config.type === "balancer") {
-    const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut"];
+    const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -120,7 +120,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       Balancer.abi,
       config.balancerAddress,
       config.balancerTokenIn,
-      config.balancerTokenOut
+      config.balancerTokenOut,
+      config.lookback
     );
   }
 
@@ -176,7 +177,8 @@ async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, e
   assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
   const emp = getEmpAtAddress(web3, empAddress);
   const balancerTokenIn = await emp.methods.tokenCurrency().call();
-  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, ...config });
+  const lookback = 7200;
+  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, ...config });
 }
 
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
