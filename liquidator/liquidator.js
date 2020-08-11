@@ -125,7 +125,7 @@ class Liquidator {
     });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
-    const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPrice();
+    const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPricze();
 
     if (!price) {
       this.logger.warn({
