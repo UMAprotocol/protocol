@@ -12,6 +12,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const OneSplitMock = artifacts.require("OneSplitMock");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -21,6 +22,7 @@ const { SpyTransport, spyLogLevel } = require("@umaprotocol/financial-templates-
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
+  let oneSplitMock;
   let collateralToken;
   let syntheticToken;
   let emp;
@@ -37,6 +39,8 @@ contract("index.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+
+    oneSplitMock = await OneSplitMock.new();
   });
 
   beforeEach(async function() {
@@ -85,7 +89,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, oneSplitMock.address, emp.address, 0, defaultPriceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -94,7 +98,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, oneSplitMock.address, emp.address, 0, defaultPriceFeedConfig);
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");

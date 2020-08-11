@@ -5,6 +5,8 @@ const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const { toBN } = web3.utils;
 
 // JS libs
+const { ONE_SPLIT_ADDRESS } = require("./constants");
+const { OneInchExchange } = require("./OneInchExchange");
 const { Liquidator } = require("./liquidator");
 const {
   GasEstimator,
@@ -24,7 +26,8 @@ const Voting = artifacts.require("Voting");
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
  * @param {Object} logger Module responsible for sending logs.
- * @param {String} address Contract address of the EMP.
+ * @param {String} empAddress Contract address of the EMP.
+ * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
@@ -32,14 +35,22 @@ const Voting = artifacts.require("Voting");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice) {
+async function run(
+  logger,
+  empAddress,
+  oneSplitAddress,
+  pollingDelay,
+  priceFeedConfig,
+  liquidatorConfig,
+  liquidatorOverridePrice
+) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
-      empAddress: address,
+      empAddress,
       pollingDelay,
       priceFeedConfig,
       liquidatorConfig,
@@ -48,7 +59,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
 
     // Setup web3 accounts an contract instance.
     const accounts = await web3.eth.getAccounts();
-    const emp = await ExpiringMultiParty.at(address);
+    const emp = await ExpiringMultiParty.at(empAddress);
     const voting = await Voting.deployed();
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
@@ -66,7 +77,7 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
       web3,
       new Networker(logger),
       getTime,
-      address,
+      empAddress,
       priceFeedConfig
     );
 
@@ -77,8 +88,15 @@ async function run(logger, address, pollingDelay, priceFeedConfig, liquidatorCon
     // Client and liquidator bot
     const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
     const gasEstimator = new GasEstimator(logger);
+    const oneInch = new OneInchExchange({
+      web3,
+      gasEstimator,
+      logger,
+      oneSplitAddress
+    });
     const liquidator = new Liquidator(
       logger,
+      oneInch,
       empClient,
       voting,
       gasEstimator,
@@ -171,9 +189,13 @@ async function Poll(callback) {
     // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
     const liquidatorOverridePrice = process.env.LIQUIDATOR_OVERRIDE_PRICE;
 
+    // OneSplit Address
+    const oneSplitAddress = process.env.ONE_SPLIT_ADDRESS || ONE_SPLIT_ADDRESS;
+
     await run(
       Logger,
       process.env.EMP_ADDRESS,
+      oneSplitAddress,
       pollingDelay,
       priceFeedConfig,
       liquidatorConfig,

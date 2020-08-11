@@ -1,10 +1,7 @@
 const Token = artifacts.require("ExpandedERC20");
 const OneSplit = artifacts.require("OneSplit");
 
-// As defined in 1inch
-const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
-
-const ONE_SPLIT_ADDRESS = "0xC586BeF4a0992C495Cf22e1aeEE4E446CECDee0E";
+const { ONE_SPLIT_ADDRESS, ETH_ADDRESS } = require("./constants");
 
 class OneInchExchange {
   /**
@@ -24,10 +21,21 @@ class OneInchExchange {
     this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, this.oneSplitAddress);
 
     this.toBN = web3.utils.toBN;
+
+    // 1 Split config
+    this.oneInchFlags = 0; // Enables all exchanges
+
+    // Number of pieces source volume could be splitted
+    // (Works like granularity, higly affects gas usage.
+    // Should be called offchain, but could be called onchain
+    // if user swaps not his own funds, but this is still considered
+    // as not safe)
+    // More info: https://github.com/CryptoManiacsZone/1inchProtocol#getexpectedreturn
+    this.oneInchParts = 2;
   }
 
   /**
-   * @notice Swaps token on one inch
+   * @notice Gets expected returns on one inch
    * @param {Object} swapArgs - Swap arguments
    * @param {string} swapArgs.fromToken Address of token to swap from
    * @param {string} swapArgs.toToken Address of token to swap to.
@@ -37,7 +45,29 @@ class OneInchExchange {
             value: '1000',
             gasPrice: '... }
    */
-  async swap({ fromToken, toToken, amountWei }, options = {}) {
+  async getExpectedReturn({ fromToken, toToken, amountWei }) {
+    const expectedReturn = await this.oneSplitContract.methods
+      .getExpectedReturn(fromToken, toToken, amountWei, this.oneInchParts, this.oneInchFlags)
+      .call();
+
+    const { returnAmount } = expectedReturn;
+
+    return returnAmount;
+  }
+
+  /**
+   * @notice Swaps token on one inch
+   * @param {Object} swapArgs - Swap arguments
+   * @param {string} swapArgs.fromToken Address of token to swap from
+   * @param {string} swapArgs.toToken Address of token to swap to.
+   * @param {string} swapArgs.minReturnAmountWei Min expected return amount, in Wei.
+   * @param {string} swapArgs.amountWei String amount to swap, in Wei.
+   * @param {Object} options Web3 options to supply to send, e.g.
+   *      { from: '0x0...',
+            value: '1000',
+            gasPrice: '... }
+   */
+  async swap({ fromToken, toToken, minReturnAmountWei, amountWei }, options = {}) {
     // Update gasEstimator state
     await this.gasEstimator.update();
 
@@ -59,19 +89,8 @@ class OneInchExchange {
       });
     }
 
-    // 1 Split config
-    const flags = 0; // Enables all exchanges
-
-    // Number of pieces source volume could be splitted
-    // (Works like granularity, higly affects gas usage.
-    // Should be called offchain, but could be called onchain
-    // if user swaps not his own funds, but this is still considered
-    // as not safe)
-    // More info: https://github.com/CryptoManiacsZone/1inchProtocol#getexpectedreturn
-    const parts = 2;
-
     const expectedReturn = await this.oneSplitContract.methods
-      .getExpectedReturn(fromToken, toToken, amountWei, parts, flags)
+      .getExpectedReturn(fromToken, toToken, amountWei, this.oneInchParts, this.oneInchFlags)
       .call();
 
     const { returnAmount, distribution } = expectedReturn;
@@ -79,18 +98,31 @@ class OneInchExchange {
     this.logger.debug({
       at: "OneInchExchange",
       message: "GetExpectedReturn",
+      currentTime,
       returnAmount,
       distribution
     });
 
+    if (minReturnAmountWei && returnAmount.lt(minReturnAmountWei)) {
+      this.logger.debug({
+        at: "OneInchExchange",
+        message: "ReturnAmountTooLow",
+        currentTime,
+        returnAmount,
+        minReturnAmountWei
+      });
+      throw new Error("OneInch return amount too low");
+    }
+
     // TODO: Remove hardcoded gas
     const tx = await this.oneSplitContract.methods
-      .swap(fromToken, toToken, amountWei, returnAmount, distribution, flags)
-      .send({ ...options, gasPrice, gas: 8000000 });
+      .swap(fromToken, toToken, amountWei, returnAmount, distribution, this.oneInchFlags)
+      .send({ ...options, gasPrice, gas: 8000000, value: fromToken === ETH_ADDRESS ? amountWei : 0 });
 
     this.logger.debug({
       at: "OneInchExchange",
       message: "Swapped",
+      currentTime,
       fromToken,
       toToken,
       ...tx

@@ -6,6 +6,7 @@ const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
+const { OneInchExchange } = require("../OneInchExchange.js");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {
@@ -19,6 +20,7 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Contracts and helpers
+const OneSplitMock = artifacts.require("OneSplitMock");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -35,6 +37,7 @@ contract("Liquidator.js", function(accounts) {
   const sponsor3 = accounts[3];
   const contractCreator = accounts[4];
 
+  let finder;
   let collateralToken;
   let emp;
   let liquidator;
@@ -45,6 +48,10 @@ contract("Liquidator.js", function(accounts) {
   let spy;
   let spyLogger;
 
+  let oneSplitMock;
+  let oneInch;
+  let gasEstimator;
+  let empClient;
   let liquidatorConfig;
   let liquidatorOverridePrice;
   let empProps;
@@ -95,6 +102,10 @@ contract("Liquidator.js", function(accounts) {
       timerAddress: Timer.address
     };
 
+    // OneInch
+    oneSplitMock = await OneSplitMock.new();
+    oneInch = new OneInchExchange({ web3, logger: spyLogger, gasEstimator, oneSplitAddress: oneSplitMock.address });
+
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
@@ -137,6 +148,7 @@ contract("Liquidator.js", function(accounts) {
 
     liquidator = new Liquidator(
       spyLogger,
+      oneInch,
       empClient,
       mockOracle,
       gasEstimator,
@@ -693,6 +705,7 @@ contract("Liquidator.js", function(accounts) {
         };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
           mockOracle,
           gasEstimator,
@@ -716,6 +729,7 @@ contract("Liquidator.js", function(accounts) {
         };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
           mockOracle,
           gasEstimator,
@@ -737,6 +751,7 @@ contract("Liquidator.js", function(accounts) {
       };
       liquidator = new Liquidator(
         spyLogger,
+        oneInch,
         empClient,
         mockOracle,
         gasEstimator,
@@ -792,6 +807,7 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
           mockOracle,
           gasEstimator,
@@ -813,6 +829,7 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
       liquidator = new Liquidator(
         spyLogger,
+        oneInch,
         empClient,
         mockOracle,
         gasEstimator,

@@ -4,24 +4,44 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
+const { ETH_ADDRESS } = require("./constants");
+
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
+   * @param {Object} oneInch Module used to swap tokens on oneInch.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} votingContract DVM to query price requests.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    * @param {Object} empProps Contains EMP contract state data. Expected:
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(
+    logger,
+    oneInch,
+    expiringMultiPartyClient,
+    votingContract,
+    gasEstimator,
+    priceFeed,
+    account,
+    empProps,
+    config
+  ) {
     this.logger = logger;
     this.account = account;
+
+    // Initial version will only allow ETH to be the reserve
+    this.reserveCurrencyAddress = ETH_ADDRESS;
+
+    // OneInch module
+    this.oneInch = oneInch;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
@@ -248,9 +268,92 @@ class Liquidator {
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      try {
-        await liquidation.call({ from: this.account });
-      } catch (error) {
+      // TODO: Await
+      let notEnoughCollateral = liquidation
+        .call({ from: this.account })
+        .then(() => false)
+        .catch(() => true);
+
+      // Attempts to swap some capital for tokenCurrency
+      // Mutates the state of notEnoughCollateral in this logical scope
+      if (notEnoughCollateral) {
+        const tokenCurrency = await this.empClient.getTokenCurrency();
+
+        // Reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
+        const reserveWeiNeeded = await this.oneInch.getExpectedReturn({
+          fromToken: tokenCurrency.address,
+          toToken: this.reserveCurrencyAddress,
+          amountWei: tokensToLiquidate.toString()
+        });
+
+        console.log("reserverWeiNeeded", reserveWeiNeeded);
+
+        // This is used as a reference point to determine slippage
+        const oneGweiReturn = this.oneInch.getExpectedReturn({
+          fromToken: tokenCurrency.address,
+          toToken: this.reserveCurrencyAddress,
+          amountWei: this.toWei("1", "gwei")
+        });
+
+        console.log("oneGweiReturn", oneGweiReturn);
+
+        // Slippage = (idealReserveWeiNeeded - reserveWeiNeeded) / idealReserveWeiNeeded
+        // Where idealReserverWei = oneGweiReturn * tokensToLiquidate / 1gwei
+        const idealReserveWeiNeeded = oneGweiReturn.mul(tokensToLiquidate).div(this.toWei("1", "gwei"));
+        const slippage = this.fromWei(
+          reserveWeiNeeded
+            .sub(idealReserveWeiNeeded)
+            .mul(this.toWei("1"))
+            .div(idealReserveWeiNeeded)
+        );
+
+        // Don't allow slippage of more than 10%
+        if (parseFloat(slippage) > 0.1) {
+          this.logger.debug({
+            at: "Liquidator",
+            message: `Slippage too big while converting from reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`,
+            oneGweiReturn,
+            reserveWeiNeeded,
+            idealReserveWeiNeeded,
+            slippage,
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString()
+          });
+          continue;
+        }
+
+        // Swap tokens
+        try {
+          await this.oneInch.swap({
+            fromToken: this.reserveCurrencyAddress,
+            toToken: tokenCurrency.address,
+            minReturnAmountWei: tokensToLiquidate.toString(),
+            amountWei: reserveWeiNeeded.mul(this.toWei("1.005")).div(this.toWei("1.0")) // Add 0.5% just in case
+          });
+          notEnoughCollateral = false;
+        } catch (e) {
+          this.logger.error({
+            at: "Liquidator",
+            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`,
+            error: e.toString(),
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString()
+          });
+          continue;
+        }
+      }
+
+      // Checks to see if we still have enough collateral
+      // (After attempting to swap)
+      if (notEnoughCollateral) {
         this.logger.error({
           at: "Liquidator",
           message:
@@ -260,8 +363,7 @@ class Liquidator {
           position: position,
           minLiquidationPrice: this.liquidationMinPrice,
           maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          error
+          tokensToLiquidate: tokensToLiquidate.toString()
         });
         continue;
       }
