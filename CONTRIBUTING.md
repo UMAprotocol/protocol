@@ -78,7 +78,7 @@ A few examples of good conventional commit PR titles:
   used by the javascript community, those that are not actively maintained, or are maintained by a single person.
 - The above rule is somewhat subjective, so the maintainers can give guidance as to whether a package is appropriate
   to include. This rule tends to be more strict when a package is used in sensitive areas of the code and less strict
-  when its used in a nonessential way, like dev tooling.
+  when it's used in a nonessential way, like dev tooling.
 - For highly useful packages, especially small ones, that don't meet the above requirements, the maintainers may agree
   to fork the package into the UMA Github Organization, audit it, and push a version to npm under the UMA scope. This
   allows the maintainers to have more direct control of the dependency and patch it when necessary. This method should be
