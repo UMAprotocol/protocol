@@ -19,7 +19,8 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.tokenIn = tokenIn;
     this.tokenOut = tokenOut;
     this.lookback = lookback;
-    this.blockHistory = BlockHistory(web3);
+    // Provide a getblock function which returns the latest value if no number provided.
+    this.blockHistory = BlockHistory(number => web3.eth.getBlock(number >= 0 ? number : "latest"));
 
     // Add a callback to get price, if an error is thrown returns undefined
     this.priceHistory = PriceHistory(async number => {
@@ -63,7 +64,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
       // its possible provider throws error getting block history
       // we are going to just ignore these errors...
       const blocks = await this.blockHistory.update(this.lookback, this.lastUpdateTime);
-      await this.priceHistory.update(blocks);
+      await Promise.all(blocks.map(this.priceHistory.update));
     } catch (err) {
       this.logger.warn({
         at: "BalancerPriceFeed",

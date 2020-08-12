@@ -171,7 +171,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
       finderAddress: Finder.address,
@@ -213,7 +213,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -276,7 +276,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     };
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
       finderAddress: Finder.address,
@@ -395,7 +395,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -430,7 +430,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
