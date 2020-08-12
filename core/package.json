@@ -21,9 +21,12 @@
     "web3": "1.2.7"
   },
   "devDependencies": {
+    "bip39": "^3.0.2",
     "coveralls": "^3.1.0",
+    "ganache-cli": "^6.7.0",
     "truffle-assertions": "^0.9.2",
-    "truffle-deploy-registry": "^0.5.1"
+    "truffle-deploy-registry": "^0.5.1",
+    "solidity-coverage": "^0.7.2"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
