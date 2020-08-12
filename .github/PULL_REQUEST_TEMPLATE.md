@@ -15,8 +15,13 @@
   fix(monitor): fixes broken link in liquidation log
   feat(voter-dapp): adds countdown timer component to the header
   build(solc): updates solc version to 0.6.12
+  improve(emp-client): parallelizes web3 calls to improve performance
 
-  See https://github.com/UMAprotocol/protocol/blob/master/CONTRIBUTING.md#prs for more details on PR titles.
+  For examples of other types (feat, fix, build, improve) and what they mean, take a look at the angular list:
+  https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type
+
+  See https://github.com/UMAprotocol/protocol/blob/master/CONTRIBUTING.md#conventional-commits for more details on PR
+  title expectations.
 -->
 
 
