@@ -49,27 +49,35 @@ the process works smoothly and your contributions can be merged as quickly and e
 - PR titles should be in [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format. This helps
   inform versioning and changelogs. Please include a breaking change footer in your PR description if the change will
   break consumers of any package. If you don't know how to correctly title your PR, this can be addressed in the review
-  process.
+  process. See the section below for more details on conventional commits.
 
-Note on conventional commit titles: the [angular](https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type) types
-are a good guideline to follow:
+## Conventional Commits
+
+See [here](https://www.conventionalcommits.org/en/v1.0.0/) for details on how a conventional commit is structured.
+Conventional commits generally fall into three types:
+
+- `fix`: a bug fix.
+- `feat`: a new feature.
+- `improve`: catch-all for any change that doesn't add a feature or fixes a bug.
+
+`improve` can be broken down further for specificity, but this is completely optional. Here are the types that
+[angular](https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type) uses in addition to `feature` and `fix`:
 
 - build: Changes that affect the build system or external dependencies
 - ci: Changes to our CI configuration files and scripts
 - docs: Documentation only changes
-- feat: A new feature
-- fix: A bug fix
 - perf: A code change that improves performance
 - refactor: A code change that neither fixes a bug nor adds a feature
 - style: Changes that do not affect the meaning of the code
 - test: Adding missing tests or correcting existing tests
 
-A few examples of good conventional commit PR titles:
+Here are a few examples of good conventional commit PR titles:
 
 - feat(dvm): adds a new function to compute voting rewards offchain
 - fix(monitor): fixes broken link in liquidation log
 - feat(voter-dapp): adds countdown timer component to the header
 - build(solc): updated solc version to 0.6.12
+- improve(emp-client): parallelized web3 calls to improve performance
 
 ## External Packages
 
