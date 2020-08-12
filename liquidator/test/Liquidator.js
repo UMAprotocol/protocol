@@ -171,13 +171,16 @@ contract("Liquidator.js", function(accounts) {
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
-    // No liquidations if the price feed returns an invalid value.
+    // Liquidator throws an error if the price feed returns an invalid value.
     priceFeedMock.setCurrentPrice(null);
     await liquidator.update();
-    await liquidator.liquidatePositions();
-
-    // One warn log should be sent since the price feed returned a bad value.
-    assert.equal(spy.callCount, 1);
+    let errorThrown = false;
+    try {
+      await liquidator.liquidatePositions();
+    } catch (error) {
+      errorThrown = true;
+    }
+    assert.isTrue(errorThrown);
 
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
@@ -195,7 +198,7 @@ contract("Liquidator.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.update();
     await liquidator.liquidatePositions();
-    assert.equal(spy.callCount, 3); // 2 info level events should be sent at the conclusion of the 2 liquidations.
+    assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -225,7 +228,7 @@ contract("Liquidator.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.update();
     await liquidator.liquidatePositions();
-    assert.equal(spy.callCount, 3);
+    assert.equal(spy.callCount, 2);
   });
 
   it("Can correctly detect invalid withdrawals and liquidate them", async function() {
