@@ -19,12 +19,12 @@ The source code for this React app can be found in `./src`. At a minimum, you mu
 
 ### Prerequisites
 
-- Run `yarn` from `./protocol/` to install the monorepo's dependencies.
+- Run `yarn` from the root of the repo to install the monorepo's dependencies.
 - Compile contracts by running `yarn run truffle compile` from the root of the repo.
 
 ### Steps to generate price requests
 
-0. Change your directory to `./protocol/`
+0. Start at the root of the repository (`protocol/`).
 1. Start a local blockchain on port `9545` with enough starting ETH balances and a high enough gas limit:
    ```bash
    ganache-cli -p 9545 -e 10000000000 -l 9000000
