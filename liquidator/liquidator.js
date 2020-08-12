@@ -416,9 +416,11 @@ class Liquidator {
       let resolvedPrice;
       if (requestTimestamp) {
         try {
-          resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
-            from: this.empContract.options.address
-          });
+          resolvedPrice = resolvedPrice = revertWrapper(
+            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+              from: this.empContract.options.address
+            })
+          );
         } catch (error) {}
       }
 
