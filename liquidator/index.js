@@ -167,7 +167,7 @@ async function run(
       if (pollingDelay === 0) {
         logger.debug({
           at: "Liquidator#index",
-          message: "End of severless execution loop - yielding process"
+          message: "End of serverless execution loop - yielding process"
         });
         await waitForLogger(logger);
         break;
