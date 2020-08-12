@@ -367,8 +367,9 @@ class Liquidator {
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
-
-        if (!withdrawAmount) {
+        // Main net view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
+        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        if (withdrawAmount === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -417,9 +418,11 @@ class Liquidator {
       let resolvedPrice;
       if (requestTimestamp) {
         try {
-          resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
-            from: this.empContract.options.address
-          });
+          resolvedPrice = revertWrapper(
+            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+              from: this.empContract.options.address
+            })
+          );
         } catch (error) {}
       }
 
