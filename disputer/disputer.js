@@ -72,9 +72,7 @@ class Disputer {
 
   // Update the client and gasEstimator clients.
   async update() {
-    await this.empClient.update();
-    await this.gasEstimator.update();
-    await this.priceFeed.update();
+    await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
@@ -129,10 +127,12 @@ class Disputer {
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let gasLimit, totalPaid;
+      let totalPaid, gasEstimation;
       try {
-        totalPaid = await dispute.call({ from: this.account });
-        gasLimit = Math.floor((await dispute.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
+        [totalPaid, gasEstimation] = await Promise.all([
+          dispute.call({ from: this.account }),
+          dispute.estimateGas({ from: this.account })
+        ]);
       } catch (error) {
         this.logger.error({
           at: "Disputer",
@@ -148,7 +148,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: Math.min(gasLimit, this.txnGasLimit),
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
@@ -225,11 +225,15 @@ class Disputer {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawAmount, gasLimit;
+      let withdrawAmount, gasEstimation;
       try {
-        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
-        if (withdrawAmount === null) {
+        [withdrawAmount, gasEstimation] = await Promise.all([
+          withdraw.call({ from: this.account }),
+          withdraw.estimateGas({ from: this.account })
+        ]);
+        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
+        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        if (revertWrapper(withdrawAmount) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -244,7 +248,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: Math.min(gasLimit, this.txnGasLimit),
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
