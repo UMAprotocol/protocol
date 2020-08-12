@@ -16,7 +16,7 @@ const UniswapMock = artifacts.require("UniswapMock");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel } = require("@umaprotocol/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -30,6 +30,9 @@ contract("index.js", function(accounts) {
 
   let spy;
   let spyLogger;
+
+  let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
+  let executionRetries = 1;
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
@@ -85,7 +88,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, 0, 3, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, defaultPriceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -94,10 +97,52 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, 0, 3, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, defaultPriceFeedConfig);
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
+  });
+  it("Correctly re-tries after failed execution loop", async function() {
+    // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
+    // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
+    // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
+    uniswap = await UniswapMock.new();
+
+    // We will also create a new spy logger, listening for debug events to validate the re-tries.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    defaultPriceFeedConfig = {
+      type: "uniswap",
+      uniswapAddress: uniswap.address,
+      twapLength: 1,
+      lookback: 1
+    };
+
+    executionRetries = 3; // set execution retries to 3 to validate.
+    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, defaultPriceFeedConfig);
+
+    // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
+    // execution loop errors and finally liquidator polling errors.
+    let reTryCounts = {
+      empStateUpdates: 0,
+      checkingForLiquidatable: 0,
+      executionLoopErrors: 0,
+      liquidatorPollingErrors: 0
+    };
+    for (let i = 0; i < spy.callCount; i++) {
+      if (spyLogIncludes(spy, i, "Expiring multi party state updated")) reTryCounts.empStateUpdates += 1;
+      if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
+      if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
+      if (spyLogIncludes(spy, i, "Liquidator polling error")) reTryCounts.liquidatorPollingErrors += 1;
+    }
+
+    assert.equal(reTryCounts.empStateUpdates, 4); // Initial loop and each 3 re-try should update the EMP state. Expect 4 logs.
+    assert.equal(reTryCounts.checkingForLiquidatable, 4); // Initial loop and 3 re-try should check for liquidable positions. Expect 4 logs.
+    assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
+    assert.equal(reTryCounts.liquidatorPollingErrors, 1); // The final error should occur once when re-tries are all spent. Expect 1 log.
   });
 });

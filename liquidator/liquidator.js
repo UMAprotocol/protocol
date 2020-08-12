@@ -130,11 +130,7 @@ class Liquidator {
       : this.priceFeed.getCurrentPrice();
 
     if (!price) {
-      this.logger.warn({
-        at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value"
-      });
-      return;
+      throw new Error("Cannot liquidate: price feed returned invalid value");
     }
 
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the

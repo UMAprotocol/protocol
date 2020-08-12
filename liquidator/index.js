@@ -139,11 +139,10 @@ async function run(
       });
     }
 
-    // Enter into a while loop that will run indefinitely while the bot runs. This is wrapped in retry logic that will
-    // re-start the loop errorRetries number of times if the execution fails
-    await retry(
-      async () => {
-        while (true) {
+    // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
+    while (true) {
+      await retry(
+        async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
           // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
@@ -152,34 +151,33 @@ async function run(
           await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           // Check for any finished liquidations that can be withdrawn.
           await liquidator.withdrawRewards();
-
-          // If the polling delay is set to 0 then the script will terminate the bot after one full run.
-          if (pollingDelay === 0) {
+        },
+        {
+          retries: errorRetries,
+          onRetry: error => {
             logger.debug({
               at: "Liquidator#index",
-              message: "End of severless execution loop - Yielding process"
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
             });
-            await waitForLogger(logger);
-            break;
           }
-          logger.debug({
-            at: "Liquidator#index",
-            message: "End of execution loop - Waiting pollingDelay"
-          });
-          await delay(Number(pollingDelay));
         }
-      },
-      {
-        retries: errorRetries,
-        onRetry: error => {
-          logger.debug({
-            at: "Liquidator#index",
-            message: "An error was thrown in an execution loop",
-            error: typeof error === "string" ? new Error(error) : error
-          });
-        }
+      );
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (pollingDelay === 0) {
+        logger.debug({
+          at: "Liquidator#index",
+          message: "End of severless execution loop - yielding process"
+        });
+        await waitForLogger(logger);
+        break;
       }
-    );
+      logger.debug({
+        at: "Liquidator#index",
+        message: "End of execution loop - waiting polling delay"
+      });
+      await delay(Number(pollingDelay));
+    }
   } catch (error) {
     logger.error({
       at: "Liquidator#index",
