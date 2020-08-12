@@ -14,7 +14,7 @@
   feat(dvm): adds a new function to compute voting rewards offchain
   fix(monitor): fixes broken link in liquidation log
   feat(voter-dapp): adds countdown timer component to the header
-  build(solc): updated solc version to 0.6.12
+  build(solc): updates solc version to 0.6.12
 
   See https://github.com/UMAprotocol/protocol/blob/master/CONTRIBUTING.md#prs for more details on PR titles.
 -->

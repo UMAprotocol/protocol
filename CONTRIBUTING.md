@@ -76,8 +76,8 @@ Here are a few examples of good conventional commit PR titles:
 - feat(dvm): adds a new function to compute voting rewards offchain
 - fix(monitor): fixes broken link in liquidation log
 - feat(voter-dapp): adds countdown timer component to the header
-- build(solc): updated solc version to 0.6.12
-- improve(emp-client): parallelized web3 calls to improve performance
+- build(solc): updates solc version to 0.6.12
+- improve(emp-client): parallelizes web3 calls to improve performance
 
 ## External Packages
 
