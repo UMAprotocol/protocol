@@ -369,7 +369,7 @@ class Liquidator {
         ]);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-        if (withdrawAmount === null) {
+        if (revertWrapper(withdrawAmount) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
