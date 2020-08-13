@@ -110,19 +110,19 @@ class Liquidator {
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
-  // Update the client and gasEstimator clients.
-  // If a client has recently updated then it will do nothing.
+  // Update the empClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
   async update() {
-    await this.empClient.update();
-    await this.gasEstimator.update();
-    await this.priceFeed.update();
+    await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   // If `maxTokensToLiquidateWei` is not passed in, then the bot will only attempt to liquidate the full position.
   // If liquidatorOverridePrice is provided then the liquidator bot will override the price feed with this input price.
-  async queryAndLiquidate(maxTokensToLiquidateWei, liquidatorOverridePrice) {
-    await this.update();
+  async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Checking for liquidatable positions and preforming liquidations"
+    });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPrice();
@@ -251,10 +251,12 @@ class Liquidator {
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let gasLimit;
+      let liquidationResult, gasEstimation;
       try {
-        await liquidation.call({ from: this.account });
-        gasLimit = Math.floor((await liquidation.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
+        [liquidationResult, gasEstimation] = await Promise.all([
+          liquidation.call({ from: this.account }),
+          liquidation.estimateGas({ from: this.account })
+        ]);
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -273,7 +275,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: Math.min(gasLimit, this.txnGasLimit),
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -284,6 +286,9 @@ class Liquidator {
         minLiquidationPrice: this.liquidationMinPrice,
         maxLiquidationPrice: maxCollateralPerToken.toString(),
         tokensToLiquidate: tokensToLiquidate.toString(),
+        liquidationId: liquidationResult.liquidationId,
+        tokensLiquidated: liquidationResult.tokensLiquidated.rawValue.toString(),
+        finalFeeBond: liquidationResult.finalFeeBond.rawValue.toString(),
         txnConfig
       });
 
@@ -320,19 +325,14 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we created new liquidations.
-    await this.empClient.update();
   }
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
-  async queryAndWithdrawRewards() {
+  async withdrawRewards() {
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
-
-    await this.update();
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
@@ -361,11 +361,15 @@ class Liquidator {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawAmount, gasLimit;
+      let withdrawAmount, gasEstimation;
       try {
-        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        gasLimit = Math.floor((await withdraw.estimateGas({ from: this.account })) * this.GAS_LIMIT_BUFFER);
-        if (!withdrawAmount) {
+        [withdrawAmount, gasEstimation] = await Promise.all([
+          withdraw.call({ from: this.account }),
+          withdraw.estimateGas({ from: this.account })
+        ]);
+        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
+        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        if (revertWrapper(withdrawAmount) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -380,7 +384,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: Math.min(gasLimit, this.txnGasLimit),
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -446,9 +450,6 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we withdrew rewards.
-    await this.empClient.update();
   }
 }
 

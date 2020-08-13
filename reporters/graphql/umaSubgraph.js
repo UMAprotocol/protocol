@@ -15,11 +15,12 @@ function getUmaClient() {
 /**
  * Queries all data for a particular EMP
  * @param {String} empAddress
+ * @param {Integer?} blockNumber
  */
-function EMP_STATS(empAddress) {
+function EMP_STATS(empAddress, blockNumber) {
   return `
     query liquidations {
-      financialContracts(where: {id: "${empAddress}"}) {
+      financialContracts(where: {id: "${empAddress}"}${blockNumber ? `, block: {number:${blockNumber}}` : ""}) {
         positions(first: 1000, where: { collateral_gt: 0 }) {
           sponsor {
             id
