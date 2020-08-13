@@ -412,9 +412,17 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         fees()
         nonReentrant()
     {
-        require(_checkCollateralization(collateralAmount, numTokens), "CR below GCR");
-
         PositionData storage positionData = positions[msg.sender];
+
+        // Either the new create ratio or the resultant position CR must be above the current GCR.
+        require(
+            (_checkCollateralization(
+                _getFeeAdjustedCollateral(positionData.rawCollateral).add(collateralAmount),
+                positionData.tokensOutstanding.add(numTokens)
+            ) || _checkCollateralization(collateralAmount, numTokens)),
+            "New CR below GCR"
+        );
+
         require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
