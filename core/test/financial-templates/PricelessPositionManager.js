@@ -46,6 +46,7 @@ contract("PricelessPositionManager", function(accounts) {
   const expirationTimestamp = startTimestamp + 10000;
   const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
   const minSponsorTokens = "5";
+  const gcrScalingFactor = toWei("0");
 
   // Conveniently asserts expected collateral and token balances, assuming that
   // there is only one synthetic token holder, the sponsor. Also assumes no
@@ -114,6 +115,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      { rawValue: gcrScalingFactor },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -134,6 +136,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
+          { rawValue: gcrScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -153,6 +156,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
+          { rawValue: gcrScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -185,6 +189,7 @@ contract("PricelessPositionManager", function(accounts) {
           syntheticName, // _syntheticName (unchanged)
           syntheticSymbol, // _syntheticSymbol (unchanged)
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
+          { rawValue: gcrScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -208,6 +213,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      { rawValue: gcrScalingFactor },
       { from: contractDeployer }
     );
 
@@ -517,6 +523,52 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Reset store state.
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
+  });
+
+  it("Withdrawal request - non-standard gcrScalingFactor", async function() {
+    const _gcrScalingFactor = toWei("3"); // enforce that a withdraw request does no place a positions CR below 1/3 of the GCR
+
+    let customPricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      USDCToken.address, // _collateralAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      tokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      { rawValue: _gcrScalingFactor }, // custom GCR scaling factor
+      { from: contractDeployer }
+    );
+
+    // Create an initial large and lowly collateralized pricelessPositionManager.
+    await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
+    await pricelessPositionManager.create(
+      {
+        rawValue: initialPositionCollateral.toString()
+      },
+      {
+        rawValue: initialPositionTokens.toString()
+      },
+      { from: other }
+    );
+
+    // Approve large amounts of token and collateral currencies: this test case isn't checking for that.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+
+    // Create the initial pricelessPositionManager.
+    const initialSponsorTokens = toWei("100");
+    const initialSponsorCollateral = toWei("150");
+    await pricelessPositionManager.create(
+      {
+        rawValue: initialSponsorCollateral
+      },
+      { rawValue: initialSponsorTokens },
+      { from: sponsor }
+    );
   });
 
   it("Global collateralization ratio checks", async function() {
@@ -1588,6 +1640,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      { rawValue: gcrScalingFactor },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());

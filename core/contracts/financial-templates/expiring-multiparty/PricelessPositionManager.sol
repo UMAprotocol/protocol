@@ -78,6 +78,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
+    FixedPoint.Unsigned public gcrScalingFactor;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -157,7 +159,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         string memory _syntheticSymbol,
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
-        address _timerAddress
+        address _timerAddress,
+        FixedPoint.Unsigned memory _gcrScalingFactor
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -168,6 +171,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
+        gcrScalingFactor = _gcrScalingFactor;
     }
 
     /****************************************
@@ -327,6 +331,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
                 collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral)),
             "Invalid collateral amount"
         );
+
+        require(_checkCollateralizationWithdrawalRequest(positionData, collateralAmount), "Resulting CR too low");
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
@@ -822,6 +828,28 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         );
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
+    }
+
+    // Checks if the provided `collateral` and `numTokens` have a collateralization ratio above the global
+    // (collateralization ratio) / gcrScalingFactor. This Check places a bound on the size a withdrawal request can be.
+    // If the gcrScalingFactor is set to zero then approve all withdrawal requests.
+    function _checkCollateralizationWithdrawalRequest(
+        PositionData memory positionData,
+        FixedPoint.Unsigned memory collateralWithdrawn
+    ) private view returns (bool) {
+        if (gcrScalingFactor.isEqual(FixedPoint.fromUnscaledUint(0))) return true;
+        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
+            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
+            totalTokensOutstanding
+        );
+
+        FixedPoint.Unsigned memory scaledGlobal = global.div(gcrScalingFactor);
+
+        FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(
+            (positionData.rawCollateral.sub(collateralWithdrawn)),
+            positionData.tokensOutstanding
+        );
+        return !scaledGlobal.isGreaterThan(thisChange);
     }
 
     function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
