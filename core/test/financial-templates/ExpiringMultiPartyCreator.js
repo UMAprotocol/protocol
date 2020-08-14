@@ -47,6 +47,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
+      gcrWithdrawalScalingFactor: { rawValue: toWei("0") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200
     };
