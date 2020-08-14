@@ -38,7 +38,6 @@ contract("ExpiringMultiParty", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       gcrWithdrawalScalingFactor: { rawValue: toWei("0") },
-      minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       gcrWithdrawalScalingFactor: { rawValue: toWei("0") }
     };
