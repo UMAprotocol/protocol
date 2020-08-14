@@ -95,7 +95,6 @@ contract("ContractMonitor.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
       gcrWithdrawalScalingFactor: { rawValue: toWei("0") },
       minSponsorTokens: { rawValue: toWei("1") }
     };
