@@ -525,13 +525,14 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
-  it("Withdrawal request - non-standard gcrScalingFactor", async function() {
+  it("Withdrawal request - non-zero gcrScalingFactor", async function() {
     const _gcrScalingFactor = toWei("3"); // enforce that a withdraw request does no place a positions CR below 1/3 of the GCR
 
-    let customPricelessPositionManager = await PricelessPositionManager.new(
+    // Create a new priceless position manager, using the _gcrScalingFactor.
+    pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      USDCToken.address, // _collateralAddress
+      collateral.address, // _collateralAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
@@ -543,14 +544,17 @@ contract("PricelessPositionManager", function(accounts) {
       { from: contractDeployer }
     );
 
-    // Create an initial large and lowly collateralized pricelessPositionManager.
-    await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
+    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+
+    // Create an initial position with 300 collateral tokens and 100 collateral debt. This will set the GCR to 3.
     await pricelessPositionManager.create(
       {
-        rawValue: initialPositionCollateral.toString()
+        rawValue: toWei("300")
       },
       {
-        rawValue: initialPositionTokens.toString()
+        rawValue: toWei("100")
       },
       { from: other }
     );
@@ -559,16 +563,81 @@ contract("PricelessPositionManager", function(accounts) {
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
 
-    // Create the initial pricelessPositionManager.
-    const initialSponsorTokens = toWei("100");
-    const initialSponsorCollateral = toWei("150");
+    // next, create a position from the sponsor. Create this exactly at the GCR,
     await pricelessPositionManager.create(
       {
-        rawValue: initialSponsorCollateral
+        rawValue: toWei("300")
       },
-      { rawValue: initialSponsorTokens },
+      { rawValue: toWei("100") },
       { from: sponsor }
     );
+
+    // Next, test the withdrawal request bounds. Submitting an withdrawal requests that place the CR of the position
+    // after withdrawal to anything less than the GCR / _gcrScalingFactor should revert. The starting CR is 3. This
+    // places the lowest possible CR the withdraw request can take on as 1. To get to a CR of 1 the sponsor would need
+    // to have 100 collateral and 100 debt. To get to this from their position size they must withdraw 200
+    //
+
+    let maxSponsorCanWithdraw = toBN(toWei("200")); // This places the sponsors CR exactly at 1/3 of the GCR.
+    // Trying to withdraw just 1 wei more than this max should revert as their resulting CR is less than 1/3 of GCR.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.requestWithdrawal(
+          { rawValue: maxSponsorCanWithdraw.addn(1).toString() },
+          { from: sponsor }
+        )
+      )
+    );
+
+    // requesting right at the max should go through.
+    let resultRequestWithdrawal = await pricelessPositionManager.requestWithdrawal(
+      { rawValue: maxSponsorCanWithdraw.toString() },
+      { from: sponsor }
+    );
+
+    truffleAssert.eventEmitted(resultRequestWithdrawal, "RequestWithdrawal", ev => {
+      return ev.sponsor == sponsor && ev.collateralAmount == maxSponsorCanWithdraw.toString();
+    });
+
+    // Advance time, execute withdrawl.
+    startTime = await pricelessPositionManager.getCurrentTime();
+    await pricelessPositionManager.setCurrentTime(startTime.addn(withdrawalLiveness));
+    await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
+
+    // After this withdrawal, the collateral in the contract has dropped from 600 to 400 (a passed 200 withdrawal).
+    // This makes the GCR 400/200 = 2.
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), toWei("400"));
+    assert.equal((await pricelessPositionManager.totalTokensOutstanding()).toString(), toWei("200"));
+
+    // At a GCR of 2 the sponsor should now be able to submit a withdrawal request that leaves their position at 1/3 of GCR.
+    // this is a CR of 0.666. The exact amount can also be explicity calculate as:
+    // max_can_withdraw = collateral - token_debt * (GCR / gcrScalingFactor)
+    maxSponsorCanWithdraw = toBN(toWei("100")) // collateral
+      .sub(
+        toBN(toWei("100")) // token_debt
+          .muln(2) // Current GCR (400 collateral, 200 debt)
+          .divn(3) // gcrScalingFactor
+      );
+
+    // A withdraw request above the max sponsor can withdraw threshold should revert. Add 100 wei to take this above the threshold.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.requestWithdrawal(
+          { rawValue: maxSponsorCanWithdraw.addn(100).toString() },
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Requesting right at the max should go through.
+    resultRequestWithdrawal = await pricelessPositionManager.requestWithdrawal(
+      { rawValue: maxSponsorCanWithdraw.toString() },
+      { from: sponsor }
+    );
+
+    truffleAssert.eventEmitted(resultRequestWithdrawal, "RequestWithdrawal", ev => {
+      return ev.sponsor == sponsor && ev.collateralAmount == maxSponsorCanWithdraw.toString();
+    });
   });
 
   it("Global collateralization ratio checks", async function() {
