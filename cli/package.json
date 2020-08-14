@@ -1,7 +1,6 @@
 {
   "name": "@umaptorocol/cli",
-  "version": "1.0.0",
-  "private": true,
+  "version": "1.0.0-alpha.0",
   "description": "UMA CLI Tool",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

@@ -1,6 +1,6 @@
 {
   "name": "@umaprotocol/voter-dapp",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "private": true,
   "dependencies": {
     "@apollo/client": "^3.0.2",

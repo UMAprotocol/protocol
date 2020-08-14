@@ -1,8 +1,7 @@
 {
   "name": "@umaprotocol/reporters",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "Displays Expiring MultiParty on-chain analytics",
-  "private": true,
   "dependencies": {
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",

@@ -1,11 +1,10 @@
 {
   "name": "@umaprotocol/monitors",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "UMA Monitors",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
-  "private": true,
   "dependencies": {
     "@umaprotocol/common": "^1.0.0",
     "@umaprotocol/core": "^1.0.0",
