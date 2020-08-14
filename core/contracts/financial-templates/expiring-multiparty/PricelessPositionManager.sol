@@ -832,9 +832,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return !global.isGreaterThan(thisChange);
     }
 
-    // Checks if the provided `collateral` and `numTokens` have a collateralization ratio above the global
-    // (collateralization ratio) / gcrWithdrawalScalingFactor. This Check places a bound on the size a withdrawal request can be.
-    // If the gcrWithdrawalScalingFactor is set to zero then approve all withdrawal requests.
+    // Checks if the provided `collateralWithdrawn` applied to the `positionData` have a collateralization ratio above
+    // the global (collateralization ratio) / gcrWithdrawalScalingFactor. This Check places a bound on the size a
+    // withdrawal request can be, relative to the contract GCR. If the gcrWithdrawalScalingFactor is set to zero then
+    // approve all withdrawal requests to facilitate disabling this restriction.
     function _checkCollateralizationWithdrawalRequest(
         PositionData memory positionData,
         FixedPoint.Unsigned memory collateralWithdrawn
