@@ -4,6 +4,7 @@ const assert = require("assert");
 // Downloads blocks and caches them for certain time into the past.
 // Allows some in memory searches to go from timestamp to block number.
 // Use blocks parameter to optionally insert prefilled cache of blocks.
+// Block array is sorted from oldest to newest (smallest timestamp => newest timestamp)
 exports.BlockHistory = (getBlock, blocks = []) => {
   assert(getBlock, "requires getBlock(number) function");
 
@@ -23,12 +24,20 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     return blocks;
   }
 
-  // Gets an exact match for timestamp
-  // If exact match not found,
-  // return the block with the closest timestamp higher than the query
-  function getClosestTime(timestamp) {
+  // Gets block equal to or newer (larger) than timestamp
+  function getClosestAfter(timestamp) {
+    // this gaurantees you will get the index of the block you need to insert before
+    // or in other words the next block older than timestamp
     const index = lodash.sortedIndexBy(blocks, { timestamp }, "timestamp");
     return blocks[index];
+  }
+
+  // Gets block equal to or older (lower) than timestamp
+  function getClosestBefore(timestamp) {
+    const index = lodash.sortedIndexBy(blocks, { timestamp }, "timestamp");
+    // need to check for an exact match in this case, otherwise go to the older block
+    if (blocks[index].timestamp === timestamp) return blocks[index];
+    return blocks[index - 1];
   }
 
   // Call to update cache with blocks between sometime in the past from a block number
@@ -65,11 +74,14 @@ exports.BlockHistory = (getBlock, blocks = []) => {
   }
 
   return {
+    // Public main API
+    update,
+    getClosestBefore,
+    getClosestAfter,
+    // Private, but can use as needed
     has,
     insert,
-    getClosestTime,
     fetchBetween,
-    update,
     pruneByTimestamp,
     listBlocks,
     latest
@@ -136,10 +148,12 @@ exports.PriceHistory = (getPrice, prices = {}) => {
   }
 
   return {
+    // Public main api
     currentPrice,
     getBetween,
-    has,
     get,
+    // Private but can use if needed
+    has,
     set,
     update,
     list

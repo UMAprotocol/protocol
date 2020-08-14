@@ -22,27 +22,19 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // Provide a getblock function which returns the latest value if no number provided.
     this.blockHistory = BlockHistory(number => web3.eth.getBlock(number >= 0 ? number : "latest"));
 
-    // Add a callback to get price, if an error is thrown returns undefined
+    // Add a callback to get price, error can be thrown from web3 disconection or maybe something else
+    // which affects the update call.
     this.priceHistory = PriceHistory(async number => {
-      try {
-        const result = await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number);
-        return result;
-      } catch (err) {
-        this.logger.warn({
-          at: "BalancerPriceFeed.getPrice",
-          message: err.message,
-          number
-        });
-      }
+      return this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number);
     });
   }
   getHistoricalPrice(time) {
     // normally would bubble up errors, but this is not supposed to throw
     try {
-      const block = this.blockHistory.getClosestTime(time);
+      const block = this.blockHistory.getClosestAfter(time);
       return this.priceHistory.get(block.timestamp);
     } catch (err) {
-      // this can throw an error if no price is found, but lets return null to copy uniswap price feed
+      // this can throw an error if no price or block is found, but lets return null to copy uniswap price feed
       return null;
     }
   }
@@ -59,18 +51,11 @@ class BalancerPriceFeed extends PriceFeedInterface {
     }
   }
   async update() {
-    try {
-      this.lastUpdateTime = await this.getTime();
-      // its possible provider throws error getting block history
-      // we are going to just ignore these errors...
-      const blocks = await this.blockHistory.update(this.lookback, this.lastUpdateTime);
-      await Promise.all(blocks.map(this.priceHistory.update));
-    } catch (err) {
-      this.logger.warn({
-        at: "BalancerPriceFeed",
-        message: err.message
-      });
-    }
+    this.lastUpdateTime = await this.getTime();
+    // its possible provider throws error getting block history
+    // we are going to just ignore these errors...
+    const blocks = await this.blockHistory.update(this.lookback, this.lastUpdateTime);
+    await Promise.all(blocks.map(this.priceHistory.update));
   }
 }
 
