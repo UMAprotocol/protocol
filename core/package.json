@@ -38,9 +38,9 @@
   },
   "main": "index.js",
   "files": [
-    "./contracts/**/*.sol",
-    "./build/contracts/*.js",
-    "./migrations/*.js"
+    "/contracts/**/*.sol",
+    "/build/contracts/*.js",
+    "/migrations/*.js"
   ],
   "scripts": {
     "test": "buidler test",
