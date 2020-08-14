@@ -97,6 +97,7 @@ const deployEMP = async callback => {
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
       disputerDisputeRewardPct: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
+      gcrWithdrawalScalingFactor: { rawValue: toWei("0") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200
     };
