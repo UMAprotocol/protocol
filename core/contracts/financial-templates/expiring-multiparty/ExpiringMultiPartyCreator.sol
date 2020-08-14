@@ -36,7 +36,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
-        FixedPoint.Unsigned gcrScalingFactor;
+        FixedPoint.Unsigned gcrWithdrawalScalingFactor;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
     }
@@ -109,6 +109,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
-        constructorParams.gcrScalingFactor = params.gcrScalingFactor;
+        constructorParams.gcrWithdrawalScalingFactor = params.gcrWithdrawalScalingFactor;
     }
 }

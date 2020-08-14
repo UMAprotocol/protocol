@@ -46,7 +46,8 @@ contract("PricelessPositionManager", function(accounts) {
   const expirationTimestamp = startTimestamp + 10000;
   const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
   const minSponsorTokens = "5";
-  const gcrScalingFactor = toWei("0");
+  // Set to zero places no restriction on withdrawal requests for the majoirty of test cases.
+  const gcrWithdrawalScalingFactor = toWei("0");
 
   // Conveniently asserts expected collateral and token balances, assuming that
   // there is only one synthetic token holder, the sponsor. Also assumes no
@@ -115,7 +116,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
-      { rawValue: gcrScalingFactor },
+      { rawValue: gcrWithdrawalScalingFactor },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -136,7 +137,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
-          { rawValue: gcrScalingFactor },
+          { rawValue: gcrWithdrawalScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -156,7 +157,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
-          { rawValue: gcrScalingFactor },
+          { rawValue: gcrWithdrawalScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -189,7 +190,7 @@ contract("PricelessPositionManager", function(accounts) {
           syntheticName, // _syntheticName (unchanged)
           syntheticSymbol, // _syntheticSymbol (unchanged)
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
-          { rawValue: gcrScalingFactor },
+          { rawValue: gcrWithdrawalScalingFactor },
           { from: contractDeployer }
         )
       )
@@ -213,7 +214,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
-      { rawValue: gcrScalingFactor },
+      { rawValue: gcrWithdrawalScalingFactor },
       { from: contractDeployer }
     );
 
@@ -525,10 +526,11 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
-  it("Withdrawal request - non-zero gcrScalingFactor", async function() {
-    const _gcrScalingFactor = toWei("3"); // enforce that a withdraw request does no place a positions CR below 1/3 of the GCR
+  it("Withdrawal request - non-zero gcrWithdrawalScalingFactor", async function() {
+    // Enforce that a withdraw request does no place a positions CR below 1/3 of the GCR.
+    const _gcrWithdrawalScalingFactor = toWei("3");
 
-    // Create a new priceless position manager, using the _gcrScalingFactor.
+    // Create a new priceless position manager, using the _gcrWithdrawalScalingFactor.
     pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
@@ -540,7 +542,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
-      { rawValue: _gcrScalingFactor }, // custom GCR scaling factor
+      { rawValue: _gcrWithdrawalScalingFactor }, // custom GCR scaling factor
       { from: contractDeployer }
     );
 
@@ -563,7 +565,7 @@ contract("PricelessPositionManager", function(accounts) {
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
 
-    // next, create a position from the sponsor. Create this exactly at the GCR,
+    // Next, create a position from the sponsor. Create this exactly at the GCR,
     await pricelessPositionManager.create(
       {
         rawValue: toWei("300")
@@ -573,9 +575,9 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // Next, test the withdrawal request bounds. Submitting an withdrawal requests that place the CR of the position
-    // after withdrawal to anything less than the GCR / _gcrScalingFactor should revert. The starting CR is 3. This
-    // places the lowest possible CR the withdraw request can take on as 1. To get to a CR of 1 the sponsor would need
-    // to have 100 collateral and 100 debt. To get to this from their position size they must withdraw 200
+    // after withdrawal to anything less than the GCR / _gcrWithdrawalScalingFactor should revert. The starting CR is 3.
+    // This places the lowest possible CR the withdraw request can take on as 1. To get to a CR of 1 the sponsor would
+    // need to have 100 collateral and 100 debt. To get to this from their position size they must withdraw 200
     //
 
     let maxSponsorCanWithdraw = toBN(toWei("200")); // This places the sponsors CR exactly at 1/3 of the GCR.
@@ -611,12 +613,12 @@ contract("PricelessPositionManager", function(accounts) {
 
     // At a GCR of 2 the sponsor should now be able to submit a withdrawal request that leaves their position at 1/3 of GCR.
     // this is a CR of 0.666. The exact amount can also be explicity calculate as:
-    // max_can_withdraw = collateral - token_debt * (GCR / gcrScalingFactor)
+    // max_can_withdraw = collateral - token_debt * (GCR / gcrWithdrawalScalingFactor)
     maxSponsorCanWithdraw = toBN(toWei("100")) // collateral
       .sub(
         toBN(toWei("100")) // token_debt
           .muln(2) // Current GCR (400 collateral, 200 debt)
-          .divn(3) // gcrScalingFactor
+          .divn(3) // gcrWithdrawalScalingFactor
       );
 
     // A withdraw request above the max sponsor can withdraw threshold should revert. Add 100 wei to take this above the threshold.
@@ -1709,7 +1711,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
-      { rawValue: gcrScalingFactor },
+      { rawValue: gcrWithdrawalScalingFactor },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());

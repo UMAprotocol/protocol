@@ -78,7 +78,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
-    FixedPoint.Unsigned public gcrScalingFactor;
+    // Define a ratio of contract GCR that a position must remain above after submitting a withdrawal request. Imposed
+    // such that position CR after withdrawal >= contract GCR / gcrWithdrawalScalingFactor.
+    FixedPoint.Unsigned public gcrWithdrawalScalingFactor;
 
     /****************************************
      *                EVENTS                *
@@ -160,7 +162,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
-        FixedPoint.Unsigned memory _gcrScalingFactor
+        FixedPoint.Unsigned memory _gcrWithdrawalScalingFactor
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -171,7 +173,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
-        gcrScalingFactor = _gcrScalingFactor;
+        gcrWithdrawalScalingFactor = _gcrWithdrawalScalingFactor;
     }
 
     /****************************************
@@ -832,19 +834,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Checks if the provided `collateral` and `numTokens` have a collateralization ratio above the global
-    // (collateralization ratio) / gcrScalingFactor. This Check places a bound on the size a withdrawal request can be.
-    // If the gcrScalingFactor is set to zero then approve all withdrawal requests.
+    // (collateralization ratio) / gcrWithdrawalScalingFactor. This Check places a bound on the size a withdrawal request can be.
+    // If the gcrWithdrawalScalingFactor is set to zero then approve all withdrawal requests.
     function _checkCollateralizationWithdrawalRequest(
         PositionData memory positionData,
         FixedPoint.Unsigned memory collateralWithdrawn
     ) private view returns (bool) {
-        if (gcrScalingFactor.isEqual(FixedPoint.fromUnscaledUint(0))) return true;
+        if (gcrWithdrawalScalingFactor.isEqual(FixedPoint.fromUnscaledUint(0))) return true;
         FixedPoint.Unsigned memory global = _getCollateralizationRatio(
             _getFeeAdjustedCollateral(rawTotalPositionCollateral),
             totalTokensOutstanding
         );
 
-        FixedPoint.Unsigned memory scaledGlobal = global.div(gcrScalingFactor);
+        FixedPoint.Unsigned memory scaledGlobal = global.div(gcrWithdrawalScalingFactor);
 
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(
             (positionData.rawCollateral.sub(collateralWithdrawn)),

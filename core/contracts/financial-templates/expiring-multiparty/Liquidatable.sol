@@ -71,7 +71,7 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
-        FixedPoint.Unsigned gcrScalingFactor;
+        FixedPoint.Unsigned gcrWithdrawalScalingFactor;
     }
 
     // Liquidations are unique by ID per sponsor
@@ -162,7 +162,7 @@ contract Liquidatable is PricelessPositionManager {
             params.tokenFactoryAddress,
             params.minSponsorTokens,
             params.timerAddress,
-            params.gcrScalingFactor
+            params.gcrWithdrawalScalingFactor
         )
         nonReentrant()
     {
