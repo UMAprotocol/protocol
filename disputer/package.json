@@ -1,11 +1,11 @@
 {
   "name": "@umaprotocol/disputer",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "UMA Disputer",
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0-alpha.1",
-    "@umaprotocol/core": "^1.0.0-alpha.2",
-    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.2",
+    "@umaprotocol/common": "^1.0.0-alpha.2",
+    "@umaprotocol/core": "^1.0.0-alpha.3",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.3",
     "dotenv": "^6.2.0",
     "truffle": "^5.1.35"
   },
