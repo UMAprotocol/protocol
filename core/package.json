@@ -39,7 +39,7 @@
   "main": "index.js",
   "files": [
     "/contracts/**/*.sol",
-    "/build/contracts/*.js",
+    "/build/contracts/*.json",
     "/migrations/*.js"
   ],
   "scripts": {
