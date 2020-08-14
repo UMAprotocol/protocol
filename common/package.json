@@ -35,5 +35,6 @@
     "node-metamask": "github:UMAprotocol/node-metamask",
     "require-context": "^1.1.0",
     "web3": "1.2.7"
-  }
+  },
+  "gitHead": "41bb77b928fe9bbd61e601f060a1469d318b6004"
 }

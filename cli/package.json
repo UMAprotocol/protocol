@@ -1,5 +1,5 @@
 {
-  "name": "@umaptorocol/cli",
+  "name": "@umaprotocol/cli",
   "version": "1.0.0-alpha.0",
   "description": "UMA CLI Tool",
   "homepage": "https://umaproject.org",
@@ -34,5 +34,6 @@
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
-  }
+  },
+  "gitHead": "abfb89acf6d1297e55703b157ed0ad113298fa21"
 }
