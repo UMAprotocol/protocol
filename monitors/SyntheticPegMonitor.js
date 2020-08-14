@@ -97,14 +97,14 @@ class SyntheticPegMonitor {
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
+    console.log("HERE HERE HERE", uniswapTokenPrice.toString());
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
-      this.logger.warn({
+      throw new Error({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
         uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
         cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
-      return;
     }
 
     this.logger.debug({
