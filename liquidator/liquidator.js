@@ -1,4 +1,4 @@
-const ynatm = require("ynatm");
+const ynatm = require("@umaprotocol/ynatm");
 
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
