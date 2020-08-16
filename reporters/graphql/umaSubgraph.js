@@ -13,14 +13,19 @@ function getUmaClient() {
 }
 
 /**
- * Queries all liquidation related events (LiquidationCreated, LiquidationDisputed, LiquidationWithdrawn)
- * for a particular EMP
+ * Queries all data for a particular EMP
  * @param {String} empAddress
+ * @param {Integer?} blockNumber
  */
-function LIQUIDATION_EVENTS_FOR_EMP(empAddress) {
+function EMP_STATS(empAddress, blockNumber) {
   return `
     query liquidations {
-      financialContracts(where: {id: "${empAddress}"}) {
+      financialContracts(where: {id: "${empAddress}"}${blockNumber ? `, block: {number:${blockNumber}}` : ""}) {
+        positions(first: 1000, where: { collateral_gt: 0 }) {
+          sponsor {
+            id
+          }
+        }
         liquidations {
           events{
             block
@@ -35,13 +40,17 @@ function LIQUIDATION_EVENTS_FOR_EMP(empAddress) {
             }
           }
         }
+        totalCollateralDeposited
+        totalCollateralWithdrawn
+        totalSyntheticTokensCreated
+        totalSyntheticTokensBurned
       }
     }
   `;
 }
 
 const queries = {
-  LIQUIDATION_EVENTS_FOR_EMP
+  EMP_STATS
 };
 
 module.exports = {

@@ -4,9 +4,12 @@
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "private": true,
   "dependencies": {
+    "@google-cloud/trace-agent": "^4.2.5",
+    "@google-cloud/logging-winston": "^3.0.6",
     "@umaprotocol/common": "^1.0.0",
     "@umaprotocol/core": "^1.0.0",
     "@uniswap/sdk": "^2.0.5",
+    "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
     "minimist": "^1.2.0",
     "node-fetch": "^2.6.0",
@@ -14,6 +17,9 @@
     "winston": "^3.2.1",
     "winston-slack-webhook-transport": "^1.2.1",
     "winston-transport": "^4.3.0"
+  },
+  "devDependencies": {
+    "truffle": "^5.1.37"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -26,7 +32,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "truffle test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

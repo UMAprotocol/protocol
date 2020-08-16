@@ -8,7 +8,7 @@ const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const { RegistryRolesEnum } = require("@umaprotocol/common");
-const { interfaceName } = require("../utils/Constants.js");
+const { interfaceName } = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

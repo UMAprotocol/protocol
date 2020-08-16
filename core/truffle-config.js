@@ -1,1 +1,1 @@
-module.exports = require("@umaprotocol/common").TruffleConfig;
+module.exports = require("@umaprotocol/common").getTruffleConfig(__dirname);

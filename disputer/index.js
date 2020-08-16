@@ -32,42 +32,42 @@ const Voting = artifacts.require("Voting");
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
  * @return None or throws an Error.
  */
-async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice) {
+async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Disputer#index",
       message: "Disputer started🔎",
-      empAddress: address,
+      empAddress,
       pollingDelay,
       priceFeedConfig
     });
 
-    // Setup web3 accounts an contract instance
-    const accounts = await web3.eth.getAccounts();
-    const emp = await ExpiringMultiParty.at(address);
-    const voting = await Voting.deployed();
-
-    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const empProps = {
-      priceIdentifier: await emp.priceIdentifier()
-    };
-
-    // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const priceFeed = await createReferencePriceFeedForEmp(
-      logger,
-      web3,
-      new Networker(logger),
-      getTime,
-      address,
-      priceFeedConfig
-    );
+
+    // Setup web3 accounts, account instance and pricefeed for EMP.
+    const [accounts, emp, voting, priceFeed] = await Promise.all([
+      web3.eth.getAccounts(),
+      ExpiringMultiParty.at(empAddress),
+      Voting.deployed(),
+      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
+    ]);
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const [priceIdentifier, collateralToken] = await Promise.all([
+      emp.priceIdentifier(),
+      ExpandedERC20.at(await emp.collateralCurrency())
+    ]);
+
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const empProps = {
+      priceIdentifier: priceIdentifier
+    };
 
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
@@ -85,10 +85,9 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    await gasEstimator.update();
-    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
     const currentAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
     if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
       const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
@@ -101,8 +100,9 @@ async function run(logger, address, pollingDelay, priceFeedConfig, disputerConfi
     }
 
     while (true) {
-      await disputer.queryAndDispute(disputerOverridePrice);
-      await disputer.queryAndWithdrawRewards();
+      await disputer.update();
+      await disputer.dispute(disputerOverridePrice);
+      await disputer.withdrawRewards();
 
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {

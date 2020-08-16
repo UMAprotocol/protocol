@@ -6,11 +6,22 @@
 <!--
   Title
   Please include a concise title that briefly describes the change.
-  Titles should be prefixed with the area of code that the change affects and they should be in the present simple tense. Examples:
+  Titles should follow https://www.conventionalcommits.org/.
+  They should also be in the present simple tense.
+
+  Examples:
   
-  dvm: adds a new function to compute voting rewards offchain
-  monitor bot: fixes broken link in liquidation log
-  voter dapp: adds countdown timer component to the header
+  feat(dvm): adds a new function to compute voting rewards offchain
+  fix(monitor): fixes broken link in liquidation log
+  feat(voter-dapp): adds countdown timer component to the header
+  build(solc): updates solc version to 0.6.12
+  improve(emp-client): parallelizes web3 calls to improve performance
+
+  For examples of other types (feat, fix, build, improve) and what they mean, take a look at the angular list:
+  https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type
+
+  See https://github.com/UMAprotocol/protocol/blob/master/CONTRIBUTING.md#conventional-commits for more details on PR
+  title expectations.
 -->
 
 

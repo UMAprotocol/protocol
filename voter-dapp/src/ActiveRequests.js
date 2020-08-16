@@ -1,29 +1,34 @@
 import React, { useEffect, useMemo, useState, useReducer } from "react";
 import { useCookies } from "react-cookie";
-
-import Button from "@material-ui/core/Button";
-import IconButton from "@material-ui/core/IconButton";
-import Checkbox from "@material-ui/core/Checkbox";
-import Dialog from "@material-ui/core/Dialog";
-import DialogContent from "@material-ui/core/DialogContent";
-import DialogContentText from "@material-ui/core/DialogContentText";
+import {
+  Button,
+  IconButton,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText,
+  Radio,
+  RadioGroup,
+  FormGroup,
+  FormControlLabel,
+  FormControl,
+  Tooltip,
+  Typography,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Switch
+} from "@material-ui/core";
+import { Help as HelpIcon, FileCopy as FileCopyIcon } from "@material-ui/icons";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import TextField from "@material-ui/core/TextField";
-import Typography from "@material-ui/core/Typography";
-import Tooltip from "@material-ui/core/Tooltip";
-
-import Radio from "@material-ui/core/Radio";
-import RadioGroup from "@material-ui/core/RadioGroup";
-import FormControlLabel from "@material-ui/core/FormControlLabel";
-import FormControl from "@material-ui/core/FormControl";
-import HelpIcon from "@material-ui/icons/Help";
-import FileCopyIcon from "@material-ui/icons/FileCopy";
-
+import VoteData from "./containers/VoteData";
 import {
   VotePhasesEnum,
   formatDate,
@@ -42,6 +47,7 @@ import {
   translateAdminVote
 } from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
+import { REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -67,6 +73,7 @@ const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+
   // Use cookies to locally store data from committed hashes, mapped to the current voting account.
   const [cookies, setCookie] = useCookies();
   const { hexToUtf8 } = web3.utils;
@@ -77,9 +84,40 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
   };
 
-  const pendingRequests = useCacheCall("Voting", "getPendingRequests");
+  const allPendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
+
+  // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
+  const [showSpamRequests, setShowSpamRequests] = useState(false);
+  const [hasSpamRequests, setHasSpamRequests] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  useEffect(() => {
+    setHasSpamRequests(false);
+
+    if (allPendingRequests) {
+      const nonBlacklistedRequests = allPendingRequests.filter(req => {
+        if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
+        else {
+          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
+            return true;
+          } else return false;
+        }
+      });
+      // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
+      if (nonBlacklistedRequests.length < allPendingRequests.length) {
+        setHasSpamRequests(true);
+      }
+
+      if (showSpamRequests) {
+        setPendingRequests(allPendingRequests);
+      } else {
+        setPendingRequests(nonBlacklistedRequests);
+      }
+    }
+  }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);
+
+  const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
@@ -108,6 +146,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
   const [commitBackupIndex, setCommitBackupIndex] = useState(closedDialogIndex);
+  const [openVoteStatsDialog, setOpenVoteStatsDialog] = useState(false);
+  const [voteStatsDialogData, setVoteStatDialogData] = useState(null);
+
   const handleClickExplain = index => {
     setDialogContentIndex(index);
   };
@@ -116,9 +157,29 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     setCommitBackupIndex(index);
   };
 
+  const handleClickStats = index => {
+    // Set voteStatsDialogData to stats from selected round.
+    const priceRequest = pendingRequests[index];
+    if (priceRequest) {
+      const voteDataKey = getRequestKey(priceRequest.time, hexToUtf8(priceRequest.identifier), currentRoundId);
+      if (roundVoteData?.[voteDataKey]) {
+        setVoteStatDialogData(roundVoteData[voteDataKey]);
+        setOpenVoteStatsDialog(true);
+      }
+    }
+  };
+
+  const prettyFormatNumber = x => {
+    if (!x) {
+      return "N/A";
+    }
+    return Number(x).toLocaleString({ minimumFractionDigits: 2 });
+  };
+
   const handleClickClose = () => {
     setDialogContentIndex(closedDialogIndex);
     setCommitBackupIndex(closedDialogIndex);
+    setOpenVoteStatsDialog(false);
   };
 
   const proposals = useCacheCall(["Governor"], call => {
@@ -517,6 +578,37 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
+      <Dialog onClose={handleClickClose} open={openVoteStatsDialog}>
+        <DialogTitle>Voting Statistics</DialogTitle>
+        {voteStatsDialogData && (
+          <List>
+            <ListItem>
+              <ListItemText
+                primary={"Total Supply Snapshot: " + prettyFormatNumber(voteStatsDialogData.totalSupplyAtSnapshot)}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Commit Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueCommits)}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Revealed Votes: " + prettyFormatNumber(voteStatsDialogData.revealedVotes)}
+                secondary={prettyFormatNumber(voteStatsDialogData.revealedVotesPct) + "% of Total Supply"}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemText
+                primary={"Unique Reveal Addresses: " + prettyFormatNumber(voteStatsDialogData.uniqueReveals)}
+                secondary={
+                  prettyFormatNumber(voteStatsDialogData.uniqueRevealsPctOfCommits) + "% of Unique Commit Addresses"
+                }
+              />
+            </ListItem>
+          </List>
+        )}
+      </Dialog>
       <Dialog open={commitBackupIndex !== closedDialogIndex} onClose={handleClickClose}>
         <DialogContent>
           <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
@@ -543,6 +635,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           </DialogContentText>
         </DialogContent>
       </Dialog>
+      {/* Only render this spam filter switch if some pending spam requests have been filtered out */}
+      {hasSpamRequests && (
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch size="small" checked={showSpamRequests} onChange={() => setShowSpamRequests(!showSpamRequests)} />
+            }
+            label="Show spam price requests"
+          />
+        </FormGroup>
+      )}
       <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
@@ -563,6 +666,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 </IconButton>
               </Tooltip>
             </TableCell>
+            <TableCell className={classes.tableHeaderCell}>Stats</TableCell>
             <TableCell className={classes.tableHeaderCell}>
               Local Commit Data Backup
               <Tooltip
@@ -601,6 +705,13 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{getCurrentVoteCell(index, isAdminRequest(hexToUtf8(pendingRequest.identifier)))}</TableCell>
+                <TableCell>
+                  <span>
+                    <Button variant="contained" color="primary" onClick={() => handleClickStats(index)}>
+                      Vote Stats
+                    </Button>
+                  </span>
+                </TableCell>
                 <TableCell>
                   <Button variant="contained" color="primary" onClick={() => handleClickDisplayCommitBackup(index)}>
                     Display

@@ -15,14 +15,18 @@
     "express": "^4.17.1",
     "gmail-send": "^1.2.14",
     "minimist": "^1.2.0",
+    "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
     "truffle": "^5.1.14",
     "web3": "1.2.7"
   },
   "devDependencies": {
+    "bip39": "^3.0.2",
     "coveralls": "^3.1.0",
+    "ganache-cli": "^6.7.0",
     "truffle-assertions": "^0.9.2",
-    "truffle-deploy-registry": "^0.5.1"
+    "truffle-deploy-registry": "^0.5.1",
+    "solidity-coverage": "^0.7.2"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -33,12 +37,15 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
+  "main": "index.js",
   "files": [
     "./contracts/**/*.sol",
-    "./build/contracts/*.js"
+    "./build/contracts/*.js",
+    "./migrations/*.js"
   ],
   "scripts": {
-    "test": "echo \"No tests currently configured\""
+    "test": "buidler test",
+    "load-addresses": "yarn run apply-registry"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

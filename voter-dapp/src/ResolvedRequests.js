@@ -1,20 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
-import Button from "@material-ui/core/Button";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import Typography from "@material-ui/core/Typography";
-import Dialog from "@material-ui/core/Dialog";
-import DialogTitle from "@material-ui/core/DialogTitle";
-import List from "@material-ui/core/List";
-import ListItem from "@material-ui/core/ListItem";
-import ListItemText from "@material-ui/core/ListItemText";
+import {
+  FormGroup,
+  FormControlLabel,
+  Switch,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+  Dialog,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemText
+} from "@material-ui/core";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL } from "@umaprotocol/common";
+import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 import VoteData from "./containers/VoteData";
 
@@ -54,7 +59,7 @@ function ResolvedRequests({ votingAccount }) {
     setOpenVoteStatsDialog(false);
   };
 
-  const resolvedEvents =
+  const allResolvedEvents =
     useCacheEvents(
       "Voting",
       "PriceResolved",
@@ -64,6 +69,35 @@ function ResolvedRequests({ votingAccount }) {
         return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
+
+  // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
+  const [showSpamRequests, setShowSpamRequests] = useState(false);
+  const [hasSpamRequests, setHasSpamRequests] = useState(false);
+  const [resolvedEvents, setResolvedEvents] = useState([]);
+  useEffect(() => {
+    setHasSpamRequests(false);
+
+    if (allResolvedEvents) {
+      const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
+        if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
+        else {
+          if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
+            return true;
+          } else return false;
+        }
+      });
+      // If there is at least 1 spam request, set this flag which we'll use to determine whether to show the spam filter switch to users.
+      if (nonBlacklistedRequests.length < allResolvedEvents.length) {
+        nonBlacklistedRequests(true);
+      }
+
+      if (showSpamRequests) {
+        setResolvedEvents(allResolvedEvents);
+      } else {
+        setResolvedEvents(nonBlacklistedRequests);
+      }
+    }
+  }, [allResolvedEvents, REQUEST_BLACKLIST, showSpamRequests]);
 
   const revealedVoteEvents =
     useCacheEvents(
@@ -162,6 +196,17 @@ function ResolvedRequests({ votingAccount }) {
           </List>
         )}
       </Dialog>
+      {/* Only render this spam filter switch if some resolved spam requests have been filtered out */}
+      {hasSpamRequests && (
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch size="small" checked={showSpamRequests} onChange={() => setShowSpamRequests(!showSpamRequests)} />
+            }
+            label="Show spam price requests"
+          />
+        </FormGroup>
+      )}
       <Table style={{ marginBottom: "10px" }}>
         <TableHead className={classes.tableHeader}>
           <TableRow>
