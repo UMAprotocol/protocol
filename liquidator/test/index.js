@@ -89,7 +89,15 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      executionRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -98,7 +106,15 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      executionRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -124,7 +140,15 @@ contract("index.js", function(accounts) {
     };
 
     executionRetries = 3; // set execution retries to 3 to validate.
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      executionRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.

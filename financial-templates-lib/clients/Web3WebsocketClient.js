@@ -38,4 +38,6 @@ const hdWalletWithWebsocketProvider = new HDWalletProvider(selectedKey, websocke
 
 const web3 = new Web3(hdWalletWithWebsocketProvider);
 
+console.log("Created websocket web3 provider");
+
 module.exports = { web3 };
