@@ -525,6 +525,62 @@ contract("Liquidatable", function(accounts) {
         )
       );
     });
+    it("Multiple partial liquidations re-set liveness timer on withdrawal requests", async () => {
+      // Request a withdrawal.
+      const withdrawalAmount = amountOfSynthetic.divn(5);
+      await liquidationContract.requestWithdrawal({ rawValue: withdrawalAmount.toString() }, { from: sponsor });
+
+      const startingTime = await liquidationContract.getCurrentTime();
+      let expectedTimestamp = toBN(startingTime)
+        .add(liquidationLiveness)
+        .toString();
+
+      assert(
+        expectedTimestamp,
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
+      );
+
+      // Advance time by half of the liveness duration.
+      await liquidationContract.setCurrentTime(startingTime.add(liquidationLiveness.divn(2)).toString());
+
+      // Create partial liquidation.
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: "0" },
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+
+      // After the liquidation the liveness timer on the withdrawl request should be re-set to the current time +
+      // the liquidation liveness. This opens the position up to having a subsequent liquidation, if need be.
+      let liquidationTime = await liquidationContract.getCurrentTime();
+      assert(
+        liquidationTime.add(liquidationLiveness).toString(),
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
+      );
+
+      // Create a subsequent liquidation partial and check that it also advances the withdrawal request timer
+      await liquidationContract.setCurrentTime(liquidationTime.add(liquidationLiveness.divn(2)).toString());
+
+      // Create partial liquidation.
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: "0" },
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+
+      // Again, verify this is offset correctly.
+      liquidationTime = await liquidationContract.getCurrentTime();
+      assert(
+        liquidationTime.add(liquidationLiveness).toString(),
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
+      );
+    });
   });
 
   describe("Full liquidation has been created", () => {
