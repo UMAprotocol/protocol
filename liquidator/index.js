@@ -16,11 +16,8 @@ const {
   delay
 } = require("@umaprotocol/financial-templates-lib");
 
-// Contract ABIs
-const ExpiringMultiParty = require("@umaprotocol/core/build/contracts/ExpiringMultiParty.json");
-const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
-const Voting = require("@umaprotocol/core/build/contracts/Voting.json");
-const networks = require("@umaprotocol/core/networks/1.json");
+// Contract ABIs and network Addresses
+const { getAbi, getAddress } = require("@umaprotocol/core/index");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -65,23 +62,20 @@ async function run(
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // Setup contract instances.
-    const voting = new web3.eth.Contract(
-      Voting.abi,
-      networks.find(x => x.contractName == "Voting")
-    );
-
-    const emp = new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
-
-    // Load unlocked web3 accounts and set up price feed.
-    const [accounts, priceFeed] = await Promise.all([
+    // Load unlocked web3 accounts, get the networkId and set up price feed.
+    const [accounts, networkId, priceFeed] = await Promise.all([
       web3.eth.getAccounts(),
+      web3.eth.net.getId(),
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
+
+    // Setup contract instances.
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const [
@@ -98,8 +92,8 @@ async function run(
       emp.methods.tokenCurrency().call()
     ]);
 
-    const collateralToken = new web3.eth.Contract(ExpandedERC20.abi, collateralTokenAddress);
-    const syntheticToken = new web3.eth.Contract(ExpandedERC20.abi, syntheticTokenAddress);
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
+    const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
     const empProps = {
       crRatio: collateralRequirement,
@@ -109,7 +103,7 @@ async function run(
 
     // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, empAddress);
+    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
     const liquidator = new Liquidator(
       logger,
@@ -201,6 +195,7 @@ async function run(
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(logger);
+    process.exit(1);
   }
 }
 
@@ -212,63 +207,41 @@ async function Poll() {
       );
     }
 
-    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+    const executionParameters = {
+      empAddress: process.env.EMP_ADDRESS,
+      // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+      pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
+      // Default to 3 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
+      // Default to 10 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000,
+      // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
+      // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
+      // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
+      // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
+      // {"type":"cryptowatch","exchange":"binance"}]}
+      priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
+      // If there is a liquidator config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
+      // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
+      // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+      //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
+      //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
+      //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
+      //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
+      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
+      // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
+      // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
+      liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE
+    };
 
-    // Default to 3 re-tries on error within the execution loop.
-    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
-
-    // Default to 10 seconds in between error re-tries.
-    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000;
-
-    // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
-    // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
-    // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
-    // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
-    // {"type":"cryptowatch","exchange":"binance"}]}
-    const priceFeedConfig = process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null;
-
-    // If there is a liquidator config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
-    // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
-    // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
-    //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
-    //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
-    //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
-    //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
-    const liquidatorConfig = process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null;
-
-    // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
-    // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
-    const liquidatorOverridePrice = process.env.LIQUIDATOR_OVERRIDE_PRICE;
-
-    // If web3 is undefined then the script is being run as a node process. As a result, create a web3 client.
+    // Check if the bot is being run as a node process or as a truffle process.
     if (typeof web3 == "undefined") {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/clients/Web3WebsocketClient");
-      await run(
-        Logger,
-        web3,
-        process.env.EMP_ADDRESS,
-        pollingDelay,
-        errorRetries,
-        errorRetriesTimeout,
-        priceFeedConfig,
-        liquidatorConfig,
-        liquidatorOverridePrice
-      );
+      await run(Logger, web3, ...Object.values(executionParameters));
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(
-        Logger,
-        web3,
-        process.env.EMP_ADDRESS,
-        pollingDelay,
-        errorRetries,
-        errorRetriesTimeout,
-        priceFeedConfig,
-        liquidatorConfig,
-        liquidatorOverridePrice
-      );
+      await run(Logger, web3, ...Object.values(executionParameters));
     }
   } catch (error) {
     Logger.error({
@@ -277,8 +250,7 @@ async function Poll() {
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
-
-    return;
+    process.exit(1);
   }
 }
 

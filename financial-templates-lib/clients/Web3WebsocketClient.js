@@ -1,43 +1,34 @@
-const Web3 = require("web3");
-const HDWalletProvider = require("@truffle/hdwallet-provider");
+// This client exports a web3 instances which mimics that created by the default truffle config. It exclusively uses
+// websocket connections to take advantage of reconnect logic if the websocket disconnects or times out. The network
+// syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
-var options = {
+const Web3 = require("web3");
+const { getTruffleConfig, nodeUrl } = require("@umaprotocol/common/TruffleConfig");
+const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
+
+const websocketOptions = {
   timeout: 10000, // ms
-  // Useful if requests result are large
   clientConfig: {
-    maxReceivedFrameSize: 100000000, // bytes - default: 1MiB
+    maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
     maxReceivedMessageSize: 100000000 // bytes - default: 8MiB
   },
-  // Enable auto reconnection
   reconnect: {
-    auto: true,
+    auto: true, // Enable auto reconnection
     delay: 5000, // ms
-    maxAttempts: 5,
+    maxAttempts: 10,
     onTimeout: false
   }
 };
 
-// If a custom infuraApiKey is provided, use that. Else, fallback to a public one.
-const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "e34138b2db5b496ab5cc52319d2f0299";
+// Create websocket web3 provider. This contains the re-try logic on failed/timeout connections.
+const websocketProvider = new Web3.providers.WebsocketProvider(nodeUrl, websocketOptions);
 
-// If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-const nodeUrl = process.env.CUSTOM_NODE_URL || `wss://mainnet.infura.io/ws/v3/${infuraApiKey}`;
+// Use the websocketProvider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
+// implementing all networks & wallet types. EG mainnet_mnemonic, kovan_gckms, test, mainnet-fork. Errors if no argv.network.
+const walletWithWebsocketProvider = new getTruffleConfig().networks[argv.network].provider(websocketProvider);
 
-// Create the websocket provider using the nodeURL and options.
-const websocketProvider = new Web3.providers.WebsocketProvider(nodeUrl, options);
-
-// If the user provided a mnemonic OR a private key, take it. If not, this is null.
-const mnemonicOrPrivateKey = process.env.MNEMONIC | process.env.PRIVATE_KEY;
-
-// If the user provided a mnemonic or private key, use this as the selected key. Else, default to a public mnemonic
-const selectedKey = mnemonicOrPrivateKey
-  ? mnemonicOrPrivateKey
-  : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
-
-const hdWalletWithWebsocketProvider = new HDWalletProvider(selectedKey, websocketProvider);
-
-const web3 = new Web3(hdWalletWithWebsocketProvider);
-
-console.log("Created websocket web3 provider");
+// Lastly, create a web3 instance with the walletWithWebsocketProvider. This can be used to  queries the chain via the
+// retry enabled websocket provider & has access to the users wallet based on the kind of connection they created.
+const web3 = new Web3(walletWithWebsocketProvider);
 
 module.exports = { web3 };
