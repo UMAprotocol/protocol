@@ -3,6 +3,8 @@ const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { web3 } = require("@umaprotocol/financial-templates-lib/clients/Web3WebsocketClient");
+
 const { toBN } = web3.utils;
 
 // JS libs
@@ -17,10 +19,11 @@ const {
   delay
 } = require("@umaprotocol/financial-templates-lib");
 
-// Truffle contracts
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const Voting = artifacts.require("Voting");
+// Contract ABIs
+const ExpiringMultiParty = require("@umaprotocol/core/build/contracts/ExpiringMultiParty.json");
+const ExpandedERC20 = require("@umaprotocol/core/build/contracts/ExpandedERC20.json");
+const Voting = require("@umaprotocol/core/build/contracts/Voting.json");
+const networks = require("@umaprotocol/core/networks/1.json");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -61,10 +64,21 @@ async function run(
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Setup web3 accounts, account instance and pricefeed for EMP.
-    const [accounts, emp, voting, priceFeed] = await Promise.all([
+
+    console.log(
+      "voting address",
+      networks.find(x => x.contractName == "Voting")
+    );
+
+    const voting = new web3.eth.Contract(
+      Voting.abi,
+      networks.find(x => x.contractName == "Voting")
+    );
+
+    const emp = new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+
+    const [accounts, priceFeed] = await Promise.all([
       web3.eth.getAccounts(),
-      ExpiringMultiParty.at(empAddress),
-      Voting.deployed(),
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
 
@@ -77,15 +91,18 @@ async function run(
       collateralRequirement,
       priceIdentifier,
       minSponsorTokens,
-      collateralToken,
-      syntheticToken
+      collateralTokenAddress,
+      syntheticTokenAddress
     ] = await Promise.all([
-      emp.collateralRequirement(),
-      emp.priceIdentifier(),
-      emp.minSponsorTokens(),
-      ExpandedERC20.at(await emp.collateralCurrency()),
-      ExpandedERC20.at(await emp.tokenCurrency())
+      emp.methods.collateralRequirement().call(),
+      emp.methods.priceIdentifier().call(),
+      emp.methods.minSponsorTokens().call(),
+      emp.methods.collateralCurrency().call(),
+      emp.methods.tokenCurrency().call()
     ]);
+
+    const collateralToken = new web3.eth.Contract(ExpandedERC20.abi, collateralTokenAddress);
+    const syntheticToken = new web3.eth.Contract(ExpandedERC20.abi, syntheticTokenAddress);
 
     const empProps = {
       crRatio: collateralRequirement,
@@ -111,13 +128,12 @@ async function run(
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     const [currentCollateralAllowance, currentSyntheticAllowance] = await Promise.all([
-      collateralToken.allowance(accounts[0], empAddress),
-      syntheticToken.allowance(accounts[0], empAddress)
+      collateralToken.methods.allowance(accounts[0], empAddress).call(),
+      syntheticToken.methods.allowance(accounts[0], empAddress).call()
     ]);
-
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.approve(empAddress, MAX_UINT_VAL, {
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
@@ -129,7 +145,7 @@ async function run(
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const syntheticApprovalTx = await syntheticToken.approve(empAddress, MAX_UINT_VAL, {
+      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
@@ -148,7 +164,7 @@ async function run(
           await liquidator.update();
           // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
           // considers override price if the user has specified one.
-          const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+          const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
           await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           // Check for any finished liquidations that can be withdrawn.
           await liquidator.withdrawRewards();
@@ -191,7 +207,7 @@ async function run(
   }
 }
 
-async function Poll(callback) {
+async function Poll() {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
@@ -245,12 +261,18 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
-    callback(error);
+
     return;
   }
-  callback();
 }
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
 module.exports = Poll;
+
+Poll()
+  .then(() => {})
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
