@@ -1,5 +1,6 @@
 const Token = artifacts.require("ExpandedERC20");
 const OneSplit = artifacts.require("OneSplit");
+const { toBN, toWei } = web3.utils;
 
 const { ONE_SPLIT_ADDRESS, ETH_ADDRESS } = require("./constants");
 
@@ -103,7 +104,7 @@ class OneInchExchange {
       distribution
     });
 
-    if (minReturnAmountWei && returnAmount.lt(minReturnAmountWei)) {
+    if (minReturnAmountWei && toBN(returnAmount.toString()).lt(toBN(minReturnAmountWei.toString()))) {
       this.logger.debug({
         at: "OneInchExchange",
         message: "ReturnAmountTooLow",

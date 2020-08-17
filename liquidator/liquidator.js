@@ -268,8 +268,7 @@ class Liquidator {
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      // TODO: Await
-      let notEnoughCollateral = liquidation
+      const notEnoughCollateral = await liquidation
         .call({ from: this.account })
         .then(() => false)
         .catch(() => true);
@@ -279,6 +278,11 @@ class Liquidator {
       if (notEnoughCollateral) {
         const tokenCurrency = await this.empClient.getTokenCurrency();
 
+        this.logger.info({
+          at: "Liquidator",
+          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`
+        });
+
         // Reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         const reserveWeiNeeded = await this.oneInch.getExpectedReturn({
           fromToken: tokenCurrency.address,
@@ -286,26 +290,36 @@ class Liquidator {
           amountWei: tokensToLiquidate.toString()
         });
 
-        console.log("reserverWeiNeeded", reserveWeiNeeded);
-
         // This is used as a reference point to determine slippage
-        const oneGweiReturn = this.oneInch.getExpectedReturn({
+        const oneGweiReturn = await this.oneInch.getExpectedReturn({
           fromToken: tokenCurrency.address,
           toToken: this.reserveCurrencyAddress,
           amountWei: this.toWei("1", "gwei")
         });
 
-        console.log("oneGweiReturn", oneGweiReturn);
+        const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);
+        const oneGweiReturnBN = this.toBN(oneGweiReturn);
+        const tokensToLiquidateBN = this.toBN(tokensToLiquidate);
+        const oneGweiBN = this.toBN(this.toWei("1", "gwei"));
+        const oneWeiBN = this.toBN(this.toWei("1"));
 
         // Slippage = (idealReserveWeiNeeded - reserveWeiNeeded) / idealReserveWeiNeeded
-        // Where idealReserverWei = oneGweiReturn * tokensToLiquidate / 1gwei
-        const idealReserveWeiNeeded = oneGweiReturn.mul(tokensToLiquidate).div(this.toWei("1", "gwei"));
-        const slippage = this.fromWei(
-          reserveWeiNeeded
-            .sub(idealReserveWeiNeeded)
-            .mul(this.toWei("1"))
-            .div(idealReserveWeiNeeded)
-        );
+        // Where idealReserverWei = oneGweiReturn * tokensToLiquidate / 1 gwei
+        const idealReserveWeiNeededBN = oneGweiReturnBN.mul(tokensToLiquidateBN).div(oneGweiBN);
+
+        let slippage;
+        // IdealReserveWeiNeededBN is 0 if it isn't on exchanges yet
+        // Can't div by 0 so doing this
+        if (idealReserveWeiNeededBN.eq(this.toBN("0"))) {
+          slippage = "0";
+        } else {
+          slippage = this.fromWei(
+            idealReserveWeiNeededBN
+              .sub(reserveWeiNeededBN)
+              .mul(oneWeiBN)
+              .div(idealReserveWeiNeededBN)
+          );
+        }
 
         // Don't allow slippage of more than 10%
         if (parseFloat(slippage) > 0.1) {
@@ -328,13 +342,18 @@ class Liquidator {
 
         // Swap tokens
         try {
-          await this.oneInch.swap({
-            fromToken: this.reserveCurrencyAddress,
-            toToken: tokenCurrency.address,
-            minReturnAmountWei: tokensToLiquidate.toString(),
-            amountWei: reserveWeiNeeded.mul(this.toWei("1.005")).div(this.toWei("1.0")) // Add 0.5% just in case
-          });
-          notEnoughCollateral = false;
+          await this.oneInch.swap(
+            {
+              fromToken: this.reserveCurrencyAddress,
+              toToken: tokenCurrency.address,
+              minReturnAmountWei: tokensToLiquidate.toString(),
+              amountWei: reserveWeiNeededBN
+                .mul(this.toBN(this.toWei("1.005")))
+                .div(oneWeiBN)
+                .toString() // Add 0.5% just in case
+            },
+            { from: this.account }
+          );
         } catch (e) {
           this.logger.error({
             at: "Liquidator",
@@ -347,25 +366,7 @@ class Liquidator {
             maxLiquidationPrice: maxCollateralPerToken.toString(),
             tokensToLiquidate: tokensToLiquidate.toString()
           });
-          continue;
         }
-      }
-
-      // Checks to see if we still have enough collateral
-      // (After attempting to swap)
-      if (notEnoughCollateral) {
-        this.logger.error({
-          at: "Liquidator",
-          message:
-            "Failed to liquidate position: not enough synthetic (or large enough approval) to initiate liquidation❌",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString()
-        });
-        continue;
       }
 
       const txnConfig = {
@@ -391,7 +392,8 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to liquidate position🚨",
+          message:
+            "Failed to liquidate position🚨: not enough synthetic (or large enough approval) to initiate liquidation❌",
           error
         });
         continue;

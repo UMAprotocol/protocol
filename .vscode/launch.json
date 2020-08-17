@@ -1,0 +1,22 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "runtimeExecutable": "/home/kendrick/.nvm/versions/node/v12.16.1/bin/node",
+      "request": "launch",
+      "name": "Debug Liquidator",
+      "skipFiles": ["<node_internals>/**"],
+      "cwd": "${workspaceFolder}/core",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/node_modules/.bin/truffle",
+        "test",
+        "../liquidator/test/Liquidator.js"
+      ]
+    }
+  ]
+}
