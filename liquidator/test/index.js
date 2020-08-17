@@ -21,6 +21,9 @@ const { SpyTransport, spyLogLevel } = require("@umaprotocol/financial-templates-
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
+  const liquidatorConfig = {
+    crThreshold: 0
+  };
 
   let oneSplitMock;
   let collateralToken;
@@ -89,7 +92,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, oneSplitMock.address, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, oneSplitMock.address, 0, defaultPriceFeedConfig, liquidatorConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -98,7 +101,7 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, oneSplitMock.address, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, oneSplitMock.address, 0, defaultPriceFeedConfig, liquidatorConfig);
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
