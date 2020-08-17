@@ -473,7 +473,7 @@ contract("Liquidator.js", function(accounts) {
 
     // No transaction should be sent, so this should not throw.
     await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 1); // 1 new error level event due to the failed liquidation.
+    assert.equal(spy.callCount, 3); // 3 new events due to the swap attempt and failed liquidation
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
@@ -487,11 +487,11 @@ contract("Liquidator.js", function(accounts) {
     // Can now liquidate the position.
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 2); // 1 new info level event due to the successful liquidation.
+    assert.equal(spy.callCount, 4); // 1 new info level event due to the successful liquidation.
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
-    assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
+    assert.equal(spy.callCount, 4); // 1 new log level event due to the successful execution.
   });
 
   describe("Partial liquidations", function() {
