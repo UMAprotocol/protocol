@@ -529,7 +529,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Any withdrawal requests should fail, because withdrawals would reduce the global collateralization ratio.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
 
-    // A new pricelessPositionManager can't be created below the global ratio.
+    // Because there is only 1 sponsor, neither the sponsor nor potential new sponsors can create below the global ratio.
     assert(
       await didContractThrow(
         pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("101") }, { from: sponsor })
@@ -541,34 +541,42 @@ contract("PricelessPositionManager", function(accounts) {
       )
     );
 
-    // A new pricelessPositionManager CAN be expanded or created above the global ratio.
+    // Because there is only 1 sponsor, both the sponsor and potential new sponsors must create equal to or above the global ratio.
     await pricelessPositionManager.create({ rawValue: toWei("15") }, { rawValue: toWei("10") }, { from: sponsor });
     await pricelessPositionManager.create({ rawValue: toWei("25") }, { rawValue: toWei("10") }, { from: other });
 
-    // Can't withdraw below global ratio.
-    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
+    // At this point the GCR is (150 + 15 + 25) / (100 + 10 + 10) = 158.3%.
 
-    // The "other" position has excess collateral, but that collateral can NOT be used to mint new tokens.
+    // Since the smaller sponsor is well above the GCR at 250%, they can create new tokens with 0 collateral. Let's say they want
+    // to create 5 tokens with 0 collateral. Their new position CR will be 25/10+5 = 166.7%.
+    // Therefore, their resultant CR > GCR and this creation is valid. However, if they instead created 6 tokens with 0 collateral, then their
+    // resultant CR would be 25/10+6 = 156.3%.
     assert(
       await didContractThrow(
-        pricelessPositionManager.create({ rawValue: toWei("0.0001") }, { rawValue: toWei("1") }, { from: other })
+        pricelessPositionManager.create({ rawValue: toWei("0") }, { rawValue: toWei("6") }, { from: other })
       )
     );
+    await pricelessPositionManager.create({ rawValue: toWei("0") }, { rawValue: toWei("5") }, { from: other });
+
+    // The new GCR is (190 / 120+5) = 152%. The large sponsor's CR is (165/110) = 150%, so they cannot withdraw
+    // any tokens.
+    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
+
+    // Additionally, the large sponsor cannot create any tokens UNLESS their created tokens to deposited collateral ratio > GCR.
+    // If the large sponsor wants to create 0.1 more tokens, then they would need to deposit at least 0.152 collateral.
+    // This would make their position CR (165+0.152/110+0.1) slightly > 150%, still below the GCR, but the new create ratio > GCR.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.create({ rawValue: toWei("0.151") }, { rawValue: toWei("0.1") }, { from: sponsor })
+      )
+    );
+    await pricelessPositionManager.create({ rawValue: toWei("0.152") }, { rawValue: toWei("0.1") }, { from: sponsor });
 
     // For the "other" Position:
-    // global collateralization ratio = (150 + 15 + 25) / (100 + 10 + 10) = 1.58333
-    // To maintain 10 tokens, need at least 15.833 collateral => can withdraw from 25 down to 16 but not to 15.
-    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("10") }, { from: other })));
-    await pricelessPositionManager.withdraw({ rawValue: toWei("9") }, { from: other });
-
-    // GCR = (15 + 16) / (10 + 10) = 1.55.
-    // `sponsor` has a CR of 1.5.
-    // `other` has a CR of 1.6.
-    // `sponsor` can create new tokens that are individually above 1.55, without needing to bring their whole
-    // position up to 1.55. `other` can create new tokens below their current CR as long as the new tokens are above
-    // GCR.
-    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: sponsor });
-    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: other });
+    // global collateralization ratio = (190.152) / (125.1) = 1.52
+    // To maintain 15 tokens, need at least 22.8 collateral => e.g. can withdraw from 25 down to 23 but not to 22.
+    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("3") }, { from: other })));
+    await pricelessPositionManager.withdraw({ rawValue: toWei("2") }, { from: other });
   });
 
   it("Transfer position request", async function() {
