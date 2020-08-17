@@ -11,8 +11,8 @@
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
     "test": "lerna run --stream --concurrency=1 test",
     "load-addresses": "yarn workspace @umaprotocol/core load-addresses",
-    "publish": "lerna publish --conventional-commits",
-    "publish-dry-run": "lerna publish --skip-npm --no-git-tag-version --no-push"
+    "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
+    "publish": "lerna publish from-package"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
