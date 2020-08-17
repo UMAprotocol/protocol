@@ -103,7 +103,6 @@ exports.PriceHistory = (getPrice, prices = {}) => {
       if (result.timestamp < timestamp) return { timestamp, price };
       return result;
     }, {});
-    assert(result.price, "No latest price found");
     return result.price;
   }
 

@@ -31,6 +31,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
   getHistoricalPrice(time) {
     // We want the block and price equal to or before this time
     const block = this.blockHistory.getClosestBefore(time);
+    if (block == null) return null;
     if (!this.priceHistory.has(block.timestamp)) {
       return null;
     }
@@ -40,13 +41,8 @@ class BalancerPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
   getCurrentPrice() {
-    // normally would bubble up errors, but this is not supposed to throw
-    try {
-      return this.priceHistory.currentPrice();
-    } catch (err) {
-      // this can throw an error if no current price is set, but lets return null to copy uniswap price feed
-      return null;
-    }
+    // current price can be undefined, will throw for any other errors
+    return this.priceHistory.currentPrice();
   }
   async update() {
     this.lastUpdateTime = await this.getTime();

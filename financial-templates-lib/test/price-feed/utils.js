@@ -40,7 +40,7 @@ contract("Price Feed Utils", async function(accounts) {
       const block = blockHistory.getClosestBefore(time);
       assert.isOk(block);
       assert.isOk(blockHistory.has(block.number));
-      // this should return the next block higher than the timestamp
+      // this should return the next block lower than the timestamp
       assert.equal(block.timestamp, Math.floor(time));
     });
     it("getClosestAfter Exact", function() {

@@ -65,5 +65,6 @@ contract("BalancerPriceFeed.js", async function(accounts) {
     // get first block, price should be 0
     assert.equal(balancerPriceFeed.getHistoricalPrice(startTime), "0");
     assert.equal(balancerPriceFeed.getHistoricalPrice(startTime + blockTime), "1");
+    assert.equal(balancerPriceFeed.getHistoricalPrice(startTime + blockTime + blockTime / 2), "1");
   });
 });
