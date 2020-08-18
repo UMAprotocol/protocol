@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
+yarn run publish-release-npm --yes
+
 for TAG in $(yarn --silent lerna ls -p --long -a | cut -d: -f2-3 | tr : @)
 do
     echo "Attempting to publish tag: $TAG"
@@ -8,5 +10,3 @@ do
 done
 
 git push origin --tags
-
-yarn run publish-release-npm --yes
