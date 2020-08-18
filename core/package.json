@@ -16,7 +16,7 @@
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
-    "truffle": "^5.1.15",
+    "truffle": "^5.1.16",
     "web3": "1.2.7"
   },
   "devDependencies": {
