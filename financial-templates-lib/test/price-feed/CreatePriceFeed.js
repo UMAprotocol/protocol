@@ -15,7 +15,7 @@ const {
   createReferencePriceFeedForEmp,
   createUniswapPriceFeedForEmp,
   createTokenPriceFeedForEmp
-} = require("../../price-feed/CreatePriceFeed");
+} = require("../../src/price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");

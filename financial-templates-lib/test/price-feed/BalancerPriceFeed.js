@@ -9,7 +9,7 @@ const {
   stopMining,
   startMining
 } = require("@umaprotocol/common");
-const { delay } = require("../../helpers/delay.js");
+const { delay } = require("../../src/helpers/delay.js");
 
 const BalancerMock = artifacts.require("BalancerMock");
 const Balancer = artifacts.require("Balancer");
