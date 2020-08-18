@@ -35,6 +35,7 @@ contract("index.js", function(accounts) {
   let fromBlock = 0; // setting the from block to 0 will query all historic logs events.
   let toBlock = null; // setting the to block to 0 will query up to the latest block Number.
   let executionRetries = 0; // setting execution re-tried to 0 will exit as soon as the process encounters an error.
+  let errorRetriesTimeout = 100; // 100 milliseconds between preforming retries.
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
@@ -98,6 +99,7 @@ contract("index.js", function(accounts) {
       emp.address,
       pollingDelay,
       executionRetries,
+      errorRetriesTimeout,
       fromBlock,
       toBlock,
       defaultMonitorConfig,
@@ -112,9 +114,9 @@ contract("index.js", function(accounts) {
 
   it("Correctly re-tries after failed execution loop", async function() {
     // To create an error within the monitor bot we can create a price feed that we know will throw an error.
-    // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
-    // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
-    uniswap = await UniswapMock.new();
+    // Specifically, creating a invalidUniswapPricefeedConfig that will check against a price that is NOT a valid pair.
+    const invalidUniswapPricefeedConfig = defaultUniswapPricefeedConfig;
+    invalidUniswapPricefeedConfig.uniswapAddress = "0x0000000000000000000000000000000000000000";
 
     // We will also create a new spy logger, listening for debug events to validate the re-tries.
     spyLogger = winston.createLogger({
@@ -122,24 +124,18 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    uniswapPriceFeed = {
-      type: "uniswap",
-      uniswapAddress: uniswap.address,
-      twapLength: 1,
-      lookback: 1
-    };
-
     executionRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
       emp.address,
       pollingDelay,
       executionRetries,
+      errorRetriesTimeout,
       fromBlock,
       toBlock,
       defaultMonitorConfig,
-      uniswapPriceFeed,
-      defaultMedianizerPricefeedConfig
+      defaultUniswapPricefeedConfig,
+      invalidUniswapPricefeedConfig
     );
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events

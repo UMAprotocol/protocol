@@ -439,8 +439,8 @@ contract("SyntheticPegMonitor", function() {
         syntheticPegMonitor = new SyntheticPegMonitor(
           spyLogger,
           web3,
-          null, // no pricefeed
-          null, // no price feed
+          uniswapPriceFeedMock,
+          medianizerPriceFeedMock,
           emptyConfig,
           empProps
         );
@@ -449,6 +449,7 @@ contract("SyntheticPegMonitor", function() {
         await syntheticPegMonitor.checkSyntheticVolatility();
         errorThrown = false;
       } catch (err) {
+        console.log("errorThrown", err);
         errorThrown = true;
       }
       assert.isFalse(errorThrown);

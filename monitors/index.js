@@ -48,6 +48,7 @@ async function run(
   address,
   pollingDelay,
   errorRetries,
+  errorRetriesTimeout,
   startingBlock,
   endingBlock,
   monitorConfig,
@@ -63,6 +64,7 @@ async function run(
       empAddress: address,
       pollingDelay,
       errorRetries,
+      errorRetriesTimeout,
       startingBlock,
       endingBlock,
       monitorConfig,
@@ -197,6 +199,7 @@ async function run(
         },
         {
           retries: errorRetries,
+          minTimeout: errorRetriesTimeout,
           onRetry: error => {
             logger.debug({
               at: "Monitor#index",
@@ -244,6 +247,9 @@ async function Poll(callback) {
 
     // Default to 3 re-tries on error within the execution loop.
     const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3;
+
+    // Default to 10 seconds in between error re-tries.
+    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000;
 
     // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.
@@ -299,6 +305,7 @@ async function Poll(callback) {
       process.env.EMP_ADDRESS,
       pollingDelay,
       errorRetries,
+      errorRetriesTimeout,
       startingBlock,
       endingBlock,
       monitorConfig,
