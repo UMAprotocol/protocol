@@ -13,10 +13,12 @@ const Timer = artifacts.require("Timer");
 const {
   createPriceFeed,
   createReferencePriceFeedForEmp,
-  createUniswapPriceFeedForEmp
+  createUniswapPriceFeedForEmp,
+  createTokenPriceFeedForEmp
 } = require("../../price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
+const { BalancerPriceFeed } = require("../../price-feed/BalancerPriceFeed");
 const { MedianizerPriceFeed } = require("../../price-feed/MedianizerPriceFeed");
 const { NetworkerMock } = require("../../price-feed/NetworkerMock");
 const winston = require("winston");
@@ -35,6 +37,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   const minTimeBetweenUpdates = 60;
   const twapLength = 180;
   const uniswapAddress = toChecksumAddress(randomHex(20));
+  const balancerAddress = toChecksumAddress(randomHex(20));
 
   beforeEach(async function() {
     networker = new NetworkerMock();
@@ -168,7 +171,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
       finderAddress: Finder.address,
@@ -210,7 +213,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -239,6 +242,61 @@ contract("CreatePriceFeed.js", function(accounts) {
     }
 
     assert.isTrue(didThrow);
+  });
+
+  it("Valid Balancer config", async function() {
+    const config = {
+      type: "balancer",
+      balancerAddress,
+      balancerTokenIn: accounts[1],
+      balancerTokenOut: accounts[2],
+      lookback: 7200
+    };
+
+    const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
+  });
+
+  it("Invalid Balancer config", async function() {
+    const config = {
+      type: "balancer",
+      balancerAddress
+    };
+
+    const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    assert.equal(balancerFeed, null);
+  });
+  it("Create token Price Feed For Balancer", async function() {
+    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const config = {
+      type: "balancer",
+      balancerAddress,
+      balancerTokenIn: accounts[1],
+      balancerTokenOut: accounts[2]
+    };
+
+    const constructorParams = {
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralTokenAddress,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+
+    const emp = await ExpiringMultiParty.new(constructorParams);
+
+    const balancerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
+    assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
   });
 
   it("Valid Medianizer inherited config", async function() {
@@ -337,7 +395,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -372,7 +430,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
