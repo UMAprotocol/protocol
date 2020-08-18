@@ -90,7 +90,7 @@ const deployEMP = async callback => {
       expirationTimestamp: "1598918400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "USD synthetic token backed by ETH expiring September 2020",
+      syntheticName: "yUSD Synthetic Token Expiring September 2020",
       syntheticSymbol: "yUSD-SEP20",
       collateralRequirement: { rawValue: toWei("1.25") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -100,6 +100,7 @@ const deployEMP = async callback => {
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200
     };
+
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     emp = await ExpiringMultiParty.at(_emp);
