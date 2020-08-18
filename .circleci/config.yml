@@ -164,6 +164,9 @@ jobs:
       - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "e5:da:db:1a:1d:66:5b:e7:f5:43:f2:24:1c:56:6a:97"
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
@@ -171,7 +174,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Publish
-          command: yarn run npm-publish
+          command: yarn run publish-release
 
 workflows:
   version: 2
@@ -207,7 +210,7 @@ workflows:
           filters:
             branches:
               only: master
-      - deploy_to_staging:
+      - publish:
           context: gcloud
           requires:
             - build
