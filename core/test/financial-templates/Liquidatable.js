@@ -543,7 +543,6 @@ contract("Liquidatable", function(accounts) {
       // Advance time by half of the liveness duration.
       await liquidationContract.setCurrentTime(startingTime.add(liquidationLiveness.divn(2)).toString());
 
-      // Create partial liquidation.
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -555,16 +554,15 @@ contract("Liquidatable", function(accounts) {
 
       // After the liquidation the liveness timer on the withdrawl request should be re-set to the current time +
       // the liquidation liveness. This opens the position up to having a subsequent liquidation, if need be.
-      let liquidationTime = await liquidationContract.getCurrentTime();
+      const liquidation1Time = await liquidationContract.getCurrentTime();
       assert(
-        liquidationTime.add(liquidationLiveness).toString(),
+        liquidation1Time.add(liquidationLiveness).toString(),
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Create a subsequent liquidation partial and check that it also advances the withdrawal request timer
-      await liquidationContract.setCurrentTime(liquidationTime.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation1Time.add(liquidationLiveness.divn(2)).toString());
 
-      // Create partial liquidation.
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -575,15 +573,16 @@ contract("Liquidatable", function(accounts) {
       );
 
       // Again, verify this is offset correctly.
-      liquidationTime = await liquidationContract.getCurrentTime();
+      const liquidation2Time = await liquidationContract.getCurrentTime();
+      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(liquidationLiveness).toString();
       assert(
-        liquidationTime.add(liquidationLiveness).toString(),
+        expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Submitting a liquidation less than the minimum sponsor size should not advance the timer. Start by advancing
       // time by half of the liquidation liveness.
-      await liquidationContract.setCurrentTime(liquidationTime.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness.divn(2)).toString());
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -592,9 +591,30 @@ contract("Liquidatable", function(accounts) {
         unreachableDeadline,
         { from: liquidator }
       );
-      // Check that the timer has not re-set. This `liquidationTime` was set before the most recent liquidation.
+
+      // Check that the timer has not re-set. liquidation2Time was set after the previous liquidation (before incrementing the time)
+
       assert(
-        liquidationTime.add(liquidationLiveness).toString(),
+        expectedWithdrawalRequestPassTimestamp,
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
+      );
+
+      // Advance timer again to place time after liquidation liveness.
+      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness).toString());
+
+      // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration). Use the liquidation2Time again
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: "0" },
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+
+      // Check that the time has not advanced.
+      assert(
+        expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
     });
