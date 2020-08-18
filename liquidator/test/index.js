@@ -2,9 +2,7 @@ const { toWei, utf8ToHex } = web3.utils;
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
-console.log("TOP");
 const Poll = require("../index.js");
-console.log("TOPz");
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
