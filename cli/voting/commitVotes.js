@@ -32,7 +32,7 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.
   const { votingAccount, signingAddress, votingContract } = getVotingRoles(account, oracle, designatedVoting);
 
-  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, oracle);
+  const filteredRequests = await filterRequests(web3, pendingRequests, votingAccount, roundId, roundPhase, oracle);
   style.spinnerReadingContracts.stop();
 
   if (roundPhase === VotePhasesEnum.REVEAL) {

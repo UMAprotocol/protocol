@@ -110,6 +110,48 @@ class GlobalSummaryReporter {
     this.totalSyntheticTokensCreated = empData.totalSyntheticTokensCreated;
     this.currentUniqueSponsors = empData.positions.length;
 
+    const endPeriodEmpData = (
+      await this.umaClient.request(
+        umaQueries.EMP_STATS(this.empContract.options.address.toLowerCase(), this.endBlockNumberForPeriod)
+      )
+    ).financialContracts[0];
+    const startPeriodEmpData = (
+      await this.umaClient.request(
+        umaQueries.EMP_STATS(this.empContract.options.address.toLowerCase(), this.startBlockNumberForPeriod)
+      )
+    ).financialContracts[0];
+    const startPrevPeriodEmpData = (
+      await this.umaClient.request(
+        umaQueries.EMP_STATS(this.empContract.options.address.toLowerCase(), this.startBlockNumberForPreviousPeriod)
+      )
+    ).financialContracts[0];
+
+    this.periodTotalCollateralDeposited = (
+      Number(endPeriodEmpData.totalCollateralDeposited) - Number(startPeriodEmpData.totalCollateralDeposited)
+    ).toString();
+    this.periodTotalCollateralWithdrawn = (
+      Number(endPeriodEmpData.totalCollateralWithdrawn) - Number(startPeriodEmpData.totalCollateralWithdrawn)
+    ).toString();
+    this.periodTotalSyntheticTokensBurned = (
+      Number(endPeriodEmpData.totalSyntheticTokensBurned) - Number(startPeriodEmpData.totalSyntheticTokensBurned)
+    ).toString();
+    this.periodTotalSyntheticTokensCreated = (
+      Number(endPeriodEmpData.totalSyntheticTokensCreated) - Number(startPeriodEmpData.totalSyntheticTokensCreated)
+    ).toString();
+    this.prevPeriodTotalCollateralDeposited = (
+      Number(startPeriodEmpData.totalCollateralDeposited) - Number(startPrevPeriodEmpData.totalCollateralDeposited)
+    ).toString();
+    this.prevPeriodTotalCollateralWithdrawn = (
+      Number(startPeriodEmpData.totalCollateralWithdrawn) - Number(startPrevPeriodEmpData.totalCollateralWithdrawn)
+    ).toString();
+    this.prevPeriodTotalSyntheticTokensBurned = (
+      Number(startPeriodEmpData.totalSyntheticTokensBurned) - Number(startPrevPeriodEmpData.totalSyntheticTokensBurned)
+    ).toString();
+    this.prevPeriodTotalSyntheticTokensCreated = (
+      Number(startPeriodEmpData.totalSyntheticTokensCreated) -
+      Number(startPrevPeriodEmpData.totalSyntheticTokensCreated)
+    ).toString();
+
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
     this.totalTokensOutstanding = await this.empContract.methods.totalTokensOutstanding().call();
@@ -539,12 +581,24 @@ class GlobalSummaryReporter {
 
     // - Cumulative collateral deposited into contract
     allSponsorStatsTable["collateral deposited"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralDeposited))
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralDeposited)),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralDeposited)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.periodTotalCollateralDeposited)).sub(
+          this.toBN(this.toWei(this.prevPeriodTotalCollateralDeposited))
+        )
+      )
     };
 
     // - Cumulative collateral withdrawn from contract
     allSponsorStatsTable["collateral withdrawn"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralWithdrawn))
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralWithdrawn)),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralWithdrawn)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.periodTotalCollateralWithdrawn)).sub(
+          this.toBN(this.toWei(this.prevPeriodTotalCollateralWithdrawn))
+        )
+      )
     };
 
     // - Net collateral deposited into contract:
@@ -557,18 +611,42 @@ class GlobalSummaryReporter {
     ) {
       throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
+    this.netCollateralWithdrawnPeriod = (
+      Number(this.periodTotalCollateralDeposited) - Number(this.periodTotalCollateralWithdrawn)
+    ).toString();
+    this.netCollateralWithdrawnPrevPeriod = (
+      Number(this.prevPeriodTotalCollateralDeposited) - Number(this.prevPeriodTotalCollateralWithdrawn)
+    ).toString();
     allSponsorStatsTable["net collateral deposited"] = {
-      cumulative: this.formatDecimalString(netCollateralWithdrawn)
+      cumulative: this.formatDecimalString(netCollateralWithdrawn),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netCollateralWithdrawnPeriod)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.netCollateralWithdrawnPeriod)).sub(
+          this.toBN(this.toWei(this.netCollateralWithdrawnPrevPeriod))
+        )
+      )
     };
 
     // - Tokens minted: tracked via Create events.
     allSponsorStatsTable["tokens minted"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensCreated))
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensCreated)),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensCreated)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.periodTotalSyntheticTokensCreated)).sub(
+          this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensCreated))
+        )
+      )
     };
 
     // - Tokens burned
     allSponsorStatsTable["tokens burned"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensBurned))
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensBurned)),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensBurned)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.periodTotalSyntheticTokensBurned)).sub(
+          this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensBurned))
+        )
+      )
     };
 
     // - Net tokens minted:
@@ -581,8 +659,18 @@ class GlobalSummaryReporter {
     ) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
+    this.netTokensMintedPeriod = (
+      Number(this.periodTotalSyntheticTokensCreated) - Number(this.periodTotalSyntheticTokensBurned)
+    ).toString();
+    this.netTokensMintedPrevPeriod = (
+      Number(this.prevPeriodTotalSyntheticTokensCreated) - Number(this.prevPeriodTotalSyntheticTokensBurned)
+    ).toString();
     allSponsorStatsTable["net tokens minted"] = {
-      cumulative: this.formatDecimalString(netTokensMinted)
+      cumulative: this.formatDecimalString(netTokensMinted),
+      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netTokensMintedPeriod)),
+      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+        this.toBN(this.toWei(this.netTokensMintedPeriod)).sub(this.toBN(this.toWei(this.netTokensMintedPrevPeriod)))
+      )
     };
 
     // - GCR (collateral / tokens outstanding):

@@ -72,6 +72,9 @@ class Liquidator {
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
+    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
@@ -127,29 +130,27 @@ class Liquidator {
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
-  // Update the client and gasEstimator clients.
-  // If a client has recently updated then it will do nothing.
+  // Update the empClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
   async update() {
-    await this.empClient.update();
-    await this.gasEstimator.update();
-    await this.priceFeed.update();
+    await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  // If `maxTokensToLiquidateWei` is not passed in, then the bot will only attempt to liquidate the full position.
+  // If `maxTokensToLiquidateWei` is not passed in, then the bot will attempt to liquidate the full position.
   // If liquidatorOverridePrice is provided then the liquidator bot will override the price feed with this input price.
-  async queryAndLiquidate(maxTokensToLiquidateWei, liquidatorOverridePrice) {
-    await this.update();
+  async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Checking for liquidatable positions and preforming liquidations"
+    });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
-    const price = liquidatorOverridePrice ? this.toBN(liquidatorOverridePrice) : this.priceFeed.getCurrentPrice();
+    const price = liquidatorOverridePrice
+      ? this.toBN(liquidatorOverridePrice.toString())
+      : this.priceFeed.getCurrentPrice();
 
     if (!price) {
-      this.logger.warn({
-        at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value"
-      });
-      return;
+      throw new Error("Cannot liquidate: price feed returned invalid value");
     }
 
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
@@ -369,31 +370,32 @@ class Liquidator {
         }
       }
 
-      const txnConfig = {
-        from: this.account,
-        gas: this.txnGasLimit,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-      this.logger.debug({
-        at: "Liquidator",
-        message: "Liquidating position",
-        position: position,
-        inputPrice: scaledPrice.toString(),
-        minLiquidationPrice: this.liquidationMinPrice,
-        maxLiquidationPrice: maxCollateralPerToken.toString(),
-        tokensToLiquidate: tokensToLiquidate.toString(),
-        txnConfig
-      });
-
       // Send the transaction or report failure.
       let receipt;
+      let txnConfig;
       try {
+        const gasEstimation = await liquidation.estimateGas({ from: this.account });
+        txnConfig = {
+          from: this.account,
+          gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        };
+        this.logger.debug({
+          at: "Liquidator",
+          message: "Liquidating position",
+          position: position,
+          inputPrice: scaledPrice.toString(),
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          txnConfig
+        });
+
         receipt = await liquidation.send(txnConfig);
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message:
-            "Failed to liquidate position🚨: not enough synthetic (or large enough approval) to initiate liquidation❌",
+          message: "Failed to liquidate position🚨",
           error
         });
         continue;
@@ -419,19 +421,14 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we created new liquidations.
-    await this.empClient.update();
   }
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
-  async queryAndWithdrawRewards() {
+  async withdrawRewards() {
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
-
-    await this.update();
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
@@ -460,10 +457,15 @@ class Liquidator {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawAmount;
+      let withdrawAmount, gasEstimation;
       try {
-        withdrawAmount = revertWrapper(await withdraw.call({ from: this.account }));
-        if (!withdrawAmount) {
+        [withdrawAmount, gasEstimation] = await Promise.all([
+          withdraw.call({ from: this.account }),
+          withdraw.estimateGas({ from: this.account })
+        ]);
+        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
+        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        if (revertWrapper(withdrawAmount) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -478,7 +480,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: this.txnGasLimit,
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -544,9 +546,6 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
-
-    // Update the EMP Client since we withdrew rewards.
-    await this.empClient.update();
   }
 }
 

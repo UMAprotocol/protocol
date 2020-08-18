@@ -327,6 +327,12 @@ contract("ContractMonitor.js", function(accounts) {
     const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
     await eventClient.clearState();
 
+    // Even though the dispute settlement has occurred on-chain, because we haven't updated the event client yet,
+    // the contract monitor should not report it and should skip it silently.
+    const existingCallsCount = spy.getCalls().length;
+    await contractMonitor.checkForNewDisputeSettlementEvents();
+    assert.equal(existingCallsCount, spy.getCalls().length);
+
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.update();
     priceFeedMock.setHistoricalPrice(toBN(toWei("1")));

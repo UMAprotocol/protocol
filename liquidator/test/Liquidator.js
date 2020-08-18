@@ -183,19 +183,24 @@ contract("Liquidator.js", function(accounts) {
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
     priceFeedMock.setCurrentPrice(toBN(toWei("1")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // Both token sponsors should still have their positions with full collateral.
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
-    // No liquidations if the price feed returns an invalid value.
+    // Liquidator throws an error if the price feed returns an invalid value.
     priceFeedMock.setCurrentPrice(null);
-    await liquidator.queryAndLiquidate();
-
-    // One warn log should be sent since the price feed returned a bad value.
-    assert.equal(spy.callCount, 1);
+    await liquidator.update();
+    let errorThrown = false;
+    try {
+      await liquidator.liquidatePositions();
+    } catch (error) {
+      errorThrown = true;
+    }
+    assert.isTrue(errorThrown);
 
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
@@ -211,8 +216,9 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor3: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
 
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 3); // 2 info level events should be sent at the conclusion of the 2 liquidations.
+    await liquidator.update();
+    await liquidator.liquidatePositions();
+    assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -240,8 +246,9 @@ contract("Liquidator.js", function(accounts) {
 
     // Another query at the same price should execute no new liquidations.
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 3);
+    await liquidator.update();
+    await liquidator.liquidatePositions();
+    assert.equal(spy.callCount, 2);
   });
 
   it("Can correctly detect invalid withdrawals and liquidate them", async function() {
@@ -257,7 +264,8 @@ contract("Liquidator.js", function(accounts) {
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
     priceFeedMock.setCurrentPrice(toBN(toWei("1")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // There should be no liquidations created from any sponsor account
@@ -274,7 +282,8 @@ contract("Liquidator.js", function(accounts) {
     await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
 
     priceFeedMock.setCurrentPrice(toBN(toWei("1")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
 
     // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
@@ -293,7 +302,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
@@ -323,7 +333,8 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Advance the timer to the liquidation expiry.
@@ -333,7 +344,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
@@ -360,14 +372,16 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 1); // no new info level events as too early.
 
     // Simulate a failed dispute by pushing a price to the oracle, at the time of the liquidation request, such that
@@ -379,7 +393,8 @@ contract("Liquidator.js", function(accounts) {
     // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
     // for the liquidation time.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2); // 1 new info level event should be sent due to the withdrawal.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral + the disputer's dispute bond:
@@ -403,7 +418,8 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1.3"));
 
     // After the dispute is resolved, the liquidation should no longer exist and there should be no disputes to withdraw rewards from.
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2);
   });
 
@@ -418,14 +434,16 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 1); // no new info level events as too early.
 
     // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
@@ -437,7 +455,8 @@ contract("Liquidator.js", function(accounts) {
     // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
     // for the liquidation time.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2); // 1 new info level event should be sent due to the withdrawal.
 
     // Liquidator should have their collateral increased by TRV - (disputer and sponsor rewards):
@@ -458,7 +477,8 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, toWei("1"));
 
     // After the dispute is resolved, the liquidation should still exist but the liquidator should no longer be able to withdraw any rewards.
-    await liquidator.queryAndWithdrawRewards();
+    await liquidator.update();
+    await liquidator.withdrawRewards();
     assert.equal(spy.callCount, 2);
   });
 
@@ -472,7 +492,8 @@ contract("Liquidator.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
 
     // No transaction should be sent, so this should not throw.
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 3); // 3 new events due to the swap attempt and failed liquidation
 
     // No liquidations should have gone through.
@@ -486,7 +507,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Can now liquidate the position.
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
-    await liquidator.queryAndLiquidate();
+    await liquidator.update();
+    await liquidator.liquidatePositions();
     assert.equal(spy.callCount, 4); // 1 new info level event due to the successful liquidation.
 
     // The liquidation should have gone through.
@@ -497,7 +519,7 @@ contract("Liquidator.js", function(accounts) {
   describe("Partial liquidations", function() {
     it("amount-to-liquidate > min-sponsor-tokens", async function() {
       // We'll attempt to liquidate 6 tokens. The minimum sponsor position is 5. There are 3 different scenarios
-      // we should test for, each of which we'll attempt to liquidate in one call of `queryAndLiquidate`.
+      // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
       const amountToLiquidate = toWei("6");
 
       // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
@@ -526,7 +548,8 @@ contract("Liquidator.js", function(accounts) {
       // Sponsor3: 5 * 25 * 1.2 > 100
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
-      await liquidator.queryAndLiquidate(amountToLiquidate);
+      await liquidator.update();
+      await liquidator.liquidatePositions(amountToLiquidate);
 
       // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
       assert.equal(spy.callCount, 5); // 3 info + 2 error level events should be sent at the conclusion of the 3 liquidations including 2 partials.
@@ -581,7 +604,7 @@ contract("Liquidator.js", function(accounts) {
 
     it("amount-to-liquidate < min-sponsor-tokens", async function() {
       // We'll attempt to liquidate 4 tokens. The minimum sponsor position is 5. There are 3 different scenarios
-      // we should test for, each of which we'll attempt to liquidate in one call of `queryAndLiquidate`.
+      // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
       const amountToLiquidate = toWei("4");
 
       // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
@@ -609,7 +632,8 @@ contract("Liquidator.js", function(accounts) {
       // Sponsor3: 5 * 25 * 1.2 > 100
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
-      await liquidator.queryAndLiquidate(amountToLiquidate);
+      await liquidator.update();
+      await liquidator.liquidatePositions(amountToLiquidate);
       assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 successful, 2 partial, and 1 failed liquidations.
       assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, "0");
 
@@ -683,7 +707,8 @@ contract("Liquidator.js", function(accounts) {
       // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
-      await liquidator.queryAndLiquidate(amountToLiquidate);
+      await liquidator.update();
+      await liquidator.liquidatePositions(amountToLiquidate);
 
       // 4 info + 2 error level events should be sent at the conclusion of the 3 successful (incl. 1 partial) and 2 not enough synthetic.
       assert.equal(spy.callCount, 8);
@@ -742,7 +767,8 @@ contract("Liquidator.js", function(accounts) {
       // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
       priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
-      await liquidator.queryAndLiquidate(amountToLiquidate);
+      await liquidator.update();
+      await liquidator.liquidatePositions(amountToLiquidate);
 
       // 5 error + 2 info
       assert.equal(spy.callCount, 5);
@@ -866,7 +892,8 @@ contract("Liquidator.js", function(accounts) {
       // Sponsor2: 100 * 1 * 1.2 > 118 [would be undercollateralized w/o threshold]
 
       priceFeedMock.setCurrentPrice(toBN(toWei("1")));
-      await liquidator.queryAndLiquidate();
+      await liquidator.update();
+      await liquidator.liquidatePositions();
       assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 liquidation.
 
       // Sponsor1 should be in a liquidation state with the bot as the liquidator.
@@ -933,7 +960,8 @@ contract("Liquidator.js", function(accounts) {
 
       priceFeedMock.setCurrentPrice(toBN(toWei("1")));
       assert.equal(spy.callCount, 0); // No log events before liquidation query
-      await liquidator.queryAndLiquidate();
+      await liquidator.update();
+      await liquidator.liquidatePositions();
       assert.equal(spy.callCount, 1); // 1 log events after liquidation query.
       assert.equal(lastSpyLogLevel(spy), "warn"); // most recent log level should be "warn"
     });
@@ -956,9 +984,10 @@ contract("Liquidator.js", function(accounts) {
       priceFeedMock.setCurrentPrice(toBN(toWei("1")));
       assert.equal(spy.callCount, 0); // No log events before liquidation query
 
-      // Next, call the `queryAndLiquidate` function with the override price. The `null` param is for
+      // Next, call the `liquidatePositions` function with the override price. The `null` param is for
       // `maxTokensToLiquidateWei` which null will attempt to liquidate the full position, if undercollateralized.
-      await liquidator.queryAndLiquidate(null, liquidatorOverridePrice);
+      await liquidator.update();
+      await liquidator.liquidatePositions(null, liquidatorOverridePrice);
       assert.equal(spy.callCount, 0); // still no liquidation events generated as price override is set to 0.5.
 
       let liquidationObject = await emp.getLiquidations(sponsor1);
@@ -970,7 +999,8 @@ contract("Liquidator.js", function(accounts) {
       priceFeedMock.setCurrentPrice(toBN(toWei("0.5"))); // set the price feed to something that should not create a liquidation.
 
       liquidatorOverridePrice = toWei("1.0"); // specify an override price of 1.0e18. This should place sponsor 1 underwater.
-      await liquidator.queryAndLiquidate(null, liquidatorOverridePrice);
+      await liquidator.update();
+      await liquidator.liquidatePositions(null, liquidatorOverridePrice);
       assert.equal(spy.callCount, 1); // This should initiate the liquidation event and so there should be 1 log.
 
       liquidationObject = await emp.getLiquidations(sponsor1);

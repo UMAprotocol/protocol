@@ -1,4 +1,5 @@
 require("dotenv").config();
+const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
@@ -30,6 +31,8 @@ const Voting = artifacts.require("Voting");
  * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
@@ -40,6 +43,8 @@ async function run(
   empAddress,
   oneSplitAddress,
   pollingDelay,
+  errorRetries,
+  errorRetriesTimeout,
   priceFeedConfig,
   liquidatorConfig,
   liquidatorOverridePrice
@@ -52,41 +57,50 @@ async function run(
       message: "Liquidator started 🌊",
       empAddress,
       pollingDelay,
+      errorRetries,
       priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice
     });
 
-    // Setup web3 accounts an contract instance.
-    const accounts = await web3.eth.getAccounts();
-    const emp = await ExpiringMultiParty.at(empAddress);
-    const voting = await Voting.deployed();
-
-    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const empProps = {
-      crRatio: await emp.collateralRequirement(),
-      priceIdentifier: await emp.priceIdentifier(),
-      minSponsorSize: await emp.minSponsorTokens()
-    };
-
-    // Setup price feed.
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    const priceFeed = await createReferencePriceFeedForEmp(
-      logger,
-      web3,
-      new Networker(logger),
-      getTime,
-      empAddress,
-      priceFeedConfig
-    );
+    // Setup web3 accounts, account instance and pricefeed for EMP.
+    const [accounts, emp, voting, priceFeed] = await Promise.all([
+      web3.eth.getAccounts(),
+      ExpiringMultiParty.at(empAddress),
+      Voting.deployed(),
+      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
+    ]);
 
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
 
-    // Client and liquidator bot
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    const [
+      collateralRequirement,
+      priceIdentifier,
+      minSponsorTokens,
+      collateralToken,
+      syntheticToken
+    ] = await Promise.all([
+      emp.collateralRequirement(),
+      emp.priceIdentifier(),
+      emp.minSponsorTokens(),
+      ExpandedERC20.at(await emp.collateralCurrency()),
+      ExpandedERC20.at(await emp.tokenCurrency())
+    ]);
+
+    const empProps = {
+      crRatio: collateralRequirement,
+      priceIdentifier: priceIdentifier,
+      minSponsorSize: minSponsorTokens
+    };
+
+    // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
+    // instance of Liquidator to preform liquidations.
+    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
     const oneInch = new OneInchExchange({
       web3,
@@ -108,13 +122,14 @@ async function run(
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    await gasEstimator.update();
-    const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
-    const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
-    const currentCollateralAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
-    const currentSyntheticAllowance = await syntheticToken.allowance(accounts[0], empClient.empAddress);
+    const [currentCollateralAllowance, currentSyntheticAllowance] = await Promise.all([
+      collateralToken.allowance(accounts[0], empAddress),
+      syntheticToken.allowance(accounts[0], empAddress)
+    ]);
+
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.approve(empAddress, MAX_UINT_VAL, {
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
@@ -125,7 +140,8 @@ async function run(
       });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      const syntheticApprovalTx = await syntheticToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.approve(empAddress, MAX_UINT_VAL, {
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
@@ -136,16 +152,45 @@ async function run(
       });
     }
 
+    // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
-      const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
-      await liquidator.queryAndLiquidate(currentSyntheticBalance, liquidatorOverridePrice);
-      await liquidator.queryAndWithdrawRewards();
-
+      await retry(
+        async () => {
+          // Update the liquidators state. This will update the clients, price feeds and gas estimator.
+          await liquidator.update();
+          // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
+          // considers override price if the user has specified one.
+          const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+          await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
+          // Check for any finished liquidations that can be withdrawn.
+          await liquidator.withdrawRewards();
+        },
+        {
+          retries: errorRetries,
+          minTimeout: errorRetriesTimeout,
+          randomize: false,
+          onRetry: error => {
+            logger.debug({
+              at: "Liquidator#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
+        }
+      );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
+        logger.debug({
+          at: "Liquidator#index",
+          message: "End of serverless execution loop - terminating process"
+        });
         await waitForLogger(logger);
         break;
       }
+      logger.debug({
+        at: "Liquidator#index",
+        message: "End of execution loop - waiting polling delay"
+      });
       await delay(Number(pollingDelay));
     }
   } catch (error) {
@@ -168,6 +213,12 @@ async function Poll(callback) {
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+
+    // Default to 3 re-tries on error within the execution loop.
+    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
+
+    // Default to 10 seconds in between error re-tries.
+    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000;
 
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
     // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
@@ -197,6 +248,8 @@ async function Poll(callback) {
       process.env.EMP_ADDRESS,
       oneSplitAddress,
       pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
       priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice
