@@ -279,23 +279,24 @@ class Liquidator {
       if (notEnoughCollateral) {
         const tokenCurrency = await this.empClient.getTokenCurrency();
 
+        // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
+        // While oneGweiReturn is used as a reference point to determine slippage
+        const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
+          this.oneInch.getExpectedReturn({
+            fromToken: tokenCurrency.address,
+            toToken: this.reserveCurrencyAddress,
+            amountWei: tokensToLiquidate.toString()
+          }),
+          this.oneInch.getExpectedReturn({
+            fromToken: tokenCurrency.address,
+            toToken: this.reserveCurrencyAddress,
+            amountWei: this.toWei("1", "gwei")
+          })
+        ]);
+
         this.logger.info({
           at: "Liquidator",
           message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`
-        });
-
-        // Reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
-        const reserveWeiNeeded = await this.oneInch.getExpectedReturn({
-          fromToken: tokenCurrency.address,
-          toToken: this.reserveCurrencyAddress,
-          amountWei: tokensToLiquidate.toString()
-        });
-
-        // This is used as a reference point to determine slippage
-        const oneGweiReturn = await this.oneInch.getExpectedReturn({
-          fromToken: tokenCurrency.address,
-          toToken: this.reserveCurrencyAddress,
-          amountWei: this.toWei("1", "gwei")
         });
 
         const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);
