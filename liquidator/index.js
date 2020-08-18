@@ -252,6 +252,8 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
+    callback(error);
+    return;
   }
   callback();
 }
