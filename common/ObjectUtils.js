@@ -17,7 +17,6 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
   if (!defaultProps) {
     throw new Error("Undefined `defaultProps`");
   }
-
   if (!overrideProps) {
     overrideProps = {};
   }
@@ -37,7 +36,6 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
       throw new Error("Attempting to set configuration field with invalid value");
     }
   });
-
   return newObject;
 };
 

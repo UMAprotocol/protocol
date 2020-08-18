@@ -439,8 +439,8 @@ contract("SyntheticPegMonitor", function() {
         syntheticPegMonitor = new SyntheticPegMonitor(
           spyLogger,
           web3,
-          uniswapPriceFeedMock,
-          medianizerPriceFeedMock,
+          null, // no pricefeed
+          null, // no price feed
           emptyConfig,
           empProps
         );

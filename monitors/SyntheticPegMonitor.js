@@ -54,7 +54,7 @@ class SyntheticPegMonitor {
         // `volatilityWindow`: Length of time (in seconds) to snapshot volatility.
         value: uniswapPriceFeed || medianizerPriceFeed ? 60 * 10 : 0, // 10 minutes
         isValid: x => {
-          return typeof x === "number" && x && x >= 0;
+          return typeof x === "number" && x >= 0;
         }
       },
       pegVolatilityAlertThreshold: {
@@ -83,7 +83,6 @@ class SyntheticPegMonitor {
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
-
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
