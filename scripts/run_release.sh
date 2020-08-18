@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-yarn run publish-release-npm --yes
+yarn lerna publish from-package --yes
 
 for TAG in $(yarn --silent lerna ls -p --long -a | cut -d: -f2-3 | tr : @)
 do
