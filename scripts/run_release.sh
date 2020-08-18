@@ -8,4 +8,4 @@ done
 
 git push origin --tags
 
-yarn run publish-release-npm
+yarn run publish-release-npm --yes
