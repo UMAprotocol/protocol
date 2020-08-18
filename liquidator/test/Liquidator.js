@@ -5,7 +5,7 @@ const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations 
 const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
-const { Liquidator } = require("../liquidator.js");
+const { Liquidator } = require("../src/liquidator.js");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {

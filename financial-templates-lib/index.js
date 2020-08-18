@@ -1,12 +1,12 @@
 module.exports = {
-  ...require("./clients/ExpiringMultiPartyClient"),
-  ...require("./clients/ExpiringMultiPartyEventClient"),
-  ...require("./clients/TokenBalanceClient"),
-  ...require("./helpers/delay"),
-  ...require("./helpers/GasEstimator"),
-  ...require("./logger/Logger"),
-  ...require("./logger/SpyTransport"),
-  ...require("./price-feed/CreatePriceFeed"),
-  ...require("./price-feed/Networker"),
-  ...require("./price-feed/PriceFeedMock")
+  ...require("./src/clients/ExpiringMultiPartyClient"),
+  ...require("./src/clients/ExpiringMultiPartyEventClient"),
+  ...require("./src/clients/TokenBalanceClient"),
+  ...require("./src/helpers/delay"),
+  ...require("./src/helpers/GasEstimator"),
+  ...require("./src/logger/Logger"),
+  ...require("./src/logger/SpyTransport"),
+  ...require("./src/price-feed/CreatePriceFeed"),
+  ...require("./src/price-feed/Networker"),
+  ...require("./src/price-feed/PriceFeedMock")
 };

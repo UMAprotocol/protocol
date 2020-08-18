@@ -1,7 +1,7 @@
 const winston = require("winston");
 const lodash = require("lodash");
 
-const { BalancerPriceFeed } = require("../../price-feed/BalancerPriceFeed");
+const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const {
   mineTransactionsAtTime,
   advanceBlockAndSetTime,

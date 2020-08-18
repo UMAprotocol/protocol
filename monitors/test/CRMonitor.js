@@ -4,7 +4,7 @@ const sinon = require("sinon");
 const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
-const { CRMonitor } = require("../CRMonitor");
+const { CRMonitor } = require("../src/CRMonitor");
 
 // Helpers and custom winston transport module to monitor winston log outputs
 const {

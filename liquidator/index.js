@@ -6,7 +6,7 @@ const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const { toBN } = web3.utils;
 
 // JS libs
-const { Liquidator } = require("./liquidator");
+const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
   ExpiringMultiPartyClient,

@@ -15,10 +15,10 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
-const { ContractMonitor } = require("./ContractMonitor");
-const { BalanceMonitor } = require("./BalanceMonitor");
-const { CRMonitor } = require("./CRMonitor");
-const { SyntheticPegMonitor } = require("./SyntheticPegMonitor");
+const { ContractMonitor } = require("./src/ContractMonitor");
+const { BalanceMonitor } = require("./src/BalanceMonitor");
+const { CRMonitor } = require("./src/CRMonitor");
+const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Truffle contracts artifacts.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

@@ -1,9 +1,9 @@
 const winston = require("winston");
 // Helper
-const { delay } = require("../../helpers/delay");
+const { delay } = require("../../src/helpers/delay");
 
 // Script to test
-const { GasEstimator } = require("../../helpers/GasEstimator");
+const { GasEstimator } = require("../../src/helpers/GasEstimator");
 
 contract("GasEstimator.js", function() {
   let gasEstimator;
