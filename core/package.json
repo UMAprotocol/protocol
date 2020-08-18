@@ -1,6 +1,6 @@
 {
   "name": "@umaprotocol/core",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@awaitjs/express": "^0.3.0",
@@ -10,7 +10,7 @@
     "@openzeppelin/contracts": "3.0.0",
     "@sendgrid/mail": "^6.4.0",
     "@umaprotocol/common": "^1.0.0-alpha.4",
-    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.7",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.8",
     "express": "^4.17.1",
     "gmail-send": "^1.2.14",
     "minimist": "^1.2.0",
