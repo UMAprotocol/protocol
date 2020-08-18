@@ -1,12 +1,12 @@
 {
   "name": "@umaprotocol/financial-templates-lib",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "dependencies": {
     "@google-cloud/logging-winston": "^3.0.6",
     "@google-cloud/trace-agent": "^4.2.5",
     "@umaprotocol/common": "^1.0.0-alpha.4",
-    "@umaprotocol/core": "^1.0.0-alpha.8",
+    "@umaprotocol/core": "^1.0.0-alpha.9",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
