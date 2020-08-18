@@ -580,6 +580,23 @@ contract("Liquidatable", function(accounts) {
         liquidationTime.add(liquidationLiveness).toString(),
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
+
+      // Submitting a liquidation less than the minimum sponsor size should not advance the timer. Start by advancing
+      // time by half of the liquidation liveness.
+      await liquidationContract.setCurrentTime(liquidationTime.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: "0" },
+        { rawValue: pricePerToken.toString() },
+        { rawValue: minSponsorTokens.divn(2).toString() }, // half of the min size. Should not increment timer.
+        unreachableDeadline,
+        { from: liquidator }
+      );
+      // Check that the timer has not re-set. This `liquidationTime` was set before the most recent liquidation.
+      assert(
+        liquidationTime.add(liquidationLiveness).toString(),
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
+      );
     });
   });
 
