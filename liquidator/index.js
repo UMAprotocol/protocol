@@ -1,4 +1,5 @@
 require("dotenv").config();
+const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
@@ -27,12 +28,23 @@ const Voting = artifacts.require("Voting");
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidatorConfig, liquidatorOverridePrice) {
+async function run(
+  logger,
+  empAddress,
+  pollingDelay,
+  errorRetries,
+  errorRetriesTimeout,
+  priceFeedConfig,
+  liquidatorConfig,
+  liquidatorOverridePrice
+) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -41,6 +53,7 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
       message: "Liquidator started 🌊",
       empAddress,
       pollingDelay,
+      errorRetries,
       priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice
@@ -55,6 +68,10 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
       Voting.deployed(),
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
+
+    if (!priceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const [
@@ -76,10 +93,6 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens
     };
-
-    if (!priceFeed) {
-      throw new Error("Price feed config is invalid");
-    }
 
     // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
@@ -128,22 +141,45 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, liquidator
       });
     }
 
+    // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
-      // Get the current synthetic balance. Used to define the max tokens to liquidate.
-      const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
-      // Update the liquidators state. This will update the clients, price feeds and gas estimator.
-      await liquidator.update();
-      // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and considers the
-      // override price if the user has specified one.
-      await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
-      // Check for any finished liquidations that can be withdrawn.
-      await liquidator.withdrawRewards();
-
+      await retry(
+        async () => {
+          // Update the liquidators state. This will update the clients, price feeds and gas estimator.
+          await liquidator.update();
+          // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
+          // considers override price if the user has specified one.
+          const currentSyntheticBalance = await syntheticToken.balanceOf(accounts[0]);
+          await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
+          // Check for any finished liquidations that can be withdrawn.
+          await liquidator.withdrawRewards();
+        },
+        {
+          retries: errorRetries,
+          minTimeout: errorRetriesTimeout,
+          randomize: false,
+          onRetry: error => {
+            logger.debug({
+              at: "Liquidator#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
+        }
+      );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
+        logger.debug({
+          at: "Liquidator#index",
+          message: "End of serverless execution loop - terminating process"
+        });
         await waitForLogger(logger);
         break;
       }
+      logger.debug({
+        at: "Liquidator#index",
+        message: "End of execution loop - waiting polling delay"
+      });
       await delay(Number(pollingDelay));
     }
   } catch (error) {
@@ -166,6 +202,12 @@ async function Poll(callback) {
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+
+    // Default to 3 re-tries on error within the execution loop.
+    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
+
+    // Default to 10 seconds in between error re-tries.
+    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000;
 
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
     // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
@@ -191,6 +233,8 @@ async function Poll(callback) {
       Logger,
       process.env.EMP_ADDRESS,
       pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
       priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice

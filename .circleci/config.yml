@@ -8,7 +8,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v11-dependency-cache-{{ checksum "package.json" }}
+            - v11-dependency-cache-{{ checksum "yarn.lock" }}
             - v11-dependency-cache-
       - run:
           name: Install Prereqs
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npx lerna bootstrap
       - save_cache:
-          key: v11-dependency-cache-{{ checksum "package.json" }}
+          key: v11-dependency-cache-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
       - save_cache:
@@ -74,7 +74,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v7-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
             - v7-sec-toolbox-deps-
       - run:
           name: Install node and NPM
@@ -92,7 +92,7 @@ jobs:
           name: Install Dependencies
           command: sudo npm install -g yarn && npx lerna bootstrap
       - save_cache:
-          key: v7-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
           paths:
             - node_modules
       - run:

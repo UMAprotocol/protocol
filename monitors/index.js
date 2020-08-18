@@ -9,7 +9,7 @@ const {
   Networker,
   Logger,
   createReferencePriceFeedForEmp,
-  createUniswapPriceFeedForEmp,
+  createTokenPriceFeedForEmp,
   waitForLogger,
   delay
 } = require("@umaprotocol/financial-templates-lib");
@@ -36,8 +36,8 @@ const Voting = artifacts.require("Voting");
  * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
  *     If `null` then will search up until the latest block number in each loop.
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
- * @param {Object} uniswapPriceFeedConfig Configuration to construct the uniswap price feed object.
- * @param {Object} medianizerPriceFeedConfig Configuration to construct the uniswap price feed object.
+ * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
+ * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
  * @return None or throws an Error.
  */
 async function run(
@@ -47,7 +47,7 @@ async function run(
   startingBlock,
   endingBlock,
   monitorConfig,
-  uniswapPriceFeedConfig,
+  tokenPriceFeedConfig,
   medianizerPriceFeedConfig
 ) {
   try {
@@ -61,7 +61,7 @@ async function run(
       startingBlock,
       endingBlock,
       monitorConfig,
-      uniswapPriceFeedConfig,
+      tokenPriceFeedConfig,
       medianizerPriceFeedConfig
     });
 
@@ -134,18 +134,18 @@ async function run(
     const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
 
     // 4. Synthetic Peg Monitor.
-    const uniswapPriceFeed = await createUniswapPriceFeedForEmp(
+    const tokenPriceFeed = await createTokenPriceFeedForEmp(
       logger,
       web3,
       new Networker(logger),
       getTime,
       address,
-      uniswapPriceFeedConfig
+      tokenPriceFeedConfig
     );
     const syntheticPegMonitor = new SyntheticPegMonitor(
       logger,
       web3,
-      uniswapPriceFeed,
+      tokenPriceFeed,
       medianizerPriceFeed,
       monitorConfig,
       empProps
@@ -179,7 +179,7 @@ async function run(
 
       // 4. Synthetic peg monitor
       // 4.a Update the price feeds
-      await uniswapPriceFeed.update();
+      await tokenPriceFeed.update();
       await medianizerPriceFeed.update();
       // 4.b Check for synthetic peg deviation
       await syntheticPegMonitor.checkPriceDeviation();
@@ -250,11 +250,15 @@ async function Poll(callback) {
     // }
     const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
 
+    // Deprecate UNISWAP_PRICE_FEED_CONFIG to favor TOKEN_PRICE_FEED_CONFIG, leaving in for compatibility.
+    // If nothing defined, it will default to uniswap within createPriceFeed
+    const tokenPriceFeedConfigEnv = process.env.TOKEN_PRICE_FEED_CONFIG || process.env.UNISWAP_PRICE_FEED_CONFIG;
+
     // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
     // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
-    const uniswapPriceFeedConfig = process.env.UNISWAP_PRICE_FEED_CONFIG
-      ? JSON.parse(process.env.UNISWAP_PRICE_FEED_CONFIG)
-      : null;
+    // Requires the address of the balancer pool where price is available.
+    // Balancer market. EG: {"type":"balancer", "balancerAddress":"0x1234"}
+    const tokenPriceFeedConfig = tokenPriceFeedConfigEnv ? JSON.parse(tokenPriceFeedConfigEnv) : null;
 
     // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
     // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
@@ -270,7 +274,7 @@ async function Poll(callback) {
       startingBlock,
       endingBlock,
       monitorConfig,
-      uniswapPriceFeedConfig,
+      tokenPriceFeedConfig,
       medianizerPriceFeedConfig
     );
   } catch (error) {
