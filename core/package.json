@@ -1,6 +1,6 @@
 {
   "name": "@umaprotocol/core",
-  "version": "1.0.0-alpha.9",
+  "version": "1.0.0-alpha.10",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@awaitjs/express": "^0.3.0",
