@@ -300,7 +300,7 @@ contract Liquidatable is PricelessPositionManager {
         // "dragged out" if the position is very large.
         if (
             positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // this is a subsequent liquidation.
-            positionToLiquidate.withdrawalRequestPassTimestamp < getCurrentTime() && // liveness has not passed yet.
+            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // liveness has not passed yet.
             maxTokensToLiquidate.isGreaterThanOrEqual(minSponsorTokens) // above the minimum threshold.
         ) {
             positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
