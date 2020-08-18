@@ -122,30 +122,30 @@ async function run(
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       syntheticToken.methods.allowance(accounts[0], empAddress).call()
     ]);
-    // if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-    //   await gasEstimator.update();
-    //   const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-    //     from: accounts[0],
-    //     gasPrice: gasEstimator.getCurrentFastPrice()
-    //   });
-    //   logger.info({
-    //     at: "Liquidator#index",
-    //     message: "Approved EMP to transfer unlimited collateral tokens 💰",
-    //     collateralApprovalTx: collateralApprovalTx.tx
-    //   });
-    // }
-    // if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-    //   await gasEstimator.update();
-    //   const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-    //     from: accounts[0],
-    //     gasPrice: gasEstimator.getCurrentFastPrice()
-    //   });
-    //   logger.info({
-    //     at: "Liquidator#index",
-    //     message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-    //     collateralApprovalTx: syntheticApprovalTx.tx
-    //   });
-    // }
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.tx
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        collateralApprovalTx: syntheticApprovalTx.tx
+      });
+    }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
