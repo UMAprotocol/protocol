@@ -266,6 +266,7 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     throw new Error("createReferencePriceFeedForEmp: Must pass in an `empAddress` or an `identifier`");
   }
 
+  console.log("zpast iff2");
   const defaultConfig = defaultConfigs[_identifier];
 
   logger.debug({

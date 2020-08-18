@@ -2,8 +2,9 @@ const { toWei, utf8ToHex } = web3.utils;
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
+console.log("TOP");
 const Poll = require("../index.js");
-
+console.log("TOPz");
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -32,7 +33,7 @@ contract("index.js", function(accounts) {
   let spyLogger;
 
   let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
-  let executionRetries = 1;
+  let errorRetries = 1;
   let errorRetriesTimeout = 100; // 100 milliseconds between preforming retries
 
   before(async function() {
@@ -94,7 +95,7 @@ contract("index.js", function(accounts) {
       web3,
       emp.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
       defaultPriceFeedConfig
     );
@@ -111,7 +112,7 @@ contract("index.js", function(accounts) {
       web3,
       emp.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
       defaultPriceFeedConfig
     );
@@ -139,13 +140,13 @@ contract("index.js", function(accounts) {
       lookback: 1
     };
 
-    executionRetries = 3; // set execution retries to 3 to validate.
+    errorRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
       web3,
       emp.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
       defaultPriceFeedConfig
     );

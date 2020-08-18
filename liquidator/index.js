@@ -3,7 +3,7 @@ const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
-
+const argv = require("minimist")(process.argv.slice(), {});
 // JS libs
 const { Liquidator } = require("./liquidator");
 const {
@@ -122,30 +122,30 @@ async function run(
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       syntheticToken.methods.allowance(accounts[0], empAddress).call()
     ]);
-    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.tx
-      });
-    }
-    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        collateralApprovalTx: syntheticApprovalTx.tx
-      });
-    }
+    // if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+    //   await gasEstimator.update();
+    //   const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+    //     from: accounts[0],
+    //     gasPrice: gasEstimator.getCurrentFastPrice()
+    //   });
+    //   logger.info({
+    //     at: "Liquidator#index",
+    //     message: "Approved EMP to transfer unlimited collateral tokens 💰",
+    //     collateralApprovalTx: collateralApprovalTx.tx
+    //   });
+    // }
+    // if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+    //   await gasEstimator.update();
+    //   const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+    //     from: accounts[0],
+    //     gasPrice: gasEstimator.getCurrentFastPrice()
+    //   });
+    //   logger.info({
+    //     at: "Liquidator#index",
+    //     message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+    //     collateralApprovalTx: syntheticApprovalTx.tx
+    //   });
+    // }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
@@ -180,7 +180,7 @@ async function run(
           message: "End of serverless execution loop - terminating process"
         });
         await waitForLogger(logger);
-        process.exit();
+        break;
       }
       logger.debug({
         at: "Liquidator#index",
@@ -195,11 +195,10 @@ async function run(
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(logger);
-    process.exit(1);
   }
 }
 
-async function Poll() {
+async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
@@ -207,6 +206,8 @@ async function Poll() {
       );
     }
 
+    // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
+    // match the order of parameters defined in the`run` function.
     const executionParameters = {
       empAddress: process.env.EMP_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
@@ -239,6 +240,7 @@ async function Poll() {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/clients/Web3WebsocketClient");
       await run(Logger, web3, ...Object.values(executionParameters));
+
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
       await run(Logger, web3, ...Object.values(executionParameters));
@@ -250,18 +252,23 @@ async function Poll() {
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
-    process.exit(1);
   }
+  callback();
 }
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If not running in test mode, execute the Poll Function. This lets the script be run as a node process.
+if (argv._.indexOf("test") == -1)
+  Poll(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
 module.exports = Poll;
-
-// Run the poll function by default. This enables the script to be run as a node process.
-Poll()
-  .then(() => {})
-  .catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
