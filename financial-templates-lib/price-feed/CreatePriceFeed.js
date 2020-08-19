@@ -1,10 +1,13 @@
+const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
+const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 
 const Uniswap = require("@umaprotocol/core/build/contracts/Uniswap.json");
 const ExpiringMultiParty = require("@umaprotocol/core/build/contracts/ExpiringMultiParty.json");
+const Balancer = require("@umaprotocol/core/build/contracts/Balancer.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
@@ -97,6 +100,29 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     });
 
     return new MedianizerPriceFeed(priceFeeds);
+  } else if (config.type === "balancer") {
+    const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "balancerPriceFeed",
+      message: "Creating balancerPriceFeed",
+      config
+    });
+
+    return new BalancerPriceFeed(
+      logger,
+      web3,
+      getTime,
+      Balancer.abi,
+      config.balancerAddress,
+      config.balancerTokenIn,
+      config.balancerTokenOut,
+      config.lookback
+    );
   }
 
   logger.error({
@@ -147,6 +173,14 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
   return {};
 }
 
+async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
+  assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
+  const emp = getEmpAtAddress(web3, empAddress);
+  const balancerTokenIn = await emp.methods.tokenCurrency().call();
+  const lookback = 7200;
+  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, ...config });
+}
+
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
   if (!empAddress) {
     throw new Error("createUniswapPriceFeedForEmp: Must pass in an `empAddress`");
@@ -191,6 +225,14 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   });
 
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
+}
+
+function createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
+  if (config.type == "balancer") {
+    return createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+  } else {
+    return createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+  }
 }
 
 // Default price feed configs for currently approved identifiers.
@@ -312,6 +354,8 @@ function getEmpAtAddress(web3, empAddress) {
 module.exports = {
   createPriceFeed,
   createUniswapPriceFeedForEmp,
+  createBalancerPriceFeedForEmp,
   createReferencePriceFeedForEmp,
+  createTokenPriceFeedForEmp,
   getUniswapPairDetails
 };
