@@ -32,7 +32,7 @@ contract("index.js", function(accounts) {
 
   let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
   let errorRetries = 1;
-  let errorRetriesTimeout = 100; // 100 milliseconds between preforming retries
+  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });

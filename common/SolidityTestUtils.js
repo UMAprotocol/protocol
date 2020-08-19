@@ -150,5 +150,7 @@ module.exports = {
   mineTransactionsAtTime,
   advanceBlockAndSetTime,
   takeSnapshot,
-  revertToSnapshot
+  revertToSnapshot,
+  stopMining,
+  startMining
 };
