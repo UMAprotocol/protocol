@@ -15,7 +15,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Dependencies
-          command: npx lerna bootstrap
+          command: npx lerna bootstrap -- --frozen-lockfile
       - save_cache:
           key: v11-dependency-cache-{{ checksum "yarn.lock" }}
           paths:
