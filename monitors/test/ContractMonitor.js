@@ -5,7 +5,7 @@ const { interfaceName } = require("@umaprotocol/common");
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
-const { ContractMonitor } = require("../ContractMonitor");
+const { ContractMonitor } = require("../src/ContractMonitor");
 
 // Helpers and custom winston transport module to monitor winston log outputs
 const {

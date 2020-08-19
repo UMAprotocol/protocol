@@ -1,4 +1,4 @@
-const { PriceHistory, BlockHistory } = require("../../price-feed/utils");
+const { PriceHistory, BlockHistory } = require("../../src/price-feed/utils");
 
 // Moved this into same file to see if there are issues with 2 tests files mining blocks
 contract("Price Feed Utils", async function(accounts) {

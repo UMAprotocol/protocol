@@ -26,6 +26,11 @@
     "truffle-deploy-registry": "^0.5.1",
     "winston": "^3.2.1"
   },
+  "files": [
+    "/src/**/*.js",
+    "/*.js",
+    "/*.sh"
+  ],
   "bin": {
     "uma-cli": "cli_entry.sh"
   },

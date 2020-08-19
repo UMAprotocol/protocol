@@ -3,7 +3,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Script to test
-const { BalanceMonitor } = require("../BalanceMonitor");
+const { BalanceMonitor } = require("../src/BalanceMonitor");
 
 // Helper client script and custom winston transport module to monitor winston log outputs
 const {

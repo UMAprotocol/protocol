@@ -6,7 +6,7 @@ const { toBN } = web3.utils;
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // JS libs
-const { Disputer } = require("./disputer");
+const { Disputer } = require("./src/disputer");
 const {
   ExpiringMultiPartyClient,
   GasEstimator,

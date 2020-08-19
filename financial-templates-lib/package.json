@@ -30,6 +30,9 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
+  "files": [
+    "/src/**/*.js"
+  ],
   "scripts": {
     "test": "truffle test"
   },

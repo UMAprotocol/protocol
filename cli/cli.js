@@ -1,10 +1,10 @@
 const inquirer = require("inquirer");
 
-const sponsor = require("./sponsor");
-const style = require("./textStyle");
-const wallet = require("./wallet");
-const admin = require("./admin.js");
-const vote = require("./vote");
+const sponsor = require("./src/sponsor");
+const style = require("./src/textStyle");
+const wallet = require("./src/wallet");
+const admin = require("./src/admin.js");
+const vote = require("./src/vote");
 
 const ACTIONS = {
   wallet: "Wallet",

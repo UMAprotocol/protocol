@@ -15,12 +15,12 @@ const {
   createReferencePriceFeedForEmp,
   createUniswapPriceFeedForEmp,
   createTokenPriceFeedForEmp
-} = require("../../price-feed/CreatePriceFeed");
-const { CryptoWatchPriceFeed } = require("../../price-feed/CryptoWatchPriceFeed");
-const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
-const { BalancerPriceFeed } = require("../../price-feed/BalancerPriceFeed");
-const { MedianizerPriceFeed } = require("../../price-feed/MedianizerPriceFeed");
-const { NetworkerMock } = require("../../price-feed/NetworkerMock");
+} = require("../../src/price-feed/CreatePriceFeed");
+const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
+const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
+const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
+const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
+const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
 contract("CreatePriceFeed.js", function(accounts) {
