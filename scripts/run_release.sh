@@ -20,4 +20,4 @@ do
     git tag -a "$TAG" -m "$TAG" || echo "Not publishing $TAG since it already exists"
 done
 
-git push origin --tags
+git push origin --tags -q
