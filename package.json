@@ -54,14 +54,6 @@
     "*.js": "eslint --cache --fix"
   },
   "workspaces": [
-    "voter-dapp",
-    "disputer",
-    "reporters",
-    "core",
-    "liquidator",
-    "monitors",
-    "financial-templates-lib",
-    "common",
-    "cli"
+    "packages/*"
   ]
 }
