@@ -4,12 +4,15 @@
   "description": "UMA Protocol Smart Contracts",
   "private": true,
   "scripts": {
+    "bootstrap": "npx lerna bootstrap",
     "lint": "npm run eslint && npm run prettier -- --list-different",
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
     "test": "lerna run --stream --concurrency=1 test",
-    "load-addresses": "yarn workspace @umaprotocol/core load-addresses"
+    "load-addresses": "yarn workspace @umaprotocol/core load-addresses",
+    "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
+    "publish-release": "./scripts/run_release.sh"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
