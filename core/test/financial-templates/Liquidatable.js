@@ -592,7 +592,8 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
 
-      // Check that the timer has not re-set. liquidation2Time was set after the previous liquidation (before incrementing the time)
+      // Check that the timer has not re-set. expectedWithdrawalRequestPassTimestamp was set after the previous
+      // liquidation (before incrementing the time).
 
       assert(
         expectedWithdrawalRequestPassTimestamp,
@@ -602,7 +603,7 @@ contract("Liquidatable", function(accounts) {
       // Advance timer again to place time after liquidation liveness.
       await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness).toString());
 
-      // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration). Use the liquidation2Time again
+      // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration).
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
