@@ -80,37 +80,33 @@ class Disputer {
   async dispute(disputerOverridePrice) {
     this.logger.debug({
       at: "Disputer",
-      message: "Checking for any disputable liquidations"
+      message: "Checking for disputable liquidations"
     });
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
+
     const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
       const price = disputerOverridePrice
         ? this.toBN(disputerOverridePrice)
         : this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
       if (!price) {
-        this.logger.warn({
+        throw new Error("Cannot dispute: price feed returned invalid value");
+      }
+      if (
+        this.empClient.isDisputable(liquidation, price) &&
+        this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
+      ) {
+        this.logger.debug({
           at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value"
+          message: "Detected a disputable liquidation",
+          price: price.toString(),
+          liquidation: JSON.stringify(liquidation)
         });
-        return false;
+        return true;
       } else {
-        if (
-          this.empClient.isDisputable(liquidation, price) &&
-          this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
-        ) {
-          this.logger.debug({
-            at: "Disputer",
-            message: "Detected a disputable liquidation",
-            price: price.toString(),
-            liquidation: JSON.stringify(liquidation)
-          });
-          return true;
-        } else {
-          return false;
-        }
+        return false;
       }
     });
 

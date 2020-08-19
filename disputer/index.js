@@ -1,4 +1,5 @@
 require("dotenv").config();
+const retry = require("async-retry");
 const { toBN } = web3.utils;
 
 // Helpers
@@ -32,7 +33,16 @@ const Voting = artifacts.require("Voting");
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
  * @return None or throws an Error.
  */
-async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice) {
+async function run(
+  logger,
+  empAddress,
+  pollingDelay,
+  errorRetries,
+  errorRetriesTimeout,
+  priceFeedConfig,
+  disputerConfig,
+  disputerOverridePrice
+) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -41,7 +51,11 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerCo
       message: "Disputer started🔎",
       empAddress,
       pollingDelay,
-      priceFeedConfig
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      disputerConfig,
+      disputerOverridePrice
     });
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -99,22 +113,46 @@ async function run(logger, empAddress, pollingDelay, priceFeedConfig, disputerCo
       });
     }
 
+    // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
-      await disputer.update();
-      await disputer.dispute(disputerOverridePrice);
-      await disputer.withdrawRewards();
-
+      await retry(
+        async () => {
+          await disputer.update();
+          await disputer.dispute(disputerOverridePrice);
+          await disputer.withdrawRewards();
+        },
+        {
+          retries: errorRetries,
+          minTimeout: errorRetriesTimeout,
+          randomize: false,
+          onRetry: error => {
+            logger.debug({
+              at: "Disputer#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
+        }
+      );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
+        logger.debug({
+          at: "Disputer#index",
+          message: "End of serverless execution loop - terminating process"
+        });
         await waitForLogger(logger);
         break;
       }
+      logger.debug({
+        at: "Disputer#index",
+        message: "End of execution loop - waiting polling delay"
+      });
       await delay(Number(pollingDelay));
     }
   } catch (error) {
     logger.error({
       at: "Disputer#index",
-      message: "Disputer error🚨",
+      message: "Disputer polling error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(logger);
@@ -132,6 +170,12 @@ async function Poll(callback) {
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
 
+    // Default to 3 re-tries on error within the execution loop.
+    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
+
+    // Default to 10 seconds in between error re-tries.
+    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10000;
+
     // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
     // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
     // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
@@ -147,7 +191,16 @@ async function Poll(callback) {
     // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
     const disputerOverridePrice = process.env.DISPUTER_OVERRIDE_PRICE;
 
-    await run(Logger, process.env.EMP_ADDRESS, pollingDelay, priceFeedConfig, disputerConfig, disputerOverridePrice);
+    await run(
+      Logger,
+      process.env.EMP_ADDRESS,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      disputerConfig,
+      disputerOverridePrice
+    );
   } catch (error) {
     Logger.error({
       at: "Disputer#index",

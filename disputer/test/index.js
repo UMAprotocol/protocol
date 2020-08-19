@@ -5,6 +5,7 @@ const { MAX_UINT_VAL } = require("@umaprotocol/common");
 const Poll = require("../index.js");
 
 // Contracts and helpers
+const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -16,7 +17,7 @@ const UniswapMock = artifacts.require("UniswapMock");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel } = require("@umaprotocol/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -26,9 +27,14 @@ contract("index.js", function(accounts) {
   let uniswap;
 
   let defaultPriceFeedConfig;
+  let constructorParams;
 
   let spy;
   let spyLogger;
+
+  let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
+  let errorRetries = 1;
+  let errorRetriesTimeout = 100; // 100 milliseconds between preforming retries
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
@@ -46,7 +52,7 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    const constructorParams = {
+    constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -82,17 +88,75 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, pollingDelay, errorRetries, errorRetriesTimeout, defaultPriceFeedConfig);
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, 0, defaultPriceFeedConfig);
+    await Poll.run(spyLogger, emp.address, pollingDelay, errorRetries, errorRetriesTimeout, defaultPriceFeedConfig);
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
+  });
+  it("Correctly re-tries after failed execution loop", async function() {
+    // To validate re-try logic this test needs to get the dispute bot to throw within the main while loop. This is
+    // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the
+    // while loop it should never throw errors as it gracefully falls over with situations like timed out API calls.
+    // One way to induce an error is to give the bot an EMP contract that can get through the initial checks but fails
+    // when running any specific calls on the contracts. To do this we can create an EMP that is only the PricelessPositionManager
+    // and excludes any liquidation logic. As a result, calling `getLiquidations` in the EMP contract will error out.
+
+    // Need to give an unknown identifier to get past the `createReferencePriceFeedForEmp` & `createUniswapPriceFeedForEmp`
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
+
+    const invalidEMP = await PricelessPositionManager.new(
+      constructorParams.expirationTimestamp,
+      constructorParams.withdrawalLiveness,
+      constructorParams.collateralAddress,
+      constructorParams.finderAddress,
+      utf8ToHex("UNKNOWN"),
+      constructorParams.syntheticName,
+      "UNKNOWN",
+      constructorParams.tokenFactoryAddress,
+      constructorParams.minSponsorTokens,
+      constructorParams.timerAddress
+    );
+
+    // We will also create a new spy logger, listening for debug events to validate the re-tries.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    errorRetries = 3; // set execution retries to 3 to validate.
+    await Poll.run(
+      spyLogger,
+      invalidEMP.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
+
+    // Iterate over all log events and count the number of gasEstimatorUpdate, disputer check for liquidation events
+    // execution loop errors and finally disputer polling errors.
+    let reTryCounts = {
+      gasEstimatorUpdate: 0,
+      checkingForDisputable: 0,
+      executionLoopErrors: 0,
+      disputerPollingErrors: 0
+    };
+    for (let i = 0; i < spy.callCount; i++) {
+      if (spyLogIncludes(spy, i, "Gas estimator update skipped")) reTryCounts.gasEstimatorUpdate += 1;
+      if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
+      if (spyLogIncludes(spy, i, "Disputer polling error")) reTryCounts.disputerPollingErrors += 1;
+    }
+
+    assert.equal(reTryCounts.gasEstimatorUpdate, 4); // Initial loop and each 3 re-try should update the gas estimator state. Expect 4 logs.
+    assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
+    assert.equal(reTryCounts.disputerPollingErrors, 1); // The final error should occur once when re-tries are all spent. Expect 1 log.
   });
 });

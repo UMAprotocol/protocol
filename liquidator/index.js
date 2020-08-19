@@ -54,6 +54,7 @@ async function run(
       empAddress,
       pollingDelay,
       errorRetries,
+      errorRetriesTimeout,
       priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice
