@@ -423,7 +423,7 @@ class Liquidator {
       try {
         const nonce = await this.web3.eth.getTransactionCount(this.account);
 
-        // Min Gas Price, with a max gasPrice of x4
+        // Min Gas Price, with a max gasPrice of x6 (3 re-tries)
         const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
         const maxGasPrice = 2 * 3 * minGasPrice;
 
