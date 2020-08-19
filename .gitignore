@@ -10,7 +10,6 @@ out.log
 .GckmsOverride.js
 docs
 modules
-public
 ui
 .DS_Store
 antora.yml
