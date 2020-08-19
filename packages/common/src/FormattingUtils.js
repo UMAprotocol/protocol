@@ -2,6 +2,7 @@ const networkUtils = require("./PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
+const assert = require("assert");
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -116,6 +117,22 @@ function addSign(number) {
   }
 }
 
+// Take an amount based on fromDecimals and convert it to an amount based on toDecimals
+// For example amount = 100 usdt, its decimals are 6. You want to convert it to 18.
+// convertDecimals(6,18)(100000000)  => 1000000000000000000000.
+// This is curried for your convenience.
+// Returns a BigInt you will need to call toString on
+const ConvertDecimals = (fromDecimals, toDecimals) => amount => {
+  assert(amount, "requires amount");
+  assert(fromDecimals >= 0, "requires fromDecimals");
+  assert(toDecimals >= 0, "requires toDecimals");
+  amount = BigInt(amount);
+  const diff = fromDecimals - toDecimals;
+  if (diff == 0) return amount;
+  if (diff > 0) return amount / 10n ** BigInt(diff);
+  return amount * 10n ** BigInt(-1 * diff);
+};
+
 module.exports = {
   formatDateShort,
   formatDate,
@@ -126,5 +143,6 @@ module.exports = {
   createEtherscanLinkFromtx,
   createShortHexString,
   createEtherscanLinkMarkdown,
-  addSign
+  addSign,
+  ConvertDecimals
 };

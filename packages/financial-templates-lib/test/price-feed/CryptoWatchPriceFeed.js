@@ -1,6 +1,7 @@
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
+const { ConvertDecimals } = require("@umaprotocol/common");
 
 contract("CryptoWatchPriceFeed.js", function(accounts) {
   let cryptoWatchPriceFeed;
@@ -60,7 +61,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       lookback,
       networker,
       getTime,
-      minTimeBetweenUpdates
+      minTimeBetweenUpdates,
+      false,
+      18 // Prove that this will not break existing functionality
     );
     invertedCryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       dummyLogger,
@@ -72,7 +75,8 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       networker,
       getTime,
       minTimeBetweenUpdates,
-      true
+      true,
+      10 // Add arbitrary decimal conversion and prove this works.
     );
   });
 
@@ -80,17 +84,20 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     networker.getJsonReturns = [...validResponses];
     await invertedCryptoWatchPriceFeed.update();
 
+    const { convertDecimals } = invertedCryptoWatchPriceFeed;
+
     assert.isTrue(
       // Should be equal to: toWei(1/1.5)
       invertedCryptoWatchPriceFeed.getCurrentPrice().eq(
-        toBN(toWei("1"))
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei("1.5")))
+        convertDecimals("1")
+          .mul(convertDecimals("1"))
+          .div(convertDecimals("1.5"))
       )
     );
   });
 
   it("Inverted historical price", async function() {
+    const { convertDecimals } = invertedCryptoWatchPriceFeed;
     networker.getJsonReturns = [...validResponses];
     await invertedCryptoWatchPriceFeed.update();
 
@@ -101,9 +108,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.isTrue(
       // Should be equal to: toWei(1/1.1)
       invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(
-        toBN(toWei("1"))
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei("1.1")))
+        convertDecimals("1")
+          .mul(convertDecimals("1"))
+          .div(convertDecimals("1.1"))
       )
     );
 
@@ -111,9 +118,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.isTrue(
       // Should be equal to: toWei(1/1.2)
       invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(
-        toBN(toWei("1"))
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei("1.2")))
+        convertDecimals("1")
+          .mul(convertDecimals("1"))
+          .div(convertDecimals("1.2"))
       )
     );
 
@@ -121,9 +128,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.isTrue(
       // Should be equal to: toWei(1/1.3)
       invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(
-        toBN(toWei("1"))
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei("1.3")))
+        convertDecimals("1")
+          .mul(convertDecimals("1"))
+          .div(convertDecimals("1.3"))
       )
     );
 
@@ -131,9 +138,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.isTrue(
       // Should be equal to: toWei(1/1.5)
       invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(
-        toBN(toWei("1"))
-          .mul(toBN(toWei("1")))
-          .div(toBN(toWei("1.5")))
+        convertDecimals("1")
+          .mul(convertDecimals("1"))
+          .div(convertDecimals("1.5"))
       )
     );
   });
