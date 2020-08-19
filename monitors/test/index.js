@@ -4,6 +4,7 @@ const { toWei, utf8ToHex } = web3.utils;
 const Poll = require("../index.js");
 
 // Contracts and helpers
+const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -24,6 +25,7 @@ contract("index.js", function(accounts) {
   let syntheticToken;
   let emp;
   let uniswap;
+  let constructorParams;
 
   let defaultUniswapPricefeedConfig;
   let defaultMedianizerPricefeedConfig;
@@ -53,7 +55,7 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    const constructorParams = {
+    constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -113,12 +115,30 @@ contract("index.js", function(accounts) {
   });
 
   it("Correctly re-tries after failed execution loop", async function() {
-    // To create an error within the monitor bot we can create a price feed that we know will throw an error.
-    // Specifically, creating a invalidUniswapPricefeedConfig that will check against a price that is NOT a valid pair.
-    const invalidUniswapPricefeedConfig = defaultUniswapPricefeedConfig;
-    invalidUniswapPricefeedConfig.uniswapAddress = "0x0000000000000000000000000000000000000000";
+    // To validate re-try logic this test needs to get the monitor bot to throw within the main while loop. This is
+    // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the
+    // while loop it should never throw errors as it gracefully falls over with situations like timed out API calls.
+    // One way to induce an error is to give the bot an EMP contract that can get through the initial checks but fails
+    // when running any specific calls on the contracts. To do this we can create an EMP that is only the PricelessPositionManager
+    // and excludes any liquidation logic. As a result, calling `getLiquidations` in the EMP contract will error out.
 
-    // We will also create a new spy logger, listening for debug events to validate the re-tries.
+    // Need to give an unknown identifier to get past the `createReferencePriceFeedForEmp` & `createUniswapPriceFeedForEmp`
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
+
+    const invalidEMP = await PricelessPositionManager.new(
+      constructorParams.expirationTimestamp,
+      constructorParams.withdrawalLiveness,
+      constructorParams.collateralAddress,
+      constructorParams.finderAddress,
+      utf8ToHex("UNKNOWN"),
+      constructorParams.syntheticName,
+      "UNKNOWN",
+      constructorParams.tokenFactoryAddress,
+      constructorParams.minSponsorTokens,
+      constructorParams.timerAddress
+    );
+
+    // Create a spy logger to catch all log messages to validate re-try attempts.
     spyLogger = winston.createLogger({
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
@@ -127,7 +147,7 @@ contract("index.js", function(accounts) {
     executionRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
-      emp.address,
+      invalidEMP.address,
       pollingDelay,
       executionRetries,
       errorRetriesTimeout,
@@ -135,7 +155,7 @@ contract("index.js", function(accounts) {
       toBlock,
       defaultMonitorConfig,
       defaultUniswapPricefeedConfig,
-      invalidUniswapPricefeedConfig
+      defaultMedianizerPricefeedConfig
     );
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
