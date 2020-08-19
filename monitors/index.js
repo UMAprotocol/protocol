@@ -34,6 +34,7 @@ const Voting = artifacts.require("Voting");
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Number} startingBlock Offset block number to define where the monitor bot should start searching for events
  *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
  * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
