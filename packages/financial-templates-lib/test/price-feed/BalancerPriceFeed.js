@@ -1,7 +1,7 @@
 const winston = require("winston");
 const lodash = require("lodash");
 
-const { BalancerPriceFeed } = require("../../price-feed/BalancerPriceFeed");
+const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const {
   mineTransactionsAtTime,
   advanceBlockAndSetTime,
@@ -9,7 +9,7 @@ const {
   stopMining,
   startMining
 } = require("@umaprotocol/common");
-const { delay } = require("../../helpers/delay.js");
+const { delay } = require("../../src/helpers/delay.js");
 
 const BalancerMock = artifacts.require("BalancerMock");
 const Balancer = artifacts.require("Balancer");
@@ -27,7 +27,7 @@ contract("BalancerPriceFeed.js", async function(accounts) {
   let lookback = premine * blockTime;
 
   before(async function() {
-    startTime = (await web3.eth.getBlock("latest")).timestamp + blockTime * 10;
+    startTime = (await web3.eth.getBlock("latest")).timestamp + blockTime * 100;
     balancerMock = await BalancerMock.new({ from: owner });
     for (i of lodash.times(premine)) {
       endTime = startTime + blockTime * i;
@@ -62,9 +62,10 @@ contract("BalancerPriceFeed.js", async function(accounts) {
     assert.equal(balancerPriceFeed.getLastUpdateTime(), endTime);
   });
   it("historical price", async function() {
-    // get first block, price should be 0
-    assert.equal(balancerPriceFeed.getHistoricalPrice(startTime), "0");
-    assert.equal(balancerPriceFeed.getHistoricalPrice(startTime + blockTime), "1");
-    assert.equal(balancerPriceFeed.getHistoricalPrice(startTime + blockTime + blockTime / 2), "1");
+    // going to try all block times from start to end and times in between
+    for (let time = startTime; time <= endTime; time += blockTime / 2) {
+      const price = Math.floor((time - startTime) / blockTime);
+      assert.equal(balancerPriceFeed.getHistoricalPrice(time), price);
+    }
   });
 });

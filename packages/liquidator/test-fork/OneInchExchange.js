@@ -1,7 +1,7 @@
 const { toWei } = web3.utils;
 
 const { GasEstimator, SpyTransport } = require("@umaprotocol/financial-templates-lib");
-const { OneInchExchange } = require("../OneInchExchange");
+const { OneInchExchange } = require("../src/OneInchExchange");
 
 const { oneInchSwapAndCheck, CONSTANTS } = require("../test/common");
 

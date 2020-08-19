@@ -10,7 +10,7 @@ const sinon = require("sinon");
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
 // Script to test
-const { Disputer } = require("../disputer.js");
+const { Disputer } = require("../src/disputer.js");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {

@@ -1,6 +1,6 @@
 {
   "name": "@umaprotocol/common",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.11",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -21,6 +21,9 @@
   "devDependencies": {
     "truffle-deploy-registry": "^0.5.1"
   },
+  "files": [
+    "/src/**/*.js"
+  ],
   "dependencies": {
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",

@@ -18,8 +18,8 @@ const {
 // DVM utils.
 const { interfaceName } = require("@umaprotocol/common");
 
-const { SponsorReporter } = require("./SponsorReporter");
-const { GlobalSummaryReporter } = require("./GlobalSummaryReporter");
+const { SponsorReporter } = require("./src/SponsorReporter");
+const { GlobalSummaryReporter } = require("./src/GlobalSummaryReporter");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

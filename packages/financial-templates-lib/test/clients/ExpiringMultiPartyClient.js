@@ -4,7 +4,7 @@ const winston = require("winston");
 const { interfaceName } = require("@umaprotocol/common");
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
-const { ExpiringMultiPartyClient } = require("../../clients/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyClient } = require("../../src/clients/ExpiringMultiPartyClient");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");

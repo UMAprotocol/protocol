@@ -14,7 +14,7 @@ const app = express();
 app.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger, waitForLogger } = require("../../financial-templates-lib/logger/Logger");
+const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
 
 app.post("/", async (req, res) => {
   try {

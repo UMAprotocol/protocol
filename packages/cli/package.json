@@ -1,6 +1,6 @@
 {
-  "name": "@umaptorocol/cli",
-  "version": "1.0.0",
+  "name": "@umaprotocol/cli",
+  "version": "1.0.0-alpha.11",
   "description": "UMA CLI Tool",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -13,9 +13,9 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0",
-    "@umaprotocol/core": "^1.0.0",
-    "@umaprotocol/financial-templates-lib": "^1.0.0",
+    "@umaprotocol/common": "^1.0.0-alpha.11",
+    "@umaprotocol/core": "^1.0.0-alpha.11",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.11",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "inquirer": "^7.0.4",
@@ -26,6 +26,11 @@
     "truffle-deploy-registry": "^0.5.1",
     "winston": "^3.2.1"
   },
+  "files": [
+    "/src/**/*.js",
+    "/*.js",
+    "/*.sh"
+  ],
   "bin": {
     "uma-cli": "cli_entry.sh"
   },

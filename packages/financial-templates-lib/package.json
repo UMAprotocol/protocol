@@ -1,13 +1,12 @@
 {
   "name": "@umaprotocol/financial-templates-lib",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.11",
   "description": "Arbitrage automation and libraries for UMA financial templates",
-  "private": true,
   "dependencies": {
-    "@google-cloud/trace-agent": "^4.2.5",
     "@google-cloud/logging-winston": "^3.0.6",
-    "@umaprotocol/common": "^1.0.0",
-    "@umaprotocol/core": "^1.0.0",
+    "@google-cloud/trace-agent": "^4.2.5",
+    "@umaprotocol/common": "^1.0.0-alpha.11",
+    "@umaprotocol/core": "^1.0.0-alpha.11",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
@@ -31,6 +30,9 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
+  "files": [
+    "/src/**/*.js"
+  ],
   "scripts": {
     "test": "truffle test"
   },

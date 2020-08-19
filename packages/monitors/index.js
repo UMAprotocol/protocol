@@ -1,4 +1,6 @@
 require("dotenv").config();
+const retry = require("async-retry");
+
 const { hexToUtf8 } = web3.utils;
 
 // Clients to retrieve on-chain data and helpers.
@@ -15,10 +17,10 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
-const { ContractMonitor } = require("./ContractMonitor");
-const { BalanceMonitor } = require("./BalanceMonitor");
-const { CRMonitor } = require("./CRMonitor");
-const { SyntheticPegMonitor } = require("./SyntheticPegMonitor");
+const { ContractMonitor } = require("./src/ContractMonitor");
+const { BalanceMonitor } = require("./src/BalanceMonitor");
+const { CRMonitor } = require("./src/CRMonitor");
+const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Truffle contracts artifacts.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -31,6 +33,8 @@ const Voting = artifacts.require("Voting");
  * @param {String} address Contract address of the EMP.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Number} startingBlock Offset block number to define where the monitor bot should start searching for events
  *     from. If 0 will look for all events back to deployment of the EMP. If set to null uses current block number.
  * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
@@ -44,6 +48,8 @@ async function run(
   logger,
   address,
   pollingDelay,
+  errorRetries,
+  errorRetriesTimeout,
   startingBlock,
   endingBlock,
   monitorConfig,
@@ -58,6 +64,8 @@ async function run(
       message: "Monitor started 🕵️‍♂️",
       empAddress: address,
       pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
       startingBlock,
       endingBlock,
       monitorConfig,
@@ -151,47 +159,71 @@ async function run(
       empProps
     );
 
+    // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
-      // 1.  Contract monitor
-      // 1.a Update the client
-      await empEventClient.update();
-      await medianizerPriceFeed.update();
-      // 1.b Check For new liquidation events
-      await contractMonitor.checkForNewLiquidations();
-      // 1.c Check for new disputes
-      await contractMonitor.checkForNewDisputeEvents();
-      // 1.d Check for new disputeSettlements
-      await contractMonitor.checkForNewDisputeSettlementEvents();
-      // 1.e Check for new sponsor positions created
-      await contractMonitor.checkForNewSponsors();
+      await retry(
+        async () => {
+          // 1.  Contract monitor
+          // 1.a Update the client
+          await empEventClient.update();
+          await medianizerPriceFeed.update();
+          // 1.b Check For new liquidation events
+          await contractMonitor.checkForNewLiquidations();
+          // 1.c Check for new disputes
+          await contractMonitor.checkForNewDisputeEvents();
+          // 1.d Check for new disputeSettlements
+          await contractMonitor.checkForNewDisputeSettlementEvents();
+          // 1.e Check for new sponsor positions created
+          await contractMonitor.checkForNewSponsors();
 
-      // 2.  Wallet Balance monitor
-      // 2.a Update the client
-      await tokenBalanceClient.update();
-      // 2.b Check for monitored bot balance changes
-      await balanceMonitor.checkBotBalances();
+          // 2.  Wallet Balance monitor
+          // 2.a Update the client
+          await tokenBalanceClient.update();
+          // 2.b Check for monitored bot balance changes
+          await balanceMonitor.checkBotBalances();
 
-      // 3.  Position Collateralization Ratio monitor
-      // 3.a Update the client
-      await empClient.update();
-      // 3.b Check for positions below their CR
-      await crMonitor.checkWalletCrRatio();
+          // 3.  Position Collateralization Ratio monitor
+          // 3.a Update the client
+          await empClient.update();
+          // 3.b Check for positions below their CR
+          await crMonitor.checkWalletCrRatio();
 
-      // 4. Synthetic peg monitor
-      // 4.a Update the price feeds
-      await tokenPriceFeed.update();
-      await medianizerPriceFeed.update();
-      // 4.b Check for synthetic peg deviation
-      await syntheticPegMonitor.checkPriceDeviation();
-      // 4.c Check for price feed volatility
-      await syntheticPegMonitor.checkPegVolatility();
-      await syntheticPegMonitor.checkSyntheticVolatility();
-
+          // 4. Synthetic peg monitor
+          // 4.a Update the price feeds
+          await tokenPriceFeed.update();
+          await medianizerPriceFeed.update();
+          // 4.b Check for synthetic peg deviation
+          await syntheticPegMonitor.checkPriceDeviation();
+          // 4.c Check for price feed volatility
+          await syntheticPegMonitor.checkPegVolatility();
+          await syntheticPegMonitor.checkSyntheticVolatility();
+        },
+        {
+          retries: errorRetries,
+          minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
+          onRetry: error => {
+            logger.debug({
+              at: "Monitor#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
+        }
+      );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+
       if (pollingDelay === 0) {
+        logger.debug({
+          at: "Monitor#index",
+          message: "End of serverless execution loop - terminating process"
+        });
         await waitForLogger(logger);
         break;
       }
+      logger.debug({
+        at: "Monitor#index",
+        message: "End of execution loop - waiting polling delay"
+      });
       await delay(Number(pollingDelay));
     }
   } catch (error) {
@@ -213,6 +245,12 @@ async function Poll(callback) {
 
     // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
     const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+
+    // Default to 5 re-tries on error within the execution loop.
+    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
+
+    // Default to 10 seconds in between error re-tries.
+    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10;
 
     // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
     // set then default to null which indicates that the bot should start at the current block number.
@@ -271,6 +309,8 @@ async function Poll(callback) {
       Logger,
       process.env.EMP_ADDRESS,
       pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
       startingBlock,
       endingBlock,
       monitorConfig,

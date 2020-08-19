@@ -3,7 +3,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Tested module
-const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
+const { SyntheticPegMonitor } = require("../src/SyntheticPegMonitor");
 
 // Mock and custom winston transport module to monitor winston log outputs
 const {
