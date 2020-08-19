@@ -1,6 +1,6 @@
 const Voting = artifacts.require("Voting");
 const IdentiferWhitelist = artifacts.require("IdentifierWhitelist");
-const { getKeysForNetwork } = require("@umaprotocol/common");
+const { getKeysForNetwork } = require("@uma/common");
 const identifiers = require("../config/identifiers");
 
 module.exports = async function(deployer, network, accounts) {

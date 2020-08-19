@@ -1,6 +1,6 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["token1", "token2"] });
 
-const { getUniswapPairDetails } = require("@umaprotocol/financial-templates-lib");
+const { getUniswapPairDetails } = require("@uma/financial-templates-lib");
 
 const getUniswapPairAddress = async function(callback) {
   try {

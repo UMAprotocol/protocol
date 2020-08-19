@@ -1,8 +1,8 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -16,7 +16,7 @@ const {
   lastSpyLogLevel,
   spyLogIncludes,
   spyLogLevel
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

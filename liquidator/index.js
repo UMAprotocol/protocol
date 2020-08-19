@@ -2,7 +2,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 const { toBN } = web3.utils;
 
 // JS libs
@@ -15,7 +15,7 @@ const {
   createReferencePriceFeedForEmp,
   waitForLogger,
   delay
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

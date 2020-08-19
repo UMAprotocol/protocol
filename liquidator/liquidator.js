@@ -2,7 +2,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
   revertWrapper
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 class Liquidator {
   /**

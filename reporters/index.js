@@ -13,10 +13,10 @@ const {
   Networker,
   Logger,
   createPriceFeed
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // DVM utils.
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 const { SponsorReporter } = require("./SponsorReporter");
 const { GlobalSummaryReporter } = require("./GlobalSummaryReporter");

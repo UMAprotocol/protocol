@@ -2,7 +2,7 @@ require("dotenv").config();
 const { toBN } = web3.utils;
 
 // Helpers
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./disputer");
@@ -14,7 +14,7 @@ const {
   delay,
   waitForLogger,
   createReferencePriceFeedForEmp
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

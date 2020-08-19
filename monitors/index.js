@@ -12,7 +12,7 @@ const {
   createTokenPriceFeedForEmp,
   waitForLogger,
   delay
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
 const { ContractMonitor } = require("./ContractMonitor");

@@ -6,12 +6,7 @@ const sinon = require("sinon");
 const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
 
 // Mock and custom winston transport module to monitor winston log outputs
-const {
-  PriceFeedMock,
-  SpyTransport,
-  lastSpyLogIncludes,
-  lastSpyLogLevel
-} = require("@umaprotocol/financial-templates-lib");
+const { PriceFeedMock, SpyTransport, lastSpyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 
 contract("SyntheticPegMonitor", function() {
   let uniswapPriceFeedMock;

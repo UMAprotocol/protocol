@@ -3,8 +3,8 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

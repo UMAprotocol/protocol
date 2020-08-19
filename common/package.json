@@ -1,5 +1,5 @@
 {
-  "name": "@umaprotocol/common",
+  "name": "@uma/common",
   "version": "1.0.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",

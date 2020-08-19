@@ -8,7 +8,7 @@ const {
   getVotingRoles,
   VotePhasesEnum,
   PublicNetworks
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 /**
  * This prompts the user twice from the command line interface:

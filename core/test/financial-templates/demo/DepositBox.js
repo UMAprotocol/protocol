@@ -1,7 +1,7 @@
 const { toWei, utf8ToHex, hexToUtf8, toBN } = web3.utils;
-const { RegistryRolesEnum, didContractThrow } = require("@umaprotocol/common");
+const { RegistryRolesEnum, didContractThrow } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 // Tested Contract
 const DepositBox = artifacts.require("DepositBox");

@@ -23,14 +23,14 @@ function getAllContracts() {
 
     // Note: all arguments must be hardcoded here for webpack to bundle the files correctly.
     // This line also generates a few build warnings that should be ignored.
-    const contractContext = require.context("@umaprotocol/core/build/contracts/", true, /\.json$/);
+    const contractContext = require.context("@uma/core/build/contracts/", true, /\.json$/);
 
     importedObjects = importAll(contractContext);
   } else {
     // This only works in node.js.
     const fs = require("fs");
     const path = require("path");
-    const packageDir = path.dirname(require.resolve("@umaprotocol/core/package.json"));
+    const packageDir = path.dirname(require.resolve("@uma/core/package.json"));
     const contractsPath = path.join(packageDir, "build/contracts/");
 
     const fileList = fs.readdirSync(contractsPath).filter(name => name.match(/\.json$/));

@@ -19,7 +19,7 @@ import {
 } from "@material-ui/core";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_BLACKLIST } from "@umaprotocol/common";
+import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_BLACKLIST } from "@uma/common";
 
 import VoteData from "./containers/VoteData";
 

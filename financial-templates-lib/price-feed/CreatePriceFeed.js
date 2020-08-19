@@ -5,9 +5,9 @@ const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 
-const Uniswap = require("@umaprotocol/core/build/contracts/Uniswap.json");
-const ExpiringMultiParty = require("@umaprotocol/core/build/contracts/ExpiringMultiParty.json");
-const Balancer = require("@umaprotocol/core/build/contracts/Balancer.json");
+const Uniswap = require("@uma/core/build/contracts/Uniswap.json");
+const ExpiringMultiParty = require("@uma/core/build/contracts/ExpiringMultiParty.json");
+const Balancer = require("@uma/core/build/contracts/Balancer.json");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {

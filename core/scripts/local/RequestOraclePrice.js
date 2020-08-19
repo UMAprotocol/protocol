@@ -4,9 +4,9 @@ const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 const { triggerOnRequest } = require("../../utils/Serving.js");
-const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
 async function getDeployAddress() {
   const accounts = await web3.eth.getAccounts();

@@ -10,7 +10,7 @@ const {
   computeVoteHash,
   getKeyGenMessage,
   signMessage
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
 

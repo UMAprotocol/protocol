@@ -1,7 +1,7 @@
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
-const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { getKeysForNetwork, deploy } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

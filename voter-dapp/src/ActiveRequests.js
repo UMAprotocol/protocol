@@ -45,9 +45,9 @@ import {
   isAdminRequest,
   decodeTransaction,
   translateAdminVote
-} from "@umaprotocol/common";
+} from "@uma/common";
 import { useTableStyles } from "./Styles.js";
-import { REQUEST_BLACKLIST } from "@umaprotocol/common";
+import { REQUEST_BLACKLIST } from "@uma/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {

@@ -2,8 +2,8 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   LiquidationStatesEnum,
   MAX_UINT_VAL
-} = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+} = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -13,12 +13,7 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const { Disputer } = require("../disputer.js");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
-const {
-  ExpiringMultiPartyClient,
-  GasEstimator,
-  PriceFeedMock,
-  SpyTransport
-} = require("@umaprotocol/financial-templates-lib");
+const { ExpiringMultiPartyClient, GasEstimator, PriceFeedMock, SpyTransport } = require("@uma/financial-templates-lib");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

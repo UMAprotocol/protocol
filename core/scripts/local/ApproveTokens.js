@@ -3,7 +3,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["to", "token",
 // Note: this interface also contains a `burn` method, but it isn't used in this script, so it's safe to pass in
 // addresses that do not have the `burn` method.
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 
 const approveTokens = async function(callback) {
   try {

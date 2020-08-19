@@ -4,9 +4,9 @@ const {
   getRandomUnsignedInt,
   computeVoteHash,
   signMessage
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
