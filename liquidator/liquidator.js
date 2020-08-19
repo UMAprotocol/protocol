@@ -303,7 +303,7 @@ class Liquidator {
 
         // Min Gas Price, with a max gasPrice of x4
         const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 4 * minGasPrice;
+        const maxGasPrice = 2 * 3 * minGasPrice;
 
         // Doubles gasPrice every iteration
         const gasPriceScalingFunction = ynatm.DOUBLES;
