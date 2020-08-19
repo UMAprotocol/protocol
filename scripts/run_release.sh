@@ -7,7 +7,7 @@ npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
 # Publish any packages whose versions are not present in the registry.
 yarn lerna publish from-package --yes
 
-# Set a name and email in git if there isn't one already defined
+# Set a name and email in git if they aren't already defined.
 git config --get user.email || git config user.email ci@umaproject.org
 git config --get user.name || git config user.name "Continuous Integration"
 
