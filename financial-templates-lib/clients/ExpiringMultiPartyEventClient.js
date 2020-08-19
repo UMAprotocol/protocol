@@ -113,17 +113,50 @@ class ExpiringMultiPartyEventClient {
   async update() {
     // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
     // latest block number (if running in loop mode).
-    const lastBlockToSearch = this.lastBlockToSearchUntil
-      ? this.lastBlockToSearchUntil
-      : await this.web3.eth.getBlockNumber();
+    const [currentBlockNumber, currentTime] = await Promise.all([
+      this.web3.eth.getBlockNumber(),
+      this.emp.methods.getCurrentTime().call()
+    ]);
+    // Set the update time and last block to search
+    this.lastUpdateTimestamp = currentTime;
+    const lastBlockToSearch = this.lastBlockToSearchUntil ? this.lastBlockToSearchUntil : currentBlockNumber;
 
-    // Look for events on chain from the previous seen block number to the current block number.
-    // Liquidation events
-    const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
+    // Define a config to bound the queries by.
+    const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
       toBlock: lastBlockToSearch
-    });
+    };
 
+    // Look for events on chain from the previous seen block number to the current block number.
+    const [
+      liquidationEventsObj,
+      disputeEventsObj,
+      disputeSettlementEventsObj,
+      createEventsObj,
+      newSponsorEventsObj,
+      depositEventsObj,
+      withdrawEventsObj,
+      redeemEventsObj,
+      regularFeeEventsObj,
+      finalFeeEventsObj,
+      liquidationWithdrawnEventsObj,
+      settleExpiredPositionEventsObj
+    ] = await Promise.all([
+      this.emp.getPastEvents("LiquidationCreated", blockSearchConfig),
+      this.emp.getPastEvents("LiquidationDisputed", blockSearchConfig),
+      this.emp.getPastEvents("DisputeSettled", blockSearchConfig),
+      this.emp.getPastEvents("PositionCreated", blockSearchConfig),
+      this.emp.getPastEvents("NewSponsor", blockSearchConfig),
+      this.emp.getPastEvents("Deposit", blockSearchConfig),
+      this.emp.getPastEvents("Withdrawal", blockSearchConfig),
+      this.emp.getPastEvents("Redeem", blockSearchConfig),
+      this.emp.getPastEvents("RegularFeesPaid", blockSearchConfig),
+      this.emp.getPastEvents("FinalFeesPaid", blockSearchConfig),
+      this.emp.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
+      this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+    ]);
+
+    // Process the responses into clean objects.
     // Liquidation events.
     for (let event of liquidationEventsObj) {
       this.liquidationEvents.push({
@@ -139,10 +172,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Dispute events.
-    const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of disputeEventsObj) {
       this.disputeEvents.push({
         transactionHash: event.transactionHash,
@@ -156,10 +185,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Dispute settlement events.
-    const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of disputeSettlementEventsObj) {
       this.disputeSettlementEvents.push({
         transactionHash: event.transactionHash,
@@ -174,10 +199,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Create events.
-    const createEventsObj = await this.emp.getPastEvents("PositionCreated", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of createEventsObj) {
       this.createEvents.push({
         transactionHash: event.transactionHash,
@@ -189,10 +210,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
-    const newSponsorEventsObj = await this.emp.getPastEvents("NewSponsor", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of newSponsorEventsObj) {
       // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
       // We assume that there is only one PositionCreated event that has the same block number as
@@ -209,10 +226,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Deposit events.
-    const depositEventsObj = await this.emp.getPastEvents("Deposit", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of depositEventsObj) {
       this.depositEvents.push({
         transactionHash: event.transactionHash,
@@ -223,10 +236,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Withdraw events.
-    const withdrawEventsObj = await this.emp.getPastEvents("Withdrawal", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of withdrawEventsObj) {
       this.withdrawEvents.push({
         transactionHash: event.transactionHash,
@@ -237,10 +246,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Redeem events.
-    const redeemEventsObj = await this.emp.getPastEvents("Redeem", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of redeemEventsObj) {
       this.redeemEvents.push({
         transactionHash: event.transactionHash,
@@ -252,10 +257,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Regular fee events.
-    const regularFeeEventsObj = await this.emp.getPastEvents("RegularFeesPaid", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of regularFeeEventsObj) {
       this.regularFeeEvents.push({
         transactionHash: event.transactionHash,
@@ -266,10 +267,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Final fee events.
-    const finalFeeEventsObj = await this.emp.getPastEvents("FinalFeesPaid", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of finalFeeEventsObj) {
       this.finalFeeEvents.push({
         transactionHash: event.transactionHash,
@@ -279,10 +276,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Liquidation withdrawn events.
-    const liquidationWithdrawnEventsObj = await this.emp.getPastEvents("LiquidationWithdrawn", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of liquidationWithdrawnEventsObj) {
       this.liquidationWithdrawnEvents.push({
         transactionHash: event.transactionHash,
@@ -294,10 +287,6 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Settle expired position events.
-    const settleExpiredPositionEventsObj = await this.emp.getPastEvents("SettleExpiredPosition", {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
-    });
     for (let event of settleExpiredPositionEventsObj) {
       this.settleExpiredPositionEvents.push({
         transactionHash: event.transactionHash,
@@ -311,7 +300,6 @@ class ExpiringMultiPartyEventClient {
     // Add 1 to current block so that we do not double count the last block number seen.
     this.firstBlockToSearch = lastBlockToSearch + 1;
 
-    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
       at: "ExpiringMultiPartyEventClient",
       message: "Expiring multi party event state updated",
