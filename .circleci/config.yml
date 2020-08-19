@@ -24,6 +24,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
+            - ~/.ssh
   build:
     docker:
       - image: circleci/node:lts
@@ -38,6 +39,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
+            - ~/.ssh
   lint:
     docker:
       - image: circleci/node:lts
