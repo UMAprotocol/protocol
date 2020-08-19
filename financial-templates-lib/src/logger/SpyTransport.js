@@ -1,6 +1,7 @@
 // This transport enables unit tests to validate values passed to Winston using a Sinon Spy.
 
 const Transport = require("winston-transport");
+const argv = require("minimist")(process.argv.slice(), { boolean: ["logInTest"] });
 
 class SpyTransport extends Transport {
   constructor(winstonOptions, spyOptions) {
@@ -9,6 +10,9 @@ class SpyTransport extends Transport {
   }
 
   async log(info, callback) {
+    // Add an `logInTest` option to help with debugging to bots in tests by printing all logs received by winston.
+    if (argv._.includes("logInTest")) console.log(info);
+
     // Add info sent to the winston transport to the spy. This enables unit tests to validate what is passed to winston.
     this.spy(info);
     callback();
