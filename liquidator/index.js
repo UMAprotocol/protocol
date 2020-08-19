@@ -264,7 +264,7 @@ function nodeCallback(err) {
   } else process.exit(0);
 }
 
-// If not running in test mode, execute the Poll Function. This lets the script be run as a node process.
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
 if (require.main === module) {
   Poll(nodeCallback)
     .then(() => {})
