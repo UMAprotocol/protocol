@@ -3,7 +3,6 @@ const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
-const argv = require("minimist")(process.argv.slice(), {});
 // JS libs
 const { Liquidator } = require("./liquidator");
 const {
@@ -73,7 +72,7 @@ async function run(
       throw new Error("Price feed config is invalid");
     }
 
-    // Setup contract instances.
+    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
@@ -266,10 +265,11 @@ function nodeCallback(err) {
 }
 
 // If not running in test mode, execute the Poll Function. This lets the script be run as a node process.
-if (argv._.indexOf("test") == -1)
+if (require.main === module) {
   Poll(nodeCallback)
     .then(() => {})
     .catch(nodeCallback);
+}
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
