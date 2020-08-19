@@ -421,7 +421,23 @@ class Liquidator {
       // Send the transaction or report failure.
       let receipt;
       try {
-        receipt = await withdraw.send(txnConfig);
+        const nonce = await this.web3.eth.getTransactionCount(this.account);
+
+        // Min Gas Price, with a max gasPrice of x4
+        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
+        const maxGasPrice = 2 * 3 * minGasPrice;
+
+        // Doubles gasPrice every iteration
+        const gasPriceScalingFunction = ynatm.DOUBLES;
+
+        // Receipt without events
+        receipt = await ynatm.send({
+          sendTransactionFunction: gasPrice => withdraw.send({ ...txnConfig, nonce, gasPrice }),
+          minGasPrice,
+          maxGasPrice,
+          gasPriceScalingFunction,
+          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+        });
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
