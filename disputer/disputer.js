@@ -85,7 +85,6 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-
     const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
       const price = disputerOverridePrice
