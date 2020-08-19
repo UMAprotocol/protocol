@@ -90,7 +90,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
       - run:
           name: Install Dependencies
-          command: sudo npm install -g yarn && npx lerna bootstrap
+          command: sudo npm install -g yarn && npx lerna bootstrap -- --frozen-lockfile
       - save_cache:
           key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
           paths:
