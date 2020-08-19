@@ -113,13 +113,10 @@ class ExpiringMultiPartyEventClient {
   async update() {
     // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
     // latest block number (if running in loop mode).
-    const [currentBlockNumber, currentTime] = await Promise.all([
-      this.web3.eth.getBlockNumber(),
-      this.emp.methods.getCurrentTime().call()
-    ]);
-    // Set the update time and last block to search
-    this.lastUpdateTimestamp = currentTime;
-    const lastBlockToSearch = this.lastBlockToSearchUntil ? this.lastBlockToSearchUntil : currentBlockNumber;
+    // Set the last block to search up until.
+    const lastBlockToSearch = this.lastBlockToSearchUntil
+      ? this.lastBlockToSearchUntil
+      : await this.web3.eth.getBlockNumber();
 
     // Define a config to bound the queries by.
     const blockSearchConfig = {
@@ -129,6 +126,7 @@ class ExpiringMultiPartyEventClient {
 
     // Look for events on chain from the previous seen block number to the current block number.
     const [
+      currentTime,
       liquidationEventsObj,
       disputeEventsObj,
       disputeSettlementEventsObj,
@@ -142,6 +140,7 @@ class ExpiringMultiPartyEventClient {
       liquidationWithdrawnEventsObj,
       settleExpiredPositionEventsObj
     ] = await Promise.all([
+      this.emp.methods.getCurrentTime().call(),
       this.emp.getPastEvents("LiquidationCreated", blockSearchConfig),
       this.emp.getPastEvents("LiquidationDisputed", blockSearchConfig),
       this.emp.getPastEvents("DisputeSettled", blockSearchConfig),
@@ -155,6 +154,8 @@ class ExpiringMultiPartyEventClient {
       this.emp.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
       this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
     ]);
+    // Set the current contract time as the last update timestamp from the contract.
+    this.lastUpdateTimestamp = currentTime;
 
     // Process the responses into clean objects.
     // Liquidation events.
