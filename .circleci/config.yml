@@ -124,9 +124,9 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run coverage
-          command: ./ci/coverage.sh ~/protocol/core
+          command: ./ci/coverage.sh ~/protocol/packages/core
       - store_artifacts:
-          path: core/coverage
+          path: packages/core/coverage
   dapp_build:
     docker:
       - image: circleci/node:lts
@@ -136,14 +136,13 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Apply Deployment Registry
-          working_directory: ~/protocol/core
-          command: yarn run apply-registry
+          command: yarn run load-addresses
       - run:
           name: Build Voter dApp
-          working_directory: ~/protocol/voter-dapp
+          working_directory: ~/protocol/packages/voter-dapp
           command: CI=false yarn run build
       - store_artifacts:
-          path: ~/protocol/voter-dapp/build
+          path: ~/protocol/packages/voter-dapp/build
           destination: voter-dapp-build
   deploy_to_staging:
     docker:
