@@ -18,7 +18,7 @@ get_abs_filename() {
 
 
 PROTOCOL_DIR=$(pwd)
-DAPP_DIR=$PROTOCOL_DIR/packages/$1/
+DAPP_DIR=$PROTOCOL_DIR/$1/
 
 # Grab the absolute path for the provided file.
 APP_YAML_PATH=$(get_abs_filename $2)
