@@ -1,11 +1,11 @@
 {
   "name": "@umaprotocol/liquidator",
-  "version": "1.0.0-alpha.12",
+  "version": "1.0.0-alpha.13",
   "description": "UMA Liquidator",
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0-alpha.12",
-    "@umaprotocol/core": "^1.0.0-alpha.12",
-    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.12",
+    "@umaprotocol/common": "^1.0.0-alpha.13",
+    "@umaprotocol/core": "^1.0.0-alpha.13",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "@umaprotocol/ynatm": "^0.0.1",
     "async-retry": "^1.3.1",
     "dotenv": "^6.2.0",

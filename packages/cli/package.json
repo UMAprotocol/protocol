@@ -1,6 +1,6 @@
 {
   "name": "@umaprotocol/cli",
-  "version": "1.0.0-alpha.12",
+  "version": "1.0.0-alpha.13",
   "description": "UMA CLI Tool",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -13,9 +13,9 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0-alpha.12",
-    "@umaprotocol/core": "^1.0.0-alpha.12",
-    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.12",
+    "@umaprotocol/common": "^1.0.0-alpha.13",
+    "@umaprotocol/core": "^1.0.0-alpha.13",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "inquirer": "^7.0.4",
