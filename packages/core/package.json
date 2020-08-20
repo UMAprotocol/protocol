@@ -1,0 +1,53 @@
+{
+  "name": "@umaprotocol/core",
+  "version": "1.0.0-alpha.11",
+  "description": "UMA smart contracts and unit tests",
+  "dependencies": {
+    "@umaprotocol/common": "^1.0.0-alpha.11"
+  },
+  "devDependencies": {
+    "@awaitjs/express": "^0.3.0",
+    "@nomiclabs/buidler": "^1.3.8",
+    "@nomiclabs/buidler-truffle5": "^1.3.4",
+    "@nomiclabs/buidler-web3": "^1.3.4",
+    "@openzeppelin/contracts": "3.0.0",
+    "@sendgrid/mail": "^6.4.0",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.11",
+    "bip39": "^3.0.2",
+    "coveralls": "^3.1.0",
+    "ganache-cli": "^6.7.0",
+    "express": "^4.17.1",
+    "gmail-send": "^1.2.14",
+    "minimist": "^1.2.0",
+    "moment": "^2.24.0",
+    "node-fetch": "^2.3.0",
+    "solidity-coverage": "^0.7.2",
+    "truffle": "^5.1.16",
+    "truffle-assertions": "^0.9.2",
+    "truffle-deploy-registry": "^0.5.1",
+    "web3": "1.2.7"
+  },
+  "homepage": "https://umaproject.org",
+  "license": "AGPL-3.0-or-later",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UMAprotocol/protocol.git"
+  },
+  "main": "index.js",
+  "files": [
+    "/contracts/**/*.sol",
+    "/build/contracts/*.json",
+    "/migrations/*.js"
+  ],
+  "scripts": {
+    "test": "buidler test",
+    "load-addresses": "yarn run apply-registry",
+    "prepublish": "yarn truffle compile && yarn load-addresses"
+  },
+  "bugs": {
+    "url": "https://github.com/UMAprotocol/protocol/issues"
+  }
+}
