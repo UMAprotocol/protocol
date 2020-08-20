@@ -15,7 +15,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Dependencies
-          command: npx lerna bootstrap
+          command: npx lerna bootstrap -- --frozen-lockfile
       - save_cache:
           key: v11-dependency-cache-{{ checksum "yarn.lock" }}
           paths:
@@ -24,6 +24,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
+            - ~/.ssh
   build:
     docker:
       - image: circleci/node:lts
@@ -38,6 +39,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
+            - ~/.ssh
   lint:
     docker:
       - image: circleci/node:lts
@@ -90,7 +92,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
       - run:
           name: Install Dependencies
-          command: sudo npm install -g yarn && npx lerna bootstrap
+          command: sudo npm install -g yarn && npx lerna bootstrap -- --frozen-lockfile
       - save_cache:
           key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
           paths:
@@ -122,9 +124,9 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run coverage
-          command: ./ci/coverage.sh ~/protocol/core
+          command: ./ci/coverage.sh ~/protocol/packages/core
       - store_artifacts:
-          path: core/coverage
+          path: packages/core/coverage
   dapp_build:
     docker:
       - image: circleci/node:lts
@@ -134,14 +136,13 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Apply Deployment Registry
-          working_directory: ~/protocol/core
-          command: yarn run apply-registry
+          command: yarn run load-addresses
       - run:
           name: Build Voter dApp
-          working_directory: ~/protocol/voter-dapp
+          working_directory: ~/protocol/packages/voter-dapp
           command: CI=false yarn run build
       - store_artifacts:
-          path: ~/protocol/voter-dapp/build
+          path: ~/protocol/packages/voter-dapp/build
           destination: voter-dapp-build
   deploy_to_staging:
     docker:
@@ -159,6 +160,22 @@ jobs:
       - run:
           name: Deploy Dapp
           command: ./ci/deploy_to_staging.sh
+  publish:
+    docker:
+      - image: circleci/node:lts
+    working_directory: ~/protocol
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "e5:da:db:1a:1d:66:5b:e7:f5:43:f2:24:1c:56:6a:97"
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
+      - run:
+          name: Publish
+          command: yarn run publish-release
 
 workflows:
   version: 2
@@ -190,6 +207,14 @@ workflows:
           context: gcloud
           requires:
             - dapp_build
+            - test
+          filters:
+            branches:
+              only: master
+      - publish:
+          context: api_keys
+          requires:
+            - build
             - test
           filters:
             branches:
