@@ -18,7 +18,7 @@ get_abs_filename() {
 
 
 PROTOCOL_DIR=$(pwd)
-DAPP_DIR=$PROTOCOL_DIR/$1/
+DAPP_DIR=$PROTOCOL_DIR/packages/$1/
 
 # Grab the absolute path for the provided file.
 APP_YAML_PATH=$(get_abs_filename $2)
@@ -28,7 +28,7 @@ shift
 shift
 
 # Move to the v0 directory for contract compilation.
-cd $PROTOCOL_DIR/core
+cd $PROTOCOL_DIR/packages/core
 
 # Compile contracts, load deployed addresses for mainnet and testnets.
 echo "Compiling contracts."
