@@ -1,8 +1,7 @@
 /**
- * @notice This script contains private keys, mnemonics, and API keys that serve as default values so
- * that it executes even if the user has not set up their environment variables properly. Typically, these
- * are sensitive secrets that should never be shared publicly and ideally should not be
- * stored in plain text.
+ * @notice This script contains private keys, mnemonics, and API keys that serve as default values so that it executes
+ * even if the user has not set up their environment variables properly. Typically, these are sensitive secrets that
+ * should never be shared publicly and ideally should not be stored in plain text.
  */
 
 const path = require("path");
@@ -15,12 +14,12 @@ const { PublicNetworks } = require("./PublicNetworks.js");
 const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
 require("dotenv").config();
 
-// Fallback to a public mnemonic to prevent exceptions
+// Fallback to a public mnemonic to prevent exceptions.
 const mnemonic = process.env.MNEMONIC
   ? process.env.MNEMONIC
   : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
 
-// Fallback to a public private key to prevent exceptions
+// Fallback to a public private key to prevent exceptions.
 const privateKey = process.env.PRIVATE_KEY
   ? process.env.PRIVATE_KEY
   : "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709";
@@ -36,6 +35,9 @@ let singletonProvider;
 const gasPx = 20000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
+// If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
+const nodeUrl = customNodeUrl || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
+
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
 // shell environment.
@@ -47,15 +49,12 @@ function addPublicNetwork(networks, name, networkId) {
     gasPrice: gasPx
   };
 
-  // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-  const nodeUrl = customNodeUrl || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
-
   // GCS ManagedSecretProvider network.
-  networks[name] = {
+  networks[name + "_gckms"] = {
     ...options,
-    provider: function() {
+    provider: function(provider = nodeUrl) {
       if (!singletonProvider) {
-        singletonProvider = new ManagedSecretProvider(GckmsConfig, nodeUrl, 0, GckmsConfig.length);
+        singletonProvider = new ManagedSecretProvider(GckmsConfig, provider, 0, GckmsConfig.length);
       }
       return singletonProvider;
     }
@@ -64,9 +63,9 @@ function addPublicNetwork(networks, name, networkId) {
   // Private key network.
   networks[name + "_privatekey"] = {
     ...options,
-    provider: function() {
+    provider: function(provider = nodeUrl) {
       if (!singletonProvider) {
-        singletonProvider = new HDWalletProvider([privateKey], nodeUrl);
+        singletonProvider = new HDWalletProvider([privateKey], provider);
       }
       return singletonProvider;
     }
@@ -75,9 +74,9 @@ function addPublicNetwork(networks, name, networkId) {
   // Mnemonic network.
   networks[name + "_mnemonic"] = {
     ...options,
-    provider: function() {
+    provider: function(provider = nodeUrl) {
       if (!singletonProvider) {
-        singletonProvider = new HDWalletProvider(mnemonic, nodeUrl, keyOffset, numKeys);
+        singletonProvider = new HDWalletProvider(mnemonic, provider, keyOffset, numKeys);
       }
       return singletonProvider;
     }
@@ -98,9 +97,9 @@ function addPublicNetwork(networks, name, networkId) {
   // Normal ledger wallet network.
   networks[name + "_ledger"] = {
     ...options,
-    provider: function() {
+    provider: function(provider = nodeUrl) {
       if (!singletonProvider) {
-        singletonProvider = new LedgerWalletProvider(ledgerOptions, nodeUrl);
+        singletonProvider = new LedgerWalletProvider(ledgerOptions, provider);
       }
       return singletonProvider;
     }
@@ -110,9 +109,9 @@ function addPublicNetwork(networks, name, networkId) {
   // Note: the default derivation path matches the "legacy" ledger account in Ledger Live.
   networks[name + "_ledger_legacy"] = {
     ...options,
-    provider: function() {
+    provider: function(provider = nodeUrl) {
       if (!singletonProvider) {
-        singletonProvider = new LedgerWalletProvider(legacyLedgerOptions, nodeUrl);
+        singletonProvider = new LedgerWalletProvider(legacyLedgerOptions, provider);
       }
       return singletonProvider;
     }
@@ -202,4 +201,4 @@ function getTruffleConfig(truffleContextDir = "./") {
   };
 }
 
-module.exports = { getTruffleConfig };
+module.exports = { getTruffleConfig, nodeUrl };

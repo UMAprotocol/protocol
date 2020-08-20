@@ -3,7 +3,6 @@ const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
 const Poll = require("../index.js");
-
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -32,8 +31,8 @@ contract("index.js", function(accounts) {
   let spyLogger;
 
   let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
-  let executionRetries = 1;
-  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries.
+  let errorRetries = 1;
+  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
@@ -89,7 +88,15 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
@@ -98,7 +105,15 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -123,8 +138,16 @@ contract("index.js", function(accounts) {
       lookback: 1
     };
 
-    executionRetries = 3; // set execution retries to 3 to validate.
-    await Poll.run(spyLogger, emp.address, pollingDelay, executionRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    errorRetries = 3; // set execution retries to 3 to validate.
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.
