@@ -1,9 +1,9 @@
 {
   "name": "@umaprotocol/core",
-  "version": "1.0.0-alpha.11",
+  "version": "1.0.0-alpha.13",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0-alpha.11"
+    "@umaprotocol/common": "^1.0.0-alpha.13"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
@@ -12,7 +12,7 @@
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/contracts": "3.0.0",
     "@sendgrid/mail": "^6.4.0",
-    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.11",
+    "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bip39": "^3.0.2",
     "coveralls": "^3.1.0",
     "ganache-cli": "^6.7.0",

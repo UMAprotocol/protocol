@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-# Inject the npm token into the npm config.
-npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+# Inject the npm token and registry into the npm config.
+cat > ~/.npmrc << EOF
+@umaprotocol:registry=https://registry.npmjs.org/
+@uma:registry=https://registry.npmjs.org/
+//registry.npmjs.org/:_authToken=${npm_TOKEN}
+EOF
 
 # Publish any packages whose versions are not present in the registry.
 yarn lerna publish from-package --yes
