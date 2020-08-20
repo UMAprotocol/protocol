@@ -78,13 +78,13 @@ class TokenBalanceClient {
   }
 
   // Async function to get the three token balances directly. Does not store balances for later retrieval.
-  // TODO: refactor this to create an array of promises for all accounts to monitor and resolve them all at once.
   async getDirectTokenBalances(account) {
-    return {
-      collateralBalance: await this.collateralToken.methods.balanceOf(account).call(),
-      syntheticBalance: await this.syntheticToken.methods.balanceOf(account).call(),
-      etherBalance: await this.web3.eth.getBalance(account)
-    };
+    const [collateralBalance, syntheticBalance, etherBalance] = await Promise.all([
+      this.collateralToken.methods.balanceOf(account).call(),
+      this.syntheticToken.methods.balanceOf(account).call(),
+      this.web3.eth.getBalance(account)
+    ]);
+    return { collateralBalance, syntheticBalance, etherBalance };
   }
 
   // Add an address to the monitored address list. Balance will only update when calling the `update()` function.

@@ -57,10 +57,10 @@
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0xB6693A4cB6CFd70680145e733388C7FE8b778841"
+    "address": "0x9C53D9f4E959b1cd2eE25C45f50aFf45dca471CE"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0x2bc9485Ea587Ac7A9b9e2747555DD37c36466ea1"
+    "address": "0x8f6e999530787492c62CfA5A8C937A4Be5886A13"
   }
 ]

@@ -2,8 +2,7 @@ const Finder = artifacts.require("Finder");
 const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
 
-const { getKeysForNetwork, deploy, enableControllableTiming } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { getKeysForNetwork, deploy, enableControllableTiming, interfaceName } = require("@umaprotocol/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
