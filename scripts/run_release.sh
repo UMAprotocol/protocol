@@ -2,7 +2,7 @@
 set -e
 
 # Inject the npm token into the npm config.
-npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+echo "//registry.npmjs.org/:_authToken=$npm_TOKEN" > ~/.npmrc
 
 # Publish any packages whose versions are not present in the registry.
 yarn lerna publish from-package --yes
