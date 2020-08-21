@@ -31,10 +31,12 @@ COPY . ./
 RUN apt-get update
 RUN apt-get install -y libudev-dev libusb-1.0-0-dev jq yarn
 RUN npx lerna bootstrap
-RUN scripts/buildContracts.sh
 
-# For now all logic in the mono-repo must be executed from the `core` directory.
-WORKDIR /protocol/core/
+# Clean and run all package build steps, but exclude dapps (to save time).
+RUN yarn lerna run clean --ignore '*/*dapp*'
+RUN yarn lerna run build --ignore '*/*dapp*'
+
+WORKDIR /protocol/
 
 # Command to run any command provided by the COMMAND env variable.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
