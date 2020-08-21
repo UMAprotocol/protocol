@@ -121,16 +121,22 @@ function addSign(number) {
 // For example amount = 100 usdt, its decimals are 6. You want to convert it to 18.
 // convertDecimals(6,18)(100000000)  => 1000000000000000000000.
 // This is curried for your convenience.
-// Returns a BigInt you will need to call toString on
-const ConvertDecimals = (fromDecimals, toDecimals) => amount => {
-  assert(amount, "requires amount");
+// Returns a BigNumber you will need to call toString on
+const ConvertDecimals = (fromDecimals, toDecimals, bn = BigNumber) => {
   assert(fromDecimals >= 0, "requires fromDecimals");
   assert(toDecimals >= 0, "requires toDecimals");
-  amount = BigInt(amount);
-  const diff = fromDecimals - toDecimals;
-  if (diff == 0) return amount;
-  if (diff > 0) return amount / 10n ** BigInt(diff);
-  return amount * 10n ** BigInt(-1 * diff);
+  // set decimals to 0 to do this as integer math, otherwise BN will return floats
+  // might not be compatibile with web3s bignumber
+  if (bn.clone) bn = bn.clone({ DECIMAL_PLACES: 0 });
+  return amount => {
+    // bn will throw for us on invalid input
+    amount = bn(amount);
+    if (amount.isZero()) return amount;
+    const diff = fromDecimals - toDecimals;
+    if (diff == 0) return amount;
+    if (diff > 0) return amount.dividedBy(bn(10).pow(diff));
+    return amount.times(bn(10).pow(-1 * diff));
+  };
 };
 
 module.exports = {
