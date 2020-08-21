@@ -7,6 +7,7 @@ require("dotenv").config();
 
 // Grab the name property from each to get a list of the names of the public networks.
 const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map(elt => elt.name);
+const { isPublicNetwork } = require("../MigrationUtils.js");
 
 let configOverride = {};
 
@@ -79,8 +80,10 @@ function getDefaultStaticConfig() {
 }
 
 function getNetworkName() {
-  if (publicNetworkNames.some(name => argv.network === name)) {
-    return argv.network;
+  if (isPublicNetwork(argv.network)) {
+    // Take everything before the underscore:
+    // mainnet_gckms -> mainnet.
+    return argv.network.split("_")[0];
   }
 
   return "private";
