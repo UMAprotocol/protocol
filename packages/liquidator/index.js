@@ -131,7 +131,7 @@ async function run(
       logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.tx
+        collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
@@ -143,7 +143,7 @@ async function run(
       logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        collateralApprovalTx: syntheticApprovalTx.tx
+        syntheticApprovalTx: syntheticApprovalTx.transactionHash
       });
     }
 
