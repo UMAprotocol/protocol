@@ -13,7 +13,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests configured\""
+    "test": "mocha test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
