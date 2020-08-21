@@ -143,7 +143,7 @@ async function run(
       logger.info({
         at: "Liquidator#index",
         message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        collateralApprovalTx: syntheticApprovalTx.transactionHash
+        syntheticApprovalTx: syntheticApprovalTx.transactionHash
       });
     }
 
