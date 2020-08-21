@@ -80,7 +80,7 @@ function getDefaultStaticConfig() {
 }
 
 function getNetworkName() {
-  if (isPublicNetwork(argv.network)) {
+  if (isPublicNetwork(argv.network || "")) {
     // Take everything before the underscore:
     // mainnet_gckms -> mainnet.
     return argv.network.split("_")[0];
