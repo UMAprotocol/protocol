@@ -47,7 +47,7 @@
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses",
-    "prepublish": "build"
+    "prepublish": "yarn run build"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
