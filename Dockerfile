@@ -34,7 +34,7 @@ RUN npx lerna bootstrap
 RUN scripts/buildContracts.sh
 
 # For now all logic in the mono-repo must be executed from the `core` directory.
-WORKDIR /protocol/core/
+WORKDIR /protocol/packages/core/
 
 # Command to run any command provided by the COMMAND env variable.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
