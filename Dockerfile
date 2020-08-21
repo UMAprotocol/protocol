@@ -36,7 +36,5 @@ RUN npx lerna bootstrap
 RUN yarn lerna run clean --ignore '*/*dapp*'
 RUN yarn lerna run build --ignore '*/*dapp*'
 
-WORKDIR /protocol/
-
 # Command to run any command provided by the COMMAND env variable.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
