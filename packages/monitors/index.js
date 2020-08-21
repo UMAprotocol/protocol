@@ -180,16 +180,16 @@ async function run(
 
           // Run all queries.
           await Promise.all([
-            // 1.  Contract monitor
+            // 1.  Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
             contractMonitor.checkForNewLiquidations(),
             contractMonitor.checkForNewDisputeEvents(),
             contractMonitor.checkForNewDisputeSettlementEvents(),
             contractMonitor.checkForNewSponsors(),
-            // 2.  Wallet Balance monitor
+            // 2.  Wallet Balance monitor. Check if the bot ballances have moved past thresholds.
             balanceMonitor.checkBotBalances(),
-            // 3.  Position Collateralization Ratio monitor
+            // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
             crMonitor.checkWalletCrRatio(),
-            // 4. Synthetic peg monitor
+            // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
             syntheticPegMonitor.checkPriceDeviation(),
             syntheticPegMonitor.checkPegVolatility(),
             syntheticPegMonitor.checkSyntheticVolatility()
