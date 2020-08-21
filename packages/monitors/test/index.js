@@ -98,6 +98,7 @@ contract("index.js", function(accounts) {
   it("Completes one iteration without logging any errors", async function() {
     await Poll.run(
       spyLogger,
+      web3,
       emp.address,
       pollingDelay,
       executionRetries,
@@ -147,6 +148,7 @@ contract("index.js", function(accounts) {
     executionRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
+      web3,
       invalidEMP.address,
       pollingDelay,
       executionRetries,
@@ -155,24 +157,23 @@ contract("index.js", function(accounts) {
       toBlock,
       defaultMonitorConfig,
       defaultUniswapPricefeedConfig,
-      defaultMedianizerPricefeedConfig
+      defaultUniswapPricefeedConfig
     );
 
-    // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
+    // Iterate over all log events and count the number of tokenBalanceStorage, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.
     let reTryCounts = {
-      empStateUpdates: 0,
+      tokenBalanceStorage: 0,
       executionLoopErrors: 0,
       liquidatorPollingErrors: 0
     };
     for (let i = 0; i < spy.callCount; i++) {
-      if (spyLogIncludes(spy, i, "Expiring multi party event state updated")) reTryCounts.empStateUpdates += 1;
-      if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
+      if (spyLogIncludes(spy, i, "Token balance storage updated")) reTryCounts.tokenBalanceStorage += 1;
       if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
       if (spyLogIncludes(spy, i, "Monitor polling error")) reTryCounts.liquidatorPollingErrors += 1;
     }
 
-    assert.equal(reTryCounts.empStateUpdates, 4); // Initial loop and each 3 retries should update the EMP state. Expect 4 logs.
+    assert.equal(reTryCounts.tokenBalanceStorage, 4); // Initial loop and each 3 retries should update the token ballance storage. Expect 4 logs.
     assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
     assert.equal(reTryCounts.liquidatorPollingErrors, 1); // The final error should occur once when re-tries are all spent. Expect 1 log.
   });
