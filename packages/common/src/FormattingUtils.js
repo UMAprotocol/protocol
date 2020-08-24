@@ -2,7 +2,7 @@ const networkUtils = require("./PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
-const { formatFixed, parseFixed, BigNumber: ethersBN } = require("@ethersproject/bignumber");
+const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -129,6 +129,5 @@ module.exports = {
   createEtherscanLinkMarkdown,
   addSign,
   formatFixed,
-  parseFixed,
-  ethersBN
+  parseFixed
 };

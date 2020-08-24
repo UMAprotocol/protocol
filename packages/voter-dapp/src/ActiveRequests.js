@@ -47,7 +47,6 @@ import {
   translateAdminVote,
   IDENTIFIER_BLACKLIST,
   IDENTIFIER_NON_18_PRECISION,
-  ethersBN,
   parseFixed,
   formatFixed
 } from "@umaprotocol/common";
@@ -344,7 +343,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
       }
-      // console.log(ethersBN.from(editState[index]))
       const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
         ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
         : 18;
