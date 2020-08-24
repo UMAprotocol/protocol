@@ -7,7 +7,6 @@ const {
 const { getKeyGenMessage, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 const { getRandomUnsignedInt } = require("./Random.js");
-const { IDENTIFIER_NON_18_PRECISION } = require("./PriceIdentifierUtils");
 const { parseFixed } = require("./FormattingUtils");
 
 const argv = require("minimist")(process.argv.slice());
