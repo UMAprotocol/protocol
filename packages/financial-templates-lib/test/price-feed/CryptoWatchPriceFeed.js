@@ -1,7 +1,6 @@
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
-const { ConvertDecimals } = require("@umaprotocol/common");
 
 contract("CryptoWatchPriceFeed.js", function(accounts) {
   let cryptoWatchPriceFeed;
@@ -84,20 +83,21 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     networker.getJsonReturns = [...validResponses];
     await invertedCryptoWatchPriceFeed.update();
 
-    const { convertDecimals } = invertedCryptoWatchPriceFeed;
-
-    assert.isTrue(
+    assert.equal(
       // Should be equal to: toWei(1/1.5)
-      invertedCryptoWatchPriceFeed.getCurrentPrice().eq(
-        convertDecimals("1")
-          .mul(convertDecimals("1"))
-          .div(convertDecimals("1.5"))
-      )
+      invertedCryptoWatchPriceFeed.getCurrentPrice().toString(),
+      toBN(toWei("1"))
+        .mul(toBN(toWei("1")))
+        .div(toBN(toWei("1.5")))
+        // we need this last division to convert final result to correct decimals
+        // in this case its from 18 decimals to 10 decimals.
+        // You will see this in the rest of the inverted tests.
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
     );
   });
 
   it("Inverted historical price", async function() {
-    const { convertDecimals } = invertedCryptoWatchPriceFeed;
     networker.getJsonReturns = [...validResponses];
     await invertedCryptoWatchPriceFeed.update();
 
@@ -105,43 +105,47 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376339), null);
 
     // During period 1.
-    assert.isTrue(
+    assert.equal(
       // Should be equal to: toWei(1/1.1)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).eq(
-        convertDecimals("1")
-          .mul(convertDecimals("1"))
-          .div(convertDecimals("1.1"))
-      )
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).toString(),
+      toBN(toWei("1"))
+        .mul(toBN(toWei("1")))
+        .div(toBN(toWei("1.1")))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
     );
 
     // During period 2.
-    assert.isTrue(
+    assert.equal(
       // Should be equal to: toWei(1/1.2)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).eq(
-        convertDecimals("1")
-          .mul(convertDecimals("1"))
-          .div(convertDecimals("1.2"))
-      )
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).toString(),
+      toBN(toWei("1"))
+        .mul(toBN(toWei("1")))
+        .div(toBN(toWei("1.2")))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
     );
 
     // During period 3.
-    assert.isTrue(
+    assert.equal(
       // Should be equal to: toWei(1/1.3)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).eq(
-        convertDecimals("1")
-          .mul(convertDecimals("1"))
-          .div(convertDecimals("1.3"))
-      )
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).toString(),
+      toBN(toWei("1"))
+        .mul(toBN(toWei("1")))
+        .div(toBN(toWei("1.3")))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
     );
 
     // After period 3 should return the most recent price.
-    assert.isTrue(
+    assert.equal(
       // Should be equal to: toWei(1/1.5)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521).eq(
-        convertDecimals("1")
-          .mul(convertDecimals("1"))
-          .div(convertDecimals("1.5"))
-      )
+      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521),
+      toBN(toWei("1"))
+        .mul(toBN(toWei("1")))
+        .div(toBN(toWei("1.5")))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
     );
   });
 

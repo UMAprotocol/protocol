@@ -1,5 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { ConvertDecimals } = require("@umaprotocol/common");
+const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
@@ -48,17 +49,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // Use CryptoWatch's most granular option, one minute.
     this.ohlcPeriod = 60;
 
-    // Utility conversion, from eth (10e18) to arbitrary decimals
-    // This will become the output for all numbers in this class
-    const converter = ConvertDecimals(18, decimals);
-
-    // Crypto watch returns a number in "eth" which gets converted to wei (10**18).
-    // We need to convert this to the natural value of the collateral,
-    // which is passed in as "decimals" (10**decimals).
     this.convertDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
-      return converter(this.web3.utils.toWei(number.toString()));
+      return parseFixed(number.toString(), decimals);
     };
   }
 

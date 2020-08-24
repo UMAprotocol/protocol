@@ -13,7 +13,6 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "mocha mocha-test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
