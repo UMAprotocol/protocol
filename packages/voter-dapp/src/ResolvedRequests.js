@@ -25,7 +25,7 @@ import {
   isAdminRequest,
   MAX_UINT_VAL,
   IDENTIFIER_BLACKLIST,
-  IDENTIFIER_NON_18_PRECISION,
+  getPrecisionForIdentifier,
   formatFixed
 } from "@umaprotocol/common";
 
@@ -236,9 +236,7 @@ function ResolvedRequests({ votingAccount }) {
                 event.returnValues.time === resolutionData.time
             );
 
-            const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(resolutionData.identifier)]
-              ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(resolutionData.identifier)]
-              : 18;
+            const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(resolutionData.identifier))
 
             const userVote = revealEvent ? formatFixed(revealEvent.returnValues.price, identifierPrecision) : "No Vote";
             const correctVote = formatFixed(resolutionData.price, identifierPrecision);
