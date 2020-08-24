@@ -44,14 +44,10 @@ import {
   getAdminRequestId,
   isAdminRequest,
   decodeTransaction,
-  translateAdminVote,
-  IDENTIFIER_BLACKLIST,
-  IDENTIFIER_NON_18_PRECISION,
-  ethersBN,
-  parseFixed,
-  formatFixed
+  translateAdminVote
 } from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
+import { REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -101,9 +97,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
     if (allPendingRequests) {
       const nonBlacklistedRequests = allPendingRequests.filter(req => {
-        if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)]) return true;
+        if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
         else {
-          if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
+          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
             return true;
           } else return false;
         }
@@ -119,7 +115,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         setPendingRequests(nonBlacklistedRequests);
       }
     }
-  }, [allPendingRequests, IDENTIFIER_BLACKLIST, showSpamRequests]);
+  }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
@@ -344,11 +340,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
       }
-      // console.log(ethersBN.from(editState[index]))
-      const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
-        ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
-        : 18;
-      const price = parseFixed(editState[index], identifierPrecision).toString();
+      const price = web3.utils.toWei(editState[index]);
       const salt = getRandomUnsignedInt().toString();
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
@@ -426,14 +418,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const hasPendingTransactions = revealStatus === "pending" || commitStatus === "pending";
   const statusDetails = voteStatuses.map((voteStatus, index) => {
-    const pendingRequest = pendingRequests[index];
-
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequest.identifier)]
-        ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequest.identifier)]
-        : 18;
-      currentVote = formatFixed(decryptedCommits[index].price, identifierPrecision);
+      currentVote = formatWei(decryptedCommits[index].price, web3);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
       return {
@@ -443,6 +430,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       };
     }
     // In the REVEAL phase.
+    const pendingRequest = pendingRequests[index];
     const revealEvent = eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)];
     if (revealEvent) {
       return {

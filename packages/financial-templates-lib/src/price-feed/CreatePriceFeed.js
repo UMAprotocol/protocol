@@ -343,7 +343,6 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
       throw new Error("createReferencePriceFeedForEmp: No default config was found and no user config was provided.");
     }
   }
-
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }
 

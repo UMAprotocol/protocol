@@ -1,6 +1,5 @@
 require("dotenv").config();
 const retry = require("async-retry");
-const { toBN } = web3.utils;
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
@@ -17,10 +16,8 @@ const {
   createReferencePriceFeedForEmp
 } = require("@umaprotocol/financial-templates-lib");
 
-// Truffle contracts
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const Voting = artifacts.require("Voting");
+// Truffle contracts.
+const { getAbi, getAddress } = require("@umaprotocol/core");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
@@ -35,6 +32,7 @@ const Voting = artifacts.require("Voting");
  */
 async function run(
   logger,
+  web3,
   empAddress,
   pollingDelay,
   errorRetries,
@@ -44,6 +42,8 @@ async function run(
   disputerOverridePrice
 ) {
   try {
+    const { toBN } = web3.utils;
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -61,10 +61,9 @@ async function run(
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Setup web3 accounts, account instance and pricefeed for EMP.
-    const [accounts, emp, voting, priceFeed] = await Promise.all([
+    const [accounts, networkId, priceFeed] = await Promise.all([
       web3.eth.getAccounts(),
-      ExpiringMultiParty.at(empAddress),
-      Voting.deployed(),
+      web3.eth.net.getId(),
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
     ]);
 
@@ -72,11 +71,17 @@ async function run(
       throw new Error("Price feed config is invalid");
     }
 
+    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [priceIdentifier, collateralToken] = await Promise.all([
-      emp.priceIdentifier(),
-      ExpandedERC20.at(await emp.collateralCurrency())
+    const [priceIdentifier, collateralTokenAddress] = await Promise.all([
+      emp.methods.priceIdentifier().call(),
+      emp.methods.collateralCurrency().call()
     ]);
+
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const empProps = {
@@ -84,7 +89,7 @@ async function run(
     };
 
     // Client and dispute bot.
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
     const disputer = new Disputer(
       logger,
@@ -99,17 +104,17 @@ async function run(
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const currentAllowance = await collateralToken.allowance(accounts[0], empClient.empAddress);
+    const currentAllowance = await collateralToken.methods.allowance(accounts[0], empAddress).call();
     if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.approve(empClient.empAddress, MAX_UINT_VAL, {
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.tx
+        collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
 
@@ -167,40 +172,41 @@ async function Poll(callback) {
       );
     }
 
-    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
+    // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
+    // match the order of parameters defined in the`run` function.
+    const executionParameters = {
+      empAddress: process.env.EMP_ADDRESS,
+      // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+      pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
+      // Default to 5 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
+      // Default to 10 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10,
+      // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
+      // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
+      // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
+      // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
+      // {"type":"cryptowatch","exchange":"binance"}]}
+      priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
+      // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
+      // {"disputeDelay":60,"txnGasLimit":9000000}
+      disputerConfig: process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null,
+      // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
+      // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
+      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE
+    };
 
-    // Default to 5 re-tries on error within the execution loop.
-    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
+    // Check if the bot is being run as a node process or as a truffle process.
+    if (typeof web3 == "undefined") {
+      // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
+      const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
+      if (!web3) throw new Error("Could not create web3 object from websocket");
+      await run(Logger, web3, ...Object.values(executionParameters));
 
-    // Default to 10 seconds in between error re-tries.
-    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10;
-
-    // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
-    // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
-    // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
-    // "lookback":7200, "minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},
-    // {"type":"cryptowatch","exchange":"binance"}]}
-    const priceFeedConfig = process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null;
-
-    // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
-    // {"disputeDelay":60,"txnGasLimit":9000000}
-    const disputerConfig = process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null;
-
-    // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
-    // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
-    const disputerOverridePrice = process.env.DISPUTER_OVERRIDE_PRICE;
-
-    await run(
-      Logger,
-      process.env.EMP_ADDRESS,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      disputerConfig,
-      disputerOverridePrice
-    );
+      // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
+    } else {
+      await run(Logger, web3, ...Object.values(executionParameters));
+    }
   } catch (error) {
     Logger.error({
       at: "Disputer#index",
@@ -212,6 +218,20 @@ async function Poll(callback) {
     return;
   }
   callback();
+}
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  Poll(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
 }
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.

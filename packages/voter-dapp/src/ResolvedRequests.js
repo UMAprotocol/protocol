@@ -19,15 +19,7 @@ import {
 } from "@material-ui/core";
 
 import { useTableStyles } from "./Styles.js";
-import {
-  formatDate,
-  translateAdminVote,
-  isAdminRequest,
-  MAX_UINT_VAL,
-  IDENTIFIER_BLACKLIST,
-  IDENTIFIER_NON_18_PRECISION,
-  formatFixed
-} from "@umaprotocol/common";
+import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 import VoteData from "./containers/VoteData";
 
@@ -87,9 +79,9 @@ function ResolvedRequests({ votingAccount }) {
 
     if (allResolvedEvents) {
       const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
-        if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
+        if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
-          if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
+          if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
             return true;
           } else return false;
         }
@@ -105,7 +97,7 @@ function ResolvedRequests({ votingAccount }) {
         setResolvedEvents(nonBlacklistedRequests);
       }
     }
-  }, [allResolvedEvents, IDENTIFIER_BLACKLIST, showSpamRequests]);
+  }, [allResolvedEvents, REQUEST_BLACKLIST, showSpamRequests]);
 
   const revealedVoteEvents =
     useCacheEvents(
@@ -236,12 +228,8 @@ function ResolvedRequests({ votingAccount }) {
                 event.returnValues.time === resolutionData.time
             );
 
-            const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(resolutionData.identifier)]
-              ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(resolutionData.identifier)]
-              : 18;
-
-            const userVote = revealEvent ? formatFixed(revealEvent.returnValues.price, identifierPrecision) : "No Vote";
-            const correctVote = formatFixed(resolutionData.price, identifierPrecision);
+            const userVote = revealEvent ? fromWei(revealEvent.returnValues.price) : "No Vote";
+            const correctVote = fromWei(resolutionData.price);
 
             const isAdminVote = isAdminRequest(hexToUtf8(resolutionData.identifier));
 

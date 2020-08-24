@@ -1,8 +1,6 @@
 require("dotenv").config();
 const retry = require("async-retry");
 
-const { hexToUtf8 } = web3.utils;
-
 // Clients to retrieve on-chain data and helpers.
 const {
   ExpiringMultiPartyClient,
@@ -22,10 +20,8 @@ const { BalanceMonitor } = require("./src/BalanceMonitor");
 const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
-// Truffle contracts artifacts.
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const ExpandedERC20 = artifacts.require("ExpandedERC20");
-const Voting = artifacts.require("Voting");
+// Contract ABIs and network Addresses.
+const { getAbi, getAddress } = require("@umaprotocol/core");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -46,7 +42,8 @@ const Voting = artifacts.require("Voting");
  */
 async function run(
   logger,
-  address,
+  web3,
+  empAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -57,12 +54,14 @@ async function run(
   medianizerPriceFeedConfig
 ) {
   try {
+    const { hexToUtf8 } = web3.utils;
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
-      empAddress: address,
+      empAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -73,45 +72,60 @@ async function run(
       medianizerPriceFeedConfig
     });
 
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+
+    const networker = new Networker(logger);
+
     // 0. Setup EMP and token instances to monitor.
-    const emp = await ExpiringMultiParty.at(address);
-    const collateralTokenAddress = await emp.collateralCurrency();
-    const collateralToken = await ExpandedERC20.at(collateralTokenAddress);
-    const syntheticTokenAddress = await emp.tokenCurrency();
-    const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
-    const votingContract = await Voting.deployed();
+    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed] = await Promise.all([
+      web3.eth.net.getId(),
+      web3.eth.getBlock("latest"),
+      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig),
+      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig)
+    ]);
+
+    if (!medianizerPriceFeed || !tokenPriceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
+
+    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
+
+    const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
+      emp.methods.priceIdentifier().call(),
+      emp.methods.collateralCurrency().call(),
+      emp.methods.tokenCurrency().call()
+    ]);
+
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
+    const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
+
+    const [collateralCurrencySymbol, syntheticCurrencySymbol] = await Promise.all([
+      collateralToken.methods.symbol().call(),
+      syntheticToken.methods.symbol().call()
+    ]);
 
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
-      collateralCurrencySymbol: await collateralToken.symbol(),
-      syntheticCurrencySymbol: await syntheticToken.symbol(),
-      priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
-      networkId: await web3.eth.net.getId()
+      collateralCurrencySymbol,
+      syntheticCurrencySymbol,
+      priceIdentifier: hexToUtf8(priceIdentifier),
+      networkId
     };
-
-    // Setup medianizer price feed.
-    const getTime = () => Math.round(new Date().getTime() / 1000);
-    const medianizerPriceFeed = await createReferencePriceFeedForEmp(
-      logger,
-      web3,
-      new Networker(logger),
-      getTime,
-      address,
-      medianizerPriceFeedConfig
-    );
 
     // 1. Contract state monitor.
     // Start the event client by looking from the provided `startingBlock` number to the provided `endingBlock` number.
     // If param are sets to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
     // `endingBlock` as null in the client constructor. The client will then query up until the `latest` block on every
     // loop and update this variable accordingly on each iteration.
-    const eventsFromBlockNumber = startingBlock ? startingBlock : (await web3.eth.getBlock("latest")).number;
+    const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
 
     const empEventClient = new ExpiringMultiPartyEventClient(
       logger,
-      ExpiringMultiParty.abi,
+      getAbi("ExpiringMultiParty"),
       web3,
-      emp.address,
+      empAddress,
       eventsFromBlockNumber,
       endingBlock
     );
@@ -122,13 +136,13 @@ async function run(
       medianizerPriceFeed,
       monitorConfig,
       empProps,
-      votingContract
+      voting
     );
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
       logger,
-      ExpandedERC20.abi,
+      getAbi("ExpandedERC20"),
       web3,
       collateralTokenAddress,
       syntheticTokenAddress
@@ -137,19 +151,11 @@ async function run(
     const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, monitorConfig, empProps);
 
     // 3. Collateralization Ratio monitor.
-    const empClient = new ExpiringMultiPartyClient(logger, ExpiringMultiParty.abi, web3, emp.address);
+    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
 
     const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
 
     // 4. Synthetic Peg Monitor.
-    const tokenPriceFeed = await createTokenPriceFeedForEmp(
-      logger,
-      web3,
-      new Networker(logger),
-      getTime,
-      address,
-      tokenPriceFeedConfig
-    );
     const syntheticPegMonitor = new SyntheticPegMonitor(
       logger,
       web3,
@@ -163,40 +169,31 @@ async function run(
     while (true) {
       await retry(
         async () => {
-          // 1.  Contract monitor
-          // 1.a Update the client
-          await empEventClient.update();
-          await medianizerPriceFeed.update();
-          // 1.b Check For new liquidation events
-          await contractMonitor.checkForNewLiquidations();
-          // 1.c Check for new disputes
-          await contractMonitor.checkForNewDisputeEvents();
-          // 1.d Check for new disputeSettlements
-          await contractMonitor.checkForNewDisputeSettlementEvents();
-          // 1.e Check for new sponsor positions created
-          await contractMonitor.checkForNewSponsors();
+          // Update all client and price feeds.
+          await Promise.all([
+            empClient.update(),
+            empEventClient.update(),
+            tokenBalanceClient.update(),
+            medianizerPriceFeed.update(),
+            tokenPriceFeed.update()
+          ]);
 
-          // 2.  Wallet Balance monitor
-          // 2.a Update the client
-          await tokenBalanceClient.update();
-          // 2.b Check for monitored bot balance changes
-          await balanceMonitor.checkBotBalances();
-
-          // 3.  Position Collateralization Ratio monitor
-          // 3.a Update the client
-          await empClient.update();
-          // 3.b Check for positions below their CR
-          await crMonitor.checkWalletCrRatio();
-
-          // 4. Synthetic peg monitor
-          // 4.a Update the price feeds
-          await tokenPriceFeed.update();
-          await medianizerPriceFeed.update();
-          // 4.b Check for synthetic peg deviation
-          await syntheticPegMonitor.checkPriceDeviation();
-          // 4.c Check for price feed volatility
-          await syntheticPegMonitor.checkPegVolatility();
-          await syntheticPegMonitor.checkSyntheticVolatility();
+          // Run all queries within the monitor bots modules.
+          await Promise.all([
+            // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
+            contractMonitor.checkForNewLiquidations(),
+            contractMonitor.checkForNewDisputeEvents(),
+            contractMonitor.checkForNewDisputeSettlementEvents(),
+            contractMonitor.checkForNewSponsors(),
+            // 2.  Wallet Balance monitor. Check if the bot ballances have moved past thresholds.
+            balanceMonitor.checkBotBalances(),
+            // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
+            crMonitor.checkWalletCrRatio(),
+            // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
+            syntheticPegMonitor.checkPriceDeviation(),
+            syntheticPegMonitor.checkPegVolatility(),
+            syntheticPegMonitor.checkSyntheticVolatility()
+          ]);
         },
         {
           retries: errorRetries,
@@ -211,7 +208,6 @@ async function run(
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
-
       if (pollingDelay === 0) {
         logger.debug({
           at: "Monitor#index",
@@ -243,80 +239,77 @@ async function Poll(callback) {
       );
     }
 
-    // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
-    const pollingDelay = process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60;
-
-    // Default to 5 re-tries on error within the execution loop.
-    const errorRetries = process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5;
-
-    // Default to 10 seconds in between error re-tries.
-    const errorRetriesTimeout = process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10;
-
-    // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
-    // set then default to null which indicates that the bot should start at the current block number.
-    const startingBlock = process.env.STARTING_BLOCK_NUMBER;
-
-    // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
-    // until. If not set the default to null which indicates that the bot should search up to 'latest'.
-    const endingBlock = process.env.ENDING_BLOCK_NUMBER;
-
-    // Monitor config contains all configuration settings for all monitor modules. This includes the following:
-    // MONITOR_CONFIG={
-    //  "botsToMonitor": [{ name: "Liquidator Bot",       // Friendly bot name
-    //     address: "0x12345"                             // Bot address
-    //    "collateralThreshold": "500000000000000000000", // 500e18 collateral token currency.
-    //    "syntheticThreshold": "2000000000000000000000", // 200e18 synthetic token currency.
-    //    "etherThreshold": "500000000000000000" },       // 0.5e18 Wei alert
-    //  ...],
-    //  "walletsToMonitor": [{ name: "Market Making bot", // Friendly bot name
-    //    address: "0x12345",                             // bot address
-    //    crAlert: 1.50 },                                // CR monitoring threshold. 1.5=150%
-    //  ...],
-    //  "monitoredLiquidators": ["0x1234","0x5678"],       // Array of liquidator bots of interest.
-    //  "monitoredDisputers": ["0x1234","0x5678"],         // Array of disputer bots of interest.
-    //  "deviationAlertThreshold": 0.5,                    // If deviation in token price exceeds this fire alert.
-    //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
-    //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
-    //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
-    //  "logOverrides":{                                   // override specific events log levels.
-    //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
-    //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
-    //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
-    //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
-    //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
-    //   }
-    // }
-    const monitorConfig = process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null;
-
     // Deprecate UNISWAP_PRICE_FEED_CONFIG to favor TOKEN_PRICE_FEED_CONFIG, leaving in for compatibility.
     // If nothing defined, it will default to uniswap within createPriceFeed
     const tokenPriceFeedConfigEnv = process.env.TOKEN_PRICE_FEED_CONFIG || process.env.UNISWAP_PRICE_FEED_CONFIG;
 
-    // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
-    // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
-    // Requires the address of the balancer pool where price is available.
-    // Balancer market. EG: {"type":"balancer", "balancerAddress":"0x1234"}
-    const tokenPriceFeedConfig = tokenPriceFeedConfigEnv ? JSON.parse(tokenPriceFeedConfigEnv) : null;
+    // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
+    // match the order of parameters defined in the`run` function.
+    const executionParameters = {
+      empAddress: process.env.EMP_ADDRESS,
+      // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
+      pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
+      // Default to 5 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
+      // Default to 10 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10,
+      // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
+      // set then default to null which indicates that the bot should start at the current block number.
+      startingBlock: process.env.STARTING_BLOCK_NUMBER,
+      // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
+      // until. If not set the default to null which indicates that the bot should search up to 'latest'.
+      endingBlock: process.env.ENDING_BLOCK_NUMBER,
+      // Monitor config contains all configuration settings for all monitor modules. This includes the following:
+      // MONITOR_CONFIG={
+      //  "botsToMonitor": [{ name: "Liquidator Bot",       // Friendly bot name
+      //     address: "0x12345"                             // Bot address
+      //    "collateralThreshold": "500000000000000000000", // 500e18 collateral token currency.
+      //    "syntheticThreshold": "2000000000000000000000", // 200e18 synthetic token currency.
+      //    "etherThreshold": "500000000000000000" },       // 0.5e18 Wei alert
+      //  ...],
+      //  "walletsToMonitor": [{ name: "Market Making bot", // Friendly bot name
+      //    address: "0x12345",                             // bot address
+      //    crAlert: 1.50 },                                // CR monitoring threshold. 1.5=150%
+      //  ...],
+      //  "monitoredLiquidators": ["0x1234","0x5678"],       // Array of liquidator bots of interest.
+      //  "monitoredDisputers": ["0x1234","0x5678"],         // Array of disputer bots of interest.
+      //  "deviationAlertThreshold": 0.5,                    // If deviation in token price exceeds this fire alert.
+      //  "volatilityWindow": 600,                           // Length of time (in seconds) to snapshot volatility.
+      //  "pegVolatilityAlertThreshold": 0.1,                // Threshold for synthetic peg (identifier) price volatility over `volatilityWindow`.
+      //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
+      //  "logOverrides":{                                   // override specific events log levels.
+      //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
+      //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
+      //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
+      //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
+      //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
+      //   }
+      // }
+      monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null,
+      // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
+      // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
+      // Requires the address of the balancer pool where price is available.
+      // Balancer market. EG: {"type":"balancer", "balancerAddress":"0x1234"}
+      tokenPriceFeedConfig: tokenPriceFeedConfigEnv ? JSON.parse(tokenPriceFeedConfigEnv) : null,
+      // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
+      // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
+      // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
+      medianizerPriceFeedConfig: process.env.MEDIANIZER_PRICE_FEED_CONFIG
+        ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
+        : null
+    };
 
-    // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
-    // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
-    // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
-    const medianizerPriceFeedConfig = process.env.MEDIANIZER_PRICE_FEED_CONFIG
-      ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
-      : null;
+    // Check if the bot is being run as a node process or as a truffle process.
+    if (typeof web3 == "undefined") {
+      // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
+      const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
+      if (!web3) throw new Error("Could not create web3 object from websocket");
+      await run(Logger, web3, ...Object.values(executionParameters));
 
-    await run(
-      Logger,
-      process.env.EMP_ADDRESS,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      startingBlock,
-      endingBlock,
-      monitorConfig,
-      tokenPriceFeedConfig,
-      medianizerPriceFeedConfig
-    );
+      // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
+    } else {
+      await run(Logger, web3, ...Object.values(executionParameters));
+    }
   } catch (error) {
     Logger.error({
       at: "Monitor#index",
@@ -328,6 +321,20 @@ async function Poll(callback) {
     return;
   }
   callback();
+}
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  Poll(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
 }
 
 // Attach this function to the exported function in order to allow the script to be executed through both truffle and a test runner.
