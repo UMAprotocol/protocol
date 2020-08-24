@@ -48,10 +48,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // Use CryptoWatch's most granular option, one minute.
     this.ohlcPeriod = 60;
 
-    // Helper functions from web3.
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-
     // Utility conversion, from eth (10e18) to arbitrary decimals
     // This will become the output for all numbers in this class
     const converter = ConvertDecimals(18, decimals);
@@ -62,7 +58,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.convertDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
-      return this.toBN(converter(this.toWei(number.toString())));
+      return converter(this.web3.utils.toWei(number.toString()));
     };
   }
 

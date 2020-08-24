@@ -1,5 +1,4 @@
 const utils = require("../src/FormattingUtils");
-const BigNumber = require("bignumber.js");
 const assert = require("assert");
 
 describe("FormattingUtils", () => {
@@ -18,7 +17,7 @@ describe("FormattingUtils", () => {
       convertDecimals = utils.ConvertDecimals(18, 6);
       result = convertDecimals(1);
       assert.equal(result.toString(), "0");
-      result = convertDecimals(10n ** 18n);
+      result = convertDecimals((10n ** 18n).toString());
       assert.equal(result.toString(), (10n ** 6n).toString());
 
       result = convertDecimals(0);
