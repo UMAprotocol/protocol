@@ -46,7 +46,7 @@ import {
   decodeTransaction,
   translateAdminVote,
   IDENTIFIER_BLACKLIST,
-  IDENTIFIER_NON_18_PRECISION,
+  getPrecisionForIdentifier,
   parseFixed,
   formatFixed
 } from "@umaprotocol/common";
@@ -343,9 +343,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
       }
-      const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
-        ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequests[index].identifier)]
-        : 18;
+      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
       const price = parseFixed(editState[index], identifierPrecision).toString();
       const salt = getRandomUnsignedInt().toString();
       const encryptedVote = await encryptMessage(
@@ -428,9 +426,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      const identifierPrecision = IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequest.identifier)]
-        ? IDENTIFIER_NON_18_PRECISION[hexToUtf8(pendingRequest.identifier)]
-        : 18;
+      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier))
       currentVote = formatFixed(decryptedCommits[index].price, identifierPrecision);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {

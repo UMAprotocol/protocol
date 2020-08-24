@@ -8,7 +8,7 @@ const {
   getVotingRoles,
   VotePhasesEnum,
   PublicNetworks,
-  IDENTIFIER_NON_18_PRECISION,
+  getPrecisionForIdentifier,
   formatFixed
 } = require("@umaprotocol/common");
 
@@ -78,8 +78,7 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
 
         // Construct commitment
         try {
-          const identifierNonStandardPrecision =
-            IDENTIFIER_NON_18_PRECISION[web3.utils.hexToUtf8(selections[i].identifier)];
+          const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(selections[i].identifier))
           newCommitments.push(
             await constructCommitment(
               selections[i],
@@ -88,7 +87,7 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
               priceInput["price"],
               signingAddress,
               votingAccount,
-              identifierNonStandardPrecision
+              identifierPrecision
             )
           );
         } catch (err) {
@@ -122,14 +121,10 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
         );
         console.group(style.success("Receipts:"));
         successes.forEach(committedVote => {
-          const identifierNonStandardPrecision = IDENTIFIER_NON_18_PRECISION[
-            web3.utils.hexToUtf8(committedVote.identifier)
-          ]
-            ? IDENTIFIER_NON_18_PRECISION[web3.utils.hexToUtf8(committedVote.identifier)]
-            : 18;
+          const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(committedVote.identifier))
           console.log(`- transaction: ${style.link(`${url}${committedVote.txnHash}`)}`);
           console.log(`    - salt: ${committedVote.salt}`);
-          console.log(`    - voted price: ${formatFixed(committedVote.price, identifierNonStandardPrecision)}`);
+          console.log(`    - voted price: ${formatFixed(committedVote.price, identifierPrecision)}`);
         });
         console.groupEnd();
       } else {
