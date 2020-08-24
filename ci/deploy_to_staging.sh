@@ -22,18 +22,18 @@ gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
 gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 
 # Pull down dapp configs.
-gsutil cp gs://dapp-configs/staging-voter-app.yaml voter-dapp/
-gsutil cp gs://dapp-configs/prod-voter-app.yaml voter-dapp/
+gsutil cp gs://dapp-configs/staging-voter-app.yaml packages/voter-dapp/
+gsutil cp gs://dapp-configs/prod-voter-app.yaml packages/voter-dapp/
 
 # Deploy voter dapp to staging. This will immediately update the service to point traffic to this version.
-./scripts/deploy_dapp.sh voter-dapp voter-dapp/staging-voter-app.yaml -q
+./scripts/deploy_dapp.sh packages/voter-dapp packages/voter-dapp/staging-voter-app.yaml -q
 
 # Upload a new prod version. --no-promote means that traffic will not be migrated to this version.
 # That will be done manually through the release process.
-./scripts/deploy_dapp.sh voter-dapp voter-dapp/prod-voter-app.yaml -q --no-promote
+./scripts/deploy_dapp.sh packages/voter-dapp packages/voter-dapp/prod-voter-app.yaml -q --no-promote
 
 # Clean up dapp configs
-rm -rf voter-dapp/staging-voter-app.yaml voter-dapp/prod-voter-app.yaml
+rm -rf packages/voter-dapp/staging-voter-app.yaml packages/voter-dapp/prod-voter-app.yaml
 
 # Deploy docs
 ./scripts/deploy_docs.sh documentation/gae_app.yaml -q

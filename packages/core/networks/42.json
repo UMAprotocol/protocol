@@ -1,0 +1,66 @@
+[
+  {
+    "contractName": "Migrations",
+    "address": "0xB851449bC030F08E0f1Aa57A0a7cAEFE73030De0"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xeD0169a88d267063184b0853BaAAAe66c3c154B2"
+  },
+  {
+    "contractName": "VotingToken",
+    "address": "0x489Bf230d4Ab5c2083556E394a28276C22c3B580"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x2Fe2C263Be8FD45971934EB2421Fc59761dda343"
+  },
+  {
+    "contractName": "Voting",
+    "address": "0x24BE89E098d6F65A924142d93013A84281F6296B"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x7b1c04D2826B140779e2B97d5783AF05cf00Fbab"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xe101B874431B5dc96f6d19fC1DE16eAD922D639b"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x41AF40Eb92Bec4dD8DA77103597838b3dBBD3B6f"
+  },
+  {
+    "contractName": "Governor",
+    "address": "0xca4575EE197308c9D2aBF813A5f064f44898b7a4"
+  },
+  {
+    "contractName": "DesignatedVotingFactory",
+    "address": "0xF988f9f62f355966a758c5936C9080183C176585"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xe7e87f89e3D15617261Fd52188Ca64803165f8Af"
+  },
+  {
+    "contractName": "WETH9",
+    "address": "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
+  },
+  {
+    "contractName": "TestnetERC20",
+    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xf8bdAb5d675F76eD863fF9Fa35B129A6e43e71cA"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x9C53D9f4E959b1cd2eE25C45f50aFf45dca471CE"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0x8f6e999530787492c62CfA5A8C937A4Be5886A13"
+  }
+]

@@ -28,7 +28,7 @@ shift
 shift
 
 # Move to the v0 directory for contract compilation.
-cd $PROTOCOL_DIR/core
+cd $PROTOCOL_DIR/packages/core
 
 # Compile contracts, load deployed addresses for mainnet and testnets.
 echo "Compiling contracts."
