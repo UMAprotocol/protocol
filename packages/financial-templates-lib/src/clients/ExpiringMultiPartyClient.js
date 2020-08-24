@@ -93,20 +93,6 @@ class ExpiringMultiPartyClient {
     return this.lastUpdateTimestamp;
   }
 
-  // Returns web3.eth.Contract with an ERC20 token interface at
-  // the tokenCurrency address
-  async getTokenCurrency() {
-    const tokenCurrencyAddress = await this.emp.methods.tokenCurrency().call({});
-    const tokenCurrency = new this.web3.eth.Contract(Token.abi, tokenCurrencyAddress);
-
-    // Thank you inconsistent web3
-    if (!tokenCurrency.address) {
-      tokenCurrency.address = tokenCurrencyAddress;
-    }
-
-    return tokenCurrency;
-  }
-
   async initialSetup() {
     const [collateralRequirement, liquidationLiveness, cumulativeFeeMultiplier] = await Promise.all([
       this.emp.methods.collateralRequirement().call(),
