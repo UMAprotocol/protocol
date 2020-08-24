@@ -7,6 +7,8 @@ const {
 const { getKeyGenMessage, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 const { getRandomUnsignedInt } = require("./Random.js");
+const { IDENTIFIER_NON_18_PRECISION } = require("./PriceIdentifierUtils");
+const { parseFixed } = require("./FormattingUtils");
 
 const argv = require("minimist")(process.argv.slice());
 
@@ -45,9 +47,10 @@ const getVotingRoles = (account, voting, designatedVoting) => {
  * @param {String | Number | BN} price
  * @param {String} signingAccount
  * @param {String} votingAccount
+ * @param {String?} decimals Default 18 decimal precision for price
  */
-const constructCommitment = async (request, roundId, web3, price, signingAccount, votingAccount) => {
-  const priceWei = web3.utils.toWei(price.toString());
+const constructCommitment = async (request, roundId, web3, price, signingAccount, votingAccount, decimals = 18) => {
+  const priceWei = parseFixed(price.toString(), decimals).toString();
   const salt = getRandomUnsignedInt().toString();
   const hash = computeVoteHash({
     price: priceWei,
