@@ -28,7 +28,7 @@ class Liquidator {
    */
   constructor(
     logger,
-    oneInch,
+    oneInchClient,
     expiringMultiPartyClient,
     gasEstimator,
     votingContract,
@@ -44,8 +44,8 @@ class Liquidator {
     // Initial version will only allow ETH to be the reserve
     this.reserveCurrencyAddress = ETH_ADDRESS;
 
-    // OneInch module
-    this.oneInch = oneInch;
+    // OneInchClient
+    this.oneInchClient = oneInchClient;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
@@ -285,12 +285,12 @@ class Liquidator {
         // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
-          this.oneInch.getExpectedReturn({
+          this.oneInchClient.getExpectedReturn({
             fromToken: this.syntheticToken.address,
             toToken: this.reserveCurrencyAddress,
             amountWei: tokensToLiquidate.toString()
           }),
-          this.oneInch.getExpectedReturn({
+          this.oneInchClient.getExpectedReturn({
             fromToken: this.syntheticToken.address,
             toToken: this.reserveCurrencyAddress,
             amountWei: this.toWei("1", "gwei")
@@ -347,7 +347,7 @@ class Liquidator {
 
         // Swap tokens
         try {
-          await this.oneInch.swap(
+          await this.oneInchClient.swap(
             {
               fromToken: this.reserveCurrencyAddress,
               toToken: this.syntheticToken.address,

@@ -19,7 +19,6 @@ const {
 
 // Contract ABIs and network Addresses
 const { getAbi, getAddress } = require("@umaprotocol/core/index");
-const { ONE } = require("long");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
