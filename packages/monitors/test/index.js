@@ -146,6 +146,11 @@ contract("index.js", function(accounts) {
     });
 
     executionRetries = 3; // set execution retries to 3 to validate.
+    // Not both the uniswap and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForEmp
+    // can pass without trying to poll any information on the invalidEMP to ensure that the bot gets into the main while
+    // loop without throwing an error in inital set-up. If this left as defaultMedianizerPricefeedConfig (which is blank)
+    // The bot will error out in setting up the price feed as the invalidEMP instance cant be queried for `liquidationLiveness`
+    // which is required when initalizing the price feed.
     await Poll.run(
       spyLogger,
       web3,

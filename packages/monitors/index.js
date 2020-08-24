@@ -178,9 +178,9 @@ async function run(
             tokenPriceFeed.update()
           ]);
 
-          // Run all queries.
+          // Run all queries within the monitor bots modules.
           await Promise.all([
-            // 1.  Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
+            // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
             contractMonitor.checkForNewLiquidations(),
             contractMonitor.checkForNewDisputeEvents(),
             contractMonitor.checkForNewDisputeSettlementEvents(),

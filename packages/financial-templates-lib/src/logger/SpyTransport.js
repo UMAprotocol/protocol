@@ -10,6 +10,7 @@ class SpyTransport extends Transport {
   }
 
   async log(info, callback) {
+    console.log("info", info);
     // Add a `logInTest` option to help with debugging to bots in tests by printing all logs received by winston.
     if (argv._.includes("logInTest")) console.log(info);
 
