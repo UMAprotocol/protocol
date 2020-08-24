@@ -4,8 +4,8 @@ const retry = require("async-retry");
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 // JS libs
-const { ONE_SPLIT_ADDRESS } = require("./constants");
-const { OneInchExchange } = require("./OneInchExchange");
+const { ONE_SPLIT_ADDRESS } = require("./src/constants");
+const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
