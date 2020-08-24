@@ -426,7 +426,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier))
+      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
       currentVote = formatFixed(decryptedCommits[index].price, identifierPrecision);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {

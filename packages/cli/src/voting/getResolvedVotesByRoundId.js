@@ -43,7 +43,7 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
     });
 
     resolvedPrices.forEach(price => {
-      const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(price.args.identifier))
+      const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(price.args.identifier));
       const roundId = price.args.roundId;
       const resolvedPrice = {
         roundId: roundId.toString(),

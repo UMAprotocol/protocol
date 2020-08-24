@@ -236,7 +236,7 @@ function ResolvedRequests({ votingAccount }) {
                 event.returnValues.time === resolutionData.time
             );
 
-            const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(resolutionData.identifier))
+            const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(resolutionData.identifier));
 
             const userVote = revealEvent ? formatFixed(revealEvent.returnValues.price, identifierPrecision) : "No Vote";
             const correctVote = formatFixed(resolutionData.price, identifierPrecision);
