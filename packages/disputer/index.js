@@ -17,7 +17,7 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, getAddress } = require("@umaprotocol/core/index");
+const { getAbi, getAddress } = require("@umaprotocol/core");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
