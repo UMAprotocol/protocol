@@ -1,6 +1,6 @@
 const style = require("../textStyle");
 const argv = require("minimist")(process.argv.slice());
-const { IDENTIFIER_NON_18_PRECISION, formatFixed } = require("@umaprotocol/common");
+const { getPrecisionForIdentifier, formatFixed } = require("@umaprotocol/common");
 
 /**
  * Return the list of votes (that the voter has participated in) that have successfully resolved a price
@@ -43,9 +43,7 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
     });
 
     resolvedPrices.forEach(price => {
-      const identifierPrecision = IDENTIFIER_NON_18_PRECISION[web3.utils.hexToUtf8(price.args.identifier)]
-        ? IDENTIFIER_NON_18_PRECISION[web3.utils.hexToUtf8(price.args.identifier)]
-        : 18;
+      const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(price.args.identifier))
       const roundId = price.args.roundId;
       const resolvedPrice = {
         roundId: roundId.toString(),
