@@ -3,7 +3,7 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 const Web3 = require("web3");
-const { getTruffleConfig, nodeUrl } = require("@umaprotocol/common/src/TruffleConfig");
+const { getTruffleConfig, nodeUrl } = require("@umaprotocol/common");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
 const websocketOptions = {
