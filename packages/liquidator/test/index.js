@@ -20,9 +20,6 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@umaprotocol/fina
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
-  const liquidatorConfig = {
-    crThreshold: 0
-  };
 
   let oneSplitMock;
   let collateralToken;
@@ -101,10 +98,9 @@ contract("index.js", function(accounts) {
       emp.address,
       oneSplitMock.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
-      defaultPriceFeedConfig,
-      liquidatorConfig
+      defaultPriceFeedConfig
     );
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
@@ -120,10 +116,9 @@ contract("index.js", function(accounts) {
       emp.address,
       oneSplitMock.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
-      defaultPriceFeedConfig,
-      liquidatorConfig
+      defaultPriceFeedConfig
     );
 
     for (let i = 0; i < spy.callCount; i++) {
@@ -149,17 +144,16 @@ contract("index.js", function(accounts) {
       lookback: 1
     };
 
-    executionRetries = 3; // set execution retries to 3 to validate.
+    errorRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
       web3,
       emp.address,
       oneSplitMock.address,
       pollingDelay,
-      executionRetries,
+      errorRetries,
       errorRetriesTimeout,
-      defaultPriceFeedConfig,
-      liquidatorConfig
+      defaultPriceFeedConfig
     );
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events

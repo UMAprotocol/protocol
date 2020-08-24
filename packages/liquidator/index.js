@@ -19,6 +19,7 @@ const {
 
 // Contract ABIs and network Addresses
 const { getAbi, getAddress } = require("@umaprotocol/core/index");
+const { ONE } = require("long");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -119,9 +120,9 @@ async function run(
       logger,
       oneInch,
       empClient,
+      gasEstimator,
       voting,
       syntheticToken,
-      gasEstimator,
       priceFeed,
       accounts[0],
       empProps,
@@ -222,6 +223,7 @@ async function Poll(callback) {
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
       empAddress: process.env.EMP_ADDRESS,
+      oneSplitAddress: ONE_SPLIT_ADDRESS || process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
