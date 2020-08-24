@@ -1,5 +1,4 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { ConvertDecimals } = require("@umaprotocol/common");
 const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
