@@ -4,7 +4,6 @@
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
 const Promise = require("bluebird");
 
-const Token = artifacts.require("ExpandedERC20");
 
 class ExpiringMultiPartyClient {
   /**
