@@ -126,31 +126,40 @@ class GlobalSummaryReporter {
       )
     ).financialContracts[0];
 
-    this.periodTotalCollateralDeposited = (
-      Number(endPeriodEmpData.totalCollateralDeposited) - Number(startPeriodEmpData.totalCollateralDeposited)
-    ).toString();
-    this.periodTotalCollateralWithdrawn = (
-      Number(endPeriodEmpData.totalCollateralWithdrawn) - Number(startPeriodEmpData.totalCollateralWithdrawn)
-    ).toString();
-    this.periodTotalSyntheticTokensBurned = (
-      Number(endPeriodEmpData.totalSyntheticTokensBurned) - Number(startPeriodEmpData.totalSyntheticTokensBurned)
-    ).toString();
-    this.periodTotalSyntheticTokensCreated = (
-      Number(endPeriodEmpData.totalSyntheticTokensCreated) - Number(startPeriodEmpData.totalSyntheticTokensCreated)
-    ).toString();
-    this.prevPeriodTotalCollateralDeposited = (
-      Number(startPeriodEmpData.totalCollateralDeposited) - Number(startPrevPeriodEmpData.totalCollateralDeposited)
-    ).toString();
-    this.prevPeriodTotalCollateralWithdrawn = (
-      Number(startPeriodEmpData.totalCollateralWithdrawn) - Number(startPrevPeriodEmpData.totalCollateralWithdrawn)
-    ).toString();
-    this.prevPeriodTotalSyntheticTokensBurned = (
-      Number(startPeriodEmpData.totalSyntheticTokensBurned) - Number(startPrevPeriodEmpData.totalSyntheticTokensBurned)
-    ).toString();
-    this.prevPeriodTotalSyntheticTokensCreated = (
-      Number(startPeriodEmpData.totalSyntheticTokensCreated) -
-      Number(startPrevPeriodEmpData.totalSyntheticTokensCreated)
-    ).toString();
+    // endPeriodEmpData should always have data because it is the most recent snapshot,
+    // however if either `startPeriodEmpData` or `startPrevPeriodEmpData` are undefined then it is
+    // possible that the subgraph does not have data that far back.
+    if (startPeriodEmpData) {
+      this.periodTotalCollateralDeposited = (
+        Number(endPeriodEmpData.totalCollateralDeposited) - Number(startPeriodEmpData.totalCollateralDeposited)
+      ).toString();
+      this.periodTotalCollateralWithdrawn = (
+        Number(endPeriodEmpData.totalCollateralWithdrawn) - Number(startPeriodEmpData.totalCollateralWithdrawn)
+      ).toString();
+      this.periodTotalSyntheticTokensBurned = (
+        Number(endPeriodEmpData.totalSyntheticTokensBurned) - Number(startPeriodEmpData.totalSyntheticTokensBurned)
+      ).toString();
+      this.periodTotalSyntheticTokensCreated = (
+        Number(endPeriodEmpData.totalSyntheticTokensCreated) - Number(startPeriodEmpData.totalSyntheticTokensCreated)
+      ).toString();
+    }
+
+    if (startPrevPeriodEmpData) {
+      this.prevPeriodTotalCollateralDeposited = (
+        Number(startPeriodEmpData.totalCollateralDeposited) - Number(startPrevPeriodEmpData.totalCollateralDeposited)
+      ).toString();
+      this.prevPeriodTotalCollateralWithdrawn = (
+        Number(startPeriodEmpData.totalCollateralWithdrawn) - Number(startPrevPeriodEmpData.totalCollateralWithdrawn)
+      ).toString();
+      this.prevPeriodTotalSyntheticTokensBurned = (
+        Number(startPeriodEmpData.totalSyntheticTokensBurned) -
+        Number(startPrevPeriodEmpData.totalSyntheticTokensBurned)
+      ).toString();
+      this.prevPeriodTotalSyntheticTokensCreated = (
+        Number(startPeriodEmpData.totalSyntheticTokensCreated) -
+        Number(startPrevPeriodEmpData.totalSyntheticTokensCreated)
+      ).toString();
+    }
 
     // EMP Contract stats.
     this.totalPositionCollateral = await this.empContract.methods.totalPositionCollateral().call();
@@ -581,25 +590,33 @@ class GlobalSummaryReporter {
 
     // - Cumulative collateral deposited into contract
     allSponsorStatsTable["collateral deposited"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralDeposited)),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralDeposited)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.periodTotalCollateralDeposited)).sub(
-          this.toBN(this.toWei(this.prevPeriodTotalCollateralDeposited))
-        )
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralDeposited))
     };
+    if (this.periodTotalCollateralDeposited && this.prevPeriodTotalCollateralDeposited) {
+      allSponsorStatsTable["collateral deposited"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralDeposited)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.periodTotalCollateralDeposited)).sub(
+            this.toBN(this.toWei(this.prevPeriodTotalCollateralDeposited))
+          )
+        )
+      };
+    }
 
     // - Cumulative collateral withdrawn from contract
     allSponsorStatsTable["collateral withdrawn"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralWithdrawn)),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralWithdrawn)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.periodTotalCollateralWithdrawn)).sub(
-          this.toBN(this.toWei(this.prevPeriodTotalCollateralWithdrawn))
-        )
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalCollateralWithdrawn))
     };
+    if (this.periodTotalCollateralWithdrawn && this.prevPeriodTotalCollateralWithdrawn) {
+      allSponsorStatsTable["collateral withdrawn"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralWithdrawn)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.periodTotalCollateralWithdrawn)).sub(
+            this.toBN(this.toWei(this.prevPeriodTotalCollateralWithdrawn))
+          )
+        )
+      };
+    }
 
     // - Net collateral deposited into contract:
     let netCollateralWithdrawn = this.toBN(this.toWei(this.totalCollateralDeposited)).sub(
@@ -611,43 +628,60 @@ class GlobalSummaryReporter {
     ) {
       throw "Net collateral deposited is not equal to current total position collateral + liquidated collateral";
     }
-    this.netCollateralWithdrawnPeriod = (
-      Number(this.periodTotalCollateralDeposited) - Number(this.periodTotalCollateralWithdrawn)
-    ).toString();
-    this.netCollateralWithdrawnPrevPeriod = (
-      Number(this.prevPeriodTotalCollateralDeposited) - Number(this.prevPeriodTotalCollateralWithdrawn)
-    ).toString();
     allSponsorStatsTable["net collateral deposited"] = {
-      cumulative: this.formatDecimalString(netCollateralWithdrawn),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netCollateralWithdrawnPeriod)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.netCollateralWithdrawnPeriod)).sub(
-          this.toBN(this.toWei(this.netCollateralWithdrawnPrevPeriod))
-        )
-      )
+      cumulative: this.formatDecimalString(netCollateralWithdrawn)
     };
+    if (
+      this.periodTotalCollateralWithdrawn &&
+      this.prevPeriodTotalCollateralWithdrawn &&
+      this.periodTotalCollateralDeposited &&
+      this.prevPeriodTotalCollateralDeposited
+    ) {
+      this.netCollateralWithdrawnPeriod = (
+        Number(this.periodTotalCollateralDeposited) - Number(this.periodTotalCollateralWithdrawn)
+      ).toString();
+      this.netCollateralWithdrawnPrevPeriod = (
+        Number(this.prevPeriodTotalCollateralDeposited) - Number(this.prevPeriodTotalCollateralWithdrawn)
+      ).toString();
+      allSponsorStatsTable["net collateral deposited"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netCollateralWithdrawnPeriod)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.netCollateralWithdrawnPeriod)).sub(
+            this.toBN(this.toWei(this.netCollateralWithdrawnPrevPeriod))
+          )
+        )
+      };
+    }
 
     // - Tokens minted: tracked via Create events.
     allSponsorStatsTable["tokens minted"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensCreated)),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensCreated)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.periodTotalSyntheticTokensCreated)).sub(
-          this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensCreated))
-        )
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensCreated))
     };
+    if (this.periodTotalSyntheticTokensCreated && this.prevPeriodTotalSyntheticTokensCreated) {
+      allSponsorStatsTable["tokens minted"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensCreated)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.periodTotalSyntheticTokensCreated)).sub(
+            this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensCreated))
+          )
+        )
+      };
+    }
 
     // - Tokens burned
     allSponsorStatsTable["tokens burned"] = {
-      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensBurned)),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensBurned)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.periodTotalSyntheticTokensBurned)).sub(
-          this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensBurned))
-        )
-      )
+      cumulative: this.formatDecimalString(this.toWei(this.totalSyntheticTokensBurned))
     };
+    if (this.periodTotalSyntheticTokensBurned && this.prevPeriodTotalSyntheticTokensBurned) {
+      allSponsorStatsTable["tokens burned"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensBurned)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.periodTotalSyntheticTokensBurned)).sub(
+            this.toBN(this.toWei(this.prevPeriodTotalSyntheticTokensBurned))
+          )
+        )
+      };
+    }
 
     // - Net tokens minted:
     let netTokensMinted = this.toBN(this.toWei(this.totalSyntheticTokensCreated)).sub(
@@ -659,19 +693,28 @@ class GlobalSummaryReporter {
     ) {
       throw "Net tokens minted is not equal to current tokens outstanding";
     }
-    this.netTokensMintedPeriod = (
-      Number(this.periodTotalSyntheticTokensCreated) - Number(this.periodTotalSyntheticTokensBurned)
-    ).toString();
-    this.netTokensMintedPrevPeriod = (
-      Number(this.prevPeriodTotalSyntheticTokensCreated) - Number(this.prevPeriodTotalSyntheticTokensBurned)
-    ).toString();
     allSponsorStatsTable["net tokens minted"] = {
-      cumulative: this.formatDecimalString(netTokensMinted),
-      [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netTokensMintedPeriod)),
-      ["Δ from prev. period"]: this.formatDecimalStringWithSign(
-        this.toBN(this.toWei(this.netTokensMintedPeriod)).sub(this.toBN(this.toWei(this.netTokensMintedPrevPeriod)))
-      )
+      cumulative: this.formatDecimalString(netTokensMinted)
     };
+    if (
+      this.periodTotalSyntheticTokensCreated &&
+      this.periodTotalSyntheticTokensBurned &&
+      this.prevPeriodTotalSyntheticTokensCreated &&
+      this.prevPeriodTotalSyntheticTokensBurned
+    ) {
+      this.netTokensMintedPeriod = (
+        Number(this.periodTotalSyntheticTokensCreated) - Number(this.periodTotalSyntheticTokensBurned)
+      ).toString();
+      this.netTokensMintedPrevPeriod = (
+        Number(this.prevPeriodTotalSyntheticTokensCreated) - Number(this.prevPeriodTotalSyntheticTokensBurned)
+      ).toString();
+      allSponsorStatsTable["net tokens minted"] = {
+        [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netTokensMintedPeriod)),
+        ["Δ from prev. period"]: this.formatDecimalStringWithSign(
+          this.toBN(this.toWei(this.netTokensMintedPeriod)).sub(this.toBN(this.toWei(this.netTokensMintedPrevPeriod)))
+        )
+      };
+    }
 
     // - GCR (collateral / tokens outstanding):
     let currentCollateral = this.toBN(this.totalPositionCollateral.toString());
