@@ -6,7 +6,7 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
-const { ETH_ADDRESS } = require("./constants");
+const { ALTERNATIVE_ETH_ADDRESS } = require("./constants");
 
 class Liquidator {
   /**
@@ -42,7 +42,7 @@ class Liquidator {
     this.account = account;
 
     // Initial version will only allow ETH to be the reserve
-    this.reserveCurrencyAddress = ETH_ADDRESS;
+    this.reserveCurrencyAddress = ALTERNATIVE_ETH_ADDRESS;
 
     // OneInchClient
     this.oneInchClient = oneInchClient;
@@ -273,15 +273,12 @@ class Liquidator {
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
-      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      const notEnoughCollateral = await liquidation
-        .call({ from: this.account })
-        .then(() => false)
-        .catch(() => true);
+      const syntheticTokenBalance = await this.syntheticToken.balanceOf(this.account);
+      const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
 
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
-      if (notEnoughCollateral) {
+      if (notEnoughTokens) {
         // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([

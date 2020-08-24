@@ -6,7 +6,7 @@ const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
 const { CONSTANTS } = require("../test/common");
-const { ETH_ADDRESS } = CONSTANTS;
+const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { Liquidator } = require("../src/liquidator.js");
 const { OneInchExchange } = require("../src/OneInchExchange.js");
 
@@ -695,8 +695,8 @@ contract("Liquidator.js", function(accounts) {
       });
 
       // 1 ETH = 1 Synthetic token
-      await oneSplitMock.setPrice(syntheticToken.address, ETH_ADDRESS, "1");
-      await oneSplitMock.setPrice(ETH_ADDRESS, syntheticToken.address, "1");
+      await oneSplitMock.setPrice(syntheticToken.address, ALTERNATIVE_ETH_ADDRESS, "1");
+      await oneSplitMock.setPrice(ALTERNATIVE_ETH_ADDRESS, syntheticToken.address, "1");
 
       // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
       const amountToLiquidate = toWei("10");

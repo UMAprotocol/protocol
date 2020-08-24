@@ -1,8 +1,8 @@
 const Token = artifacts.require("ExpandedERC20");
 const OneSplit = artifacts.require("OneSplit");
-const { toBN, toWei } = web3.utils;
+const { toBN } = web3.utils;
 
-const { ONE_SPLIT_ADDRESS, ETH_ADDRESS } = require("./constants");
+const { ONE_SPLIT_ADDRESS, ALTERNATIVE_ETH_ADDRESS, GAS_LIMIT, GAS_LIMIT_BUFFER } = require("./constants");
 
 class OneInchExchange {
   /**
@@ -76,7 +76,7 @@ class OneInchExchange {
     }
 
     // Need to approve ERC20 tokens
-    if (fromToken !== ETH_ADDRESS) {
+    if (fromToken !== ALTERNATIVE_ETH_ADDRESS) {
       const erc20 = await Token.at(fromToken);
       await erc20.approve(this.oneSplitAddress, amountWei, {
         from: options.from,
@@ -110,7 +110,7 @@ class OneInchExchange {
     }
 
     // Swap
-    const swapF = await this.oneSplitContract.methods.swap(
+    const swapPartialFunc = await this.oneSplitContract.methods.swap(
       fromToken,
       toToken,
       amountWei,
@@ -118,16 +118,17 @@ class OneInchExchange {
       distribution,
       this.oneInchFlags
     );
-    const swapFOptions = { ...options, gasPrice, gas: 8000000, value: fromToken === ETH_ADDRESS ? amountWei : 0 };
+    const swapFOptions = {
+      ...options,
+      gasPrice,
+      gas: 8000000,
+      value: fromToken === ALTERNATIVE_ETH_ADDRESS ? amountWei : 0
+    };
 
-    // Gas estimation
-    const GAS_LIMIT_BUFFER = 1.25;
-    const GAS_LIMIT = 8000000;
-
-    const gasEstimation = await swapF.estimateGas(swapFOptions);
+    const gasEstimation = await swapPartialFunc.estimateGas(swapFOptions);
     const gas = Math.min(Math.floor(gasEstimation * GAS_LIMIT_BUFFER), GAS_LIMIT);
 
-    const tx = await swapF.send({ ...swapFOptions, gas });
+    const tx = await swapPartialFunc.send({ ...swapFOptions, gas });
 
     this.logger.debug({
       at: "OneInchExchange",
