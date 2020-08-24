@@ -4,7 +4,6 @@
 const { LiquidationStatesEnum } = require("@umaprotocol/common");
 const Promise = require("bluebird");
 
-
 class ExpiringMultiPartyClient {
   /**
    * @notice Constructs new ExpiringMultiPartyClient.
