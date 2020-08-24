@@ -157,8 +157,9 @@ contract("Liquidator.js", function(accounts) {
       spyLogger,
       oneInch,
       empClient,
-      mockOracle,
       gasEstimator,
+      mockOracle,
+      syntheticToken,
       priceFeedMock,
       accounts[0],
       empProps,
@@ -773,8 +774,8 @@ contract("Liquidator.js", function(accounts) {
       assert.equal(spy.callCount, 5);
       assert.equal(spyLogLevel(spy, 4), "error");
       assert.isTrue(spyLogIncludes(spy, 4, "Failed to liquidate position"));
-      assert.equal(spyLogLevel(spy, 3), "error");
-      assert.isTrue(spyLogIncludes(spy, 3, "Failed to swap reserve currency"));
+      assert.equal(spyLogLevel(spy, 3), "warn");
+      assert.isTrue(spyLogIncludes(spy, 3, "exchange return amount too low"));
       assert.equal(spyLogLevel(spy, 2), "info");
       assert.isTrue(spyLogIncludes(spy, 2, "convert reserve currency"));
       assert.equal(spyLogLevel(spy, 1), "info");
@@ -815,8 +816,9 @@ contract("Liquidator.js", function(accounts) {
           spyLogger,
           oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -839,8 +841,9 @@ contract("Liquidator.js", function(accounts) {
           spyLogger,
           oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -861,8 +864,9 @@ contract("Liquidator.js", function(accounts) {
         spyLogger,
         oneInch,
         empClient,
-        mockOracle,
         gasEstimator,
+        mockOracle,
+        syntheticToken,
         priceFeedMock,
         accounts[0],
         empProps,
@@ -918,8 +922,9 @@ contract("Liquidator.js", function(accounts) {
           spyLogger,
           oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -940,8 +945,9 @@ contract("Liquidator.js", function(accounts) {
         spyLogger,
         oneInch,
         empClient,
-        mockOracle,
         gasEstimator,
+        mockOracle,
+        syntheticToken,
         priceFeedMock,
         accounts[0],
         empProps,

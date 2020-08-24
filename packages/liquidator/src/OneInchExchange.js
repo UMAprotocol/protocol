@@ -26,12 +26,9 @@ class OneInchExchange {
     // 1 Split config
     this.oneInchFlags = 0; // Enables all exchanges
 
-    // Number of pieces source volume could be splitted
-    // (Works like granularity, higly affects gas usage.
-    // Should be called offchain, but could be called onchain
-    // if user swaps not his own funds, but this is still considered
-    // as not safe)
-    // More info: https://github.com/CryptoManiacsZone/1inchProtocol#getexpectedreturn
+    // Number of pieces source volume could be splitted (Works like granularity, higly affects gas usage.
+    // Should be called offchain, but could be called onchain if user swaps not his own funds, but this is still
+    // considered as not safe). More info: https://github.com/CryptoManiacsZone/1inchProtocol#getexpectedreturn
     this.oneInchParts = 2;
   }
 
@@ -69,9 +66,6 @@ class OneInchExchange {
             gasPrice: '... }
    */
   async swap({ fromToken, toToken, minReturnAmountWei, amountWei }, options = {}) {
-    // Update gasEstimator state
-    await this.gasEstimator.update();
-
     // Current time for debugging
     const currentTime = Math.floor(Date.now() / 1000);
 
@@ -105,20 +99,35 @@ class OneInchExchange {
     });
 
     if (minReturnAmountWei && toBN(returnAmount.toString()).lt(toBN(minReturnAmountWei.toString()))) {
-      this.logger.debug({
+      this.logger.warn({
         at: "OneInchExchange",
-        message: "ReturnAmountTooLow",
+        message: "One Inch exchange return amount too low",
         currentTime,
         returnAmount,
         minReturnAmountWei
       });
-      throw new Error("OneInch return amount too low");
+      return;
     }
 
-    // TODO: Remove hardcoded gas
-    const tx = await this.oneSplitContract.methods
-      .swap(fromToken, toToken, amountWei, returnAmount, distribution, this.oneInchFlags)
-      .send({ ...options, gasPrice, gas: 8000000, value: fromToken === ETH_ADDRESS ? amountWei : 0 });
+    // Swap
+    const swapF = await this.oneSplitContract.methods.swap(
+      fromToken,
+      toToken,
+      amountWei,
+      returnAmount,
+      distribution,
+      this.oneInchFlags
+    );
+    const swapFOptions = { ...options, gasPrice, gas: 8000000, value: fromToken === ETH_ADDRESS ? amountWei : 0 };
+
+    // Gas estimation
+    const GAS_LIMIT_BUFFER = 1.25;
+    const GAS_LIMIT = 8000000;
+
+    const gasEstimation = await swapF.estimateGas(swapFOptions);
+    const gas = Math.min(Math.floor(gasEstimation * GAS_LIMIT_BUFFER), GAS_LIMIT);
+
+    const tx = await swapF.send({ ...swapFOptions, gas });
 
     this.logger.debug({
       at: "OneInchExchange",

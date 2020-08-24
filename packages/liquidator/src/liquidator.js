@@ -16,6 +16,7 @@ class Liquidator {
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} votingContract DVM to query price requests.
+   * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
@@ -29,8 +30,9 @@ class Liquidator {
     logger,
     oneInch,
     expiringMultiPartyClient,
-    votingContract,
     gasEstimator,
+    votingContract,
+    syntheticToken,
     priceFeed,
     account,
     empProps,
@@ -55,6 +57,7 @@ class Liquidator {
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
     this.votingContract = votingContract;
+    this.syntheticToken = syntheticToken;
 
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
@@ -279,18 +282,16 @@ class Liquidator {
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
       if (notEnoughCollateral) {
-        const tokenCurrency = await this.empClient.getTokenCurrency();
-
         // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
           this.oneInch.getExpectedReturn({
-            fromToken: tokenCurrency.address,
+            fromToken: this.syntheticToken.address,
             toToken: this.reserveCurrencyAddress,
             amountWei: tokensToLiquidate.toString()
           }),
           this.oneInch.getExpectedReturn({
-            fromToken: tokenCurrency.address,
+            fromToken: this.syntheticToken.address,
             toToken: this.reserveCurrencyAddress,
             amountWei: this.toWei("1", "gwei")
           })
@@ -298,7 +299,7 @@ class Liquidator {
 
         this.logger.info({
           at: "Liquidator",
-          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`
+          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address}`
         });
 
         const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);
@@ -329,7 +330,7 @@ class Liquidator {
         if (parseFloat(slippage) > 0.1) {
           this.logger.debug({
             at: "Liquidator",
-            message: `Slippage too big while converting from reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`,
+            message: `Slippage too big while converting from reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❌`,
             oneGweiReturn,
             reserveWeiNeeded,
             idealReserveWeiNeeded,
@@ -349,7 +350,7 @@ class Liquidator {
           await this.oneInch.swap(
             {
               fromToken: this.reserveCurrencyAddress,
-              toToken: tokenCurrency.address,
+              toToken: this.syntheticToken.address,
               minReturnAmountWei: tokensToLiquidate.toString(),
               amountWei: reserveWeiNeededBN
                 .mul(this.toBN(this.toWei("1.005")))
@@ -361,7 +362,7 @@ class Liquidator {
         } catch (e) {
           this.logger.error({
             at: "Liquidator",
-            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${tokenCurrency.address} ❌`,
+            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❌`,
             error: e.toString(),
             sponsor: position.sponsor,
             inputPrice: scaledPrice.toString(),
@@ -377,7 +378,6 @@ class Liquidator {
       let receipt;
       let txnConfig;
       try {
-
         // Configure tx config object
         const gasEstimation = await liquidation.estimateGas({ from: this.account });
         txnConfig = {

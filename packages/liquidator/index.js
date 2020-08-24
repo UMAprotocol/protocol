@@ -120,6 +120,7 @@ async function run(
       oneInch,
       empClient,
       voting,
+      syntheticToken,
       gasEstimator,
       priceFeed,
       accounts[0],
