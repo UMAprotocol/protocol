@@ -114,7 +114,7 @@ async function run(
       logger.info({
         at: "Disputer#index",
         message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.tx
+        collateralApprovalTx: collateralApprovalTx.transactionHash,
       });
     }
 
