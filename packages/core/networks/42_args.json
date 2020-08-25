@@ -1,0 +1,28 @@
+{
+  "Migrations": [],
+  "Finder": [],
+  "VotingToken": [],
+  "IdentifierWhitelist": [],
+  "Voting": [
+    "86400",
+    ["50000000000000000"],
+    ["500000000000000"],
+    1209600,
+    "0x8EfEd611f670602f36397aBf5b93946f30E5055a",
+    "0x22Eb3D72E9FD7A11D4F18b39a105303Fda20cdE5",
+    "0x0000000000000000000000000000000000000000"
+  ],
+  "Registry": [],
+  "FinancialContractsAdmin": [],
+  "Store": [["0"], ["0"], "0x0000000000000000000000000000000000000000"],
+  "Governor": ["0x22Eb3D72E9FD7A11D4F18b39a105303Fda20cdE5", "0", "0x0000000000000000000000000000000000000000"],
+  "DesignatedVotingFactory": ["0x22Eb3D72E9FD7A11D4F18b39a105303Fda20cdE5"],
+  "TokenFactory": [],
+  "AddressWhitelist": [],
+  "ExpiringMultiPartyLib": [],
+  "ExpiringMultiPartyCreator": [
+    "0x22Eb3D72E9FD7A11D4F18b39a105303Fda20cdE5",
+    "0xFaDc080a0863a1925415e47F9806b06a381D0a9C",
+    "0x0000000000000000000000000000000000000000"
+  ]
+}

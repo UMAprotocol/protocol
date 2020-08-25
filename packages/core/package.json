@@ -8,6 +8,7 @@
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@nomiclabs/buidler": "^1.3.8",
+    "@nomiclabs/buidler-etherscan": "^1.3.3",
     "@nomiclabs/buidler-truffle5": "^1.3.4",
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/contracts": "3.0.0",
@@ -15,8 +16,8 @@
     "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bip39": "^3.0.2",
     "coveralls": "^3.1.0",
-    "ganache-cli": "^6.7.0",
     "express": "^4.17.1",
+    "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
