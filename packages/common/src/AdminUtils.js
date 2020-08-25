@@ -44,11 +44,14 @@ function getAdminRequestId(identifierUtf8) {
 
 // Vote 1 for Yes, 0 for No. Any vote > 0 is technically a Yes, but the 1 is treated as the canonical yes.
 const translateAdminVote = voteValue => {
-  const parsedVoteValue = voteValue ? parseInt(voteValue).toString() : null
-  switch (parsedVoteValue) {
-    case "1":
+  switch (voteValue.toString()) {
+    case("1.0"):
       return "YES";
-    case "0":
+    case ("1"):
+      return "YES";
+    case ("0"):
+      return "NO";
+    case ("0.0"):
       return "NO";
     default:
       return "INVALID ADMIN VOTE";
