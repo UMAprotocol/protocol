@@ -3,7 +3,6 @@ const { MAX_UINT_VAL } = require("@umaprotocol/common");
 
 // Script to test
 const Poll = require("../index.js");
-
 // Contracts and helpers
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -88,14 +87,30 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, errorRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(spyLogger, emp.address, pollingDelay, errorRetries, errorRetriesTimeout, defaultPriceFeedConfig);
+    await Poll.run(
+      spyLogger,
+      web3,
+      emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      defaultPriceFeedConfig
+    );
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -134,6 +149,7 @@ contract("index.js", function(accounts) {
     errorRetries = 3; // set execution retries to 3 to validate.
     await Poll.run(
       spyLogger,
+      web3,
       invalidEMP.address,
       pollingDelay,
       errorRetries,

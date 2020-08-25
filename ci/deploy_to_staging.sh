@@ -26,7 +26,7 @@ gsutil cp gs://dapp-configs/staging-voter-app.yaml packages/voter-dapp/
 gsutil cp gs://dapp-configs/prod-voter-app.yaml packages/voter-dapp/
 
 # Deploy voter dapp to staging. This will immediately update the service to point traffic to this version.
-./scripts/deploy_dapp.sh voter-dapp packages/voter-dapp/staging-voter-app.yaml -q
+./scripts/deploy_dapp.sh packages/voter-dapp packages/voter-dapp/staging-voter-app.yaml -q
 
 # Upload a new prod version. --no-promote means that traffic will not be migrated to this version.
 # That will be done manually through the release process.
