@@ -87,11 +87,11 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: "1598918400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
+      expirationTimestamp: "1601503200", // 09/30/2020 @ 10:00pm (UTC)
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "yUSD Synthetic Token Expiring September 2020",
-      syntheticSymbol: "yUSD-SEP20",
+      syntheticName: "yUSD Synthetic Token Expiring 1 October 2020",
+      syntheticSymbol: "yUSD-OCT20",
       collateralRequirement: { rawValue: toWei("1.25") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
