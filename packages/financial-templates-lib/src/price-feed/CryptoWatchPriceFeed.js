@@ -45,13 +45,15 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.invertPrice = invertPrice;
 
+    this.toBN = this.web3.utils.toBN;
+
     // Use CryptoWatch's most granular option, one minute.
     this.ohlcPeriod = 60;
 
     this.convertDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
-      return parseFixed(number.toString(), decimals);
+      return this.toBN(parseFixed(number.toString(), decimals).toString());
     };
   }
 
