@@ -25,6 +25,7 @@
     "/src/**/*.js"
   ],
   "dependencies": {
+    "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
     "@truffle/hdwallet-provider": "^1.0.25",

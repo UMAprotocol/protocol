@@ -15,7 +15,7 @@ const browserSafe = {
   ...require("./src/SolidityTestUtils"),
   ...require("./src/TimeUtils"),
   ...require("./src/VotingUtils"),
-  ...require("./src/BlacklistedPriceRequests")
+  ...require("./src/PriceIdentifierUtils")
 };
 
 // Note: there are some webpack performance downsides to stripping the module this way, but for now it's more readable

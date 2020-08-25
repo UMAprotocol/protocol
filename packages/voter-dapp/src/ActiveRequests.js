@@ -44,10 +44,13 @@ import {
   getAdminRequestId,
   isAdminRequest,
   decodeTransaction,
-  translateAdminVote
+  translateAdminVote,
+  IDENTIFIER_BLACKLIST,
+  getPrecisionForIdentifier,
+  parseFixed,
+  formatFixed
 } from "@umaprotocol/common";
 import { useTableStyles } from "./Styles.js";
-import { REQUEST_BLACKLIST } from "@umaprotocol/common";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -97,9 +100,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
     if (allPendingRequests) {
       const nonBlacklistedRequests = allPendingRequests.filter(req => {
-        if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)]) return true;
+        if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)]) return true;
         else {
-          if (!REQUEST_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
+          if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
             return true;
           } else return false;
         }
@@ -115,7 +118,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         setPendingRequests(nonBlacklistedRequests);
       }
     }
-  }, [allPendingRequests, REQUEST_BLACKLIST, showSpamRequests]);
+  }, [allPendingRequests, IDENTIFIER_BLACKLIST, showSpamRequests]);
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
@@ -340,7 +343,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       if (!checkboxesChecked[index] || !editState[index]) {
         continue;
       }
-      const price = web3.utils.toWei(editState[index]);
+      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
+      const price = parseFixed(editState[index], identifierPrecision).toString();
       const salt = getRandomUnsignedInt().toString();
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
@@ -410,17 +414,21 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const eventsMap = {};
   for (const reveal of revealEvents) {
-    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(
+    const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(reveal.returnValues.identifier));
+    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatFixed(
       reveal.returnValues.price,
-      web3
+      identifierPrecision
     );
   }
 
   const hasPendingTransactions = revealStatus === "pending" || commitStatus === "pending";
   const statusDetails = voteStatuses.map((voteStatus, index) => {
+    const pendingRequest = pendingRequests[index];
+
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      currentVote = formatWei(decryptedCommits[index].price, web3);
+      const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
+      currentVote = formatFixed(decryptedCommits[index].price, identifierPrecision);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
       return {
@@ -430,7 +438,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       };
     }
     // In the REVEAL phase.
-    const pendingRequest = pendingRequests[index];
     const revealEvent = eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)];
     if (revealEvent) {
       return {
