@@ -3,8 +3,7 @@
   "version": "1.0.0-alpha.13",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@umaprotocol/common": "^1.0.0-alpha.13",
-    "cli-progress": "^3.8.2"
+    "@umaprotocol/common": "^1.0.0-alpha.13"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
@@ -16,6 +15,7 @@
     "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bip39": "^3.0.2",
     "coveralls": "^3.1.0",
+    "cli-progress": "^3.8.2",
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
