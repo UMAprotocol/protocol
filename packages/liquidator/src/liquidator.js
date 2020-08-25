@@ -6,7 +6,7 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
-const { ALTERNATIVE_ETH_ADDRESS } = require("./constants");
+const { ALTERNATIVE_ETH_ADDRESS, MAX_SLIPPAGE, INVERSE_AMOUNT_SLIPPAGE } = require("./constants");
 
 class Liquidator {
   /**
@@ -41,7 +41,7 @@ class Liquidator {
     this.logger = logger;
     this.account = account;
 
-    // Initial version will only allow ETH to be the reserve
+    // Initial OneInch version will only allow ETH to be the reserve
     this.reserveCurrencyAddress = ALTERNATIVE_ETH_ADDRESS;
 
     // OneInchClient
@@ -296,7 +296,10 @@ class Liquidator {
 
         this.logger.info({
           at: "Liquidator",
-          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address}`
+          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❗`,
+          reserveWeiNeeded,
+          oneGweiReturn,
+          tokensToLiquidate
         });
 
         const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);
@@ -324,11 +327,13 @@ class Liquidator {
         }
 
         // Don't allow slippage of more than 10%
-        if (parseFloat(slippage) > 0.1) {
+        if (parseFloat(slippage) > MAX_SLIPPAGE) {
           this.logger.debug({
             at: "Liquidator",
-            message: `Slippage too big while converting from reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❌`,
+            message: "Slippage too big ❌",
             oneGweiReturn,
+            reserveCurrencyAddress: this.reserveCurrencyAddress,
+            syntheticTokenAddress: this.syntheticToken.address,
             reserveWeiNeeded,
             idealReserveWeiNeeded,
             slippage,
@@ -350,9 +355,9 @@ class Liquidator {
               toToken: this.syntheticToken.address,
               minReturnAmountWei: tokensToLiquidate.toString(),
               amountWei: reserveWeiNeededBN
-                .mul(this.toBN(this.toWei("1.005")))
+                .mul(this.toBN(this.toWei(INVERSE_SLIPPAGE.toString())))
                 .div(oneWeiBN)
-                .toString() // Add 0.5% just in case
+                .toString()
             },
             { from: this.account }
           );
@@ -368,6 +373,7 @@ class Liquidator {
             maxLiquidationPrice: maxCollateralPerToken.toString(),
             tokensToLiquidate: tokensToLiquidate.toString()
           });
+          return;
         }
       }
 

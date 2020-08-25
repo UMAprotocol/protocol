@@ -221,8 +221,10 @@ async function Poll(callback) {
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
+      // EMP Address. Should be an Ethereum address
       empAddress: process.env.EMP_ADDRESS,
-      oneSplitAddress: ONE_SPLIT_ADDRESS || process.env.ONE_SPLIT_ADDRESS,
+      // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
+      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS || ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
