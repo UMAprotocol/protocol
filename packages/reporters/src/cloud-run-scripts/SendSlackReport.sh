@@ -9,7 +9,7 @@ fi
 
 # Run the daily reporter script and built the output string.
 echo "Generating daily report"
-reportOutput=$(npx truffle exec ../reporters/index.js --network mainnet_mnemonic)
+reportOutput=$(npx truffle exec ./packages/reporters/index.js --network mainnet_mnemonic)
 
 # The output from the node process contains single quotes. These need to be stripped out
 reportOutput="${reportOutput//\'/$' '}"
