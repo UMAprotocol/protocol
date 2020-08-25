@@ -38,7 +38,7 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
+const { Logger } = require("@umaprotocol/financial-templates-lib");
 
 app.post("/", async (req, res) => {
   try {
@@ -52,10 +52,10 @@ app.post("/", async (req, res) => {
       throw new Error("ERROR: Body missing json bucket or file parameters!");
     }
 
-    // Get the config file from the GCP bucket
+    // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
     const configObject = await _fetchConfigObject(req.body.bucket, req.body.configFile);
 
-    // Fetch the last block number this given config file queried the blockchain at.
+    // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
