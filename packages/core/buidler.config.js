@@ -98,7 +98,7 @@ task("etherscan-verification", "Verifies contract on etherscan")
     solcInput.settings.libraries = libraries;
 
     for (const { contractName, address } of deployed) {
-      if (!deployedArgs[contractName]) {
+      if (!deployedArgs[address]) {
         console.log(
           chalkPipe("orange.bold")(
             `Unable to find constructor args for ${contractName} at ${address}, skipping verification...`
@@ -108,23 +108,25 @@ task("etherscan-verification", "Verifies contract on etherscan")
       }
 
       // Get the saved constructor params
-      const constructorArguments = deployedArgs[contractName];
-
-      // Format contract name according to etherscan
-      // more info @ https://etherscan.io/apis#contracts
-      const constractPath = Object.keys(solcInput.sources).filter(x => x.includes(`/${contractName}.sol`))[0];
-      const etherscanContractName = `${constractPath}:${contractName}`;
+      const constructorArguments = deployedArgs[address];
 
       // ABI encode constructor params
       const abi = (await readArtifact(bre.config.paths.artifacts, contractName)).abi;
       const constructorAbi = abi.filter(x => x.type === "constructor")[0];
       let abiEncodedConstructorArgs = "";
       if (constructorAbi) {
+        // Using ethers here because web3.js doesn't support custom tuple construction (e.g. FixedPoint)
+        // https://github.com/ethereum/web3.js/issues/1241
         abiEncodedConstructorArgs = ethers.utils.defaultAbiCoder.encode(constructorAbi.inputs, constructorArguments);
 
         // Remove '0x'
         abiEncodedConstructorArgs = abiEncodedConstructorArgs.slice(2);
       }
+
+      // Format contract name according to etherscan
+      // more info @ https://etherscan.io/apis#contracts
+      const constractPath = Object.keys(solcInput.sources).filter(x => x.includes(`/${contractName}.sol`))[0];
+      const etherscanContractName = `${constractPath}:${contractName}`;
 
       // Request on etherscan
       // JSON format - https://etherscan.io/apis#contracts
@@ -144,7 +146,7 @@ task("etherscan-verification", "Verifies contract on etherscan")
         console.log(chalkPipe("yellow.bold")(`Attempting to verify ${contractName} at ${address}`));
         const response = await verifyContract(etherscan.url, verificationRequest);
         console.log(
-          `Submitted ${contractName} contract at ${address} for verification on etherscan. Waiting for verification result...`
+          `Submitted ${contractName} contract at ${address} for verification on etherscan (GUID: ${response.message}). Waiting for verification result...`
         );
         await getVerificationStatus(etherscan.url, response.message);
         console.log(chalkPipe("green.bold")(`Successfully verified ${contractName} at ${address} on etherscan`));

@@ -105,7 +105,7 @@ async function deploy(deployer, network, contractType, ...args) {
   await addToTdr(contractInstance, network);
 
   // Add to truffle verification registry
-  await addToTvr(contractType.contractName, args, network, contractInstance.constructor.network_id);
+  await addToTvr(contractType.address, args, network, contractInstance.constructor.network_id);
 
   // Return relevant info about the contract.
   return {
@@ -162,17 +162,17 @@ async function addToTdr(instance, network) {
 }
 
 // "Tvr" - Truffle verification registry
-async function addToTvr(name, args, network, networkId) {
+async function addToTvr(address, args, network, networkId) {
   // Adds in constructor args for contracts in the k, v store
   // e.g. Produces a networks/1_args.json
   // with the structure
-  // { "contractName": "args" }
+  // { "address": "args" }
   if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
     const tvrPath = path.join(process.cwd(), "networks", `${networkId}_args.json`);
 
     let tvrData = {};
 
-    // If file doesn't exist, then new memory
+    // If file exists, just read it
     if (fs.existsSync(tvrPath)) {
       tvrData = JSON.parse(fs.readFileSync(tvrPath));
     }
@@ -189,7 +189,7 @@ async function addToTvr(name, args, network, networkId) {
       });
 
     // Save to file
-    fs.writeFileSync(tvrPath, JSON.stringify({ ...tvrData, [name]: argsFixed }, null, 4));
+    fs.writeFileSync(tvrPath, JSON.stringify({ ...tvrData, [address]: argsFixed }, null, 4));
   }
 }
 
