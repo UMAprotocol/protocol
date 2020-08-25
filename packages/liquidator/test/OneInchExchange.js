@@ -3,10 +3,11 @@ const Token = artifacts.require("ExpandedERC20");
 
 const { toWei } = web3.utils;
 
+const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { GasEstimator, SpyTransport } = require("@umaprotocol/financial-templates-lib");
 const { OneInchExchange } = require("../src/OneInchExchange");
 
-const { oneInchSwapAndCheck, CONSTANTS } = require("./common");
+const { oneInchSwapAndCheck } = require("./common");
 
 const sinon = require("sinon");
 const winston = require("winston");
@@ -22,7 +23,6 @@ contract("OneInch", function(accounts) {
   });
 
   const gasEstimator = new GasEstimator(spyLogger);
-  const { ALTERNATIVE_ETH_ADDRESS } = CONSTANTS;
 
   let oneSplitMock;
   let oneInch;
