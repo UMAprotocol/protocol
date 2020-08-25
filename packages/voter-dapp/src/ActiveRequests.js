@@ -414,9 +414,10 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const eventsMap = {};
   for (const reveal of revealEvents) {
-    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(
+    const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(reveal.returnValues.identifier));
+    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatFixed(
       reveal.returnValues.price,
-      web3
+      identifierPrecision
     );
   }
 
