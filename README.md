@@ -63,6 +63,12 @@ However, if you'd like to build _everything_, you can use the build command:
 yarn build
 ```
 
+To remove any remnants of previous builds, you can run:
+
+```
+yarn clean
+```
+
 ### Run tests 🦾
 
 To run tests, you'll need to start ganache on port 9545:
