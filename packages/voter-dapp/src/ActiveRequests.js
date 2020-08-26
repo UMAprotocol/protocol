@@ -632,7 +632,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                         <FileCopyIcon />
                       </IconButton>
                       <br />
-                      {"-     Price: " + formatFixed(getCommittedData(commitBackupIndex)[timestamp].price, getCommittedData(commitBackupIndex)[timestamp].identifierPrecision)}
+                      {"-     Price: " +
+                        formatFixed(
+                          getCommittedData(commitBackupIndex)[timestamp].price,
+                          getCommittedData(commitBackupIndex)[timestamp].identifierPrecision
+                        )}
                       <br />
                       <br />
                     </span>
