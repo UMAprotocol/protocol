@@ -22,7 +22,7 @@
 
 Our docs site is [here](https://docs.umaproject.org). It contains tutorials, explainers, and smart contract
 documentation. If you'd like to view these docs on github instead, check out the
-[documentation folder](./documentation).
+[documentation folder in the docs repo](https://github.com/UMAprotocol/docs/tree/master/docs).
 
 ## Security and Bug Bounty 🐛
 
@@ -35,19 +35,144 @@ For information on how to initialize and interact with our smart contracts, plea
 
 ### Install dependencies 👷‍♂️
 
-You'll need the latest LTS release of nodejs and npm installed. Assuming that's done, run:
+You'll need the latest LTS release of nodejs and yarn installed. Assuming that's done, run `yarn` with no args:
 
 ```
-npm install
+yarn
+```
+
+### Prepare smart contracts 🧐
+
+Some code in the repository requires a build step to compile it. To run this build step, use the `qbuild` (quick build) command:
+
+```
+yarn qbuild
+```
+
+The above command does not include dapps because dapps take a long time to build and they have their own scripts to run locally.
+However, if you'd like to build _everything_, you can use the build command:
+
+```
+yarn build
+```
+
+### Run tests 🦾
+
+To run tests, you'll need to start ganache on port 9545:
+
+```
+yarn ganache-cli -e 1000000000 -p 9545 -l 9000000 -d
+```
+
+Note: if you're interested in what these args do:
+
+- `-e` is the amount of ETH to grant the default accounts.
+- `-p` is the port that ganache will listen on.
+- `-d` tells ganache to use a standard set of deterministic accounts on each run.
+
+Then, you can run all of the tests across the repo by running:
+
+```
+yarn test
+```
+
+However, running all of the tests across the repository takes a lot of time. To run the tests for just
+one subpackage, you can run:
+
+```
+yarn workspace <subpackage_name> test
 ```
 
 ### Running the linter 🧽
 
-To run the formatter, run:
+To run the linter in autofix mode (it will attempt to fix any errors it finds), run:
 
 ```
-npm run lint-fix
+yarn lint-fix
 ```
+
+To run the linter in the default mode, where it will print all errors and not modify code, run:
+
+```
+yarn lint
+```
+
+### Adding dependencies 👩‍👦
+
+All runtime/production dependencies should be added to the subpackage that needs them. Development dependencies
+should also generally be installed in subpackages unless they are needed by code that exists outside of any subpackage.
+
+For more details on subpackages and the monorepo, please see the next section.
+
+To add a dependency to a subpackage:
+
+```
+yarn workspace <subpackage_name> add <dependency_name>
+```
+
+Note: development dependencies are those that are not required by the code that's published to the npm registry. If you're not
+sure whether a dependency should be dev or not, just ask! To install a dev dependency in a subpackage:
+
+```
+yarn workspace <subpackage_name> add <dependency_name> --dev
+```
+
+To install a dev dependency at root:
+
+```
+yarn add <dependency_name> --dev
+```
+
+After you've installed a dependency, yarn should automatically update the `yarn.lock` file. If git doesn't notice any changes in that file,
+run `yarn` to update the lockfile.
+
+### Using yarn and lerna 🧑‍🍳
+
+This repository is a monorepo. That means that it contains many different, but related packages.
+It uses [yarn workspaces](https://classic.yarnpkg.com/en/docs/workspaces/) and [lerna](https://github.com/lerna/lerna)
+to manage these packages.
+
+Note: lerna and yarn workspaces have some overlapping functionality. This is because `lerna` predates `yarn` workspaces and
+is compatible with `yarn` alternatives that don't have workspace functions, like `npm`.
+
+`yarn` should be installed globally to use this repo. This means that you can run any yarn command by running:
+
+```
+yarn <command>
+```
+
+Once you run `yarn` during the install section above, lerna should have been installed locally. After that,
+you should be able to run lerna commands using yarn:
+
+```
+yarn lerna <command>
+```
+
+To run a yarn command in a particular sub-package, you can run the following from _anywhere in the repo_:
+
+```
+yarn workspace <subpackage_name> <script>
+```
+
+For instance, this could be used to run the build command in the `@umaprotocol/core` package:
+
+```
+yarn workspace @umaprotocol/core build
+```
+
+or to install the truffle package as a devDependency in the `@umaprotocol/liquidator` package:
+
+```
+yarn workspace @umaprotocol/liquidator add truffle --dev
+```
+
+To run a package script in _every_ package that has a script by that name, you should use `lerna`:
+
+```
+yarn lerna run <script> --stream
+```
+
+Note: the stream argument is just to force lerna to stream the output so you get realtime logs.
 
 ## Coverage 🔎
 
@@ -55,10 +180,10 @@ We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) pa
 You can find the coverage report at [coveralls](https://coveralls.io/github/UMAprotocol/protocol). Otherwise, you can generate it locally by running:
 
 ```
-./ci/coverage.sh core
+./ci/coverage.sh packages/core
 ```
 
-The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
+The full report can be viewed by opening the `packages/core/coverage/index.html` file in a browser.
 
 ## Style Guide 🕺
 

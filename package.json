@@ -12,7 +12,9 @@
     "test": "lerna run --stream --concurrency=1 test",
     "load-addresses": "yarn workspace @umaprotocol/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
-    "publish-release": "./scripts/run_release.sh"
+    "publish-release": "./scripts/run_release.sh",
+    "qbuild": "yarn lerna run build --stream --ignore '*/*dapp*'",
+    "build": "yarn lerna run build --stream"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
