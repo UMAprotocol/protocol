@@ -25,8 +25,6 @@ const websocketProvider = new Web3.providers.WebsocketProvider(nodeUrl, websocke
 
 // Use the websocketProvider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
 // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms, test, mainnet-fork. Errors if no argv.network.
-console.log("argv.network", argv.network);
-console.log("getTruffleConfig().networks", getTruffleConfig().networks);
 const walletWithWebsocketProvider = getTruffleConfig().networks[argv.network].provider(websocketProvider);
 
 // Lastly, create a web3 instance with the walletWithWebsocketProvider. This can be used to  queries the chain via the
