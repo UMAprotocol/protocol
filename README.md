@@ -84,10 +84,10 @@ yarn test
 ```
 
 However, running all of the tests across the repository takes a lot of time. To run the tests for just
-one subpackage, you can run:
+one package, you can run:
 
 ```
-yarn workspace <subpackage_name> test
+yarn workspace <package_name> test
 ```
 
 ### Running the linter 🧽
@@ -104,24 +104,30 @@ To run the linter in the default mode, where it will print all errors and not mo
 yarn lint
 ```
 
+### Packages 📦
+
+Because this repo is a monorepo, it conatains many different npm packages. More will be discussed about these packages in the
+following sections. However, the basic structure is that each pacakge is listed in the `packages/` directory. Each package has
+its own scripts and dependencies and operates (mostly) independently from the others.
+
 ### Adding dependencies 👩‍👦
 
-All runtime/production dependencies should be added to the subpackage that needs them. Development dependencies
-should also generally be installed in subpackages unless they are needed by code that exists outside of any subpackage.
+All runtime/production dependencies should be added to the package that needs them. Development dependencies
+should also generally be installed in packages unless they are needed by code that exists outside of any package.
 
-For more details on subpackages and the monorepo, please see the next section.
+For more details on packages and the monorepo, please see the next section.
 
-To add a dependency to a subpackage:
+To add a dependency to a package:
 
 ```
-yarn workspace <subpackage_name> add <dependency_name>
+yarn workspace <package_name> add <dependency_name>
 ```
 
 Note: development dependencies are those that are not required by the code that's published to the npm registry. If you're not
-sure whether a dependency should be dev or not, just ask! To install a dev dependency in a subpackage:
+sure whether a dependency should be dev or not, just ask! To install a dev dependency in a package:
 
 ```
-yarn workspace <subpackage_name> add <dependency_name> --dev
+yarn workspace <package_name> add <dependency_name> --dev
 ```
 
 To install a dev dependency at root:
@@ -132,6 +138,34 @@ yarn add <dependency_name> --dev
 
 After you've installed a dependency, yarn should automatically update the `yarn.lock` file. If git doesn't notice any changes in that file,
 run `yarn` to update the lockfile.
+
+### Depending on another package in the monorepo 🤝
+
+The standard way to pull a JS element from another package is to reference it like this:
+
+```js
+const { importedObject } = require("@umaprotocol/some-package")
+```
+
+Note: the require will resolve to the `main` file specified in the `package.json` file. If you'd like to import a different file, you
+should ensure that that file is exported in the `files` directive inside the `package.json` file. Once you're sure of that, you can
+import it using the following syntax:
+
+```js
+const { importedObject } = require("@umaprotocol/some-package/path/to/some/file")
+```
+
+Note: if this file isn't exported by the `files` directive, it will work locally, but fail when run via an npm installation.
+
+To install this dependency you're using in `@umaprotocol/my-package`, you should run the following command:
+
+```
+yarn lerna add @umaprotocol/some-package --scope @umaprotocol/my-package
+```
+
+By default, this will symlink the package in node_modules rather than attempting to pull the package via npm. This allows
+the packages to depend on the in-repo versions of one another. If you'd like to reference a particular version from npm,
+you can specify that version exactly in the `package.json` file.
 
 ### Using yarn and lerna 🧑‍🍳
 
@@ -158,7 +192,7 @@ yarn lerna <command>
 To run a yarn command in a particular sub-package, you can run the following from _anywhere in the repo_:
 
 ```
-yarn workspace <subpackage_name> <script>
+yarn workspace <package_name> <script>
 ```
 
 For instance, this could be used to run the build command in the `@umaprotocol/core` package:
