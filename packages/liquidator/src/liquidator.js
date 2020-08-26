@@ -6,7 +6,7 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
-const { ALTERNATIVE_ETH_ADDRESS, MAX_SLIPPAGE, INVERSE_AMOUNT_SLIPPAGE } = require("./constants");
+const { ALTERNATIVE_ETH_ADDRESS, MAX_SLIPPAGE, INVERSE_SLIPPAGE } = require("./constants");
 
 class Liquidator {
   /**
