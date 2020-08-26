@@ -48,7 +48,7 @@ yarn clean-packages
 yarn
 ```
 
-### Prepare smart contracts 🧐
+### Build the code 🧐
 
 Some code in the repository requires a build step to compile it. To run this build step, use the `qbuild` (quick build) command:
 
