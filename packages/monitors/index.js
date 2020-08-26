@@ -38,7 +38,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
- * @param {callback} callback At termination the callback must be called. If the process exits with an error it is fed in as a param.
+ * @return None or throws an Error.
  */
 async function run(
   logger,
@@ -51,8 +51,7 @@ async function run(
   endingBlock,
   monitorConfig,
   tokenPriceFeedConfig,
-  medianizerPriceFeedConfig,
-  callback
+  medianizerPriceFeedConfig
 ) {
   try {
     const { hexToUtf8 } = web3.utils;
