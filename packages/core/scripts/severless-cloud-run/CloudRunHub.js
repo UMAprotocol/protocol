@@ -18,8 +18,6 @@
  * curl -X POST -H 'Content-type: application/json' --data '{"bucket":"bot-configs","configFile":"global-bot-config.json"}' https://localhost:8080
  */
 
-// TODO: add integration tests between this CloudRunnerHub and CloudResponse.
-
 const express = require("express");
 const app = express();
 app.use(express.json()); // Enables json to be parsed by the express process.
@@ -49,7 +47,7 @@ app.post("/", async (req, res) => {
     });
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
-      throw new Error("ERROR: Body missing json bucket or file parameters!");
+      throw new Error("Body missing json bucket or file parameters!");
     }
 
     // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
@@ -57,6 +55,9 @@ app.post("/", async (req, res) => {
 
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
+
+    if (!configObject || !lastQueriedBlockNumber)
+      throw new error("Cloud run hub requires a config object and a last updated block number!");
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
@@ -69,7 +70,8 @@ app.post("/", async (req, res) => {
     let promiseArray = [];
     for (const botName in configObject) {
       const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      if (process.env.ENVIRONMENT == "production") {
+      // If the hub is running in production then append a cloud run execution. Else, append a json post execution.
+      if (process.env.ENVIRONMENT === "production") {
         promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
       } else {
         promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
@@ -137,18 +139,21 @@ app.post("/", async (req, res) => {
 // Fetch a `file` from a GCP `bucket`. This function uses a readStream which is converted into a buffer such that the
 // config file does not need to first be downloaded from the bucket. This will use the local service account.
 const _fetchConfigObject = async (bucket, file) => {
-  const requestPromise = new Promise((resolve, reject) => {
-    let buf = "";
-    storage
-      .bucket(bucket)
-      .file(file)
-      .createReadStream()
-      .on("data", d => (buf += d))
-      .on("end", () => resolve(buf))
-      .on("error", e => reject(e));
-  });
-
-  return JSON.parse(await requestPromise);
+  if (process.env.ENVIRONMENT == "production") {
+    const requestPromise = new Promise((resolve, reject) => {
+      let buf = "";
+      storage
+        .bucket(bucket)
+        .file(file)
+        .createReadStream()
+        .on("data", d => (buf += d))
+        .on("end", () => resolve(buf))
+        .on("error", e => reject(e));
+    });
+    return JSON.parse(await requestPromise);
+  } else {
+    return process.env.configObject;
+  }
 };
 
 // Execute a Cloud Run Post command on a given `url` with a provided json `body`. The local service account must
@@ -184,12 +189,16 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
 // Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
-  const key = datastore.key(["BlockNumberLog", configIdentifier]);
-  const [dataField] = await datastore.get(key);
+  if (process.env.ENVIRONMENT === "production") {
+    const key = datastore.key(["BlockNumberLog", configIdentifier]);
+    const [dataField] = await datastore.get(key);
 
-  // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
-  if (dataField == undefined) return await _getLatestBlockNumber();
-  return dataField.blockNumber;
+    // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
+    if (dataField == undefined) return await _getLatestBlockNumber();
+    return dataField.blockNumber;
+  } else {
+    return process.env.lastQueriedBlockNumber;
+  }
 }
 
 // Get the latest block number from `CUSTOM_NODE_URL`. Used to update the `lastSeenBlockNumber` after each run.
@@ -231,7 +240,7 @@ app.listen(port, () => {
   // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
     throw new Error(
-      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a cloud run instance and Ethereum node"
+      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a Cloud Run spoke instance and an Ethereum node"
     );
   }
 });

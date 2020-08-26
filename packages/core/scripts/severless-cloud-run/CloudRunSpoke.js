@@ -1,5 +1,5 @@
 /**
- * @notice This script enables Google Cloud Run functions to execute any arbitrary command from the UMA docker container.
+ * @notice This script enables Google Cloud Run functions to execute any arbitrary command from the UMA Docker container.
  * Cloud Run provides a privileged REST endpoint that can be called to spin up a Docker container. This endpoint is
  * expected to respond on PORT. Upon receiving a request, this script executes a child process and responds to the
  * REST query with the output of the process execution. The REST query sent to the API is expected to be a POST
@@ -14,18 +14,17 @@ const app = express();
 app.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
+const { Logger } = require("@umaprotocol/financial-templates-lib");
 
 app.post("/", async (req, res) => {
   try {
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Executing GCP Cloud Run API Call",
-      reqBody: req.body,
-      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+      reqBody: req.body
     });
     if (!req.body.cloudRunCommand) {
-      throw new Error("ERROR: Missing cloudRunCommand");
+      throw new Error("Missing cloudRunCommand in json body! At least this param is needed to run the spoke");
     }
 
     // Iterate over the provided environment variables and ensure that they are all strings. This enables json configs
@@ -43,34 +42,41 @@ app.post("/", async (req, res) => {
     }
 
     const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
+    console.log("INSIDE execResponse", execResponse);
 
     if (execResponse.error) {
       throw execResponse;
     }
     Logger.debug({
       at: "CloudRunnerResponse",
-      message: "Process exited with no error",
+      message: "Process exited without error",
       execResponse,
       childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+        ? req.body.environmentVariables.BOT_IDENTIFIER
+        : "unknown"
     });
 
-    res.status(200).send({ message: "Process exited with no error", execResponse });
-  } catch (execResponse) {
+    res.status(200).send({ message: "Process exited without error", execResponse });
+  } catch (error) {
     // If there is an error, send a debug log. We dont want to trigger a `Logger.error` here as this will be dealt with
     // one layer up in the Hub implementation.
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Process exited with error",
-      execResponse,
-      jsonBody: req.body,
-      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
+      error: typeof error === "string" ? new Error(error) : error,
+      jsonBody: req.body
     });
-    res.status(400).send({ message: "Process exited with error", execResponse });
+    res.setHeader("Content-Type", "application/json");
+    res.status(500).send({
+      message: "Process exited with error",
+      errorMessage: error.message,
+      errorStdout: error.stdout
+    });
   }
 });
 
 function _execShellCommand(cmd, inputEnv) {
-  return new Promise((resolve, reject) => {
+  return new Promise(resolve => {
     exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
       stdout = _stripExecOutput(stdout);
@@ -92,3 +98,5 @@ const port = process.env.PORT || 8080;
 app.listen(port, () => {
   console.log("Listening on port", port);
 });
+
+module.exports = app;
