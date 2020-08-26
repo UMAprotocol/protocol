@@ -278,7 +278,7 @@ class Liquidator {
 
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
-      if (notEnoughTokens) {
+      if (notEnoughTokens && this.oneInchClient !== undefined && this.oneInchClient !== null) {
         // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
