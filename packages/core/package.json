@@ -14,7 +14,6 @@
     "@sendgrid/mail": "^6.4.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bip39": "^3.0.2",
-    "chai-http": "^4.3.0",
     "coveralls": "^3.1.0",
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
