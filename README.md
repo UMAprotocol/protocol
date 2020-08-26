@@ -41,7 +41,7 @@ You'll need the latest LTS release of nodejs and yarn installed. Assuming that's
 yarn
 ```
 
-If you'd like to completely clear all packages' node_modules and reinstall all deps from scratch, run:
+If you'd like to completely clear all packages' `node_modules` and reinstall all deps from scratch, run:
 
 ```
 yarn clean-packages
@@ -163,7 +163,7 @@ To install this dependency you're using in `@umaprotocol/my-package`, you should
 yarn lerna add @umaprotocol/some-package --scope @umaprotocol/my-package
 ```
 
-By default, this will symlink the package in node_modules rather than attempting to pull the package via npm. This allows
+By default, this will symlink the package in `node_modules` rather than attempting to pull the package via npm. This allows
 the packages to depend on the in-repo versions of one another. If you'd like to reference a particular version from npm,
 you can specify that version exactly in the `package.json` file.
 
