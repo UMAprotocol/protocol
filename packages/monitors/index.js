@@ -38,7 +38,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
- * @return None or throws an Error.
+ * @param {callback} callback At termination the callback must be called. If the process exits with an error it is fed in as a param.
  */
 async function run(
   logger,
@@ -51,7 +51,8 @@ async function run(
   endingBlock,
   monitorConfig,
   tokenPriceFeedConfig,
-  medianizerPriceFeedConfig
+  medianizerPriceFeedConfig,
+  callback
 ) {
   try {
     const { hexToUtf8 } = web3.utils;
@@ -223,13 +224,8 @@ async function run(
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Monitor#index",
-      message: "Monitor polling error. Monitor crashed🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
-    process.exit(1);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 async function Poll(callback) {
@@ -314,12 +310,11 @@ async function Poll(callback) {
   } catch (error) {
     Logger.error({
       at: "Monitor#index",
-      message: "Monitor configuration error🚨",
+      message: "Monitor execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    process.exit(1);
   }
   callback();
 }

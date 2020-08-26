@@ -110,6 +110,7 @@ contract("index.js", function(accounts) {
     assert.isTrue(validResponse.res.text.includes("End of serverless execution loop - terminating process")); //error text
   });
   it("Cloud Run Spoke can correctly returns errors over http calls", async function() {
+    // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
       cloudRunCommand: "npx truffle exec packages/INVALID/index.js --network test",
       environmentVariables: {
@@ -124,11 +125,33 @@ contract("index.js", function(accounts) {
       .send(invalidPathBody)
       .set("Accept", "application/json");
 
-    console.log("invalidPathResponse", invalidPathResponse);
     assert.equal(invalidPathResponse.res.statusCode, 500); //error code
     // Expected error text from an invalid path
     assert.isTrue(invalidPathResponse.res.text.includes("no such file or directory"));
 
+    // Invalid config should error out before entering the main while loop in the bot.
+    const invalidConfigBody = {
+      cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
+      environmentVariables: {
+        POLLING_DELAY: 0,
+        // missing EMP_ADDRESS. Should error before entering main while loop.
+        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
+      }
+    };
+
+    const invalidConfigResponse = await request("http://localhost:8080")
+      .post("/")
+      .send(invalidConfigBody)
+      .set("Accept", "application/json");
+
+    assert.equal(invalidConfigResponse.res.statusCode, 500); //error code
+    // Expected error text from an invalid path
+    assert.isTrue(
+      invalidConfigResponse.res.text.includes(
+        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party"
+      )
+    );
+    // Invalid price feed config should error out before entering main while loop
     const invalidPriceFeed = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
@@ -143,11 +166,11 @@ contract("index.js", function(accounts) {
       .send(invalidPriceFeed)
       .set("Accept", "application/json");
 
-    console.log("invalidPriceFeedResponse", invalidPriceFeedResponse);
     assert.equal(invalidPriceFeedResponse.res.statusCode, 500); //error code
     // Expected error text from a null price feed
     assert.isTrue(invalidPriceFeedResponse.res.text.includes("Cannot read property 'type' of null"));
 
+    // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
@@ -162,7 +185,6 @@ contract("index.js", function(accounts) {
       .send(invalidEMPAddressBody)
       .set("Accept", "application/json");
 
-    console.log("invalidEMPAddressResponse", invalidEMPAddressResponse);
     assert.equal(invalidEMPAddressResponse.res.statusCode, 500); //error code
     // Expected error text from loading in an EMP from an invalid address
     assert.isTrue(invalidEMPAddressResponse.res.text.includes("Returned values aren't valid, did it run Out of Gas?")); //error text

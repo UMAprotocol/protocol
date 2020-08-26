@@ -63,7 +63,9 @@ app.post("/", async (req, res) => {
     Logger.debug({
       at: "CloudRunnerResponse",
       message: "Process exited with error",
-      error: typeof error === "string" ? new Error(error) : error,
+      error: typeof error === "string" ? new Error(error) : error.error,
+      errorMessage: error.message,
+      errorStdout: error.stdout,
       jsonBody: req.body
     });
     res.setHeader("Content-Type", "application/json");
