@@ -30,7 +30,7 @@ Please see [here](./documentation/developer_reference/bug_bounty.md) for details
 
 ## Developer Information and Tools 👩‍💻
 
-For information on how to initialize and interact with our smart contracts, please see the
+For detailed information on how to initialize and interact with our smart contracts, please see the
 [documentation site](https://docs.umaproject.org).
 
 ### Install dependencies 👷‍♂️
