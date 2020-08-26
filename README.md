@@ -140,6 +140,7 @@ sure whether a dependency should be dev or not, just ask! To install a dev depen
 yarn workspace <package_name> add <dependency_name> --dev
 ```
 
+Note: all root dependencies should be dev dependencies because the root package is not published to npm, so there is no "production" code.
 To install a dev dependency at root:
 
 ```
@@ -223,7 +224,7 @@ To run a package script in _every_ package that has a script by that name, you s
 yarn lerna run <script> --stream
 ```
 
-Note: the stream argument is just to force lerna to stream the output so you get realtime logs.
+Note: the stream argument is just to force lerna to stream the output so you get realtime logs, but it's not required.
 
 ### Coverage 🔎
 
