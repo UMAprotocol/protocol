@@ -32,7 +32,6 @@ import VoteData from "./containers/VoteData";
 import {
   VotePhasesEnum,
   formatDate,
-  formatWei,
   decryptMessage,
   deriveKeyPairFromSignatureMetamask,
   encryptMessage,
@@ -382,7 +381,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           ...cookies[newCommitKey],
           [encryptionTimestamp]: {
             salt,
-            price
+            price,
+            identifierPrecision
           }
         }
       );
@@ -632,7 +632,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
                         <FileCopyIcon />
                       </IconButton>
                       <br />
-                      {"-     Price: " + formatWei(getCommittedData(commitBackupIndex)[timestamp].price, web3)}
+                      {"-     Price: " +
+                        formatFixed(
+                          getCommittedData(commitBackupIndex)[timestamp].price,
+                          getCommittedData(commitBackupIndex)[timestamp].identifierPrecision
+                        )}
                       <br />
                       <br />
                     </span>
