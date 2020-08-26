@@ -41,6 +41,13 @@ You'll need the latest LTS release of nodejs and yarn installed. Assuming that's
 yarn
 ```
 
+If you'd like to completely clear all packages' node_modules and reinstall all deps from scratch, run:
+
+```
+yarn clean-packages
+yarn
+```
+
 ### Prepare smart contracts 🧐
 
 Some code in the repository requires a build step to compile it. To run this build step, use the `qbuild` (quick build) command:

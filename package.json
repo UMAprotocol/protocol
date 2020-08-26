@@ -14,7 +14,9 @@
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
     "publish-release": "./scripts/run_release.sh",
     "qbuild": "yarn lerna run build --stream --ignore '*/*dapp*'",
-    "build": "yarn lerna run build --stream"
+    "build": "yarn lerna run build --stream",
+    "clean": "yarn lerna run clean --stream",
+    "clean-packages": "yarn lerna clean --yes && rm -rf node_modules"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
