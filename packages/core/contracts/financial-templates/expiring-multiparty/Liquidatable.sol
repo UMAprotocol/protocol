@@ -404,10 +404,9 @@ contract Liquidatable is PricelessPositionManager {
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation
-            .tokensOutstanding
-            .mul(settlementPrice)
-            .mul(feeAttenuation);
+        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(settlementPrice).mul(
+            feeAttenuation
+        );
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
@@ -473,12 +472,7 @@ contract Liquidatable is PricelessPositionManager {
         // Decrease the total collateral held in liquidatable by the amount withdrawn.
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
 
-        emit LiquidationWithdrawn(
-            msg.sender,
-            amountWithdrawn.rawValue,
-            liquidation.state,
-            settlementPrice.rawValue
-        );
+        emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state, settlementPrice.rawValue);
 
         // Transfer amount withdrawn from this contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
