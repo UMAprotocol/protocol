@@ -221,7 +221,7 @@ yarn lerna run <script> --stream
 
 Note: the stream argument is just to force lerna to stream the output so you get realtime logs.
 
-## Coverage 🔎
+### Coverage 🔎
 
 We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) package to generate our coverage reports.
 You can find the coverage report at [coveralls](https://coveralls.io/github/UMAprotocol/protocol). Otherwise, you can generate it locally by running:
@@ -232,7 +232,7 @@ You can find the coverage report at [coveralls](https://coveralls.io/github/UMAp
 
 The full report can be viewed by opening the `packages/core/coverage/index.html` file in a browser.
 
-## Style Guide 🕺
+### Style Guide 🕺
 
 See [STYLE.md](STYLE.md).
 
