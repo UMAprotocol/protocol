@@ -28,6 +28,10 @@ documentation. If you'd like to view these docs on github instead, check out the
 
 Please see [here](./documentation/developer_reference/bug_bounty.md) for details on our bug bounty.
 
+## Contributing 🙌
+
+Please see our [contributing guidelines](./CONTRIBUTING.md).
+
 ## Developer Information and Tools 👩‍💻
 
 For detailed information on how to initialize and interact with our smart contracts, please see the
