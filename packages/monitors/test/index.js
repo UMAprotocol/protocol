@@ -175,8 +175,7 @@ contract("index.js", function(accounts) {
     // execution loop errors and finally liquidator polling errors.
     let reTryCounts = {
       tokenBalanceStorage: 0,
-      executionLoopErrors: 0,
-      liquidatorPollingErrors: 0
+      executionLoopErrors: 0
     };
     for (let i = 0; i < spy.callCount; i++) {
       if (spyLogIncludes(spy, i, "Token balance storage updated")) reTryCounts.tokenBalanceStorage += 1;
