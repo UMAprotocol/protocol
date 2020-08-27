@@ -10,17 +10,19 @@
  */
 
 const express = require("express");
-const app = express();
-app.use(express.json()); // Enables json to be parsed by the express process.
+const server = express();
+server.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
 const { Logger } = require("@umaprotocol/financial-templates-lib");
+let logger;
 
-app.post("/", async (req, res) => {
+server.post("/", async (req, res) => {
   try {
-    Logger.debug({
-      at: "CloudRunnerResponse",
+    logger.debug({
+      at: "CloudRunSpoke",
       message: "Executing GCP Cloud Run API Call",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
       reqBody: req.body
     });
     if (!req.body.cloudRunCommand) {
@@ -42,37 +44,36 @@ app.post("/", async (req, res) => {
     }
 
     const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
-    console.log("INSIDE execResponse", execResponse);
 
     if (execResponse.error) {
-      throw execResponse;
+      throw new Error(JSON.stringify(execResponse));
     }
-    Logger.debug({
-      at: "CloudRunnerResponse",
-      message: "Process exited without error",
-      execResponse,
-      childProcessIdentifier: req.body.environmentVariables.BOT_IDENTIFIER
-        ? req.body.environmentVariables.BOT_IDENTIFIER
-        : "unknown"
+    logger.debug({
+      at: "CloudRunSpoke",
+      message: "Process exited correctly",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      execResponse
     });
 
-    res.status(200).send({ message: "Process exited without error", execResponse });
-  } catch (error) {
-    // If there is an error, send a debug log. We dont want to trigger a `Logger.error` here as this will be dealt with
-    // one layer up in the Hub implementation.
-    Logger.debug({
-      at: "CloudRunnerResponse",
-      message: "Process exited with error",
-      error: typeof error === "string" ? new Error(error) : error.error,
-      errorMessage: error.message,
-      errorStdout: error.stdout,
-      jsonBody: req.body
+    res.status(200).send({
+      message: "Process exited without error",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      execResponse
     });
-    res.setHeader("Content-Type", "application/json");
+  } catch (error) {
+    // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
+    // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
+    logger.debug({
+      at: "CloudRunSpoke",
+      message: "Process exited with error 🚨",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      jsonBody: req.body,
+      error: typeof error === "string" ? new Error(JSON.stringify(error)) : error
+    });
     res.status(500).send({
       message: "Process exited with error",
-      errorMessage: error.message,
-      errorStdout: error.stdout
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      error: error instanceof Error ? error.message : JSON.stringify(error) // HTTP response should only contain strings in json
     });
   }
 });
@@ -96,9 +97,28 @@ function _stripExecOutput(output) {
     .replace(/\s\s+/g, " ") // Remove move tabbed chars
     .replace(/\"/g, ""); // Remove escaped quotes
 }
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  console.log("Listening on port", port);
-});
 
-module.exports = app;
+function _getChildProcessIdentifier(req) {
+  if (!req.body.environmentVariables) return null;
+  return req.body.environmentVariables.BOT_IDENTIFIER ? req.body.environmentVariables.BOT_IDENTIFIER : null;
+}
+
+// Start the server's async listening process. Enables injection of a logging instance & port for testing.
+async function Poll(injectedLogger = Logger, port = 8080) {
+  logger = injectedLogger;
+  server.listen(port, () => {
+    logger.debug({
+      at: "CloudRunSpoke",
+      message: "Cloud Run spoke initialized",
+      port
+    });
+  });
+}
+// If called directly by node, start the Poll process. If imported as a module then do nothing.
+if (require.main === module) {
+  const port = process.env.PORT;
+  Poll(Logger, port).then(() => {}); // Use the default winston logger & env port.
+}
+
+server.Poll = Poll;
+module.exports = server;

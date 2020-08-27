@@ -3,10 +3,7 @@ const { toWei, utf8ToHex } = web3.utils;
 const request = require("supertest");
 
 // Script to test
-const app = require("../../../scripts/severless-cloud-run/CloudRunSpoke");
-
-// Create a supertest instance of the server exported from the cloud run spoke
-// const req = request(server);
+const server = require("../../../scripts/severless-cloud-run/CloudRunSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -17,6 +14,11 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 
+// Custom winston transport module to monitor winston log outputs
+const winston = require("winston");
+const sinon = require("sinon");
+const { SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
@@ -26,12 +28,33 @@ contract("index.js", function(accounts) {
   let uniswap;
   let defaultUniswapPricefeedConfig;
 
+  let spy;
+  let spyLogger;
+  let testPort = 8080;
+
+  const sendRequest = body => {
+    return request(`http://localhost:${testPort}`)
+      .post("/")
+      .send(body)
+      .set("Accept", "application/json");
+  };
+
   before(async function() {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+
+    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    // Start the cloud run spoke instance with the spy logger injected.
+    await server.Poll(spyLogger, testPort);
   });
 
   beforeEach(async function() {
@@ -73,23 +96,23 @@ contract("index.js", function(accounts) {
   });
 
   it("Cloud Run Spoke rejects invalid json request bodies", async function() {
+    // empty body.
     const emptyBody = {};
-    const emptyBodyResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(emptyBody);
-
-    assert.equal(emptyBodyResponse.res.statusCode, 500); //error code
+    const emptyBodyResponse = await sendRequest(emptyBody);
+    assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(emptyBodyResponse.res.text.includes("Process exited with error"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
 
-    // body missing cloud run command
+    // body missing cloud run command.
     const invalidBody = { someRandomKey: "random input" };
-    const invalidBodyResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(invalidBody);
-    assert.equal(invalidBodyResponse.res.statusCode, 500); //error code
+    const invalidBodyResponse = await sendRequest(invalidBody);
+    assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(invalidBodyResponse.res.text.includes("Process exited with error"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
   });
   it("Cloud Run Spoke can correctly execute bot logic with valid body", async function() {
     const validBody = {
@@ -101,13 +124,12 @@ contract("index.js", function(accounts) {
       }
     };
 
-    const validResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(validBody)
-      .set("Accept", "application/json");
-
-    assert.equal(validResponse.res.statusCode, 200); //error code
-    assert.isTrue(validResponse.res.text.includes("End of serverless execution loop - terminating process")); //error text
+    const validResponse = await sendRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // error code
+    assert.isTrue(validResponse.res.text.includes("End of serverless execution loop - terminating process")); // Final text in monitor loop.
+    assert.isFalse(validResponse.res.text.includes("[error]")); // There should be no error logs in a valid execution.
+    assert.isFalse(validResponse.res.text.includes("[info]")); // There should be no info logs in a valid execution.
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited correctly"));
   });
   it("Cloud Run Spoke can correctly returns errors over http calls", async function() {
     // Invalid path should error out when trying to run an executable that does not exist
@@ -120,14 +142,12 @@ contract("index.js", function(accounts) {
       }
     };
 
-    const invalidPathResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(invalidPathBody)
-      .set("Accept", "application/json");
-
-    assert.equal(invalidPathResponse.res.statusCode, 500); //error code
+    const invalidPathResponse = await sendRequest(invalidPathBody);
+    assert.equal(invalidPathResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
-    assert.isTrue(invalidPathResponse.res.text.includes("no such file or directory"));
+    assert.isTrue(invalidPathResponse.res.text.includes("no such file or directory")); // Check the HTTP response.
+    assert.isTrue(lastSpyLogIncludes(spy, "no such file or directory")); // Check the process logger contained the error.
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
 
     // Invalid config should error out before entering the main while loop in the bot.
     const invalidConfigBody = {
@@ -139,18 +159,13 @@ contract("index.js", function(accounts) {
       }
     };
 
-    const invalidConfigResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(invalidConfigBody)
-      .set("Accept", "application/json");
-
-    assert.equal(invalidConfigResponse.res.statusCode, 500); //error code
+    const invalidConfigResponse = await sendRequest(invalidConfigBody);
+    assert.equal(invalidConfigResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
-    assert.isTrue(
-      invalidConfigResponse.res.text.includes(
-        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party"
-      )
-    );
+    assert.isTrue(invalidConfigResponse.res.text.includes("Bad environment variables! Specify an `EMP_ADDRESS`"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Bad environment variables! Specify an `EMP_ADDRESS`")); // Check the process logger contained the error.
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
+
     // Invalid price feed config should error out before entering main while loop
     const invalidPriceFeed = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
@@ -161,14 +176,12 @@ contract("index.js", function(accounts) {
       }
     };
 
-    const invalidPriceFeedResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(invalidPriceFeed)
-      .set("Accept", "application/json");
-
-    assert.equal(invalidPriceFeedResponse.res.statusCode, 500); //error code
+    const invalidPriceFeedResponse = await sendRequest(invalidPriceFeed);
+    assert.equal(invalidPriceFeedResponse.res.statusCode, 500); // error code
     // Expected error text from a null price feed
     assert.isTrue(invalidPriceFeedResponse.res.text.includes("Cannot read property 'type' of null"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Cannot read property 'type' of null")); // Check the process logger contained the error.
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
 
     // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {
@@ -180,13 +193,11 @@ contract("index.js", function(accounts) {
       }
     };
 
-    const invalidEMPAddressResponse = await request("http://localhost:8080")
-      .post("/")
-      .send(invalidEMPAddressBody)
-      .set("Accept", "application/json");
-
-    assert.equal(invalidEMPAddressResponse.res.statusCode, 500); //error code
+    const invalidEMPAddressResponse = await sendRequest(invalidEMPAddressBody);
+    assert.equal(invalidEMPAddressResponse.res.statusCode, 500); // error code
     // Expected error text from loading in an EMP from an invalid address
-    assert.isTrue(invalidEMPAddressResponse.res.text.includes("Returned values aren't valid, did it run Out of Gas?")); //error text
+    assert.isTrue(invalidEMPAddressResponse.res.text.includes("Returned values aren't valid, did it run Out of Gas?")); // error text
+    assert.isTrue(lastSpyLogIncludes(spy, "Returned values aren't valid, did it run Out of Gas?")); // Check the process logger contained the error.
+    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
 });
