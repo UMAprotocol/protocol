@@ -12,7 +12,11 @@ class OneInchExchange {
    * @param {Object} param.gasEstimator - GasEstimator instance
    * @param {string} param.oneSplitAddress - Address of the One Split
    * */
-  constructor({ web3, gasEstimator, logger, oneSplitAddress = ONE_SPLIT_ADDRESS }) {
+  constructor({ web3, gasEstimator, logger, oneSplitAddress }) {
+    if (!oneSplitAddress) {
+      throw new Error("Missing oneSplitAddress in OneInchEcchange constructor!");
+    }
+
     this.logger = logger;
     this.gasEstimator = gasEstimator;
     this.oneSplitAddress = oneSplitAddress;

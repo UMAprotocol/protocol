@@ -278,7 +278,7 @@ class Liquidator {
 
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
-      if (notEnoughTokens && this.oneInchClient !== undefined && this.oneInchClient !== null) {
+      if (notEnoughTokens && this.oneInchClient) {
         // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
@@ -419,11 +419,25 @@ class Liquidator {
           delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
         });
       } catch (error) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Failed to liquidate position🚨",
-          error
-        });
+        if (!this.oneInchClient) {
+          this.logger.error({
+            message:
+              "Failed to liquidate position: not enough synthetic (or large enough approval) to initiate liquidation❌",
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString(),
+            error
+          });
+        } else {
+          this.logger.error({
+            at: "Liquidator",
+            message: "Failed to liquidate position🚨",
+            error
+          });
+        }
         continue;
       }
 

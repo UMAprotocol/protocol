@@ -109,15 +109,20 @@ async function run(
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
-    const oneInch = new OneInchExchange({
-      web3,
-      gasEstimator,
-      logger,
-      oneSplitAddress
-    });
+
+    let oneInchClient = null;
+    if (oneSplitAddress) {
+      oneInchClient = new OneInchExchange({
+        web3,
+        gasEstimator,
+        logger,
+        oneSplitAddress
+      });
+    }
+
     const liquidator = new Liquidator(
       logger,
-      oneInch,
+      oneInchClient,
       empClient,
       gasEstimator,
       voting,
@@ -224,7 +229,7 @@ async function Poll(callback) {
       // EMP Address. Should be an Ethereum address
       empAddress: process.env.EMP_ADDRESS,
       // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
-      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS || ONE_SPLIT_ADDRESS,
+      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
