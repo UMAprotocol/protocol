@@ -139,34 +139,38 @@ contract("index.js", function(accounts) {
     };
 
     errorRetries = 3; // set execution retries to 3 to validate.
-    await Poll.run(
-      spyLogger,
-      web3,
-      emp.address,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      defaultPriceFeedConfig
-    );
+
+    let errorThrown = false;
+    try {
+      await Poll.run(
+        spyLogger,
+        web3,
+        emp.address,
+        pollingDelay,
+        errorRetries,
+        errorRetriesTimeout,
+        defaultPriceFeedConfig
+      );
+    } catch (error) {
+      errorThrown = true;
+    }
 
     // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.
     let reTryCounts = {
       empStateUpdates: 0,
       checkingForLiquidatable: 0,
-      executionLoopErrors: 0,
-      liquidatorPollingErrors: 0
+      executionLoopErrors: 0
     };
     for (let i = 0; i < spy.callCount; i++) {
       if (spyLogIncludes(spy, i, "Expiring multi party state updated")) reTryCounts.empStateUpdates += 1;
       if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
       if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
-      if (spyLogIncludes(spy, i, "Liquidator polling error")) reTryCounts.liquidatorPollingErrors += 1;
     }
 
     assert.equal(reTryCounts.empStateUpdates, 4); // Initial loop and each 3 re-try should update the EMP state. Expect 4 logs.
     assert.equal(reTryCounts.checkingForLiquidatable, 4); // Initial loop and 3 re-try should check for liquidable positions. Expect 4 logs.
     assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
-    assert.equal(reTryCounts.liquidatorPollingErrors, 1); // The final error should occur once when re-tries are all spent. Expect 1 log.
+    assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
   });
 });

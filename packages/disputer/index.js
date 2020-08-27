@@ -155,12 +155,8 @@ async function run(
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Disputer#index",
-      message: "Disputer polling error🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 
@@ -210,12 +206,11 @@ async function Poll(callback) {
   } catch (error) {
     Logger.error({
       at: "Disputer#index",
-      message: "Disputer configuration error🚨",
+      message: "Disputer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }
