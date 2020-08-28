@@ -14,7 +14,7 @@ const server = express();
 server.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger } = require("@umaprotocol/financial-templates-lib");
+const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
 let logger;
 
 server.post("/", async (req, res) => {
@@ -56,6 +56,7 @@ server.post("/", async (req, res) => {
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
+    await waitForLogger(logger);
 
     res.status(200).send({
       message: "Process exited without error",
@@ -72,6 +73,8 @@ server.post("/", async (req, res) => {
       jsonBody: req.body,
       error: typeof error === "string" ? new Error(JSON.stringify(error)) : error
     });
+    await waitForLogger(logger);
+
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
