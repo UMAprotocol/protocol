@@ -31,6 +31,8 @@ contract OneSplitMock is OneSplit {
         uint256 parts,
         uint256 flags // See constants in IOneSplit.sol
     ) public override view returns (uint256 returnAmount, uint256[] memory distribution) {
+        returnAmount = prices[keccak256(abi.encodePacked(fromToken, destToken))] * amount;
+
         return (returnAmount, distribution);
     }
 

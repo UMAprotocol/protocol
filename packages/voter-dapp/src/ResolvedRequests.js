@@ -19,7 +19,15 @@ import {
 } from "@material-ui/core";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate, translateAdminVote, isAdminRequest, MAX_UINT_VAL, REQUEST_BLACKLIST } from "@umaprotocol/common";
+import {
+  formatDate,
+  translateAdminVote,
+  isAdminRequest,
+  MAX_UINT_VAL,
+  IDENTIFIER_BLACKLIST,
+  getPrecisionForIdentifier,
+  formatFixed
+} from "@umaprotocol/common";
 
 import VoteData from "./containers/VoteData";
 
@@ -79,9 +87,9 @@ function ResolvedRequests({ votingAccount }) {
 
     if (allResolvedEvents) {
       const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
-        if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
+        if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
-          if (!REQUEST_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
+          if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
             return true;
           } else return false;
         }
@@ -97,7 +105,7 @@ function ResolvedRequests({ votingAccount }) {
         setResolvedEvents(nonBlacklistedRequests);
       }
     }
-  }, [allResolvedEvents, REQUEST_BLACKLIST, showSpamRequests]);
+  }, [allResolvedEvents, IDENTIFIER_BLACKLIST, showSpamRequests]);
 
   const revealedVoteEvents =
     useCacheEvents(
@@ -228,8 +236,10 @@ function ResolvedRequests({ votingAccount }) {
                 event.returnValues.time === resolutionData.time
             );
 
-            const userVote = revealEvent ? fromWei(revealEvent.returnValues.price) : "No Vote";
-            const correctVote = fromWei(resolutionData.price);
+            const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(resolutionData.identifier));
+
+            const userVote = revealEvent ? formatFixed(revealEvent.returnValues.price, identifierPrecision) : "No Vote";
+            const correctVote = formatFixed(resolutionData.price, identifierPrecision);
 
             const isAdminVote = isAdminRequest(hexToUtf8(resolutionData.identifier));
 

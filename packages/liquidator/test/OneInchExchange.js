@@ -3,10 +3,11 @@ const Token = artifacts.require("ExpandedERC20");
 
 const { toWei } = web3.utils;
 
+const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { GasEstimator, SpyTransport } = require("@umaprotocol/financial-templates-lib");
 const { OneInchExchange } = require("../src/OneInchExchange");
 
-const { oneInchSwapAndCheck, CONSTANTS } = require("./common");
+const { oneInchSwapAndCheck } = require("./common");
 
 const sinon = require("sinon");
 const winston = require("winston");
@@ -22,7 +23,6 @@ contract("OneInch", function(accounts) {
   });
 
   const gasEstimator = new GasEstimator(spyLogger);
-  const { ETH_ADDRESS } = CONSTANTS;
 
   let oneSplitMock;
   let oneInch;
@@ -52,9 +52,9 @@ contract("OneInch", function(accounts) {
 
     // Set prices
     // 1 <-> 1
-    await oneSplitMock.setPrice(ETH_ADDRESS, token1.address, "1");
+    await oneSplitMock.setPrice(ALTERNATIVE_ETH_ADDRESS, token1.address, "1");
     await oneSplitMock.setPrice(token1.address, token2.address, "1");
-    await oneSplitMock.setPrice(token2.address, ETH_ADDRESS, "1");
+    await oneSplitMock.setPrice(token2.address, ALTERNATIVE_ETH_ADDRESS, "1");
 
     // Apply partial function
     swapAndCheck = oneInchSwapAndCheck(oneInch);
@@ -62,7 +62,7 @@ contract("OneInch", function(accounts) {
 
   it("Swap ETH -> TOKEN 1", async function() {
     await swapAndCheck({
-      fromToken: ETH_ADDRESS,
+      fromToken: ALTERNATIVE_ETH_ADDRESS,
       toToken: token1.address,
       amountWei: toWei("1"),
       userAddress: user
@@ -81,7 +81,7 @@ contract("OneInch", function(accounts) {
   it("Swap TOKEN 2 -> ETH", async function() {
     await swapAndCheck({
       fromToken: token2.address,
-      toToken: ETH_ADDRESS,
+      toToken: ALTERNATIVE_ETH_ADDRESS,
       amountWei: toWei("1"),
       userAddress: user
     });

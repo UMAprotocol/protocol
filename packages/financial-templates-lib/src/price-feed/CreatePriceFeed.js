@@ -33,7 +33,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       networker,
       getTime,
       config.minTimeBetweenUpdates,
-      config.invertPrice // Not checked in config because this parameter just defaults to false.
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.decimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];

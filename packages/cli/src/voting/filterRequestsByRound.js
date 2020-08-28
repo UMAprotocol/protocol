@@ -1,4 +1,4 @@
-const { VotePhasesEnum, getLatestEvent, REQUEST_BLACKLIST } = require("@umaprotocol/common");
+const { VotePhasesEnum, getLatestEvent, IDENTIFIER_BLACKLIST } = require("@umaprotocol/common");
 
 /**
  * First, sorts all price requests chronologically from earliest to latest.
@@ -19,9 +19,9 @@ const filterRequestsByRound = async (web3, allPendingRequests, account, roundId,
   if (allPendingRequests.length > 0) {
     // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
     const pendingRequests = allPendingRequests.filter(req => {
-      if (!REQUEST_BLACKLIST[web3.utils.hexToUtf8(req.identifier)]) return true;
+      if (!IDENTIFIER_BLACKLIST[web3.utils.hexToUtf8(req.identifier)]) return true;
       else {
-        if (!REQUEST_BLACKLIST[web3.utils.hexToUtf8(req.identifier)].includes(req.time)) return true;
+        if (!IDENTIFIER_BLACKLIST[web3.utils.hexToUtf8(req.identifier)].includes(req.time)) return true;
         else return false;
       }
     });

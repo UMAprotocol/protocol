@@ -7,7 +7,9 @@ const {
   batchCommitVotes,
   getVotingRoles,
   VotePhasesEnum,
-  PublicNetworks
+  PublicNetworks,
+  getPrecisionForIdentifier,
+  formatFixed
 } = require("@umaprotocol/common");
 
 /**
@@ -76,8 +78,17 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
 
         // Construct commitment
         try {
+          const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(selections[i].identifier));
           newCommitments.push(
-            await constructCommitment(selections[i], roundId, web3, priceInput["price"], signingAddress, votingAccount)
+            await constructCommitment(
+              selections[i],
+              roundId,
+              web3,
+              priceInput["price"],
+              signingAddress,
+              votingAccount,
+              identifierPrecision
+            )
           );
         } catch (err) {
           failures.push({ request: selections[i], err });
@@ -110,9 +121,10 @@ const commitVotes = async (web3, oracle, designatedVoting) => {
         );
         console.group(style.success("Receipts:"));
         successes.forEach(committedVote => {
+          const identifierPrecision = getPrecisionForIdentifier(web3.utils.hexToUtf8(committedVote.identifier));
           console.log(`- transaction: ${style.link(`${url}${committedVote.txnHash}`)}`);
           console.log(`    - salt: ${committedVote.salt}`);
-          console.log(`    - voted price: ${web3.utils.fromWei(committedVote.price)}`);
+          console.log(`    - voted price: ${formatFixed(committedVote.price, identifierPrecision)}`);
         });
         console.groupEnd();
       } else {
