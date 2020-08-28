@@ -2,9 +2,7 @@ const Token = artifacts.require("ExpandedERC20");
 
 const { toBN } = web3.utils;
 
-const CONSTANTS = {
-  ETH_ADDRESS: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
-};
+const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 
 const assertBNGreaterThan = (a, b) => {
   const [aBN, bBN] = [a, b].map(x => toBN(x));
@@ -12,7 +10,7 @@ const assertBNGreaterThan = (a, b) => {
 };
 
 const getBalance = async ({ tokenAddress, userAddress }) => {
-  if (tokenAddress === CONSTANTS.ETH_ADDRESS) {
+  if (tokenAddress === ALTERNATIVE_ETH_ADDRESS) {
     return web3.eth.getBalance(userAddress);
   }
 
@@ -29,7 +27,7 @@ const oneInchSwapAndCheck = oneInch => async ({ fromToken, toToken, amountWei, u
       toToken,
       amountWei
     },
-    fromToken === CONSTANTS.ETH_ADDRESS ? { value: amountWei, from: userAddress } : { from: userAddress }
+    fromToken === ALTERNATIVE_ETH_ADDRESS ? { value: amountWei, from: userAddress } : { from: userAddress }
   );
 
   const finalBal = await getBalance({ tokenAddress: toToken, userAddress });
@@ -40,6 +38,5 @@ const oneInchSwapAndCheck = oneInch => async ({ fromToken, toToken, amountWei, u
 module.exports = {
   assertBNGreaterThan,
   getBalance,
-  oneInchSwapAndCheck,
-  CONSTANTS
+  oneInchSwapAndCheck
 };

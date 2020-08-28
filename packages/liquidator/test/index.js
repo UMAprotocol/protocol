@@ -11,6 +11,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const OneSplitMock = artifacts.require("OneSplitMock");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -20,6 +21,7 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@umaprotocol/fina
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
+  let oneSplitMock;
   let collateralToken;
   let syntheticToken;
   let emp;
@@ -40,6 +42,8 @@ contract("index.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+
+    oneSplitMock = await OneSplitMock.new();
   });
 
   beforeEach(async function() {
@@ -92,6 +96,7 @@ contract("index.js", function(accounts) {
       spyLogger,
       web3,
       emp.address,
+      oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -109,6 +114,7 @@ contract("index.js", function(accounts) {
       spyLogger,
       web3,
       emp.address,
+      oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -143,6 +149,7 @@ contract("index.js", function(accounts) {
       spyLogger,
       web3,
       emp.address,
+      oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
