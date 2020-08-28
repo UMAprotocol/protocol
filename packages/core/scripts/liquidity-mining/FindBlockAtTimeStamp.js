@@ -15,8 +15,8 @@ const FindBlockAtTimeStamp = async callback => {
     }
     console.log(`⏱  Finding closest block to ${argv.dateTime}. Note time is interpreted as UTC time.`);
     // Get the closet block number to the dateTime provided.
-    const blockNumber = await _findBlockNumberAtTimestamp(web3, dateTime.unix());
-    console.log(`👀 Closest block to ${argv.dateTime} is ${blockNumber}`);
+    const { blockNumber, error } = await _findBlockNumberAtTimestamp(web3, dateTime.unix());
+    console.log(`👀 Closest block to ${argv.dateTime} is ${blockNumber} with an error of ${error} seconds`);
   } catch (err) {
     console.error(err);
     callback(err);
@@ -81,5 +81,5 @@ async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax
       }
     }
   }
-  return block.number;
+  return { blockNumber: block.number, error: Math.abs(targetTimestamp - block.timestamp) };
 }

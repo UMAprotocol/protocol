@@ -4,7 +4,7 @@
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: truffle exec ./scripts/liquidity-mining/calculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
+// Example usage from core: truffle exec ./scripts/liquidity-mining/calculateBalancerLPProviders.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
 
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
@@ -15,35 +15,41 @@ const path = require("path");
 const Web3 = require("web3");
 const poolAbi = require("../../build/contracts/ERC20.json");
 
+const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards");
+
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
-const { toWei, toBN, fromWei } = web3.utils;
+const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["poolAddress", "fromDate", "toDate"],
-  integer: ["week", "umaPerWeek", "blocksPerSnapshot"]
+  string: ["pool1Address", "pool2Address", "fromDate", "toDate"],
+  integer: ["rollNum", "umaPerWeek", "blocksPerSnapshot"]
 });
 
-async function calculateBalancerLPRewards(
+async function calculateBalancerLPProviders(
   fromBlock,
   toBlock,
-  poolAddress,
-  week,
+  pool1Address,
+  pool2Address,
+  rollNum,
   umaPerWeek = 25000,
-  blocksPerSnapshot = 256
+  blocksPerSnapshot = 1028
 ) {
+  console.log(fromBlock, toBlock, pool1Address, pool2Address, rollNum, umaPerWeek, blocksPerSnapshot);
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
-  if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week) {
-    throw "Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock & week.";
+  if (!isAddress(pool1Address) || !isAddress(pool2Address) || !fromBlock || !toBlock || !rollNum) {
+    throw "Missing or invalid parameter! Provide pool1Address, pool2Address, fromBlock, toBlock & rollNum.";
   }
 
-  console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
+  console.log("🔥Starting $UMA Balancer liquidity provider Rolling script🔥");
+  console.log(`🎢Calculating for roll # ${rollNum}. Rolling between pool ${pool1Address} and ${pool2Address}`);
 
   // Calculate the total number of snapshots over the interval.
   const snapshotsToTake = Math.ceil((toBlock - fromBlock) / blocksPerSnapshot);
 
   // $UMA per snapshot is the total $UMA for a given week, divided by the number of snapshots to take.
+  console.log("umaPerWeek.toString()", umaPerWeek.toString());
   const umaPerSnapshot = toBN(toWei(umaPerWeek.toString())).div(toBN(snapshotsToTake.toString()));
   console.log(
     `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
@@ -55,16 +61,21 @@ async function calculateBalancerLPRewards(
 
   console.log("⚖️  Finding balancer pool info...");
   // Get the information on a particular pool. This includes a mapping of all previous token holders (shareholders).
-  const poolInfo = await _fetchBalancerPoolInfo(poolAddress);
+  const pool1Info = await _fetchBalancerPoolInfo(pool1Address);
+  const pool2Info = await _fetchBalancerPoolInfo(pool2Address);
 
   // Extract the addresses of all historic shareholders.
-  const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
+  const pool1ShareHolders = pool1Info.shares.flatMap(a => a.userAddress.id);
+  const pool2ShareHolders = pool2Info.shares.flatMap(a => a.userAddress.id);
+  const shareHolders = [...pool1ShareHolders, ...pool2ShareHolders];
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
-  let bPool = new web3.eth.Contract(poolAbi.abi, poolAddress);
+  let bPool1 = new web3.eth.Contract(poolAbi.abi, pool1Address);
+  let bPool2 = new web3.eth.Contract(poolAbi.abi, pool1Address);
 
   const shareHolderPayout = await _calculatePayoutsBetweenBlocks(
-    bPool,
+    bPool1,
+    bPool2,
     shareHolders,
     fromBlock,
     toBlock,
@@ -74,13 +85,23 @@ async function calculateBalancerLPRewards(
   );
 
   console.log("🎉 Finished calculating payouts!");
-  _saveShareHolderPayout(shareHolderPayout, week, fromBlock, toBlock, poolAddress, blocksPerSnapshot, umaPerWeek);
+  _saveShareHolderPayout(
+    shareHolderPayout,
+    rollNum,
+    fromBlock,
+    toBlock,
+    pool1Address,
+    pool2Address,
+    umaPerWeek,
+    blocksPerSnapshot
+  );
 }
 
 // Calculate the payout to a list of `shareHolders` between `fromBlock` and `toBlock`. Split the block window up into
 // chunks of `blockPerSnapshot` and at each chunk assign `umaPerSnapshot` at a prorata basis.
 async function _calculatePayoutsBetweenBlocks(
-  bPool,
+  bPool1,
+  bPool2,
   shareHolders,
   fromBlock,
   toBlock,
@@ -104,7 +125,7 @@ async function _calculatePayoutsBetweenBlocks(
   );
   progressBar.start(Math.ceil((toBlock - fromBlock) / blockPerSnapshot), 0);
   for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blockPerSnapshot) {
-    shareHolderPayout = await _updatePayoutAtBlock(bPool, currentBlock, shareHolderPayout, umaPerSnapshot);
+    shareHolderPayout = await _updatePayoutAtBlock(bPool1, bPool2, currentBlock, shareHolderPayout, umaPerSnapshot);
     progressBar.update(Math.ceil((currentBlock - fromBlock) / blockPerSnapshot) + 1);
   }
   progressBar.stop();
@@ -114,22 +135,29 @@ async function _calculatePayoutsBetweenBlocks(
 
 // For a given `blockNumber` (snapshot in time), return an updated `shareHolderPayout` object that has appended
 // payouts for a given `bPool` at a rate of `umaPerSnapshot`.
-async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPerSnapshot) {
+async function _updatePayoutAtBlock(bPool1, bPool2, blockNumber, shareHolderPayout, umaPerSnapshot) {
   // Get the total supply of Balancer Pool tokens at the given snapshot's block number.
-  const bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
+  const bptSupplyAtSnapshot = toBN(await bPool1.methods.totalSupply().call(undefined, blockNumber)).add(
+    toBN(await bPool2.methods.totalSupply().call(undefined, blockNumber))
+  );
 
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
-  let promiseArray = [];
+  let promiseArraybPool1 = [];
+  let promiseArraybPool2 = [];
   for (shareHolder of Object.keys(shareHolderPayout)) {
-    promiseArray.push(bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber));
+    promiseArraybPool1.push(bPool1.methods.balanceOf(shareHolder).call(undefined, blockNumber));
+    promiseArraybPool2.push(bPool2.methods.balanceOf(shareHolder).call(undefined, blockNumber));
   }
-  const balanceResults = await Promise.allSettled(promiseArray);
+  const balanceResultsbPool1 = await Promise.allSettled(promiseArraybPool1);
+  const balanceResultsbPool2 = await Promise.allSettled(promiseArraybPool2);
   // For each balance result, calculate their associated payment addition.
-  balanceResults.forEach(function(balanceResult, index) {
+  Object.entries(shareHolderPayout).forEach(function(shareHolder, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResult.value === "0") return;
+    if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value) return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
-    const shareHolderBalanceAtSnapshot = toBN(balanceResult.value);
+    const shareHolderBalanceAtSnapshot = toBN(balanceResultsbPool1[index].value).add(
+      toBN(balanceResultsbPool2[index].value)
+    );
     const shareHolderFractionAtSnapshot = toBN(toWei("1"))
       .mul(shareHolderBalanceAtSnapshot)
       .div(bptSupplyAtSnapshot);
@@ -138,7 +166,7 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
     const shareHolderPayoutAtSnapshot = shareHolderFractionAtSnapshot.mul(toBN(umaPerSnapshot)).div(toBN(toWei("1")));
 
     // Lastly, update the payout object for the given shareholder. This is their previous payout value + their new payout.
-    const shareHolderAddress = Object.keys(shareHolderPayout)[index];
+    const shareHolderAddress = shareHolder[0];
     shareHolderPayout[shareHolderAddress] = shareHolderPayout[shareHolderAddress].add(shareHolderPayoutAtSnapshot);
   });
   return shareHolderPayout;
@@ -147,12 +175,13 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
 // Generate a json file containing the shareholder output address and associated $UMA token payouts.
 function _saveShareHolderPayout(
   shareHolderPayout,
-  week,
+  rollNum,
   fromBlock,
   toBlock,
-  poolAddress,
-  blocksPerSnapshot,
-  umaPerWeek
+  pool1Address,
+  pool2Address,
+  umaPerWeek,
+  blocksPerSnapshot
 ) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
   for (shareHolder of Object.keys(shareHolderPayout)) {
@@ -161,53 +190,33 @@ function _saveShareHolderPayout(
   }
 
   // Format output and save to file.
-  const outputObject = { week, fromBlock, toBlock, poolAddress, blocksPerSnapshot, umaPerWeek, shareHolderPayout };
-  const savePath = `${path.resolve(__dirname)}/weekly-payouts/Week_${week}_Mining_Rewards.json`;
+  const outputObject = {
+    rollNum,
+    fromBlock,
+    toBlock,
+    pool1Address,
+    pool2Address,
+    umaPerWeek,
+    blocksPerSnapshot,
+    shareHolderPayout
+  };
+  const savePath = `${path.resolve(
+    __dirname
+  )}/weekly-payouts/contract-rolls/Expiring_Roll_${rollNum}_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(outputObject));
   console.log("🗄  File successfully written to", savePath);
-}
-
-// Find information about a given balancer `poolAddress` `shares` returns a list of all historic LP providers.
-async function _fetchBalancerPoolInfo(poolAddress) {
-  const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
-  const query = `
-        {
-          pools (where: {id: "${poolAddress.toLowerCase()}"}) {
-            id
-            shares (first: 1000) {
-              userAddress {
-                id
-              }
-            }
-          }
-        }
-    `;
-
-  const response = await fetch(SUBGRAPH_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query })
-  });
-
-  const data = (await response.json()).data;
-  if (data.pools.length > 0) {
-    return data.pools[0];
-  }
-  throw "⚠️  Balancer pool provided is not indexed in the subgraph or bad address!";
 }
 
 // Function with a callback structured like this is required to enable `truffle exec` to run this script.
 async function Main(callback) {
   try {
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
-    await calculateBalancerLPRewards(
+    await calculateBalancerLPProviders(
       argv.fromBlock,
       argv.toBlock,
-      argv.poolAddress,
-      argv.week,
+      argv.pool1Address,
+      argv.pool2Address,
+      argv.rollNum,
       argv.umaPerWeek,
       argv.blocksPerSnapshot
     );
@@ -218,9 +227,8 @@ async function Main(callback) {
 }
 
 // Each function is then appended onto to the `Main` which is exported. This enables
-Main.calculateBalancerLPRewards = calculateBalancerLPRewards;
+Main.calculateBalancerLPProviders = calculateBalancerLPProviders;
 Main._calculatePayoutsBetweenBlocks = _calculatePayoutsBetweenBlocks;
 Main._updatePayoutAtBlock = _updatePayoutAtBlock;
 Main._saveShareHolderPayout = _saveShareHolderPayout;
-Main._fetchBalancerPoolInfo = _fetchBalancerPoolInfo;
 module.exports = Main;
