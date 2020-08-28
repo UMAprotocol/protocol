@@ -1,21 +1,19 @@
-// This script calculates $UMA liquidity mining rewards for Balancer Pools. This is done with the following process:
+// This script calculates $UMA liquidity mining rewards during a roll between two Balancer Pools. This is done with the following process:
 // -> Define the starting and ending blockheight of each week.
 // -> Define snapshot blocks (eg every 64 blocks ~15min). For each snapshot block, calculate the proportional liquidity
-// provided by for each liquidity provider to the single whitelisted pool.
+// provided by for each liquidity provider over the two pools (sum of liquidity provided).
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: truffle exec ./scripts/liquidity-mining/calculateBalancerLPProviders.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
-
+// Example usage from core: yarn truffle exec ./scripts/liquidity-mining/CalculateRollBalancerLPRewards.js --network mainnet_mnemonic --pool1Address="0x58EF3abAB72c6C365D4D0D8a70039752b9f32Bc9" --pool2Address="0xd2f574637898526fcddfb3d487cc73c957fa0268" --fromBlock=10719753 --toBlock=10739266 --rollNum=1
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
+
 const cliProgress = require("cli-progress");
 require("dotenv").config();
-const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 const Web3 = require("web3");
 const poolAbi = require("../../build/contracts/ERC20.json");
-
-const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards");
+const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
@@ -26,7 +24,7 @@ const argv = require("minimist")(process.argv.slice(), {
   integer: ["rollNum", "umaPerWeek", "blocksPerSnapshot"]
 });
 
-async function calculateBalancerLPProviders(
+async function calculateRollBalancerLPProviders(
   fromBlock,
   toBlock,
   pool1Address,
@@ -35,7 +33,6 @@ async function calculateBalancerLPProviders(
   umaPerWeek = 25000,
   blocksPerSnapshot = 1028
 ) {
-  console.log(fromBlock, toBlock, pool1Address, pool2Address, rollNum, umaPerWeek, blocksPerSnapshot);
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
   if (!isAddress(pool1Address) || !isAddress(pool2Address) || !fromBlock || !toBlock || !rollNum) {
@@ -153,7 +150,7 @@ async function _updatePayoutAtBlock(bPool1, bPool2, blockNumber, shareHolderPayo
   // For each balance result, calculate their associated payment addition.
   Object.entries(shareHolderPayout).forEach(function(shareHolder, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value) return;
+    if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
     const shareHolderBalanceAtSnapshot = toBN(balanceResultsbPool1[index].value).add(
       toBN(balanceResultsbPool2[index].value)
@@ -211,7 +208,7 @@ function _saveShareHolderPayout(
 async function Main(callback) {
   try {
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
-    await calculateBalancerLPProviders(
+    await calculateRollBalancerLPProviders(
       argv.fromBlock,
       argv.toBlock,
       argv.pool1Address,
@@ -226,8 +223,8 @@ async function Main(callback) {
   callback();
 }
 
-// Each function is then appended onto to the `Main` which is exported. This enables
-Main.calculateBalancerLPProviders = calculateBalancerLPProviders;
+// Each function is then appended onto to the `Main` which is exported. This enables testing.
+Main.calculateRollBalancerLPProviders = calculateRollBalancerLPProviders;
 Main._calculatePayoutsBetweenBlocks = _calculatePayoutsBetweenBlocks;
 Main._updatePayoutAtBlock = _updatePayoutAtBlock;
 Main._saveShareHolderPayout = _saveShareHolderPayout;
