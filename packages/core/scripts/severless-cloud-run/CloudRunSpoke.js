@@ -46,6 +46,8 @@ server.post("/", async (req, res) => {
     const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
+      // execResponse is a json object with keys error, stdout and stderr. Convert this into a string for consistent
+      // handling between the winston logger and the http response.
       throw new Error(JSON.stringify(execResponse));
     }
     logger.debug({
