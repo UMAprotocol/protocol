@@ -2,8 +2,10 @@ const { toWei, toBN } = web3.utils;
 
 const { advanceBlockAndSetTime } = require("@umaprotocol/common");
 
-const Main = require("../CalculateBalancerLPProviders"); // Script to test.
-const { _updatePayoutAtBlock } = require("../CalculateBalancerLPProviders");
+const {
+  _updatePayoutAtBlock,
+  _calculatePayoutsBetweenBlocks
+} = require("../../../scripts/liquidity-mining/CalculateBalancerLPRewards");
 
 const Token = artifacts.require("ExpandedERC20"); // Helper contracts to mock balancer pool.
 
@@ -174,7 +176,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         shareHolders,
         startingBlockNumber,
@@ -225,7 +227,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         shareHolders,
         startingBlockNumber,
@@ -329,7 +331,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Check that we have traversed the right number of blocks.
       assert.equal(endingBlockNumber, startingBlockNumber + totalBlocksToAdvance);
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         [...shareHolders, newShareHolder],
         startingBlockNumber,

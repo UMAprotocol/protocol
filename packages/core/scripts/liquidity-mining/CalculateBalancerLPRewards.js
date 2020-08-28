@@ -21,15 +21,18 @@ const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
   string: ["poolAddress", "fromDate", "toDate"],
-  integer: ["week"],
+  integer: ["week", "umaPerWeek", "blocksPerSnapshot"],
   boolean: ["test"]
 });
 
-const UMA_PER_WEEK = toBN(toWei("25000"));
-const BLOCKS_PER_SNAPSHOT = 256;
-let umaPerSnapshot;
-
-async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, week) {
+async function calculateBalancerLPProviders(
+  fromBlock,
+  toBlock,
+  poolAddress,
+  week,
+  umaPerWeek = 25000,
+  blocksPerSnapshot = 256
+) {
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
   if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week) {
@@ -39,10 +42,10 @@ async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, wee
   console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
 
   // Calculate the total number of snapshots over the interval.
-  const snapshotsToTake = Math.ceil((toBlock - fromBlock) / BLOCKS_PER_SNAPSHOT);
+  const snapshotsToTake = Math.ceil((toBlock - fromBlock) / blocksPerSnapshot);
 
   // $UMA per snapshot is the total $UMA for a given week, divided by the number of snapshots to take.
-  umaPerSnapshot = UMA_PER_WEEK.div(toBN(snapshotsToTake.toString()));
+  umaPerSnapshot = toBN(toWei(umaPerWeek.toString())).div(toBN(snapshotsToTake.toString()));
   console.log(
     `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
       umaPerSnapshot
@@ -66,7 +69,7 @@ async function calculateBalancerLPProviders(fromBlock, toBlock, poolAddress, wee
     shareHolders,
     fromBlock,
     toBlock,
-    BLOCKS_PER_SNAPSHOT,
+    blocksPerSnapshot,
     umaPerSnapshot,
     snapshotsToTake
   );
@@ -192,8 +195,15 @@ async function _fetchBalancerPoolInfo(poolAddress) {
 // Function with a callback structured like this is required to enable `truffle exec` to run this script.
 async function Main(callback) {
   try {
-    // Pull the parameters from process arguments. specifying them like this lets tests add its own.
-    await calculateBalancerLPProviders(argv.fromBlock, argv.toBlock, argv.poolAddress, argv.week);
+    // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
+    await calculateBalancerLPProviders(
+      argv.fromBlock,
+      argv.toBlock,
+      argv.poolAddress,
+      argv.week,
+      argv.umaPerWeek,
+      argv.blocksPerSnapshot
+    );
   } catch (error) {
     console.error(error);
   }
