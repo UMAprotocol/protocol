@@ -154,7 +154,11 @@ task("etherscan-verification", "Verifies contract on etherscan")
         if (e.toString().includes("already verified")) {
           console.log(chalkPipe("orange.bold")(`${contractName} at ${address} is already verified on etherscan`));
         } else {
-          console.log(chalkPipe("red.bold")(`Failed to verified ${contractName} at ${address} on etherscan`));
+          console.log(
+            chalkPipe("red.bold")(
+              `Failed to verified ${contractName} at ${address} on etherscan, reason: ${e.toString()}`
+            )
+          );
         }
       }
     }
