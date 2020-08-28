@@ -1,5 +1,6 @@
 const { toWei, utf8ToHex } = web3.utils;
 
+// Enables testing http requests to an express server.
 const request = require("supertest");
 
 // Script to test
@@ -19,7 +20,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
-contract("index.js", function(accounts) {
+contract("CloudRunSpoke.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
