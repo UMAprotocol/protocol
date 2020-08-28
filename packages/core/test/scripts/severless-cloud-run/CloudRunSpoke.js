@@ -119,6 +119,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const validBody = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
+        CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
         TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
@@ -137,6 +138,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidPathBody = {
       cloudRunCommand: "npx truffle exec packages/INVALID/index.js --network test",
       environmentVariables: {
+        CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
         TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
@@ -154,6 +156,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidConfigBody = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
+        CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         // missing EMP_ADDRESS. Should error before entering main while loop.
         TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
@@ -171,6 +174,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidPriceFeed = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
+        CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
         TOKEN_PRICE_FEED_CONFIG: null // invalid config that should generate an error
@@ -188,6 +192,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidEMPAddressBody = {
       cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
       environmentVariables: {
+        CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: "0x0000000000000000000000000000000000000000", // Invalid address that should generate an error
         TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
