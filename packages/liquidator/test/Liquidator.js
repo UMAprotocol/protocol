@@ -5,7 +5,10 @@ const { LiquidationStatesEnum, PostWithdrawLiquidationRewardsStatusTranslations 
 const { interfaceName } = require("@umaprotocol/common");
 
 // Script to test
+const { CONSTANTS } = require("../test/common");
+const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { Liquidator } = require("../src/liquidator.js");
+const { OneInchExchange } = require("../src/OneInchExchange.js");
 
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {
@@ -19,6 +22,7 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Contracts and helpers
+const OneSplitMock = artifacts.require("OneSplitMock");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -34,7 +38,10 @@ contract("Liquidator.js", function(accounts) {
   const sponsor2 = accounts[2];
   const sponsor3 = accounts[3];
   const contractCreator = accounts[4];
+  const liquidityProvider = accounts[5];
 
+  let tokenFactory;
+  let finder;
   let collateralToken;
   let emp;
   let liquidator;
@@ -45,6 +52,10 @@ contract("Liquidator.js", function(accounts) {
   let spy;
   let spyLogger;
 
+  let oneSplitMock;
+  let oneInch;
+  let gasEstimator;
+  let empClient;
   let liquidatorConfig;
   let liquidatorOverridePrice;
   let empProps;
@@ -59,6 +70,7 @@ contract("Liquidator.js", function(accounts) {
     await collateralToken.mint(sponsor1, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(sponsor2, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(sponsor3, toWei("100000"), { from: contractCreator });
+    await collateralToken.mint(liquidityProvider, toWei("1000000"), { from: contractCreator });
 
     // seed the liquidatorBot's wallet so it can perform liquidations.
     await collateralToken.mint(liquidatorBot, toWei("100000"), { from: contractCreator });
@@ -102,12 +114,14 @@ contract("Liquidator.js", function(accounts) {
     await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor2 });
     await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor3 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
+    await collateralToken.approve(emp.address, toWei("100000000"), { from: liquidityProvider });
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidityProvider });
 
     spy = sinon.spy();
 
@@ -119,6 +133,10 @@ contract("Liquidator.js", function(accounts) {
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
     gasEstimator = new GasEstimator(spyLogger);
+
+    // OneInch instances
+    oneSplitMock = await OneSplitMock.new();
+    oneInch = null;
 
     // Create a new instance of the price feed mock.
     priceFeedMock = new PriceFeedMock();
@@ -137,9 +155,11 @@ contract("Liquidator.js", function(accounts) {
 
     liquidator = new Liquidator(
       spyLogger,
+      oneInch,
       empClient,
-      mockOracle,
       gasEstimator,
+      mockOracle,
+      syntheticToken,
       priceFeedMock,
       accounts[0],
       empProps,
@@ -474,7 +494,7 @@ contract("Liquidator.js", function(accounts) {
     // No transaction should be sent, so this should not throw.
     await liquidator.update();
     await liquidator.liquidatePositions();
-    assert.equal(spy.callCount, 1); // 1 new error level event due to the failed liquidation.
+    assert.equal(spy.callCount, 1); // 1 new event due to the failed liquidation
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
@@ -664,6 +684,84 @@ contract("Liquidator.js", function(accounts) {
       assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
     });
 
+    it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
+      const oneInchClient = new OneInchExchange({
+        web3,
+        logger: spyLogger,
+        gasEstimator,
+        oneSplitAddress: oneSplitMock.address
+      });
+      liquidator.oneInchClient = oneInchClient;
+
+      // One Split liquidity provider
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
+      await syntheticToken.transfer(oneSplitMock.address, toWei("100"), { from: liquidityProvider });
+      await web3.eth.sendTransaction({
+        from: liquidityProvider,
+        to: oneSplitMock.address,
+        value: toWei("10")
+      });
+
+      // 1 ETH = 1 Synthetic token
+      await oneSplitMock.setPrice(syntheticToken.address, ALTERNATIVE_ETH_ADDRESS, "1");
+      await oneSplitMock.setPrice(ALTERNATIVE_ETH_ADDRESS, syntheticToken.address, "1");
+
+      // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
+      const amountToLiquidate = toWei("10");
+
+      await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+      await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
+
+      // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
+      priceFeedMock.setCurrentPrice(toBN(toWei("25")));
+
+      await liquidator.update();
+      await liquidator.liquidatePositions(amountToLiquidate);
+
+      // 4 info + 2 error level events should be sent at the conclusion of the 3 successful (incl. 1 partial) and 2 not enough synthetic.
+      assert.equal(spy.callCount, 8);
+      assert.equal(spyLogLevel(spy, 7), "info");
+      assert.isTrue(spyLogIncludes(spy, 7, "has been liquidated"));
+      assert.equal(spyLogLevel(spy, 6), "info");
+      assert.isTrue(spyLogIncludes(spy, 6, "convert reserve currency"));
+      assert.equal(spyLogLevel(spy, 5), "info");
+      assert.isTrue(spyLogIncludes(spy, 5, "has been liquidated"));
+      assert.equal(spyLogLevel(spy, 4), "info");
+      assert.isTrue(spyLogIncludes(spy, 4, "convert reserve currency"));
+      assert.equal(spyLogLevel(spy, 3), "error");
+      assert.isTrue(spyLogIncludes(spy, 3, "not enough synthetic"));
+      assert.equal(spyLogLevel(spy, 2), "info");
+      assert.isTrue(spyLogIncludes(spy, 2, "has been liquidated"));
+      assert.equal(spyLogLevel(spy, 1), "info");
+      assert.isTrue(spyLogIncludes(spy, 1, "convert reserve currency"));
+      assert.equal(spyLogLevel(spy, 0), "error");
+      assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
+
+      // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
+      let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+      assert.equal(liquidationObject.sponsor, sponsor1);
+      assert.equal(liquidationObject.liquidator, liquidatorBot);
+      assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+      assert.equal(liquidationObject.liquidatedCollateral, toWei("58.3333333333333333"));
+      assert.equal(liquidationObject.tokensOutstanding, toWei("7"));
+
+      // Sponsor2 should be in a liquidation state as the bot will have attempted to re-buy
+      // synthetic tokens in the open market
+
+      // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+      assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("41.6666666666666667"));
+      let positionObject = await emp.positions(sponsor1);
+      assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+
+      // Since sponsor 1 had a partial liquidation, liquidator bot is out of tokens
+      // Only when liquidator bot is out of tokens will attempt to swap tokens
+      // on OneInch and then liquidate the positions.
+      // So sponsor 2 should have 0 tokens
+      assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("0"));
+      positionObject = await emp.positions(sponsor2);
+      assert.equal(positionObject.tokensOutstanding.rawValue, toWei("0"));
+    });
+
     it("amount-to-liquidate > min-sponsor-tokens, but bot balance is too low to send liquidation", async function() {
       // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
       const amountToLiquidate = toWei("10");
@@ -679,7 +777,9 @@ contract("Liquidator.js", function(accounts) {
 
       await liquidator.update();
       await liquidator.liquidatePositions(amountToLiquidate);
-      assert.equal(spy.callCount, 3); // 1 info + 2 error level events should be sent at the conclusion of the 1 successful (incl. 1 partial) and 1 failed liquidations.
+
+      // 5 error + 2 info
+      assert.equal(spy.callCount, 3);
       assert.equal(spyLogLevel(spy, 2), "error");
       assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
       assert.equal(spyLogLevel(spy, 1), "info");
@@ -718,9 +818,11 @@ contract("Liquidator.js", function(accounts) {
         };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -741,9 +843,11 @@ contract("Liquidator.js", function(accounts) {
         };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -762,9 +866,11 @@ contract("Liquidator.js", function(accounts) {
       };
       liquidator = new Liquidator(
         spyLogger,
+        oneInch,
         empClient,
-        mockOracle,
         gasEstimator,
+        mockOracle,
+        syntheticToken,
         priceFeedMock,
         accounts[0],
         empProps,
@@ -818,9 +924,11 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
         liquidator = new Liquidator(
           spyLogger,
+          oneInch,
           empClient,
-          mockOracle,
           gasEstimator,
+          mockOracle,
+          syntheticToken,
           priceFeedMock,
           accounts[0],
           empProps,
@@ -839,9 +947,11 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
       liquidator = new Liquidator(
         spyLogger,
+        oneInch,
         empClient,
-        mockOracle,
         gasEstimator,
+        mockOracle,
+        syntheticToken,
         priceFeedMock,
         accounts[0],
         empProps,

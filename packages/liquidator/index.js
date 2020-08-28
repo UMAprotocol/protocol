@@ -4,6 +4,8 @@ const retry = require("async-retry");
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 // JS libs
+const { ONE_SPLIT_ADDRESS } = require("./src/constants");
+const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
@@ -22,7 +24,8 @@ const { getAbi, getAddress } = require("@umaprotocol/core/index");
  * @notice Continuously attempts to liquidate positions in the EMP contract.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
- * @param {String} address Contract address of the EMP.
+ * @param {String} empAddress Contract address of the EMP.
+ * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -36,6 +39,7 @@ async function run(
   logger,
   web3,
   empAddress,
+  oneSplitAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -105,11 +109,24 @@ async function run(
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
+
+    let oneInchClient = null;
+    if (oneSplitAddress) {
+      oneInchClient = new OneInchExchange({
+        web3,
+        gasEstimator,
+        logger,
+        oneSplitAddress
+      });
+    }
+
     const liquidator = new Liquidator(
       logger,
+      oneInchClient,
       empClient,
-      voting,
       gasEstimator,
+      voting,
+      syntheticToken,
       priceFeed,
       accounts[0],
       empProps,
@@ -205,7 +222,10 @@ async function Poll(callback) {
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
+      // EMP Address. Should be an Ethereum address
       empAddress: process.env.EMP_ADDRESS,
+      // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
+      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.

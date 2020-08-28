@@ -6,24 +6,46 @@ const {
   revertWrapper
 } = require("@umaprotocol/common");
 
+const { ALTERNATIVE_ETH_ADDRESS, MAX_SLIPPAGE, INVERSE_SLIPPAGE } = require("./constants");
+
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
+   * @param {Object} oneInch Module used to swap tokens on oneInch.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} votingContract DVM to query price requests.
+   * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    * @param {Object} empProps Contains EMP contract state data. Expected:
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor(
+    logger,
+    oneInchClient,
+    expiringMultiPartyClient,
+    gasEstimator,
+    votingContract,
+    syntheticToken,
+    priceFeed,
+    account,
+    empProps,
+    config
+  ) {
     this.logger = logger;
     this.account = account;
+
+    // Initial OneInch version will only allow ETH to be the reserve
+    this.reserveCurrencyAddress = ALTERNATIVE_ETH_ADDRESS;
+
+    // OneInchClient
+    this.oneInchClient = oneInchClient;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
@@ -35,6 +57,7 @@ class Liquidator {
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
     this.votingContract = votingContract;
+    this.syntheticToken = syntheticToken;
 
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
@@ -250,52 +273,122 @@ class Liquidator {
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
-      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let liquidationResult, gasEstimation;
-      try {
-        [liquidationResult, gasEstimation] = await Promise.all([
-          liquidation.call({ from: this.account }),
-          liquidation.estimateGas({ from: this.account })
-        ]);
-      } catch (error) {
-        this.logger.error({
-          at: "Liquidator",
-          message:
-            "Failed to liquidate position: not enough synthetic (or large enough approval) to initiate liquidation❌",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          error
-        });
-        continue;
-      }
+      const syntheticTokenBalance = await this.syntheticToken.balanceOf(this.account);
+      const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
 
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-      this.logger.debug({
-        at: "Liquidator",
-        message: "Liquidating position",
-        position: position,
-        inputPrice: scaledPrice.toString(),
-        minLiquidationPrice: this.liquidationMinPrice,
-        maxLiquidationPrice: maxCollateralPerToken.toString(),
-        tokensToLiquidate: tokensToLiquidate.toString(),
-        liquidationId: liquidationResult.liquidationId,
-        tokensLiquidated: liquidationResult.tokensLiquidated.rawValue.toString(),
-        finalFeeBond: liquidationResult.finalFeeBond.rawValue.toString(),
-        txnConfig
-      });
+      // Attempts to swap some capital for tokenCurrency
+      // Mutates the state of notEnoughCollateral in this logical scope
+      if (notEnoughTokens && this.oneInchClient) {
+        // reserveWeiNeeded is a reverse calculation to estimate how much capital we need to get the amount of `tokensToLiquidate`
+        // While oneGweiReturn is used as a reference point to determine slippage
+        const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
+          this.oneInchClient.getExpectedReturn({
+            fromToken: this.syntheticToken.address,
+            toToken: this.reserveCurrencyAddress,
+            amountWei: tokensToLiquidate.toString()
+          }),
+          this.oneInchClient.getExpectedReturn({
+            fromToken: this.syntheticToken.address,
+            toToken: this.reserveCurrencyAddress,
+            amountWei: this.toWei("1", "gwei")
+          })
+        ]);
+
+        this.logger.info({
+          at: "Liquidator",
+          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❗`,
+          reserveWeiNeeded,
+          oneGweiReturn,
+          tokensToLiquidate
+        });
+
+        const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);
+        const oneGweiReturnBN = this.toBN(oneGweiReturn);
+        const tokensToLiquidateBN = this.toBN(tokensToLiquidate);
+        const oneGweiBN = this.toBN(this.toWei("1", "gwei"));
+        const oneWeiBN = this.toBN(this.toWei("1"));
+
+        // Slippage = (idealReserveWeiNeeded - reserveWeiNeeded) / idealReserveWeiNeeded
+        // Where idealReserverWei = oneGweiReturn * tokensToLiquidate / 1 gwei
+        const idealReserveWeiNeededBN = oneGweiReturnBN.mul(tokensToLiquidateBN).div(oneGweiBN);
+
+        let slippage;
+        // IdealReserveWeiNeededBN is 0 if it isn't on exchanges yet
+        // Can't div by 0 so doing this
+        if (idealReserveWeiNeededBN.eq(this.toBN("0"))) {
+          slippage = "0";
+        } else {
+          slippage = this.fromWei(
+            idealReserveWeiNeededBN
+              .sub(reserveWeiNeededBN)
+              .mul(oneWeiBN)
+              .div(idealReserveWeiNeededBN)
+          );
+        }
+
+        // Don't allow slippage of more than 10%
+        if (parseFloat(slippage) > MAX_SLIPPAGE) {
+          this.logger.debug({
+            at: "Liquidator",
+            message: "Slippage too big ❌",
+            oneGweiReturn,
+            reserveCurrencyAddress: this.reserveCurrencyAddress,
+            syntheticTokenAddress: this.syntheticToken.address,
+            reserveWeiNeeded,
+            idealReserveWeiNeeded,
+            slippage,
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString()
+          });
+          continue;
+        }
+
+        // Swap tokens
+        try {
+          await this.oneInchClient.swap(
+            {
+              fromToken: this.reserveCurrencyAddress,
+              toToken: this.syntheticToken.address,
+              minReturnAmountWei: tokensToLiquidate.toString(),
+              amountWei: reserveWeiNeededBN
+                .mul(this.toBN(this.toWei(INVERSE_SLIPPAGE.toString())))
+                .div(oneWeiBN)
+                .toString()
+            },
+            { from: this.account }
+          );
+        } catch (e) {
+          this.logger.error({
+            at: "Liquidator",
+            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❌`,
+            error: e.toString(),
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString()
+          });
+          return;
+        }
+      }
 
       // Send the transaction or report failure.
       let receipt;
-
+      let txnConfig;
       try {
+        // Configure tx config object
+        const gasEstimation = await liquidation.estimateGas({ from: this.account });
+        txnConfig = {
+          from: this.account,
+          gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        };
+
         // Make sure to keep trying with this nonce
         const nonce = await this.web3.eth.getTransactionCount(this.account);
 
@@ -306,6 +399,17 @@ class Liquidator {
         // Doubles gasPrice every iteration
         const gasPriceScalingFunction = ynatm.DOUBLES;
 
+        this.logger.debug({
+          at: "Liquidator",
+          message: "Liquidating position",
+          position: position,
+          inputPrice: scaledPrice.toString(),
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          txnConfig
+        });
+
         // Receipt without events
         receipt = await ynatm.send({
           sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
@@ -315,11 +419,25 @@ class Liquidator {
           delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
         });
       } catch (error) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Failed to liquidate position🚨",
-          error
-        });
+        if (!this.oneInchClient) {
+          this.logger.error({
+            message:
+              "Failed to liquidate position: not enough synthetic (or large enough approval) to initiate liquidation❌",
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            tokensToLiquidate: tokensToLiquidate.toString(),
+            error
+          });
+        } else {
+          this.logger.error({
+            at: "Liquidator",
+            message: "Failed to liquidate position🚨",
+            error
+          });
+        }
         continue;
       }
 
