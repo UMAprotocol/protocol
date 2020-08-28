@@ -63,8 +63,8 @@ contract("CloudRunSpoke.js", function(accounts) {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: (await Finder.deployed()).address,
+      tokenFactoryAddress: (await TokenFactory.deployed()).address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"),
       syntheticName: "ETH/BTC synthetic token",
       syntheticSymbol: "ETH/BTC",
@@ -74,7 +74,7 @@ contract("CloudRunSpoke.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: (await Timer.deployed()).address
     };
 
     // Deploy a new expiring multi party
