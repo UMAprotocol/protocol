@@ -105,7 +105,10 @@ async function deploy(deployer, network, contractType, ...args) {
   await addToTdr(contractInstance, network);
 
   // Add to truffle verification registry
-  await addToTvr(contractType.address, args, network, contractInstance.constructor.network_id);
+  if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
+    // We do the check here as otherwise getting network_id will throw an error
+    await addToTvr(contractType.address, args, network, contractInstance.constructor.network_id);
+  }
 
   // Return relevant info about the contract.
   return {
