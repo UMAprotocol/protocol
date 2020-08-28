@@ -96,7 +96,7 @@ function _stripExecOutput(output) {
   if (!output) return output;
   return output
     .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
-    .replace(/\s\s+/g, " ") // Remove move tabbed chars
+    .replace(/\s\s+/g, " ") // Remove tabbed chars
     .replace(/\"/g, ""); // Remove escaped quotes
 }
 
