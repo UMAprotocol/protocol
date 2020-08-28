@@ -136,7 +136,7 @@ contract("Liquidator.js", function(accounts) {
 
     // OneInch instances
     oneSplitMock = await OneSplitMock.new();
-    oneInch = new OneInchExchange({ web3, logger: spyLogger, gasEstimator, oneSplitAddress: oneSplitMock.address });
+    oneInch = null;
 
     // Create a new instance of the price feed mock.
     priceFeedMock = new PriceFeedMock();
@@ -494,7 +494,7 @@ contract("Liquidator.js", function(accounts) {
     // No transaction should be sent, so this should not throw.
     await liquidator.update();
     await liquidator.liquidatePositions();
-    assert.equal(spy.callCount, 3); // 3 new events due to the swap attempt and failed liquidation
+    assert.equal(spy.callCount, 1); // 1 new event due to the failed liquidation
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
@@ -509,11 +509,11 @@ contract("Liquidator.js", function(accounts) {
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.update();
     await liquidator.liquidatePositions();
-    assert.equal(spy.callCount, 4); // 1 new info level event due to the successful liquidation.
+    assert.equal(spy.callCount, 2); // 1 new info level event due to the successful liquidation.
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
-    assert.equal(spy.callCount, 4); // 1 new log level event due to the successful execution.
+    assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
   });
 
   describe("Partial liquidations", function() {
@@ -685,6 +685,14 @@ contract("Liquidator.js", function(accounts) {
     });
 
     it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
+      const oneInchClient = new OneInchExchange({
+        web3,
+        logger: spyLogger,
+        gasEstimator,
+        oneSplitAddress: oneSplitMock.address
+      });
+      liquidator.oneInchClient = oneInchClient;
+
       // One Split liquidity provider
       await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
       await syntheticToken.transfer(oneSplitMock.address, toWei("100"), { from: liquidityProvider });
@@ -771,13 +779,9 @@ contract("Liquidator.js", function(accounts) {
       await liquidator.liquidatePositions(amountToLiquidate);
 
       // 5 error + 2 info
-      assert.equal(spy.callCount, 5);
-      assert.equal(spyLogLevel(spy, 4), "error");
-      assert.isTrue(spyLogIncludes(spy, 4, "Failed to liquidate position"));
-      assert.equal(spyLogLevel(spy, 3), "warn");
-      assert.isTrue(spyLogIncludes(spy, 3, "exchange return amount too low"));
-      assert.equal(spyLogLevel(spy, 2), "info");
-      assert.isTrue(spyLogIncludes(spy, 2, "convert reserve currency"));
+      assert.equal(spy.callCount, 3);
+      assert.equal(spyLogLevel(spy, 2), "error");
+      assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
       assert.equal(spyLogLevel(spy, 1), "info");
       assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
       assert.equal(spyLogLevel(spy, 0), "error");
