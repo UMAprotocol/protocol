@@ -8,8 +8,24 @@ const assert = require("assert").strict;
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
+const ERC20 = artifacts.require("ERC20");
+
+const { parseUnits } = require("@ethersproject/units");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
+
+async function getDecimals() {
+  const collateral = await ERC20.at(argv.collateral);
+  try {
+    const decimals = (await collateral.decimals()).toString();
+    return decimals;
+  } catch (error) {
+    if (!argv.decimals) {
+      throw "Must provide --decimals if token has no decimals function.";
+    }
+    return argv.decimals;
+  }
+}
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");
@@ -18,8 +34,10 @@ async function runExport() {
     throw "Must provide --fee and --collateral";
   }
 
+  const decimals = await getDecimals();
+
   const store = await Store.deployed();
-  assert.equal((await store.computeFinalFee(argv.collateral)).rawValue, web3.utils.toWei(argv.fee));
+  assert.equal((await store.computeFinalFee(argv.collateral)).rawValue, parseUnits(argv.fee, decimals).toString());
 
   const whitelist = await AddressWhitelist.deployed();
   assert(await whitelist.isOnWhitelist(argv.collateral));

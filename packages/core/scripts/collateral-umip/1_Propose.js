@@ -7,10 +7,26 @@
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 const Governor = artifacts.require("Governor");
+const ERC20 = artifacts.require("ERC20");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
+const { parseUnits } = require("@ethersproject/units");
+
+const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "decimals"] });
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
+
+async function getDecimals() {
+  const collateral = await ERC20.at(argv.collateral);
+  try {
+    const decimals = (await collateral.decimals()).toString();
+    return decimals;
+  } catch (error) {
+    if (!argv.decimals) {
+      throw "Must provide --decimals if token has no decimals function.";
+    }
+    return argv.decimals;
+  }
+}
 
 async function runExport() {
   console.log("Running Upgrade🔥");
@@ -20,10 +36,14 @@ async function runExport() {
     throw "Must provide --fee and --collateral";
   }
 
+  const decimals = await getDecimals();
+  const convertedFeeAmount = parseUnits(argv.fee, decimals).toString();
+  console.log(`Fee in token's decimals: ${convertedFeeAmount}`);
+
   // The proposal will first add a final fee for the currency.
   const store = await Store.deployed();
   const addFinalFeeToStoreTx = store.contract.methods
-    .setFinalFee(argv.collateral, { rawValue: web3.utils.toWei(argv.fee) })
+    .setFinalFee(argv.collateral, { rawValue: convertedFeeAmount })
     .encodeABI();
   console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
 
