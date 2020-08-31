@@ -26,7 +26,7 @@ class CRMonitor {
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, expiringMultiPartyClient, priceFeed, config, empProps) {
+  constructor({ logger, expiringMultiPartyClient, priceFeed, config, empProps }) {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;

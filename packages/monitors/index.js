@@ -130,14 +130,14 @@ async function run({
       endingBlock
     );
 
-    const contractMonitor = new ContractMonitor(
+    const contractMonitor = new ContractMonitor({
       logger,
-      empEventClient,
-      medianizerPriceFeed,
-      monitorConfig,
+      expiringMultiPartyEventClient: empEventClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
       empProps,
       voting
-    );
+    });
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
@@ -148,22 +148,33 @@ async function run({
       syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, monitorConfig, empProps);
+    const balanceMonitor = new BalanceMonitor({
+      logger,
+      tokenBalanceClient,
+      config: monitorConfig,
+      empProps
+    });
 
     // 3. Collateralization Ratio monitor.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
 
-    const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
+    const crMonitor = new CRMonitor({
+      logger,
+      expiringMultiPartyClient: empClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
+      empProps
+    });
 
     // 4. Synthetic Peg Monitor.
-    const syntheticPegMonitor = new SyntheticPegMonitor(
+    const syntheticPegMonitor = new SyntheticPegMonitor({
       logger,
       web3,
-      tokenPriceFeed,
+      uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
-      monitorConfig,
+      config: monitorConfig,
       empProps
-    );
+    });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {

@@ -121,7 +121,14 @@ contract("ContractMonitor.js", function(accounts) {
       networkId: await web3.eth.net.getId()
     };
 
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, monitorConfig, empProps, mockOracle);
+    contractMonitor = new ContractMonitor({
+      logger: spyLogger,
+      expiringMultiPartyEventClient: eventClient,
+      priceFeed: priceFeedMock,
+      config: monitorConfig,
+      empProps,
+      votingContract: mockOracle
+    });
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -392,7 +399,13 @@ contract("ContractMonitor.js", function(accounts) {
     try {
       // Create an invalid config. A valid config expects two arrays of addresses.
       const invalidConfig1 = { monitoredLiquidators: liquidator, monitoredDisputers: [disputer] };
-      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, invalidConfig1, empProps);
+      contractMonitor = new ContractMonitor({
+        logger: spyLogger,
+        expiringMultiPartyEventClient: eventClient,
+        priceFeed: priceFeedMock,
+        config: invalidConfig1,
+        empProps
+      });
       errorThrown1 = false;
     } catch (err) {
       errorThrown1 = true;
@@ -403,7 +416,13 @@ contract("ContractMonitor.js", function(accounts) {
     try {
       // Create an invalid config. A valid config expects two arrays of addresses.
       const invalidConfig2 = { monitoredLiquidators: "NOT AN ADDRESS" };
-      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, invalidConfig2, empProps);
+      contractMonitor = new ContractMonitor({
+        logger: spyLogger,
+        expiringMultiPartyEventClient: eventClient,
+        priceFeed: priceFeedMock,
+        config: invalidConfig2,
+        empProps
+      });
       errorThrown2 = false;
     } catch (err) {
       errorThrown2 = true;
@@ -415,7 +434,13 @@ contract("ContractMonitor.js", function(accounts) {
     try {
       // Create an invalid config. A valid config expects two arrays of addresses.
       const emptyConfig = {};
-      contractMonitor = new ContractMonitor(spyLogger, eventClient, priceFeedMock, emptyConfig, empProps);
+      contractMonitor = new ContractMonitor({
+        logger: spyLogger,
+        expiringMultiPartyEventClient: eventClient,
+        priceFeed: priceFeedMock,
+        config: emptyConfig,
+        empProps
+      });
       await contractMonitor.checkForNewSponsors();
       await contractMonitor.checkForNewLiquidations();
       await contractMonitor.checkForNewDisputeEvents();
