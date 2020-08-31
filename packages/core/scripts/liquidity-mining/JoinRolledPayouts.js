@@ -6,17 +6,22 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_UR
 const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  integer: ["weekNum", "rollNum"]
+  integer: ["weekNum", "rollNum"],
+  string: ["tokenName"]
 });
 
-async function joinRolledPayouts(weekNum, rollNum) {
+async function joinRolledPayouts(weekNum, rollNum, tokenName) {
+  if (!weekNum || !rollNum || !tokenName) {
+    throw "Missing or invalid parameter! Provide weekNum, rollNum & tokenName";
+  }
+
   const weeklyRewardsRaw = fs.readFileSync(
-    `${path.resolve(__dirname)}/weekly-payouts/Week_${weekNum}_Mining_Rewards.json`
+    `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${weekNum}_Mining_Rewards.json`
   );
   const weeklyRewards = JSON.parse(weeklyRewardsRaw);
 
   const rollDataRaw = fs.readFileSync(
-    `${path.resolve(__dirname)}/weekly-payouts/contract-rolls/Expiring_Roll_${rollNum}_Mining_Rewards.json`
+    `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/expiring-contract-rolls/Roll_${rollNum}_Mining_Rewards.json`
   );
   const rollData = JSON.parse(rollDataRaw);
 
@@ -40,16 +45,36 @@ async function joinRolledPayouts(weekNum, rollNum) {
     else outputData.shareHolderPayout[rollShareHolderAddr] = fromWei(rollShareHolderRewards);
   });
 
+  outputData.preRollWeeklyJoinPayout = weeklyRewards.shareHolderPayout;
   console.log("outputData", outputData);
+
+  const savePath = `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${weekNum}_Mining_Rewards.json`;
+  fs.writeFileSync(savePath, JSON.stringify(outputData));
+  console.log("🗄  File successfully written to", savePath);
 }
 
+// Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
-    await joinRolledPayouts(argv.weekNum, argv.rollNum);
+    await joinRolledPayouts(argv.weekNum, argv.rollNum, argv.tokenName);
   } catch (error) {
     console.error(error);
   }
   callback();
+}
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  Main(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
 }
 
 Main.joinRolledPayouts = joinRolledPayouts;

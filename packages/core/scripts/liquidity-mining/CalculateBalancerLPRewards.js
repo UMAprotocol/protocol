@@ -20,13 +20,14 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_UR
 const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["poolAddress", "fromDate", "toDate"],
+  string: ["poolAddress", "fromBlock", "toBlock", "tokenName"],
   integer: ["week", "umaPerWeek", "blocksPerSnapshot"]
 });
 
 async function calculateBalancerLPRewards(
   fromBlock,
   toBlock,
+  tokenName,
   poolAddress,
   week,
   umaPerWeek = 25000,
@@ -34,11 +35,11 @@ async function calculateBalancerLPRewards(
 ) {
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
-  if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week) {
-    throw "Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock & week.";
+  if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week || !tokenName) {
+    throw "Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock, week & tokenName";
   }
 
-  console.log("🔥Starting $UMA Balancer liquidity provider script🔥");
+  console.log(`🔥Starting $UMA Balancer liquidity provider script for ${tokenName}🔥`);
 
   // Calculate the total number of snapshots over the interval.
   const snapshotsToTake = Math.ceil((toBlock - fromBlock) / blocksPerSnapshot);
@@ -74,7 +75,16 @@ async function calculateBalancerLPRewards(
   );
 
   console.log("🎉 Finished calculating payouts!");
-  _saveShareHolderPayout(shareHolderPayout, week, fromBlock, toBlock, poolAddress, blocksPerSnapshot, umaPerWeek);
+  _saveShareHolderPayout(
+    shareHolderPayout,
+    week,
+    fromBlock,
+    toBlock,
+    tokenName,
+    poolAddress,
+    blocksPerSnapshot,
+    umaPerWeek
+  );
 }
 
 // Calculate the payout to a list of `shareHolders` between `fromBlock` and `toBlock`. Split the block window up into
@@ -150,6 +160,7 @@ function _saveShareHolderPayout(
   week,
   fromBlock,
   toBlock,
+  tokenName,
   poolAddress,
   blocksPerSnapshot,
   umaPerWeek
@@ -162,7 +173,7 @@ function _saveShareHolderPayout(
 
   // Format output and save to file.
   const outputObject = { week, fromBlock, toBlock, poolAddress, blocksPerSnapshot, umaPerWeek, shareHolderPayout };
-  const savePath = `${path.resolve(__dirname)}/weekly-payouts/Week_${week}_Mining_Rewards.json`;
+  const savePath = `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${week}_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(outputObject));
   console.log("🗄  File successfully written to", savePath);
 }
@@ -199,13 +210,14 @@ async function _fetchBalancerPoolInfo(poolAddress) {
   throw "⚠️  Balancer pool provided is not indexed in the subgraph or bad address!";
 }
 
-// Function with a callback structured like this is required to enable `truffle exec` to run this script.
+// Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
     await calculateBalancerLPRewards(
       argv.fromBlock,
       argv.toBlock,
+      argv.tokenName,
       argv.poolAddress,
       argv.week,
       argv.umaPerWeek,
@@ -217,7 +229,21 @@ async function Main(callback) {
   callback();
 }
 
-// Each function is then appended onto to the `Main` which is exported. This enables
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  Main(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
+}
+
+// Each function is then appended onto to the `Main` which is exported. This enables these function to be tested.
 Main.calculateBalancerLPRewards = calculateBalancerLPRewards;
 Main._calculatePayoutsBetweenBlocks = _calculatePayoutsBetweenBlocks;
 Main._updatePayoutAtBlock = _updatePayoutAtBlock;

@@ -2,10 +2,11 @@
 // Script can be run as: truffle exec ./scripts/liquidity-mining/FindBlockAtTimeStamp.js --dateTime="2020-05-05 00:00"
 
 const moment = require("moment");
-
 const argv = require("minimist")(process.argv.slice(), {
   string: ["dateTime"]
 });
+const Web3 = require("web3");
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
 const FindBlockAtTimeStamp = async callback => {
   try {
@@ -24,6 +25,20 @@ const FindBlockAtTimeStamp = async callback => {
   }
   callback();
 };
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  FindBlockAtTimeStamp(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
+}
 
 module.exports = FindBlockAtTimeStamp;
 

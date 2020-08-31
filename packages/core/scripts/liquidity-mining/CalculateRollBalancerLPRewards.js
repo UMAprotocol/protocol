@@ -11,42 +11,42 @@ const cliProgress = require("cli-progress");
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
+// const Web3 = require("web3");
 const poolAbi = require("../../build/contracts/ERC20.json");
 const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
 
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+// const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
 const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["pool1Address", "pool2Address", "fromDate", "toDate"],
+  string: ["pool1Address", "pool2Address", "fromBlock", "toBlock", "tokenName"],
   integer: ["rollNum", "umaPerWeek", "blocksPerSnapshot"]
 });
 
 async function calculateRollBalancerLPProviders(
   fromBlock,
   toBlock,
+  tokenName,
   pool1Address,
   pool2Address,
   rollNum,
   umaPerWeek = 25000,
-  blocksPerSnapshot = 1028
+  blocksPerSnapshot = 2056
 ) {
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
-  if (!isAddress(pool1Address) || !isAddress(pool2Address) || !fromBlock || !toBlock || !rollNum) {
-    throw "Missing or invalid parameter! Provide pool1Address, pool2Address, fromBlock, toBlock & rollNum.";
+  if (!isAddress(pool1Address) || !isAddress(pool2Address) || !fromBlock || !toBlock || !rollNum || !tokenName) {
+    throw "Missing or invalid parameter! Provide pool1Address, pool2Address, fromBlock, toBlock, rollNum & tokenName";
   }
 
-  console.log("🔥Starting $UMA Balancer liquidity provider Rolling script🔥");
+  console.log("🔥Starting $UMA Balancer liquidity provider Rolling script for ${tokenName}🔥");
   console.log(`🎢Calculating for roll # ${rollNum}. Rolling between pool ${pool1Address} and ${pool2Address}`);
 
   // Calculate the total number of snapshots over the interval.
   const snapshotsToTake = Math.ceil((toBlock - fromBlock) / blocksPerSnapshot);
 
   // $UMA per snapshot is the total $UMA for a given week, divided by the number of snapshots to take.
-  console.log("umaPerWeek.toString()", umaPerWeek.toString());
   const umaPerSnapshot = toBN(toWei(umaPerWeek.toString())).div(toBN(snapshotsToTake.toString()));
   console.log(
     `🔎 Capturing ${snapshotsToTake} snapshots and distributing ${fromWei(
@@ -87,6 +87,7 @@ async function calculateRollBalancerLPProviders(
     rollNum,
     fromBlock,
     toBlock,
+    tokenName,
     pool1Address,
     pool2Address,
     umaPerWeek,
@@ -175,6 +176,7 @@ function _saveShareHolderPayout(
   rollNum,
   fromBlock,
   toBlock,
+  tokenName,
   pool1Address,
   pool2Address,
   umaPerWeek,
@@ -199,7 +201,7 @@ function _saveShareHolderPayout(
   };
   const savePath = `${path.resolve(
     __dirname
-  )}/weekly-payouts/contract-rolls/Expiring_Roll_${rollNum}_Mining_Rewards.json`;
+  )}/${tokenName}-weekly-payouts/expiring-contract-rolls/Roll_${rollNum}_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(outputObject));
   console.log("🗄  File successfully written to", savePath);
 }
@@ -211,6 +213,7 @@ async function Main(callback) {
     await calculateRollBalancerLPProviders(
       argv.fromBlock,
       argv.toBlock,
+      argv.tokenName,
       argv.pool1Address,
       argv.pool2Address,
       argv.rollNum,
@@ -221,6 +224,20 @@ async function Main(callback) {
     console.error(error);
   }
   callback();
+}
+
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+
+// If called directly by node, execute the Poll Function. This lets the script be run as a node process.
+if (require.main === module) {
+  Main(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
 }
 
 // Each function is then appended onto to the `Main` which is exported. This enables testing.
