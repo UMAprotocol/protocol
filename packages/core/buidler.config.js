@@ -47,6 +47,19 @@ task("etherscan-verification", "Verifies contract on etherscan")
   .setAction(async (taskArgs, bre) => {
     const { networkId, empLibAddress } = taskArgs;
 
+    if (networkId === "42") {
+      bre.config.etherscan.url = "https://api-kovan.etherscan.io/api";
+      console.log(chalkPipe("yellow.bold")("Using kovan network"));
+    } else if (networkId === "4") {
+      bre.config.etherscan.url = "https://api-rinkeby.etherscan.io/api";
+      console.log(chalkPipe("yellow.bold")("Using rinkeby network"));
+    } else if (networkId === "1") {
+      bre.config.etherscan.url = "https://api.etherscan.io/api";
+      console.log(chalkPipe("yellow.bold")("Using mainnet network"));
+    } else {
+      console.log(chalkPipe("orange.bold")("Unable to automatically detect network"));
+    }
+
     const etherscan = getDefaultEtherscanConfig(bre.config);
 
     if (etherscan.apiKey === undefined || etherscan.apiKey.trim() === "") {
@@ -187,9 +200,6 @@ module.exports = {
     timeout: 1800000
   },
   etherscan: {
-    // The url for the Etherscan API you want to use.
-    // For example, here we're using the one for the Ropsten test network
-    url: process.env.ETHERSCAN_API_URL,
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
     apiKey: process.env.ETHERSCAN_API_KEY
