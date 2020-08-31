@@ -91,16 +91,16 @@ async function run({
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
-    const disputer = new Disputer(
+    const disputer = new Disputer({
       logger,
-      empClient,
-      voting,
+      expiringMultiPartyClient: empClient,
+      votingContract: voting,
       gasEstimator,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
-      disputerConfig
-    );
+      config: disputerConfig
+    });
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.

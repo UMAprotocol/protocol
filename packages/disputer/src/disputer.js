@@ -17,7 +17,16 @@ class Disputer {
    *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor({
+    logger,
+    expiringMultiPartyClient,
+    votingContract,
+    gasEstimator,
+    priceFeed,
+    account,
+    empProps,
+    config
+  }) {
     this.logger = logger;
     this.account = account;
 

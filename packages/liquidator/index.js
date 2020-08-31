@@ -120,18 +120,18 @@ async function run({
       });
     }
 
-    const liquidator = new Liquidator(
+    const liquidator = new Liquidator({
       logger,
       oneInchClient,
-      empClient,
+      expiringMultiPartyClient: empClient,
       gasEstimator,
-      voting,
+      votingContract: voting,
       syntheticToken,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
       liquidatorConfig
-    );
+    });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
