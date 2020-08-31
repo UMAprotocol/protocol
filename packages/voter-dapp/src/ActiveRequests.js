@@ -516,7 +516,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     } else {
       return (
         <span>
-          {isAdminVote && statusDetails[index].currentVote
+          {isAdminVote
             ? translateAdminVote(statusDetails[index].currentVote)
             : statusDetails[index].currentVote}{" "}
           {saveButtonShown ? (

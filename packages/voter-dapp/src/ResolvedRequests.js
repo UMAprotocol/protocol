@@ -250,13 +250,13 @@ function ResolvedRequests({ votingAccount }) {
                 <TableCell>{hexToUtf8(resolutionData.identifier)}</TableCell>
                 <TableCell>{formatDate(resolutionData.time, web3)}</TableCell>
                 <TableCell>Resolved</TableCell>
-                <TableCell>{isAdminVote ? translateAdminVote(userVote) : userVote}</TableCell>
+                <TableCell>{isAdminVote && userVote !== "No Vote" ? translateAdminVote(userVote) : userVote}</TableCell>
                 <TableCell>
                   <Button color="primary" onClick={() => handleClickStats(voteStats)} variant="contained">
                     Display
                   </Button>
                 </TableCell>
-                <TableCell>{isAdminVote ? translateAdminVote(correctVote) : correctVote}</TableCell>
+                <TableCell>{isAdminVote && userVote !== "No Vote" ? translateAdminVote(correctVote) : correctVote}</TableCell>
               </TableRow>
             );
           })}
