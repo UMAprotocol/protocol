@@ -206,12 +206,8 @@ async function run({
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Liquidator#index",
-      message: "Liquidator polling error🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 
@@ -269,12 +265,11 @@ async function Poll(callback) {
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
-      message: "Liquidator configuration error🚨",
+      message: "Liquidator execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }

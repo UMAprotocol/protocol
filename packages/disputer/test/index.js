@@ -147,32 +147,34 @@ contract("index.js", function(accounts) {
     });
 
     errorRetries = 3; // set execution retries to 3 to validate.
-    await Poll.run({
-      logger: spyLogger,
-      web3,
-      empAddress: invalidEMP.address,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
-    });
+    let errorThrown = false;
+    try {
+      await Poll.run({
+        logger: spyLogger,
+        web3,
+        empAddress: invalidEMP.address,
+        pollingDelay,
+        errorRetries,
+        errorRetriesTimeout,
+        priceFeedConfig: defaultPriceFeedConfig
+      });
+    } catch (error) {
+      errorThrown = true;
+    }
 
     // Iterate over all log events and count the number of gasEstimatorUpdate, disputer check for liquidation events
     // execution loop errors and finally disputer polling errors.
     let reTryCounts = {
       gasEstimatorUpdate: 0,
-      checkingForDisputable: 0,
-      executionLoopErrors: 0,
-      disputerPollingErrors: 0
+      executionLoopErrors: 0
     };
     for (let i = 0; i < spy.callCount; i++) {
       if (spyLogIncludes(spy, i, "Gas estimator update skipped")) reTryCounts.gasEstimatorUpdate += 1;
       if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
-      if (spyLogIncludes(spy, i, "Disputer polling error")) reTryCounts.disputerPollingErrors += 1;
     }
 
     assert.equal(reTryCounts.gasEstimatorUpdate, 4); // Initial loop and each 3 re-try should update the gas estimator state. Expect 4 logs.
     assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
-    assert.equal(reTryCounts.disputerPollingErrors, 1); // The final error should occur once when re-tries are all spent. Expect 1 log.
+    assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
   });
 });

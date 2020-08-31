@@ -234,12 +234,8 @@ async function run({
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Monitor#index",
-      message: "Monitor polling error. Monitor crashed🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 async function Poll(callback) {
@@ -324,12 +320,11 @@ async function Poll(callback) {
   } catch (error) {
     Logger.error({
       at: "Monitor#index",
-      message: "Monitor configuration error🚨",
+      message: "Monitor execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }
