@@ -11,17 +11,18 @@ const cliProgress = require("cli-progress");
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-// const Web3 = require("web3");
+const Web3 = require("web3");
 const poolAbi = require("../../build/contracts/ERC20.json");
 const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
+const { delay } = require("@umaprotocol/financial-templates-lib");
 
-// const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
 const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["pool1Address", "pool2Address", "fromBlock", "toBlock", "tokenName"],
-  integer: ["rollNum", "umaPerWeek", "blocksPerSnapshot"]
+  string: ["pool1Address", "pool2Address", "tokenName"],
+  integer: ["fromBlock", "toBlock", "rollNum", "umaPerWeek", "blocksPerSnapshot"]
 });
 
 async function calculateRollBalancerLPProviders(
@@ -32,7 +33,7 @@ async function calculateRollBalancerLPProviders(
   pool2Address,
   rollNum,
   umaPerWeek = 25000,
-  blocksPerSnapshot = 2056
+  blocksPerSnapshot = 256
 ) {
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
@@ -147,6 +148,7 @@ async function _updatePayoutAtBlock(bPool1, bPool2, blockNumber, shareHolderPayo
     promiseArraybPool2.push(bPool2.methods.balanceOf(shareHolder).call(undefined, blockNumber));
   }
   const balanceResultsbPool1 = await Promise.allSettled(promiseArraybPool1);
+  await delay(5); // slow down the queries between these massive promise arrays. Helps to keep Infura happy.
   const balanceResultsbPool2 = await Promise.allSettled(promiseArraybPool2);
   // For each balance result, calculate their associated payment addition.
   Object.entries(shareHolderPayout).forEach(function(shareHolder, index) {

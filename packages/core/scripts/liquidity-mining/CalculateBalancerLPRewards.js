@@ -20,8 +20,8 @@ const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_UR
 const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["poolAddress", "fromBlock", "toBlock", "tokenName"],
-  integer: ["week", "umaPerWeek", "blocksPerSnapshot"]
+  string: ["poolAddress", "tokenName"],
+  integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"]
 });
 
 async function calculateBalancerLPRewards(
@@ -94,8 +94,9 @@ async function _calculatePayoutsBetweenBlocks(
   shareHolders,
   fromBlock,
   toBlock,
-  blockPerSnapshot,
-  umaPerSnapshot
+  blocksPerSnapshot,
+  umaPerSnapshot,
+  snapshotsToTake
 ) {
   // Create a structure to store the payouts for all historic shareholders.
   let shareHolderPayout = {};
@@ -112,10 +113,10 @@ async function _calculatePayoutsBetweenBlocks(
     },
     cliProgress.Presets.shades_classic
   );
-  progressBar.start(Math.ceil((toBlock - fromBlock) / blockPerSnapshot), 0);
-  for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blockPerSnapshot) {
+  progressBar.start(snapshotsToTake, 0);
+  for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
     shareHolderPayout = await _updatePayoutAtBlock(bPool, currentBlock, shareHolderPayout, umaPerSnapshot);
-    progressBar.update(Math.ceil((currentBlock - fromBlock) / blockPerSnapshot) + 1);
+    progressBar.update(Math.ceil((currentBlock - fromBlock) / blocksPerSnapshot) + 1);
   }
   progressBar.stop();
 
