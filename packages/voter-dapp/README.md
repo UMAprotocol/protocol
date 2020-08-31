@@ -24,7 +24,7 @@ The source code for this React app can be found in `./src`. At a minimum, you mu
 
 ### Testing
 
-`./run_tests.sh` Will run you through a comprehensive guide for testing the voter dApp with normal and admin price requests.
+`./run_tests.sh` Will run you through a comprehensive guide for testing the voter dApp with normal and admin price requests. You can start this with `yarn test` as well.
 
 ### Vote through the designated voting proxy
 
@@ -36,7 +36,7 @@ More information about cold versus hot wallets can be found [here](https://docs.
 
 In the project directory, you can run:
 
-### `npm start`
+### `yarn start`
 
 Runs the app in the development mode.<br>
 Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
@@ -44,12 +44,7 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 The page will reload if you make edits.<br>
 You will also see any lint errors in the console.
 
-### `CI=true npm test`
-
-Launches the test runner in non-interactive mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
+### `yarn build`
 
 Builds the app for production to the `build` folder.<br>
 It correctly bundles React in production mode and optimizes the build for the best performance.
