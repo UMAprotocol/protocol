@@ -116,6 +116,8 @@ async function run(
         web3,
         gasEstimator,
         logger,
+        oneSplitAbi: getAbi("OneSplit"),
+        erc20TokenAbi: getAbi("ExpandedERC20"),
         oneSplitAddress
       });
     }
