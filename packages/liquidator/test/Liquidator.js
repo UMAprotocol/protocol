@@ -687,8 +687,10 @@ contract("Liquidator.js", function(accounts) {
     it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
       const oneInchClient = new OneInchExchange({
         web3,
-        logger: spyLogger,
         gasEstimator,
+        logger: spyLogger,
+        oneSplitAbi: OneSplitMock.abi,
+        erc20TokenAbi: Token.abi,
         oneSplitAddress: oneSplitMock.address
       });
       liquidator.oneInchClient = oneInchClient;

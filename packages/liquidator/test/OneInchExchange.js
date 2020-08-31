@@ -33,7 +33,14 @@ contract("OneInch", function(accounts) {
 
   before(async function() {
     oneSplitMock = await OneSplitMock.new();
-    oneInch = new OneInchExchange({ web3, logger: spyLogger, gasEstimator, oneSplitAddress: oneSplitMock.address });
+    oneInch = new OneInchExchange({
+      web3,
+      gasEstimator,
+      logger: spyLogger,
+      oneSplitAbi: OneSplitMock.abi,
+      erc20TokenAbi: Token.abi,
+      oneSplitAddress: oneSplitMock.address
+    });
 
     token1 = await Token.new("TOKEN1", "TK1", 18, { from: owner });
     await token1.addMember(1, owner, { from: owner });
