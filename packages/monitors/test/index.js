@@ -96,19 +96,19 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(
-      spyLogger,
+    await Poll.run({
+      logger: spyLogger,
       web3,
-      emp.address,
+      empAddress: emp.address,
       pollingDelay,
       executionRetries,
       errorRetriesTimeout,
-      fromBlock,
-      toBlock,
-      defaultMonitorConfig,
-      defaultUniswapPricefeedConfig,
-      defaultMedianizerPricefeedConfig
-    );
+      startingBlock: fromBlock,
+      endingBlock: toBlock,
+      monitorConfig: defaultMonitorConfig,
+      tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+      medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+    });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -151,19 +151,19 @@ contract("index.js", function(accounts) {
     // loop without throwing an error in inital set-up. If this left as defaultMedianizerPricefeedConfig (which is blank)
     // The bot will error out in setting up the price feed as the invalidEMP instance cant be queried for `liquidationLiveness`
     // which is required when initalizing the price feed.
-    await Poll.run(
-      spyLogger,
+    await Poll.run({
+      logger: spyLogger,
       web3,
-      invalidEMP.address,
+      empAddress: invalidEMP.address,
       pollingDelay,
-      executionRetries,
+      errorRetries: executionRetries,
       errorRetriesTimeout,
-      fromBlock,
-      toBlock,
-      defaultMonitorConfig,
-      defaultUniswapPricefeedConfig,
-      defaultUniswapPricefeedConfig
-    );
+      startingBlock: fromBlock,
+      endingBlock: toBlock,
+      monitorConfig: defaultMonitorConfig,
+      tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+      medianizerPriceFeedConfig: defaultUniswapPricefeedConfig
+    });
 
     // Iterate over all log events and count the number of tokenBalanceStorage, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.
