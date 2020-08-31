@@ -2,10 +2,7 @@ const { toWei, toBN } = web3.utils;
 
 const { advanceBlockAndSetTime } = require("@umaprotocol/common");
 
-const {
-  _updatePayoutAtBlock,
-  _calculatePayoutsBetweenBlocks
-} = require("../../../scripts/liquidity-mining/CalculateRollBalancerLPRewards");
+const { _updatePayoutAtBlock, _calculatePayoutsBetweenBlocks } = require("../CalculateRollBalancerLPRewards");
 
 const Token = artifacts.require("ExpandedERC20"); // Helper contracts to mock balancer pool.
 
