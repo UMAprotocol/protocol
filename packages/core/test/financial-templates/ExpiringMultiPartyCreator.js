@@ -63,8 +63,8 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
   });
 
   it("Arbitrary expiration timestamps should work", async function() {
-    // Change to arbitrary expiration timestamp
-    const arbitraryExpiration = "1598918401";
+    // Change to arbitrary expiration timestamp in the future
+    const arbitraryExpiration = "1898918401"; // 2030-03-05T05:20:01.000Z
     // Set to a valid expiry.
     constructorParams.expirationTimestamp = arbitraryExpiration.toString();
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
