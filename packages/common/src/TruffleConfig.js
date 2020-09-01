@@ -27,8 +27,6 @@ const privateKey = process.env.PRIVATE_KEY
   : "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709";
 
 // Fallback to a backup non-prod API key.
-const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "e34138b2db5b496ab5cc52319d2f0299";
-const customNodeUrl = process.env.CUSTOM_NODE_URL;
 const keyOffset = process.env.KEY_OFFSET ? parseInt(process.env.KEY_OFFSET) : 0; // Start at account 0 by default.
 const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Generate two wallets by default.
 let singletonProvider;
@@ -38,7 +36,7 @@ const gasPx = 20000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-function getNodeUrl(networkName) {
+function getNodeUrl(networkName = argv.network) {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     return process.env.CUSTOM_NODE_URL || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
@@ -204,4 +202,4 @@ function getTruffleConfig(truffleContextDir = "./") {
   };
 }
 
-module.exports = { getTruffleConfig, nodeUrl };
+module.exports = { getTruffleConfig, getNodeUrl };
