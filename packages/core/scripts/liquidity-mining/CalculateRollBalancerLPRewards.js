@@ -54,7 +54,7 @@ async function calculateRollBalancerLPProviders(
     throw "Missing or invalid parameter! Provide pool1Address, pool2Address, synth1Address, synth2Address, fromBlock, toBlock, rollNum & tokenName";
   }
 
-  console.log("🔥 Starting $UMA Balancer liquidity provider Rolling script for ${tokenName}🔥");
+  console.log(`🔥 Starting $UMA Balancer liquidity provider Rolling script for ${tokenName}🔥`);
   console.log(`🎢 Calculating for roll # ${rollNum}. Rolling between pool ${pool1Address} and ${pool2Address}`);
 
   // Calculate the total number of snapshots over the interval.
