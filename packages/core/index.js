@@ -44,15 +44,13 @@ function getAddress(contractName, networkId) {
  */
 function getTruffleContract(contractName, web3) {
   // If there is no web3, use getWeb3() to retrieve one.
-  if (!web3) {
-    web3 = getWeb3();
-  }
+  const resolvedWeb3 = web3 || getWeb3();
 
   const artifact = getArtifact(contractName);
   assert(artifact, `Artifact not found for ${contractName}`);
 
   const Contract = truffleContract(artifact);
-  Contract.setProvider(web3.currentProvider);
+  Contract.setProvider(resolvedWeb3.currentProvider);
   return Contract;
 }
 
