@@ -199,8 +199,7 @@ async function _updatePayoutAtBlock(bPool1, bPool2, synth1, synth2, blockNumber,
   await delay(5); // slow down the queries between these massive promise arrays. Helps to keep Infura happy.
   const balanceResultsbPool2 = await Promise.allSettled(promiseArraybPool2);
   // For each balance result, calculate their associated payment addition.
-  let index = 0;
-  for (shareHolder of Object.keys(shareHolderPayout)) {
+  for ([index, shareHolder] of Object.keys(shareHolderPayout).entries()) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
     if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value === "0") continue;
     // Calculate the shareholders pool1 value by taking their balance of BPT * BPT price.
@@ -225,7 +224,6 @@ async function _updatePayoutAtBlock(bPool1, bPool2, synth1, synth2, blockNumber,
 
     // Lastly, update the payout object for the given shareholder. This is their previous payout value + their new payout.
     shareHolderPayout[shareHolder] = shareHolderPayout[shareHolder].add(shareHolderPayoutInUma);
-    index += 1;
   }
   return shareHolderPayout;
 }
