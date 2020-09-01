@@ -1,5 +1,5 @@
 const cliProgress = require("cli-progress");
-const argv = require("minimist")(process.argv.slice(), { string: ["start", "end"], boolean: ["reveal-only"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["start", "end"], boolean: ["reveal-only", "claim-only"] });
 const Voting = artifacts.require("Voting");
 
 const TEST_START_BLOCK = 10606000;
@@ -42,98 +42,100 @@ const CalculateRebate = async callback => {
     const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(averageUmaPriceForPeriod);
 
     // Parse data for vote reveals to rebate.
-    console.group("📸 Parsing REVEAL data:");
-    const revealVotersToRebate = {};
-
-    const progressBarReveal = new cliProgress.SingleBar(
-      {
-        format: "[{bar}] {percentage}% | reveal events parsed: {value}/{total}"
-      },
-      cliProgress.Presets.shades_classic
-    );
-    progressBarReveal.start(revealedVotes.length, 0);
-
-    for (let i = 0; i < revealedVotes.length; i++) {
-      const reveal = revealedVotes[i];
-
-      const voter = reveal.returnValues.voter;
-      const roundId = reveal.returnValues.roundId;
-      const identifier = web3.utils.hexToUtf8(reveal.returnValues.identifier);
-      const requestTime = reveal.returnValues.time;
-      const [transactionBlock, transactionReceipt] = await Promise.all([
-        web3.eth.getBlock(reveal.blockNumber),
-        web3.eth.getTransactionReceipt(reveal.transactionHash)
-      ]);
-      const gasUsed = parseInt(transactionReceipt.gasUsed, 16);
-
-      // Find associated commit with this reveal
-      const latestCommitEvent = committedVotes.find(e => {
-        return (
-          e.returnValues.voter === voter &&
-          e.returnValues.roundId === roundId &&
-          e.returnValues.identifier === reveal.returnValues.identifier &&
-          e.returnValues.time === requestTime
-        );
-      });
-      if (latestCommitEvent) {
-        const [commitBlock, commitReceipt] = await Promise.all([
-          web3.eth.getBlock(latestCommitEvent.blockNumber),
-          web3.eth.getTransactionReceipt(latestCommitEvent.transactionHash)
+    if (!argv["claim-only"]) {
+      console.group("📸 Parsing REVEAL data:");
+      const revealVotersToRebate = {};
+  
+      const progressBarReveal = new cliProgress.SingleBar(
+        {
+          format: "[{bar}] {percentage}% | reveal events parsed: {value}/{total}"
+        },
+        cliProgress.Presets.shades_classic
+      );
+      progressBarReveal.start(revealedVotes.length, 0);
+  
+      for (let i = 0; i < revealedVotes.length; i++) {
+        const reveal = revealedVotes[i];
+  
+        const voter = reveal.returnValues.voter;
+        const roundId = reveal.returnValues.roundId;
+        const identifier = web3.utils.hexToUtf8(reveal.returnValues.identifier);
+        const requestTime = reveal.returnValues.time;
+        const [transactionBlock, transactionReceipt] = await Promise.all([
+          web3.eth.getBlock(reveal.blockNumber),
+          web3.eth.getTransactionReceipt(reveal.transactionHash)
         ]);
-        const commitGasUsed = parseInt(commitReceipt.gasUsed, 16);
-
-        const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-        const val = {
-          voter,
-          roundId,
-          identifier,
-          requestTime,
-          reveal: {
-            transactionBlock: transactionBlock.number,
-            hash: transactionReceipt.transactionHash,
-            gasUsed
-          },
-          commit: {
-            transactionBlock: commitBlock.number,
-            hash: commitReceipt.transactionHash,
-            gasUsed: commitGasUsed
-          }
-        };
-
-        revealVotersToRebate[key] = val;
-        progressBarReveal.update(i + 1);
-      } else {
-        throw new Error(
-          `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
-        );
+        const gasUsed = parseInt(transactionReceipt.gasUsed, 16);
+  
+        // Find associated commit with this reveal
+        const latestCommitEvent = committedVotes.find(e => {
+          return (
+            e.returnValues.voter === voter &&
+            e.returnValues.roundId === roundId &&
+            e.returnValues.identifier === reveal.returnValues.identifier &&
+            e.returnValues.time === requestTime
+          );
+        });
+        if (latestCommitEvent) {
+          const [commitBlock, commitReceipt] = await Promise.all([
+            web3.eth.getBlock(latestCommitEvent.blockNumber),
+            web3.eth.getTransactionReceipt(latestCommitEvent.transactionHash)
+          ]);
+          const commitGasUsed = parseInt(commitReceipt.gasUsed, 16);
+  
+          const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+          const val = {
+            voter,
+            roundId,
+            identifier,
+            requestTime,
+            reveal: {
+              transactionBlock: transactionBlock.number,
+              hash: transactionReceipt.transactionHash,
+              gasUsed
+            },
+            commit: {
+              transactionBlock: commitBlock.number,
+              hash: commitReceipt.transactionHash,
+              gasUsed: commitGasUsed
+            }
+          };
+  
+          revealVotersToRebate[key] = val;
+          progressBarReveal.update(i + 1);
+        } else {
+          throw new Error(
+            `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
+          );
+        }
       }
+      progressBarReveal.stop();
+      console.groupEnd();
+      console.log("✅ Finished parsing REVEAL data.");
+  
+      // Rebate voters
+      console.log(`${Object.keys(revealVotersToRebate).length} Voters Revealed`);
+      const rebateReceipts = {};
+      for (let voterKey of Object.keys(revealVotersToRebate)) {
+        const revealData = revealVotersToRebate[voterKey].reveal;
+        const commitData = revealVotersToRebate[voterKey].reveal;
+        const gasUsed = revealData.gasUsed + commitData.gasUsed;
+        const ethToPay = toBN(averagePriceGweiForPeriod).mul(toBN(gasUsed));
+        const umaToPay = ethToPay.mul(ethToUma).div(SCALING_FACTOR);
+        const commitTxn = commitData.hash;
+        const revealTxn = revealData.hash;
+  
+        rebateReceipts[voterKey] = {
+          gasUsed,
+          ethToPay: Number(fromWei(ethToPay)),
+          umaToPay: Number(fromWei(umaToPay)),
+          commitTxn,
+          revealTxn
+        };
+      }
+  
+      console.table(rebateReceipts);  
     }
-    progressBarReveal.stop();
-    console.groupEnd();
-    console.log("✅ Finished parsing REVEAL data.");
-
-    // Rebate voters
-    console.log(`${Object.keys(revealVotersToRebate).length} Voters Revealed`);
-    const rebateReceipts = {};
-    for (let voterKey of Object.keys(revealVotersToRebate)) {
-      const revealData = revealVotersToRebate[voterKey].reveal;
-      const commitData = revealVotersToRebate[voterKey].reveal;
-      const gasUsed = revealData.gasUsed + commitData.gasUsed;
-      const ethToPay = toBN(averagePriceGweiForPeriod).mul(toBN(gasUsed));
-      const umaToPay = ethToPay.mul(ethToUma).div(SCALING_FACTOR);
-      const commitTxn = commitData.hash;
-      const revealTxn = revealData.hash;
-
-      rebateReceipts[voterKey] = {
-        gasUsed,
-        ethToPay: Number(fromWei(ethToPay)),
-        umaToPay: Number(fromWei(umaToPay)),
-        commitTxn,
-        revealTxn
-      };
-    }
-
-    console.table(rebateReceipts);
 
     // Parse data for claimed rewards to rebate
     if (!argv["reveal-only"]) {
@@ -180,23 +182,25 @@ const CalculateRebate = async callback => {
       console.groupEnd();
       console.log("✅ Finished parsing CLAIM data.");
 
+      // Rebate voters
       console.log(`${Object.keys(rewardedVotersToRebate).length} Voters Claimed Rewards`);
+      const rebateReceipts = {};
       for (let voterKey of Object.keys(rewardedVotersToRebate)) {
         const claimData = rewardedVotersToRebate[voterKey].claim;
         const gasUsed = claimData.gasUsed;
-        const voter = rewardedVotersToRebate[voterKey].voter;
-        const identifier = rewardedVotersToRebate[voterKey].identifier;
-        const round = rewardedVotersToRebate[voterKey].roundId;
-        const txnHash = claimData.hash;
-
         const ethToPay = toBN(averagePriceGweiForPeriod).mul(toBN(gasUsed));
         const umaToPay = ethToPay.mul(ethToUma).div(SCALING_FACTOR);
-        console.log(
-          `CLAIM (${voter.substring(0, 6)}...) gas ${gasUsed} (ETH): ${fromWei(ethToPay)}  (UMA): ${fromWei(
-            umaToPay
-          )} (${identifier}-${round}) (tx: ${txnHash})`
-        );
+        const claimTxn = claimData.hash;
+
+        rebateReceipts[voterKey] = {
+          gasUsed,
+          ethToPay: Number(fromWei(ethToPay)),
+          umaToPay: Number(fromWei(umaToPay)),
+          claimTxn
+        };
       }
+
+      console.table(rebateReceipts);
     }
   } catch (err) {
     callback(err);
