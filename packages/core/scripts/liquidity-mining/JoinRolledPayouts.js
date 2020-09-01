@@ -20,7 +20,7 @@ const argv = require("minimist")(process.argv.slice(), {
 
 async function JoinRolledPayouts(week, rollNum, tokenName) {
   if (!week || !rollNum || !tokenName) {
-    throw "Missing or invalid parameter! Provide week, rollNum & tokenName";
+    throw new Error("Missing or invalid parameter! Provide week, rollNum & tokenName");
   }
 
   console.log(`🧶 Joining LM payouts between week ${week} and roll # ${rollNum} for ${tokenName}`);

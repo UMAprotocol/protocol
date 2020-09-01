@@ -51,7 +51,9 @@ async function calculateRollBalancerLPProviders(
     !rollNum ||
     !tokenName
   ) {
-    throw "Missing or invalid parameter! Provide pool1Address, pool2Address, synth1Address, synth2Address, fromBlock, toBlock, rollNum & tokenName";
+    throw new Error(
+      "Missing or invalid parameter! Provide pool1Address, pool2Address, synth1Address, synth2Address, fromBlock, toBlock, rollNum & tokenName"
+    );
   }
 
   console.log(`🔥 Starting $UMA Balancer liquidity provider Rolling script for ${tokenName}🔥`);

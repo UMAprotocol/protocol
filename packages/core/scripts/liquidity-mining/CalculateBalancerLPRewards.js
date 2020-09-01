@@ -4,7 +4,7 @@
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: truffle exec ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
+// Example usage from core: node ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
 
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
@@ -36,7 +36,7 @@ async function calculateBalancerLPRewards(
   // Create two moment objects from the input string. Convert to UTC time zone. As no time is provided in the input
   // will parse to 12:00am UTC.
   if (!web3.utils.isAddress(poolAddress) || !fromBlock || !toBlock || !week || !tokenName) {
-    throw "Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock, week & tokenName";
+    throw new Error("Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock, week & tokenName");
   }
 
   console.log(`🔥Starting $UMA Balancer liquidity provider script for ${tokenName}🔥`);
