@@ -256,9 +256,7 @@ function ResolvedRequests({ votingAccount }) {
                     Display
                   </Button>
                 </TableCell>
-                <TableCell>
-                  {isAdminVote && userVote !== "No Vote" ? translateAdminVote(correctVote) : correctVote}
-                </TableCell>
+                <TableCell>{isAdminVote ? translateAdminVote(correctVote) : correctVote}</TableCell>
               </TableRow>
             );
           })}
