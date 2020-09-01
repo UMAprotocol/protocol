@@ -28,7 +28,8 @@ if (process.browser) {
     ...require("./src/gckms/ManagedSecretProvider"),
     ...require("./src/MetaMaskTruffleProvider"),
     ...require("./src/MigrationUtils"),
-    ...require("./src/TruffleConfig")
+    ...require("./src/TruffleConfig"),
+    ...require("./src/ProviderUtils")
   };
 
   module.exports = {

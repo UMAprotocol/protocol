@@ -3,6 +3,7 @@
   "version": "1.0.0-alpha.13",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
+    "@truffle/contract": "^4.2.20",
     "@umaprotocol/common": "^1.0.0-alpha.13"
   },
   "devDependencies": {
@@ -14,12 +15,14 @@
     "@sendgrid/mail": "^6.4.0",
     "@umaprotocol/financial-templates-lib": "^1.0.0-alpha.13",
     "bip39": "^3.0.2",
+    "chai": "^4.2.0",
     "coveralls": "^3.1.0",
     "cli-progress": "^3.8.2",
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
     "minimist": "^1.2.0",
+    "mocha": "^8.1.2",
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
     "solidity-coverage": "^0.7.2",
@@ -44,7 +47,9 @@
     "/migrations/*.js"
   ],
   "scripts": {
-    "test": "buidler test",
+    "test": "yarn mocha-test && yarn truffle-test",
+    "truffle-test": "buidler test truffle-tests",
+    "mocha-test": "mocha mocha-tests --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses",
