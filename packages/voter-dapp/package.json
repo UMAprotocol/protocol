@@ -31,7 +31,6 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "./run_tests.sh",
     "eject": "react-scripts eject",
     "clean": "rm -rf build"
   },
