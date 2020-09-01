@@ -43,7 +43,7 @@ function getNodeUrl(networkName = argv.network) {
   }
 
   const port = process.env.CUSTOM_LOCAL_NODE_PORT || "9545";
-  return `ws://127.0.0.1:${port}`;
+  return `http://127.0.0.1:${port}`;
 }
 
 // Adds a public network.
