@@ -1,6 +1,7 @@
 const truffleContract = require("@truffle/contract");
 const fs = require("fs");
 const path = require("path");
+const assert = require("assert");
 const { getWeb3 } = require("@umaprotocol/common");
 
 /**
@@ -22,7 +23,7 @@ function getArtifact(contractName) {
  */
 function getAbi(contractName) {
   const artifact = getArtifact(contractName);
-  return artifact && artifact.abi;
+  return (artifact && artifact.abi) || null;
 }
 
 /**
@@ -32,7 +33,7 @@ function getAbi(contractName) {
  */
 function getAddress(contractName, networkId) {
   const artifact = getArtifact(contractName);
-  return artifact && artifact.networks[networkId] && artifact.networks[networkId].address;
+  return (artifact && artifact.networks[networkId] && artifact.networks[networkId].address) || null;
 }
 
 /**

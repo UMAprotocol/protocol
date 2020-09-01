@@ -1,5 +1,5 @@
-const { getAbi, getAddress, getTruffleContract } = require("../../");
-const { assert } = require("chai");
+const { getAbi, getAddress, getTruffleContract } = require("../");
+const assert = require("chai").assert;
 
 describe("index.js", function() {
   it("Read Contract ABI", async function() {
@@ -14,8 +14,8 @@ describe("index.js", function() {
   });
 
   it("Get Truffle Contract", function() {
-    // const fakeWeb3 = {};
-    // assert.isNotNull(getTruffleContract("Voting"), fakeWeb3);
-    // assert.isNull(getTruffleContract("Nonsense"));
+    const fakeWeb3 = { currentProvider: {} };
+    assert.isNotNull(getTruffleContract("Voting", fakeWeb3));
+    assert.isNull(getTruffleContract("Nonsense"));
   });
 });
