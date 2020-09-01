@@ -24,7 +24,7 @@ The source code for this React app can be found in `./src`. At a minimum, you mu
 
 ### Testing
 
-`./run_tests.sh` Will run you through a comprehensive guide for testing the voter dApp with normal and admin price requests. You can start this with `yarn test` as well.
+`./run_tests.sh` Will run you through a comprehensive guide for testing the voter dApp with normal and admin price requests.
 
 ### Vote through the designated voting proxy
 
