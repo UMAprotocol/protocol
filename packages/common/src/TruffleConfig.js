@@ -12,6 +12,8 @@ const { GckmsConfig } = require("./gckms/GckmsConfig.js");
 const { ManagedSecretProvider } = require("./gckms/ManagedSecretProvider.js");
 const { PublicNetworks } = require("./PublicNetworks.js");
 const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
+const { isPublicNetwork } = require("./MigrationUtils");
+const Web3 = require("web3");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions.
@@ -36,7 +38,15 @@ const gasPx = 20000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-const nodeUrl = customNodeUrl || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
+function getNodeUrl(networkName) {
+  if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
+    const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
+    return process.env.CUSTOM_NODE_URL || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
+  }
+
+  const port = process.env.CUSTOM_LOCAL_NODE_PORT || "9545";
+  return `ws://127.0.0.1:${port}`;
+}
 
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
@@ -48,6 +58,8 @@ function addPublicNetwork(networks, name, networkId) {
     gas: gas,
     gasPrice: gasPx
   };
+
+  const nodeUrl = getNodeUrl(name);
 
   // GCS ManagedSecretProvider network.
   networks[name + "_gckms"] = {
@@ -122,26 +134,23 @@ function addPublicNetwork(networks, name, networkId) {
 // Note: local networks generally have more varied parameters, so the user can override any network option by passing
 // a customOptions object.
 function addLocalNetwork(networks, name, customOptions) {
+  const nodeUrl = getNodeUrl(name);
   const defaultOptions = {
-    host: "127.0.0.1",
     network_id: "*",
-    port: 9545,
-    gas: gas
+    gas: gas,
+    provider: function(provider = nodeUrl) {
+      if (!singletonProvider) {
+        const tempWeb3 = new Web3(provider);
+        singletonProvider = tempWeb3.eth.currentProvider;
+      }
+      return singletonProvider;
+    }
   };
 
   networks[name] = {
     ...defaultOptions,
     ...customOptions
   };
-
-  // Override custom options if environment variables are found
-  if ("LOCALHOST" in process.env) {
-    networks[name].host = process.env.LOCALHOST;
-  }
-
-  if ("LOCALPORT" in process.env) {
-    networks[name].port = process.env.LOCALPORT;
-  }
 }
 
 let networks = {};
@@ -151,15 +160,11 @@ for (const [id, { name }] of Object.entries(PublicNetworks)) {
   addPublicNetwork(networks, name, id);
 }
 
-// CI requires a specific port and network ID because of peculiarities of the environment.
-addLocalNetwork(networks, "ci", { port: 8545, network_id: 1234 });
-
-// Develop and test networks are exactly the same and both use the default local parameters.
-addLocalNetwork(networks, "develop");
+// Add test network.
 addLocalNetwork(networks, "test");
 
-// Coverage requires specific parameters to allow very high cost transactions.
-addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
+// Mainnet fork is just a local network with id 1.
+addLocalNetwork(networks, "mainnet-fork", { network_id: 1 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", {
@@ -171,8 +176,6 @@ addLocalNetwork(networks, "metamask", {
     return singletonProvider;
   }
 });
-
-addLocalNetwork(networks, "mainnet-fork", { port: 1235, network_id: 1 });
 
 function getTruffleConfig(truffleContextDir = "./") {
   return {
