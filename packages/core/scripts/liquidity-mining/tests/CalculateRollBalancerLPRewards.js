@@ -9,6 +9,9 @@ const Token = artifacts.require("ExpandedERC20"); // Helper contracts to mock ba
 let bpToken1; // balancerPoolToken1. Used to mock liquidity provision in the first pool.
 let bpToken2; // balancerPoolToken2. Used to mock liquidity provision in the second pool.
 
+let synth1; // synthetic token from before the roll.
+let synth2; // synthetic token for after the roll.
+
 contract("CalculateBalancerLPProviders.js", function(accounts) {
   const contractCreator = accounts[0];
   const shareHolders = accounts.slice(1, 6); // Array of accounts 1 -> 5 to represent shareholders(liquidity providers).
@@ -29,6 +32,20 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       await bpToken2.addMember(1, contractCreator, {
         from: contractCreator
       });
+
+      synth1 = await Token.new("SYNTH1", "SYNTH1", 18, {
+        from: contractCreator
+      });
+      await synth1.addMember(1, contractCreator, {
+        from: contractCreator
+      });
+
+      synth2 = await Token.new("SYNTH2", "SYNTH2", 18, {
+        from: contractCreator
+      });
+      await synth2.addMember(1, contractCreator, {
+        from: contractCreator
+      });
     });
 
     it("Correctly splits payout over all liquidity providers (balanced case)", async function() {
@@ -40,10 +57,20 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         });
       }
       for (shareHolder of shareHolders) {
-        await bpToken1.mint(shareHolder, toWei("2"), {
+        await bpToken2.mint(shareHolder, toWei("2"), {
           from: contractCreator
         });
       }
+
+      // Put equal number of synths in the balancer pools. This will make the BPT tokens equally valued in synth terms.
+      await synth1.mint(bpToken1.address, toWei("100"), {
+        from: contractCreator
+      });
+
+      await synth2.mint(bpToken2.address, toWei("100"), {
+        from: contractCreator
+      });
+
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
@@ -60,6 +87,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const payoutAtBlock = await _updatePayoutAtBlock(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         blockNumber,
         shareHolderPayout,
         tokensPerSnapShot
@@ -75,7 +104,9 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
     it("Correctly splits payout over all liquidity providers (1 unbalanced pool case)", async function() {
       // Create 10e18 tokens to distribute, sending all to one liquidity provider in one of the two pools. this is
       // equivalent to only having one LP that does not roll their position.
-      await bpToken1.mint(shareHolders[0], toWei("10"), { from: contractCreator });
+      await bpToken1.mint(shareHolders[0], toWei("10"), {
+        from: contractCreator
+      });
 
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
@@ -83,6 +114,11 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       for (shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN("0");
       }
+
+      // Put synths only in the first pool as there are none minted in the second pool.
+      await synth1.mint(bpToken1.address, toWei("100"), {
+        from: contractCreator
+      });
 
       const blockNumber = await web3.eth.getBlockNumber();
       // Distribute 5 tokens per snapshot. There is only one shareholder who holds tokens at the given block number. They
@@ -93,6 +129,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const payoutAtBlock = await _updatePayoutAtBlock(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         blockNumber,
         shareHolderPayout,
         tokensPerSnapShot
@@ -114,6 +152,15 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         from: contractCreator
       });
 
+      // Put a proportion number of synths in the balancer pools. This will make the BPT tokens equally valued in synth terms.
+      await synth1.mint(bpToken1.address, toWei("200"), {
+        from: contractCreator
+      });
+
+      await synth2.mint(bpToken2.address, toWei("800"), {
+        from: contractCreator
+      });
+
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
@@ -130,6 +177,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const payoutAtBlock = await _updatePayoutAtBlock(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         blockNumber,
         shareHolderPayout,
         tokensPerSnapShot
@@ -165,6 +214,15 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         from: contractCreator
       }); // Shareholder1 gets 100 tokens. (100 wei)
 
+      // Put a proportion number of synths in the balancer pools. This will make the BPT tokens equally valued in synth terms.
+      await synth1.mint(bpToken1.address, toWei("10"), {
+        from: contractCreator
+      });
+
+      await synth2.mint(bpToken2.address, "100", {
+        from: contractCreator
+      });
+
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
@@ -180,6 +238,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const payoutAtBlock = await _updatePayoutAtBlock(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         blockNumber,
         shareHolderPayout,
         tokensPerSnapShot
@@ -189,7 +249,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // shareHolder0 expected payout is their pool tokens (10e18) divided by the total pool provision(10e18+100).
       const shareHolder0Frac = toBN(toWei("10")) // fraction of the pool is their contribution/total pool
         .mul(toBN(toWei("1")))
-        .div(toBN(toWei("10")).addn(100));
+        .div(toBN(toWei("10")).addn(200));
 
       const expectedShareHolder0Payout = toBN(tokensPerSnapShot) // The total tokens per snapshot * by their pool ratio.
         .mul(shareHolder0Frac)
@@ -211,6 +271,69 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const expectedPayoutPerOtherShareholder = toWei("0");
       for (shareholder of shareHolders.slice(2, 6)) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerOtherShareholder.toString());
+      }
+    });
+    it("Correctly splits payout over all liquidity providers (unbalanced pool case)", async function() {
+      // Create 10e18 tokens to distribute, sending 2e18 to each liquidity provider. Put equal amounts in both pools
+      // but make half the LPs in the first pool and the other half in the second pool, using the first 4 shareholders.
+      for (shareHolder of shareHolders.slice(0, 2)) {
+        await bpToken1.mint(shareHolder, toWei("2"), {
+          from: contractCreator
+        });
+      }
+      for (shareHolder of shareHolders.slice(2, 4)) {
+        await bpToken2.mint(shareHolder, toWei("2"), {
+          from: contractCreator
+        });
+      }
+
+      // Put unequal number of synths in the balancer pools. This will make the bpt worth different amounts, even
+      // though the sponsors all have equal number of bpt. This simulates seeding the balancer pools at different
+      // prices resulting in each bpt being redeemable for different numbers of yUSD. There are a total of 4 bpt
+      // minted in each pool. With 60 Synths redeemable in the pool 1 this makes each bpt redeemable for 60/4=15 synths.
+      // With 40 synths in pool 2 this makes each bpt redeemable for 40/4=10
+
+      await synth1.mint(bpToken1.address, toWei("60"), {
+        from: contractCreator
+      });
+
+      await synth2.mint(bpToken2.address, toWei("40"), {
+        from: contractCreator
+      });
+
+      // Create an object to store the payouts for a given block. This should be an object with key being the
+      // shareholder address and value being their respective payout.
+      let shareHolderPayout = {};
+      for (shareHolder of shareHolders) {
+        shareHolderPayout[shareHolder] = toBN("0");
+      }
+
+      const blockNumber = await web3.eth.getBlockNumber();
+      // Distribute 5 tokens per snapshot.
+      const tokensPerSnapShot = toWei("5");
+
+      // Call the `_updatePayoutAtBlock` to get the distribution at a given `blockNumber`.
+      const payoutAtBlock = await _updatePayoutAtBlock(
+        bpToken1.contract,
+        bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
+        blockNumber,
+        shareHolderPayout,
+        tokensPerSnapShot
+      );
+
+      // Validate that each shareholder got the right number of tokens for the given block. Each sponsors reward should
+      // be: myReward = (totalUMAPayout * (myyUSDinBP1 + myyUSDinBP2)) / (totalyUSDinBP1 + totalyUSDinBP2);
+      // sponsor 1 & 2 have 2 bpt worth 15 yUSD each = 30 yUSD. sponsor 3 & 4 have 2 bpt worth 10 yUSD each = 20 yUSD.
+      // Expecting sponsor 1 & 2 to get 5 * (30 + 0) / (60 + 40) = 1.5
+      // Expecting sponsor 3 & 4 to get 5 * (0 + 20) / (60 + 40) = 1.0
+      for (shareHolder of shareHolders.slice(0, 2)) {
+        assert.equal(payoutAtBlock[shareHolder].toString(), toWei("1.5"));
+      }
+
+      for (shareHolder of shareHolders.slice(2, 4)) {
+        assert.equal(payoutAtBlock[shareHolder].toString(), toWei("1.0"));
       }
     });
   });
@@ -238,6 +361,16 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         await bpToken1.mint(shareHolder, toWei("1"), { from: contractCreator });
         await bpToken2.mint(shareHolder, toWei("1"), { from: contractCreator });
       }
+
+      // Put equal number of synths in the balancer pools. This will make the BPT tokens equally valued in synth terms.
+      await synth1.mint(bpToken1.address, toWei("100"), {
+        from: contractCreator
+      });
+
+      await synth2.mint(bpToken2.address, toWei("100"), {
+        from: contractCreator
+      });
+
       // Capture the starting block number.
       const startingBlockNumber = await web3.eth.getBlockNumber();
       const startingBlockTimestamp = await web3.eth.getBlock(startingBlockNumber).timestamp;
@@ -257,6 +390,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         shareHolders,
         startingBlockNumber,
         endingBlockNumber,
@@ -283,16 +418,33 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       //      shareholder0 2 ^ 0=1e18
       //      shareholder1 2^1=2e18
       //      shareholder2 2^2=4e18 ... and so on for the 5 shareholders.
-      // For each shareholder alternate between the pools that they are part of.
+      // For each shareholder alternate between the pools that they are part of. Mint a proportional number of synths
+      // and send them to the pools.
 
       let index = 0;
       for (shareHolder of shareHolders) {
-        if (index % 2)
-          await bpToken1.mint(shareHolder, toWei(Math.pow(2, index).toString()), { from: contractCreator });
-        if (!(index % 2))
-          await bpToken2.mint(shareHolder, toWei(Math.pow(2, index).toString()), { from: contractCreator });
+        if (index % 2) {
+          const tokensToMint = toWei(Math.pow(2, index).toString());
+          await bpToken1.mint(shareHolder, tokensToMint, {
+            from: contractCreator
+          });
+          await synth1.mint(bpToken1.address, tokensToMint, {
+            from: contractCreator
+          });
+        }
+        if (!(index % 2)) {
+          const tokensToMint = toWei(Math.pow(2, index).toString());
+          await bpToken2.mint(shareHolder, tokensToMint, {
+            from: contractCreator
+          });
+          await synth2.mint(bpToken2.address, tokensToMint, {
+            from: contractCreator
+          });
+        }
         index += 1;
       }
+
+      // Put equal number of synths in the balancer pools. This will make the BPT tokens equally valued in synth terms.
 
       // Capture the starting block number.
       const startingBlockNumber = await web3.eth.getBlockNumber();
@@ -313,6 +465,8 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken1.contract,
         bpToken2.contract,
+        synth1.contract,
+        synth2.contract,
         shareHolders,
         startingBlockNumber,
         endingBlockNumber,

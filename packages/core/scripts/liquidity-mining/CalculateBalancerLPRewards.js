@@ -203,7 +203,6 @@ async function _fetchBalancerPoolInfo(poolAddress) {
     },
     body: JSON.stringify({ query })
   });
-
   const data = (await response.json()).data;
   if (data.pools.length > 0) {
     return data.pools[0];
