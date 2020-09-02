@@ -34,7 +34,6 @@ const { transports } = require("./Transports");
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
 async function waitForLogger(logger) {
-  if (require("minimist")(process.argv.slice(), {})._.indexOf("test") != -1) return true; // Exit early if in a test.
   const loggerDone = new Promise(resolve => logger.on("finish", resolve));
   logger.end();
   return await loggerDone;

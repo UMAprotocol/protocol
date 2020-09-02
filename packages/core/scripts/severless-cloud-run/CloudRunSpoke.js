@@ -111,7 +111,7 @@ function _getChildProcessIdentifier(req) {
 // Start the server's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
-  server.listen(port, () => {
+  return server.listen(port, () => {
     logger.debug({
       at: "CloudRunSpoke",
       message: "Cloud Run spoke initialized",
