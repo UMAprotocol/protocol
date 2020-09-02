@@ -25,7 +25,7 @@ function lastSpyLogIncludes(spy, value) {
   // and any log messages included and check if the provided value is within the object.
   const lastLogMessage = JSON.stringify([
     spy.getCall(-1).lastArg,
-    spy.getCall(-1).lastArg.error ? spy.getCall(-1).lastArg.error.message : "" // If there is an error, add it's message.
+    spy.getCall(-1).lastArg.error ? spy.getCall(-1).lastArg.error.message : "" // If there is an error, add its message.
   ]);
   return lastLogMessage.indexOf(value) !== -1;
 }
