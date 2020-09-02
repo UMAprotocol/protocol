@@ -1,8 +1,10 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { LiquidationStatesEnum } = require("@umaprotocol/common");
+const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@umaprotocol/common");
 const Promise = require("bluebird");
+// const { parseFixed } = require("@ethersproject/bignumber");
+// const {ConvertDecimals,parseFixed} = require("@ethersproject/bignumber");
 
 class ExpiringMultiPartyClient {
   /**
@@ -13,7 +15,7 @@ class ExpiringMultiPartyClient {
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress) {
+  constructor(logger, empAbi, web3, empAddress, collateralDecimals = 18, syntheticDecimals = 18) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -28,6 +30,8 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
+    this.collateralDecimals = collateralDecimals;
+    this.syntheticDecimals = syntheticDecimals;
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
@@ -35,6 +39,13 @@ class ExpiringMultiPartyClient {
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+
+    const Convert = (decimals = 18) => number => this.toBN(parseFixed(number.toString(), decimals).toString());
+
+    // currently not implemented
+    this.convertSynthetic = Convert(syntheticDecimals);
+    this.convertCollateral = Convert(collateralDecimals);
+    this.convertCollateralToSynthetic = ConvertDecimals(collateralDecimals, syntheticDecimals);
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -216,11 +227,12 @@ class ExpiringMultiPartyClient {
     // The formula for an undercollateralized position is:
     // (numTokens * trv) * collateralRequirement > amountCollateral.
     // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
+    // we need to convert our tokens down to collateral decimals
     return this.toBN(numTokens)
       .mul(this.toBN(trv))
       .mul(this.collateralRequirement)
       .gt(
-        this.toBN(amountCollateral)
+        this.convertCollateralToSynthetic(amountCollateral)
           .mul(fixedPointAdjustment)
           .mul(fixedPointAdjustment)
       );

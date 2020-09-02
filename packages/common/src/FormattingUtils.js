@@ -3,6 +3,8 @@ const networkUtils = require("./PublicNetworks");
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
 const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
+const web3 = require("web3");
+const { toBN } = web3.utils;
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -117,6 +119,30 @@ function addSign(number) {
   }
 }
 
+// Take an amount based on fromDecimals and convert it to an amount based on toDecimals
+// For example amount = 100 usdt, its decimals are 6. You want to convert it to 18.
+// convertDecimals(6,18)(100000000)  => 1000000000000000000000.
+// Returns a BigNumber you will need to call toString on
+// fromDecimals: number - decimal value of amount
+// toDecimals: number - decimal value to convert to
+// bn: toBN function - optionally provide your own BN function.
+// return => (amount:string)=>BN
+const ConvertDecimals = (fromDecimals, toDecimals, bn = toBN) => {
+  assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
+  assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
+  assert(bn, "requires toBN function");
+  // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
+  // returns: BN with toDecimals in smallest unit
+  return amount => {
+    amount = bn(amount);
+    if (amount.isZero()) return amount;
+    const diff = fromDecimals - toDecimals;
+    if (diff == 0) return amount;
+    if (diff > 0) return amount.div(bn(10).pow(bn(diff)));
+    return amount.mul(bn(10).pow(bn(-1 * diff)));
+  };
+};
+
 module.exports = {
   formatDateShort,
   formatDate,
@@ -129,5 +155,6 @@ module.exports = {
   createEtherscanLinkMarkdown,
   addSign,
   formatFixed,
-  parseFixed
+  parseFixed,
+  ConvertDecimals
 };
