@@ -35,7 +35,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core/index");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
@@ -46,7 +46,7 @@ async function run(
   priceFeedConfig,
   liquidatorConfig,
   liquidatorOverridePrice
-) {
+}) {
   try {
     const { toBN } = web3.utils;
 
@@ -122,18 +122,18 @@ async function run(
       });
     }
 
-    const liquidator = new Liquidator(
+    const liquidator = new Liquidator({
       logger,
       oneInchClient,
-      empClient,
+      expiringMultiPartyClient: empClient,
       gasEstimator,
-      voting,
+      votingContract: voting,
       syntheticToken,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
       liquidatorConfig
-    );
+    });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -258,11 +258,11 @@ async function Poll(callback) {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
       if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
 
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
     }
   } catch (error) {
     Logger.error({

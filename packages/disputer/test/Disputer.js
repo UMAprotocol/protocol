@@ -139,16 +139,16 @@ contract("Disputer.js", function(accounts) {
     // Create price feed mock.
     priceFeedMock = new PriceFeedMock();
 
-    disputer = new Disputer(
-      spyLogger,
-      empClient,
-      mockOracle,
+    disputer = new Disputer({
+      logger: spyLogger,
+      expiringMultiPartyClient: empClient,
+      votingContract: mockOracle,
       gasEstimator,
-      priceFeedMock,
-      accounts[0],
+      priceFeed: priceFeedMock,
+      account: accounts[0],
       empProps,
-      disputerConfig
-    );
+      config: disputerConfig
+    });
   });
 
   it("Detect disputable positions and send disputes", async function() {
@@ -401,16 +401,16 @@ contract("Disputer.js", function(accounts) {
         disputerConfig = {
           disputeDelay: -1
         };
-        disputer = new Disputer(
-          spyLogger,
-          empClient,
-          mockOracle,
+        disputer = new Disputer({
+          logger: spyLogger,
+          expiringMultiPartyClient: empClient,
+          votingContract: mockOracle,
           gasEstimator,
-          priceFeedMock,
-          accounts[0],
+          priceFeed: priceFeedMock,
+          account: accounts[0],
           empProps,
-          disputerConfig
-        );
+          config: disputerConfig
+        });
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -422,16 +422,16 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(
-        spyLogger,
-        empClient,
-        mockOracle,
+      disputer = new Disputer({
+        logger: spyLogger,
+        expiringMultiPartyClient: empClient,
+        votingContract: mockOracle,
         gasEstimator,
-        priceFeedMock,
-        accounts[0],
+        priceFeed: priceFeedMock,
+        account: accounts[0],
         empProps,
-        disputerConfig
-      );
+        config: disputerConfig
+      });
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
