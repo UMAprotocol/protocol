@@ -154,14 +154,13 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     ]);
 
     // 3. Check responses.
-    assert(
-      priceResponse && priceResponse.result && priceResponse.result.price,
-      `🚨Could not parse price result from url ${priceUrl}: ${JSON.stringify(priceResponse)}`
-    );
-    assert(
-      ohlcResponse && ohlcResponse.result && ohlcResponse.result[this.ohlcPeriod],
-      `🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`
-    );
+    if (!priceResponse || !priceResponse.result || !priceResponse.result.price) {
+      throw new Error(`🚨Could not parse price result from url ${priceUrl}: ${JSON.stringify(priceResponse)}`);
+    }
+
+    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
+      throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
+    }
 
     // 4. Parse results.
     // Return data structure:
