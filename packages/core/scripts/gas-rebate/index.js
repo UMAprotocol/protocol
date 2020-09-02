@@ -8,15 +8,21 @@ const path = require("path");
 
 const Voting = artifacts.require("Voting");
 
-const TEST_START_BLOCK = 10760028;
-
 const { toBN, toWei, fromWei } = web3.utils;
+const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 
 const CalculateRebate = async callback => {
   try {
     const weekNumber = 1;
-    const startBlock = argv.start ? argv.start : TEST_START_BLOCK;
-    const endBlock = (await web3.eth.getBlock("latest")).number;
+    const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
+    const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
+    let endBlock, startBlock;
+    try {
+      endBlock = await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate));
+      startBlock = await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate));
+    } catch (err) {
+      console.error(err);
+    }
     const voting = await Voting.deployed();
     console.log(`⛽️ Calculating gas rebates from block ${startBlock} until ${endBlock}`);
 

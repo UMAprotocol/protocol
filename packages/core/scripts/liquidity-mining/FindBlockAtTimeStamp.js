@@ -25,8 +25,6 @@ const FindBlockAtTimeStamp = async callback => {
   callback();
 };
 
-module.exports = FindBlockAtTimeStamp;
-
 async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax = 15, lowerLimitMax = 15) {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
@@ -83,3 +81,6 @@ async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax
   }
   return block.number;
 }
+
+FindBlockAtTimeStamp._findBlockNumberAtTimestamp = _findBlockNumberAtTimestamp;
+module.exports = FindBlockAtTimeStamp;
