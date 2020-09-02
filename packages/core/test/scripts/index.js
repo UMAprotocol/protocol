@@ -2,12 +2,14 @@ const { getAbi, getAddress, getTruffleContract } = require("../../");
 
 const Voting = artifacts.require("Voting");
 
-describe("index.js", function() {
-  it("Read Contract ABI", function() {
+contract("index.js", function() {
+  it("Read Contract ABI", async function() {
     assert.deepEqual(getAbi("Voting"), Voting.abi);
   });
 
   it("Read Contract Address", async function() {
+    console.log(getAddress);
+    console.log(getAddress("Voting", await web3.eth.net.getId()));
     assert.equal(getAddress("Voting", await web3.eth.net.getId()), Voting.address);
   });
 
