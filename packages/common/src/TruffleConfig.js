@@ -137,11 +137,10 @@ function addLocalNetwork(networks, name, customOptions) {
     network_id: "*",
     gas: gas,
     provider: function(provider = nodeUrl) {
-      if (!singletonProvider) {
-        const tempWeb3 = new Web3(provider);
-        singletonProvider = tempWeb3.eth.currentProvider;
-      }
-      return singletonProvider;
+      // Don't use the singleton here because it seems to make truffle tests flaky and creating multiple local providers
+      // won't hurt anything.
+      const tempWeb3 = new Web3(provider);
+      return tempWeb3.eth.currentProvider;
     }
   };
 
