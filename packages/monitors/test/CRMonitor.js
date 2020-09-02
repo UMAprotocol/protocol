@@ -127,7 +127,13 @@ contract("CRMonitor.js", function(accounts) {
       networkId: await web3.eth.net.getId()
     };
 
-    crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, monitorConfig, empProps);
+    crMonitor = new CRMonitor({
+      logger: spyLogger,
+      expiringMultiPartyClient: empClient,
+      priceFeed: priceFeedMock,
+      config: monitorConfig,
+      empProps
+    });
 
     await collateralToken.addMember(1, tokenSponsor, {
       from: tokenSponsor
@@ -245,7 +251,13 @@ contract("CRMonitor.js", function(accounts) {
         ]
       };
 
-      balanceMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, invalidMonitorConfig1, empProps);
+      balanceMonitor = new CRMonitor({
+        logger: spyLogger,
+        expiringMultiPartyClient: empClient,
+        priceFeed: priceFeedMock,
+        config: invalidMonitorConfig1,
+        empProps
+      });
       errorThrown1 = false;
     } catch (err) {
       errorThrown1 = true;
@@ -267,7 +279,13 @@ contract("CRMonitor.js", function(accounts) {
         ]
       };
 
-      crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, invalidMonitorConfig2, empProps);
+      crMonitor = new CRMonitor({
+        logger: spyLogger,
+        expiringMultiPartyClient: empClient,
+        priceFeed: priceFeedMock,
+        config: invalidMonitorConfig2,
+        empProps
+      });
       errorThrown2 = false;
     } catch (err) {
       errorThrown2 = true;
@@ -278,7 +296,13 @@ contract("CRMonitor.js", function(accounts) {
     const emptyConfig = {};
     let errorThrown;
     try {
-      crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, emptyConfig, empProps);
+      crMonitor = new CRMonitor({
+        logger: spyLogger,
+        expiringMultiPartyClient: empClient,
+        priceFeed: priceFeedMock,
+        config: emptyConfig,
+        empProps
+      });
       await crMonitor.checkWalletCrRatio();
       errorThrown = false;
     } catch (err) {
@@ -288,7 +312,13 @@ contract("CRMonitor.js", function(accounts) {
   });
   it("Can override the synthetic-threshold log level", async function() {
     const alertOverrideConfig = { ...monitorConfig, logOverrides: { crThreshold: "error" } };
-    crMonitor = new CRMonitor(spyLogger, empClient, priceFeedMock, alertOverrideConfig, empProps);
+    crMonitor = new CRMonitor({
+      logger: spyLogger,
+      expiringMultiPartyClient: empClient,
+      priceFeed: priceFeedMock,
+      config: alertOverrideConfig,
+      empProps
+    });
 
     // Increase price to lower wallet CR below threshold
     await empClient.update();

@@ -2,8 +2,7 @@ const { toWei, toBN } = web3.utils;
 
 const { advanceBlockAndSetTime } = require("@umaprotocol/common");
 
-const Main = require("../CalculateBalancerLPProviders"); // Script to test.
-const { _updatePayoutAtBlock } = require("../CalculateBalancerLPProviders");
+const { _updatePayoutAtBlock, _calculatePayoutsBetweenBlocks } = require("../CalculateBalancerLPRewards");
 
 const Token = artifacts.require("ExpandedERC20"); // Helper contracts to mock balancer pool.
 
@@ -174,7 +173,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         shareHolders,
         startingBlockNumber,
@@ -199,7 +198,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
     });
     it("Correctly splits rewards over n blocks (multiple block per snapshot and non-equal distribution)", async function() {
       // Create 31e18 tokens to distribute, sending 2^n*110^18 tokens to each liquidity provider. this works out to:
-      //      shareholder0 2 ^ 0=1e18
+      //      shareholder0 2^0=1e18
       //      shareholder1 2^1=2e18
       //      shareholder2 2^2=4e18 ... and so on for the 5 shareholders.
 
@@ -225,7 +224,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         shareHolders,
         startingBlockNumber,
@@ -329,7 +328,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Check that we have traversed the right number of blocks.
       assert.equal(endingBlockNumber, startingBlockNumber + totalBlocksToAdvance);
 
-      const intervalPayout = await Main._calculatePayoutsBetweenBlocks(
+      const intervalPayout = await _calculatePayoutsBetweenBlocks(
         bpToken.contract,
         [...shareHolders, newShareHolder],
         startingBlockNumber,

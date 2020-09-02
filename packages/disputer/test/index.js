@@ -87,30 +87,30 @@ contract("index.js", function(accounts) {
   });
 
   it("Allowances are set", async function() {
-    await Poll.run(
-      spyLogger,
+    await Poll.run({
+      logger: spyLogger,
       web3,
-      emp.address,
+      empAddress: emp.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      defaultPriceFeedConfig
-    );
+      priceFeedConfig: defaultPriceFeedConfig
+    });
 
     const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
     assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(
-      spyLogger,
+    await Poll.run({
+      logger: spyLogger,
       web3,
-      emp.address,
+      empAddress: emp.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      defaultPriceFeedConfig
-    );
+      priceFeedConfig: defaultPriceFeedConfig
+    });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -149,15 +149,15 @@ contract("index.js", function(accounts) {
     errorRetries = 3; // set execution retries to 3 to validate.
     let errorThrown = false;
     try {
-      await Poll.run(
-        spyLogger,
+      await Poll.run({
+        logger: spyLogger,
         web3,
-        invalidEMP.address,
+        empAddress: invalidEMP.address,
         pollingDelay,
         errorRetries,
         errorRetriesTimeout,
-        defaultPriceFeedConfig
-      );
+        priceFeedConfig: defaultPriceFeedConfig
+      });
     } catch (error) {
       errorThrown = true;
     }
