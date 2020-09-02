@@ -1,7 +1,3 @@
-const Token = artifacts.require("ExpandedERC20");
-const OneSplit = artifacts.require("OneSplit");
-const { toBN } = web3.utils;
-
 const { ONE_SPLIT_ADDRESS, ALTERNATIVE_ETH_ADDRESS, GAS_LIMIT, GAS_LIMIT_BUFFER } = require("./constants");
 
 class OneInchExchange {
@@ -12,7 +8,7 @@ class OneInchExchange {
    * @param {Object} param.gasEstimator - GasEstimator instance
    * @param {string} param.oneSplitAddress - Address of the One Split
    * */
-  constructor({ web3, gasEstimator, logger, oneSplitAddress }) {
+  constructor({ web3, gasEstimator, logger, oneSplitAbi, erc20TokenAbi, oneSplitAddress }) {
     if (!oneSplitAddress) {
       throw new Error("Missing oneSplitAddress in OneInchEcchange constructor!");
     }
@@ -23,7 +19,8 @@ class OneInchExchange {
 
     this.web3 = web3;
     this.web3.currentProvider.timeout = 1200000;
-    this.oneSplitContract = new web3.eth.Contract(OneSplit.abi, this.oneSplitAddress);
+    this.oneSplitContract = new web3.eth.Contract(oneSplitAbi, this.oneSplitAddress);
+    this.erc20TokenAbi = erc20TokenAbi;
 
     this.toBN = web3.utils.toBN;
 
@@ -81,8 +78,8 @@ class OneInchExchange {
 
     // Need to approve ERC20 tokens
     if (fromToken !== ALTERNATIVE_ETH_ADDRESS) {
-      const erc20 = await Token.at(fromToken);
-      await erc20.approve(this.oneSplitAddress, amountWei, {
+      const erc20 = new web3.eth.Contract(this.erc20TokenAbi, fromToken);
+      await erc20.methods.approve(this.oneSplitAddress, amountWei).call({
         from: options.from,
         gasPrice
       });
@@ -102,7 +99,7 @@ class OneInchExchange {
       distribution
     });
 
-    if (minReturnAmountWei && toBN(returnAmount.toString()).lt(toBN(minReturnAmountWei.toString()))) {
+    if (minReturnAmountWei && this.toBN(returnAmount.toString()).lt(this.toBN(minReturnAmountWei.toString()))) {
       this.logger.warn({
         at: "OneInchExchange",
         message: "One Inch exchange return amount too low",
