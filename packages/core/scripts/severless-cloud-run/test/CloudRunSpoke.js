@@ -2,9 +2,10 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
+const path = require("path");
 
 // Script to test
-const server = require("../../../scripts/severless-cloud-run/CloudRunSpoke");
+const server = require("../CloudRunSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -122,7 +123,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   });
   it("Cloud Run Spoke can correctly execute bot logic with valid body", async function() {
     const validBody = {
-      cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
+      cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
@@ -141,7 +142,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid path)", async function() {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
-      cloudRunCommand: "npx truffle exec packages/INVALID/index.js --network test",
+      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../INVALID/index.js --network test`,
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -160,7 +161,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid body)", async function() {
     // Invalid config should error out before entering the main while loop in the bot.
     const invalidConfigBody = {
-      cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
+      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -180,7 +181,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid price feed)", async function() {
     // Invalid price feed config should error out before entering main while loop
     const invalidPriceFeed = {
-      cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
+      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -199,7 +200,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid emp)", async function() {
     // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {
-      cloudRunCommand: "npx truffle exec packages/monitors/index.js --network test",
+      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
