@@ -1,3 +1,26 @@
+/**
+ *
+ * This script calculates transaction fees spent by voters who (1) revealed votes and (2) claimed voting rewards
+ * during a specified time period. The output is a JSON that displays the amount of UMA or ETH that can be used to "rebate"
+ * these voters for their transaction costs incurred while voting.
+ *
+ * This script therefore relies on accurate (1) average gas price data over the specified period (i.e. in gwei), (2) average
+ * ETH price data over the period, and (3) average UMA price data over the period. It also needs the current UMA-ETH price.
+ *
+ * Run: (from repo root) `node ./packages/core/scripts/gas-rebate/index.js  --start 1598572800 --end 1599055419`
+ *
+ * Config options (can be specified as CLI flags):
+ * - start: {Number, optional} start timestamp to query Reveal and Claim events from, described in Unix time in seconds.
+ *          Defaults to default end time - 3 days.
+ * - end: {Number, optional} end timestamp to query Reveal and Claim events up to, described in Unix time in seconds.
+ *          Defaults to current time minus 5 minutes in case node has not processed a block at current time.
+ * - reveal-only: {Boolean, optional} Only query and parse Reveal events. Skip Claim events
+ *          Defaults to false.
+ * - claim-only: {Boolean, optional} Only query and parse Claim events. Skip Reveal events
+ *          Defaults to false.
+ *
+ */
+
 require("dotenv").config();
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
