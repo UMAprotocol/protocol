@@ -1,3 +1,4 @@
+require("dotenv").config();
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
   string: ["start", "end"],
@@ -5,25 +6,26 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 const fs = require("fs");
 const path = require("path");
-
-const Voting = artifacts.require("Voting");
-
-const { toBN, toWei, fromWei } = web3.utils;
+const Web3 = require("web3");
+const VotingAbi = require("../../build/contracts/Voting.json");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 
 const CalculateRebate = async callback => {
   try {
+    const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+    const { toBN, toWei, fromWei } = web3.utils;
+    const voting = new web3.eth.Contract(VotingAbi.abi, "0x9921810C710E7c3f7A7C6831e30929f19537a545");
+
     const weekNumber = 1;
     const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
     let endBlock, startBlock;
     try {
-      endBlock = await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate));
-      startBlock = await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate));
+      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
+      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
     } catch (err) {
       console.error(err);
     }
-    const voting = await Voting.deployed();
     console.log(`⛽️ Calculating gas rebates from block ${startBlock} until ${endBlock}`);
 
     // Query past contract events.
@@ -93,7 +95,7 @@ const CalculateRebate = async callback => {
           web3.eth.getBlock(reveal.blockNumber),
           web3.eth.getTransactionReceipt(reveal.transactionHash)
         ]);
-        const gasUsed = parseInt(transactionReceipt.gasUsed, 16);
+        const gasUsed = parseInt(transactionReceipt.gasUsed);
 
         // Find associated commit with this reveal
         const latestCommitEvent = committedVotes.find(e => {
@@ -211,7 +213,7 @@ const CalculateRebate = async callback => {
           web3.eth.getBlock(claim.blockNumber),
           web3.eth.getTransactionReceipt(claim.transactionHash)
         ]);
-        const gasUsed = parseInt(transactionReceipt.gasUsed, 16);
+        const gasUsed = parseInt(transactionReceipt.gasUsed);
 
         const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
         const val = {
@@ -297,5 +299,18 @@ const CalculateRebate = async callback => {
   }
   callback();
 };
+
+// If called directly by node:
+function nodeCallback(err) {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else process.exit(0);
+}
+if (require.main === module) {
+  CalculateRebate(nodeCallback)
+    .then(() => {})
+    .catch(nodeCallback);
+}
 
 module.exports = CalculateRebate;
