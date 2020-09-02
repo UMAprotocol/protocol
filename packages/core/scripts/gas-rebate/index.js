@@ -22,6 +22,7 @@
  */
 
 require("dotenv").config();
+const fetch = require("node-fetch");
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
   string: ["start", "end"],
@@ -232,7 +233,12 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     } catch (err) {
       console.error(err);
     }
-    console.log(`⛽️ Calculating gas rebates from block ${startBlock} until ${endBlock}`);
+    console.log("\n\n*=======================================*");
+    console.log("*                                       *");
+    console.log("* 🐲⛽️ UMA Gas Rebater 🐲 ⛽️            *");
+    console.log("*                                       *");
+    console.log("*=======================================*");
+    console.log(`- Calculating gas rebates from block ${startBlock} until ${endBlock}`);
 
     // Query past contract events.
     const [committedVotes, revealedVotes, claimedRewards] = await Promise.all([
@@ -260,8 +266,8 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     const _averageEthPriceForPeriod = "435";
     const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod, "ether"));
     // - Current UMA-USD price
-    const _currentUmaPriceForPeriod = "26.5";
-    const currentUmaPriceForPeriod = toBN(toWei(_currentUmaPriceForPeriod, "ether"));
+    const _currentUmaPriceForPeriod = await getUmaPrice();
+    const currentUmaPriceForPeriod = toBN(toWei(_currentUmaPriceForPeriod.toString(), "ether"));
     // - Current UMA-ETH price
     const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(currentUmaPriceForPeriod);
 
@@ -272,9 +278,18 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
       ethToUma,
       SCALING_FACTOR
     };
-    console.log(
-      `💎 Prices: {average gas price for period (gwei): ${_averagePriceGweiForPeriod}, average ETH-USD price for period: ${_averageEthPriceForPeriod}, current UMA-USD price: ${_currentUmaPriceForPeriod}}`
-    );
+    console.log("\n\n*=======================================*");
+    console.log("*                                       *");
+    console.log("* 💎 Price Data 💎                      *");
+    console.log("*                                       *");
+    console.log("*=======================================*");
+    Object.keys(priceData).forEach(k => {
+      if (k.toLowerCase().includes("gwei")) {
+        console.log(`- ${k}: ${fromWei(priceData[k].toString(), "gwei")}`);
+      } else {
+        console.log(`- ${k}: ${fromWei(priceData[k].toString())}`);
+      }
+    });
 
     // Final UMA rebates to send
     const rebateOutput = {
@@ -312,7 +327,13 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
       parsePromises.push(null);
     }
 
+    console.log("\n\n*=======================================*");
+    console.log("*                                       *");
+    console.log("* 🌏 Fetching Blockchain Data 🌎        *");
+    console.log("*                                       *");
+    console.log("*=======================================*");
     [revealRebates, claimRebates] = await Promise.all(parsePromises);
+
     console.log("\n\n*=======================================*");
     console.log("*                                       *");
     console.log("* ✅ Results                           *");
@@ -348,6 +369,20 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     console.error("calculateRebate ERROR:", err);
     return;
   }
+}
+
+async function getUmaPrice() {
+  const query = "https://api.coingecko.com/api/v3/simple/price?ids=uma&vs_currencies=usd";
+
+  const response = await fetch(query, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    }
+  });
+
+  let priceResponse = await response.json();
+  return priceResponse.uma.usd;
 }
 
 // Implement async callback to enable the script to be run by truffle or node.
