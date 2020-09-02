@@ -105,7 +105,7 @@ function _stripExecOutput(output) {
 
 function _getChildProcessIdentifier(req) {
   if (!req.body.environmentVariables) return null;
-  return req.body.environmentVariables.BOT_IDENTIFIER ? req.body.environmentVariables.BOT_IDENTIFIER : null;
+  return req.body.environmentVariables.BOT_IDENTIFIER || null;
 }
 
 // Start the server's async listening process. Enables injection of a logging instance & port for testing.
