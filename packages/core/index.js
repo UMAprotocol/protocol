@@ -60,7 +60,11 @@ function getTruffleContract(contractName, web3) {
  * @param {String} contractName Name of the UMA contract to be instantiated.
  */
 function getTruffleContractTest(contractName) {
-  return global.artifacts.require(contractName);
+  try {
+    return global.artifacts.require(contractName);
+  } catch (error) {
+    return null;
+  }
 }
 
 /**
@@ -69,7 +73,21 @@ function getTruffleContractTest(contractName) {
  * @param {String} contractName Name of the UMA contract whose address is to be retrieved.
  */
 function getAddressTest(contractName) {
-  return getTruffleContractTest(contractName).address;
+  const truffleContract = getTruffleContractTest(contractName);
+
+  if (!truffleContract) {
+    return null;
+  }
+
+  try {
+    // This will fail in buidler, but should work in truffle.
+    return truffleContract.address;
+  } catch (error) {
+    // To avoid calling truffleContract.deployed() in the buidler case, which would force this method to be async,
+    // we have to dig deep into the buidler object to retrieve the contract address. This is kinda hacky, but
+    // preferable to being forced to make all address calls async just for the test case.
+    return global.artifacts._provisioner._deploymentAddresses[contractName];
+  }
 }
 
 /**
@@ -78,7 +96,8 @@ function getAddressTest(contractName) {
  * @param {String} contractName Name of the UMA contract whose abi is to be retrieved.
  */
 function getAbiTest(contractName) {
-  return getTruffleContractTest(contractName).abi;
+  const truffleContract = getTruffleContractTest(contractName);
+  return (truffleContract && truffleContract.abi) || null;
 }
 
 if (global.artifacts) {
