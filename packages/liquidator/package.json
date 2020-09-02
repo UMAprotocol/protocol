@@ -30,7 +30,8 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "truffle test && truffle test test-fork"
+    "test": "truffle test",
+    "test-fork": "truffle test test-fork --network mainnet-fork"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

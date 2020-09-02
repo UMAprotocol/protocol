@@ -10,6 +10,7 @@
     "eslint": "eslint './**/*.js'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
     "test": "lerna run --stream --concurrency=1 test",
+    "test-fork": "lerna run --stream --concurrency=1 test-fork",
     "load-addresses": "yarn workspace @umaprotocol/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
     "publish-release": "./scripts/run_release.sh",
