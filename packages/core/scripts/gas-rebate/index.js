@@ -10,15 +10,15 @@ const Web3 = require("web3");
 const VotingAbi = require("../../build/contracts/Voting.json");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 
-const CalculateRebate = async callback => {
+async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
   try {
     const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
     const { toBN, toWei, fromWei } = web3.utils;
     const voting = new web3.eth.Contract(VotingAbi.abi, "0x9921810C710E7c3f7A7C6831e30929f19537a545");
 
     const weekNumber = 1;
-    const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
-    const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
+    const endDate = _endDate ? _endDate : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
+    const startDate = _startDate ? _startDate : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
     let endBlock, startBlock;
     try {
       endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
@@ -68,7 +68,7 @@ const CalculateRebate = async callback => {
     };
 
     // Parse data for vote reveals to rebate.
-    if (!argv["claim-only"]) {
+    if (!_claimOnly) {
       console.log("\n\n*=======================================*");
       console.log("*                                       *");
       console.log("* 📸 Parsing REVEAL data                *");
@@ -187,7 +187,7 @@ const CalculateRebate = async callback => {
     }
 
     // Parse data for claimed rewards to rebate
-    if (!argv["reveal-only"]) {
+    if (!_revealOnly) {
       console.log("\n\n*=======================================*");
       console.log("*                                       *");
       console.log("* 💴 Parsing CLAIM data                 *");
@@ -294,11 +294,21 @@ const CalculateRebate = async callback => {
     fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
     console.log("🗄  File successfully written to", savePath);
   } catch (err) {
-    callback(err);
+    console.error("calculateRebate ERROR:", err);
     return;
   }
+}
+
+// Implement async callback to enable the script to be run by truffle or node.
+async function Main(callback) {
+  try {
+    // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
+    await calculateRebate(argv.start, argv.end, argv["reveal-only"], argv["claim-only"]);
+  } catch (error) {
+    console.error(error);
+  }
   callback();
-};
+}
 
 // If called directly by node:
 function nodeCallback(err) {
@@ -307,10 +317,12 @@ function nodeCallback(err) {
     process.exit(1);
   } else process.exit(0);
 }
+
+// If called directly by node, execute the core function. This lets the script be run as a node process.
 if (require.main === module) {
-  CalculateRebate(nodeCallback)
+  Main(nodeCallback)
     .then(() => {})
     .catch(nodeCallback);
 }
 
-module.exports = CalculateRebate;
+module.exports = Main;
