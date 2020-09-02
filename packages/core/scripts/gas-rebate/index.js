@@ -39,7 +39,7 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     const { toBN, toWei, fromWei } = web3.utils;
     const voting = new web3.eth.Contract(VotingAbi.abi, "0x9921810C710E7c3f7A7C6831e30929f19537a545");
 
-    const weekNumber = 1;
+    const rebateNumber = 1;
     const endDate = _endDate ? _endDate : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
     const startDate = _startDate ? _startDate : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
     let endBlock, startBlock;
@@ -84,7 +84,7 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
 
     // Final UMA rebates to send
     const rebateOutput = {
-      week: weekNumber,
+      rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
       shareHolderPayout: {} // {[voter:string]: amountUmaToRebate:number}
@@ -313,7 +313,7 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     console.log(`📒 Output JSON: ${JSON.stringify(rebateOutput, null, 4)}`);
 
     // Format output and save to file.
-    const savePath = `${path.resolve(__dirname)}/weekly-payouts/Week_${weekNumber}_Gas_Rebate.json`;
+    const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
     fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
     console.log("🗄  File successfully written to", savePath);
   } catch (err) {
