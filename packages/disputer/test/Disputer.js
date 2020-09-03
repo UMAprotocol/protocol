@@ -56,7 +56,7 @@ contract("Disputer.js", function(accounts) {
       let spyLogger;
       let priceFeedMock;
 
-      let disputerConfig;
+      let config;
       let empProps;
       let identifier;
       let convert;
@@ -152,7 +152,7 @@ contract("Disputer.js", function(accounts) {
         gasEstimator = new GasEstimator(spyLogger);
 
         // Create a new instance of the disputer to test
-        disputerConfig = {
+        config = {
           disputeDelay: 0
         };
 
@@ -167,7 +167,7 @@ contract("Disputer.js", function(accounts) {
           priceFeed: priceFeedMock,
           account: accounts[0],
           empProps,
-          disputerConfig
+          config
         });
       });
 
@@ -418,7 +418,7 @@ contract("Disputer.js", function(accounts) {
         it("Cannot set `disputeDelay` < 0", async function() {
           let errorThrown;
           try {
-            disputerConfig = {
+            config = {
               disputeDelay: -1
             };
             disputer = new Disputer({
@@ -429,7 +429,7 @@ contract("Disputer.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               empProps,
-              disputerConfig
+              config
             });
             errorThrown = false;
           } catch (err) {
@@ -439,7 +439,7 @@ contract("Disputer.js", function(accounts) {
         });
 
         it("Sets `disputeDelay` to 60 seconds", async function() {
-          disputerConfig = {
+          config = {
             disputeDelay: 60
           };
           disputer = new Disputer({
@@ -450,7 +450,7 @@ contract("Disputer.js", function(accounts) {
             priceFeed: priceFeedMock,
             account: accounts[0],
             empProps,
-            disputerConfig
+            config
           });
 
           // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
@@ -482,7 +482,7 @@ contract("Disputer.js", function(accounts) {
           assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
 
           // Advance contract time and attempt to dispute again.
-          await emp.setCurrentTime(Number(liquidationTime) + disputerConfig.disputeDelay);
+          await emp.setCurrentTime(Number(liquidationTime) + config.disputeDelay);
 
           priceFeedMock.setHistoricalPrice("1.1");
           await disputer.update();
