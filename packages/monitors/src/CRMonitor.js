@@ -1,6 +1,7 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
 const {
+  ConvertDecimals,
   createFormatFunction,
   createEtherscanLinkMarkdown,
   createObjectFromDefaultProps
@@ -38,7 +39,20 @@ class CRMonitor {
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    console.log("empProps", empProps);
+    this.convertCollateralToSynthetic = ConvertDecimals(
+      empProps.collateralCurrencyDecimals,
+      empProps.syntheticCurrencyDecimals
+    );
+
+    this.formatDecimalStringCollateral = createFormatFunction(
+      this.web3,
+      2,
+      4,
+      false,
+      empProps.collateralCurrencyDecimals
+    );
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Wallets to monitor collateralization ratio.
     const defaultConfig = {
@@ -186,17 +200,19 @@ class CRMonitor {
     if (tokensOutstanding == 0) {
       return null;
     }
-    return this.toBN(collateral)
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
       .mul(this.toBN(this.toWei("1")))
       .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    const fixedPointScaling = this.toBN(this.toWei("1"));
-    return this.toBN(collateral)
-      .mul(fixedPointScaling)
-      .mul(fixedPointScaling)
+    console.log("positionCR", collateral.toString());
+    console.log("positionCR", tokensOutstanding.toString());
+    console.log("positionCR", positionCR.toString());
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding))
       .div(this.toBN(positionCR));
   }
