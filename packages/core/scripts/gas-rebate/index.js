@@ -22,6 +22,7 @@
  */
 
 require("dotenv").config();
+const moment = require("moment");
 const fetch = require("node-fetch");
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
@@ -219,20 +220,10 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
   };
 }
 
-async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
+async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly, claimOnly }) {
   try {
     const voting = new web3.eth.Contract(VotingAbi.abi, "0x9921810C710E7c3f7A7C6831e30929f19537a545");
 
-    const rebateNumber = 1;
-    const endDate = _endDate ? _endDate : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
-    const startDate = _startDate ? _startDate : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
-    let endBlock, startBlock;
-    try {
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
-    } catch (err) {
-      console.error(err);
-    }
     console.log("\n\n*=======================================*");
     console.log("*                                       *");
     console.log("* 🐲⛽️ UMA Gas Rebater 🐲 ⛽️            *");
@@ -257,17 +248,30 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
       })
     ]);
 
-    // TODO: Fetch gas price data
+    console.log("\n\n*=======================================*");
+    console.log("*                                       *");
+    console.log("* 💎 Calculating Price Data 💎          *");
+    console.log("*                                       *");
+    console.log("*=======================================*");
+
+    // Fetch gas price data in parallel
+    const pricePromises = [];
+    pricePromises.push(getHistoricalGasPrice(startBlock, endBlock));
+    pricePromises.push(getHistoricalEthPrice(startBlock, endBlock));
+    pricePromises.push(getUmaPrice());
+
+    const [gasPrice, ethPrice, umaPrice] = await Promise.all(pricePromises);
+
     const SCALING_FACTOR = toBN(toWei("1"));
     // - Get gas price for period.  This is the ETH price per unit gas, described in Gwei.
-    const _averagePriceGweiForPeriod = "90";
-    const averagePriceGweiForPeriod = toBN(toWei(_averagePriceGweiForPeriod, "gwei"));
+    const _averagePriceGweiForPeriod = gasPrice ? gasPrice : 90;
+    const averagePriceGweiForPeriod = toBN(toWei(_averagePriceGweiForPeriod.toString(), "gwei"));
     // - ETH-USD price for period
-    const _averageEthPriceForPeriod = "435";
-    const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod, "ether"));
+    const _averageEthPriceForPeriod = ethPrice ? ethPrice : 435;
+    const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod.toString(), "ether"));
     // - Current UMA-USD price
-    const _currentUmaPriceForPeriod = await getUmaPrice();
-    const currentUmaPriceForPeriod = toBN(toWei(_currentUmaPriceForPeriod.toString(), "ether"));
+    const _umaPrice = umaPrice ? umaPrice : 10;
+    const currentUmaPriceForPeriod = toBN(toWei(_umaPrice.toString(), "ether"));
     // - Current UMA-ETH price
     const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(currentUmaPriceForPeriod);
 
@@ -278,11 +282,6 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
       ethToUma,
       SCALING_FACTOR
     };
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* 💎 Price Data 💎                      *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
     Object.keys(priceData).forEach(k => {
       if (k.toLowerCase().includes("gwei")) {
         console.log(`- ${k}: ${fromWei(priceData[k].toString(), "gwei")}`);
@@ -314,14 +313,14 @@ async function calculateRebate(_startDate, _endDate, _revealOnly, _claimOnly) {
     );
 
     // Parse data for vote reveals to rebate.
-    if (!_claimOnly) {
+    if (!claimOnly) {
       parsePromises.push(parseRevealEvents(committedVotes, revealedVotes, priceData, multibar, rebateOutput));
     } else {
       parsePromises.push(null);
     }
 
     // Parse data for claimed rewards to rebate
-    if (!_revealOnly) {
+    if (!revealOnly) {
       parsePromises.push(parseClaimEvents(claimedRewards, priceData, multibar, rebateOutput));
     } else {
       parsePromises.push(null);
@@ -385,11 +384,82 @@ async function getUmaPrice() {
   return priceResponse.uma.usd;
 }
 
+async function getHistoricalGasPrice(startBlock, endBlock) {
+  const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
+  if (!etherscanApiKey) {
+    console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default gas price");
+    return null;
+  } else {
+    const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
+    const startTimeString = moment.unix(startTime).format("YYYY-MM-DD");
+    const endTime = (await web3.eth.getBlock(endBlock)).timestamp;
+    const endTimeString = moment.unix(endTime).format("YYYY-MM-DD");
+
+    const query = `https://api.etherscan.io/api?module=stats&action=dailyavggasprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
+    const response = await fetch(query, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    });
+
+    let data = (await response.json()).result;
+    const dailyPrices = [];
+    data.forEach(_data => dailyPrices.push(Number(_data.avgGasPrice_Wei)));
+    const averageWei = Math.ceil(dailyPrices.reduce((a, b) => a + b) / dailyPrices.length);
+    return fromWei(averageWei.toString(), "gwei");
+  }
+}
+
+async function getHistoricalEthPrice(startBlock, endBlock) {
+  const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
+  if (!etherscanApiKey) {
+    console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default ETH price");
+    return null;
+  } else {
+    const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
+    const startTimeString = moment.unix(startTime).format("YYYY-MM-DD");
+    const endTime = (await web3.eth.getBlock(endBlock)).timestamp;
+    const endTimeString = moment.unix(endTime).format("YYYY-MM-DD");
+
+    const query = `https://api.etherscan.io/api?module=stats&action=ethdailyprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
+    const response = await fetch(query, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    });
+
+    let data = (await response.json()).result;
+    const dailyPrices = [];
+    data.forEach(_data => dailyPrices.push(Number(_data.value)));
+    const average = Math.ceil(dailyPrices.reduce((a, b) => a + b) / dailyPrices.length);
+    return average;
+  }
+}
+
 // Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
+    const rebateNumber = 1;
+    const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
+    const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
+    let endBlock, startBlock;
+    try {
+      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
+      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
+    } catch (err) {
+      throw err;
+    }
+
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
-    await calculateRebate(argv.start, argv.end, argv["reveal-only"], argv["claim-only"]);
+    await calculateRebate({
+      rebateNumber,
+      startBlock,
+      endBlock,
+      revealOnly: argv["reveal-only"],
+      claimOnly: argv["claim-only"]
+    });
   } catch (error) {
     console.error(error);
   }
