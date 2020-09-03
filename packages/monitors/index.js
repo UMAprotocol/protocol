@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const retry = require("async-retry");
 
@@ -40,7 +42,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
@@ -52,7 +54,7 @@ async function run(
   monitorConfig,
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig
-) {
+}) {
   try {
     const { hexToUtf8 } = web3.utils;
 
@@ -130,14 +132,14 @@ async function run(
       endingBlock
     );
 
-    const contractMonitor = new ContractMonitor(
+    const contractMonitor = new ContractMonitor({
       logger,
-      empEventClient,
-      medianizerPriceFeed,
-      monitorConfig,
+      expiringMultiPartyEventClient: empEventClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
       empProps,
       voting
-    );
+    });
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
@@ -148,22 +150,33 @@ async function run(
       syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, monitorConfig, empProps);
+    const balanceMonitor = new BalanceMonitor({
+      logger,
+      tokenBalanceClient,
+      config: monitorConfig,
+      empProps
+    });
 
     // 3. Collateralization Ratio monitor.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
 
-    const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
+    const crMonitor = new CRMonitor({
+      logger,
+      expiringMultiPartyClient: empClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
+      empProps
+    });
 
     // 4. Synthetic Peg Monitor.
-    const syntheticPegMonitor = new SyntheticPegMonitor(
+    const syntheticPegMonitor = new SyntheticPegMonitor({
       logger,
       web3,
-      tokenPriceFeed,
+      uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
-      monitorConfig,
+      config: monitorConfig,
       empProps
-    );
+    });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
@@ -223,12 +236,8 @@ async function run(
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Monitor#index",
-      message: "Monitor polling error. Monitor crashed🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 async function Poll(callback) {
@@ -304,21 +313,20 @@ async function Poll(callback) {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
       if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
 
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
     }
   } catch (error) {
     Logger.error({
       at: "Monitor#index",
-      message: "Monitor configuration error🚨",
+      message: "Monitor execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }

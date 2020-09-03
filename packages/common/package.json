@@ -18,9 +18,6 @@
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
   },
-  "devDependencies": {
-    "truffle-deploy-registry": "^0.5.1"
-  },
   "files": [
     "/src/**/*.js"
   ],
@@ -38,6 +35,7 @@
     "moment": "^2.24.0",
     "node-metamask": "github:UMAprotocol/node-metamask",
     "require-context": "^1.1.0",
+    "truffle-deploy-registry": "^0.5.1",
     "web3": "1.2.7"
   }
 }

@@ -594,6 +594,7 @@ class GlobalSummaryReporter {
     };
     if (this.periodTotalCollateralDeposited && this.prevPeriodTotalCollateralDeposited) {
       allSponsorStatsTable["collateral deposited"] = {
+        ...allSponsorStatsTable["collateral deposited"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralDeposited)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.periodTotalCollateralDeposited)).sub(
@@ -609,6 +610,7 @@ class GlobalSummaryReporter {
     };
     if (this.periodTotalCollateralWithdrawn && this.prevPeriodTotalCollateralWithdrawn) {
       allSponsorStatsTable["collateral withdrawn"] = {
+        ...allSponsorStatsTable["collateral withdrawn"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalCollateralWithdrawn)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.periodTotalCollateralWithdrawn)).sub(
@@ -644,6 +646,7 @@ class GlobalSummaryReporter {
         Number(this.prevPeriodTotalCollateralDeposited) - Number(this.prevPeriodTotalCollateralWithdrawn)
       ).toString();
       allSponsorStatsTable["net collateral deposited"] = {
+        ...allSponsorStatsTable["net collateral deposited"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netCollateralWithdrawnPeriod)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.netCollateralWithdrawnPeriod)).sub(
@@ -659,6 +662,7 @@ class GlobalSummaryReporter {
     };
     if (this.periodTotalSyntheticTokensCreated && this.prevPeriodTotalSyntheticTokensCreated) {
       allSponsorStatsTable["tokens minted"] = {
+        ...allSponsorStatsTable["tokens minted"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensCreated)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.periodTotalSyntheticTokensCreated)).sub(
@@ -674,6 +678,7 @@ class GlobalSummaryReporter {
     };
     if (this.periodTotalSyntheticTokensBurned && this.prevPeriodTotalSyntheticTokensBurned) {
       allSponsorStatsTable["tokens burned"] = {
+        ...allSponsorStatsTable["tokens burned"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.periodTotalSyntheticTokensBurned)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.periodTotalSyntheticTokensBurned)).sub(
@@ -709,6 +714,7 @@ class GlobalSummaryReporter {
         Number(this.prevPeriodTotalSyntheticTokensCreated) - Number(this.prevPeriodTotalSyntheticTokensBurned)
       ).toString();
       allSponsorStatsTable["net tokens minted"] = {
+        ...allSponsorStatsTable["net tokens minted"],
         [this.periodLabelInHours]: this.formatDecimalString(this.toWei(this.netTokensMintedPeriod)),
         ["Δ from prev. period"]: this.formatDecimalStringWithSign(
           this.toBN(this.toWei(this.netTokensMintedPeriod)).sub(this.toBN(this.toWei(this.netTokensMintedPrevPeriod)))

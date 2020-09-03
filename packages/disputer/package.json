@@ -27,6 +27,7 @@
   "files": [
     "/src/**/*.js"
   ],
+  "bin": "index.js",
   "scripts": {
     "test": "truffle test"
   },

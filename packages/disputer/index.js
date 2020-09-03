@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const retry = require("async-retry");
 
@@ -30,7 +32,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
@@ -40,7 +42,7 @@ async function run(
   priceFeedConfig,
   disputerConfig,
   disputerOverridePrice
-) {
+}) {
   try {
     const { toBN } = web3.utils;
 
@@ -91,16 +93,16 @@ async function run(
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
-    const disputer = new Disputer(
+    const disputer = new Disputer({
       logger,
-      empClient,
-      voting,
+      expiringMultiPartyClient: empClient,
+      votingContract: voting,
       gasEstimator,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
-      disputerConfig
-    );
+      config: disputerConfig
+    });
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -155,12 +157,8 @@ async function run(
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Disputer#index",
-      message: "Disputer polling error🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 
@@ -201,21 +199,20 @@ async function Poll(callback) {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
       if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
 
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
     }
   } catch (error) {
     Logger.error({
       at: "Disputer#index",
-      message: "Disputer configuration error🚨",
+      message: "Disputer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }

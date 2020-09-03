@@ -913,7 +913,7 @@ contract("Liquidatable", function(accounts) {
             ev.caller == liquidator &&
             ev.withdrawalAmount.toString() == expectedPayout.toString() &&
             ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
-            ev.settlementPrice.toString() == "0"
+            ev.settlementPrice.toString() == disputePrice.toString()
           );
         });
       });
@@ -1322,7 +1322,7 @@ contract("Liquidatable", function(accounts) {
               // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
               // Once a dispute fails and the liquidator withdraws the struct is removed from state.
               ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
-              ev.settlementPrice.toString() == "0"
+              ev.settlementPrice.toString() == toWei("1.3")
             );
           });
         });
@@ -1542,7 +1542,7 @@ contract("Liquidatable", function(accounts) {
           // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
           // Once a dispute fails and the liquidator withdraws the struct is removed from state.
           ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
-          ev.settlementPrice.toString() == "0"
+          ev.settlementPrice.toString() == disputePrice.toString()
         );
       });
     });

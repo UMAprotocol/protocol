@@ -29,7 +29,7 @@ class BalanceMonitor {
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, tokenBalanceClient, config, empProps) {
+  constructor({ logger, tokenBalanceClient, config, empProps }) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.

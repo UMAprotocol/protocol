@@ -60,6 +60,9 @@ configs.forEach(({ collateralDecimals, tokenName }) => {
       let identifier;
       let convert;
 
+      let gasEstimator;
+      let empClient;
+
       const zeroAddress = "0x0000000000000000000000000000000000000000";
       const unreachableDeadline = MAX_UINT_VAL;
 
@@ -155,16 +158,16 @@ configs.forEach(({ collateralDecimals, tokenName }) => {
         // Create price feed mock.
         priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, undefined, collateralDecimals);
 
-        disputer = new Disputer(
-          spyLogger,
-          empClient,
-          mockOracle,
+        disputer = new Disputer({
+          logger: spyLogger,
+          expiringMultiPartyClient: empClient,
+          votingContract: mockOracle,
           gasEstimator,
-          priceFeedMock,
-          accounts[0],
+          priceFeed: priceFeedMock,
+          account: accounts[0],
           empProps,
           disputerConfig
-        );
+        });
       });
 
       it("Detect disputable positions and send disputes", async function() {
@@ -417,16 +420,16 @@ configs.forEach(({ collateralDecimals, tokenName }) => {
             disputerConfig = {
               disputeDelay: -1
             };
-            disputer = new Disputer(
-              spyLogger,
-              empClient,
-              mockOracle,
+            disputer = new Disputer({
+              logger: spyLogger,
+              expiringMultiPartyClient: empClient,
+              votingContract: mockOracle,
               gasEstimator,
-              priceFeedMock,
-              accounts[0],
+              priceFeed: priceFeedMock,
+              account: accounts[0],
               empProps,
               disputerConfig
-            );
+            });
             errorThrown = false;
           } catch (err) {
             errorThrown = true;
@@ -438,16 +441,16 @@ configs.forEach(({ collateralDecimals, tokenName }) => {
           disputerConfig = {
             disputeDelay: 60
           };
-          disputer = new Disputer(
-            spyLogger,
-            empClient,
-            mockOracle,
+          disputer = new Disputer({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            votingContract: mockOracle,
             gasEstimator,
-            priceFeedMock,
-            accounts[0],
+            priceFeed: priceFeedMock,
+            account: accounts[0],
             empProps,
             disputerConfig
-          );
+          });
 
           // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
           await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
