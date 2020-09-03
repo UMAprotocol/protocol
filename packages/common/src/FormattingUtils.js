@@ -3,8 +3,6 @@ const networkUtils = require("./PublicNetworks");
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
 const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
-const web3 = require("web3");
-const { toBN } = web3.utils;
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -127,14 +125,14 @@ function addSign(number) {
 // toDecimals: number - decimal value to convert to
 // bn: toBN function - optionally provide your own BN function.
 // return => (amount:string)=>BN
-const ConvertDecimals = (fromDecimals, toDecimals, bn = toBN) => {
+const ConvertDecimals = (fromDecimals, toDecimals, web3) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
   assert(bn, "requires toBN function");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
   return amount => {
-    amount = bn(amount);
+    amount = web3.toBN(amount);
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
     if (diff == 0) return amount;

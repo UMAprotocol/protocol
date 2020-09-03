@@ -44,8 +44,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("Liquidator.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfigs.collateralDecimals} decimals`, function() {
       // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0].
       const liquidatorBot = accounts[0];
       const sponsor1 = accounts[1];
@@ -79,10 +79,15 @@ contract("Liquidator.js", function(accounts) {
       let convertCollateralToWei;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18)(num).toString();
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: contractCreator });
+        identifier = `${tokenConfigs.tokenName}TEST`;
+        convertCollateralToWei = num => ConvertDecimals(tokenConfigs.collateralDecimals, 18, web3)(num).toString();
+        convert = Convert(tokenConfigs.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfigs.tokenName,
+          tokenConfigs.tokenName,
+          tokenConfigs.collateralDecimals,
+          { from: contractCreator }
+        );
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });
@@ -161,7 +166,7 @@ contract("Liquidator.js", function(accounts) {
         gasEstimator = new GasEstimator(spyLogger);
 
         // Create a new instance of the price feed mock.
-        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, false, collateralDecimals);
+        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, false, tokenConfigs.collateralDecimals);
 
         // Create a new instance of the liquidator to test
         liquidatorConfig = {
@@ -409,7 +414,11 @@ contract("Liquidator.js", function(accounts) {
         // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
         const disputePrice = convert("1.3");
         const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(`${tokenName}TEST`), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(
+          web3.utils.utf8ToHex(`${tokenConfigs.tokenName}TEST`),
+          liquidationTime,
+          disputePrice
+        );
 
         // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
         // for the liquidation time.
@@ -598,12 +607,12 @@ contract("Liquidator.js", function(accounts) {
         assert.equal(liquidationObject.sponsor, sponsor1);
         assert.equal(liquidationObject.liquidator, liquidatorBot);
         assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        if (collateralDecimals == 18) {
+        if (tokenConfigs.collateralDecimals == 18) {
           assert.equal(
             convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue),
             toWei("58.3333333333333333")
           );
-        } else if (collateralDecimals == 8) {
+        } else if (tokenConfigs.collateralDecimals == 8) {
           assert.equal(convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue), toWei("58.33333333"));
         }
         assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
@@ -612,12 +621,12 @@ contract("Liquidator.js", function(accounts) {
         // synthetic tokens in the open market
 
         // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-        if (collateralDecimals == 18) {
+        if (tokenConfigs.collateralDecimals == 18) {
           assert.equal(
             convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue),
             toWei("41.6666666666666667")
           );
-        } else if (collateralDecimals == 8) {
+        } else if (tokenConfigs.collateralDecimals == 8) {
           assert.equal(convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue), toWei("41.66666667"));
         }
         let positionObject = await emp.positions(sponsor1);
@@ -662,9 +671,9 @@ contract("Liquidator.js", function(accounts) {
         assert.equal(liquidationObject.sponsor, sponsor1);
         assert.equal(liquidationObject.liquidator, liquidatorBot);
         assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        if (collateralDecimals == 18) {
+        if (tokenConfigs.collateralDecimals == 18) {
           assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.3333333333333333"));
-        } else if (collateralDecimals == 8) {
+        } else if (tokenConfigs.collateralDecimals == 8) {
           assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.33333333"));
         }
         assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
@@ -672,9 +681,9 @@ contract("Liquidator.js", function(accounts) {
         // Sponsor2 should not be in a liquidation state because the bot would have attempted to liquidate its full position of 8 tokens, but it only had remaining.
 
         // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-        if (collateralDecimals == 18) {
+        if (tokenConfigs.collateralDecimals == 18) {
           assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.6666666666666667"));
-        } else if (collateralDecimals == 8) {
+        } else if (tokenConfigs.collateralDecimals == 8) {
           assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.66666667"));
         }
         let positionObject = await emp.positions(sponsor1);
@@ -826,9 +835,9 @@ contract("Liquidator.js", function(accounts) {
           assert.equal(liquidationObject.liquidator, liquidatorBot);
           assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
           // Dont know how to generalize this check for multi decimal paradigms
-          if (collateralDecimals == 18) {
+          if (tokenConfigs.collateralDecimals == 18) {
             assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.3333333333333333"));
-          } else if (collateralDecimals == 8) {
+          } else if (tokenConfigs.collateralDecimals == 8) {
             assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.33333333"));
           }
           assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("4"));
@@ -845,9 +854,9 @@ contract("Liquidator.js", function(accounts) {
 
           // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
           // Dont know how to generalize this check for multi decimal paradigms
-          if (collateralDecimals == 18) {
+          if (tokenConfigs.collateralDecimals == 18) {
             assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.6666666666666667"));
-          } else if (collateralDecimals == 8) {
+          } else if (tokenConfigs.collateralDecimals == 8) {
             assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.66666667"));
           }
           let positionObject = await emp.positions(sponsor1);
@@ -1074,5 +1083,5 @@ contract("Liquidator.js", function(accounts) {
         });
       });
     });
-  });
+  }
 });
