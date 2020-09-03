@@ -85,18 +85,12 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    console.log({ undisputedLiquidations });
     const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
       const price = disputerOverridePrice
         ? this.toBN(disputerOverridePrice)
         : this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
-      console.log({ price: price.toString() });
       if (!price) {
-        console.log({
-          at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value"
-        });
         this.logger.warn({
           at: "Disputer",
           message: "Cannot dispute: price feed returned invalid value"
@@ -107,12 +101,6 @@ class Disputer {
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
         ) {
-          console.log({
-            at: "Disputer",
-            message: "Detected a disputable liquidation",
-            price: price.toString(),
-            liquidation: JSON.stringify(liquidation)
-          });
           this.logger.debug({
             at: "Disputer",
             message: "Detected a disputable liquidation",
@@ -127,10 +115,6 @@ class Disputer {
     });
 
     if (disputeableLiquidations.length === 0) {
-      console.log({
-        at: "Disputer",
-        message: "No disputable liquidations"
-      });
       this.logger.debug({
         at: "Disputer",
         message: "No disputable liquidations"
@@ -150,15 +134,6 @@ class Disputer {
           dispute.estimateGas({ from: this.account })
         ]);
       } catch (error) {
-        console.log({
-          at: "Disputer",
-          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
-          disputer: this.account,
-          sponsor: disputeableLiquidation.sponsor,
-          liquidation: disputeableLiquidation,
-          totalPaid,
-          error
-        });
         this.logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
@@ -180,13 +155,6 @@ class Disputer {
       const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
       const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
 
-      console.log({
-        at: "Disputer",
-        message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
-        inputPrice,
-        txnConfig
-      });
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
@@ -200,11 +168,6 @@ class Disputer {
       try {
         receipt = await dispute.send(txnConfig);
       } catch (error) {
-        console.log({
-          at: "Disputer",
-          message: "Failed to dispute liquidation🚨",
-          error
-        });
         this.logger.error({
           at: "Disputer",
           message: "Failed to dispute liquidation🚨",
@@ -220,14 +183,6 @@ class Disputer {
         id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
         disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
       };
-      console.log({
-        at: "Disputer",
-        message: "Position has been disputed!👮‍♂️",
-        liquidation: disputeableLiquidation,
-        inputPrice,
-        txnConfig,
-        disputeResult: logResult
-      });
       this.logger.info({
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",

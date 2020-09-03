@@ -256,8 +256,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
         await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
         // as created and redeemed sponsor should not show up in table as they are no longer an active sponsor.
-        console.log({ sponsor1, sponsor2 });
-
         await updateAndVerify(
           client,
           [sponsor1],
