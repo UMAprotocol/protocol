@@ -133,7 +133,7 @@ function addSign(number) {
 // toDecimals: number - decimal value to convert to
 // bn: toBN function - optionally provide your own BN function.
 // return => (amount:string)=>BN
-const ConvertDecimals = (fromDecimals, toDecimals, bn = toBN) => {
+const ConvertDecimals = (fromDecimals, toDecimals = 18, bn = toBN) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
   assert(bn, "requires toBN function");
