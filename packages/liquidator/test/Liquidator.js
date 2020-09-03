@@ -5,7 +5,8 @@ const {
   parseFixed,
   interfaceName,
   LiquidationStatesEnum,
-  PostWithdrawLiquidationRewardsStatusTranslations
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  ConvertDecimals
 } = require("@umaprotocol/common");
 
 // Script to test
@@ -36,7 +37,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
 const configs = [
-  { tokenName: "UMA", collateralDecimals: 18 },
+  // { tokenName: "UMA", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
 ];
 
@@ -75,9 +76,11 @@ contract("Liquidator.js", function(accounts) {
 
       let identifier;
       let convert;
+      let convertCollateralToWei;
 
       before(async function() {
         identifier = `${tokenName}TEST`;
+        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18)(num).toString();
         convert = Convert(collateralDecimals);
         collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: contractCreator });
         await collateralToken.addMember(1, contractCreator, {
@@ -89,7 +92,7 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.mint(sponsor1, convert("100000"), { from: contractCreator });
         await collateralToken.mint(sponsor2, convert("100000"), { from: contractCreator });
         await collateralToken.mint(sponsor3, convert("100000"), { from: contractCreator });
-        await collateralToken.mint(liquidityProvider, toWei("1000000"), { from: contractCreator });
+        await collateralToken.mint(liquidityProvider, convert("1000000"), { from: contractCreator });
 
         // seed the liquidatorBot's wallet so it can perform liquidations.
         await collateralToken.mint(liquidatorBot, convert("100000"), { from: contractCreator });
@@ -133,7 +136,7 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor2 });
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor3 });
         await collateralToken.approve(emp.address, convert("100000000"), { from: liquidatorBot });
-        await collateralToken.approve(emp.address, toWei("100000000"), { from: liquidityProvider });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: liquidityProvider });
 
         syntheticToken = await Token.at(await emp.tokenCurrency());
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
@@ -468,7 +471,7 @@ contract("Liquidator.js", function(accounts) {
         // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
         const disputePrice = convert("1");
         const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
-        await mockOracle.pushPrice(web3.utils.utf8ToHex("BTCTEST"), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
         // for the liquidation time.
@@ -536,7 +539,7 @@ contract("Liquidator.js", function(accounts) {
 
       it("Detect if the liquidator cannot liquidate due to capital constraints", async function() {
         // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-        await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+        await emp.create({ rawValue: convert("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
         // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
         // and liquidates the position.
@@ -552,7 +555,7 @@ contract("Liquidator.js", function(accounts) {
         assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
 
         // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-        await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+        await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
         // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new
         // position, but now when we try to liquidate the position the liquidation will go through because the bot will have
         // the requisite balance.
@@ -579,7 +582,7 @@ contract("Liquidator.js", function(accounts) {
         liquidator.oneInchClient = oneInchClient;
 
         // One Split liquidity provider
-        await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
+        await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
         await syntheticToken.transfer(oneSplitMock.address, toWei("100"), { from: liquidityProvider });
         await web3.eth.sendTransaction({
           from: liquidityProvider,
@@ -594,8 +597,8 @@ contract("Liquidator.js", function(accounts) {
         // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
         const amountToLiquidate = toWei("10");
 
-        await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-        await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
+        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
 
         // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
         priceFeedMock.setCurrentPrice(toBN(toWei("25")));
@@ -627,14 +630,20 @@ contract("Liquidator.js", function(accounts) {
         assert.equal(liquidationObject.sponsor, sponsor1);
         assert.equal(liquidationObject.liquidator, liquidatorBot);
         assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        assert.equal(liquidationObject.liquidatedCollateral, toWei("58.3333333333333333"));
-        assert.equal(liquidationObject.tokensOutstanding, toWei("7"));
+        assert.equal(
+          convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue),
+          toWei("58.3333333333333333")
+        );
+        assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
 
         // Sponsor2 should be in a liquidation state as the bot will have attempted to re-buy
         // synthetic tokens in the open market
 
         // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-        assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("41.6666666666666667"));
+        assert.equal(
+          convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue),
+          toWei("41.6666666666666667")
+        );
         let positionObject = await emp.positions(sponsor1);
         assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
 
@@ -651,14 +660,14 @@ contract("Liquidator.js", function(accounts) {
         // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
         const amountToLiquidate = toWei("10");
 
-        await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-        await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
+        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
 
         // liquidatorBot creates a position with enough tokens to liquidate all positions.
-        await emp.create({ rawValue: toWei("10000") }, { rawValue: toWei("10") }, { from: liquidatorBot });
+        await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("10") }, { from: liquidatorBot });
 
         // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
-        priceFeedMock.setCurrentPrice(toBN(toWei("25")));
+        priceFeedMock.setCurrentPrice("25");
 
         await liquidator.update();
         await liquidator.liquidatePositions(amountToLiquidate);
@@ -677,8 +686,8 @@ contract("Liquidator.js", function(accounts) {
         assert.equal(liquidationObject.sponsor, sponsor1);
         assert.equal(liquidationObject.liquidator, liquidatorBot);
         assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        assert.equal(liquidationObject.liquidatedCollateral, toWei("58.3333333333333333"));
-        assert.equal(liquidationObject.tokensOutstanding, toWei("7"));
+        assert.equal(liquidationObject.liquidatedCollateral.rawValue, toWei("58.3333333333333333"));
+        assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
 
         // Sponsor2 should not be in a liquidation state because the bot would have attempted to liquidate its full position of 8 tokens, but it only had remaining.
 
@@ -828,24 +837,27 @@ contract("Liquidator.js", function(accounts) {
 
           // Sponsor1 should be in a liquidation state with the bot as the liquidator. (4/12) = 33.33% of the 100 starting collateral and 6 tokens should be liquidated.
           let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+          console.log({ liquidationObject });
           assert.equal(liquidationObject.sponsor, sponsor1);
           assert.equal(liquidationObject.liquidator, liquidatorBot);
           assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral, convert("33.33333333"));
-          assert.equal(liquidationObject.tokensOutstanding, toWei("4"));
+          // Dont know how to generalize this check for multi decimal paradigms
+          assert.equal(liquidationObject.liquidatedCollateral.rawValue, toWei("33.3333333333333333"));
+          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("4"));
 
           // Sponsor2 should be in a liquidation state with the bot as the liquidator. (3/8) = 37.5% of the 100 starting collateral and 3 tokens should be liquidated.
           liquidationObject = (await emp.getLiquidations(sponsor2))[0];
           assert.equal(liquidationObject.sponsor, sponsor2);
           assert.equal(liquidationObject.liquidator, liquidatorBot);
           assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral, convert("37.5"));
-          assert.equal(liquidationObject.tokensOutstanding, toWei("3"));
+          assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("37.5"));
+          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("3"));
 
           // Sponsor3 should not have been liquidated.
 
           // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-          assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.66666667"));
+          // Dont know how to generalize this check for multi decimal paradigms
+          assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("66.6666666666666667"));
           let positionObject = await emp.positions(sponsor1);
           assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
 
