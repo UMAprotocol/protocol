@@ -123,21 +123,21 @@ function addSign(number) {
 // Returns a BigNumber you will need to call toString on
 // fromDecimals: number - decimal value of amount
 // toDecimals: number - decimal value to convert to
-// bn: toBN function - optionally provide your own BN function.
+// web3: web3 object to get a big number function.
 // return => (amount:string)=>BN
 const ConvertDecimals = (fromDecimals, toDecimals, web3) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
-  assert(bn, "requires toBN function");
+  assert(web3, "requires web3 instance");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
   return amount => {
-    amount = web3.toBN(amount);
+    amount = web3.utils.toBN(amount);
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
     if (diff == 0) return amount;
-    if (diff > 0) return amount.div(bn(10).pow(bn(diff)));
-    return amount.mul(bn(10).pow(bn(-1 * diff)));
+    if (diff > 0) return amount.div(web3.utils.toBN("10").pow(web3.utils.toBN(diff.toString())));
+    return amount.mul(web3.utils.toBN("10").pow(web3.utils.toBN((-1 * diff).toString())));
   };
 };
 
