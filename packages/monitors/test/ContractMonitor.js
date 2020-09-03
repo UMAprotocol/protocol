@@ -1,15 +1,13 @@
 const { toWei, toBN, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { interfaceName } = require("@umaprotocol/common");
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { interfaceName, MAX_UINT_VAL, parseFixed } = require("@umaprotocol/common");
 
 // Script to test
 const { ContractMonitor } = require("../src/ContractMonitor");
 
 // Helpers and custom winston transport module to monitor winston log outputs
 const {
-  parseFixed,
   ExpiringMultiPartyEventClient,
   PriceFeedMockScaled: PriceFeedMock,
   SpyTransport,
@@ -58,6 +56,7 @@ contract("ContractMonitor.js", function(accounts) {
     // Price feed mock
     let priceFeedMock;
     let spyLogger;
+    let spy;
     let empProps;
 
     // re-used variables
@@ -66,8 +65,6 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Keep track of new sponsor transactions for testing `checkForNewSponsors` method.
     let newSponsorTxn;
-
-    const spy = sinon.spy();
 
     before(async function() {
       identifier = `${tokenName}TEST`;
@@ -112,9 +109,11 @@ contract("ContractMonitor.js", function(accounts) {
 
       // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
       // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
+
+      spy = sinon.spy();
       spyLogger = winston.createLogger({
         level: "info",
-        transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+        transports: [new SpyTransport({ level: "info" }, { spy })]
       });
 
       emp = await ExpiringMultiParty.new(constructorParams);
@@ -128,6 +127,7 @@ contract("ContractMonitor.js", function(accounts) {
 
       empProps = {
         collateralCurrencySymbol: await collateralToken.symbol(),
+        collateralCurrencyDecimals: collateralDecimals,
         syntheticCurrencySymbol: await syntheticToken.symbol(),
         priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
         networkId: await web3.eth.net.getId()
@@ -174,6 +174,7 @@ contract("ContractMonitor.js", function(accounts) {
 
       // Ensure that the spy correctly captured the new sponsor events key information.
       // Should contain etherscan addresses for the sponsor and transaction
+      console.log("liquidator", liquidator);
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
       assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator or disputer bot)")); // The address that initiated the liquidation is a monitored address
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newSponsorTxn.tx}`));

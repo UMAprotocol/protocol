@@ -47,7 +47,14 @@ class ContractMonitor {
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId
     this.empProps = empProps;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    this.formatDecimalStringCollateral = createFormatFunction(
+      this.web3,
+      2,
+      4,
+      false,
+      empProps.collateralCurrencyDecimals
+    );
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Bot and ecosystem accounts to monitor, overridden by config parameter.
     const defaultConfig = {
@@ -135,7 +142,7 @@ class ContractMonitor {
         " " +
         this.empProps.syntheticCurrencySymbol +
         " backed by " +
-        this.formatDecimalString(event.collateralAmount) +
+        this.formatDecimalStringCollateral(event.collateralAmount) +
         " " +
         this.empProps.collateralCurrencySymbol +
         ". tx: " +
@@ -201,9 +208,9 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
-        this.formatDecimalString(event.lockedCollateral) +
+        this.formatDecimalStringCollateral(event.lockedCollateral) +
         " (liquidated collateral = " +
-        this.formatDecimalString(event.liquidatedCollateral) +
+        this.formatDecimalStringCollateral(event.liquidatedCollateral) +
         ") " +
         this.empProps.collateralCurrencySymbol +
         " of sponsor " +
@@ -261,7 +268,7 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " with a dispute bond of " +
-        this.formatDecimalString(event.disputeBondAmount) +
+        this.disputeBondAmountCollateral(event.disputeBondAmount) +
         " " +
         this.empProps.collateralCurrencySymbol +
         ". tx: " +
@@ -324,7 +331,9 @@ class ContractMonitor {
         " has settled. ";
       // Add details about the resolved price request if available.
       if (resolvedPrice) {
-        mrkdwn += `The disputed liquidation price resolved to: ${this.formatDecimalString(
+        // NOTE: this will need to change back to formatDecimalString when the price feed is updated following
+        // subsequent UMIPS.
+        mrkdwn += `The disputed liquidation price resolved to: ${this.formatDecimalStringCollateral(
           resolvedPrice
         )}, which resulted in a ${event.disputeSucceeded ? "successful" : "failed"} dispute. `;
       } else {
