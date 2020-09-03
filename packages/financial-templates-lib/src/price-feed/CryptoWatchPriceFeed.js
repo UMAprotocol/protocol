@@ -1,5 +1,3 @@
-const assert = require("assert");
-
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@ethersproject/bignumber");
 
