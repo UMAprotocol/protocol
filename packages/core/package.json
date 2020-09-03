@@ -24,6 +24,7 @@
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
     "gmail-send": "^1.2.14",
+    "lodash": "^4.17.20",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
     "moment": "^2.24.0",
