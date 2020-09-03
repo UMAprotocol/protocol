@@ -35,8 +35,9 @@ const configs = [
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
-configs.forEach(({ collateralDecimals, tokenName }) => {
-  contract("Disputer.js", function(accounts) {
+contract("Disputer.js", function(accounts) {
+  for (let config of configs) {
+    const { collateralDecimals, tokenName } = config;
     describe(`${collateralDecimals} decimals`, function() {
       const disputeBot = accounts[0];
       const sponsor1 = accounts[1];
@@ -537,5 +538,5 @@ configs.forEach(({ collateralDecimals, tokenName }) => {
         });
       });
     });
-  });
+  }
 });
