@@ -24,7 +24,7 @@ class ContractMonitor {
             networkId:1 }
    * @param {Object} votingContract DVM to query price requests.
    */
-  constructor(logger, expiringMultiPartyEventClient, priceFeed, config, empProps, votingContract) {
+  constructor({ logger, expiringMultiPartyEventClient, priceFeed, config, empProps, votingContract }) {
     this.logger = logger;
 
     // Offchain price feed to get the price for liquidations.

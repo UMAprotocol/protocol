@@ -78,7 +78,12 @@ contract("BalanceMonitor.js", function(accounts) {
       networkId: await web3.eth.net.getId()
     };
 
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, monitorConfig, empProps);
+    balanceMonitor = new BalanceMonitor({
+      logger: spyLogger,
+      tokenBalanceClient,
+      config: monitorConfig,
+      empProps
+    });
 
     // setup the positions to the initial happy state.
     // Liquidator threshold is 10000 for both collateral and synthetic so mint a bit more to start above this
@@ -253,7 +258,12 @@ contract("BalanceMonitor.js", function(accounts) {
         ]
       };
 
-      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, invalidMonitorConfig1, empProps);
+      balanceMonitor = new BalanceMonitor({
+        logger: spyLogger,
+        tokenBalanceClient,
+        config: invalidMonitorConfig1,
+        empProps
+      });
       errorThrown1 = false;
     } catch (err) {
       errorThrown1 = true;
@@ -277,7 +287,12 @@ contract("BalanceMonitor.js", function(accounts) {
         ]
       };
 
-      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, invalidMonitorConfig2, empProps);
+      balanceMonitor = new BalanceMonitor({
+        logger: spyLogger,
+        tokenBalanceClient,
+        config: invalidMonitorConfig2,
+        empProps
+      });
       errorThrown2 = false;
     } catch (err) {
       errorThrown2 = true;
@@ -288,7 +303,12 @@ contract("BalanceMonitor.js", function(accounts) {
     const emptyConfig = {};
     let errorThrown;
     try {
-      balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, emptyConfig, empProps);
+      balanceMonitor = new BalanceMonitor({
+        logger: spyLogger,
+        tokenBalanceClient,
+        config: emptyConfig,
+        empProps
+      });
       await balanceMonitor.checkBotBalances();
       errorThrown = false;
     } catch (err) {
@@ -298,7 +318,12 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Can override the synthetic-threshold log level", async function() {
     const alertOverrideConfig = { ...monitorConfig, logOverrides: { syntheticThreshold: "error" } };
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+    balanceMonitor = new BalanceMonitor({
+      logger: spyLogger,
+      tokenBalanceClient,
+      config: alertOverrideConfig,
+      empProps
+    });
 
     // Lower the liquidator bot's synthetic balance.
     await syntheticToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
@@ -315,7 +340,12 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Can override the collateral-threshold log level", async function() {
     const alertOverrideConfig = { ...monitorConfig, logOverrides: { collateralThreshold: "error" } };
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+    balanceMonitor = new BalanceMonitor({
+      logger: spyLogger,
+      tokenBalanceClient,
+      config: alertOverrideConfig,
+      empProps
+    });
 
     // Lower the liquidator bot's collateral balance.
     await collateralToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
@@ -332,7 +362,12 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Can override the ether-threshold log level", async function() {
     const alertOverrideConfig = { ...monitorConfig, logOverrides: { ethThreshold: "error" } };
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, alertOverrideConfig, empProps);
+    balanceMonitor = new BalanceMonitor({
+      logger: spyLogger,
+      tokenBalanceClient,
+      config: alertOverrideConfig,
+      empProps
+    });
 
     // Lower the liquidator bot's ETH balance.
     const startLiquidatorBotETH = await web3.eth.getBalance(liquidatorBot);

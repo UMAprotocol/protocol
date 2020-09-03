@@ -31,6 +31,7 @@
   "files": [
     "/src/**/*.js"
   ],
+  "bin": "index.js",
   "scripts": {
     "test": "echo \"No tests currently configured\""
   },

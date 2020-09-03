@@ -9,7 +9,7 @@ const snapshotRound = async callback => {
     const signature = await signMessage(web3, snapshotMessage, accounts[0]);
 
     const transaction = await voting.snapshotCurrentRound(signature, { from: accounts[0] });
-    console.log("Snapshotted current round:", transaction);
+    console.log("Snapshotted current round:", transaction.receipt.rawLogs);
   } catch (err) {
     callback(err);
     return;

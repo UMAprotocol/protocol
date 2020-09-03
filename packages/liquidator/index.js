@@ -1,9 +1,13 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
 const { MAX_UINT_VAL } = require("@umaprotocol/common");
 // JS libs
+const { ONE_SPLIT_ADDRESS } = require("./src/constants");
+const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
@@ -22,7 +26,8 @@ const { getAbi, getAddress } = require("@umaprotocol/core/index");
  * @notice Continuously attempts to liquidate positions in the EMP contract.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
- * @param {String} address Contract address of the EMP.
+ * @param {String} empAddress Contract address of the EMP.
+ * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -32,17 +37,18 @@ const { getAbi, getAddress } = require("@umaprotocol/core/index");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
+  oneSplitAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
   priceFeedConfig,
   liquidatorConfig,
   liquidatorOverridePrice
-) {
+}) {
   try {
     const { toBN } = web3.utils;
 
@@ -105,16 +111,31 @@ async function run(
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
-    const liquidator = new Liquidator(
+
+    let oneInchClient = null;
+    if (oneSplitAddress) {
+      oneInchClient = new OneInchExchange({
+        web3,
+        gasEstimator,
+        logger,
+        oneSplitAbi: getAbi("OneSplit"),
+        erc20TokenAbi: getAbi("ExpandedERC20"),
+        oneSplitAddress
+      });
+    }
+
+    const liquidator = new Liquidator({
       logger,
-      empClient,
-      voting,
+      oneInchClient,
+      expiringMultiPartyClient: empClient,
       gasEstimator,
+      votingContract: voting,
+      syntheticToken,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
       liquidatorConfig
-    );
+    });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
@@ -189,12 +210,8 @@ async function run(
       await delay(Number(pollingDelay));
     }
   } catch (error) {
-    logger.error({
-      at: "Liquidator#index",
-      message: "Liquidator polling error🚨",
-      error: typeof error === "string" ? new Error(error) : error
-    });
-    await waitForLogger(logger);
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
   }
 }
 
@@ -209,7 +226,10 @@ async function Poll(callback) {
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
+      // EMP Address. Should be an Ethereum address
       empAddress: process.env.EMP_ADDRESS,
+      // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
+      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
@@ -240,21 +260,20 @@ async function Poll(callback) {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
       if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
 
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
     }
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
-      message: "Liquidator configuration error🚨",
+      message: "Liquidator execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
     callback(error);
-    return;
   }
   callback();
 }
