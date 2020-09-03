@@ -22,7 +22,6 @@ class SpyTransport extends Transport {
 // Helper function used by unit tests to check if the last message sent to winston contains a particular string value.
 // Caller feeds in the spy instance and the value to check.
 function lastSpyLogIncludes(spy, value) {
-  console.log("spy.getCall", spy.getCall(-1).lastArg);
   // Sinon's getCall(n) function returns values sent in the nth (zero-indexed) call to the spy. Flatten the whole object
   // and any log messages included and check if the provided value is within the object.
   const lastLogMessage = JSON.stringify([
