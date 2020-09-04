@@ -229,7 +229,7 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
 }
 
 function createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
-  if (!config.type) {
+  if (!config || !config.type) {
     return createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
   } else if (config.type == "balancer") {
     return createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);

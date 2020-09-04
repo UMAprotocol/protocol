@@ -334,8 +334,6 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Create token price feed defaults to Medianizer", async function() {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
-    const config = undefined;
-
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
@@ -356,7 +354,10 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const emp = await ExpiringMultiParty.new(constructorParams);
 
-    const medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
+    // If `config` is undefined or ommitted (and set to its default value), this should return a Medianizer Price Feed
+    let medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+    assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
+    medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, undefined);
     assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
   });
 
