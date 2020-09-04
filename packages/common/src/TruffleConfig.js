@@ -137,7 +137,7 @@ function addLocalNetwork(networks, name, customOptions) {
     network_id: "*",
     gas: gas,
     provider: function(provider = nodeUrl) {
-      // Don't use the singleton here because there's not reason to for local networks.
+      // Don't use the singleton here because there's no reason to for local networks.
 
       // Note: this is the way that truffle initializes their host + port http provider.
       // It is required to fix connection issues when testing.
