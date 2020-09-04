@@ -157,6 +157,101 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Message should include the Synthetic currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
   });
+
+  it("Correctly emits messages on non-18 decimal collateral balance threshold", async function() {
+    // Create new tokens for every test to reset balances of all accounts
+    collateralToken = await Token.new("renBTC", "renBTC", 8, { from: tokenCreator });
+    await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
+
+    tokenBalanceClient = new TokenBalanceClient(
+      spyLogger,
+      Token.abi,
+      web3,
+      collateralToken.address,
+      syntheticToken.address
+    );
+
+    // Create two bot objects to monitor a liquidator bot with a lot of tokens and Eth and a disputer with less.
+    monitorConfig = {
+      botsToMonitor: [
+        {
+          name: "Liquidator bot",
+          address: liquidatorBot,
+          collateralThreshold: "80000000", // 0.8 renBTC
+          syntheticThreshold: toWei("10000"), // 10,000.00 tokens of debt threshold
+          etherThreshold: toWei("10")
+        },
+        {
+          name: "Disputer bot",
+          address: disputerBot,
+          collateralThreshold: "4000000", // 0.04 renBTC
+          syntheticThreshold: toWei("100"), // 100.00 tokens of debt threshold
+          etherThreshold: toWei("1")
+        }
+      ]
+    };
+
+    empProps = {
+      collateralCurrencySymbol: await collateralToken.symbol(),
+      syntheticCurrencySymbol: await syntheticToken.symbol(),
+      priceIdentifier: "ETH/BTC",
+      networkId: await web3.eth.net.getId(),
+      collateralCurrencyDecimals: await collateralToken.decimals(),
+      syntheticCurrencyDecimals: await syntheticToken.decimals()
+    };
+
+    balanceMonitor = new BalanceMonitor({
+      logger: spyLogger,
+      tokenBalanceClient,
+      config: monitorConfig,
+      empProps
+    });
+
+    // setup the positions to the initial happy state.
+    await collateralToken.mint(liquidatorBot, "100000000", { from: tokenCreator });
+    await syntheticToken.mint(liquidatorBot, toWei("11000"), { from: tokenCreator });
+    await collateralToken.mint(disputerBot, "100000000", { from: tokenCreator });
+    await syntheticToken.mint(disputerBot, toWei("100"), { from: tokenCreator });
+
+    // Update the client.
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+
+    // The spy should not have been called. All positions are correctly funded and collateralized.
+    assert.equal(spy.callCount, 0);
+
+    // Transfer some tokens away from one of the monitored addresses and check that the bot correctly reports this.
+    // Transferring 0.3 tokens from the liquidatorBot brings its balance to 0.7. this is below the 0.8 threshold.
+    await collateralToken.transfer(tokenCreator, "30000000", { from: liquidatorBot });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), "70000000");
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+
+    // The spy should be called exactly once. The most recent message should inform of the correct monitored position,
+    // it's expected balance and and it's actual balance.
+    assert.equal(spy.callCount, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidatorBot}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
+    assert.isFalse(lastSpyLogIncludes(spy, "synthetic balance warning")); // Synthetic was not moved. should not emit
+    assert.isTrue(lastSpyLogIncludes(spy, "0.8")); // Correctly formatted number of threshold collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "0.7")); // Correctly formatted number of actual collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "renBTC")); // Message should include the collateral currency symbol
+    assert.equal(lastSpyLogLevel(spy), "warn");
+
+    // Querying the balance again should emit a second message as the balance is still below the threshold.
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 2);
+
+    // Likewise a further drop in collateral should emit a new message.
+    await collateralToken.transfer(tokenCreator, "10000000", { from: liquidatorBot });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), "60000000");
+    await tokenBalanceClient.update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 3);
+  });
+
   it("Correctly emits messages on ETH balance threshold", async function() {
     await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
