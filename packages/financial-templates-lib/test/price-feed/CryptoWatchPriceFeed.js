@@ -212,8 +212,9 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       }
     ];
 
-    await cryptoWatchPriceFeed.update();
-    await invertedCryptoWatchPriceFeed.update();
+    // Update should throw errors in both cases.
+    assert.isTrue(await cryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
+    assert.isTrue(await invertedCryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
@@ -232,7 +233,7 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       }
     ];
 
-    await cryptoWatchPriceFeed.update();
+    assert.isTrue(await cryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
@@ -249,7 +250,7 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       }
     ];
 
-    await invertedCryptoWatchPriceFeed.update();
+    assert.isTrue(await invertedCryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
