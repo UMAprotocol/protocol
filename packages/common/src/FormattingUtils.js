@@ -117,6 +117,30 @@ function addSign(number) {
   }
 }
 
+// Take an amount based on fromDecimals and convert it to an amount based on toDecimals
+// For example amount = 100 usdt, its decimals are 6. You want to convert it to 18.
+// convertDecimals(6,18)(100000000)  => 1000000000000000000000.
+// Returns a BigNumber you will need to call toString on
+// fromDecimals: number - decimal value of amount
+// toDecimals: number - decimal value to convert to
+// web3: web3 object to get a big number function.
+// return => (amount:string)=>BN
+const ConvertDecimals = (fromDecimals, toDecimals, web3) => {
+  assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
+  assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
+  assert(web3, "requires web3 instance");
+  // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
+  // returns: BN with toDecimals in smallest unit
+  return amount => {
+    amount = web3.utils.toBN(amount);
+    if (amount.isZero()) return amount;
+    const diff = fromDecimals - toDecimals;
+    if (diff == 0) return amount;
+    if (diff > 0) return amount.div(web3.utils.toBN("10").pow(web3.utils.toBN(diff.toString())));
+    return amount.mul(web3.utils.toBN("10").pow(web3.utils.toBN((-1 * diff).toString())));
+  };
+};
+
 module.exports = {
   formatDateShort,
   formatDate,
@@ -129,5 +153,6 @@ module.exports = {
   createEtherscanLinkMarkdown,
   addSign,
   formatFixed,
-  parseFixed
+  parseFixed,
+  ConvertDecimals
 };
