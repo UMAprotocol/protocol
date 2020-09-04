@@ -242,16 +242,28 @@ contract("CRMonitor.js", function(accounts) {
         // their position at a collateralization ratio of 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00.
         await emp.requestWithdrawal({ rawValue: convert("75") }, { from: monitoredTrader });
 
-        currentTime = await timer.getCurrentTime.call();
-        // advance time after withdrawal liveness
-        await timer.setCurrentTime(currentTime.toNumber() + 11);
+        // The wallet CR should reflect the requested withdrawal amount.
+        await empClient.update();
+        await crMonitor.checkWalletCrRatio();
+        await crMonitor.checkWalletCrRatio();
+        assert.equal(spy.callCount, 7); // a new message is sent.
+        assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `MonitorConfig`
+        assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+        assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+        assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
+        assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
+        assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
+        assert.isTrue(lastSpyLogIncludes(spy, identifier)); // Synthetic token symbol
 
+        // Advance time after withdrawal liveness. Check that CR detected is the same
+        // post withdrawal execution
+        currentTime = await timer.getCurrentTime.call();
+        await timer.setCurrentTime(currentTime.toNumber() + 11);
         await emp.withdrawPassedRequest({ from: monitoredTrader });
 
         await empClient.update();
-        priceFeedMock.setCurrentPrice("1");
         await crMonitor.checkWalletCrRatio();
-        assert.equal(spy.callCount, 6); // a new message is sent.
+        assert.equal(spy.callCount, 8); // a new message is sent.
         assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `MonitorConfig`
         assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
         assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address

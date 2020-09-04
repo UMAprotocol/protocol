@@ -128,6 +128,7 @@ class CRMonitor {
       }
 
       const collateral = positionInformation.amountCollateral;
+      const withdrawalRequestAmount = positionInformation.withdrawalRequestAmount;
       const tokensOutstanding = positionInformation.numTokens;
 
       // If the values for collateral or price have yet to resolve, dont push a notification.
@@ -135,8 +136,13 @@ class CRMonitor {
         continue;
       }
 
+      // Subtract requested withdrawal amount from position
+      const backingCollateral = this.toBN(collateral)
+        .sub(this.toBN(withdrawalRequestAmount))
+        .toString();
+
       // If CR = null then there are no tokens outstanding and so dont push a notification.
-      const positionCR = this._calculatePositionCRPercent(collateral, tokensOutstanding, price);
+      const positionCR = this._calculatePositionCRPercent(backingCollateral, tokensOutstanding, price);
       if (positionCR == null) {
         continue;
       }
@@ -145,7 +151,7 @@ class CRMonitor {
       // threshold then push the notification.
       if (this._ltThreshold(positionCR, this.toWei(wallet.crAlert.toString()))) {
         const liquidationPrice = this._calculatePriceForCR(
-          collateral,
+          backingCollateral,
           tokensOutstanding,
           this.empClient.collateralRequirement
         );
@@ -194,7 +200,7 @@ class CRMonitor {
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = collateral / (tokensOutstanding * price)
+  // This is cr = (collateral-withdrawalRequestAmount) / (tokensOutstanding * price)
   _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
     if (collateral == 0) {
       return 0;
