@@ -96,7 +96,7 @@ contract("Disputer.js", function(accounts) {
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
         const constructorParams = {
-          expirationTimestamp: "12345678900",
+          expirationTimestamp: "20345678900",
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
           finderAddress: Finder.address,

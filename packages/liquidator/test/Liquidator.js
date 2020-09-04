@@ -117,7 +117,7 @@ contract("Liquidator.js", function(accounts) {
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
         const constructorParams = {
-          expirationTimestamp: "12345678900",
+          expirationTimestamp: "20345678900",
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
           finderAddress: Finder.address,
@@ -957,7 +957,6 @@ contract("Liquidator.js", function(accounts) {
 
             // Sponsor1 should be in a liquidation state with the bot as the liquidator. (4/12) = 33.33% of the 100 starting collateral and 6 tokens should be liquidated.
             let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-            console.log({ liquidationObject });
             assert.equal(liquidationObject.sponsor, sponsor1);
             assert.equal(liquidationObject.liquidator, liquidatorBot);
             assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
