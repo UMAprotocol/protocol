@@ -25,22 +25,21 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
 const configs = [
-  // { tokenName: "WETH", collateralDecimals: 18 },
+  { tokenName: "WETH", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("CRMonitor.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const tokenSponsor = accounts[0];
       const monitoredTrader = accounts[1];
       const monitoredSponsor = accounts[2];
 
       // Contracts
       let collateralToken;
-      let collateralTokenSymbol;
       let emp;
       let syntheticToken;
       let mockOracle;
@@ -64,14 +63,24 @@ contract("CRMonitor.js", function(accounts) {
       let empProps;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18, web3)(num).toString();
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenSponsor });
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenSponsor });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
 
         identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(tokenName));
+        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(tokenConfig.tokenName));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
         finder = await Finder.deployed();
@@ -94,7 +103,7 @@ contract("CRMonitor.js", function(accounts) {
           finderAddress: Finder.address,
           tokenFactoryAddress: TokenFactory.address,
           timerAddress: Timer.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(tokenName),
+          priceFeedIdentifier: web3.utils.utf8ToHex(tokenConfig.tokenName),
           syntheticName: `Test ${collateralToken} Token`,
           syntheticSymbol: identifier,
           liquidationLiveness: "10",
@@ -135,7 +144,7 @@ contract("CRMonitor.js", function(accounts) {
 
         empProps = {
           collateralCurrencySymbol: await collateralToken.symbol(),
-          collateralCurrencyDecimals: collateralDecimals,
+          collateralCurrencyDecimals: tokenConfig.collateralDecimals,
           syntheticCurrencyDecimals: 18,
           syntheticCurrencySymbol: await syntheticToken.symbol(),
           priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
@@ -343,5 +352,5 @@ contract("CRMonitor.js", function(accounts) {
         assert.equal(lastSpyLogLevel(spy), "error");
       });
     });
-  });
+  }
 });

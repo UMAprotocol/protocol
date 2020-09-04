@@ -32,8 +32,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("ContractMonitor.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
       const disputer = accounts[2];
@@ -45,7 +45,6 @@ contract("ContractMonitor.js", function(accounts) {
 
       // Contracts
       let collateralToken;
-      let collateralTokenSymbol;
       let emp;
       let syntheticToken;
       let mockOracle;
@@ -68,10 +67,15 @@ contract("ContractMonitor.js", function(accounts) {
       let newSponsorTxn;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18, web3)(num).toString();
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenSponsor });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
 
         identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("ETH/BTC"));
@@ -128,7 +132,7 @@ contract("ContractMonitor.js", function(accounts) {
 
         empProps = {
           collateralCurrencySymbol: await collateralToken.symbol(),
-          collateralCurrencyDecimals: collateralDecimals,
+          collateralCurrencyDecimals: tokenConfig.collateralDecimals,
           syntheticCurrencyDecimals: 18,
           syntheticCurrencySymbol: await syntheticToken.symbol(),
           priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
@@ -471,5 +475,5 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isFalse(errorThrown);
       });
     });
-  });
+  }
 });

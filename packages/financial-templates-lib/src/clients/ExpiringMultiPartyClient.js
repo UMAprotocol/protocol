@@ -3,8 +3,6 @@
 
 const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@umaprotocol/common");
 const Promise = require("bluebird");
-// const { parseFixed } = require("@ethersproject/bignumber");
-// const {ConvertDecimals,parseFixed} = require("@ethersproject/bignumber");
 
 class ExpiringMultiPartyClient {
   /**
