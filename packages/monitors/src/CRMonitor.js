@@ -209,9 +209,6 @@ class CRMonitor {
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    console.log("positionCR", collateral.toString());
-    console.log("positionCR", tokensOutstanding.toString());
-    console.log("positionCR", positionCR.toString());
     return this.toBN(this.convertCollateralToSynthetic(collateral))
       .mul(this.toBN(this.toWei("1")))
       .mul(this.toBN(this.toWei("1")))

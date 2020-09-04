@@ -185,7 +185,6 @@ class ContractMonitor {
     for (let event of newLiquidationEvents) {
       const liquidationTime = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
-      console.log("price", price.toString());
       let collateralizationString;
       let maxPriceToBeDisputableString;
       const crRequirement = await this.empContract.methods.collateralRequirement().call();

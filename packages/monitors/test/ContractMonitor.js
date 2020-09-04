@@ -184,7 +184,6 @@ contract("ContractMonitor.js", function(accounts) {
 
         // Ensure that the spy correctly captured the new sponsor events key information.
         // Should contain etherscan addresses for the sponsor and transaction
-        console.log("liquidator", liquidator);
         assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
         assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator or disputer bot)")); // The address that initiated the liquidation is a monitored address
         assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newSponsorTxn.tx}`));
@@ -247,7 +246,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
         assert.isTrue(lastSpyLogIncludes(spy, "1.86")); // maximum price for liquidation to be disputable
-        assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // should contain token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, identifier)); // should contain token symbol
 
         // Liquidate another position and ensure the Contract monitor emits the correct params
         const txObject2 = await emp.createLiquidation(
@@ -351,7 +350,7 @@ contract("ContractMonitor.js", function(accounts) {
         // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
         // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
         let disputePrice = convert("2.5");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // Withdraw from liquidation to settle the dispute event.
         const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -399,7 +398,7 @@ contract("ContractMonitor.js", function(accounts) {
         // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
         // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
         disputePrice = convert("2.0");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex("ETH/BTC"), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // Withdraw from liquidation to settle the dispute event.
         const txObject2 = await emp.withdrawLiquidation("0", sponsor2, { from: sponsor2 });
