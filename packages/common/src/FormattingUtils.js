@@ -74,9 +74,15 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
   return positiveSign + fixedPrecisionFloatParts.join(".");
 };
 
-const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false) => {
+const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false, decimals = 18) => {
   return valInWei =>
-    formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false, showSign);
+    formatWithMaxDecimals(
+      formatWei(ConvertDecimals(decimals, 18, web3)(valInWei), web3),
+      numDisplayedDecimals,
+      minDisplayedPrecision,
+      false,
+      showSign
+    );
 };
 
 // Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.

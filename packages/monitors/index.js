@@ -103,15 +103,24 @@ async function run({
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
-    const [collateralCurrencySymbol, syntheticCurrencySymbol] = await Promise.all([
+    const [
+      collateralCurrencySymbol,
+      syntheticCurrencySymbol,
+      collateralCurrencyDecimals,
+      syntheticCurrencyDecimals
+    ] = await Promise.all([
       collateralToken.methods.symbol().call(),
-      syntheticToken.methods.symbol().call()
+      syntheticToken.methods.symbol().call(),
+      collateralToken.methods.decimals().call(),
+      syntheticToken.methods.decimals().call()
     ]);
 
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
       collateralCurrencySymbol,
       syntheticCurrencySymbol,
+      collateralCurrencyDecimals,
+      syntheticCurrencyDecimals,
       priceIdentifier: hexToUtf8(priceIdentifier),
       networkId
     };
