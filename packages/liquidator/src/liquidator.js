@@ -299,7 +299,7 @@ class Liquidator {
           message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❗`,
           reserveWeiNeeded,
           oneGweiReturn,
-          tokensToLiquidate
+          tokensToLiquidate: tokensToLiquidate.toString()
         });
 
         const reserveWeiNeededBN = this.toBN(reserveWeiNeeded);

@@ -1,4 +1,4 @@
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const {
@@ -44,8 +44,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("Liquidator.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0].
       const liquidatorBot = accounts[0];
       const sponsor1 = accounts[1];
@@ -79,10 +79,15 @@ contract("Liquidator.js", function(accounts) {
       let convertCollateralToWei;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18)(num).toString();
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: contractCreator });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: contractCreator }
+        );
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });
@@ -99,7 +104,7 @@ contract("Liquidator.js", function(accounts) {
 
         // Create identifier whitelist and register the price tracking ticker with it.
         identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
       });
 
       beforeEach(async function() {
@@ -108,7 +113,7 @@ contract("Liquidator.js", function(accounts) {
         mockOracle = await MockOracle.new(finder.address, Timer.address, {
           from: contractCreator
         });
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+        const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
         const constructorParams = {
@@ -117,7 +122,7 @@ contract("Liquidator.js", function(accounts) {
           collateralAddress: collateralToken.address,
           finderAddress: Finder.address,
           tokenFactoryAddress: TokenFactory.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
+          priceFeedIdentifier: utf8ToHex(identifier),
           syntheticName: `Test ${collateralToken} Token`,
           syntheticSymbol: identifier,
           liquidationLiveness: "1000",
@@ -161,7 +166,7 @@ contract("Liquidator.js", function(accounts) {
         gasEstimator = new GasEstimator(spyLogger);
 
         // Create a new instance of the price feed mock.
-        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, false, collateralDecimals);
+        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, false, tokenConfig.collateralDecimals);
 
         // Create a new instance of the liquidator to test
         liquidatorConfig = {
@@ -409,7 +414,7 @@ contract("Liquidator.js", function(accounts) {
         // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
         const disputePrice = convert("1.3");
         const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(`${tokenName}TEST`), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(`${tokenConfig.tokenName}TEST`), liquidationTime, disputePrice);
 
         // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
         // for the liquidation time.
@@ -471,7 +476,7 @@ contract("Liquidator.js", function(accounts) {
         // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
         const disputePrice = convert("1");
         const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
         // for the liquidation time.
@@ -535,334 +540,6 @@ contract("Liquidator.js", function(accounts) {
         // The liquidation should have gone through.
         assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
         assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
-      });
-
-      it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
-        const oneInchClient = new OneInchExchange({
-          web3,
-          gasEstimator,
-          logger: spyLogger,
-          oneSplitAbi: OneSplitMock.abi,
-          erc20TokenAbi: Token.abi,
-          oneSplitAddress: oneSplitMock.address
-        });
-        liquidator.oneInchClient = oneInchClient;
-
-        // One Split liquidity provider
-        await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
-        await syntheticToken.transfer(oneSplitMock.address, toWei("100"), { from: liquidityProvider });
-        await web3.eth.sendTransaction({
-          from: liquidityProvider,
-          to: oneSplitMock.address,
-          value: toWei("10")
-        });
-
-        // 1 ETH = 1 Synthetic token
-        await oneSplitMock.setPrice(syntheticToken.address, ALTERNATIVE_ETH_ADDRESS, "1");
-        await oneSplitMock.setPrice(ALTERNATIVE_ETH_ADDRESS, syntheticToken.address, "1");
-
-        // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
-        const amountToLiquidate = toWei("10");
-
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
-
-        // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
-        priceFeedMock.setCurrentPrice(toBN(toWei("25")));
-
-        await liquidator.update();
-        await liquidator.liquidatePositions(amountToLiquidate);
-
-        // 4 info + 2 error level events should be sent at the conclusion of the 3 successful (incl. 1 partial) and 2 not enough synthetic.
-        assert.equal(spy.callCount, 8);
-        assert.equal(spyLogLevel(spy, 7), "info");
-        assert.isTrue(spyLogIncludes(spy, 7, "has been liquidated"));
-        assert.equal(spyLogLevel(spy, 6), "info");
-        assert.isTrue(spyLogIncludes(spy, 6, "convert reserve currency"));
-        assert.equal(spyLogLevel(spy, 5), "info");
-        assert.isTrue(spyLogIncludes(spy, 5, "has been liquidated"));
-        assert.equal(spyLogLevel(spy, 4), "info");
-        assert.isTrue(spyLogIncludes(spy, 4, "convert reserve currency"));
-        assert.equal(spyLogLevel(spy, 3), "error");
-        assert.isTrue(spyLogIncludes(spy, 3, "not enough synthetic"));
-        assert.equal(spyLogLevel(spy, 2), "info");
-        assert.isTrue(spyLogIncludes(spy, 2, "has been liquidated"));
-        assert.equal(spyLogLevel(spy, 1), "info");
-        assert.isTrue(spyLogIncludes(spy, 1, "convert reserve currency"));
-        assert.equal(spyLogLevel(spy, 0), "error");
-        assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
-
-        // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
-
-        let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-        assert.equal(liquidationObject.sponsor, sponsor1);
-        assert.equal(liquidationObject.liquidator, liquidatorBot);
-        assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        if (collateralDecimals == 18) {
-          assert.equal(
-            convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue),
-            toWei("58.3333333333333333")
-          );
-        } else if (collateralDecimals == 8) {
-          assert.equal(convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue), toWei("58.33333333"));
-        }
-        assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
-
-        // Sponsor2 should be in a liquidation state as the bot will have attempted to re-buy
-        // synthetic tokens in the open market
-
-        // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-        if (collateralDecimals == 18) {
-          assert.equal(
-            convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue),
-            toWei("41.6666666666666667")
-          );
-        } else if (collateralDecimals == 8) {
-          assert.equal(convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue), toWei("41.66666667"));
-        }
-        let positionObject = await emp.positions(sponsor1);
-        assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
-
-        // Since sponsor 1 had a partial liquidation, liquidator bot is out of tokens
-        // Only when liquidator bot is out of tokens will attempt to swap tokens
-        // on OneInch and then liquidate the positions.
-        // So sponsor 2 should have 0 tokens
-        assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("0"));
-        positionObject = await emp.positions(sponsor2);
-        assert.equal(positionObject.tokensOutstanding.rawValue, toWei("0"));
-      });
-
-      it("amount-to-liquidate > min-sponsor-tokens, but bot balance is too low to send liquidation", async function() {
-        // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
-        const amountToLiquidate = toWei("10");
-
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
-
-        // liquidatorBot creates a position with enough tokens to liquidate all positions.
-        await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("10") }, { from: liquidatorBot });
-
-        // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
-        priceFeedMock.setCurrentPrice("25");
-
-        await liquidator.update();
-        await liquidator.liquidatePositions(amountToLiquidate);
-
-        // 5 error + 2 info
-        assert.equal(spy.callCount, 3);
-        assert.equal(spyLogLevel(spy, 2), "error");
-        assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
-        assert.equal(spyLogLevel(spy, 1), "info");
-        assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
-        assert.equal(spyLogLevel(spy, 0), "error");
-        assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
-
-        // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
-        let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-        assert.equal(liquidationObject.sponsor, sponsor1);
-        assert.equal(liquidationObject.liquidator, liquidatorBot);
-        assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-        if (collateralDecimals == 18) {
-          assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.3333333333333333"));
-        } else if (collateralDecimals == 8) {
-          assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.33333333"));
-        }
-        assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
-
-        // Sponsor2 should not be in a liquidation state because the bot would have attempted to liquidate its full position of 8 tokens, but it only had remaining.
-
-        // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-        if (collateralDecimals == 18) {
-          assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.6666666666666667"));
-        } else if (collateralDecimals == 8) {
-          assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.66666667"));
-        }
-        let positionObject = await emp.positions(sponsor1);
-        assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
-
-        // Sponsor2 should have its full position left
-        assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("100"));
-        positionObject = await emp.positions(sponsor2);
-        assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
-      });
-      describe("Partial liquidations", function() {
-        it("amount-to-liquidate > min-sponsor-tokens", async function() {
-          // We'll attempt to liquidate 6 tokens. The minimum sponsor position is 5. There are 3 different scenarios
-          // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
-          const amountToLiquidate = toWei("6");
-
-          // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
-          //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
-          //     - Example: (12 - 6) > 5, new position will have 6 tokens remaining.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-          // 2. (tokens-outstanding - amount-to-liquidate) <= min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
-          //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
-          //       reduce the position exactly to the minimum.
-          //     - Example: (8 - 6) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
-          // 3. amount-to-liquidate > tokens-outstanding
-          //     - The bot will liquidate the full position.
-          //     - Example: 6 > 5, so the bot will liquidate 5 tokens.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("5") }, { from: sponsor3 });
-
-          // liquidatorBot creates a position with enough tokens to liquidate all positions.
-          await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("50") }, { from: liquidatorBot });
-
-          // Next, assume the price feed given to the liquidator has moved such that the sponsors
-          // are all now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
-          // A price of 25 USD per token will make all positions undercollateralized.
-          // Numerically debt * price * coltReq > debt for collateralized position.
-          // Sponsor1: 12 * 25 * 1.2 > 100
-          // Sponsor2: 8 * 25 * 1.2 > 100
-          // Sponsor3: 5 * 25 * 1.2 > 100
-          priceFeedMock.setCurrentPrice("25");
-
-          await liquidator.update();
-          await liquidator.liquidatePositions(amountToLiquidate);
-
-          // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
-          assert.equal(spy.callCount, 5); // 3 info + 2 error level events should be sent at the conclusion of the 3 liquidations including 2 partials.
-          assert.equal(spyLogLevel(spy, 4), "info");
-          assert.isTrue(spyLogIncludes(spy, 4, "liquidated"));
-          assert.equal(spyLogLevel(spy, 3), "info");
-          assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
-          assert.equal(spyLogLevel(spy, 2), "error");
-          assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
-          assert.equal(spyLogLevel(spy, 1), "info");
-          assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
-          assert.equal(spyLogLevel(spy, 0), "error");
-          assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
-
-          // Sponsor1 should be in a liquidation state with the bot as the liquidator. (6/12) = 50% of the 100 starting collateral and 6 tokens should be liquidated.
-          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-          assert.equal(liquidationObject.sponsor, sponsor1);
-          assert.equal(liquidationObject.liquidator, liquidatorBot);
-          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral, convert("50"));
-          assert.equal(liquidationObject.tokensOutstanding, toWei("6"));
-
-          // Sponsor2 should be in a liquidation state with the bot as the liquidator. (3/8) = 37.5% of the 100 starting collateral and 3 tokens should be liquidated.
-          liquidationObject = (await emp.getLiquidations(sponsor2))[0];
-          assert.equal(liquidationObject.sponsor, sponsor2);
-          assert.equal(liquidationObject.liquidator, liquidatorBot);
-          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral, convert("37.5"));
-          assert.equal(liquidationObject.tokensOutstanding, toWei("3"));
-
-          // Sponsor3 should be in a liquidation state with the bot as the liquidator. (5/5) = 100% of the 100 starting collateral and 5 tokens should be liquidated.
-          liquidationObject = (await emp.getLiquidations(sponsor3))[0];
-          assert.equal(liquidationObject.sponsor, sponsor3);
-          assert.equal(liquidationObject.liquidator, liquidatorBot);
-          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral, convert("100"));
-          assert.equal(liquidationObject.tokensOutstanding, toWei("5"));
-
-          // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-          assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("50"));
-          let positionObject = await emp.positions(sponsor1);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("6"));
-
-          // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
-          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("62.5"));
-          positionObject = await emp.positions(sponsor2);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
-
-          // Sponsor3 should not have a position remaining.
-          assert.equal((await emp.getCollateral(sponsor3)).rawValue, 0);
-        });
-
-        it("amount-to-liquidate < min-sponsor-tokens", async function() {
-          // We'll attempt to liquidate 4 tokens. The minimum sponsor position is 5. There are 3 different scenarios
-          // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
-          const amountToLiquidate = toWei("4");
-
-          // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
-          //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
-          //     - Example: (12 - 4) > 5, new position will have 8 tokens remaining.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
-          // 2. (tokens-outstanding - amount-to-liquidate) < min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
-          //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
-          //       reduce the position exactly to the minimum.
-          //     - Example: (8 - 4) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
-          // 3. amount-to-liquidate < tokens-outstanding, and amount-to-liquidate < min-sponsor-tokens.
-          //     - The bot does not have enough balance to send a full liquidation, and partials are not allowed since 5 >= 5.
-          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("5") }, { from: sponsor3 });
-
-          // liquidatorBot creates a position with enough tokens to liquidate all positions.
-          await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("50") }, { from: liquidatorBot });
-
-          // Next, assume the price feed given to the liquidator has moved such that the sponsors
-          // are all now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
-          // A price of 25 USD per token will make all positions undercollateralized.
-          // Numerically debt * price * coltReq > debt for collateralized position.
-          // Sponsor1: 12 * 25 * 1.2 > 100
-          // Sponsor2: 8 * 25 * 1.2 > 100
-          // Sponsor3: 5 * 25 * 1.2 > 100
-          priceFeedMock.setCurrentPrice("25");
-
-          await liquidator.update();
-          await liquidator.liquidatePositions(amountToLiquidate);
-          assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 successful, 2 partial, and 1 failed liquidations.
-          assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, "0");
-
-          // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
-          assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 liquidations, including 2 partials, and 1 failed attempt to liquidate 0 tokens.
-          assert.equal(spyLogLevel(spy, 4), "error");
-          assert.isTrue(spyLogIncludes(spy, 4, "minimum"));
-          assert.equal(spyLogLevel(spy, 3), "info");
-          assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
-          assert.equal(spyLogLevel(spy, 2), "error");
-          assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
-          assert.equal(spyLogLevel(spy, 1), "info");
-          assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
-          assert.equal(spyLogLevel(spy, 0), "error");
-          assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
-
-          // Sponsor1 should be in a liquidation state with the bot as the liquidator. (4/12) = 33.33% of the 100 starting collateral and 6 tokens should be liquidated.
-          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-          console.log({ liquidationObject });
-          assert.equal(liquidationObject.sponsor, sponsor1);
-          assert.equal(liquidationObject.liquidator, liquidatorBot);
-          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          // Dont know how to generalize this check for multi decimal paradigms
-          if (collateralDecimals == 18) {
-            assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.3333333333333333"));
-          } else if (collateralDecimals == 8) {
-            assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.33333333"));
-          }
-          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("4"));
-
-          // Sponsor2 should be in a liquidation state with the bot as the liquidator. (3/8) = 37.5% of the 100 starting collateral and 3 tokens should be liquidated.
-          liquidationObject = (await emp.getLiquidations(sponsor2))[0];
-          assert.equal(liquidationObject.sponsor, sponsor2);
-          assert.equal(liquidationObject.liquidator, liquidatorBot);
-          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-          assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("37.5"));
-          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("3"));
-
-          // Sponsor3 should not have been liquidated.
-
-          // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-          // Dont know how to generalize this check for multi decimal paradigms
-          if (collateralDecimals == 18) {
-            assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.6666666666666667"));
-          } else if (collateralDecimals == 8) {
-            assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.66666667"));
-          }
-          let positionObject = await emp.positions(sponsor1);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
-
-          // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
-          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("62.5"));
-          positionObject = await emp.positions(sponsor2);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
-
-          // Sponsor3 should have its full position remaining.
-          assert.equal((await emp.getCollateral(sponsor3)).rawValue, convert("100"));
-          positionObject = await emp.positions(sponsor3);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
-        });
       });
 
       describe("Overrides the default liquidator configuration settings", function() {
@@ -996,83 +673,410 @@ contract("Liquidator.js", function(accounts) {
           }
           assert.isTrue(errorThrown);
         });
-
-        it("Overriding threshold correctly effects generated logs", async function() {
-          // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
-          // validated after the log is generated.
-          liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
-          liquidator = new Liquidator({
-            logger: spyLogger,
-            oneInchClient: oneInch,
-            expiringMultiPartyClient: empClient,
+        it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
+          const oneInchClient = new OneInchExchange({
+            web3,
             gasEstimator,
-            votingContract: mockOracle,
-            syntheticToken: syntheticToken,
-            priceFeed: priceFeedMock,
-            account: accounts[0],
-            empProps,
-            config: liquidatorConfig
+            logger: spyLogger,
+            oneSplitAbi: OneSplitMock.abi,
+            erc20TokenAbi: Token.abi,
+            oneSplitAddress: oneSplitMock.address
+          });
+          liquidator.oneInchClient = oneInchClient;
+
+          // One Split liquidity provider
+          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("120") }, { from: liquidityProvider });
+          await syntheticToken.transfer(oneSplitMock.address, toWei("100"), { from: liquidityProvider });
+          await web3.eth.sendTransaction({
+            from: liquidityProvider,
+            to: oneSplitMock.address,
+            value: toWei("10")
           });
 
-          // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-          await emp.create({ rawValue: convert("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+          // 1 ETH = 1 Synthetic token
+          await oneSplitMock.setPrice(syntheticToken.address, ALTERNATIVE_ETH_ADDRESS, "1");
+          await oneSplitMock.setPrice(ALTERNATIVE_ETH_ADDRESS, syntheticToken.address, "1");
 
-          // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
-          await emp.create({ rawValue: convert("118") }, { rawValue: toWei("100") }, { from: sponsor2 });
+          // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
+          const amountToLiquidate = toWei("10");
 
-          // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
 
-          priceFeedMock.setCurrentPrice("1");
-          assert.equal(spy.callCount, 0); // No log events before liquidation query
+          // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
+          priceFeedMock.setCurrentPrice(toBN(toWei("25")));
+
           await liquidator.update();
-          await liquidator.liquidatePositions();
-          assert.equal(spy.callCount, 1); // 1 log events after liquidation query.
-          assert.equal(lastSpyLogLevel(spy), "warn"); // most recent log level should be "warn"
+          await liquidator.liquidatePositions(amountToLiquidate);
+
+          // 4 info + 2 error level events should be sent at the conclusion of the 3 successful (incl. 1 partial) and 2 not enough synthetic.
+          assert.equal(spy.callCount, 8);
+          assert.equal(spyLogLevel(spy, 7), "info");
+          assert.isTrue(spyLogIncludes(spy, 7, "has been liquidated"));
+          assert.equal(spyLogLevel(spy, 6), "info");
+          assert.isTrue(spyLogIncludes(spy, 6, "convert reserve currency"));
+          assert.equal(spyLogLevel(spy, 5), "info");
+          assert.isTrue(spyLogIncludes(spy, 5, "has been liquidated"));
+          assert.equal(spyLogLevel(spy, 4), "info");
+          assert.isTrue(spyLogIncludes(spy, 4, "convert reserve currency"));
+          assert.equal(spyLogLevel(spy, 3), "error");
+          assert.isTrue(spyLogIncludes(spy, 3, "not enough synthetic"));
+          assert.equal(spyLogLevel(spy, 2), "info");
+          assert.isTrue(spyLogIncludes(spy, 2, "has been liquidated"));
+          assert.equal(spyLogLevel(spy, 1), "info");
+          assert.isTrue(spyLogIncludes(spy, 1, "convert reserve currency"));
+          assert.equal(spyLogLevel(spy, 0), "error");
+          assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
+
+          // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
+
+          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+          assert.equal(liquidationObject.sponsor, sponsor1);
+          assert.equal(liquidationObject.liquidator, liquidatorBot);
+          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+          if (tokenConfig.collateralDecimals == 18) {
+            assert.equal(
+              convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue),
+              toWei("58.3333333333333333")
+            );
+          } else if (tokenConfig.collateralDecimals == 8) {
+            assert.equal(convertCollateralToWei(liquidationObject.liquidatedCollateral.rawValue), toWei("58.33333333"));
+          }
+          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
+
+          // Sponsor2 should be in a liquidation state as the bot will have attempted to re-buy
+          // synthetic tokens in the open market
+
+          // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+          if (tokenConfig.collateralDecimals == 18) {
+            assert.equal(
+              convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue),
+              toWei("41.6666666666666667")
+            );
+          } else if (tokenConfig.collateralDecimals == 8) {
+            assert.equal(convertCollateralToWei((await emp.getCollateral(sponsor1)).rawValue), toWei("41.66666667"));
+          }
+          let positionObject = await emp.positions(sponsor1);
+          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+
+          // Since sponsor 1 had a partial liquidation, liquidator bot is out of tokens
+          // Only when liquidator bot is out of tokens will attempt to swap tokens
+          // on OneInch and then liquidate the positions.
+          // So sponsor 2 should have 0 tokens
+          assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("0"));
+          positionObject = await emp.positions(sponsor2);
+          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("0"));
         });
 
-        it("Can correctly override price feed input", async function() {
-          // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-          await emp.create({ rawValue: convert("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+        it("amount-to-liquidate > min-sponsor-tokens, but bot balance is too low to send liquidation", async function() {
+          // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
+          const amountToLiquidate = toWei("10");
 
-          // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
-          await emp.create({ rawValue: convert("125") }, { rawValue: toWei("100") }, { from: sponsor2 });
+          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+          await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
 
-          // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+          // liquidatorBot creates a position with enough tokens to liquidate all positions.
+          await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("10") }, { from: liquidatorBot });
 
-          // specify an override price of 0.5e18.
-          liquidatorOverridePrice = convert("0.5");
-          // At a price point of 1 sponsor 1 is undercollateralized and sponsor 2 is overcollateralized. However, there
-          // is an override price present at 0.5. At this price point neither position is undercollateralized and so
-          // there should be no liquidation events generated from the liquidation call.
-          priceFeedMock.setCurrentPrice("1");
-          assert.equal(spy.callCount, 0); // No log events before liquidation query
+          // These positions are both undercollateralized at price of 25: 8 * 25 * 1.2 > 100.
+          priceFeedMock.setCurrentPrice("25");
 
-          // Next, call the `liquidatePositions` function with the override price. The `null` param is for
-          // `maxTokensToLiquidateWei` which null will attempt to liquidate the full position, if undercollateralized.
           await liquidator.update();
-          await liquidator.liquidatePositions(null, liquidatorOverridePrice);
-          assert.equal(spy.callCount, 0); // still no liquidation events generated as price override is set to 0.5.
+          await liquidator.liquidatePositions(amountToLiquidate);
 
-          let liquidationObject = await emp.getLiquidations(sponsor1);
-          // There should be no liquidation's created.
-          assert.equal(liquidationObject.length, 0);
+          // 5 error + 2 info
+          assert.equal(spy.callCount, 3);
+          assert.equal(spyLogLevel(spy, 2), "error");
+          assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
+          assert.equal(spyLogLevel(spy, 1), "info");
+          assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+          assert.equal(spyLogLevel(spy, 0), "error");
+          assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
 
-          // Specifying a new override price that places one of the positions undercollateralized should initiate a liquidation.
-          // This should again be independent of the price feed.
-          priceFeedMock.setCurrentPrice("0.5"); // set the price feed to something that should not create a liquidation.
+          // Sponsor1 should be in a liquidation state with the bot as the liquidator. (7/12) = 58.33% of the 100 starting collateral and 7 tokens should be liquidated.
+          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+          assert.equal(liquidationObject.sponsor, sponsor1);
+          assert.equal(liquidationObject.liquidator, liquidatorBot);
+          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+          if (tokenConfig.collateralDecimals == 18) {
+            assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.3333333333333333"));
+          } else if (tokenConfig.collateralDecimals == 8) {
+            assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("58.33333333"));
+          }
+          assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("7"));
 
-          liquidatorOverridePrice = convert("1.0"); // specify an override price of 1.0e18. This should place sponsor 1 underwater.
-          await liquidator.update();
-          await liquidator.liquidatePositions(null, liquidatorOverridePrice);
-          assert.equal(spy.callCount, 1); // This should initiate the liquidation event and so there should be 1 log.
+          // Sponsor2 should not be in a liquidation state because the bot would have attempted to liquidate its full position of 8 tokens, but it only had remaining.
 
-          liquidationObject = await emp.getLiquidations(sponsor1);
-          // There should be one liquidation created.
-          assert.equal(liquidationObject.length, 1);
+          // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+          if (tokenConfig.collateralDecimals == 18) {
+            assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.6666666666666667"));
+          } else if (tokenConfig.collateralDecimals == 8) {
+            assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("41.66666667"));
+          }
+          let positionObject = await emp.positions(sponsor1);
+          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+
+          // Sponsor2 should have its full position left
+          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("100"));
+          positionObject = await emp.positions(sponsor2);
+          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
+        });
+        describe("Partial liquidations", function() {
+          it("amount-to-liquidate > min-sponsor-tokens", async function() {
+            // We'll attempt to liquidate 6 tokens. The minimum sponsor position is 5. There are 3 different scenarios
+            // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
+            const amountToLiquidate = toWei("6");
+
+            // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
+            //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
+            //     - Example: (12 - 6) > 5, new position will have 6 tokens remaining.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+            // 2. (tokens-outstanding - amount-to-liquidate) <= min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
+            //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
+            //       reduce the position exactly to the minimum.
+            //     - Example: (8 - 6) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
+            // 3. amount-to-liquidate > tokens-outstanding
+            //     - The bot will liquidate the full position.
+            //     - Example: 6 > 5, so the bot will liquidate 5 tokens.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("5") }, { from: sponsor3 });
+
+            // liquidatorBot creates a position with enough tokens to liquidate all positions.
+            await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("50") }, { from: liquidatorBot });
+
+            // Next, assume the price feed given to the liquidator has moved such that the sponsors
+            // are all now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
+            // A price of 25 USD per token will make all positions undercollateralized.
+            // Numerically debt * price * coltReq > debt for collateralized position.
+            // Sponsor1: 12 * 25 * 1.2 > 100
+            // Sponsor2: 8 * 25 * 1.2 > 100
+            // Sponsor3: 5 * 25 * 1.2 > 100
+            priceFeedMock.setCurrentPrice("25");
+
+            await liquidator.update();
+            await liquidator.liquidatePositions(amountToLiquidate);
+
+            // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
+            assert.equal(spy.callCount, 5); // 3 info + 2 error level events should be sent at the conclusion of the 3 liquidations including 2 partials.
+            assert.equal(spyLogLevel(spy, 4), "info");
+            assert.isTrue(spyLogIncludes(spy, 4, "liquidated"));
+            assert.equal(spyLogLevel(spy, 3), "info");
+            assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
+            assert.equal(spyLogLevel(spy, 2), "error");
+            assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
+            assert.equal(spyLogLevel(spy, 1), "info");
+            assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+            assert.equal(spyLogLevel(spy, 0), "error");
+            assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
+
+            // Sponsor1 should be in a liquidation state with the bot as the liquidator. (6/12) = 50% of the 100 starting collateral and 6 tokens should be liquidated.
+            let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+            assert.equal(liquidationObject.sponsor, sponsor1);
+            assert.equal(liquidationObject.liquidator, liquidatorBot);
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+            assert.equal(liquidationObject.liquidatedCollateral, convert("50"));
+            assert.equal(liquidationObject.tokensOutstanding, toWei("6"));
+
+            // Sponsor2 should be in a liquidation state with the bot as the liquidator. (3/8) = 37.5% of the 100 starting collateral and 3 tokens should be liquidated.
+            liquidationObject = (await emp.getLiquidations(sponsor2))[0];
+            assert.equal(liquidationObject.sponsor, sponsor2);
+            assert.equal(liquidationObject.liquidator, liquidatorBot);
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+            assert.equal(liquidationObject.liquidatedCollateral, convert("37.5"));
+            assert.equal(liquidationObject.tokensOutstanding, toWei("3"));
+
+            // Sponsor3 should be in a liquidation state with the bot as the liquidator. (5/5) = 100% of the 100 starting collateral and 5 tokens should be liquidated.
+            liquidationObject = (await emp.getLiquidations(sponsor3))[0];
+            assert.equal(liquidationObject.sponsor, sponsor3);
+            assert.equal(liquidationObject.liquidator, liquidatorBot);
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+            assert.equal(liquidationObject.liquidatedCollateral, convert("100"));
+            assert.equal(liquidationObject.tokensOutstanding, toWei("5"));
+
+            // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+            assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("50"));
+            let positionObject = await emp.positions(sponsor1);
+            assert.equal(positionObject.tokensOutstanding.rawValue, toWei("6"));
+
+            // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
+            assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("62.5"));
+            positionObject = await emp.positions(sponsor2);
+            assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+
+            // Sponsor3 should not have a position remaining.
+            assert.equal((await emp.getCollateral(sponsor3)).rawValue, 0);
+          });
+
+          it("amount-to-liquidate < min-sponsor-tokens", async function() {
+            // We'll attempt to liquidate 4 tokens. The minimum sponsor position is 5. There are 3 different scenarios
+            // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
+            const amountToLiquidate = toWei("4");
+
+            // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
+            //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
+            //     - Example: (12 - 4) > 5, new position will have 8 tokens remaining.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("12") }, { from: sponsor1 });
+            // 2. (tokens-outstanding - amount-to-liquidate) < min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
+            //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
+            //       reduce the position exactly to the minimum.
+            //     - Example: (8 - 4) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("8") }, { from: sponsor2 });
+            // 3. amount-to-liquidate < tokens-outstanding, and amount-to-liquidate < min-sponsor-tokens.
+            //     - The bot does not have enough balance to send a full liquidation, and partials are not allowed since 5 >= 5.
+            await emp.create({ rawValue: convert("100") }, { rawValue: toWei("5") }, { from: sponsor3 });
+
+            // liquidatorBot creates a position with enough tokens to liquidate all positions.
+            await emp.create({ rawValue: convert("10000") }, { rawValue: toWei("50") }, { from: liquidatorBot });
+
+            // Next, assume the price feed given to the liquidator has moved such that the sponsors
+            // are all now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
+            // A price of 25 USD per token will make all positions undercollateralized.
+            // Numerically debt * price * coltReq > debt for collateralized position.
+            // Sponsor1: 12 * 25 * 1.2 > 100
+            // Sponsor2: 8 * 25 * 1.2 > 100
+            // Sponsor3: 5 * 25 * 1.2 > 100
+            priceFeedMock.setCurrentPrice("25");
+
+            await liquidator.update();
+            await liquidator.liquidatePositions(amountToLiquidate);
+            assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 successful, 2 partial, and 1 failed liquidations.
+            assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, "0");
+
+            // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
+            assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 liquidations, including 2 partials, and 1 failed attempt to liquidate 0 tokens.
+            assert.equal(spyLogLevel(spy, 4), "error");
+            assert.isTrue(spyLogIncludes(spy, 4, "minimum"));
+            assert.equal(spyLogLevel(spy, 3), "info");
+            assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
+            assert.equal(spyLogLevel(spy, 2), "error");
+            assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
+            assert.equal(spyLogLevel(spy, 1), "info");
+            assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
+            assert.equal(spyLogLevel(spy, 0), "error");
+            assert.isTrue(spyLogIncludes(spy, 0, "partial liquidation"));
+
+            // Sponsor1 should be in a liquidation state with the bot as the liquidator. (4/12) = 33.33% of the 100 starting collateral and 6 tokens should be liquidated.
+            let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+            console.log({ liquidationObject });
+            assert.equal(liquidationObject.sponsor, sponsor1);
+            assert.equal(liquidationObject.liquidator, liquidatorBot);
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+            // Dont know how to generalize this check for multi decimal paradigms
+            if (tokenConfig.collateralDecimals == 18) {
+              assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.3333333333333333"));
+            } else if (tokenConfig.collateralDecimals == 8) {
+              assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("33.33333333"));
+            }
+            assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("4"));
+
+            // Sponsor2 should be in a liquidation state with the bot as the liquidator. (3/8) = 37.5% of the 100 starting collateral and 3 tokens should be liquidated.
+            liquidationObject = (await emp.getLiquidations(sponsor2))[0];
+            assert.equal(liquidationObject.sponsor, sponsor2);
+            assert.equal(liquidationObject.liquidator, liquidatorBot);
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+            assert.equal(liquidationObject.liquidatedCollateral.rawValue, convert("37.5"));
+            assert.equal(liquidationObject.tokensOutstanding.rawValue, toWei("3"));
+
+            // Sponsor3 should not have been liquidated.
+
+            // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
+            // Dont know how to generalize this check for multi decimal paradigms
+            if (tokenConfig.collateralDecimals == 18) {
+              assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.6666666666666667"));
+            } else if (tokenConfig.collateralDecimals == 8) {
+              assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("66.66666667"));
+            }
+            let positionObject = await emp.positions(sponsor1);
+            assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
+
+            // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
+            assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("62.5"));
+            positionObject = await emp.positions(sponsor2);
+            assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+
+            // Sponsor3 should have its full position remaining.
+            assert.equal((await emp.getCollateral(sponsor3)).rawValue, convert("100"));
+            positionObject = await emp.positions(sponsor3);
+            assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
+          });
+
+          it("Overriding threshold correctly effects generated logs", async function() {
+            // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
+            // validated after the log is generated.
+            liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
+            liquidator = new Liquidator({
+              logger: spyLogger,
+              oneInchClient: oneInch,
+              expiringMultiPartyClient: empClient,
+              gasEstimator,
+              votingContract: mockOracle,
+              syntheticToken: syntheticToken,
+              priceFeed: priceFeedMock,
+              account: accounts[0],
+              empProps,
+              config: liquidatorConfig
+            });
+
+            // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+            await emp.create({ rawValue: convert("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+            // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+            await emp.create({ rawValue: convert("118") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+            await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+            priceFeedMock.setCurrentPrice("1");
+            assert.equal(spy.callCount, 0); // No log events before liquidation query
+            await liquidator.update();
+            await liquidator.liquidatePositions();
+            assert.equal(spy.callCount, 1); // 1 log events after liquidation query.
+            assert.equal(lastSpyLogLevel(spy), "warn"); // most recent log level should be "warn"
+          });
+
+          it("Can correctly override price feed input", async function() {
+            // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+            await emp.create({ rawValue: convert("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+            // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+            await emp.create({ rawValue: convert("125") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+            await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+            // specify an override price of 0.5e18.
+            liquidatorOverridePrice = convert("0.5");
+            // At a price point of 1 sponsor 1 is undercollateralized and sponsor 2 is overcollateralized. However, there
+            // is an override price present at 0.5. At this price point neither position is undercollateralized and so
+            // there should be no liquidation events generated from the liquidation call.
+            priceFeedMock.setCurrentPrice("1");
+            assert.equal(spy.callCount, 0); // No log events before liquidation query
+
+            // Next, call the `liquidatePositions` function with the override price. The `null` param is for
+            // `maxTokensToLiquidateWei` which null will attempt to liquidate the full position, if undercollateralized.
+            await liquidator.update();
+            await liquidator.liquidatePositions(null, liquidatorOverridePrice);
+            assert.equal(spy.callCount, 0); // still no liquidation events generated as price override is set to 0.5.
+
+            let liquidationObject = await emp.getLiquidations(sponsor1);
+            // There should be no liquidation's created.
+            assert.equal(liquidationObject.length, 0);
+
+            // Specifying a new override price that places one of the positions undercollateralized should initiate a liquidation.
+            // This should again be independent of the price feed.
+            priceFeedMock.setCurrentPrice("0.5"); // set the price feed to something that should not create a liquidation.
+
+            liquidatorOverridePrice = convert("1.0"); // specify an override price of 1.0e18. This should place sponsor 1 underwater.
+            await liquidator.update();
+            await liquidator.liquidatePositions(null, liquidatorOverridePrice);
+            assert.equal(spy.callCount, 1); // This should initiate the liquidation event and so there should be 1 log.
+
+            liquidationObject = await emp.getLiquidations(sponsor1);
+            // There should be one liquidation created.
+            assert.equal(liquidationObject.length, 1);
+          });
         });
       });
     });
-  });
+  }
 });

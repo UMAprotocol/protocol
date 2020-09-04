@@ -45,7 +45,7 @@ class ExpiringMultiPartyClient {
     // currently not implemented
     this.convertSynthetic = Convert(syntheticDecimals);
     this.convertCollateral = Convert(collateralDecimals);
-    this.convertCollateralToSynthetic = ConvertDecimals(collateralDecimals, syntheticDecimals);
+    this.convertCollateralToSynthetic = ConvertDecimals(collateralDecimals, syntheticDecimals, this.web3);
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.

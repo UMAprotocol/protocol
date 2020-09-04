@@ -40,8 +40,6 @@ if (require.main === module) {
     .catch(nodeCallback);
 }
 
-module.exports = FindBlockAtTimeStamp;
-
 async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax = 15, lowerLimitMax = 15) {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
@@ -98,3 +96,6 @@ async function _findBlockNumberAtTimestamp(web3, targetTimestamp, higherLimitMax
   }
   return { blockNumber: block.number, error: Math.abs(targetTimestamp - block.timestamp) };
 }
+
+FindBlockAtTimeStamp._findBlockNumberAtTimestamp = _findBlockNumberAtTimestamp;
+module.exports = FindBlockAtTimeStamp;
