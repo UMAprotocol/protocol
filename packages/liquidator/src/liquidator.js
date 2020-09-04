@@ -273,7 +273,7 @@ class Liquidator {
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
-      const syntheticTokenBalance = await this.syntheticToken.methods.balanceOf(this.account).call();
+      const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
       const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
 
       // Attempts to swap some capital for tokenCurrency
