@@ -281,6 +281,17 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
     ]
+  },
+  USDBTC: {
+    type: "medianizer",
+    lookback: 7200,
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "btucsd" },
+      { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
+    ]
   }
 };
 
