@@ -165,7 +165,8 @@ async function run({
       }
       logger.debug({
         at: "Disputer#index",
-        message: "End of execution loop - waiting polling delay"
+        message: "End of execution loop - waiting polling delay",
+        pollingDelay: `${pollingDelay} (s)`
       });
       await delay(Number(pollingDelay));
     }
