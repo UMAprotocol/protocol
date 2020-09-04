@@ -275,7 +275,6 @@ class Liquidator {
 
       const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
       const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
-      console.log(this.syntheticToken);
 
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
