@@ -173,9 +173,9 @@ class CRMonitor {
           this.formatDecimalString(price) +
           ". The collateralization requirement is " +
           this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
-          "%. If the price increases to " +
+          "%. Liquidation price: " +
           this.formatDecimalString(liquidationPrice) +
-          ", the position can be liquidated.";
+          ".";
 
         this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
