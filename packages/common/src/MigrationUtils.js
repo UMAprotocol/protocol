@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const tdr = require("truffle-deploy-registry");
 
 // To prevent a call to migrate --reset from overwriting prevously deployed contract instances, use the following
@@ -102,6 +104,12 @@ async function deploy(deployer, network, contractType, ...args) {
   // Add to the registry.
   await addToTdr(contractInstance, network);
 
+  // Add to truffle verification registry
+  if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
+    // We do the check here as otherwise getting network_id will throw an error
+    await addToTvr(contractType.address, args, network, contractInstance.constructor.network_id);
+  }
+
   // Return relevant info about the contract.
   return {
     contract: contractInstance,
@@ -153,6 +161,38 @@ async function addToTdr(instance, network) {
   // Probably redundant checks, but useful in case of future modifications.
   if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
     await tdr.appendInstance(instance);
+  }
+}
+
+// "Tvr" - Truffle verification registry
+async function addToTvr(address, args, network, networkId) {
+  // Adds in constructor args for contracts in the k, v store
+  // e.g. Produces a networks/1_args.json
+  // with the structure
+  // { "address": "args" }
+  if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
+    const tvrPath = path.join(process.cwd(), "networks", `${networkId}_args.json`);
+
+    let tvrData = {};
+
+    // If file exists, just read it
+    if (fs.existsSync(tvrPath)) {
+      tvrData = JSON.parse(fs.readFileSync(tvrPath));
+    }
+
+    // Remove { 'from': ... } thats present in the deployment args
+    // As well as empty objects
+    // And destructure the single tuple (with rawValue keys)
+    const argsFixed = args
+      .filter(x => !x.from && (typeof x === "object" ? Object.keys(x).length > 0 : true))
+      .map(x => {
+        // Tuple
+        if (x.rawValue) return [x.rawValue];
+        return x;
+      });
+
+    // Save to file
+    fs.writeFileSync(tvrPath, JSON.stringify({ ...tvrData, [address]: argsFixed }, null, 4));
   }
 }
 

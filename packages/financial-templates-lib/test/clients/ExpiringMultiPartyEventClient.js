@@ -23,8 +23,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
       const sponsor1 = accounts[2];
@@ -60,9 +60,14 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       let convert;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenSponsor });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
         await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
         await collateralToken.mint(liquidator, convert("100000"), { from: tokenSponsor });
         await collateralToken.mint(sponsor1, convert("100000"), { from: tokenSponsor });
@@ -773,5 +778,5 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         assert.deepStrictEqual([], offSetClient.getAllDisputeSettlementEvents());
       });
     });
-  });
+  }
 });

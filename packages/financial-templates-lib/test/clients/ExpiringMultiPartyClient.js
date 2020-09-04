@@ -23,8 +23,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const sponsor1 = accounts[0];
       const sponsor2 = accounts[1];
 
@@ -47,9 +47,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       };
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: sponsor1 });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: sponsor1 }
+        );
         await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
         await collateralToken.mint(sponsor1, convert("100000"), { from: sponsor1 });
         await collateralToken.mint(sponsor2, convert("100000"), { from: sponsor1 });
@@ -96,7 +101,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           ExpiringMultiParty.abi,
           web3,
           emp.address,
-          collateralDecimals
+          tokenConfig.collateralDecimals
         );
         await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor1 });
         await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor2 });
@@ -256,7 +261,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
         await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
         // as created and redeemed sponsor should not show up in table as they are no longer an active sponsor.
-        console.log({ sponsor1, sponsor2 });
 
         await updateAndVerify(
           client,
@@ -529,5 +533,5 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
       });
     });
-  });
+  }
 });

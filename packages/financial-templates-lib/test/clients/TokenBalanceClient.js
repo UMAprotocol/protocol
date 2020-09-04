@@ -17,8 +17,8 @@ const configs = [
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("TokenBalanceClient.js", function(accounts) {
-  configs.forEach(({ collateralDecimals, tokenName }) => {
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const tokenCreator = accounts[0];
       const sponsor1 = accounts[1];
       const sponsor2 = accounts[2];
@@ -31,12 +31,17 @@ contract("TokenBalanceClient.js", function(accounts) {
       let identifier;
       let convert;
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convert = Convert(collateralDecimals);
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convert = Convert(tokenConfig.collateralDecimals);
         // The TokenBalance Client is independent of the EMP and simply needs two tokens to monitor.
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenCreator });
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenCreator }
+        );
         await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
-        syntheticToken = await Token.new(tokenName, tokenName, 18, { from: tokenCreator });
+        syntheticToken = await Token.new(tokenConfig.tokenName, tokenConfig.tokenName, 18, { from: tokenCreator });
         await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
       });
 
@@ -109,5 +114,5 @@ contract("TokenBalanceClient.js", function(accounts) {
         assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
       });
     });
-  });
+  }
 });

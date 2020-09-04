@@ -1,4 +1,4 @@
-const { toBN } = web3.utils;
+const { toBN } = require("web3").utils;
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@ethersproject/bignumber");
 
