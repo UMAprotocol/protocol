@@ -7,6 +7,8 @@ const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
 const web3 = require("web3");
 const { toBN } = web3.utils;
 
+const assert = require("assert");
+
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
 // Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.

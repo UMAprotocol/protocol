@@ -165,7 +165,7 @@ contract("Disputer.js", function(accounts) {
         disputer = new Disputer({
           logger: spyLogger,
           expiringMultiPartyClient: empClient,
-          votingContract: mockOracle,
+          votingContract: mockOracle.contract,
           gasEstimator,
           priceFeed: priceFeedMock,
           account: accounts[0],
@@ -427,7 +427,7 @@ contract("Disputer.js", function(accounts) {
             disputer = new Disputer({
               logger: spyLogger,
               expiringMultiPartyClient: empClient,
-              votingContract: mockOracle,
+              votingContract: mockOracle.contract,
               gasEstimator,
               priceFeed: priceFeedMock,
               account: accounts[0],
@@ -448,7 +448,7 @@ contract("Disputer.js", function(accounts) {
           disputer = new Disputer({
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
-            votingContract: mockOracle,
+            votingContract: mockOracle.contract,
             gasEstimator,
             priceFeed: priceFeedMock,
             account: accounts[0],
