@@ -266,7 +266,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
     assert.equal(balancerFeed, null);
   });
-  it("Create token Price Feed For Balancer", async function() {
+  it("Create token price feed for Balancer", async function() {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
     const config = {
       type: "balancer",
@@ -297,6 +297,68 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const balancerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
     assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
+  });
+
+  it("Create token price feed for Uniswap", async function() {
+    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const config = {
+      type: "uniswap",
+      uniswapAddress,
+      twapLength,
+      lookback
+    };
+
+    const constructorParams = {
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralTokenAddress,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+
+    const emp = await ExpiringMultiParty.new(constructorParams);
+
+    const uniswapFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
+    assert.isTrue(uniswapFeed instanceof UniswapPriceFeed);
+  });
+
+  it("Create token price feed defaults to Medianizer", async function() {
+    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const constructorParams = {
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralTokenAddress,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+
+    const emp = await ExpiringMultiParty.new(constructorParams);
+
+    // If `config` is undefined or ommitted (and set to its default value), this should return a Medianizer Price Feed
+    let medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+    assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
+    medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, undefined);
+    assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
   });
 
   it("Valid Medianizer inherited config", async function() {
