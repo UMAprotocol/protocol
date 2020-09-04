@@ -137,8 +137,13 @@ function addLocalNetwork(networks, name, customOptions) {
     network_id: "*",
     gas: gas,
     provider: function(provider = nodeUrl) {
-      // Don't use the singleton here because it seems to make truffle tests flaky and creating multiple local providers
-      // won't hurt anything.
+      // Don't use the singleton here because there's not reason to for local networks.
+
+      // Note: this is the way that truffle initializes their host + port http provider.
+      // It is required to fix connection issues when testing.
+      if (typeof provider === "string" && !provider.startsWith("ws")) {
+        return new Web3.providers.HttpProvider(provider, { keepAlive: false });
+      }
       const tempWeb3 = new Web3(provider);
       return tempWeb3.eth.currentProvider;
     }
