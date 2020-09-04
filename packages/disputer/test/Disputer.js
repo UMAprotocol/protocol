@@ -36,9 +36,8 @@ const configs = [
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 contract("Disputer.js", function(accounts) {
-  for (let config of configs) {
-    const { collateralDecimals, tokenName } = config;
-    describe(`${collateralDecimals} decimals`, function() {
+  for (let tokenConfig of configs) {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const disputeBot = accounts[0];
       const sponsor1 = accounts[1];
       const sponsor2 = accounts[2];
@@ -56,7 +55,6 @@ contract("Disputer.js", function(accounts) {
       let spyLogger;
       let priceFeedMock;
 
-      let config;
       let empProps;
       let identifier;
       let convert;
@@ -68,9 +66,14 @@ contract("Disputer.js", function(accounts) {
       const unreachableDeadline = MAX_UINT_VAL;
 
       before(async function() {
-        identifier = `${tokenName}TEST`;
-        convert = Convert(collateralDecimals);
-        collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: contractCreator });
+        identifier = `${tokenConfig.tokenName}TEST`;
+        convert = Convert(tokenConfig.collateralDecimals);
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: contractCreator }
+        );
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });
@@ -157,7 +160,7 @@ contract("Disputer.js", function(accounts) {
         };
 
         // Create price feed mock.
-        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, undefined, collateralDecimals);
+        priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, undefined, tokenConfig.collateralDecimals);
 
         disputer = new Disputer({
           logger: spyLogger,
