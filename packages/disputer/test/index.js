@@ -52,7 +52,7 @@ contract("index.js", function(accounts) {
     });
 
     constructorParams = {
-      expirationTimestamp: "12345678900",
+      expirationTimestamp: "20345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -84,6 +84,37 @@ contract("index.js", function(accounts) {
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
+  });
+
+  it("EMP is expired, disputer exits early without throwing", async function() {
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
+    const earlyExpiryConstructorParams = {
+      ...constructorParams,
+      expirationTimestamp: "11345678900"
+    };
+    let earlyExpiryEmp = await ExpiringMultiParty.new(earlyExpiryConstructorParams);
+
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: earlyExpiryEmp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
+
+    // There should only be 1 log that communicates that bot is exiting early
+    assert.isTrue(spyLogIncludes(spy, 0, "expired"));
   });
 
   it("Allowances are set", async function() {

@@ -2,6 +2,7 @@ const networkUtils = require("./PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
+const assert = require("assert");
 const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
 const web3 = require("web3");
 const { toBN } = web3.utils;
