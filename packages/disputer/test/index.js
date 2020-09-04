@@ -86,6 +86,46 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
+  it("Detects price feed decimals from collateral decimals", async function() {
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
+    collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
+    constructorParams = {
+      expirationTimestamp: "20345678900",
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralToken.address,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      syntheticName: "ETH/BTC synthetic token",
+      syntheticSymbol: "ETH/BTC",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.2") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
+    };
+    emp = await ExpiringMultiParty.new(constructorParams);
+
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
+
+    // First log should include # of decimals
+    assert.isTrue(spyLogIncludes(spy, 0, "8"));
+  });
   it("EMP is expired, disputer exits early without throwing", async function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({

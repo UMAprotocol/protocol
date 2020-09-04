@@ -18,6 +18,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
    * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
+   * @param {Number} decimals Number of decimals to use to convert price to wei.
    */
   constructor(
     logger,
