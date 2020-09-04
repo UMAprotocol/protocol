@@ -65,7 +65,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
 
   // Removes blocks from cache which are older than age
   function pruneByTimestamp(age) {
-    blocks = blocks.filter(block => block.timestamp > seconds);
+    blocks = blocks.filter(block => block.timestamp > age);
   }
 
   // Return all blocks in cache

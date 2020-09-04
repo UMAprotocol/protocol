@@ -178,7 +178,8 @@ async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, e
   assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
   const emp = getEmpAtAddress(web3, empAddress);
   const balancerTokenIn = await emp.methods.tokenCurrency().call();
-  const lookback = 7200;
+  // disable lookback by default
+  const lookback = 0;
   return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, ...config });
 }
 
