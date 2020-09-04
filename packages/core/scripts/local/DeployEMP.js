@@ -93,8 +93,8 @@ const deployEMP = async callback => {
       expirationTimestamp: "1601503200", // 09/30/2020 @ 10:00pm (UTC)
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "yUSDBTC Synthetic Token Expiring 1 October 2020",
-      syntheticSymbol: "yUSDBTC-OCT20",
+      syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
+      syntheticSymbol: "uUSDrBTC-OCT",
       collateralRequirement: { rawValue: toWei("1.35") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },

@@ -46,32 +46,10 @@ async function run({
   try {
     const { toBN } = web3.utils;
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Disputer#index",
-      message: "Disputer started🔎",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      disputerConfig,
-      disputerOverridePrice
-    });
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // Setup web3 accounts, account instance and pricefeed for EMP.
-    const [accounts, networkId, priceFeed] = await Promise.all([
-      web3.eth.getAccounts(),
-      web3.eth.net.getId(),
-      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
-    ]);
-
-    if (!priceFeed) {
-      throw new Error("Price feed config is invalid");
-    }
+    // Setup web3 accounts and network
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
     // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
@@ -97,11 +75,46 @@ async function run({
     }
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
+    const [currentAllowance, collateralCurrencyDecimals] = await Promise.all([
+      collateralToken.methods.allowance(accounts[0], empAddress).call(),
+      collateralToken.methods.decimals().call()
+    ]);
+
+    // Price feed must use same # of decimals as collateral currency.
+    let customPricefeedConfig = {
+      ...priceFeedConfig,
+      decimals: collateralCurrencyDecimals
+    };
+
+    const [priceFeed] = await Promise.all([
+      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, customPricefeedConfig)
+    ]);
+    if (!priceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
+    logger.info({
+      at: "Disputer#index",
+      message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
+    });
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const empProps = {
       priceIdentifier: priceIdentifier
     };
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Disputer#index",
+      message: "Disputer started🔎",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: customPricefeedConfig,
+      disputerConfig,
+      disputerOverridePrice
+    });
 
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
@@ -119,7 +132,6 @@ async function run({
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const currentAllowance = await collateralToken.methods.allowance(accounts[0], empAddress).call();
     if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
       const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({

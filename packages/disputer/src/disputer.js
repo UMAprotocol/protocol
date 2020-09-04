@@ -264,7 +264,7 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: this.fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig
       });
 
@@ -307,7 +307,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: this.fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });
