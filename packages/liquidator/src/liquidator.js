@@ -273,7 +273,7 @@ class Liquidator {
         parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
-      const syntheticTokenBalance = await this.syntheticToken.balanceOf(this.account);
+      const syntheticTokenBalance = await this.syntheticToken.methods.balanceOf(this.account).call();
       const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
 
       // Attempts to swap some capital for tokenCurrency
@@ -571,7 +571,7 @@ class Liquidator {
       if (requestTimestamp) {
         try {
           resolvedPrice = revertWrapper(
-            await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+            await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
               from: this.empContract.options.address
             })
           );
