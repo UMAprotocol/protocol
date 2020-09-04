@@ -1,6 +1,7 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
 const {
+  ConvertDecimals,
   createFormatFunction,
   createEtherscanLinkMarkdown,
   createObjectFromDefaultProps
@@ -23,6 +24,8 @@ class CRMonitor {
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
+            collateralCurrencyDecimals: 18,
+            syntheticCurrencyDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
@@ -38,7 +41,20 @@ class CRMonitor {
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    this.convertCollateralToSynthetic = ConvertDecimals(
+      empProps.collateralCurrencyDecimals,
+      empProps.syntheticCurrencyDecimals,
+      this.web3
+    );
+
+    this.formatDecimalStringCollateral = createFormatFunction(
+      this.web3,
+      2,
+      4,
+      false,
+      empProps.collateralCurrencyDecimals
+    );
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Wallets to monitor collateralization ratio.
     const defaultConfig = {
@@ -186,17 +202,16 @@ class CRMonitor {
     if (tokensOutstanding == 0) {
       return null;
     }
-    return this.toBN(collateral)
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
       .mul(this.toBN(this.toWei("1")))
       .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    const fixedPointScaling = this.toBN(this.toWei("1"));
-    return this.toBN(collateral)
-      .mul(fixedPointScaling)
-      .mul(fixedPointScaling)
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding))
       .div(this.toBN(positionCR));
   }

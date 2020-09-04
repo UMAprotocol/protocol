@@ -4,6 +4,8 @@ const BigNumber = require("bignumber.js");
 const moment = require("moment");
 const assert = require("assert");
 const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
+const web3 = require("web3");
+const { toBN } = web3.utils;
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -73,9 +75,15 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
   return positiveSign + fixedPrecisionFloatParts.join(".");
 };
 
-const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false) => {
+const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false, decimals = 18) => {
   return valInWei =>
-    formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, minDisplayedPrecision, false, showSign);
+    formatWithMaxDecimals(
+      formatWei(ConvertDecimals(decimals, 18, web3)(valInWei), web3),
+      numDisplayedDecimals,
+      minDisplayedPrecision,
+      false,
+      showSign
+    );
 };
 
 // Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
