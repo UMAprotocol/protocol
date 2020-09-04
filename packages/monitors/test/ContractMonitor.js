@@ -69,7 +69,7 @@ contract("ContractMonitor.js", function(accounts) {
 
       before(async function() {
         identifier = `${tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18)(num).toString();
+        convertCollateralToWei = num => ConvertDecimals(collateralDecimals, 18, web3)(num).toString();
         convert = Convert(collateralDecimals);
         collateralToken = await Token.new(tokenName, tokenName, collateralDecimals, { from: tokenSponsor });
 

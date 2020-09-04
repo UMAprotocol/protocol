@@ -21,6 +21,8 @@ class ContractMonitor {
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
+            collateralCurrencyDecimals: 18,
+            syntheticCurrencyDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    * @param {Object} votingContract DVM to query price requests.
@@ -50,7 +52,8 @@ class ContractMonitor {
 
     this.convertCollateralToSynthetic = ConvertDecimals(
       empProps.collateralCurrencyDecimals,
-      empProps.syntheticCurrencyDecimals
+      empProps.syntheticCurrencyDecimals,
+      this.web3
     );
 
     this.formatDecimalStringCollateral = createFormatFunction(

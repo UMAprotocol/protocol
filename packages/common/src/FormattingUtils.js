@@ -77,7 +77,7 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
 const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false, decimals = 18) => {
   return valInWei =>
     formatWithMaxDecimals(
-      formatWei(ConvertDecimals(decimals, 18)(valInWei), web3),
+      formatWei(ConvertDecimals(decimals, 18, web3)(valInWei), web3),
       numDisplayedDecimals,
       minDisplayedPrecision,
       false,
