@@ -89,14 +89,29 @@ async function run({
       priceIdentifier,
       minSponsorTokens,
       collateralTokenAddress,
-      syntheticTokenAddress
+      syntheticTokenAddress,
+      expirationTimestamp,
+      contractTimestamp
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
       emp.methods.priceIdentifier().call(),
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
-      emp.methods.tokenCurrency().call()
+      emp.methods.tokenCurrency().call(),
+      emp.methods.expirationTimestamp().call(),
+      emp.methods.getCurrentTime().call()
     ]);
+
+    // If EMP is expired, exit early.
+    if (contractTimestamp >= expirationTimestamp) {
+      logger.info({
+        at: "Liquidator#index",
+        message: "EMP is expired, cannot liquidate any positions 🕰",
+        expirationTimestamp,
+        contractTimestamp
+      });
+      return;
+    }
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -205,7 +220,8 @@ async function run({
       }
       logger.debug({
         at: "Liquidator#index",
-        message: "End of execution loop - waiting polling delay"
+        message: "End of execution loop - waiting polling delay",
+        pollingDelay: `${pollingDelay} (s)`
       });
       await delay(Number(pollingDelay));
     }

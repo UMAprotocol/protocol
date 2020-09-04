@@ -29,6 +29,8 @@ contract("index.js", function(accounts) {
 
   let defaultPriceFeedConfig;
 
+  let constructorParams;
+
   let spy;
   let spyLogger;
 
@@ -44,18 +46,9 @@ contract("index.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
 
     oneSplitMock = await OneSplitMock.new();
-  });
 
-  beforeEach(async function() {
-    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
-    spy = sinon.spy(); // Create a new spy for each test.
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-    });
-
-    const constructorParams = {
-      expirationTimestamp: "12345678900",
+    constructorParams = {
+      expirationTimestamp: "20345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
@@ -71,6 +64,15 @@ contract("index.js", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address
     };
+  });
+
+  beforeEach(async function() {
+    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -89,6 +91,38 @@ contract("index.js", function(accounts) {
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
+  });
+
+  it("EMP is expired, liquidator exits early without throwing", async function() {
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
+    const earlyExpiryConstructorParams = {
+      ...constructorParams,
+      expirationTimestamp: "11345678900"
+    };
+    let earlyExpiryEmp = await ExpiringMultiParty.new(earlyExpiryConstructorParams);
+
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: earlyExpiryEmp.address,
+      oneSplitAddress: oneSplitMock.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
+
+    // There should only be 1 log that communicates that bot is exiting early
+    assert.isTrue(spyLogIncludes(spy, 0, "expired"));
   });
 
   it("Allowances are set", async function() {
