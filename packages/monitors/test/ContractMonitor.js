@@ -78,7 +78,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
 
         identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("ETH/BTC"));
+        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
         finder = await Finder.deployed();
