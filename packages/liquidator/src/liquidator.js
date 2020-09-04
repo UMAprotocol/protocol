@@ -275,6 +275,7 @@ class Liquidator {
 
       const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
       const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
+      console.log(this.syntheticToken);
 
       // Attempts to swap some capital for tokenCurrency
       // Mutates the state of notEnoughCollateral in this logical scope
@@ -283,12 +284,12 @@ class Liquidator {
         // While oneGweiReturn is used as a reference point to determine slippage
         const [reserveWeiNeeded, oneGweiReturn] = await Promise.all([
           this.oneInchClient.getExpectedReturn({
-            fromToken: this.syntheticToken.address,
+            fromToken: this.syntheticToken._address,
             toToken: this.reserveCurrencyAddress,
             amountWei: tokensToLiquidate.toString()
           }),
           this.oneInchClient.getExpectedReturn({
-            fromToken: this.syntheticToken.address,
+            fromToken: this.syntheticToken._address,
             toToken: this.reserveCurrencyAddress,
             amountWei: this.toWei("1", "gwei")
           })
@@ -296,7 +297,7 @@ class Liquidator {
 
         this.logger.info({
           at: "Liquidator",
-          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❗`,
+          message: `Attempting to convert reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken._address} ❗`,
           reserveWeiNeeded,
           oneGweiReturn,
           tokensToLiquidate: tokensToLiquidate.toString()
@@ -333,7 +334,7 @@ class Liquidator {
             message: "Slippage too big ❌",
             oneGweiReturn,
             reserveCurrencyAddress: this.reserveCurrencyAddress,
-            syntheticTokenAddress: this.syntheticToken.address,
+            syntheticTokenAddress: this.syntheticToken._address,
             reserveWeiNeeded,
             idealReserveWeiNeeded,
             slippage,
@@ -352,7 +353,7 @@ class Liquidator {
           await this.oneInchClient.swap(
             {
               fromToken: this.reserveCurrencyAddress,
-              toToken: this.syntheticToken.address,
+              toToken: this.syntheticToken._address,
               minReturnAmountWei: tokensToLiquidate.toString(),
               amountWei: reserveWeiNeededBN
                 .mul(this.toBN(this.toWei(INVERSE_SLIPPAGE.toString())))
@@ -364,7 +365,7 @@ class Liquidator {
         } catch (e) {
           this.logger.error({
             at: "Liquidator",
-            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken.address} ❌`,
+            message: `Failed to swap reserve currency ${this.reserveCurrencyAddress} to tokenCurrency ${this.syntheticToken._address} ❌`,
             error: e.toString(),
             sponsor: position.sponsor,
             inputPrice: scaledPrice.toString(),
