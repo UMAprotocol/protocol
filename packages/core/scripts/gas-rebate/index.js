@@ -322,17 +322,8 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     }
 
     const SCALING_FACTOR = toBN(toWei("1"));
-    // // - Get gas price for period.  This is the ETH price per unit gas, described in Gwei.
-    // const _averagePriceGweiForPeriod = gasPrice ? gasPrice : 90;
-    // const averagePriceGweiForPeriod = toBN(toWei(_averagePriceGweiForPeriod.toString(), "gwei"));
-    // - ETH-USD price for period
-    // const _averageEthPriceForPeriod = ethPrice ? ethPrice : 435;
-    // const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod.toString(), "ether"));
-    // - Current UMA-USD price
     const _umaPrice = umaPrice ? umaPrice : 10;
     const currentUmaPrice = toBN(toWei(_umaPrice.toString(), "ether"));
-    // - Current UMA-ETH price
-    // const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(currentUmaPrice);
 
     const priceData = {
       dailyAvgGasPrices,
