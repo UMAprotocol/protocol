@@ -10,7 +10,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xdf2275a8094a46db1b7b0379664178ff65c6112cdd470cfbcdbeebaf7c7e0e11",
     "ethToPay": 0.11672743811091454,
-    "umaToPay": 6.084793868472416
+    "umaToPay": 6.051947477819393
   },
   "0x83B19521180d533DbAE360Be77f95D0da3AEf98E-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599180788,
@@ -23,7 +23,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xdf2275a8094a46db1b7b0379664178ff65c6112cdd470cfbcdbeebaf7c7e0e11",
     "ethToPay": 0.11672743811091454,
-    "umaToPay": 6.084793868472416
+    "umaToPay": 6.051947477819393
   },
   "0x797E1f1765a0071454f443114Bf26a53F798c071-9254-USDETH-1598918400": {
     "revealTimestamp": 1599180845,
@@ -36,7 +36,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x99441c74e63b5ad31de4f020d519048887a0d3758b9bfd1bbc06b6a57b667d83",
     "ethToPay": 0.07960015038954274,
-    "umaToPay": 4.149414352429644
+    "umaToPay": 4.127015354575773
   },
   "0x797E1f1765a0071454f443114Bf26a53F798c071-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599180845,
@@ -49,7 +49,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x99441c74e63b5ad31de4f020d519048887a0d3758b9bfd1bbc06b6a57b667d83",
     "ethToPay": 0.07960015038954274,
-    "umaToPay": 4.149414352429644
+    "umaToPay": 4.127015354575773
   },
   "0x49a8a045EaE2C9D4a7C7e2919bA957064Bd59252-9254-USDETH-1598918400": {
     "revealTimestamp": 1599180976,
@@ -62,7 +62,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x6489380a15cc8c0cbccc89b732bfccd465f3bbeff2d6f9ac8a54d9665a814cad",
     "ethToPay": 0.07960484635990446,
-    "umaToPay": 4.149659145017625
+    "umaToPay": 4.127258825746274
   },
   "0x49a8a045EaE2C9D4a7C7e2919bA957064Bd59252-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599180976,
@@ -75,7 +75,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x6489380a15cc8c0cbccc89b732bfccd465f3bbeff2d6f9ac8a54d9665a814cad",
     "ethToPay": 0.07960484635990446,
-    "umaToPay": 4.149659145017625
+    "umaToPay": 4.127258825746274
   },
   "0x2eA5b7c369cb88c171466Bb6dcf3Cbe1C508FBeA-9254-USDETH-1598918400": {
     "revealTimestamp": 1599181078,
@@ -88,7 +88,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x30d59f7bd5307a2b270efa2e628c8060fa356514da0320356d886628c21f7ca4",
     "ethToPay": 0.07960015038954274,
-    "umaToPay": 4.149414352429644
+    "umaToPay": 4.127015354575773
   },
   "0x2eA5b7c369cb88c171466Bb6dcf3Cbe1C508FBeA-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599181078,
@@ -101,7 +101,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x30d59f7bd5307a2b270efa2e628c8060fa356514da0320356d886628c21f7ca4",
     "ethToPay": 0.07960015038954274,
-    "umaToPay": 4.149414352429644
+    "umaToPay": 4.127015354575773
   },
   "0xF7B10D603907658F690Da534E9b7dbC4dAB3E2D6-9254-USDETH-1598918400": {
     "revealTimestamp": 1599181839,
@@ -114,7 +114,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xa94fec6689e7118abedfb088698e9cba347c544c2668f1ea4df9edd00cd0bb73",
     "ethToPay": 0.07119671597680098,
-    "umaToPay": 3.711358253398546
+    "umaToPay": 3.6913239308430885
   },
   "0xF7B10D603907658F690Da534E9b7dbC4dAB3E2D6-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599181839,
@@ -127,7 +127,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xa94fec6689e7118abedfb088698e9cba347c544c2668f1ea4df9edd00cd0bb73",
     "ethToPay": 0.07119671597680098,
-    "umaToPay": 3.711358253398546
+    "umaToPay": 3.6913239308430885
   },
   "0x6888FF4bE3262F3232e1c022De731680a16dDdA7-9254-USDETH-1598918400": {
     "revealTimestamp": 1599181898,
@@ -140,7 +140,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xbda4e758875299c45ed36735deaba07720518905148e03228517e46618d80ab5",
     "ethToPay": 0.07210822505577276,
-    "umaToPay": 3.7588736014996007
+    "umaToPay": 3.738582785836985
   },
   "0x6888FF4bE3262F3232e1c022De731680a16dDdA7-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599181898,
@@ -153,7 +153,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xbda4e758875299c45ed36735deaba07720518905148e03228517e46618d80ab5",
     "ethToPay": 0.07210822505577276,
-    "umaToPay": 3.7588736014996007
+    "umaToPay": 3.738582785836985
   },
   "0x8d680d96BEFC53D8B90F76d1e8E99e842b3387A2-9254-USDETH-1598918400": {
     "revealTimestamp": 1599182829,
@@ -166,7 +166,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x792769633aa13feabdb820d6edfd6e8cca011c660b5a81d3f0d2b56e9040d918",
     "ethToPay": 0.0786792493698475,
-    "umaToPay": 4.101409419152628
+    "umaToPay": 4.079269557240872
   },
   "0x8d680d96BEFC53D8B90F76d1e8E99e842b3387A2-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599182829,
@@ -179,7 +179,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x792769633aa13feabdb820d6edfd6e8cca011c660b5a81d3f0d2b56e9040d918",
     "ethToPay": 0.0786792493698475,
-    "umaToPay": 4.101409419152628
+    "umaToPay": 4.079269557240872
   },
   "0x49739691fB5f3992b3f2536f309D955558e75933-9254-USDETH-1598918400": {
     "revealTimestamp": 1599183055,
@@ -192,7 +192,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xe9e3638c6a4aeeb66a5ff4b4dcef02560b856a842318c2217c5020d8d786b447",
     "ethToPay": 0.07210162060458745,
-    "umaToPay": 3.758529323198566
+    "umaToPay": 3.738240365988317
   },
   "0x49739691fB5f3992b3f2536f309D955558e75933-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599183055,
@@ -205,7 +205,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xe9e3638c6a4aeeb66a5ff4b4dcef02560b856a842318c2217c5020d8d786b447",
     "ethToPay": 0.07210162060458745,
-    "umaToPay": 3.758529323198566
+    "umaToPay": 3.738240365988317
   },
   "0xF627E5F4BAd95a956468d8BB6Ee20b119F992E96-9254-USDETH-1598918400": {
     "revealTimestamp": 1599183355,
@@ -218,7 +218,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x32a28c0a2604cd62da7e56c6fd50464b0d33c9737a1da944b0cd70e196f57f39",
     "ethToPay": 0.07209883311504932,
-    "umaToPay": 3.7583840163236393
+    "umaToPay": 3.738095843495981
   },
   "0xF627E5F4BAd95a956468d8BB6Ee20b119F992E96-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599183355,
@@ -231,7 +231,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x32a28c0a2604cd62da7e56c6fd50464b0d33c9737a1da944b0cd70e196f57f39",
     "ethToPay": 0.07209883311504932,
-    "umaToPay": 3.7583840163236393
+    "umaToPay": 3.738095843495981
   },
   "0x120219511b9B0254E7D15014dB83B8752289FdA3-9254-USDETH-1598918400": {
     "revealTimestamp": 1599183922,
@@ -244,7 +244,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xdeb364de7b942fe760e514af777e6e08b04c71b274b6c3a491a29858dc61343f",
     "ethToPay": 0.0786980332512944,
-    "umaToPay": 4.102388589504551
+    "umaToPay": 4.08024344192288
   },
   "0x120219511b9B0254E7D15014dB83B8752289FdA3-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599183922,
@@ -257,7 +257,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xdeb364de7b942fe760e514af777e6e08b04c71b274b6c3a491a29858dc61343f",
     "ethToPay": 0.0786980332512944,
-    "umaToPay": 4.102388589504551
+    "umaToPay": 4.08024344192288
   },
   "0xBEe33aC5520a2245CBF8288e768A5cC26927cddF-9254-USDETH-1598918400": {
     "revealTimestamp": 1599184638,
@@ -270,7 +270,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x78f857a7972018068d3f550a7961911b8a6b361ab9ea56a5ff55552396e4b069",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0xBEe33aC5520a2245CBF8288e768A5cC26927cddF-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599184638,
@@ -283,7 +283,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x78f857a7972018068d3f550a7961911b8a6b361ab9ea56a5ff55552396e4b069",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0x1B52A70616Ee7ed4Ea070d19FD18a60e467a5276-9254-USDETH-1598918400": {
     "revealTimestamp": 1599187040,
@@ -296,7 +296,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x27b7f014011b6fe0800fabef8c95f580a2335a11209903abe0f72f320c3f502c",
     "ethToPay": 0.07120889540706257,
-    "umaToPay": 3.7119931454494344
+    "umaToPay": 3.691955395676428
   },
   "0x1B52A70616Ee7ed4Ea070d19FD18a60e467a5276-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599187040,
@@ -309,7 +309,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x27b7f014011b6fe0800fabef8c95f580a2335a11209903abe0f72f320c3f502c",
     "ethToPay": 0.07120889540706257,
-    "umaToPay": 3.7119931454494344
+    "umaToPay": 3.691955395676428
   },
   "0x67D24f48f1B58C4d4DcDA57Ba2386DcE76353fA2-9254-USDETH-1598918400": {
     "revealTimestamp": 1599190922,
@@ -322,7 +322,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x45bf7164727fe841193e887800a23117acef1ca0333585270e2411e1fdf79452",
     "ethToPay": 0.07868115785067109,
-    "umaToPay": 4.101508904865682
+    "umaToPay": 4.079368505919039
   },
   "0x67D24f48f1B58C4d4DcDA57Ba2386DcE76353fA2-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599190922,
@@ -335,7 +335,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x45bf7164727fe841193e887800a23117acef1ca0333585270e2411e1fdf79452",
     "ethToPay": 0.07868115785067109,
-    "umaToPay": 4.101508904865682
+    "umaToPay": 4.079368505919039
   },
   "0x605ACc13c07CB2dE5261dc64D315857fDE7d5C5c-9254-USDETH-1598918400": {
     "revealTimestamp": 1599191622,
@@ -348,7 +348,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xa385d44190ba545b971ec5438829da0d4209bce66f582a00b6107d01befc1429",
     "ethToPay": 0.07439489564022694,
-    "umaToPay": 3.87807367456453
+    "umaToPay": 3.8571394037166784
   },
   "0x605ACc13c07CB2dE5261dc64D315857fDE7d5C5c-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599191622,
@@ -361,7 +361,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xa385d44190ba545b971ec5438829da0d4209bce66f582a00b6107d01befc1429",
     "ethToPay": 0.07439489564022694,
-    "umaToPay": 3.87807367456453
+    "umaToPay": 3.8571394037166784
   },
   "0xe311958aC79b41BF3a0595470A964B8EFBe0fb36-9254-USDETH-1598918400": {
     "revealTimestamp": 1599194693,
@@ -374,7 +374,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x9e5bb3e7f1716f6354eade0933805b07ef165c5687e046c9b1f1193bd112ceab",
     "ethToPay": 0.07960484635990446,
-    "umaToPay": 4.149659145017625
+    "umaToPay": 4.127258825746274
   },
   "0xe311958aC79b41BF3a0595470A964B8EFBe0fb36-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599194693,
@@ -387,7 +387,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x9e5bb3e7f1716f6354eade0933805b07ef165c5687e046c9b1f1193bd112ceab",
     "ethToPay": 0.07960484635990446,
-    "umaToPay": 4.149659145017625
+    "umaToPay": 4.127258825746274
   },
   "0xD2A78Bb82389D30075144d17E782964918999F7f-9254-USDETH-1598918400": {
     "revealTimestamp": 1599195431,
@@ -400,7 +400,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x7ca5bb270cafa05a51768221aa6cf3581d8bb75b0abd8676fde511f5533d73e6",
     "ethToPay": 0.07212040448603435,
-    "umaToPay": 3.759508493550489
+    "umaToPay": 3.7392142506703245
   },
   "0xD2A78Bb82389D30075144d17E782964918999F7f-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599195431,
@@ -413,7 +413,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x7ca5bb270cafa05a51768221aa6cf3581d8bb75b0abd8676fde511f5533d73e6",
     "ethToPay": 0.07212040448603435,
-    "umaToPay": 3.759508493550489
+    "umaToPay": 3.7392142506703245
   },
   "0x4c39185a078B5666C372538231cB793A0928807b-9254-USDETH-1598918400": {
     "revealTimestamp": 1599196512,
@@ -426,7 +426,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x3ba8c9e247fd27ec3fcbd525203e59e25909fbe9bc3db2f93a3233d67430ff37",
     "ethToPay": 0.07120419943670084,
-    "umaToPay": 3.711748352861454
+    "umaToPay": 3.6917119245059262
   },
   "0x4c39185a078B5666C372538231cB793A0928807b-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599196512,
@@ -439,7 +439,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x3ba8c9e247fd27ec3fcbd525203e59e25909fbe9bc3db2f93a3233d67430ff37",
     "ethToPay": 0.07120419943670084,
-    "umaToPay": 3.711748352861454
+    "umaToPay": 3.6917119245059262
   },
   "0xFC119030940852a33Fbb787A6fd086EFCaBE458F-9254-USDETH-1598918400": {
     "revealTimestamp": 1599202204,
@@ -452,7 +452,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xb7c0d904e457318258e325b0cba15a932eb418c174bf9bef981e7e5b3d0775ed",
     "ethToPay": 0.0777818282019609,
-    "umaToPay": 4.0546284488155155
+    "umaToPay": 4.032741115758482
   },
   "0xFC119030940852a33Fbb787A6fd086EFCaBE458F-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599202204,
@@ -465,7 +465,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xb7c0d904e457318258e325b0cba15a932eb418c174bf9bef981e7e5b3d0775ed",
     "ethToPay": 0.0777818282019609,
-    "umaToPay": 4.0546284488155155
+    "umaToPay": 4.032741115758482
   },
   "0x7553fa99AB1f429551eeC660708C08E14E30584F-9254-USDETH-1598918400": {
     "revealTimestamp": 1599204762,
@@ -478,7 +478,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x72e371ac66a607a0e54743e3d894fd87408abe84d0ea82b4af3de80d87f9ef6f",
     "ethToPay": 0.0702973863280908,
-    "umaToPay": 3.66447779734838
+    "umaToPay": 3.644696540682532
   },
   "0x7553fa99AB1f429551eeC660708C08E14E30584F-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599204762,
@@ -491,7 +491,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x72e371ac66a607a0e54743e3d894fd87408abe84d0ea82b4af3de80d87f9ef6f",
     "ethToPay": 0.0702973863280908,
-    "umaToPay": 3.66447779734838
+    "umaToPay": 3.644696540682532
   },
   "0xDb2808ed6cF0B8B9686222689CF4f6e88E42B80A-9254-USDETH-1598918400": {
     "revealTimestamp": 1599206722,
@@ -504,7 +504,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x3059cf1281f5554a24cc57b5b45efe635c21ea44bd3e87b145ee310e668df5c8",
     "ethToPay": 0.0721110125453109,
-    "umaToPay": 3.7590189083745273
+    "umaToPay": 3.738727308329321
   },
   "0xDb2808ed6cF0B8B9686222689CF4f6e88E42B80A-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599206722,
@@ -517,7 +517,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x3059cf1281f5554a24cc57b5b45efe635c21ea44bd3e87b145ee310e668df5c8",
     "ethToPay": 0.0721110125453109,
-    "umaToPay": 3.7590189083745273
+    "umaToPay": 3.738727308329321
   },
   "0x099686478448CE02F8E61C6b01904d0548daeAe5-9254-USDETH-1598918400": {
     "revealTimestamp": 1599215365,
@@ -530,7 +530,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xf0832ee46437b63374c8ec2ae59b31fea557af3189abbfeaf4e5bcba781abed7",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0x099686478448CE02F8E61C6b01904d0548daeAe5-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599215365,
@@ -543,7 +543,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xf0832ee46437b63374c8ec2ae59b31fea557af3189abbfeaf4e5bcba781abed7",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0xf307077Dd0e27A382E93f2e3d13A9C6584582332-9254-USDETH-1598918400": {
     "revealTimestamp": 1599224177,
@@ -556,7 +556,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xfef49e50345c626fa8729c63e55cd30deaaedf92a58a414e3a19f0d5fefe7f58",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0xf307077Dd0e27A382E93f2e3d13A9C6584582332-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599224177,
@@ -569,7 +569,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xfef49e50345c626fa8729c63e55cd30deaaedf92a58a414e3a19f0d5fefe7f58",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0xfEc2Ade141272f5271FEbaDFca5d21Ca30fc04a5-9254-USDETH-1598918400": {
     "revealTimestamp": 1599229959,
@@ -582,7 +582,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xc9388d063c8e4fef10713564248cf9ac3237aa54c99b44ccc1f6d9a0e87014d0",
     "ethToPay": 0.07119671597680098,
-    "umaToPay": 3.711358253398546
+    "umaToPay": 3.6913239308430885
   },
   "0xfEc2Ade141272f5271FEbaDFca5d21Ca30fc04a5-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599229959,
@@ -595,7 +595,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xc9388d063c8e4fef10713564248cf9ac3237aa54c99b44ccc1f6d9a0e87014d0",
     "ethToPay": 0.07119671597680098,
-    "umaToPay": 3.711358253398546
+    "umaToPay": 3.6913239308430885
   },
   "0xde3aF8bb46d556Df3d7C99CC313c4b5713b4a5a5-9254-USDETH-1598918400": {
     "revealTimestamp": 1599232773,
@@ -608,7 +608,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x94071a8facaf6b77555329d6b8af3d6008afff1e3f11c9072ec22c77303131cc",
     "ethToPay": 0.07777713223159918,
-    "umaToPay": 4.054383656227535
+    "umaToPay": 4.03249764458798
   },
   "0xde3aF8bb46d556Df3d7C99CC313c4b5713b4a5a5-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599232773,
@@ -621,7 +621,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x94071a8facaf6b77555329d6b8af3d6008afff1e3f11c9072ec22c77303131cc",
     "ethToPay": 0.07777713223159918,
-    "umaToPay": 4.054383656227535
+    "umaToPay": 4.03249764458798
   },
   "0xBf87C98F8A9c1F2A88b613813Ec1E974105EB615-9254-USDETH-1598918400": {
     "revealTimestamp": 1599237535,
@@ -634,7 +634,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x125818b3e5919c24b2deaaa2394e4bcafe089affe56dea924cb7e8940c4dbfd3",
     "ethToPay": 0.07958797095928115,
-    "umaToPay": 4.148779460378756
+    "umaToPay": 4.126383889742433
   },
   "0xBf87C98F8A9c1F2A88b613813Ec1E974105EB615-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599237535,
@@ -647,7 +647,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x125818b3e5919c24b2deaaa2394e4bcafe089affe56dea924cb7e8940c4dbfd3",
     "ethToPay": 0.07958797095928115,
-    "umaToPay": 4.148779460378756
+    "umaToPay": 4.126383889742433
   },
   "0xa08acA4A5D1A6813DcAE969dF892581047CFCC30-9254-USDETH-1598918400": {
     "revealTimestamp": 1599245657,
@@ -660,7 +660,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x2379242e1eb42cde45c95b94536ff8e40d07487f5eb2c9bafe0232f7b42202d9",
     "ethToPay": 0.07027581495710575,
-    "umaToPay": 3.6633533201215296
+    "umaToPay": 3.643578133508188
   },
   "0xa08acA4A5D1A6813DcAE969dF892581047CFCC30-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599245657,
@@ -673,7 +673,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x2379242e1eb42cde45c95b94536ff8e40d07487f5eb2c9bafe0232f7b42202d9",
     "ethToPay": 0.07027581495710575,
-    "umaToPay": 3.6633533201215296
+    "umaToPay": 3.643578133508188
   },
   "0xed6bf5EEfFdcFf967184747648F1C3b578a2f430-9254-USDETH-1598918400": {
     "revealTimestamp": 1599250007,
@@ -686,7 +686,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xe6c4002a961893e8c0409e60f055808e2c1bc7d6655c748ac16b01430e8129fc",
     "ethToPay": 0.07028799438736734,
-    "umaToPay": 3.663988212172418
+    "umaToPay": 3.644209598341528
   },
   "0xed6bf5EEfFdcFf967184747648F1C3b578a2f430-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599250007,
@@ -699,7 +699,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0xe6c4002a961893e8c0409e60f055808e2c1bc7d6655c748ac16b01430e8129fc",
     "ethToPay": 0.07028799438736734,
-    "umaToPay": 3.663988212172418
+    "umaToPay": 3.644209598341528
   },
   "0x2f840532892F91811f99CdAec703F322A779cc66-9254-USDETH-1598918400": {
     "revealTimestamp": 1599253497,
@@ -712,7 +712,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x6b65f3f674db818ca68e4f4d3425e4c0fadabdf1ae54899c6e94947915737ed5",
     "ethToPay": 0.06816857317520156,
-    "umaToPay": 3.5535065516030953
+    "umaToPay": 3.534324330001999
   },
   "0x2f840532892F91811f99CdAec703F322A779cc66-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599253497,
@@ -725,7 +725,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x6b65f3f674db818ca68e4f4d3425e4c0fadabdf1ae54899c6e94947915737ed5",
     "ethToPay": 0.06816857317520156,
-    "umaToPay": 3.5535065516030953
+    "umaToPay": 3.534324330001999
   },
   "0x966Cf5cd0624f1EfCf21B0abc231A5CcC802B861-9254-USDETH-1598918400": {
     "revealTimestamp": 1599253640,
@@ -738,7 +738,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x029168d99c6e445ba00339286bc25db6b28c167444630f44b714497d316e879f",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0x966Cf5cd0624f1EfCf21B0abc231A5CcC802B861-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599253640,
@@ -751,7 +751,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x029168d99c6e445ba00339286bc25db6b28c167444630f44b714497d316e879f",
     "ethToPay": 0.07119950346633912,
-    "umaToPay": 3.711503560273473
+    "umaToPay": 3.6914684533354243
   },
   "0x8bd16DE8938A2ad16794ac7E7502896f156E370C-9254-USDETH-1598918400": {
     "revealTimestamp": 1599254897,
@@ -764,7 +764,7 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x42becc42fe2846d263c5c0666f6a8856da87b2877b61b2cdcf64d3f4ff13f791",
     "ethToPay": 0.07119202000643926,
-    "umaToPay": 3.7111134608105654
+    "umaToPay": 3.6910804596725866
   },
   "0x8bd16DE8938A2ad16794ac7E7502896f156E370C-9254-Admin 11-1599089728": {
     "revealTimestamp": 1599254897,
@@ -777,6 +777,6 @@
     "commitEthPrice": "382.46",
     "commitTxn": "0x42becc42fe2846d263c5c0666f6a8856da87b2877b61b2cdcf64d3f4ff13f791",
     "ethToPay": 0.07119202000643926,
-    "umaToPay": 3.7111134608105654
+    "umaToPay": 3.6910804596725866
   }
 }

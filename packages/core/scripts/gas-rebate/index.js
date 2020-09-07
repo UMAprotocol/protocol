@@ -316,7 +316,6 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     pricePromises.push(getUmaPrice());
 
     const [dailyAvgGasPrices, dailyAvgEthPrices, umaPrice] = await Promise.all(pricePromises);
-
     if (!dailyAvgGasPrices || !dailyAvgEthPrices) {
       throw new Error("Failed to fetch daily gas and ETH prices for period from Etherscan Pro API");
     }
@@ -324,18 +323,22 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     const SCALING_FACTOR = toBN(toWei("1"));
     const _umaPrice = umaPrice ? umaPrice : 10;
     const currentUmaPrice = toBN(toWei(_umaPrice.toString(), "ether"));
-
     const priceData = {
       dailyAvgGasPrices,
       dailyAvgEthPrices,
       currentUmaPrice,
       SCALING_FACTOR
     };
-    Object.keys(priceData).forEach(k => {
-      if (BN.isBN(priceData[k])) {
-        console.log(`- ${k}: ${fromWei(priceData[k].toString())}`);
+    const readablePriceData = {
+      dailyAvgGasPrices,
+      dailyAvgEthPrices,
+      currentUmaPrice: _umaPrice
+    };
+    Object.keys(readablePriceData).forEach(k => {
+      if (typeof readablePriceData[k] !== "object") {
+        console.log(`- ${k}: ${readablePriceData[k]}`);
       } else {
-        console.log(`- ${k}: ${JSON.stringify(priceData[k])}`);
+        console.log(`- ${k}: ${JSON.stringify(readablePriceData[k], null, 4)}`);
       }
     });
 
@@ -344,6 +347,7 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
       rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
+      priceData: readablePriceData,
       shareHolderPayout: {} // {[voter:string]: amountUmaToRebate:number}
     };
 
@@ -410,8 +414,9 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     console.log("* 🧮 Final UMA Rebate                   *");
     console.log("*                                       *");
     console.log("*=======================================*");
-    console.log(`🎟 UMA to rebate: ${totalUMAToRebate}`);
-    console.log(`📒 Output JSON: ${JSON.stringify(rebateOutput, null, 4)}`);
+    console.log(
+      `🎟 UMA to rebate: ${totalUMAToRebate} across ${Object.keys(rebateOutput.shareHolderPayout).length} voters`
+    );
 
     // Format output and save to file.
     const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
