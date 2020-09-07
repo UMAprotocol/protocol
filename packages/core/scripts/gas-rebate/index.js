@@ -36,8 +36,25 @@ const VotingAbi = require("../../build/contracts/Voting.json");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
-const { toBN, toWei, fromWei } = web3.utils;
+const { toBN, toWei, fromWei, BN } = web3.utils;
 
+// Return the day that the timestamp falls into. Used to pull the daily average
+// gas/ETH price for a specific timestamp from an array of historical data from Etherscan Pro API.
+function getDataForTimestamp(dayData, timestamp) {
+  const sortedDayData = dayData.sort((a, b) => a.timestamp - b.timestamp);
+
+  // If timestamp is before any of the days, return the earliest day.
+  if (timestamp < sortedDayData[0].timestamp) return sortedDayData[0];
+
+  for (let i = 0; i < sortedDayData.length - 1; i++) {
+    if (timestamp >= sortedDayData[i].timestamp && timestamp < sortedDayData[i + 1].timestamp) {
+      return sortedDayData[i];
+    }
+  }
+
+  // If we get here, then we will just use last day.
+  return sortedDayData[sortedDayData.length - 1];
+}
 async function parseRevealEvents(committedVotes, revealedVotes, priceData, multibar, rebateOutput) {
   const revealVotersToRebate = {};
 
@@ -54,9 +71,22 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
       web3.eth.getBlock(reveal.blockNumber),
       web3.eth.getTransactionReceipt(reveal.transactionHash)
     ]);
-    const gasUsed = parseInt(transactionReceipt.gasUsed);
 
-    // Find associated commit with this reveal
+    const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+    const val = {
+      voter,
+      roundId,
+      identifier,
+      requestTime,
+      reveal: {
+        transactionBlock: transactionBlock.number,
+        hash: transactionReceipt.transactionHash,
+        gasUsed: parseInt(transactionReceipt.gasUsed),
+        txnTimestamp: transactionBlock.timestamp
+      }
+    };
+
+    // Try to find associated commit with this reveal
     const latestCommitEvent = committedVotes.find(e => {
       return (
         e.returnValues.voter === voter &&
@@ -70,33 +100,21 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
         web3.eth.getBlock(latestCommitEvent.blockNumber),
         web3.eth.getTransactionReceipt(latestCommitEvent.transactionHash)
       ]);
-      const commitGasUsed = parseInt(commitReceipt.gasUsed, 16);
-
-      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-      const val = {
-        voter,
-        roundId,
-        identifier,
-        requestTime,
-        reveal: {
-          transactionBlock: transactionBlock.number,
-          hash: transactionReceipt.transactionHash,
-          gasUsed
-        },
-        commit: {
-          transactionBlock: commitBlock.number,
-          hash: commitReceipt.transactionHash,
-          gasUsed: commitGasUsed
-        }
+      val.commit = {
+        transactionBlock: commitBlock.number,
+        hash: commitReceipt.transactionHash,
+        gasUsed: parseInt(commitReceipt.gasUsed),
+        txnTimestamp: commitBlock.timestamp
       };
-
-      revealVotersToRebate[key] = val;
-      progressBarReveal.update(i + 1);
     } else {
-      throw new Error(
-        `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
-      );
+      // console.error(
+      //   `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
+      // );
     }
+
+    // Save and continue to lookup txn data for next event.
+    revealVotersToRebate[key] = val;
+    progressBarReveal.update(i + 1);
   }
   progressBarReveal.stop();
 
@@ -106,24 +124,53 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
   let totalEthSpent = 0;
   let totalUmaRepaid = 0;
   for (let voterKey of Object.keys(revealVotersToRebate)) {
+    // Reveal
     const revealData = revealVotersToRebate[voterKey].reveal;
-    const commitData = revealVotersToRebate[voterKey].reveal;
-    const gasUsed = revealData.gasUsed + commitData.gasUsed;
-    const ethToPay = toBN(priceData.averagePriceGweiForPeriod).mul(toBN(gasUsed));
-    const umaToPay = ethToPay.mul(priceData.ethToUma).div(priceData.SCALING_FACTOR);
-    const commitTxn = commitData.hash;
-    const revealTxn = revealData.hash;
+    let revealGasUsed = revealData.gasUsed;
+    totalGasUsed += revealGasUsed;
+    const revealGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, revealData.txnTimestamp);
+    const revealEthData = getDataForTimestamp(priceData.dailyAvgEthPrices, revealData.txnTimestamp);
+    let ethToPay = toBN(toWei(revealGasData.avgGwei, "gwei")).mul(toBN(revealGasUsed));
+    let ethToUma = toBN(toWei(revealEthData.avgPx))
+      .mul(priceData.SCALING_FACTOR)
+      .div(priceData.currentUmaPrice);
 
-    totalGasUsed += gasUsed;
+    // Commit
+    const commitData = revealVotersToRebate[voterKey].commit;
+    let commitGasData, commitEthData, commitGasUsed;
+    if (commitData) {
+      commitGasUsed = commitData.gasUsed;
+      totalGasUsed += commitGasUsed;
+      commitGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, commitData.txnTimestamp);
+      commitEthData = getDataForTimestamp(priceData.dailyAvgEthPrices, commitData.txnTimestamp);
+      ethToPay = ethToPay.add(toBN(toWei(commitGasData.avgGwei, "gwei")).mul(toBN(commitGasUsed)));
+      ethToUma = ethToUma.add(
+        toBN(toWei(commitEthData.avgPx))
+          .mul(priceData.SCALING_FACTOR)
+          .div(priceData.currentUmaPrice)
+      );
+    }
+
+    const umaToPay = ethToPay.mul(ethToUma).div(priceData.SCALING_FACTOR);
+    const revealTxn = revealData.hash;
+    const commitTxn = commitData ? commitData.hash : "N/A";
+
     totalEthSpent += Number(fromWei(ethToPay.toString()));
     totalUmaRepaid += Number(fromWei(umaToPay.toString()));
 
     rebateReceipts[voterKey] = {
-      gasUsed,
-      ethToPay: Number(fromWei(ethToPay)),
-      umaToPay: Number(fromWei(umaToPay)),
+      revealTimestamp: revealData.txnTimestamp,
+      revealGasUsed,
+      revealGasPrice: revealGasData.avgGwei,
+      revealEthPrice: revealEthData.avgPx,
+      revealTxn,
+      commitTimestamp: commitGasData ? commitGasData.txnTimestamp : "N/A",
+      commitGasUsed,
+      commitGasPrice: commitGasData ? commitGasData.avgGwei : "N/A",
+      commitEthPrice: commitEthData ? commitEthData.avgPx : "N/A",
       commitTxn,
-      revealTxn
+      ethToPay: Number(fromWei(ethToPay)),
+      umaToPay: Number(fromWei(umaToPay))
     };
 
     const voter = revealVotersToRebate[voterKey].voter;
@@ -160,6 +207,7 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
       web3.eth.getTransactionReceipt(claim.transactionHash)
     ]);
     const gasUsed = parseInt(transactionReceipt.gasUsed);
+    const txnTimestamp = transactionBlock.timestamp;
 
     const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
     const val = {
@@ -170,7 +218,8 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
       claim: {
         transactionBlock: transactionBlock.number,
         hash: transactionReceipt.transactionHash,
-        gasUsed
+        gasUsed,
+        txnTimestamp
       }
     };
 
@@ -187,8 +236,13 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
   for (let voterKey of Object.keys(rewardedVotersToRebate)) {
     const claimData = rewardedVotersToRebate[voterKey].claim;
     const gasUsed = claimData.gasUsed;
-    const ethToPay = toBN(priceData.averagePriceGweiForPeriod).mul(toBN(gasUsed));
-    const umaToPay = ethToPay.mul(priceData.ethToUma).div(priceData.SCALING_FACTOR);
+    const transactionDayGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, claimData.txnTimestamp);
+    const transactionDayEthData = getDataForTimestamp(priceData.dailyAvgEthPrices, claimData.txnTimestamp);
+    const ethToPay = toBN(toWei(transactionDayGasData.avgGwei, "gwei")).mul(toBN(gasUsed));
+    const ethToUma = toBN(toWei(transactionDayEthData.avgPx))
+      .mul(priceData.SCALING_FACTOR)
+      .div(priceData.currentUmaPrice);
+    const umaToPay = ethToPay.mul(ethToUma).div(priceData.SCALING_FACTOR);
     const claimTxn = claimData.hash;
 
     totalGasUsed += gasUsed;
@@ -196,7 +250,9 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
     totalUmaRepaid += Number(fromWei(umaToPay.toString()));
 
     rebateReceipts[voterKey] = {
+      timestamp: claimData.txnTimestamp,
       gasUsed,
+      gasPrice: transactionDayGasData.avgGwei,
       ethToPay: Number(fromWei(ethToPay)),
       umaToPay: Number(fromWei(umaToPay)),
       claimTxn
@@ -234,9 +290,8 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     // Query past contract events.
     const [committedVotes, revealedVotes, claimedRewards] = await Promise.all([
       voting.getPastEvents("VoteCommitted", {
-        fromBlock: 0
-        // We don't specify a start date for commits because we want to make sure we can match each
-        // reveal with a commit, even if the commit was prior to `start`.
+        fromBlock: startBlock,
+        toBlock: endBlock
       }),
       voting.getPastEvents("VoteRevealed", {
         fromBlock: startBlock,
@@ -260,33 +315,36 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     pricePromises.push(getHistoricalEthPrice(startBlock, endBlock));
     pricePromises.push(getUmaPrice());
 
-    const [gasPrice, ethPrice, umaPrice] = await Promise.all(pricePromises);
+    const [dailyAvgGasPrices, dailyAvgEthPrices, umaPrice] = await Promise.all(pricePromises);
+
+    if (!dailyAvgGasPrices || !dailyAvgEthPrices) {
+      throw new Error("Failed to fetch daily gas and ETH prices for period from Etherscan Pro API");
+    }
 
     const SCALING_FACTOR = toBN(toWei("1"));
-    // - Get gas price for period.  This is the ETH price per unit gas, described in Gwei.
-    const _averagePriceGweiForPeriod = gasPrice ? gasPrice : 90;
-    const averagePriceGweiForPeriod = toBN(toWei(_averagePriceGweiForPeriod.toString(), "gwei"));
+    // // - Get gas price for period.  This is the ETH price per unit gas, described in Gwei.
+    // const _averagePriceGweiForPeriod = gasPrice ? gasPrice : 90;
+    // const averagePriceGweiForPeriod = toBN(toWei(_averagePriceGweiForPeriod.toString(), "gwei"));
     // - ETH-USD price for period
-    const _averageEthPriceForPeriod = ethPrice ? ethPrice : 435;
-    const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod.toString(), "ether"));
+    // const _averageEthPriceForPeriod = ethPrice ? ethPrice : 435;
+    // const averageEthPriceForPeriod = toBN(toWei(_averageEthPriceForPeriod.toString(), "ether"));
     // - Current UMA-USD price
     const _umaPrice = umaPrice ? umaPrice : 10;
-    const currentUmaPriceForPeriod = toBN(toWei(_umaPrice.toString(), "ether"));
+    const currentUmaPrice = toBN(toWei(_umaPrice.toString(), "ether"));
     // - Current UMA-ETH price
-    const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(currentUmaPriceForPeriod);
+    // const ethToUma = averageEthPriceForPeriod.mul(SCALING_FACTOR).div(currentUmaPrice);
 
     const priceData = {
-      averagePriceGweiForPeriod,
-      averageEthPriceForPeriod,
-      currentUmaPriceForPeriod,
-      ethToUma,
+      dailyAvgGasPrices,
+      dailyAvgEthPrices,
+      currentUmaPrice,
       SCALING_FACTOR
     };
     Object.keys(priceData).forEach(k => {
-      if (k.toLowerCase().includes("gwei")) {
-        console.log(`- ${k}: ${fromWei(priceData[k].toString(), "gwei")}`);
-      } else {
+      if (BN.isBN(priceData[k])) {
         console.log(`- ${k}: ${fromWei(priceData[k].toString())}`);
+      } else {
+        console.log(`- ${k}: ${JSON.stringify(priceData[k])}`);
       }
     });
 
@@ -339,11 +397,15 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
     console.log("*                                       *");
     console.log("*=======================================*");
     if (revealRebates) {
-      console.table(revealRebates.rebateReceipts);
+      const savePath = `${path.resolve(__dirname)}/debug/Reveals_${rebateNumber}.json`;
+      fs.writeFileSync(savePath, JSON.stringify(revealRebates.rebateReceipts, null, 4));
+      console.log("🗄  Reveal Transactions successfully written to", savePath);
       console.log("㊗️ Reveal Totals:", revealRebates.totals);
     }
     if (claimRebates) {
-      console.table(claimRebates.rebateReceipts);
+      const savePath = `${path.resolve(__dirname)}/debug/Claims_${rebateNumber}.json`;
+      fs.writeFileSync(savePath, JSON.stringify(claimRebates.rebateReceipts, null, 4));
+      console.log("🗄  Claim Transactions successfully written to", savePath);
       console.log("㊗️ Claim Totals:", claimRebates.totals);
     }
     // Output JSON parseable via disperse.app
@@ -404,10 +466,13 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
     });
 
     let data = (await response.json()).result;
-    const dailyPrices = [];
-    data.forEach(_data => dailyPrices.push(Number(_data.avgGasPrice_Wei)));
-    const averageWei = Math.ceil(dailyPrices.reduce((a, b) => a + b) / dailyPrices.length);
-    return fromWei(averageWei.toString(), "gwei");
+
+    // Return daily gas price (in Gwei) mapped to Unix timestamps so we can best estimate
+    // the gas price for each transaction.
+    const dailyPrices = data.map(_data => {
+      return { timestamp: Number(_data.unixTimeStamp), avgGwei: fromWei(_data.avgGasPrice_Wei, "gwei") };
+    });
+    return dailyPrices;
   }
 }
 
@@ -431,10 +496,13 @@ async function getHistoricalEthPrice(startBlock, endBlock) {
     });
 
     let data = (await response.json()).result;
-    const dailyPrices = [];
-    data.forEach(_data => dailyPrices.push(Number(_data.value)));
-    const average = Math.ceil(dailyPrices.reduce((a, b) => a + b) / dailyPrices.length);
-    return average;
+
+    // Return daily eth price mapped to Unix timestamps so we can best estimate
+    // the eth price for each transaction.
+    const dailyPrices = data.map(_data => {
+      return { timestamp: Number(_data.unixTimeStamp), avgPx: _data.value };
+    });
+    return dailyPrices;
   }
 }
 
@@ -442,8 +510,8 @@ async function getHistoricalEthPrice(startBlock, endBlock) {
 async function Main(callback) {
   try {
     const rebateNumber = 1;
-    const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 60 * 5); // Default: Current time minus 5 minutes
-    const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 3; // Default: End time - 3 days
+    const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 24 * 60 * 60); // Default: Current time minus 1 day.
+    const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
     let endBlock, startBlock;
     try {
       endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;

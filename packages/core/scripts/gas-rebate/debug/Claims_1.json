@@ -1,0 +1,426 @@
+{
+  "0x6888FF4bE3262F3232e1c022De731680a16dDdA7-9252-Admin 10-1598733157": {
+    "timestamp": 1599020805,
+    "gasUsed": 143231,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.0687646736050715,
+    "umaToPay": 2.051883744349973,
+    "claimTxn": "0x6481a9e0637a037016790d1dadbe393f1c788e133d001ec492434aeba517af86"
+  },
+  "0x605ACc13c07CB2dE5261dc64D315857fDE7d5C5c-9252-Admin 10-1598733157": {
+    "timestamp": 1599025178,
+    "gasUsed": 90136,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.04327396038613656,
+    "umaToPay": 1.291260922431102,
+    "claimTxn": "0x0ed61a959766e74f4defb3d5eae5d76f57e3c9a0513ae17df2c5485405a03a35"
+  },
+  "0xF627E5F4BAd95a956468d8BB6Ee20b119F992E96-9252-Admin 10-1598733157": {
+    "timestamp": 1599039629,
+    "gasUsed": 94060,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.0451578582799326,
+    "umaToPay": 1.3474749530029007,
+    "claimTxn": "0x3838f8cd5e82e0e08688e331cb1b17897abf76d7f4bf856161a60397942e8e9d"
+  },
+  "0xde3aF8bb46d556Df3d7C99CC313c4b5713b4a5a5-9252-Admin 10-1598733157": {
+    "timestamp": 1599056523,
+    "gasUsed": 141269,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.06782272465817349,
+    "umaToPay": 2.023776729064074,
+    "claimTxn": "0xace6dee4c3d3353dfc133b18ca9294f8bb0cefe79a5bb56b536307ff933d4375"
+  },
+  "0xBf87C98F8A9c1F2A88b613813Ec1E974105EB615-9252-Admin 10-1598733157": {
+    "timestamp": 1599075734,
+    "gasUsed": 145193,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.06970662255196954,
+    "umaToPay": 2.0799907596358724,
+    "claimTxn": "0x7560adc4a9917689416c5bf7c74d658b9c27668da6c58cebcfda4fa8c0fead0b"
+  },
+  "0x14A29ccfE3C1cc777A6f3a2ead6F07ceC5cC5dc1-9252-Admin 10-1598733157": {
+    "timestamp": 1599075757,
+    "gasUsed": 145193,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.06970662255196954,
+    "umaToPay": 2.0799907596358724,
+    "claimTxn": "0xf3c7d16a0529fbd9c0d68326b8b77ddfd34787fb58bbe7c0b40f5628f2e71af3"
+  },
+  "0x67D24f48f1B58C4d4DcDA57Ba2386DcE76353fA2-9252-Admin 10-1598733157": {
+    "timestamp": 1599088865,
+    "gasUsed": 143231,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.0687646736050715,
+    "umaToPay": 2.051883744349973,
+    "claimTxn": "0xe7c6016fc2931cd9fb47669c775d4f1508d0b00819778295a2cae96e2c68087d"
+  },
+  "0xb2A5E135892b92d8554daB9AdC5291ee65A9957b-9252-Admin 10-1598733157": {
+    "timestamp": 1599090986,
+    "gasUsed": 90136,
+    "gasPrice": "480.09630321",
+    "ethToPay": 0.04327396038613656,
+    "umaToPay": 1.291260922431102,
+    "claimTxn": "0xf09d5ea87f8764061387338e9f11969c218a45e3be5e2107053b89ad60c0d5aa"
+  },
+  "0x4c39185a078B5666C372538231cB793A0928807b-9252-Admin 10-1598733157": {
+    "timestamp": 1599102491,
+    "gasUsed": 92098,
+    "gasPrice": "391.330863477",
+    "ethToPay": 0.03604078986450475,
+    "umaToPay": 0.9351533576376178,
+    "claimTxn": "0x7df1982b7cad8dc7ffc8819afd36e3b81b4ef5014d65c929767770b965f2bc75"
+  },
+  "0x120219511b9B0254E7D15014dB83B8752289FdA3-9252-Admin 10-1598733157": {
+    "timestamp": 1599117273,
+    "gasUsed": 143231,
+    "gasPrice": "391.330863477",
+    "ethToPay": 0.056050710906674184,
+    "umaToPay": 1.4543524350994985,
+    "claimTxn": "0xcac86a717ba9c3a9ba5561c18eed26bb6855bd870d0a17d561103c232a76bae8"
+  },
+  "0xCcD9C5465faC5C0Df86fD9B7d524a5949dEFcef6-9252-Admin 10-1598733157": {
+    "timestamp": 1599142389,
+    "gasUsed": 143231,
+    "gasPrice": "391.330863477",
+    "ethToPay": 0.056050710906674184,
+    "umaToPay": 1.4543524350994985,
+    "claimTxn": "0x72c5226d5b87b129d22a9762262e83794a3c393718a12130e9fb21c6d5d85549"
+  },
+  "0xCcD9C5465faC5C0Df86fD9B7d524a5949dEFcef6-9231-Admin 5-1595094121": {
+    "timestamp": 1599143263,
+    "gasUsed": 57233,
+    "gasPrice": "391.330863477",
+    "ethToPay": 0.02239703930937914,
+    "umaToPay": 0.5811378327181239,
+    "claimTxn": "0x262192f7da9068d30c8446bc6422d6cfc6d371c0bc2fd657b89abaf1b191c259"
+  },
+  "0xCcD9C5465faC5C0Df86fD9B7d524a5949dEFcef6-9231-Admin 8-1595095182": {
+    "timestamp": 1599143263,
+    "gasUsed": 57233,
+    "gasPrice": "391.330863477",
+    "ethToPay": 0.02239703930937914,
+    "umaToPay": 0.5811378327181239,
+    "claimTxn": "0x262192f7da9068d30c8446bc6422d6cfc6d371c0bc2fd657b89abaf1b191c259"
+  },
+  "0xFC119030940852a33Fbb787A6fd086EFCaBE458F-9254-USDETH-1598918400": {
+    "timestamp": 1599264467,
+    "gasUsed": 263410,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.07286138296300822,
+    "umaToPay": 1.657126867335066,
+    "claimTxn": "0x441f5fa13dae7d00fc4878874aa22db2000f0ae67fed7d3380720db49c5604af"
+  },
+  "0xFC119030940852a33Fbb787A6fd086EFCaBE458F-9254-Admin 11-1599089728": {
+    "timestamp": 1599264467,
+    "gasUsed": 263410,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.07286138296300822,
+    "umaToPay": 1.657126867335066,
+    "claimTxn": "0x441f5fa13dae7d00fc4878874aa22db2000f0ae67fed7d3380720db49c5604af"
+  },
+  "0xfEc2Ade141272f5271FEbaDFca5d21Ca30fc04a5-9254-Admin 11-1599089728": {
+    "timestamp": 1599268985,
+    "gasUsed": 143231,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.0396188783386152,
+    "umaToPay": 0.9010741366511099,
+    "claimTxn": "0x3604d518561c56a7d3f37b33ebc8635348c40e0afe22276e04975ca18f7369c5"
+  },
+  "0xfEc2Ade141272f5271FEbaDFca5d21Ca30fc04a5-9254-USDETH-1598918400": {
+    "timestamp": 1599269116,
+    "gasUsed": 92062,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.025465110050265603,
+    "umaToPay": 0.5791671297999349,
+    "claimTxn": "0x905c7c0988222bca78e0395ef0ab0f370f99cee3c0689d4a442349dc72d46e86"
+  },
+  "0x4c39185a078B5666C372538231cB793A0928807b-9254-USDETH-1598918400": {
+    "timestamp": 1599269249,
+    "gasUsed": 144811,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04005591939659156,
+    "umaToPay": 0.9110140039696984,
+    "claimTxn": "0x37b025a31262096b1f9f6659e6a93e911e837f45b608f633df8b69eae557cf69"
+  },
+  "0x4c39185a078B5666C372538231cB793A0928807b-9254-Admin 11-1599089728": {
+    "timestamp": 1599269249,
+    "gasUsed": 144811,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04005591939659156,
+    "umaToPay": 0.9110140039696984,
+    "claimTxn": "0x37b025a31262096b1f9f6659e6a93e911e837f45b608f633df8b69eae557cf69"
+  },
+  "0xF627E5F4BAd95a956468d8BB6Ee20b119F992E96-9254-USDETH-1598918400": {
+    "timestamp": 1599270839,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xbe455bc848119e2c07977bb87b4d1b0a463d2384b497984a0eb12c10fea06888"
+  },
+  "0xF627E5F4BAd95a956468d8BB6Ee20b119F992E96-9254-Admin 11-1599089728": {
+    "timestamp": 1599270839,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xbe455bc848119e2c07977bb87b4d1b0a463d2384b497984a0eb12c10fea06888"
+  },
+  "0xF7B10D603907658F690Da534E9b7dbC4dAB3E2D6-9252-Admin 10-1598733157": {
+    "timestamp": 1599272232,
+    "gasUsed": 143976,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.03982495149569899,
+    "umaToPay": 0.9057609728234823,
+    "claimTxn": "0x6a9f4e5d6950bfbc152c1927b27831eb61dee9cd7c8b30594f4bfcbae9e4067c"
+  },
+  "0x49a8a045EaE2C9D4a7C7e2919bA957064Bd59252-9254-USDETH-1598918400": {
+    "timestamp": 1599272604,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x989f0c3b33039a33e4ee5ecdab1c0d246938f1b641c0e7f4eb5d0cfe34a3d536"
+  },
+  "0x49a8a045EaE2C9D4a7C7e2919bA957064Bd59252-9254-Admin 11-1599089728": {
+    "timestamp": 1599272604,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x989f0c3b33039a33e4ee5ecdab1c0d246938f1b641c0e7f4eb5d0cfe34a3d536"
+  },
+  "0x2eA5b7c369cb88c171466Bb6dcf3Cbe1C508FBeA-9254-USDETH-1598918400": {
+    "timestamp": 1599272604,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xd1c6193614292c1caf7147dd1d565c1c8bef5b16c806a755411dccf1106ed9be"
+  },
+  "0x2eA5b7c369cb88c171466Bb6dcf3Cbe1C508FBeA-9254-Admin 11-1599089728": {
+    "timestamp": 1599272604,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xd1c6193614292c1caf7147dd1d565c1c8bef5b16c806a755411dccf1106ed9be"
+  },
+  "0x797E1f1765a0071454f443114Bf26a53F798c071-9254-USDETH-1598918400": {
+    "timestamp": 1599274659,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xfd3793aa49aaf405be348ade5c2d9b01b3f50d0527f2e3494c11fcdcb674c577"
+  },
+  "0x797E1f1765a0071454f443114Bf26a53F798c071-9254-Admin 11-1599089728": {
+    "timestamp": 1599274659,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0xfd3793aa49aaf405be348ade5c2d9b01b3f50d0527f2e3494c11fcdcb674c577"
+  },
+  "0x49739691fB5f3992b3f2536f309D955558e75933-9254-USDETH-1598918400": {
+    "timestamp": 1599275392,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x34a3bae1df18c05609db0b674016f9fe30f4f7d0c5969d7d2caac8089575846d"
+  },
+  "0x49739691fB5f3992b3f2536f309D955558e75933-9254-Admin 11-1599089728": {
+    "timestamp": 1599275392,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x34a3bae1df18c05609db0b674016f9fe30f4f7d0c5969d7d2caac8089575846d"
+  },
+  "0x605ACc13c07CB2dE5261dc64D315857fDE7d5C5c-9254-Admin 11-1599089728": {
+    "timestamp": 1599276184,
+    "gasUsed": 141269,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.0390761729235838,
+    "umaToPay": 0.8887310862213184,
+    "claimTxn": "0x6654189b3def1fa57ef4dee2ee5868bac491cdfb29741268a55e2037b1034957"
+  },
+  "0xD2A78Bb82389D30075144d17E782964918999F7f-9254-Admin 11-1599089728": {
+    "timestamp": 1599279408,
+    "gasUsed": 145181,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.040158264454472105,
+    "umaToPay": 0.9133416944177224,
+    "claimTxn": "0x85f4a0b79b39f1be602f0da28f97eaca8a670ddad7fbc53f12857b63faf45dbf"
+  },
+  "0xD2A78Bb82389D30075144d17E782964918999F7f-9254-USDETH-1598918400": {
+    "timestamp": 1599279956,
+    "gasUsed": 94012,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.026004496166122503,
+    "umaToPay": 0.5914346875665474,
+    "claimTxn": "0x06916ec6821964f8e857876875dd3596c8d72967d3e95086bc274e41a2eddd58"
+  },
+  "0x7553fa99AB1f429551eeC660708C08E14E30584F-9254-USDETH-1598918400": {
+    "timestamp": 1599280988,
+    "gasUsed": 142849,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.03951321398156016,
+    "umaToPay": 0.8986709535399069,
+    "claimTxn": "0x5a89c99ce3e2ed30ea6bc6f5fab6d7c48abd24609b429322e8be8013d16efc0b"
+  },
+  "0x7553fa99AB1f429551eeC660708C08E14E30584F-9254-Admin 11-1599089728": {
+    "timestamp": 1599280988,
+    "gasUsed": 142849,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.03951321398156016,
+    "umaToPay": 0.8986709535399069,
+    "claimTxn": "0x5a89c99ce3e2ed30ea6bc6f5fab6d7c48abd24609b429322e8be8013d16efc0b"
+  },
+  "0x6888FF4bE3262F3232e1c022De731680a16dDdA7-9254-USDETH-1598918400": {
+    "timestamp": 1599281874,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x80bff39bdbc18da7a5e91350c31fbbf0e3d419a5a8ea844c24de0b75169d1783"
+  },
+  "0x6888FF4bE3262F3232e1c022De731680a16dDdA7-9254-Admin 11-1599089728": {
+    "timestamp": 1599281874,
+    "gasUsed": 146773,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04059862481162296,
+    "umaToPay": 0.92335705439949,
+    "claimTxn": "0x80bff39bdbc18da7a5e91350c31fbbf0e3d419a5a8ea844c24de0b75169d1783"
+  },
+  "0x1B52A70616Ee7ed4Ea070d19FD18a60e467a5276-9254-USDETH-1598918400": {
+    "timestamp": 1599287034,
+    "gasUsed": 93678,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.025912109005765478,
+    "umaToPay": 0.5893334751080609,
+    "claimTxn": "0x0269cf5e150baf3f378771a2f4937435827ad2b670f7ecbb065c9b6ea6575ff9"
+  },
+  "0x1B52A70616Ee7ed4Ea070d19FD18a60e467a5276-9254-Admin 11-1599089728": {
+    "timestamp": 1599287034,
+    "gasUsed": 93678,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.025912109005765478,
+    "umaToPay": 0.5893334751080609,
+    "claimTxn": "0x0269cf5e150baf3f378771a2f4937435827ad2b670f7ecbb065c9b6ea6575ff9"
+  },
+  "0xDb2808ed6cF0B8B9686222689CF4f6e88E42B80A-9254-USDETH-1598918400": {
+    "timestamp": 1599290012,
+    "gasUsed": 94024,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.02600781546529701,
+    "umaToPay": 0.5915101802297266,
+    "claimTxn": "0xab4c6c645722f07a8939bf9dd4d1458634d26975e4d0a5676d07f6cc0e5fb3bb"
+  },
+  "0xDb2808ed6cF0B8B9686222689CF4f6e88E42B80A-9254-Admin 11-1599089728": {
+    "timestamp": 1599290214,
+    "gasUsed": 94060,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.02601777336282052,
+    "umaToPay": 0.591736658219264,
+    "claimTxn": "0x650c08bfb436b4bc7c49ae844c461e515d5d00798af07eb9e9c2feb3ab75a269"
+  },
+  "0x8d680d96BEFC53D8B90F76d1e8E99e842b3387A2-9254-USDETH-1598918400": {
+    "timestamp": 1599319750,
+    "gasUsed": 144811,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04005591939659156,
+    "umaToPay": 0.9110140039696984,
+    "claimTxn": "0x131a778dd7a48076b6f62525353ac9739911b69fc107fba2e1c9552527848f1a"
+  },
+  "0x8d680d96BEFC53D8B90F76d1e8E99e842b3387A2-9254-Admin 11-1599089728": {
+    "timestamp": 1599319750,
+    "gasUsed": 144811,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.04005591939659156,
+    "umaToPay": 0.9110140039696984,
+    "claimTxn": "0x131a778dd7a48076b6f62525353ac9739911b69fc107fba2e1c9552527848f1a"
+  },
+  "0xBEe33aC5520a2245CBF8288e768A5cC26927cddF-9252-Admin 10-1598733157": {
+    "timestamp": 1599321105,
+    "gasUsed": 143235,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.03961998477167337,
+    "umaToPay": 0.9010993008721696,
+    "claimTxn": "0xf3694b92dc5baee9b765c09a6f67afa586419cc8bbb4a73d065996b6e2bc84b9"
+  },
+  "0xEF22364cdabD7F39a3B6Fd836f059336c810A8a9-9252-Admin 10-1598733157": {
+    "timestamp": 1599340792,
+    "gasUsed": 143976,
+    "gasPrice": "276.608264542",
+    "ethToPay": 0.03982495149569899,
+    "umaToPay": 0.9057609728234823,
+    "claimTxn": "0xdf68973a12616af61f7c03ecb4440243b65f2ccb7bed69136a5774fbe78aa3e4"
+  },
+  "0x67D24f48f1B58C4d4DcDA57Ba2386DcE76353fA2-9254-USDETH-1598918400": {
+    "timestamp": 1599351653,
+    "gasUsed": 144811,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.018750569411812048,
+    "umaToPay": 0.44865253228303875,
+    "claimTxn": "0x43aa32f51a0f9222250c9af1d78e94e4f62bd12b832775f7ac5f0e62e7548def"
+  },
+  "0x67D24f48f1B58C4d4DcDA57Ba2386DcE76353fA2-9254-Admin 11-1599089728": {
+    "timestamp": 1599351653,
+    "gasUsed": 144811,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.018750569411812048,
+    "umaToPay": 0.44865253228303875,
+    "claimTxn": "0x43aa32f51a0f9222250c9af1d78e94e4f62bd12b832775f7ac5f0e62e7548def"
+  },
+  "0xBEe33aC5520a2245CBF8288e768A5cC26927cddF-9254-USDETH-1598918400": {
+    "timestamp": 1599352601,
+    "gasUsed": 95640,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.01238375854421076,
+    "umaToPay": 0.29631124836890727,
+    "claimTxn": "0x3a103e1078445d95f9bb27de4d0e4e3ad90b7cc36766feaa4c13684b3aa0c0e5"
+  },
+  "0xBEe33aC5520a2245CBF8288e768A5cC26927cddF-9254-Admin 11-1599089728": {
+    "timestamp": 1599352601,
+    "gasUsed": 95640,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.01238375854421076,
+    "umaToPay": 0.29631124836890727,
+    "claimTxn": "0x3a103e1078445d95f9bb27de4d0e4e3ad90b7cc36766feaa4c13684b3aa0c0e5"
+  },
+  "0x1757D400578cF8A2F3Da8228e4402FB1bb3fc968-9252-Admin 10-1598733157": {
+    "timestamp": 1599355534,
+    "gasUsed": 137802,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.017843022740582717,
+    "umaToPay": 0.4269372924271451,
+    "claimTxn": "0x27fb91c49e2c13f24e56b0c9e98ca7931f64f6141f1bc2fcf67c77cfb3f1457d"
+  },
+  "0xF7B10D603907658F690Da534E9b7dbC4dAB3E2D6-9254-USDETH-1598918400": {
+    "timestamp": 1599361181,
+    "gasUsed": 95640,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.01238375854421076,
+    "umaToPay": 0.29631124836890727,
+    "claimTxn": "0xcb2706e25300768df34229e94b8a88bc5980af4c69cedb59d8d55087c62c391f"
+  },
+  "0xF7B10D603907658F690Da534E9b7dbC4dAB3E2D6-9254-Admin 11-1599089728": {
+    "timestamp": 1599361181,
+    "gasUsed": 95640,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.01238375854421076,
+    "umaToPay": 0.29631124836890727,
+    "claimTxn": "0xcb2706e25300768df34229e94b8a88bc5980af4c69cedb59d8d55087c62c391f"
+  },
+  "0x56D14fcb4587B5845fA4823aF790672EBF92580d-9252-Admin 10-1598733157": {
+    "timestamp": 1599404378,
+    "gasUsed": 143976,
+    "gasPrice": "129.483046259",
+    "ethToPay": 0.018642451068185784,
+    "umaToPay": 0.44606554051821196,
+    "claimTxn": "0xcc6f3e204bf3fc04fa296f24f0acdbb1248cae4eed0edaa251d1d9c45778703a"
+  }
+}

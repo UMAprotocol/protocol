@@ -1,0 +1,2 @@
+yarn run v1.22.5
+$ /Users/nicholaspai/UMA/protocol/node_modules/.bin/truffle exec ./packages/core/scripts/gas-rebate/index.js --network mainnet_mnemonic
