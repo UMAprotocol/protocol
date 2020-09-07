@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const chalkPipe = require("chalk-pipe");
 const boldUnderline = chalkPipe("bold.underline");

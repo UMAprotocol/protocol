@@ -8,5 +8,6 @@ module.exports = {
   ...require("./src/logger/SpyTransport"),
   ...require("./src/price-feed/CreatePriceFeed"),
   ...require("./src/price-feed/Networker"),
-  ...require("./src/price-feed/PriceFeedMock")
+  ...require("./src/price-feed/PriceFeedMock"),
+  ...require("./src/price-feed/PriceFeedMockScaled")
 };

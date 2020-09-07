@@ -48,7 +48,8 @@ let expiringMultiPartyCreator;
 const empCollateralTokenMap = {
   COMPUSD: TestnetERC20,
   "ETH/BTC": TestnetERC20,
-  USDETH: WETH9
+  USDETH: WETH9,
+  USDBTC: TestnetERC20
 };
 
 /** ***************************************************
@@ -69,7 +70,9 @@ const deployEMP = async callback => {
       console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
     }
 
-    collateralToken = await empCollateralTokenMap[identifierBase].deployed();
+    // renBTC TestnetERC20: 0x2426C4aaF20DD4501709dDa05d79ebC552d3aE3E
+    // DAI TestnetERC20: switch `.at(x)` to `.deployed()`
+    collateralToken = await empCollateralTokenMap[identifierBase].at("0x2426C4aaF20DD4501709dDa05d79ebC552d3aE3E");
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
@@ -90,9 +93,9 @@ const deployEMP = async callback => {
       expirationTimestamp: "1601503200", // 09/30/2020 @ 10:00pm (UTC)
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "yUSD Synthetic Token Expiring 1 October 2020",
-      syntheticSymbol: "yUSD-OCT20",
-      collateralRequirement: { rawValue: toWei("1.25") },
+      syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
+      syntheticSymbol: "uUSDrBTC-OCT",
+      collateralRequirement: { rawValue: toWei("1.35") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
       disputerDisputeRewardPct: { rawValue: toWei("0.2") },

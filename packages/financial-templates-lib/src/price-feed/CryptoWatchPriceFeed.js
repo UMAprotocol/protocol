@@ -18,6 +18,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
    * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
+   * @param {Number} decimals Number of decimals to use to convert price to wei.
    */
   constructor(
     logger,
@@ -131,6 +132,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // timestamp (because the close of that OHLC may be relevant).
     const earliestHistoricalTimestamp = Math.floor((currentTime - this.lookback) / this.ohlcPeriod) * this.ohlcPeriod;
 
+    // 1. Construct URLs.
+    // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
+    const priceUrl =
+      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price` +
+      (this.apiKey ? `?apiKey=${this.apiKey}` : "");
+
     // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
     const ohlcUrl = [
       `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc`,
@@ -139,15 +146,29 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       this.apiKey ? `&apiKey=${this.apiKey}` : ""
     ].join("");
 
-    const ohlcResponse = await this.networker.getJson(ohlcUrl);
-    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
-      this.logger.error({
-        at: "CryptoWatchPriceFeed",
-        message: "Could not parse ohlc result🚨",
-        error: new Error(JSON.stringify(ohlcResponse))
-      });
-      return;
+    // 2. Send requests.
+    const [ohlcResponse, priceResponse] = await Promise.all([
+      this.networker.getJson(ohlcUrl),
+      this.networker.getJson(priceUrl)
+    ]);
+
+    // 3. Check responses.
+    if (!priceResponse || !priceResponse.result || !priceResponse.result.price) {
+      throw new Error(`🚨Could not parse price result from url ${priceUrl}: ${JSON.stringify(priceResponse)}`);
     }
+
+    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
+      throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
+    }
+
+    // 4. Parse results.
+    // Return data structure:
+    // {
+    //   "result": {
+    //     "price": priceValue
+    //   }
+    // }
+    const newPrice = this.convertDecimals(priceResponse.result.price);
 
     // Return data structure:
     // {
@@ -180,29 +201,8 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         return a.openTime - b.openTime;
       });
 
-    // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
-    const priceUrl =
-      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price` +
-      (this.apiKey ? `?apiKey=${this.apiKey}` : "");
-    const priceResponse = await this.networker.getJson(priceUrl);
-    if (!ohlcResponse || !priceResponse.result || !priceResponse.result.price) {
-      this.logger.error({
-        at: "CryptoWatchPriceFeed",
-        message: "Could not parse price result🚨",
-        priceUrl,
-        error: new Error(JSON.stringify(priceResponse))
-      });
-      return;
-    }
-
-    // Return data structure:
-    // {
-    //   "result": {
-    //     "price": priceValue
-    //   }
-    // }
-    this.currentPrice = this.convertDecimals(priceResponse.result.price);
-
+    // 5. Store results.
+    this.currentPrice = newPrice;
     this.historicalPricePeriods = newHistoricalPricePeriods;
     this.lastUpdateTime = currentTime;
   }

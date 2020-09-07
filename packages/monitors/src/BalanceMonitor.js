@@ -29,7 +29,7 @@ class BalanceMonitor {
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, tokenBalanceClient, config, empProps) {
+  constructor({ logger, tokenBalanceClient, config, empProps }) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
@@ -87,6 +87,13 @@ class BalanceMonitor {
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
+    this.formatDecimalStringCollateral = createFormatFunction(
+      this.web3,
+      2,
+      4,
+      false,
+      this.empProps.collateralCurrencyDecimals
+    );
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     // Helper functions from web3.
@@ -110,12 +117,13 @@ class BalanceMonitor {
         this.logger[this.logOverrides.collateralThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
-          mrkdwn: this._createLowBalanceMrkdwn(
+          mrkdwn: this._createLowBalanceMrkdwnCollateralCurrency(
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(monitoredAddress),
             this.empProps.collateralCurrencySymbol,
-            "collateral"
+            "collateral",
+            this.empProps.collateralCurrencyDecimals
           )
         });
       }
@@ -128,7 +136,8 @@ class BalanceMonitor {
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(monitoredAddress),
             this.empProps.syntheticCurrencySymbol,
-            "synthetic"
+            "synthetic",
+            this.empProps.syntheticCurrencyDecimals
           )
         });
       }
@@ -141,7 +150,8 @@ class BalanceMonitor {
             bot.etherThreshold,
             this.client.getEtherBalance(monitoredAddress),
             "ETH",
-            "ether"
+            "ether",
+            18
           )
         });
       }
@@ -161,6 +171,24 @@ class BalanceMonitor {
       tokenSymbol +
       ". Current balance is " +
       this.formatDecimalString(tokenBalance) +
+      " " +
+      tokenSymbol
+    );
+  }
+
+  _createLowBalanceMrkdwnCollateralCurrency(bot, threshold, tokenBalance, tokenSymbol, tokenName) {
+    return (
+      bot.name +
+      " (" +
+      createEtherscanLinkMarkdown(bot.address, this.empProps.networkId) +
+      ") " +
+      tokenName +
+      " balance is less than " +
+      this.formatDecimalStringCollateral(threshold) +
+      " " +
+      tokenSymbol +
+      ". Current balance is " +
+      this.formatDecimalStringCollateral(tokenBalance) +
       " " +
       tokenSymbol
     );

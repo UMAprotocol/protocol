@@ -229,7 +229,9 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
 }
 
 function createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
-  if (config.type == "balancer") {
+  if (!config || !config.type) {
+    return createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+  } else if (config.type == "balancer") {
     return createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
   } else {
     return createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
@@ -280,6 +282,17 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
       { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+    ]
+  },
+  USDBTC: {
+    type: "medianizer",
+    lookback: 7200,
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
     ]
   }
 };

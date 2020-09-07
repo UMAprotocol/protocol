@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const retry = require("async-retry");
 
@@ -35,7 +37,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core/index");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
@@ -46,36 +48,14 @@ async function run(
   priceFeedConfig,
   liquidatorConfig,
   liquidatorOverridePrice
-) {
+}) {
   try {
     const { toBN } = web3.utils;
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // Load unlocked web3 accounts, get the networkId and set up price feed.
-    const [accounts, networkId, priceFeed] = await Promise.all([
-      web3.eth.getAccounts(),
-      web3.eth.net.getId(),
-      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, priceFeedConfig)
-    ]);
-
-    if (!priceFeed) {
-      throw new Error("Price feed config is invalid");
-    }
+    // Load unlocked web3 accounts and get the networkId.
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
     // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
@@ -87,23 +67,75 @@ async function run(
       priceIdentifier,
       minSponsorTokens,
       collateralTokenAddress,
-      syntheticTokenAddress
+      syntheticTokenAddress,
+      expirationTimestamp,
+      contractTimestamp
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
       emp.methods.priceIdentifier().call(),
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
-      emp.methods.tokenCurrency().call()
+      emp.methods.tokenCurrency().call(),
+      emp.methods.expirationTimestamp().call(),
+      emp.methods.getCurrentTime().call()
     ]);
+
+    // If EMP is expired, exit early.
+    if (contractTimestamp >= expirationTimestamp) {
+      logger.info({
+        at: "Liquidator#index",
+        message: "EMP is expired, cannot liquidate any positions 🕰",
+        expirationTimestamp,
+        contractTimestamp
+      });
+      return;
+    }
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
+    const [currentCollateralAllowance, currentSyntheticAllowance, collateralCurrencyDecimals] = await Promise.all([
+      collateralToken.methods.allowance(accounts[0], empAddress).call(),
+      syntheticToken.methods.allowance(accounts[0], empAddress).call(),
+      collateralToken.methods.decimals().call()
+    ]);
 
     const empProps = {
       crRatio: collateralRequirement,
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens
     };
+
+    // Price feed must use same # of decimals as collateral currency.
+    let customPricefeedConfig = {
+      ...priceFeedConfig,
+      decimals: collateralCurrencyDecimals
+    };
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: customPricefeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
+    // Load unlocked web3 accounts, get the networkId and set up price feed.
+    const [priceFeed] = await Promise.all([
+      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, customPricefeedConfig)
+    ]);
+    if (!priceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
+    logger.info({
+      at: "Liquidator#index",
+      message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
+    });
 
     // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
@@ -122,25 +154,21 @@ async function run(
       });
     }
 
-    const liquidator = new Liquidator(
+    const liquidator = new Liquidator({
       logger,
       oneInchClient,
-      empClient,
+      expiringMultiPartyClient: empClient,
       gasEstimator,
-      voting,
+      votingContract: voting,
       syntheticToken,
       priceFeed,
-      accounts[0],
+      account: accounts[0],
       empProps,
       liquidatorConfig
-    );
+    });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const [currentCollateralAllowance, currentSyntheticAllowance] = await Promise.all([
-      collateralToken.methods.allowance(accounts[0], empAddress).call(),
-      syntheticToken.methods.allowance(accounts[0], empAddress).call()
-    ]);
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
       const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
@@ -203,7 +231,8 @@ async function run(
       }
       logger.debug({
         at: "Liquidator#index",
-        message: "End of execution loop - waiting polling delay"
+        message: "End of execution loop - waiting polling delay",
+        pollingDelay: `${pollingDelay} (s)`
       });
       await delay(Number(pollingDelay));
     }
@@ -258,11 +287,11 @@ async function Poll(callback) {
       // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
       const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
       if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
 
       // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
     } else {
-      await run(Logger, web3, ...Object.values(executionParameters));
+      await run({ logger: Logger, web3, ...executionParameters });
     }
   } catch (error) {
     Logger.error({

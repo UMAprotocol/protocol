@@ -96,19 +96,19 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
-    await Poll.run(
-      spyLogger,
+    await Poll.run({
+      logger: spyLogger,
       web3,
-      emp.address,
+      empAddress: emp.address,
       pollingDelay,
       executionRetries,
       errorRetriesTimeout,
-      fromBlock,
-      toBlock,
-      defaultMonitorConfig,
-      defaultUniswapPricefeedConfig,
-      defaultMedianizerPricefeedConfig
-    );
+      startingBlock: fromBlock,
+      endingBlock: toBlock,
+      monitorConfig: defaultMonitorConfig,
+      tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+      medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+    });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
@@ -154,19 +154,19 @@ contract("index.js", function(accounts) {
 
     let errorThrown = false;
     try {
-      await Poll.run(
-        spyLogger,
+      await Poll.run({
+        logger: spyLogger,
         web3,
-        invalidEMP.address,
+        empAddress: invalidEMP.address,
         pollingDelay,
-        executionRetries,
+        errorRetries: executionRetries,
         errorRetriesTimeout,
-        fromBlock,
-        toBlock,
-        defaultMonitorConfig,
-        defaultUniswapPricefeedConfig,
-        defaultUniswapPricefeedConfig
-      );
+        startingBlock: fromBlock,
+        endingBlock: toBlock,
+        monitorConfig: defaultMonitorConfig,
+        tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+        medianizerPriceFeedConfig: defaultUniswapPricefeedConfig
+      });
     } catch (error) {
       errorThrown = true;
     }

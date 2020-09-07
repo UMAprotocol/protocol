@@ -3,7 +3,7 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 const Web3 = require("web3");
-const { getTruffleConfig, nodeUrl } = require("@umaprotocol/common");
+const { getTruffleConfig, getNodeUrl } = require("@umaprotocol/common");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
 const websocketOptions = {
@@ -21,6 +21,7 @@ const websocketOptions = {
 };
 
 // Create websocket web3 provider. This contains the re-try logic on failed/timeout connections.
+const nodeUrl = getNodeUrl();
 const websocketProvider = new Web3.providers.WebsocketProvider(nodeUrl, websocketOptions);
 
 // Use the websocketProvider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig

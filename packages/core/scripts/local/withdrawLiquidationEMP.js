@@ -15,7 +15,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "id"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "id", "identifier"] });
 
 // Contracts we need to interact with.
 let emp;
@@ -122,18 +122,18 @@ const withdrawEMP = async callback => {
       // Check if the dispute can be resolved.
       finder = await Finder.deployed();
       mockOracle = await MockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
-      const priceFeedIdentifier = utf8ToHex("ETH/BTC");
+      const priceFeedIdentifier = utf8ToHex(argv.identifier ? argv.identifier : "USDBTC");
       try {
         let priceResolution = await mockOracle.getPrice(priceFeedIdentifier, liquidationTime);
         console.log(`Price has been resolved: ${fromWei(priceResolution)}`);
 
         // Withdraw rewards. If the liquidator can make this call, then it means that the liquidation dispute has failed.
-        const withdrawResult = await emp.withdrawLiquidation.call(liquidationId, sponsor, { from: liquidator });
+        const withdrawResult = await emp.withdrawLiquidation.call(liquidationId, sponsor, { from: sponsor });
         console.log(`Withdrawing ${fromWei(withdrawResult.rawValue.toString())} collateral tokens`);
-        await emp.withdrawLiquidation(liquidationId, sponsor, { from: liquidator });
+        await emp.withdrawLiquidation(liquidationId, sponsor, { from: sponsor });
 
         // Read event to determine if dispute succeeded or failed.
-        const withdrawEvent = await getWithdrawLiquidationEvent(emp, liquidator);
+        const withdrawEvent = await getWithdrawLiquidationEvent(emp, sponsor);
         console.group("Withdrew liquidation:");
         console.log(`- Withdrawal amount: ${fromWei(withdrawEvent.returnValues.withdrawalAmount)}`);
         console.log(`- Liquidation Status: ${withdrawEvent.returnValues.liquidationStatus}`);
