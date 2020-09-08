@@ -37,6 +37,8 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 const { toBN, toWei, fromWei, BN } = web3.utils;
 
+const SCALING_FACTOR = toBN(toWei("1"));
+
 // Return the day that the timestamp falls into. Used to pull the daily average
 // gas/ETH price for a specific timestamp from an array of historical data from Etherscan Pro API.
 function getDataForTimestamp(dayData, timestamp) {
@@ -131,7 +133,7 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
     const revealEthData = getDataForTimestamp(priceData.dailyAvgEthPrices, revealData.txnTimestamp);
     let ethToPay = toBN(toWei(revealGasData.avgGwei, "gwei")).mul(toBN(revealGasUsed));
     let ethToUma = toBN(toWei(revealEthData.avgPx))
-      .mul(priceData.SCALING_FACTOR)
+      .mul(SCALING_FACTOR)
       .div(priceData.currentUmaPrice);
 
     // Commit
@@ -145,12 +147,12 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
       ethToPay = ethToPay.add(toBN(toWei(commitGasData.avgGwei, "gwei")).mul(toBN(commitGasUsed)));
       ethToUma = ethToUma.add(
         toBN(toWei(commitEthData.avgPx))
-          .mul(priceData.SCALING_FACTOR)
+          .mul(SCALING_FACTOR)
           .div(priceData.currentUmaPrice)
       );
     }
 
-    const umaToPay = ethToPay.mul(ethToUma).div(priceData.SCALING_FACTOR);
+    const umaToPay = ethToPay.mul(ethToUma).div(SCALING_FACTOR);
     const revealTxn = revealData.hash;
     const commitTxn = commitData ? commitData.hash : "N/A";
 
@@ -239,9 +241,9 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
     const transactionDayEthData = getDataForTimestamp(priceData.dailyAvgEthPrices, claimData.txnTimestamp);
     const ethToPay = toBN(toWei(transactionDayGasData.avgGwei, "gwei")).mul(toBN(gasUsed));
     const ethToUma = toBN(toWei(transactionDayEthData.avgPx))
-      .mul(priceData.SCALING_FACTOR)
+      .mul(SCALING_FACTOR)
       .div(priceData.currentUmaPrice);
-    const umaToPay = ethToPay.mul(ethToUma).div(priceData.SCALING_FACTOR);
+    const umaToPay = ethToPay.mul(ethToUma).div(SCALING_FACTOR);
     const claimTxn = claimData.hash;
 
     totalGasUsed += gasUsed;
@@ -275,7 +277,16 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
   };
 }
 
-async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly, claimOnly }) {
+async function calculateRebate({
+  rebateNumber,
+  startBlock,
+  endBlock,
+  revealOnly,
+  claimOnly,
+  dailyAvgGasPrices,
+  dailyAvgEthPrices,
+  currentUmaPrice
+}) {
   try {
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
 
@@ -302,36 +313,15 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
       })
     ]);
 
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* 💎 Calculating Price Data 💎          *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
-
-    // Fetch gas price data in parallel
-    const pricePromises = [];
-    pricePromises.push(getHistoricalGasPrice(startBlock, endBlock));
-    pricePromises.push(getHistoricalEthPrice(startBlock, endBlock));
-    pricePromises.push(getUmaPrice());
-
-    const [dailyAvgGasPrices, dailyAvgEthPrices, umaPrice] = await Promise.all(pricePromises);
-    if (!dailyAvgGasPrices || !dailyAvgEthPrices) {
-      throw new Error("Failed to fetch daily gas and ETH prices for period from Etherscan Pro API");
-    }
-
-    const SCALING_FACTOR = toBN(toWei("1"));
-    const _umaPrice = umaPrice ? umaPrice : 10;
-    const currentUmaPrice = toBN(toWei(_umaPrice.toString(), "ether"));
     const priceData = {
       dailyAvgGasPrices,
       dailyAvgEthPrices,
-      currentUmaPrice,
-      SCALING_FACTOR
+      currentUmaPrice
     };
     const readablePriceData = {
       dailyAvgGasPrices,
       dailyAvgEthPrices,
-      currentUmaPrice: _umaPrice
+      currentUmaPrice: fromWei(currentUmaPrice)
     };
     Object.keys(readablePriceData).forEach(k => {
       if (typeof readablePriceData[k] !== "object") {
@@ -428,17 +418,22 @@ async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly,
 }
 
 async function getUmaPrice() {
-  const query = "https://api.coingecko.com/api/v3/simple/price?ids=uma&vs_currencies=usd";
+  try {
+    const query = "https://api.coingecko.com/api/v3/simple/price?ids=uma&vs_currencies=usd";
 
-  const response = await fetch(query, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    }
-  });
+    const response = await fetch(query, {
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      }
+    });
 
-  let priceResponse = await response.json();
-  return priceResponse.uma.usd;
+    let priceResponse = await response.json();
+    return priceResponse.uma.usd;
+  } catch (err) {
+    console.error("Failed to fetch UMA price from Coingecko, falling back to default");
+    return 10;
+  }
 }
 
 async function getHistoricalGasPrice(startBlock, endBlock) {
@@ -514,6 +509,14 @@ async function getHistoricalEthPrice(startBlock, endBlock) {
 // Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
+    console.log("\n\n*=======================================*");
+    console.log("*                                       *");
+    console.log("* 🐣 Setup 🐣                           *");
+    console.log("* - Fetching block number for timestamp *");
+    console.log("* - Fetching historical gas px data     *");
+    console.log("*                                       *");
+    console.log("*=======================================*");
+
     const rebateNumber = 1;
     const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 24 * 60 * 60); // Default: Current time minus 1 day.
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
@@ -525,13 +528,29 @@ async function Main(callback) {
       throw err;
     }
 
+    // Fetch gas price data in parallel
+    const pricePromises = [];
+    pricePromises.push(getHistoricalGasPrice(startBlock, endBlock));
+    pricePromises.push(getHistoricalEthPrice(startBlock, endBlock));
+    pricePromises.push(getUmaPrice());
+
+    const [dailyAvgGasPrices, dailyAvgEthPrices, umaPrice] = await Promise.all(pricePromises);
+    if (!dailyAvgGasPrices || !dailyAvgEthPrices || !umaPrice) {
+      throw new Error("Missing price data");
+    }
+    const currentUmaPrice = toBN(toWei(umaPrice.toString(), "ether"));
+    console.log("- ✅ Success, running main script now");
+
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
     await calculateRebate({
       rebateNumber,
       startBlock,
       endBlock,
       revealOnly: argv["reveal-only"],
-      claimOnly: argv["claim-only"]
+      claimOnly: argv["claim-only"],
+      dailyAvgGasPrices,
+      dailyAvgEthPrices,
+      currentUmaPrice
     });
   } catch (error) {
     console.error(error);
