@@ -86,11 +86,19 @@ contract("Gas Rebate: index.js", function() {
           Number(claimRebates.totals.totalEthSpent) <= Number(fromWei(upperLimitEthSpentClaims.toString()))
       );
 
-      // Ball park estimate for UMA to repay uses the lower and upper ETH spent approximations
-      const lowerLimitUmaRebateReveals = lowerLimitEthSpentReveals.mul(this.currentUmaPrice).div(Main.SCALING_FACTOR);
-      const upperLimitUmaRebateReveals = upperLimitEthSpentReveals.mul(this.currentUmaPrice).div(Main.SCALING_FACTOR);
-      const lowerLimitUmaRebateClaims = lowerLimitEthSpentClaims.mul(this.currentUmaPrice).div(Main.SCALING_FACTOR);
-      const upperLimitUmaRebateClaims = upperLimitEthSpentClaims.mul(this.currentUmaPrice).div(Main.SCALING_FACTOR);
+      // Ball park estimate for UMA to repay uses the lower and upper ETH spent approximations, assuming
+      // ETH is between $200 and $800
+      const ethToUmaLowerLimit = toBN(toWei("200"))
+        .mul(Main.SCALING_FACTOR)
+        .div(this.currentUmaPrice);
+      const ethToUmaUpperLimit = toBN(toWei("800"))
+        .mul(Main.SCALING_FACTOR)
+        .div(this.currentUmaPrice);
+      const lowerLimitUmaRebateReveals = lowerLimitEthSpentReveals.mul(ethToUmaLowerLimit).div(Main.SCALING_FACTOR);
+      const upperLimitUmaRebateReveals = upperLimitEthSpentReveals.mul(ethToUmaUpperLimit).div(Main.SCALING_FACTOR);
+      const lowerLimitUmaRebateClaims = lowerLimitEthSpentClaims.mul(ethToUmaLowerLimit).div(Main.SCALING_FACTOR);
+      const upperLimitUmaRebateClaims = upperLimitEthSpentClaims.mul(ethToUmaUpperLimit).div(Main.SCALING_FACTOR);
+      console.log(lowerLimitUmaRebateReveals.toString(), upperLimitUmaRebateReveals.toString());
       assert.isTrue(
         Number(revealRebates.totals.totalUmaRepaid) >= Number(fromWei(lowerLimitUmaRebateReveals.toString())) &&
           Number(revealRebates.totals.totalUmaRepaid) <= Number(fromWei(upperLimitUmaRebateReveals.toString()))
