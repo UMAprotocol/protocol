@@ -127,9 +127,9 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
         txnTimestamp: commitBlock.timestamp
       };
     } else {
-      // console.error(
-      //   `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
-      // );
+      console.error(
+        `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
+      );
     }
 
     // Save and continue to lookup txn data for next event.
@@ -546,6 +546,8 @@ async function Main(callback) {
     const rebateNumber = 1;
     const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 24 * 60 * 60); // Default: Current time minus 1 day.
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
+    console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
+    console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
     let endBlock, startBlock;
     try {
       endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
