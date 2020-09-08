@@ -141,7 +141,7 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
   // For each balance result, calculate their associated payment addition.
   balanceResults.forEach(function(balanceResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResult.value === "0") return;
+    if (balanceResult === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
     const shareHolderBalanceAtSnapshot = toBN(balanceResult);
     const shareHolderFractionAtSnapshot = toBN(toWei("1"))
