@@ -1,4 +1,4 @@
-const Main = require("../../scripts/gas-rebate/index");
+const Main = require("./index");
 
 const { fromWei, toBN, toWei } = web3.utils;
 
