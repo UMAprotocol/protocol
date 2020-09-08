@@ -184,7 +184,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
       revealGasPrice: revealGasData.avgGwei,
       revealEthPrice: revealEthData.avgPx,
       revealTxn,
-      commitTimestamp: commitGasData ? commitGasData.txnTimestamp : "N/A",
+      commitTimestamp: commitData ? commitData.txnTimestamp : "N/A",
       commitGasUsed,
       commitGasPrice: commitGasData ? commitGasData.avgGwei : "N/A",
       commitEthPrice: commitEthData ? commitEthData.avgPx : "N/A",
@@ -204,9 +204,9 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
   return {
     rebateReceipts,
     totals: {
-      totalGasUsed: totalGasUsed.toLocaleString(),
-      totalEthSpent: totalEthSpent.toLocaleString(),
-      totalUmaRepaid: totalUmaRepaid.toLocaleString()
+      totalGasUsed: totalGasUsed,
+      totalEthSpent: totalEthSpent,
+      totalUmaRepaid: totalUmaRepaid
     }
   };
 }
@@ -289,9 +289,9 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
   return {
     rebateReceipts,
     totals: {
-      totalGasUsed: totalGasUsed.toLocaleString(),
-      totalEthSpent: totalEthSpent.toLocaleString(),
-      totalUmaRepaid: totalUmaRepaid.toLocaleString()
+      totalGasUsed: totalGasUsed,
+      totalEthSpent: totalEthSpent,
+      totalUmaRepaid: totalUmaRepaid
     }
   };
 }
@@ -304,17 +304,20 @@ async function calculateRebate({
   claimOnly,
   dailyAvgGasPrices,
   dailyAvgEthPrices,
-  currentUmaPrice
+  currentUmaPrice,
+  debug = false
 }) {
   try {
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
 
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* 🐲⛽️ UMA Gas Rebater 🐲 ⛽️            *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
-    console.log(`- Calculating gas rebates from block ${startBlock} until ${endBlock}`);
+    if (!debug) {
+      console.log("\n\n*=======================================*");
+      console.log("*                                       *");
+      console.log("* 🐲⛽️ UMA Gas Rebater 🐲 ⛽️            *");
+      console.log("*                                       *");
+      console.log("*=======================================*");
+      console.log(`- Calculating gas rebates from block ${startBlock} until ${endBlock}`);
+    }
 
     // Query past contract events.
     const [committedVotes, revealedVotes, claimedRewards] = await Promise.all([
@@ -342,13 +345,15 @@ async function calculateRebate({
       dailyAvgEthPrices,
       currentUmaPrice: fromWei(currentUmaPrice)
     };
-    Object.keys(readablePriceData).forEach(k => {
-      if (typeof readablePriceData[k] !== "object") {
-        console.log(`- ${k}: ${readablePriceData[k]}`);
-      } else {
-        console.log(`- ${k}: ${JSON.stringify(readablePriceData[k], null, 4)}`);
-      }
-    });
+    if (!debug) {
+      Object.keys(readablePriceData).forEach(k => {
+        if (typeof readablePriceData[k] !== "object") {
+          console.log(`- ${k}: ${readablePriceData[k]}`);
+        } else {
+          console.log(`- ${k}: ${JSON.stringify(readablePriceData[k], null, 4)}`);
+        }
+      });
+    }
 
     // Final UMA rebates to send
     const rebateOutput = {
@@ -389,25 +394,29 @@ async function calculateRebate({
       parsePromises.push(null);
     }
 
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* 🌏 Fetching Blockchain Data 🌎        *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
+    if (!debug) {
+      console.log("\n\n*=======================================*");
+      console.log("*                                       *");
+      console.log("* 🌏 Fetching Blockchain Data 🌎        *");
+      console.log("*                                       *");
+      console.log("*=======================================*");
+    }
     [revealRebates, claimRebates] = await Promise.all(parsePromises);
 
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* ✅ Results                           *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
-    if (revealRebates) {
+    if (!debug) {
+      console.log("\n\n*=======================================*");
+      console.log("*                                       *");
+      console.log("* ✅ Results                           *");
+      console.log("*                                       *");
+      console.log("*=======================================*");
+    }
+    if (revealRebates && !debug) {
       const savePath = `${path.resolve(__dirname)}/debug/Reveals_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(revealRebates.rebateReceipts, null, 4));
       console.log("🗄  Reveal Transactions successfully written to", savePath);
       console.log("㊗️ Reveal Totals:", revealRebates.totals);
     }
-    if (claimRebates) {
+    if (claimRebates && !debug) {
       const savePath = `${path.resolve(__dirname)}/debug/Claims_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(claimRebates.rebateReceipts, null, 4));
       console.log("🗄  Claim Transactions successfully written to", savePath);
@@ -419,19 +428,27 @@ async function calculateRebate({
       totalUMAToRebate += rebateOutput.shareHolderPayout[voter];
     }
 
-    console.log("\n\n*=======================================*");
-    console.log("*                                       *");
-    console.log("* 🧮 Final UMA Rebate                   *");
-    console.log("*                                       *");
-    console.log("*=======================================*");
-    console.log(
-      `🎟 UMA to rebate: ${totalUMAToRebate} across ${Object.keys(rebateOutput.shareHolderPayout).length} voters`
-    );
+    if (!debug) {
+      console.log("\n\n*=======================================*");
+      console.log("*                                       *");
+      console.log("* 🧮 Final UMA Rebate                   *");
+      console.log("*                                       *");
+      console.log("*=======================================*");
+      console.log(
+        `🎟 UMA to rebate: ${totalUMAToRebate} across ${Object.keys(rebateOutput.shareHolderPayout).length} voters`
+      );
+      // Format output and save to file.
+      const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
+      fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
+      console.log("🗄  File successfully written to", savePath);
+    }
 
-    // Format output and save to file.
-    const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
-    fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
-    console.log("🗄  File successfully written to", savePath);
+    // Return debug and prod outputs for testing
+    return {
+      revealRebates,
+      claimRebates,
+      rebateOutput
+    };
   } catch (err) {
     console.error("calculateRebate ERROR:", err);
     return;
@@ -450,10 +467,10 @@ async function getUmaPrice() {
     });
 
     let priceResponse = await response.json();
-    return priceResponse.uma.usd;
+    return toBN(toWei(priceResponse.uma.usd.toString(), "ether"));
   } catch (err) {
     console.error("Failed to fetch UMA price from Coingecko, falling back to default");
-    return 10;
+    return toBN(toWei("10", "ether"));
   }
 }
 
@@ -562,11 +579,10 @@ async function Main(callback) {
     pricePromises.push(getHistoricalEthPrice(startBlock, endBlock));
     pricePromises.push(getUmaPrice());
 
-    const [dailyAvgGasPrices, dailyAvgEthPrices, umaPrice] = await Promise.all(pricePromises);
-    if (!dailyAvgGasPrices || !dailyAvgEthPrices || !umaPrice) {
+    const [dailyAvgGasPrices, dailyAvgEthPrices, currentUmaPrice] = await Promise.all(pricePromises);
+    if (!dailyAvgGasPrices || !dailyAvgEthPrices || !currentUmaPrice) {
       throw new Error("Missing price data");
     }
-    const currentUmaPrice = toBN(toWei(umaPrice.toString(), "ether"));
     console.log("- ✅ Success, running main script now");
 
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
@@ -601,4 +617,10 @@ if (require.main === module) {
     .catch(nodeCallback);
 }
 
+Main.getHistoricalEthPrice = getHistoricalEthPrice;
+Main.getHistoricalGasPrice = getHistoricalGasPrice;
+Main.getUmaPrice = getUmaPrice;
+Main.calculateRebate = calculateRebate;
+Main.getDataForTimestamp = getDataForTimestamp;
+Main.SCALING_FACTOR = SCALING_FACTOR;
 module.exports = Main;
