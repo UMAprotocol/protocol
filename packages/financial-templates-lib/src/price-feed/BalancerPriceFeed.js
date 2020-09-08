@@ -48,10 +48,9 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
   async update() {
     this.lastUpdateTime = await this.getTime();
-    // its possible provider throws error getting block history
-    // we are going to just ignore these errors...
     let blocks = [];
-    if (this.lookback <= 0) {
+    // disabled lookback by setting it to 0
+    if (this.lookback == 0) {
       // handle no lookback, we just want latest block
       const block = await this.getLatestBlock();
       this.blockHistory.insert(block);
