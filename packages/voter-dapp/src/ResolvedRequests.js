@@ -76,24 +76,32 @@ function ResolvedRequests({ votingAccount }) {
   };
   const adminProposals = useCacheCall(["Governor"], call => {
     return resolvedEvents.map(request => ({
-      proposal: isAdminRequest(hexToUtf8(request.returnValues.identifier))
-        ? call("Governor", "getProposal", getAdminRequestId(hexToUtf8(request.returnValues.identifier)))
+      id: isAdminRequest(hexToUtf8(request.returnValues.identifier))
+        ? getAdminRequestId(hexToUtf8(request.returnValues.identifier))
         : null
     }));
   });
+  const newProposalEvents = useCacheEvents(
+    "Governor",
+    "NewProposal",
+    useMemo(() => ({ fromBlock: 0 }))
+  );
   const decodeRequestIndex = index => {
-    const proposal = adminProposals[index].proposal;
-    console.log(proposal);
-    let output =
-      hexToUtf8(resolvedEvents[index].returnValues.identifier) +
-      " (" +
-      proposal.transactions.length +
-      " transaction(s))";
-    for (let i = 0; i < proposal.transactions.length; i++) {
-      const transaction = proposal.transactions[i];
-      output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
+    const proposal = adminProposals[index];
+
+    if (newProposalEvents) {
+      const proposalEventWithId = newProposalEvents.find(p => p.returnValues.id.toString() === proposal.id.toString());
+      if (proposalEventWithId) {
+        const transactions = proposalEventWithId.returnValues.transactions;
+        let output =
+          hexToUtf8(resolvedEvents[index].returnValues.identifier) + " (" + transactions.length + " transaction(s))";
+        for (let i = 0; i < transactions.length; i++) {
+          const transaction = transactions[i];
+          output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
+        }
+        return output;
+      }
     }
-    return output;
   };
 
   /**
