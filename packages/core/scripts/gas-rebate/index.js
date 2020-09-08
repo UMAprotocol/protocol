@@ -34,11 +34,30 @@ const path = require("path");
 const Web3 = require("web3");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@umaprotocol/core");
+
+/** *****************************************
+ *
+ * SETUP
+ *
+ *******************************************/
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 const { toBN, toWei, fromWei, BN } = web3.utils;
-
 const SCALING_FACTOR = toBN(toWei("1"));
+const multibar = new cliProgress.MultiBar(
+  {
+    format: "{label} [{bar}] {percentage}% | ⏳ ETA: {eta}s | events parsed: {value}/{total}",
+    hideCursor: true,
+    clearOnComplete: false,
+    stopOnComplete: true
+  },
+  cliProgress.Presets.shades_classic
+);
 
+/** *****************************************
+ *
+ * HELPER MODULES
+ *
+ *******************************************/
 // Return the day that the timestamp falls into. Used to pull the daily average
 // gas/ETH price for a specific timestamp from an array of historical data from Etherscan Pro API.
 function getDataForTimestamp(dayData, timestamp) {
@@ -56,7 +75,7 @@ function getDataForTimestamp(dayData, timestamp) {
   // If we get here, then we will just use last day.
   return sortedDayData[sortedDayData.length - 1];
 }
-async function parseRevealEvents(committedVotes, revealedVotes, priceData, multibar, rebateOutput) {
+async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput }) {
   const revealVotersToRebate = {};
 
   const progressBarReveal = multibar.create(revealedVotes.length, 0, { label: "Reveal Events" });
@@ -192,7 +211,7 @@ async function parseRevealEvents(committedVotes, revealedVotes, priceData, multi
   };
 }
 
-async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutput) {
+async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
   const rewardedVotersToRebate = {};
 
   const progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
@@ -343,27 +362,29 @@ async function calculateRebate({
     // Parallelize fetching of event data:
     const parsePromises = [];
 
-    // Create new multi-bar CLI progress container
-    const multibar = new cliProgress.MultiBar(
-      {
-        format: "{label} [{bar}] {percentage}% | ⏳ ETA: {eta}s | events parsed: {value}/{total}",
-        hideCursor: true,
-        clearOnComplete: false,
-        stopOnComplete: true
-      },
-      cliProgress.Presets.shades_classic
-    );
-
     // Parse data for vote reveals to rebate.
     if (!claimOnly) {
-      parsePromises.push(parseRevealEvents(committedVotes, revealedVotes, priceData, multibar, rebateOutput));
+      parsePromises.push(
+        parseRevealEvents({
+          committedVotes,
+          revealedVotes,
+          priceData,
+          rebateOutput
+        })
+      );
     } else {
       parsePromises.push(null);
     }
 
     // Parse data for claimed rewards to rebate
     if (!revealOnly) {
-      parsePromises.push(parseClaimEvents(claimedRewards, priceData, multibar, rebateOutput));
+      parsePromises.push(
+        parseClaimEvents({
+          claimedRewards,
+          priceData,
+          rebateOutput
+        })
+      );
     } else {
       parsePromises.push(null);
     }
@@ -506,6 +527,11 @@ async function getHistoricalEthPrice(startBlock, endBlock) {
   }
 }
 
+/** *****************************************
+ *
+ * MAIN MODULES
+ *
+ *******************************************/
 // Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
