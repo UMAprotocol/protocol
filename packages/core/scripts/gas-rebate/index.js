@@ -32,9 +32,8 @@ const argv = require("minimist")(process.argv.slice(), {
 const fs = require("fs");
 const path = require("path");
 const Web3 = require("web3");
-const VotingAbi = require("../../build/contracts/Voting.json");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
-
+const { getAbi, getAddress } = require("@umaprotocol/core");
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 const { toBN, toWei, fromWei, BN } = web3.utils;
 
@@ -278,7 +277,7 @@ async function parseClaimEvents(claimedRewards, priceData, multibar, rebateOutpu
 
 async function calculateRebate({ rebateNumber, startBlock, endBlock, revealOnly, claimOnly }) {
   try {
-    const voting = new web3.eth.Contract(VotingAbi.abi, "0x9921810C710E7c3f7A7C6831e30929f19537a545");
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
 
     console.log("\n\n*=======================================*");
     console.log("*                                       *");
