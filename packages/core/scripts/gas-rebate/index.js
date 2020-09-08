@@ -445,7 +445,12 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
   const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
   if (!etherscanApiKey) {
     console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default gas price");
-    return null;
+    return [
+      {
+        timestamp: 0, // By setting timestamp to 0, this price will apply to all transactions
+        avgGwei: "100"
+      }
+    ];
   } else {
     const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
     const startTimeString = moment.unix(startTime).format("YYYY-MM-DD");
@@ -475,7 +480,12 @@ async function getHistoricalEthPrice(startBlock, endBlock) {
   const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
   if (!etherscanApiKey) {
     console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default ETH price");
-    return null;
+    return [
+      {
+        timestamp: 0, // By setting timestamp to 0, this price will apply to all transactions
+        avgPx: "350"
+      }
+    ];
   } else {
     const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
     const startTimeString = moment.unix(startTime).format("YYYY-MM-DD");
