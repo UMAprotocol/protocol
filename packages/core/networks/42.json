@@ -12,14 +12,6 @@
     "address": "0x489Bf230d4Ab5c2083556E394a28276C22c3B580"
   },
   {
-    "contractName": "IdentifierWhitelist",
-    "address": "0x2Fe2C263Be8FD45971934EB2421Fc59761dda343"
-  },
-  {
-    "contractName": "Voting",
-    "address": "0x24BE89E098d6F65A924142d93013A84281F6296B"
-  },
-  {
     "contractName": "Registry",
     "address": "0x7b1c04D2826B140779e2B97d5783AF05cf00Fbab"
   },
@@ -62,5 +54,13 @@
   {
     "contractName": "ExpiringMultiPartyCreator",
     "address": "0x8f6e999530787492c62CfA5A8C937A4Be5886A13"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xeF9c374b7976941fCAf5e501eaB531E430463fC6"
+  },
+  {
+    "contractName": "Voting",
+    "address": "0x10E241725178991417E65fadE965Ca1F07852283"
   }
 ]

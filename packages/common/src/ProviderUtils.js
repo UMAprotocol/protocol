@@ -3,7 +3,7 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 const Web3 = require("web3");
-const { getTruffleConfig, nodeUrl } = require("./TruffleConfig");
+const { getTruffleConfig, getNodeUrl } = require("./TruffleConfig");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 const Url = require("url");
 
@@ -54,7 +54,7 @@ function getWeb3() {
   }
 
   // Create basic web3 provider with no wallet connection based on the url alone.
-  const basicProvider = createBasicProvider(nodeUrl);
+  const basicProvider = createBasicProvider(getNodeUrl());
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
   // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. Errors if no argv.network.

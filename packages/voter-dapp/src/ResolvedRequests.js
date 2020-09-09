@@ -13,6 +13,8 @@ import {
   Typography,
   Dialog,
   DialogTitle,
+  DialogContent,
+  DialogContentText,
   List,
   ListItem,
   ListItemText
@@ -22,6 +24,8 @@ import { useTableStyles } from "./Styles.js";
 import {
   formatDate,
   translateAdminVote,
+  getAdminRequestId,
+  decodeTransaction,
   isAdminRequest,
   MAX_UINT_VAL,
   IDENTIFIER_BLACKLIST,
@@ -43,7 +47,12 @@ function ResolvedRequests({ votingAccount }) {
 
   const [showAllResolvedRequests, setShowAllResolvedRequests] = useState(false);
   const [openVoteStatsDialog, setOpenVoteStatsDialog] = useState(false);
+  const [openExplainAdminDialog, setOpenExplainAdminDialog] = useState(false);
   const [voteStatsDialogData, setVoteStatDialogData] = useState(null);
+  const [explainAdminDialogData, setExplainAdminDialogData] = useState(null);
+  const [showSpamRequests, setShowSpamRequests] = useState(false);
+  const [hasSpamRequests, setHasSpamRequests] = useState(false);
+  const [resolvedEvents, setResolvedEvents] = useState([]);
 
   const getVoteStats = resolutionData => {
     if (resolutionData) {
@@ -58,15 +67,57 @@ function ResolvedRequests({ votingAccount }) {
     }
   };
 
+  /**
+   * Decoding Admin Proposals
+   */
+  const handleClickExplain = index => {
+    setOpenExplainAdminDialog(true);
+    setExplainAdminDialogData(index);
+  };
+  const adminProposals = useCacheCall(["Governor"], call => {
+    return resolvedEvents.map(request => ({
+      id: isAdminRequest(hexToUtf8(request.returnValues.identifier))
+        ? getAdminRequestId(hexToUtf8(request.returnValues.identifier))
+        : null
+    }));
+  });
+  const newProposalEvents = useCacheEvents(
+    "Governor",
+    "NewProposal",
+    useMemo(() => ({ fromBlock: 0 }))
+  );
+  const decodeRequestIndex = index => {
+    const proposal = adminProposals[index];
+
+    if (newProposalEvents) {
+      const proposalEventWithId = newProposalEvents.find(p => p.returnValues.id.toString() === proposal.id.toString());
+      if (proposalEventWithId) {
+        const transactions = proposalEventWithId.returnValues.transactions;
+        let output =
+          hexToUtf8(resolvedEvents[index].returnValues.identifier) + " (" + transactions.length + " transaction(s))";
+        for (let i = 0; i < transactions.length; i++) {
+          const transaction = transactions[i];
+          output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
+        }
+        return output;
+      }
+    }
+  };
+
+  /**
+   * Displaying vote statistics via graphQL API
+   */
   const handleClickStats = voteStats => {
     setOpenVoteStatsDialog(true);
     setVoteStatDialogData(voteStats);
   };
 
-  const handleCloseStats = () => {
+  const handleCloseDialogs = () => {
     setOpenVoteStatsDialog(false);
+    setOpenExplainAdminDialog(false);
   };
 
+  // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
   const allResolvedEvents =
     useCacheEvents(
       "Voting",
@@ -77,11 +128,6 @@ function ResolvedRequests({ votingAccount }) {
         return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
-
-  // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
-  const [showSpamRequests, setShowSpamRequests] = useState(false);
-  const [hasSpamRequests, setHasSpamRequests] = useState(false);
-  const [resolvedEvents, setResolvedEvents] = useState([]);
   useEffect(() => {
     setHasSpamRequests(false);
 
@@ -146,7 +192,17 @@ function ResolvedRequests({ votingAccount }) {
       <Typography variant="h6" component="h6">
         Resolved Requests
       </Typography>
-      <Dialog onClose={handleCloseStats} open={openVoteStatsDialog}>
+      <Dialog onClose={handleCloseDialogs} open={openExplainAdminDialog}>
+        <DialogTitle>Admin Proposal</DialogTitle>
+        {explainAdminDialogData && (
+          <DialogContent>
+            <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
+              {decodeRequestIndex(explainAdminDialogData)}
+            </DialogContentText>
+          </DialogContent>
+        )}
+      </Dialog>
+      <Dialog onClose={handleCloseDialogs} open={openVoteStatsDialog}>
         <DialogTitle>Voting Statistics</DialogTitle>
         {voteStatsDialogData && (
           <List>
@@ -247,10 +303,22 @@ function ResolvedRequests({ votingAccount }) {
 
             return (
               <TableRow key={index}>
-                <TableCell>{hexToUtf8(resolutionData.identifier)}</TableCell>
+                <TableCell>
+                  {hexToUtf8(resolutionData.identifier)}
+                  {isAdminVote && (
+                    <Button
+                      variant="contained"
+                      style={{ marginLeft: "10px" }}
+                      color="primary"
+                      onClick={() => handleClickExplain(index)}
+                    >
+                      Explain
+                    </Button>
+                  )}
+                </TableCell>
                 <TableCell>{formatDate(resolutionData.time, web3)}</TableCell>
                 <TableCell>Resolved</TableCell>
-                <TableCell>{isAdminVote ? translateAdminVote(userVote) : userVote}</TableCell>
+                <TableCell>{isAdminVote && userVote !== "No Vote" ? translateAdminVote(userVote) : userVote}</TableCell>
                 <TableCell>
                   <Button color="primary" onClick={() => handleClickStats(voteStats)} variant="contained">
                     Display

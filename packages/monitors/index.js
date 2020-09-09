@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 require("dotenv").config();
 const retry = require("async-retry");
 
@@ -41,7 +43,7 @@ const { getWeb3 } = require("@umaprotocol/common");
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
  * @return None or throws an Error.
  */
-async function run(
+async function run({
   logger,
   web3,
   empAddress,
@@ -53,7 +55,7 @@ async function run(
   monitorConfig,
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig
-) {
+}) {
   try {
     const { hexToUtf8 } = web3.utils;
 
@@ -102,15 +104,24 @@ async function run(
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
-    const [collateralCurrencySymbol, syntheticCurrencySymbol] = await Promise.all([
+    const [
+      collateralCurrencySymbol,
+      syntheticCurrencySymbol,
+      collateralCurrencyDecimals,
+      syntheticCurrencyDecimals
+    ] = await Promise.all([
       collateralToken.methods.symbol().call(),
-      syntheticToken.methods.symbol().call()
+      syntheticToken.methods.symbol().call(),
+      collateralToken.methods.decimals().call(),
+      syntheticToken.methods.decimals().call()
     ]);
 
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
       collateralCurrencySymbol,
       syntheticCurrencySymbol,
+      collateralCurrencyDecimals,
+      syntheticCurrencyDecimals,
       priceIdentifier: hexToUtf8(priceIdentifier),
       networkId
     };
@@ -131,14 +142,14 @@ async function run(
       endingBlock
     );
 
-    const contractMonitor = new ContractMonitor(
+    const contractMonitor = new ContractMonitor({
       logger,
-      empEventClient,
-      medianizerPriceFeed,
-      monitorConfig,
+      expiringMultiPartyEventClient: empEventClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
       empProps,
       voting
-    );
+    });
 
     // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
     const tokenBalanceClient = new TokenBalanceClient(
@@ -149,22 +160,33 @@ async function run(
       syntheticTokenAddress
     );
 
-    const balanceMonitor = new BalanceMonitor(logger, tokenBalanceClient, monitorConfig, empProps);
+    const balanceMonitor = new BalanceMonitor({
+      logger,
+      tokenBalanceClient,
+      config: monitorConfig,
+      empProps
+    });
 
     // 3. Collateralization Ratio monitor.
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
 
-    const crMonitor = new CRMonitor(logger, empClient, medianizerPriceFeed, monitorConfig, empProps);
+    const crMonitor = new CRMonitor({
+      logger,
+      expiringMultiPartyClient: empClient,
+      priceFeed: medianizerPriceFeed,
+      config: monitorConfig,
+      empProps
+    });
 
     // 4. Synthetic Peg Monitor.
-    const syntheticPegMonitor = new SyntheticPegMonitor(
+    const syntheticPegMonitor = new SyntheticPegMonitor({
       logger,
       web3,
-      tokenPriceFeed,
+      uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
-      monitorConfig,
+      config: monitorConfig,
       empProps
-    );
+    });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     while (true) {
@@ -296,7 +318,7 @@ async function Poll(callback) {
         : null
     };
 
-    await run(Logger, getWeb3(), ...Object.values(executionParameters));
+    await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
   } catch (error) {
     Logger.error({
       at: "Monitor#index",

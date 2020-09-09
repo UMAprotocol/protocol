@@ -105,8 +105,6 @@ jobs:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -p 1235
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -114,6 +112,18 @@ jobs:
       - run:
           name: Run tests
           command: yarn run test
+  test_fork:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/84842078b09946638c03157f83405213 -p 9545
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: yarn run test-fork
   coverage:
     docker:
       - image: circleci/node:lts
@@ -151,6 +161,9 @@ jobs:
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Pandoc
           command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
@@ -194,6 +207,10 @@ workflows:
           requires:
             - checkout_and_install
       - test:
+          context: api_keys
+          requires:
+            - build
+      - test_fork:
           context: api_keys
           requires:
             - build

@@ -7,10 +7,11 @@ class BalancerPriceFeed extends PriceFeedInterface {
   constructor(logger, web3, getTime, abi, address, tokenIn, tokenOut, lookback) {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
-    assert(lookback, "BalancerPriceFeed requires lookback");
+    assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
     super();
     this.logger = logger;
     this.web3 = web3;
+    this.toBN = web3.utils.toBN;
     this.getTime = getTime;
 
     this.contract = new web3.eth.Contract(abi, address);
@@ -19,13 +20,14 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.tokenIn = tokenIn;
     this.tokenOut = tokenOut;
     this.lookback = lookback;
+    this.getLatestBlock = number => web3.eth.getBlock(number >= 0 ? number : "latest");
     // Provide a getblock function which returns the latest value if no number provided.
-    this.blockHistory = BlockHistory(number => web3.eth.getBlock(number >= 0 ? number : "latest"));
+    this.blockHistory = BlockHistory(this.getLatestBlock);
 
     // Add a callback to get price, error can be thrown from web3 disconection or maybe something else
     // which affects the update call.
     this.priceHistory = PriceHistory(async number => {
-      return this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number);
+      return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
     });
   }
   getHistoricalPrice(time) {
@@ -46,9 +48,18 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
   async update() {
     this.lastUpdateTime = await this.getTime();
-    // its possible provider throws error getting block history
-    // we are going to just ignore these errors...
-    const blocks = await this.blockHistory.update(this.lookback, this.lastUpdateTime);
+    let blocks = [];
+    // disabled lookback by setting it to 0
+    if (this.lookback == 0) {
+      // handle no lookback, we just want latest block
+      const block = await this.getLatestBlock();
+      this.blockHistory.insert(block);
+      blocks = this.blockHistory.listBlocks();
+    } else {
+      // handle historical lookback. Have to be careful your lookback time gives a big enough
+      // window to find a single block, otherwise you will have errors.
+      blocks = await this.blockHistory.update(this.lookback, this.lastUpdateTime);
+    }
     await Promise.all(blocks.map(this.priceHistory.update));
   }
 }
