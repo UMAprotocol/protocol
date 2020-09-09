@@ -52,7 +52,7 @@
   "scripts": {
     "test": "yarn mocha-test && yarn buidler-test",
     "buidler-test": "buidler test",
-    "mocha-test": "mocha mocha-tests --recursive",
+    "mocha-test": "mocha mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses",
