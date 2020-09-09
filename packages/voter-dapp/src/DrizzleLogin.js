@@ -8,6 +8,11 @@ import DrizzleInit from "./DrizzleInit.js";
 function DrizzleLogin(props) {
   const [isButtonDisabled, setButtonDisabled] = useState(false);
   const [drizzle, setDrizzle] = useState(null);
+  const [hasMetamask, setHasMetamask] = useState(false);
+
+  const getMetamask = () => {
+    window.open("https://metamask.io/", "_blank");
+  };
 
   const loginFn = () => {
     // Disable the button immediately after pressing.
@@ -38,10 +43,18 @@ function DrizzleLogin(props) {
     </Button>
   );
 
+  let getMetamaskButtonJsx = (
+    <Button variant="contained" color="secondary" onClick={getMetamask}>
+      Get Metamask
+    </Button>
+  );
+
   // This useEffect will only run on the first render.
   // It's a hack to detect whether the user has previously connected. If this is true, we should intantly initiate the
   // login flow since metamask will not require them to press the connect button.
   useEffect(() => {
+    if (window.ethereum == null) return;
+    setHasMetamask(true);
     if (window.ethereum.selectedAddress) {
       loginFn();
     }
@@ -61,7 +74,11 @@ function DrizzleLogin(props) {
       </div>
     );
   } else {
-    return <div style={divStyle}>{buttonJsx}</div>;
+    if (hasMetamask) {
+      return <div style={divStyle}>{buttonJsx}</div>;
+    } else {
+      return <div style={divStyle}>{getMetamaskButtonJsx}</div>;
+    }
   }
 }
 
