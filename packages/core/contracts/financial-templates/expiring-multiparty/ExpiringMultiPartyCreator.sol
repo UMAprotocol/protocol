@@ -38,6 +38,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned minSponsorTokens;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
+        address beneficiary;
     }
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
@@ -108,5 +109,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
+        constructorParams.beneficiary = params.beneficiary;
     }
 }

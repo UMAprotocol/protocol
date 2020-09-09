@@ -78,6 +78,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
+    // The beneficiary of any excess tokens added to the contract.
+    address public beneficiary;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -157,7 +160,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         string memory _syntheticSymbol,
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
-        address _timerAddress
+        address _timerAddress,
+        address _beneficiary
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -168,6 +172,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
+        beneficiary = _beneficiary;
     }
 
     /****************************************
@@ -602,6 +607,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function remargin() external override onlyPreExpiration() nonReentrant() {
         return;
+    }
+
+    function trimExcess(IERC20 token) external fees() nonReentrant() {
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+        if (address(token) == address(collateralCurrency)) {
+            // If it is the collateral currency, send only the amount that the contract is not tracking.
+            // Note: this could be due to rounding error or balance-chainging tokens, like aTokens.
+            token.safeTransfer(beneficiary, balance.sub(pfc()).rawValue);
+        } else {
+            // If it's not the collateral currency, send the entire balance.
+            token.safeTransfer(beneficiary, balance.rawValue);
+        }
     }
 
     /**
