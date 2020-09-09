@@ -225,9 +225,9 @@ workflows:
           requires:
             - dapp_build
             - test
-          # filters:
-          #   branches:
-          #     only: master
+          filters:
+            branches:
+              only: master
       - publish:
           context: api_keys
           requires:
