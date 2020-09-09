@@ -50,8 +50,8 @@
     "/migrations/*.js"
   ],
   "scripts": {
-    "test": "yarn mocha-test && yarn evm-test",
-    "evm-test": "buidler test",
+    "test": "yarn mocha-test && yarn buidler-test",
+    "buidler-test": "buidler test",
     "mocha-test": "mocha mocha-tests --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
