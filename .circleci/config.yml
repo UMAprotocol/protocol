@@ -162,6 +162,9 @@ jobs:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
+          name: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
+      - run:
           name: Install Pandoc
           command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
       - run:
@@ -222,9 +225,9 @@ workflows:
           requires:
             - dapp_build
             - test
-          filters:
-            branches:
-              only: master
+          # filters:
+          #   branches:
+          #     only: master
       - publish:
           context: api_keys
           requires:
