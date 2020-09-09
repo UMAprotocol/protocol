@@ -58,10 +58,18 @@ contract("Price Feed Utils", async function(accounts) {
       // this should return the next block higher than the timestamp
       assert.equal(block.timestamp, Math.ceil(time));
     });
+    it("pruneByTimestamp", async function() {
+      const blockHistory = BlockHistory(getBlock);
+      const priceHistory = PriceHistory(getPrice);
+      await blockHistory.update(blockCount, blockCount);
+      blockHistory.pruneByTimestamp(5);
+      const result = blockHistory.listBlocks();
+      assert.equal(result.length, blockCount - 5);
+    });
   });
   describe("PriceHistory", function() {
     it("priceHistory.update", async function() {
-      const block = blockHistory.getClosestBefore(0);
+      const block = blockHistory.getClosestBefore(5);
       const result = await priceHistory.update(block);
       assert.equal(result, await getPrice(block.number));
     });

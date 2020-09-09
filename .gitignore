@@ -27,3 +27,6 @@ app.yaml
 # daily reporter temp files.
 response.json
 *daily-report.txt
+
+# Gas rebate temp files
+debug

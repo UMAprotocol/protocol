@@ -17,7 +17,16 @@ class Disputer {
    *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, votingContract, gasEstimator, priceFeed, account, empProps, config) {
+  constructor({
+    logger,
+    expiringMultiPartyClient,
+    votingContract,
+    gasEstimator,
+    priceFeed,
+    account,
+    empProps,
+    config
+  }) {
     this.logger = logger;
     this.account = account;
 
@@ -255,7 +264,7 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: this.fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig
       });
 
@@ -279,7 +288,7 @@ class Disputer {
 
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
-      let resolvedPrice = await this.votingContract.getPrice(this.empIdentifier, requestTimestamp, {
+      let resolvedPrice = await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
         from: this.empContract.options.address
       });
 
@@ -298,7 +307,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: this.fromWei(withdrawAmount.rawValue),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });

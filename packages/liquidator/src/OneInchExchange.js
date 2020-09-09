@@ -79,7 +79,7 @@ class OneInchExchange {
     // Need to approve ERC20 tokens
     if (fromToken !== ALTERNATIVE_ETH_ADDRESS) {
       const erc20 = new web3.eth.Contract(this.erc20TokenAbi, fromToken);
-      await erc20.methods.approve(this.oneSplitAddress, amountWei).call({
+      await erc20.methods.approve(this.oneSplitAddress, amountWei).send({
         from: options.from,
         gasPrice
       });

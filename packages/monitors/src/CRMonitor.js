@@ -1,6 +1,7 @@
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 
 const {
+  ConvertDecimals,
   createFormatFunction,
   createEtherscanLinkMarkdown,
   createObjectFromDefaultProps
@@ -23,10 +24,12 @@ class CRMonitor {
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
+            collateralCurrencyDecimals: 18,
+            syntheticCurrencyDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, expiringMultiPartyClient, priceFeed, config, empProps) {
+  constructor({ logger, expiringMultiPartyClient, priceFeed, config, empProps }) {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;
@@ -38,7 +41,20 @@ class CRMonitor {
     // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
     this.empProps = empProps;
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    this.convertCollateralToSynthetic = ConvertDecimals(
+      empProps.collateralCurrencyDecimals,
+      empProps.syntheticCurrencyDecimals,
+      this.web3
+    );
+
+    this.formatDecimalStringCollateral = createFormatFunction(
+      this.web3,
+      2,
+      4,
+      false,
+      empProps.collateralCurrencyDecimals
+    );
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Wallets to monitor collateralization ratio.
     const defaultConfig = {
@@ -112,6 +128,7 @@ class CRMonitor {
       }
 
       const collateral = positionInformation.amountCollateral;
+      const withdrawalRequestAmount = positionInformation.withdrawalRequestAmount;
       const tokensOutstanding = positionInformation.numTokens;
 
       // If the values for collateral or price have yet to resolve, dont push a notification.
@@ -119,8 +136,13 @@ class CRMonitor {
         continue;
       }
 
+      // Subtract requested withdrawal amount from position
+      const backingCollateral = this.toBN(collateral)
+        .sub(this.toBN(withdrawalRequestAmount))
+        .toString();
+
       // If CR = null then there are no tokens outstanding and so dont push a notification.
-      const positionCR = this._calculatePositionCRPercent(collateral, tokensOutstanding, price);
+      const positionCR = this._calculatePositionCRPercent(backingCollateral, tokensOutstanding, price);
       if (positionCR == null) {
         continue;
       }
@@ -129,7 +151,7 @@ class CRMonitor {
       // threshold then push the notification.
       if (this._ltThreshold(positionCR, this.toWei(wallet.crAlert.toString()))) {
         const liquidationPrice = this._calculatePriceForCR(
-          collateral,
+          backingCollateral,
           tokensOutstanding,
           this.empClient.collateralRequirement
         );
@@ -151,9 +173,9 @@ class CRMonitor {
           this.formatDecimalString(price) +
           ". The collateralization requirement is " +
           this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
-          "%. If the price increases to " +
+          "%. Liquidation price: " +
           this.formatDecimalString(liquidationPrice) +
-          ", the position can be liquidated.";
+          ".";
 
         this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
@@ -178,7 +200,7 @@ class CRMonitor {
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = collateral / (tokensOutstanding * price)
+  // This is cr = (collateral-withdrawalRequestAmount) / (tokensOutstanding * price)
   _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
     if (collateral == 0) {
       return 0;
@@ -186,17 +208,16 @@ class CRMonitor {
     if (tokensOutstanding == 0) {
       return null;
     }
-    return this.toBN(collateral)
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
       .mul(this.toBN(this.toWei("1")))
       .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
   }
 
   _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    const fixedPointScaling = this.toBN(this.toWei("1"));
-    return this.toBN(collateral)
-      .mul(fixedPointScaling)
-      .mul(fixedPointScaling)
+    return this.toBN(this.convertCollateralToSynthetic(collateral))
+      .mul(this.toBN(this.toWei("1")))
+      .mul(this.toBN(this.toWei("1")))
       .div(this.toBN(tokensOutstanding))
       .div(this.toBN(positionCR));
   }

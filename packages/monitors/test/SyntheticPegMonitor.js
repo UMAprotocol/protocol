@@ -51,14 +51,14 @@ contract("SyntheticPegMonitor", function() {
         deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
       };
 
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
         web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        monitorConfig,
+        uniswapPriceFeed: uniswapPriceFeedMock,
+        medianizerPriceFeed: medianizerPriceFeedMock,
+        config: monitorConfig,
         empProps
-      );
+      });
     });
 
     it("Calculate percentage error returns expected values", async function() {
@@ -142,14 +142,14 @@ contract("SyntheticPegMonitor", function() {
         deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price deviation.
       };
 
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
         web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        monitorConfig,
+        uniswapPriceFeed: uniswapPriceFeedMock,
+        medianizerPriceFeed: medianizerPriceFeedMock,
+        config: monitorConfig,
         empProps
-      );
+      });
 
       await syntheticPegMonitor.checkPriceDeviation();
       assert.equal(spy.callCount, 0); // There should be no messages sent.
@@ -173,14 +173,14 @@ contract("SyntheticPegMonitor", function() {
         syntheticVolatilityAlertThreshold: 0.3
       };
 
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
         web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        monitorConfig,
+        uniswapPriceFeed: uniswapPriceFeedMock,
+        medianizerPriceFeed: medianizerPriceFeedMock,
+        config: monitorConfig,
         empProps
-      );
+      });
     });
 
     it("Calculate price volatility returns expected values", async function() {
@@ -350,14 +350,14 @@ contract("SyntheticPegMonitor", function() {
         syntheticVolatilityAlertThreshold: 0
       };
 
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
         web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        monitorConfig,
+        uniswapPriceFeed: uniswapPriceFeedMock,
+        medianizerPriceFeed: medianizerPriceFeedMock,
+        config: monitorConfig,
         empProps
-      );
+      });
 
       // Inject prices into pricefeed.
       const historicalPrices = [
@@ -394,14 +394,14 @@ contract("SyntheticPegMonitor", function() {
           pegVolatilityAlertThreshold: 0,
           syntheticVolatilityAlertThreshold: 0
         };
-        syntheticPegMonitor = new SyntheticPegMonitor(
-          spyLogger,
+        syntheticPegMonitor = new SyntheticPegMonitor({
+          logger: spyLogger,
           web3,
-          uniswapPriceFeedMock,
-          medianizerPriceFeedMock,
-          invalidConfig1,
+          uniswapPriceFeed: uniswapPriceFeedMock,
+          medianizerPriceFeed: medianizerPriceFeedMock,
+          config: invalidConfig1,
           empProps
-        );
+        });
         errorThrown1 = false;
       } catch (err) {
         errorThrown1 = true;
@@ -417,14 +417,14 @@ contract("SyntheticPegMonitor", function() {
           pegVolatilityAlertThreshold: null,
           syntheticVolatilityAlertThreshold: 0
         };
-        syntheticPegMonitor = new SyntheticPegMonitor(
-          spyLogger,
+        syntheticPegMonitor = new SyntheticPegMonitor({
+          logger: spyLogger,
           web3,
-          uniswapPriceFeedMock,
-          medianizerPriceFeedMock,
-          invalidConfig2,
+          uniswapPriceFeed: uniswapPriceFeedMock,
+          medianizerPriceFeed: medianizerPriceFeedMock,
+          config: invalidConfig2,
           empProps
-        );
+        });
         errorThrown2 = false;
       } catch (err) {
         errorThrown2 = true;
@@ -436,14 +436,14 @@ contract("SyntheticPegMonitor", function() {
       try {
         // Create an invalid config. A valid config expects two arrays of addresses.
         const emptyConfig = {};
-        syntheticPegMonitor = new SyntheticPegMonitor(
-          spyLogger,
+        syntheticPegMonitor = new SyntheticPegMonitor({
+          logger: spyLogger,
           web3,
-          uniswapPriceFeedMock,
-          medianizerPriceFeedMock,
-          emptyConfig,
+          uniswapPriceFeed: uniswapPriceFeedMock,
+          medianizerPriceFeed: medianizerPriceFeedMock,
+          config: emptyConfig,
           empProps
-        );
+        });
         await syntheticPegMonitor.checkPriceDeviation();
         await syntheticPegMonitor.checkPegVolatility();
         await syntheticPegMonitor.checkSyntheticVolatility();
@@ -458,14 +458,14 @@ contract("SyntheticPegMonitor", function() {
       try {
         // Create an invalid log level override. This should be rejected.
         const invalidConfig = { logOverrides: { deviation: "not a valid log level" } };
-        syntheticPegMonitor = new SyntheticPegMonitor(
-          spyLogger,
+        syntheticPegMonitor = new SyntheticPegMonitor({
+          logger: spyLogger,
           web3,
-          uniswapPriceFeedMock,
-          medianizerPriceFeedMock,
-          invalidConfig,
+          uniswapPriceFeed: uniswapPriceFeedMock,
+          medianizerPriceFeed: medianizerPriceFeedMock,
+          config: invalidConfig,
           empProps
-        );
+        });
 
         errorThrown = false;
       } catch (err) {
@@ -475,14 +475,14 @@ contract("SyntheticPegMonitor", function() {
     });
     it("Overriding threshold correctly effects generated logs", async function() {
       const alertOverrideConfig = { logOverrides: { deviation: "error" } };
-      syntheticPegMonitor = new SyntheticPegMonitor(
-        spyLogger,
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
         web3,
-        uniswapPriceFeedMock,
-        medianizerPriceFeedMock,
-        alertOverrideConfig,
+        uniswapPriceFeed: uniswapPriceFeedMock,
+        medianizerPriceFeed: medianizerPriceFeedMock,
+        config: alertOverrideConfig,
         empProps
-      );
+      });
 
       // Price deviation above the threshold of 20% should send a message.
       medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));

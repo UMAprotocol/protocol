@@ -68,4 +68,26 @@ contract("BalancerPriceFeed.js", async function(accounts) {
       assert.equal(balancerPriceFeed.getHistoricalPrice(time), price);
     }
   });
+  it("update", async function() {
+    // should not throw
+    await balancerPriceFeed.update();
+  });
+  it("test 0 lookback", async function() {
+    let balancerPriceFeed = new BalancerPriceFeed(
+      dummyLogger,
+      web3,
+      () => endTime,
+      Balancer.abi,
+      balancerMock.address,
+      // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+      accounts[1],
+      accounts[2],
+      0
+    );
+    // should not crash
+    await balancerPriceFeed.update();
+    const result = balancerPriceFeed.getCurrentPrice();
+    // see that a price exists.
+    assert.exists(result);
+  });
 });

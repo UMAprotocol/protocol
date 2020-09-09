@@ -9,6 +9,7 @@
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
 require("dotenv").config();
+const Promise = require("bluebird");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
@@ -130,17 +131,19 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
   const bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
 
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
-  let promiseArray = [];
-  for (shareHolder of Object.keys(shareHolderPayout)) {
-    promiseArray.push(bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber));
-  }
-  const balanceResults = await Promise.allSettled(promiseArray);
+  const balanceResults = await Promise.map(
+    Object.keys(shareHolderPayout),
+    shareHolder => bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
+    {
+      concurrency: 50 // Keep infura happy about the number of incoming requests.
+    }
+  );
   // For each balance result, calculate their associated payment addition.
   balanceResults.forEach(function(balanceResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResult.value === "0") return;
+    if (balanceResult === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
-    const shareHolderBalanceAtSnapshot = toBN(balanceResult.value);
+    const shareHolderBalanceAtSnapshot = toBN(balanceResult);
     const shareHolderFractionAtSnapshot = toBN(toWei("1"))
       .mul(shareHolderBalanceAtSnapshot)
       .div(bptSupplyAtSnapshot);

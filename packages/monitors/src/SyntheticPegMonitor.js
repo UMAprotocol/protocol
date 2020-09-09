@@ -23,7 +23,7 @@ class SyntheticPegMonitor {
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps) {
+  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps }) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
