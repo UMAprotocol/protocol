@@ -672,9 +672,13 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Start a withdrawal request to show that it can be canceled after expiry.
+    await pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor });
 
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() - 1);
@@ -687,7 +691,10 @@ contract("PricelessPositionManager", function(accounts) {
 
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
-    // All method calls should revert.
+    // All method calls should revert except for redeem and cancel withdraw request.
+
+    // Cancel the withdraw request before attempting to call other methods. This should be allowed post-expiry.
+    await pricelessPositionManager.cancelWithdrawal({ from: sponsor });
     assert(
       await didContractThrow(
         pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor })
@@ -698,8 +705,10 @@ contract("PricelessPositionManager", function(accounts) {
       await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
     );
     assert(await didContractThrow(pricelessPositionManager.requestTransferPosition({ from: sponsor })));
-    assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+
+    // Redemption should be possible post expiry.
+    await pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor });
   });
 
   it("Settlement post expiry", async function() {
@@ -795,13 +804,33 @@ contract("PricelessPositionManager", function(accounts) {
       expectedSponsorCollateralSynthetic
     );
 
-    // Check return value.
+    // Redeem and settleExpired should give the same result as just settleExpired.
     const settleExpired = pricelessPositionManager.settleExpired;
-    const redeemedAmount = await settleExpired.call({ from: sponsor });
-    assert.equal(redeemedAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
-    // Execute the settlement and check balances.
+    // Get the amount as if we only settleExpired.
+    const settleExpiredOnlyAmount = await settleExpired.call({ from: sponsor });
+
+    // Partially redeem and partially settleExpired.
+    const partialRedemptionAmount = await pricelessPositionManager.redeem.call(
+      { rawValue: toWei("1") },
+      { from: sponsor }
+    );
+    await pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor });
+    const partialSettleExpiredAmount = await settleExpired.call({ from: sponsor });
     settleExpiredResult = await settleExpired({ from: sponsor });
+
+    // Compare the two paths' results.
+    assert.equal(
+      settleExpiredOnlyAmount.toString(),
+      toBN(partialRedemptionAmount.toString())
+        .add(toBN(partialSettleExpiredAmount.toString()))
+        .toString()
+    );
+
+    // Compare the amount to the expected return value.
+    assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
+
+    // Check balances.
     const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
     const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
     assert.equal(
