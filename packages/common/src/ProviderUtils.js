@@ -1,4 +1,4 @@
-// This client exports a web3 instance which mimics that created by the default truffle config. It exclusively uses
+// This client exports a web3 instance which mimics that created by the default Truffle config. It exclusively uses
 // web3 providers to take advantage of the flexibility of providing custom configs to tailor the desired options. The network
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
