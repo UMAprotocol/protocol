@@ -279,8 +279,8 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     await cryptoWatchPriceFeed.update();
 
     assert.deepStrictEqual(networker.getJsonInputs, [
-      "https://api.cryptowat.ch/markets/test-exchange/test-pair/price?apiKey=test-api-key",
-      "https://api.cryptowat.ch/markets/test-exchange/test-pair/ohlc?after=1588376460&periods=60&apiKey=test-api-key"
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/price?apikey=test-api-key",
+      "https://api.cryptowat.ch/markets/test-exchange/test-pair/ohlc?after=1588376460&periods=60&apikey=test-api-key"
     ]);
   });
 
