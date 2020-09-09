@@ -295,13 +295,17 @@ contract Liquidatable is PricelessPositionManager {
             })
         );
 
-        // If this liquidation is a subsequent liquidation on the position, and the liquidation size is larger than
-        // minSponsorTokens, then re-set the liveness. This enables a liquidation against a withdraw request to be
-        // "dragged out" if the position is very large.
+        // If this liquidation is a subsequent liquidation on the position, and the liquidation size is "large enough",
+        // then re-set the liveness. This enables a liquidation against a withdraw request to be
+        // "dragged out" if the position is very large and liquidators need time to gather funds.
+
+        // We arbitrarily set the "large enough" threshold to `minSponsorTokens` because it is the only parameter
+        // denominated in token currency units and we can avoid adding another parameter.
+        FixedPoint.Unsigned memory liquidationResetAmountThreshold = minSponsorTokens;
         if (
             positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // this is a subsequent liquidation.
             positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // liveness has not passed yet.
-            maxTokensToLiquidate.isGreaterThanOrEqual(minSponsorTokens) // above the minimum threshold.
+            maxTokensToLiquidate.isGreaterThanOrEqual(liquidationResetAmountThreshold) // liquidation size is "large enough".
         ) {
             positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
         }
