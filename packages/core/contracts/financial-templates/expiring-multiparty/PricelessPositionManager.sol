@@ -414,7 +414,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
                 _getFeeAdjustedCollateral(positionData.rawCollateral).add(collateralAmount),
                 positionData.tokensOutstanding.add(numTokens)
             ) || _checkCollateralization(collateralAmount, numTokens)),
-            "New CR below GCR"
+            "Insufficient collateral"
         );
 
         require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
