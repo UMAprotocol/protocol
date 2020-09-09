@@ -382,7 +382,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external onlyPreExpiration() nonReentrant() {
+    function cancelWithdrawal() external nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
@@ -448,7 +448,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function redeem(FixedPoint.Unsigned memory numTokens)
         public
-        onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
