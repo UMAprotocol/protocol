@@ -47,7 +47,10 @@ function getTruffleContract(contractName, web3) {
   const resolvedWeb3 = web3 || getWeb3();
 
   const artifact = getArtifact(contractName);
-  assert(artifact, `Artifact not found for ${contractName}`);
+
+  if (!artifact) {
+    return null;
+  }
 
   const Contract = truffleContract(artifact);
   Contract.setProvider(resolvedWeb3.currentProvider);
