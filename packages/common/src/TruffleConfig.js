@@ -14,7 +14,6 @@ const { PublicNetworks } = require("./PublicNetworks.js");
 const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
 const { isPublicNetwork } = require("./MigrationUtils");
 const Web3 = require("web3");
-const argv = require("minimist")(process.argv.slice(), {});
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions.

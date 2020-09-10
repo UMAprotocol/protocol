@@ -5,13 +5,19 @@ const assert = require("chai").assert;
 describe("index.js", function() {
   it("Read Contract ABI", async function() {
     assert.isNotNull(getAbi("Voting"));
-    assert.isNull(getAbi("Nonsense"));
+
+    // Bad contract name.
+    assert.throws(() => getAbi("Nonsense"));
   });
 
   it("Read Contract Address", function() {
     assert.isNotNull(getAddress("Voting", 1));
-    assert.isNull(getAddress("Nonsense", 1));
-    assert.isNull(getAddress("Voting", 41));
+
+    // Bad contract name.
+    assert.throws(() => getAddress("Nonsense", 1));
+
+    // Bad network.
+    assert.throws(() => getAddress("Voting", 41));
   });
 
   it("Get Truffle Contract", function() {
@@ -19,12 +25,16 @@ describe("index.js", function() {
     // This will only cause problems afterwards.
     const injectedWeb3 = new Web3("http://127.0.0.1:8545");
     assert.isNotNull(getTruffleContract("Voting", injectedWeb3));
-    assert.isNull(getTruffleContract("Nonsense", injectedWeb3));
+
+    // Bad contract name.
+    assert.throws(() => getTruffleContract("Nonsense", injectedWeb3));
   });
 
   it("Get Truffle Contract Default web3", function() {
     // Should use a default web3 (connected to the default test network).
     assert.isNotNull(getTruffleContract("Voting"));
-    assert.isNull(getTruffleContract("Nonsense"));
+
+    // Bad contract name.
+    assert.throws(() => getTruffleContract("Nonsense"));
   });
 });

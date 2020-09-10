@@ -11,7 +11,7 @@ const { getWeb3 } = require("@umaprotocol/common");
 function getArtifact(contractName) {
   const filePath = path.join(__dirname, "build", "contracts", `${contractName}.json`);
   if (!fs.existsSync(filePath)) {
-    return null;
+    throw new Error(`No contract artifact found at ${filePath}`);
   }
 
   return JSON.parse(fs.readFileSync(filePath));
@@ -23,7 +23,7 @@ function getArtifact(contractName) {
  */
 function getAbi(contractName) {
   const artifact = getArtifact(contractName);
-  return (artifact && artifact.abi) || null;
+  return artifact.abi;
 }
 
 /**
@@ -33,7 +33,11 @@ function getAbi(contractName) {
  */
 function getAddress(contractName, networkId) {
   const artifact = getArtifact(contractName);
-  return (artifact && artifact.networks[networkId] && artifact.networks[networkId].address) || null;
+
+  if (!artifact.networks[networkId]) {
+    throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
+  }
+  return artifact.networks[networkId].address;
 }
 
 /**
@@ -47,11 +51,6 @@ function getTruffleContract(contractName, web3) {
   const resolvedWeb3 = web3 || getWeb3();
 
   const artifact = getArtifact(contractName);
-
-  if (!artifact) {
-    return null;
-  }
-
   const Contract = truffleContract(artifact);
   Contract.setProvider(resolvedWeb3.currentProvider);
   return Contract;
@@ -63,11 +62,7 @@ function getTruffleContract(contractName, web3) {
  * @param {String} contractName Name of the UMA contract to be instantiated.
  */
 function getTruffleContractTest(contractName) {
-  try {
-    return global.artifacts.require(contractName);
-  } catch (error) {
-    return null;
-  }
+  return global.artifacts.require(contractName);
 }
 
 /**
@@ -78,18 +73,18 @@ function getTruffleContractTest(contractName) {
 function getAddressTest(contractName, networkId) {
   const truffleContract = getTruffleContractTest(contractName);
 
-  if (!truffleContract) {
-    return null;
-  }
-
   if (truffleContract.networks[networkId]) {
     return truffleContract.networks[networkId].address;
-  } else if (global.artifacts._provisioner && global.artifacts._provisioner._deploymentAddresses[contractName]) {
-    // In the buidler case, there is no networks object, so we fall back to buidler's global list of deployed addresses.
-    // Note: this is a bit hacky as it doesn't take into account the user-specified networkId.
+  } else if (
+    global.artifacts._provisioner &&
+    global.artifacts._provisioner._deploymentAddresses[contractName] &&
+    artifacts._provisioner._networkConfig.chainId === networkId
+  ) {
+    // In the buidler case, there is no networks object, so we fall back to buidler's global list of deployed addresses as long as buidler's network id matches the one passed in.
+    // Note: this is a bit hacky because it depends on internal buidler details.
     return global.artifacts._provisioner._deploymentAddresses[contractName];
   } else {
-    return null;
+    throw new Error(`No address found for contract ${contractName} on network ${networkId}`);
   }
 }
 
@@ -100,7 +95,7 @@ function getAddressTest(contractName, networkId) {
  */
 function getAbiTest(contractName) {
   const truffleContract = getTruffleContractTest(contractName);
-  return (truffleContract && truffleContract.abi) || null;
+  return truffleContract.abi;
 }
 
 if (global.artifacts) {
