@@ -5,7 +5,8 @@ const request = require("supertest");
 const path = require("path");
 
 // Script to test
-const server = require("../CloudRunSpoke");
+const hub = require("../CloudRunHub");
+const spoke = require("../CloudRunSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -19,9 +20,9 @@ const UniswapMock = artifacts.require("UniswapMock");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, lastSpyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+const { SpyTransport, lastSpyLogIncludes, spyLogIncludes } = require("@umaprotocol/financial-templates-lib");
 
-contract("CloudRunSpoke.js", function(accounts) {
+contract("CloudRunHub.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
@@ -30,13 +31,31 @@ contract("CloudRunSpoke.js", function(accounts) {
   let uniswap;
   let defaultUniswapPricefeedConfig;
 
-  let spy;
-  let spyLogger;
-  let testPort = 8080;
-  let serverInstance;
+  let hubSpy;
+  let hubSpyLogger;
+  let hubTestPort = 8080;
+  let hubInstance;
 
-  const sendRequest = body => {
-    return request(`http://localhost:${testPort}`)
+  let spokeSpy;
+  let spokeSpyLogger;
+  let spokeTestPort = 8081;
+  let spokeInstance;
+
+  let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
+  const setEnvironmentVariable = (key, value) => {
+    assert(key && value, "Must provide both a key and value to set an environment variable");
+    setEnvironmentVariableKes.push(key);
+    process.env[key] = value;
+  };
+  const unsetEnvironmentVariables = () => {
+    for (key of setEnvironmentVariableKes) {
+      delete process.env[key];
+    }
+    setEnvironmentVariableKes = [];
+  };
+
+  const sendHubRequest = body => {
+    return request(`http://localhost:${hubTestPort}`)
       .post("/")
       .send(body)
       .set("Accept", "application/json");
@@ -52,17 +71,29 @@ contract("CloudRunSpoke.js", function(accounts) {
 
   beforeEach(async function() {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
-    spy = sinon.spy(); // Create a new spy for each test.
-    spyLogger = winston.createLogger({
+    hubSpy = sinon.spy(); // Create a new spy for each test.
+    hubSpyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: hubSpy })]
+    });
+    spokeSpy = sinon.spy();
+    spokeSpyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })]
     });
 
     // Start the cloud run spoke instance with the spy logger injected.
-    serverInstance = await server.Poll(spyLogger, testPort);
+    spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
+
+    hubInstance = await hub.Poll(
+      hubSpyLogger, // injected spy logger
+      hubTestPort, // port to run the hub on
+      `http://localhost:${spokeTestPort}`, // URL to execute spokes on
+      web3.currentProvider.host // custom node URL to enable the hub to query block numbers.
+    );
 
     const constructorParams = {
-      expirationTimestamp: "12345678900",
+      expirationTimestamp: "22345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: (await Finder.deployed()).address,
@@ -98,122 +129,128 @@ contract("CloudRunSpoke.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
   afterEach(async function() {
-    serverInstance.close();
+    hubInstance.close();
+    spokeInstance.close();
+    unsetEnvironmentVariables();
   });
 
-  it("Cloud Run Spoke rejects empty json request bodies", async function() {
+  it("Cloud Run Hub rejects empty json request bodies", async function() {
     // empty body.
     const emptyBody = {};
-    const emptyBodyResponse = await sendRequest(emptyBody);
+    const emptyBodyResponse = await sendHubRequest(emptyBody);
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(emptyBodyResponse.res.text.includes("Process exited with error"));
-    assert.isTrue(emptyBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "CloudRun hub error"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("Cloud Run Spoke rejects invalid json request bodies", async function() {
+  it("Cloud Run Hub rejects invalid json request bodies", async function() {
     // body missing cloud run command.
     const invalidBody = { someRandomKey: "random input" };
-    const invalidBodyResponse = await sendRequest(invalidBody);
+    const invalidBodyResponse = await sendHubRequest(invalidBody);
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(invalidBodyResponse.res.text.includes("Process exited with error"));
-    assert.isTrue(invalidBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "CloudRun hub error"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("Cloud Run Spoke can correctly execute bot logic with valid body", async function() {
-    const validBody = {
-      cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
-        POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+  it("Cloud Run Hub can correctly execute bot logic with valid body and config(localStorage)", async function() {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testCloudRunMonitor: {
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-monitor",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
       }
     };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validResponse = await sendRequest(validBody);
-    assert.equal(validResponse.res.statusCode, 200); // error code
-    assert.isTrue(validResponse.res.text.includes("End of serverless execution loop - terminating process")); // Final text in monitor loop.
-    assert.isFalse(validResponse.res.text.includes("[error]")); // There should be no error logs in a valid execution.
-    assert.isFalse(validResponse.res.text.includes("[info]")); // There should be no info logs in a valid execution.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited correctly"));
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+    assert.isTrue(validResponse.res.text.includes("All calls returned correctly")); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
+    assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited correctly")); // The spoke should have exited correctly.
+    assert.isTrue(lastSpyLogIncludes(spokeSpy, `startingBlock: ${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, -3, `botsExecuted: ${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
   });
-  it("Cloud Run Spoke can correctly returns errors over http calls(invalid path)", async function() {
-    // Invalid path should error out when trying to run an executable that does not exist
-    const invalidPathBody = {
-      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../INVALID/index.js --network test`,
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-        POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
+  it("Cloud Run Hub can correctly execute multiple bots in parallel", async function() {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-monitor",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      },
+      testCloudRunLiquidator: {
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../liquidator/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-liquidator",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      },
+      testCloudRunDisputer: {
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../disputer/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-disputer",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
       }
     };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const invalidPathResponse = await sendRequest(invalidPathBody);
-    assert.equal(invalidPathResponse.res.statusCode, 500); // error code
-    // Expected error text from an invalid path
-    assert.isTrue(invalidPathResponse.res.text.includes("no such file or directory")); // Check the HTTP response.
-    assert.isTrue(lastSpyLogIncludes(spy, "no such file or directory")); // Check the process logger contained the error.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
-  });
-  it("Cloud Run Spoke can correctly returns errors over http calls(invalid body)", async function() {
-    // Invalid config should error out before entering the main while loop in the bot.
-    const invalidConfigBody = {
-      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-        POLLING_DELAY: 0,
-        // missing EMP_ADDRESS. Should error before entering main while loop.
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
-      }
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
-    const invalidConfigResponse = await sendRequest(invalidConfigBody);
-    assert.equal(invalidConfigResponse.res.statusCode, 500); // error code
-    // Expected error text from an invalid path
-    console.log("invalidConfigResponse.res.text", invalidConfigResponse.res.text);
-    assert.isTrue(invalidConfigResponse.res.text.includes("Bad environment variables! Specify an `EMP_ADDRESS`"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Bad environment variables! Specify an `EMP_ADDRESS`")); // Check the process logger contained the error.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
-  });
-  it("Cloud Run Spoke can correctly returns errors over http calls(invalid price feed)", async function() {
-    // Invalid price feed config should error out before entering main while loop
-    const invalidPriceFeed = {
-      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-        POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: null // invalid config that should generate an error
-      }
-    };
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+    assert.isTrue(validResponse.res.text.includes("All calls returned correctly")); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
+    assert.isTrue(spyLogIncludes(hubSpy, -3, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+    assert.isTrue(spyLogIncludes(hubSpy, -2, "Batch execution promise resolved")); // Check that all promises within the bach resolved.
 
-    const invalidPriceFeedResponse = await sendRequest(invalidPriceFeed);
-    assert.equal(invalidPriceFeedResponse.res.statusCode, 500); // error code
-    // Expected error text from a null price feed
-    assert.isTrue(invalidPriceFeedResponse.res.text.includes("Cannot read property 'type' of null"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Cannot read property 'type' of null")); // Check the process logger contained the error.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
-  });
-  it("Cloud Run Spoke can correctly returns errors over http calls(invalid emp)", async function() {
-    // Invalid EMP address should error out when trying to retrieve on-chain data.
-    const invalidEMPAddressBody = {
-      cloudRunCommand: `npx truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-        POLLING_DELAY: 0,
-        EMP_ADDRESS: "0x0000000000000000000000000000000000000000", // Invalid address that should generate an error
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
-      }
-    };
-
-    const invalidEMPAddressResponse = await sendRequest(invalidEMPAddressBody);
-    assert.equal(invalidEMPAddressResponse.res.statusCode, 500); // error code
-    // Expected error text from loading in an EMP from an invalid address
-    assert.isTrue(invalidEMPAddressResponse.res.text.includes("Returned values aren't valid, did it run Out of Gas?")); // error text
-    assert.isTrue(lastSpyLogIncludes(spy, "Returned values aren't valid, did it run Out of Gas?")); // Check the process logger contained the error.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
+    // Check that each bot identifier returned the correct exit code.
+    for (const spokeConfig of Object.keys(hubConfig)) {
+      const childProcessIdentifier = hubConfig[spokeConfig].environmentVariables.BOT_IDENTIFIER;
+      assert.isTrue(
+        spyLogIncludes(
+          hubSpy,
+          -2,
+          `"message":"Process exited without error","childProcessIdentifier":"${childProcessIdentifier}"`
+        )
+      );
+    }
   });
 });

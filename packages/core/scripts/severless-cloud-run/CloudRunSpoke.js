@@ -10,14 +10,14 @@
  */
 
 const express = require("express");
-const server = express();
-server.use(express.json()); // Enables json to be parsed by the express process.
+const spoke = express();
+spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
 const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
 let logger;
 
-server.post("/", async (req, res) => {
+spoke.post("/", async (req, res) => {
   try {
     logger.debug({
       at: "CloudRunSpoke",
@@ -108,10 +108,10 @@ function _getChildProcessIdentifier(req) {
   return req.body.environmentVariables.BOT_IDENTIFIER || null;
 }
 
-// Start the server's async listening process. Enables injection of a logging instance & port for testing.
+// Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
-  return server.listen(port, () => {
+  return spoke.listen(port, () => {
     logger.debug({
       at: "CloudRunSpoke",
       message: "Cloud Run spoke initialized",
@@ -121,9 +121,8 @@ async function Poll(injectedLogger = Logger, port = 8080) {
 }
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
-  const port = process.env.PORT;
-  Poll(Logger, port).then(() => {}); // Use the default winston logger & env port.
+  Poll(Logger, process.env.PORT).then(() => {}); // Use the default winston logger & env port.
 }
 
-server.Poll = Poll;
-module.exports = server;
+spoke.Poll = Poll;
+module.exports = spoke;
