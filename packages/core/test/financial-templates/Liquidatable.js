@@ -184,6 +184,10 @@ contract("Liquidatable", function(accounts) {
     assert.equal(beneficiaryCollateralBalance.toString(), "0");
   };
 
+  afterEach(async () => {
+    await expectNoExcessCollateralToTrim();
+  });
+
   describe("Attempting to liquidate a position that does not exist", () => {
     it("should revert", async () => {
       assert(

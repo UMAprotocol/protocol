@@ -131,6 +131,10 @@ contract("PricelessPositionManager", function(accounts) {
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
   });
 
+  afterEach(async () => {
+    await expectNoExcessCollateralToTrim();
+  });
+
   it("Valid constructor params", async function() {
     // Expiration timestamp must be greater than contract current time.
     assert(
@@ -1638,6 +1642,7 @@ contract("PricelessPositionManager", function(accounts) {
     let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
     assert.equal(excessCollateral.toString(), web3.utils.toWei("10"));
     assert.equal(beneficiaryCollateralBalance.toString(), web3.utils.toWei("10"));
+    await collateral.transfer(sponsor, web3.utils.toWei("10"), { from: beneficiary });
 
     // Transfer extra tokens in.
     await tokenCurrency.transfer(pricelessPositionManager.address, "10", { from: sponsor });
