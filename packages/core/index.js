@@ -89,7 +89,12 @@ function getAddressTest(contractName) {
     // To avoid calling truffleContract.deployed() in the buidler case, which would force this method to be async,
     // we have to dig deep into the buidler object to retrieve the contract address. This is kinda hacky, but
     // preferable to being forced to make all address calls async just for the test case.
-    return global.artifacts._provisioner._deploymentAddresses[contractName];
+    if (global.artifacts._provisioner && global.artifacts._provisioner._deploymentAddresses[contractName]) {
+      return global.artifacts._provisioner._deploymentAddresses[contractName];
+    } else {
+      // If these elements do not exist, then neither method worked and there is no address for this contract.
+      return null;
+    }
   }
 }
 
