@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow } = require("@umaprotocol/common");
+const { didContractThrow, MAX_UINT_VAL } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
@@ -124,9 +124,33 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     );
   });
 
+  it("Withdrawal liveness cannot be too large", async function() {
+    // Change only the withdrawal liveness
+    constructorParams.withdrawalLiveness = MAX_UINT_VAL;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
   it("Liquidation liveness must not be 0", async function() {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = 0;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Liquidation liveness cannot be too large", async function() {
+    // Change only the liquidation liveness
+    constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
