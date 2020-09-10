@@ -75,26 +75,21 @@ function getTruffleContractTest(contractName) {
  * this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract whose address is to be retrieved.
  */
-function getAddressTest(contractName) {
+function getAddressTest(contractName, networkId) {
   const truffleContract = getTruffleContractTest(contractName);
 
   if (!truffleContract) {
     return null;
   }
 
-  try {
-    // This will fail in buidler, but should work in truffle.
-    return truffleContract.address;
-  } catch (error) {
-    // To avoid calling truffleContract.deployed() in the buidler case, which would force this method to be async,
-    // we have to dig deep into the buidler object to retrieve the contract address. This is kinda hacky, but
-    // preferable to being forced to make all address calls async just for the test case.
-    if (global.artifacts._provisioner && global.artifacts._provisioner._deploymentAddresses[contractName]) {
-      return global.artifacts._provisioner._deploymentAddresses[contractName];
-    } else {
-      // If these elements do not exist, then neither method worked and there is no address for this contract.
-      return null;
-    }
+  if (truffleContract.networks[networkId]) {
+    return truffleContract.networks[networkId].address;
+  } else if (global.artifacts._provisioner && global.artifacts._provisioner._deploymentAddresses[contractName]) {
+    // In the buidler case, there is no networks object, so we fall back to buidler's global list of deployed addresses.
+    // Note: this is a bit hacky as it doesn't take into account the user-specified networkId.
+    return global.artifacts._provisioner._deploymentAddresses[contractName];
+  } else {
+    return null;
   }
 }
 

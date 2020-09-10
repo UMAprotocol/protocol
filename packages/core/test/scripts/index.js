@@ -12,6 +12,7 @@ contract("index.js", function() {
   });
 
   it("Truffle contract", function() {
-    // assert.deepEqual(getTruffleContract("Voting"), Voting);
+    // Cannot deepEqual the entire object as some of the getters cause the process to hang.
+    assert.deepEqual(getTruffleContract("Voting").networks, Voting.networks);
   });
 });
