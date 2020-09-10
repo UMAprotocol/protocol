@@ -54,11 +54,12 @@ function getWeb3() {
   }
 
   // Create basic web3 provider with no wallet connection based on the url alone.
-  const basicProvider = createBasicProvider(getNodeUrl());
+  const network = argv.network || "test"; // Default to the test network (local network).
+  const basicProvider = createBasicProvider(getNodeUrl(network));
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
   // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. Errors if no argv.network.
-  const providerWithWallet = getTruffleConfig().networks[argv.network].provider(basicProvider);
+  const providerWithWallet = getTruffleConfig().networks[network].provider(basicProvider);
 
   // Lastly, create a web3 instance with the wallet-based provider. This can be used to query the chain via the
   // a basic web3 provider & has access to the users wallet based on the kind of connection they created.

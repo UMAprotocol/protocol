@@ -21,5 +21,9 @@ describe("index.js", function() {
     assert.isNull(getTruffleContract("Nonsense", injectedWeb3));
   });
 
-  // TODO: test the default web3 once it works with test networks.
+  it("Get Truffle Contract Default web3", function() {
+    // Should use a default web3 (connected to localhost).
+    assert.isNotNull(getTruffleContract("Voting"));
+    assert.isNull(getTruffleContract("Nonsense"));
+  });
 });

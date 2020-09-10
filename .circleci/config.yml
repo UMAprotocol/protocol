@@ -33,8 +33,8 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Compile contracts
-          command: ./ci/build.sh
+          name: Run build
+          command: yarn qbuild
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
