@@ -1203,6 +1203,10 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "29");
       assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "28");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "30");
+
+      // Drain excess collateral left because of precesion loss.
+      await pricelessPositionManager.trimExcess(collateral.address);
+      await collateral.transfer(sponsor, (await collateral.balanceOf(beneficiary)).toString(), { from: beneficiary });
     });
     it("settleExpired() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // Expire the contract
