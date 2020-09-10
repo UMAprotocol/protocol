@@ -136,7 +136,8 @@ contract("index.js", function(accounts) {
       "UNKNOWN",
       constructorParams.tokenFactoryAddress,
       constructorParams.minSponsorTokens,
-      constructorParams.timerAddress
+      constructorParams.timerAddress,
+      contractCreator
     );
 
     // Create a spy logger to catch all log messages to validate re-try attempts.

@@ -609,16 +609,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return;
     }
 
-    function trimExcess(IERC20 token) external fees() nonReentrant() {
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+    function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
+
         if (address(token) == address(collateralCurrency)) {
             // If it is the collateral currency, send only the amount that the contract is not tracking.
             // Note: this could be due to rounding error or balance-chainging tokens, like aTokens.
-            token.safeTransfer(excessTokenBeneficiary, balance.sub(pfc()).rawValue);
+            amount = balance.sub(_pfc());
         } else {
             // If it's not the collateral currency, send the entire balance.
-            token.safeTransfer(excessTokenBeneficiary, balance.rawValue);
+            amount = balance;
         }
+        token.safeTransfer(excessTokenBeneficiary, amount.rawValue);
     }
 
     /**

@@ -35,6 +35,7 @@ const WETH9 = artifacts.require("WETH9");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Store = artifacts.require("Store");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier"] });
 
 // Contracts we need to interact with.
@@ -44,6 +45,7 @@ let mockOracle;
 let identifierWhitelist;
 let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
+let store;
 
 const empCollateralTokenMap = {
   COMPUSD: TestnetERC20,
@@ -88,6 +90,8 @@ const deployEMP = async callback => {
       console.log("Whitelisted collateral currency");
     }
 
+    store = await Store.deployed();
+
     // Create a new EMP
     const constructorParams = {
       expirationTimestamp: "1601503200", // 09/30/2020 @ 10:00pm (UTC)
@@ -101,7 +105,8 @@ const deployEMP = async callback => {
       disputerDisputeRewardPct: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
       liquidationLiveness: 7200,
-      withdrawalLiveness: 7200
+      withdrawalLiveness: 7200,
+      excessTokenBeneficiary: store.address
     };
 
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });

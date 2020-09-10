@@ -27,6 +27,7 @@ contract("Liquidatable", function(accounts) {
   const liquidator = accounts[2];
   const disputer = accounts[3];
   const rando = accounts[4];
+  const beneficiary = accounts[5];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -133,7 +134,8 @@ contract("Liquidatable", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
-      timerAddress: timer.address
+      timerAddress: timer.address,
+      excessTokenBeneficiary: beneficiary
     };
 
     // Deploy liquidation contract and set global params
@@ -172,6 +174,15 @@ contract("Liquidatable", function(accounts) {
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
   });
+
+  const expectNoExcessCollateralToTrim = async () => {
+    let collateralTrimAmount = await liquidationContract.trimExcess.call(collateralToken.address);
+    await liquidationContract.trimExcess(collateralToken.address);
+    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
+
+    assert.equal(collateralTrimAmount.toString(), "0");
+    assert.equal(beneficiaryCollateralBalance.toString(), "0");
+  };
 
   describe("Attempting to liquidate a position that does not exist", () => {
     it("should revert", async () => {
@@ -343,6 +354,9 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
 
+      // Check that excess collateral to be trimmed is still 0.
+      await expectNoExcessCollateralToTrim();
+
       // Collateral balance change should equal the final fee.
       assert.equal(
         intitialBalance.sub(await collateralToken.balanceOf(liquidator)).toString(),
@@ -470,6 +484,9 @@ contract("Liquidatable", function(accounts) {
       assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
       assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
       assert.equal(expectedLiquidatedTokens.toString(), tokensLiquidated.toString());
+
+      // Check that excess collateral to be trimmed is still 0.
+      await expectNoExcessCollateralToTrim();
 
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
@@ -726,6 +743,12 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
+      it("Dispute generates no excess collateral", async () => {
+        await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+
+        // Check that excess collateral to be trimmed is still 0.
+        await expectNoExcessCollateralToTrim();
+      });
       it("Dispute emits an event", async () => {
         const disputeResult = await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, {
           from: disputer
@@ -874,12 +897,16 @@ contract("Liquidatable", function(accounts) {
         const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+
         await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
           from: liquidator
         });
 
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
         assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+
+        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
+        await expectNoExcessCollateralToTrim();
 
         // We test that the event is emitted correctly for a successful dispute in a subsequent test.
       });
@@ -916,6 +943,9 @@ contract("Liquidatable", function(accounts) {
             ev.settlementPrice.toString() == disputePrice.toString()
           );
         });
+
+        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
+        await expectNoExcessCollateralToTrim();
       });
       it("Event correctly emitted", async () => {
         // Create a successful dispute and check the event is correct.
@@ -1240,6 +1270,9 @@ contract("Liquidatable", function(accounts) {
             startBalance.add(toBN(sponsorAmount)).toString()
           );
 
+          // Check that excess collateral to be trimmed is 0 after the sponsor withdraws.
+          await expectNoExcessCollateralToTrim();
+
           // Liquidator balance check.
           startBalance = await collateralToken.balanceOf(liquidator);
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
@@ -1248,6 +1281,9 @@ contract("Liquidatable", function(accounts) {
             startBalance.add(toBN(liquidatorAmount)).toString()
           );
 
+          // Check that excess collateral to be trimmed is 0 afer the liquidator withdraws.
+          await expectNoExcessCollateralToTrim();
+
           // Disputer balance check.
           startBalance = await collateralToken.balanceOf(disputer);
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
@@ -1255,6 +1291,9 @@ contract("Liquidatable", function(accounts) {
             (await collateralToken.balanceOf(disputer)).toString(),
             startBalance.add(toBN(disputerAmount)).toString()
           );
+
+          // Check that excess collateral to be trimmed is 0 after the last withdrawal.
+          await expectNoExcessCollateralToTrim();
 
           // Clean up store fees.
           await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
