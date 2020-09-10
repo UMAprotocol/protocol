@@ -70,6 +70,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // Time that this contract expires. Should not change post-construction unless an emergency shutdown occurs.
     uint256 public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
+    // !!Note: The lower the withdrawal liveness value, the more risk incurred by the contract.
+    //       Extremely low liveness values increase the chance that opportunistic invalid withdrawal requests
+    //       expire without liquidation, thereby increasing the insolvency risk for the contract as a whole. An insolvent
+    //       contract is extremely risky for any sponsor or synthetic token holder for the contract.
     uint256 public withdrawalLiveness;
 
     // Minimum number of tokens in a sponsor's position.
