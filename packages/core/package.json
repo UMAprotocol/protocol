@@ -21,7 +21,6 @@
     "cli-progress": "^3.8.2",
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
-    "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
