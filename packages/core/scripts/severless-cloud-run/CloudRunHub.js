@@ -159,8 +159,9 @@ const _executeCloudRunSpoke = async (url, body) => {
   }
 };
 
-// Fetch a `file` from a GCP `bucket`. This function uses a readStream which is converted into a buffer such that the
-// config file does not need to first be downloaded from the bucket. This will use the local service account.
+// Fetch configs for cloud run hub. Either read from a gcp bucket or local storage. GCP uses a readStream which is
+// converted into a buffer such that the config file does not need to first be downloaded from the bucket.
+// This will use the local service account.
 const _fetchConfig = async (bucket, file) => {
   if (hubConfig.mode == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {

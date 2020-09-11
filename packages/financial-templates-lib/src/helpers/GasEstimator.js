@@ -68,7 +68,7 @@ class GasEstimator {
 
   // Returns the current fast gas price in Wei, converted from the stored Gwei value.
   getCurrentFastPrice() {
-    return (this.lastFastPriceGwei * 1e9).toString();
+    return this.lastFastPriceGwei * 1e9;
   }
 
   async _update() {
