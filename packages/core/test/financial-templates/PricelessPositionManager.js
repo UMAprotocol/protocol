@@ -79,6 +79,16 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(beneficiaryCollateralBalance.toString(), "0");
   };
 
+  const expectAndDrainExcessCollateral = async () => {
+    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
+    await pricelessPositionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+    collateral.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
+
+    // Assert that nonzero collateral was drained.
+    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
+  };
+
   before(async function() {
     store = await Store.deployed();
     tokenFactory = await TokenFactory.deployed();
@@ -1204,8 +1214,7 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "30");
 
       // Drain excess collateral left because of precesion loss.
-      await pricelessPositionManager.trimExcess(collateral.address);
-      await collateral.transfer(sponsor, (await collateral.balanceOf(beneficiary)).toString(), { from: beneficiary });
+      await expectAndDrainExcessCollateral();
     });
     it("settleExpired() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // Expire the contract
@@ -1298,6 +1307,9 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("withdraw() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to withdraw 12 collateral.
@@ -1319,6 +1331,9 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
       assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("redeem() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to redeem 9 tokens. (9/20 = 0.45) tokens should result in a proportional redemption of the totalPositionCollateral,
@@ -1340,6 +1355,9 @@ contract("PricelessPositionManager", function(accounts) {
 
       // Expected number of synthetic tokens are burned.
       assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), "11");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
   });
 
