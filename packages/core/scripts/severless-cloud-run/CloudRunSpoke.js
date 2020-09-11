@@ -48,22 +48,22 @@ spoke.post("/", async (req, res) => {
     if (execResponse.error) {
       // execResponse is a json object with keys error, stdout and stderr. Convert this into a string for consistent
       // handling between the winston logger and the http response.
-      throw new Error(JSON.stringify(execResponse));
+      throw execResponse;
     }
     logger.debug({
       at: "CloudRunSpoke",
-      message: "Process exited correctly",
+      message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
     await waitForLogger(logger);
 
     res.status(200).send({
-      message: "Process exited without error",
+      message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
-  } catch (error) {
+  } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
     logger.debug({
@@ -71,21 +71,23 @@ spoke.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      error: typeof error === "string" ? new Error(JSON.stringify(error)) : error
+      execResponse,
+      error: execResponse.error
     });
     await waitForLogger(logger);
 
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      error: error instanceof Error ? error.message : JSON.stringify(error) // HTTP response should only contain strings in json
+      execResponse,
+      error: execResponse.error
     });
   }
 });
 
 function _execShellCommand(cmd, inputEnv) {
   return new Promise(resolve => {
-    exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
+    exec(cmd, { env: { ...process.env, ...inputEnv, stdio: "inherit", shell: true } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
       stdout = _stripExecOutput(stdout);
       stderr = _stripExecOutput(stderr);

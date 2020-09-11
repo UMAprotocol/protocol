@@ -11,7 +11,7 @@ class SpyTransport extends Transport {
 
   async log(info, callback) {
     // Add an `logInTest` option to help with debugging to bots in tests by printing all logs received by winston.
-    if (argv._.includes("logInTest")) console.log(info);
+    if (argv._.includes("logInTest")) console.log(JSON.stringify(info, null, 2));
     // Add info sent to the winston transport to the spy. This enables unit tests to validate what is passed to winston.
     this.spy(info);
     callback();
@@ -31,7 +31,6 @@ function spyLogIncludes(spy, messageIndex, value) {
     spy.getCall(messageIndex).lastArg,
     spy.getCall(messageIndex).lastArg.error ? spy.getCall(messageIndex).lastArg.error.message : "" // If there is an error, add its message.
   ]);
-  console.log("lastLogMessage", lastLogMessage);
   return lastLogMessage.indexOf(value) !== -1;
 }
 

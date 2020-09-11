@@ -54,7 +54,7 @@ hub.post("/", async (req, res) => {
       throw new Error("Body missing json bucket or file parameters!");
     }
     // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
-    const configObject = await _fetchConfigObject(req.body.bucket, req.body.configFile);
+    const configObject = await _fetchConfig(req.body.bucket, req.body.configFile);
 
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
@@ -95,46 +95,47 @@ hub.post("/", async (req, res) => {
     });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
-    let thrownErrors = [];
+    let errorOutputs = [];
+    let validOutputs = [];
     results.forEach((result, index) => {
-      if (result.status == "rejected") {
-        // If the child process in the spoke crashed it will return 500 (rejected).
-        thrownErrors.push({
+      if (result.status == "rejected" || result.value.execResponse.error || result.value.execResponse.stderr) {
+        // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
+        // correctly but contained an error.
+        errorOutputs.push({
           status: result.status,
-          execResponse: result.reason.response.data,
+          execResponse: result.value.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
-      } else if (result.value.execResponse.error) {
-        // If the child process exited correctly but contained an error.
-        thrownErrors.push({
+      } else {
+        validOutputs.push({
           status: result.status,
           execResponse: result.value.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
       }
     });
-    if (thrownErrors.length > 0) {
-      throw thrownErrors;
+    if (errorOutputs.length > 0) {
+      throw { errorOutputs, validOutputs };
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
     logger.debug({
       at: "CloudRunHub",
       message: "All calls returned correctly",
-      thrownErrors: null
+      output: { errorOutputs, validOutputs }
     });
-    res.status(200).send({ message: "All calls returned correctly", error: null });
-  } catch (error) {
+    res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
+  } catch (errorOutput) {
     logger.error({
       at: "CloudRunHub",
-      message: "CloudRun hub error 🚨",
-      error: typeof error === "string" ? new Error(JSON.stringify(error)) : error
+      message: "Some calls returned errors 🚨",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
     await waitForLogger(logger);
 
     res.status(500).send({
-      message: "Process exited with error",
-      error: error instanceof Error ? error.message : JSON.stringify(error) // HTTP response should only contain strings in json
+      message: "Some calls returned errors",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
   }
 });
@@ -160,7 +161,7 @@ const _executeCloudRunSpoke = async (url, body) => {
 
 // Fetch a `file` from a GCP `bucket`. This function uses a readStream which is converted into a buffer such that the
 // config file does not need to first be downloaded from the bucket. This will use the local service account.
-const _fetchConfigObject = async (bucket, file) => {
+const _fetchConfig = async (bucket, file) => {
   if (hubConfig.mode == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {
       let buf = "";
@@ -174,7 +175,11 @@ const _fetchConfigObject = async (bucket, file) => {
     });
     return JSON.parse(await requestPromise);
   } else if (hubConfig.mode == "localStorage") {
-    return JSON.parse(process.env[`${bucket}-${file}`]);
+    const config = process.env[`${bucket}-${file}`];
+    if (!config) {
+      throw new Error(`No local storage config found for ${bucket}-${file}`);
+    }
+    return JSON.parse(config);
   }
 };
 
@@ -189,9 +194,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
         blockNumber
       }
     };
-
-    // Saves the entity
-    await datastore.save(dataBlob);
+    await datastore.save(dataBlob); // Saves the entity
   } else if (hubConfig.mode == "localStorage") {
     process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
   }
@@ -200,10 +203,9 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
 // Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
-  if (process.env.ENVIRONMENT === "production") {
+  if (hubConfig.mode == "gcp") {
     const key = datastore.key(["BlockNumberLog", configIdentifier]);
     const [dataField] = await datastore.get(key);
-
     // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
     if (dataField == undefined) return await _getLatestBlockNumber();
     return dataField.blockNumber;

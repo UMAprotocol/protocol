@@ -20,7 +20,12 @@ const UniswapMock = artifacts.require("UniswapMock");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, lastSpyLogIncludes, spyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+const {
+  SpyTransport,
+  lastSpyLogIncludes,
+  spyLogIncludes,
+  lastSpyLogLevel
+} = require("@umaprotocol/financial-templates-lib");
 
 contract("CloudRunHub.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -139,9 +144,9 @@ contract("CloudRunHub.js", function(accounts) {
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(emptyBodyResponse.res.text.includes("Process exited with error"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("Some calls returned errors"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "CloudRun hub error"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
   it("Cloud Run Hub rejects invalid json request bodies", async function() {
@@ -149,12 +154,12 @@ contract("CloudRunHub.js", function(accounts) {
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(invalidBodyResponse.res.text.includes("Process exited with error"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("Some calls returned errors"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "CloudRun hub error"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("Cloud Run Hub can correctly execute bot logic with valid body and config(localStorage)", async function() {
+  it("Cloud Run Hub can correctly execute bot logic with valid body and config", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -184,9 +189,9 @@ contract("CloudRunHub.js", function(accounts) {
     assert.equal(validResponse.res.statusCode, 200); // no error code
     assert.isTrue(validResponse.res.text.includes("All calls returned correctly")); // Final text in monitor loop.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
-    assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited correctly")); // The spoke should have exited correctly.
+    assert.isTrue(spyLogIncludes(hubSpy, -3, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+    assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited with no error")); // The spoke should have exited correctly.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, `startingBlock: ${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
-    assert.isTrue(lastSpyLogIncludes(hubSpy, -3, `botsExecuted: ${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
   });
   it("Cloud Run Hub can correctly execute multiple bots in parallel", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
@@ -236,8 +241,16 @@ contract("CloudRunHub.js", function(accounts) {
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
-    assert.isTrue(validResponse.res.text.includes("All calls returned correctly")); // Final text in monitor loop.
+    const responseObject = JSON.parse(validResponse.res.text); // extract json response
+
+    // Check that the http response contains correct logs
+    assert.equal(responseObject.message, "All calls returned correctly"); // Final text in monitor loop.
+    assert.equal(responseObject.output.errorOutputs.length, 0); // should be no errors
+    assert.equal(responseObject.output.validOutputs.length, 3); // should be 3 valid outputs
+
+    // Check hub has correct logs.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
+    assert.equal(lastSpyLogLevel(hubSpy), "debug"); // most recent log level should be "debug" (no error)
     assert.isTrue(spyLogIncludes(hubSpy, -3, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
     assert.isTrue(spyLogIncludes(hubSpy, -2, "Batch execution promise resolved")); // Check that all promises within the bach resolved.
 
@@ -245,12 +258,90 @@ contract("CloudRunHub.js", function(accounts) {
     for (const spokeConfig of Object.keys(hubConfig)) {
       const childProcessIdentifier = hubConfig[spokeConfig].environmentVariables.BOT_IDENTIFIER;
       assert.isTrue(
-        spyLogIncludes(
-          hubSpy,
-          -2,
-          `"message":"Process exited without error","childProcessIdentifier":"${childProcessIdentifier}"`
-        )
+        spyLogIncludes(hubSpy, -2, `Process exited with no error","childProcessIdentifier":"${childProcessIdentifier}`)
       );
     }
+  });
+  it("Cloud Run Hub can correctly deal with some bots erroring out in execution", async function() {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        // Creates no error.
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-monitor",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      },
+      testServerlessMonitorError: {
+        // Create an error in the execution path. Child process spoke will crash.
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../BADPATH/../liquidator/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-monitor-error",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      },
+      testServerlessMonitorError2: {
+        // Create an error in the execution path. Child process will run but will throw an error.
+        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        environmentVariables: {
+          BOT_IDENTIFIER: "test-serverless-monitor-error2",
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
+          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      }
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const errorBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const errorResponse = await sendHubRequest(errorBody);
+
+    assert.equal(errorResponse.res.statusCode, 500); // error code
+    const responseObject = JSON.parse(errorResponse.res.text); // extract json response
+
+    // Check that the http response contains correct logs
+    assert.equal(responseObject.message, "Some calls returned errors"); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors")); // The hub should have exited correctly.
+    assert.equal(lastSpyLogLevel(hubSpy), "error"); // most recent log level should be "error"
+    assert.equal(responseObject.output.errorOutputs.length, 2); // should be 2 errors
+    assert.equal(responseObject.output.validOutputs.length, 1); // should be 1 valid output
+
+    // Check the valid outputs.
+    assert.equal(responseObject.output.validOutputs[0].botIdentifier, "testServerlessMonitor"); // Check that the valid output is the expected bot
+    assert.isTrue(
+      responseObject.output.validOutputs[0].execResponse.stdout.includes(
+        "End of serverless execution loop - terminating process, bot-identifier: test-serverless-monitor"
+      )
+    );
+
+    // Check the error outputs.
+    assert.equal(responseObject.output.errorOutputs[0].botIdentifier, "testServerlessMonitorError"); // Check that the valid output is the expected bot
+    assert.equal(responseObject.output.errorOutputs[1].botIdentifier, "testServerlessMonitorError2"); // Check that the valid output is the expected bot
+
+    assert.isTrue(
+      responseObject.output.errorOutputs[0].execResponse.stdout.includes("ENOENT: no such file or directory")
+    ); // invalid path error
+    assert.isTrue(
+      responseObject.output.errorOutputs[1].execResponse.stdout.includes(
+        "Returned values aren't valid, did it run Out of Gas?"
+      )
+    ); // invalid emp error
   });
 });
