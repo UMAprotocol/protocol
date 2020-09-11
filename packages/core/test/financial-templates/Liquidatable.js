@@ -184,6 +184,16 @@ contract("Liquidatable", function(accounts) {
     assert.equal(beneficiaryCollateralBalance.toString(), "0");
   };
 
+  const expectAndDrainExcessCollateral = async () => {
+    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
+    await liquidationContract.trimExcess(collateralToken.address);
+    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
+    collateralToken.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
+
+    // Assert that nonzero collateral was drained.
+    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
+  };
+
   afterEach(async () => {
     await expectNoExcessCollateralToTrim();
   });
@@ -1934,21 +1944,20 @@ contract("Liquidatable", function(accounts) {
     });
   });
   describe("Precision loss is handled as expected", () => {
-    let _liquidationContract;
     beforeEach(async () => {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
-      _liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      syntheticToken = await Token.at(await _liquidationContract.tokenCurrency());
+      liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
 
       // Create a new position with:
       // - 30 collateral
       // - 20 synthetic tokens (10 held by token holder, 10 by sponsor)
-      await collateralToken.approve(_liquidationContract.address, "100000", { from: sponsor });
+      await collateralToken.approve(liquidationContract.address, "100000", { from: sponsor });
       const numTokens = "20";
       const amountCollateral = "30";
-      await _liquidationContract.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
-      await syntheticToken.approve(_liquidationContract.address, numTokens, { from: sponsor });
+      await liquidationContract.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+      await syntheticToken.approve(liquidationContract.address, numTokens, { from: sponsor });
 
       // Setting the regular fee to 4 % per second will result in a miscalculated cumulativeFeeMultiplier after 1 second
       // because of the intermediate calculation in `payRegularFees()` for calculating the `feeAdjustment`: ( fees paid ) / (total collateral)
@@ -1958,19 +1967,19 @@ contract("Liquidatable", function(accounts) {
       await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
-      let startTime = await _liquidationContract.getCurrentTime();
-      await _liquidationContract.setCurrentTime(startTime.addn(1));
-      await _liquidationContract.payRegularFees();
+      let startTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.setCurrentTime(startTime.addn(1));
+      await liquidationContract.payRegularFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
       await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
 
       // Set allowance for contract to pull synthetic tokens from liquidator
-      await syntheticToken.increaseAllowance(_liquidationContract.address, numTokens, { from: liquidator });
+      await syntheticToken.increaseAllowance(liquidationContract.address, numTokens, { from: liquidator });
       await syntheticToken.transfer(liquidator, numTokens, { from: sponsor });
 
       // Create a liquidation.
-      await _liquidationContract.createLiquidation(
+      await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
         { rawValue: toWei("1.5") },
@@ -1986,10 +1995,10 @@ contract("Liquidatable", function(accounts) {
       // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally div() would floor
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
-      let collateralAmount = await _liquidationContract.getCollateral(sponsor);
+      let collateralAmount = await liquidationContract.getCollateral(sponsor);
       assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
-        (await _liquidationContract.cumulativeFeeMultiplier()).toString(),
+        (await liquidationContract.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()
       );
 
@@ -1998,12 +2007,15 @@ contract("Liquidatable", function(accounts) {
       // because `(30 * 0.966666666666666666 = 28.999...98)`. `30` is the rawCollateral and if the fee multiplier were correct,
       // then `rawLiquidationCollateral` would be `(30 * 0.966666666666666666...) = 29`.
       // `rawTotalPositionCollateral` is decreased after `createLiquidation()` is called.
-      assert.equal((await collateralToken.balanceOf(_liquidationContract.address)).toString(), "29");
-      assert.equal((await _liquidationContract.rawLiquidationCollateral()).toString(), "28");
-      assert.equal((await _liquidationContract.rawTotalPositionCollateral()).toString(), "0");
+      assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "29");
+      assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "28");
+      assert.equal((await liquidationContract.rawTotalPositionCollateral()).toString(), "0");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
     it("Liquidation object is set up properly", async () => {
-      let liquidationData = await _liquidationContract.liquidations(sponsor, 0);
+      let liquidationData = await liquidationContract.liquidations(sponsor, 0);
 
       // The contract should own 29 collateral but show locked collateral in the liquidation as 28, using the same calculation
       // as `totalPositionCollateral` which is `rawTotalPositionCollateral` from the liquidated position multiplied by the fee multiplier.
@@ -2018,6 +2030,9 @@ contract("Liquidatable", function(accounts) {
       // locked collateral.
       // - rawUnitCollateral = (1 / 0.966666666666666666) = 1.034482758620689655
       assert.equal(fromWei(liquidationData.rawUnitCollateral.toString()), "1.034482758620689655");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
     it("withdrawLiquidation() returns the same amount of collateral that liquidationCollateral is decreased by", async () => {
       // So, the available collateral for rewards should be (lockedCollateral * feeAttenuation),
@@ -2026,8 +2041,8 @@ contract("Liquidatable", function(accounts) {
       // will decrease by less than its full lockedCollateral. The contract should transfer to the liquidator the same amount.
 
       // First, expire the liquidation
-      let startTime = await _liquidationContract.getCurrentTime();
-      await _liquidationContract.setCurrentTime(
+      let startTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.setCurrentTime(
         toBN(startTime)
           .add(liquidationLiveness)
           .toString()
@@ -2035,14 +2050,17 @@ contract("Liquidatable", function(accounts) {
 
       // The liquidator is owed (0.999999999999999999 * 28 = 27.9999...) which gets truncated to 27.
       // The contract should have 29 - 27 = 2 collateral remaining, and the liquidation should be deleted.
-      await _liquidationContract.withdrawLiquidation(0, sponsor, { from: liquidator });
+      await liquidationContract.withdrawLiquidation(0, sponsor, { from: liquidator });
       assert.equal((await collateralToken.balanceOf(liquidator)).toString(), "27");
-      assert.equal((await collateralToken.balanceOf(_liquidationContract.address)).toString(), "2");
-      let deletedLiquidationData = await _liquidationContract.liquidations(sponsor, 0);
+      assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "2");
+      let deletedLiquidationData = await liquidationContract.liquidations(sponsor, 0);
       assert.equal(deletedLiquidationData.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
 
       // rawLiquidationCollateral should also have been decreased by 27, from 28 to 1
-      assert.equal((await _liquidationContract.rawLiquidationCollateral()).toString(), "1");
+      assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "1");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
   });
 });
