@@ -334,7 +334,6 @@ contract("CloudRunHub.js", function(accounts) {
     // Check the error outputs.
     assert.equal(responseObject.output.errorOutputs[0].botIdentifier, "testServerlessMonitorError"); // Check that the valid output is the expected bot
     assert.equal(responseObject.output.errorOutputs[1].botIdentifier, "testServerlessMonitorError2"); // Check that the valid output is the expected bot
-
     assert.isTrue(
       responseObject.output.errorOutputs[0].execResponse.stdout.includes("ENOENT: no such file or directory")
     ); // invalid path error
