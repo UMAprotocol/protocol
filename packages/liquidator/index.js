@@ -20,7 +20,8 @@ const {
 } = require("@umaprotocol/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@umaprotocol/core/index");
+const { getAbi, getAddress } = require("@umaprotocol/core");
+const { getWeb3 } = require("@umaprotocol/common");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -282,17 +283,7 @@ async function Poll(callback) {
       liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE
     };
 
-    // Check if the bot is being run as a node process or as a truffle process.
-    if (typeof web3 == "undefined") {
-      // Create a web3 instance. This has built in re-try on error and loads in a provided mnemonic or private key.
-      const { web3 } = require("@umaprotocol/financial-templates-lib/src/clients/Web3WebsocketClient");
-      if (!web3) throw new Error("Could not create web3 object from websocket");
-      await run({ logger: Logger, web3, ...executionParameters });
-
-      // Else, if the web3 instance is not undefined, then the script is being run from Truffle. Use present web3 instance.
-    } else {
-      await run({ logger: Logger, web3, ...executionParameters });
-    }
+    await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
