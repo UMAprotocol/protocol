@@ -12,6 +12,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const Store = artifacts.require("Store");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -54,6 +55,7 @@ contract("index.js", function(accounts) {
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
+    const store = await Store.deployed();
 
     constructorParams = {
       expirationTimestamp: "12345678900",
@@ -70,7 +72,8 @@ contract("index.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     // Deploy a new expiring multi party
