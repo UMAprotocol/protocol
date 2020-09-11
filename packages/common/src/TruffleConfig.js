@@ -36,7 +36,7 @@ const gasPx = 20000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-function getNodeUrl(networkName = argv.network) {
+function getNodeUrl(networkName) {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     return process.env.CUSTOM_NODE_URL || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
