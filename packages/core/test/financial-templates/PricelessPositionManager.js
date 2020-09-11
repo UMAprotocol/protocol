@@ -2,7 +2,6 @@
 const { PositionStatesEnum, didContractThrow } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 const { interfaceName } = require("@umaprotocol/common");
-const { assert } = require("chai");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
