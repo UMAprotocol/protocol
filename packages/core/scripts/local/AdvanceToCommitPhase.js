@@ -9,7 +9,7 @@ const run = async function(callback) {
 
   const startingPhase = await voting.getVotePhase();
   // we are in a commit phase. move to reveal, then move to next commit.
-  if(startingPhase == 0){
+  if (startingPhase == 0) {
     // move to reveal
     await moveToNextPhase(voting);
   }

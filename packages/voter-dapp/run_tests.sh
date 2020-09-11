@@ -116,7 +116,6 @@ echo '# 7/16. Snapshotting voting token balances                         #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 echo "- Before reveals can take place, a snapshot of current voting token balances must be taken"
-# yarn run truffle exec ./scripts/local/SnapshotCurrentRound.js --network test
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;
