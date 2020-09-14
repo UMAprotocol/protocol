@@ -59,7 +59,7 @@ hub.post("/", async (req, res) => {
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
     if (!configObject || !lastQueriedBlockNumber)
-      throw new error("CloudRun hub requires a config object and a last updated block number!");
+      throw new Error("CloudRun hub requires a config object and a last updated block number!");
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
