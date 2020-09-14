@@ -31,7 +31,7 @@
   "bin": "index.js",
   "scripts": {
     "test": "truffle test",
-    "test-fork": "truffle test test-fork --network mainnet-fork"
+    "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
