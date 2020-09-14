@@ -93,7 +93,7 @@ function SnapshotButton({ hint = snapshotHint, onClick = x => x }) {
   );
 }
 
-function ActiveRequests({ votingAccount, votingGateway }) {
+function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
@@ -334,7 +334,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
   const { send: batchRevealFunction, status: revealStatus } = useCacheSend(votingGateway, "batchReveal");
-  const { send: snapshotCurrentRound, status: snapshotStatus } = useCacheSend(votingGateway, "snapshotCurrentRound");
+  const { send: snapshotCurrentRound, status: snapshotStatus } = useCacheSend(snapshotContract, "snapshotCurrentRound");
 
   const onSnapshotHandler = () => {
     const hashedSnapshotMessage = web3.utils.soliditySha3(snapshotMessage);
