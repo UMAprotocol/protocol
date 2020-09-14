@@ -614,7 +614,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         if (address(token) == address(collateralCurrency)) {
             // If it is the collateral currency, send only the amount that the contract is not tracking.
-            // Note: this could be due to rounding error or balance-chainging tokens, like aTokens.
+            // Note: this could be due to rounding error or balance-changing tokens, like aTokens.
             amount = balance.sub(_pfc());
         } else {
             // If it's not the collateral currency, send the entire balance.
