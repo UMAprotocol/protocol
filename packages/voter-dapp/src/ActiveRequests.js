@@ -53,6 +53,8 @@ import {
 import { useTableStyles } from "./Styles.js";
 
 const snapshotMessage = "Sign For Snapshot";
+const snapshotHint =
+  "Snapshotting is the act of recording the current UMA Token distribution for vote weighting. This needs to be done once before votes can be revealed for this round. The snapshot function can only be called by an externally owned account and cannot be called from another contract.";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -74,6 +76,22 @@ const editStateReducer = (state, action) => {
 const toPriceRequestKey = (identifier, time) => time + "," + identifier;
 const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
   votingAccount + "," + time + "," + identifier;
+
+// Snapshot button with hint, sets some default props
+function SnapshotButton({ hint = snapshotHint, onClick = x => x }) {
+  return (
+    <div>
+      <Button variant="contained" color="primary" onClick={onClick}>
+        Snapshot Balances
+      </Button>
+      <Tooltip title={hint} placement="right">
+        <IconButton>
+          <HelpIcon />
+        </IconButton>
+      </Tooltip>
+    </div>
+  );
+}
 
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
@@ -753,11 +771,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           })}
         </TableBody>
       </Table>
-      {snapshotButtonShown && (
-        <Button variant="contained" color="primary" onClick={() => onSnapshotHandler()}>
-          Snapshot Balances
-        </Button>
-      )}
+      {snapshotButtonShown && <SnapshotButton onClick={onSnapshotHandler} hint={snapshotHint} />}
       {revealButtonShown && (
         <Button
           variant="contained"
