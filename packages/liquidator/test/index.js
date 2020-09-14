@@ -12,6 +12,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 const OneSplitMock = artifacts.require("OneSplitMock");
+const Store = artifacts.require("Store");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -26,6 +27,7 @@ contract("index.js", function(accounts) {
   let syntheticToken;
   let emp;
   let uniswap;
+  let store;
 
   let defaultPriceFeedConfig;
 
@@ -46,6 +48,7 @@ contract("index.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
 
     oneSplitMock = await OneSplitMock.new();
+    store = await Store.deployed();
 
     constructorParams = {
       expirationTimestamp: "20345678900",
@@ -62,7 +65,8 @@ contract("index.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
   });
 
@@ -116,7 +120,8 @@ contract("index.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
 
