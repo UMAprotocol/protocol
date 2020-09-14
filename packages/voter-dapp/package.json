@@ -26,13 +26,16 @@
     "utf-8-validate": "^5.0.2"
   },
   "devDependencies": {
+    "eslint-plugin-react": "^7.20.6",
     "truffle": "^5.1.37"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "eject": "react-scripts eject",
-    "clean": "rm -rf build"
+    "clean": "rm -rf build",
+    "eslint-check": "yarn eslint '**/*.js'",
+    "eslint-fix": "yarn eslint '**/*.js' --fix" 
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -62,5 +65,8 @@
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix"
   }
 }
