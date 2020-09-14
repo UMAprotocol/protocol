@@ -40,7 +40,7 @@ const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib"
 let logger;
 let protocolRunnerUrl;
 let customNodeUrl;
-let hubConfig = { mode: "localStorage" };
+let hubConfig = { configRetrieval: "localStorage", saveQueriedBlock: "localStorage", spokeRunner: "localStorage" };
 
 hub.post("/", async (req, res) => {
   try {
@@ -98,18 +98,18 @@ hub.post("/", async (req, res) => {
     let errorOutputs = [];
     let validOutputs = [];
     results.forEach((result, index) => {
-      if (result.status == "rejected" || result.value.execResponse.error || result.value.execResponse.stderr) {
+      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.value?.execResponse?.stderr) {
         // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
         // correctly but contained an error.
         errorOutputs.push({
           status: result.status,
-          execResponse: result.value.execResponse,
+          execResponse: result?.value?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
       } else {
         validOutputs.push({
           status: result.status,
-          execResponse: result.value.execResponse,
+          execResponse: result?.value?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
       }
@@ -131,7 +131,6 @@ hub.post("/", async (req, res) => {
       message: "Some calls returned errors 🚨",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
-    await waitForLogger(logger);
 
     res.status(500).send({
       message: "Some calls returned errors",
@@ -143,7 +142,7 @@ hub.post("/", async (req, res) => {
 // Execute a CloudRun Post command on a given `url` with a provided json `body`. This is used to initiate the spoke
 // instance from the hub. If running in gcp mode then local service account must be permissioned to execute this command.
 const _executeCloudRunSpoke = async (url, body) => {
-  if (hubConfig.mode == "gcp") {
+  if (hubConfig.spokeRunner == "gcp") {
     const targetAudience = new URL(url).origin;
 
     const client = await auth.getIdTokenClient(targetAudience);
@@ -154,7 +153,7 @@ const _executeCloudRunSpoke = async (url, body) => {
     });
 
     return res.data;
-  } else if (hubConfig.mode == "localStorage") {
+  } else if (hubConfig.spokeRunner == "localStorage") {
     return _postJson(url, body);
   }
 };
@@ -163,7 +162,7 @@ const _executeCloudRunSpoke = async (url, body) => {
 // converted into a buffer such that the config file does not need to first be downloaded from the bucket.
 // This will use the local service account.
 const _fetchConfig = async (bucket, file) => {
-  if (hubConfig.mode == "gcp") {
+  if (hubConfig.configRetrieval == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {
       let buf = "";
       storage
@@ -175,7 +174,7 @@ const _fetchConfig = async (bucket, file) => {
         .on("error", e => reject(e));
     });
     return JSON.parse(await requestPromise);
-  } else if (hubConfig.mode == "localStorage") {
+  } else if (hubConfig.configRetrieval == "localStorage") {
     const config = process.env[`${bucket}-${file}`];
     if (!config) {
       throw new Error(`No local storage config found for ${bucket}-${file}`);
@@ -187,7 +186,7 @@ const _fetchConfig = async (bucket, file) => {
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entry kind and
 // `lastHubUpdateBlockNumber` is the entry ID. Will override the previous value on each run.
 async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
-  if (hubConfig.mode == "gcp") {
+  if (hubConfig.saveQueriedBlock == "gcp") {
     const key = datastore.key(["BlockNumberLog", configIdentifier]);
     const dataBlob = {
       key: key,
@@ -196,7 +195,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
       }
     };
     await datastore.save(dataBlob); // Saves the entity
-  } else if (hubConfig.mode == "localStorage") {
+  } else if (hubConfig.saveQueriedBlock == "localStorage") {
     process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
   }
 }
@@ -204,13 +203,13 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
 // Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
-  if (hubConfig.mode == "gcp") {
+  if (hubConfig.saveQueriedBlock == "gcp") {
     const key = datastore.key(["BlockNumberLog", configIdentifier]);
     const [dataField] = await datastore.get(key);
     // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
     if (dataField == undefined) return await _getLatestBlockNumber();
     return dataField.blockNumber;
-  } else if (hubConfig.mode == "localStorage") {
+  } else if (hubConfig.saveQueriedBlock == "localStorage") {
     return process.env[`lastQueriedBlockNumber-${configIdentifier}`] != undefined
       ? process.env[`lastQueriedBlockNumber-${configIdentifier}`]
       : await _getLatestBlockNumber();
@@ -280,7 +279,7 @@ if (require.main === module) {
     process.env.PORT,
     process.env.PROTOCOL_RUNNER_URL,
     process.env.CUSTOM_NODE_URL,
-    process.env.HUB_CONFIG
+    process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null
   ).then(() => {});
 }
 

@@ -31,7 +31,6 @@ contract("CloudRunHub.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
-  let syntheticToken;
   let emp;
   let uniswap;
   let defaultUniswapPricefeedConfig;
@@ -169,7 +168,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testCloudRunMonitor: {
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -203,7 +202,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testServerlessMonitor: {
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -213,7 +212,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunLiquidator: {
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../liquidator/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../liquidator/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-liquidator",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -223,7 +222,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunDisputer: {
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../disputer/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../disputer/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-disputer",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -273,7 +272,7 @@ contract("CloudRunHub.js", function(accounts) {
     const hubConfig = {
       testServerlessMonitor: {
         // Creates no error.
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -284,7 +283,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../BADPATH/../liquidator/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../BADPATH/../liquidator/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -295,7 +294,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
-        cloudRunCommand: `truffle exec ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error2",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -315,6 +314,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     assert.equal(errorResponse.res.statusCode, 500); // error code
     const responseObject = JSON.parse(errorResponse.res.text); // extract json response
+    console.log("responseObject", JSON.stringify(responseObject));
 
     // Check that the http response contains correct logs
     assert.equal(responseObject.message, "Some calls returned errors"); // Final text in monitor loop.
@@ -334,11 +334,9 @@ contract("CloudRunHub.js", function(accounts) {
     // Check the error outputs.
     assert.equal(responseObject.output.errorOutputs[0].botIdentifier, "testServerlessMonitorError"); // Check that the valid output is the expected bot
     assert.equal(responseObject.output.errorOutputs[1].botIdentifier, "testServerlessMonitorError2"); // Check that the valid output is the expected bot
+    assert.isTrue(responseObject.output.errorOutputs[0].execResponse.stderr.includes("Cannot find module")); // invalid path error
     assert.isTrue(
-      responseObject.output.errorOutputs[0].execResponse.stdout.includes("ENOENT: no such file or directory")
-    ); // invalid path error
-    assert.isTrue(
-      responseObject.output.errorOutputs[1].execResponse.stdout.includes(
+      responseObject.output.errorOutputs[1].execResponse.stderr.includes(
         "Returned values aren't valid, did it run Out of Gas?"
       )
     ); // invalid emp error

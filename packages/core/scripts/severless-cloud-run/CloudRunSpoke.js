@@ -46,8 +46,6 @@ spoke.post("/", async (req, res) => {
     const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
-      // execResponse is a json object with keys error, stdout and stderr. Convert this into a string for consistent
-      // handling between the winston logger and the http response.
       throw execResponse;
     }
     logger.debug({
@@ -70,15 +68,13 @@ spoke.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      execResponse,
-      error: execResponse.error
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
     });
 
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse,
-      error: execResponse.error
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
     });
   }
 });
