@@ -154,6 +154,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidPathResponse = await sendRequest(invalidPathBody);
     assert.equal(invalidPathResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
+
     assert.isTrue(invalidPathResponse.res.text.includes("Cannot find module")); // Check the HTTP response.
     assert.isTrue(lastSpyLogIncludes(spy, "Cannot find module")); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.

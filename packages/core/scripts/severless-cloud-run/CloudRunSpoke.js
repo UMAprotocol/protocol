@@ -93,10 +93,11 @@ function _execShellCommand(cmd, inputEnv) {
 // This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
 function _stripExecOutput(output) {
   if (!output) return output;
-  return output
-    .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
-    .replace(/\s\s+/g, " ") // Remove tabbed chars
-    .replace(/\"/g, ""); // Remove escaped quotes
+  const strippedOutput = output
+    .replace(/\r?\n|\r/g, ",") // Remove escaped new line chars
+    .replace(/\\"/g, '"'); // Remove escaped quotes
+
+  return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
 }
 
 function _getChildProcessIdentifier(req) {
