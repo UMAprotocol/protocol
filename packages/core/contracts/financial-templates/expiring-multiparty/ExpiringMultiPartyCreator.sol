@@ -99,7 +99,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // We don't want EMP deployers to be able to intentionally or unintentionally set
         // liveness periods that could induce arithmetic overflow, but we also don't want
         // to be opinionated about what livenesses are "correct", so we will somewhat
-        // arbitrarily set the livness upper bound to 100 years (5200 weeks). In practice, liveness
+        // arbitrarily set the liveness upper bound to 100 years (5200 weeks). In practice, liveness
         // periods even greater than a few days would make the EMP unusable for most users.
         require(params.withdrawalLiveness < 5200 weeks, "Withdrawal liveness too large");
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");

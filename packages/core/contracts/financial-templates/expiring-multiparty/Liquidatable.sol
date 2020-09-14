@@ -189,8 +189,8 @@ contract Liquidatable is PricelessPositionManager {
 
     /**
      * @notice Liquidates the sponsor's position if the caller has enough
-     * synthetic tokens to retire the position's outstanding tokens. Liquidations also
-     * reset an ongoing "slow withdrawal"'s liveness.
+     * synthetic tokens to retire the position's outstanding tokens. Liquidations above
+     * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address of the sponsor to liquidate.
