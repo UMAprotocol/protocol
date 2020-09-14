@@ -81,6 +81,16 @@ class ContractMonitor {
           // For the config to be valid it must be an array of address.
           return Array.isArray(x) && x.every(y => this.web3.utils.isAddress(y));
         }
+      },
+      logOverrides: {
+        // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
+        // object is structured to contain key for the log to override and value for the logging level. EG:
+        // { newPositionCreated:'debug' } would override the default `info` behaviour for newPositionCreated.
+        value: {},
+        isValid: overrides => {
+          // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
+          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
+        }
       }
     };
 
@@ -157,7 +167,7 @@ class ContractMonitor {
         ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
-      this.logger.info({
+      this.logger[this.logOverrides.newPositionCreated || "info"]({
         at: "ContractMonitor",
         message: "New Sponsor Alert 🐣!",
         mrkdwn: mrkdwn

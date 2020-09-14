@@ -298,10 +298,11 @@ async function Poll(callback) {
       //  "syntheticVolatilityAlertThreshold": 0.1,          // Threshold for synthetic token on uniswap price volatility over `volatilityWindow`.
       //  "logOverrides":{                                   // override specific events log levels.
       //       "deviation":"error",                          // SyntheticPegMonitor deviation alert.
-      //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
       //       "crThreshold":"error",                        // CRMonitor CR threshold alert.
+      //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
       //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
       //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
+      //       "newPositionCreated":"debug"                  // Contract monitor new position created.
       //   }
       // }
       monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null,
