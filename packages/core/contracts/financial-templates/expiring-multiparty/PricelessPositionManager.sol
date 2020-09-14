@@ -148,6 +148,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
+     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be
+     * sent.
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
@@ -609,6 +611,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return;
     }
 
+    /**
+     * @notice Drains any excess balance of the provided ERC20 token to a pre-selected beneficiary.
+     * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
+     * @param token address of the ERC20 token whose excess balance should be drained.
+     */
     function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
 
