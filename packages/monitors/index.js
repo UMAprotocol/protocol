@@ -302,7 +302,7 @@ async function Poll(callback) {
       //       "syntheticThreshold":"error",                 // BalanceMonitor synthetic balance threshold alert.
       //       "collateralThreshold":"error",                // BalanceMonitor collateral balance threshold alert.
       //       "ethThreshold":"error",                       // BalanceMonitor ETH balance threshold alert.
-      //       "newPositionCreated":"debug"                  // Contract monitor new position created.
+      //       "newPositionCreated":"debug"                  // ContractMonitor new position created.
       //   }
       // }
       monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null,
