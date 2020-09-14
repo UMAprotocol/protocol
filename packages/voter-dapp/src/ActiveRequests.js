@@ -54,7 +54,7 @@ import { useTableStyles } from "./Styles.js";
 
 const snapshotMessage = "Sign For Snapshot";
 const snapshotHint =
-  "Snapshotting is the act of recording the current UMA Token distribution for vote weighting. This needs to be done once before votes can be revealed for this round. The snapshot function can only be called by an externally owned account and cannot be called from another contract.";
+  "Snapshotting is the act of recording the current UMA Token distribution for vote weighting. This needs to be done once before votes can be revealed for this round. The snapshot function cannot be called through another contract.";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
