@@ -76,7 +76,7 @@ const deployEMP = async callback => {
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
-      finder = await Finder.deployed();
+      const finder = await Finder.deployed();
       mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);

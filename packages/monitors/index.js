@@ -189,7 +189,7 @@ async function run({
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
-    while (true) {
+    for (;;) {
       await retry(
         async () => {
           // Update all client and price feeds.

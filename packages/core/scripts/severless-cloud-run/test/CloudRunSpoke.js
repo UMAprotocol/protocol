@@ -25,7 +25,6 @@ contract("CloudRunSpoke.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
-  let syntheticToken;
   let emp;
   let uniswap;
   let defaultUniswapPricefeedConfig;
@@ -46,7 +45,7 @@ contract("CloudRunSpoke.js", function(accounts) {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
   });
 
@@ -81,8 +80,6 @@ contract("CloudRunSpoke.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    syntheticToken = await Token.at(await emp.tokenCurrency());
 
     uniswap = await UniswapMock.new();
 

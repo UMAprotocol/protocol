@@ -13,7 +13,7 @@ const { createFormatFunction } = require("@umaprotocol/common");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const { fromWei, toBN } = web3.utils;
+  const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const syntheticCurrency = await ExpandedERC20.at(await emp.tokenCurrency());

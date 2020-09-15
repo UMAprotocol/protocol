@@ -98,7 +98,7 @@ const withdrawEMP = async callback => {
       console.log("Liquidation is in the PRE_DISPUTE state, checking whether it has expired");
       // Check if liquidation has expired
       const currentContractTime = await emp.getCurrentTime();
-      expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+      const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
       const liquidationLiveness = (await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS()).toString();
       const liquidationExpiration = toBN(liquidationTime).add(toBN(liquidationLiveness));
       console.log(`Current time: ${currentContractTime.toString()}`);

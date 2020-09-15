@@ -72,7 +72,7 @@ function getDefaultStaticConfig() {
     marginCurrencyWhitelist: {}
   };
 
-  for (name of publicNetworkNames) {
+  for (let name of publicNetworkNames) {
     defaultConfig[name] = blankNetworkConfig;
   }
 

@@ -41,7 +41,7 @@ const { getAbi, getAddress } = require("@umaprotocol/core");
  *
  *******************************************/
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
-const { toBN, toWei, fromWei, BN } = web3.utils;
+const { toBN, toWei, fromWei } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
   {
@@ -216,7 +216,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
 
   const progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
 
-  for (i = 0; i < claimedRewards.length; i++) {
+  for (let i = 0; i < claimedRewards.length; i++) {
     const claim = claimedRewards[i];
     const voter = claim.returnValues.voter;
     const roundId = claim.returnValues.roundId;
@@ -401,7 +401,7 @@ async function calculateRebate({
       console.log("*                                       *");
       console.log("*=======================================*");
     }
-    [revealRebates, claimRebates] = await Promise.all(parsePromises);
+    const [revealRebates, claimRebates] = await Promise.all(parsePromises);
 
     if (!debug) {
       console.log("\n\n*=======================================*");

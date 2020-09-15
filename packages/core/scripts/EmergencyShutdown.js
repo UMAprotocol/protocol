@@ -1,4 +1,3 @@
-const assert = require("assert");
 const { interfaceName } = require("@umaprotocol/common");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");

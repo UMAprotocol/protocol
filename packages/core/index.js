@@ -1,7 +1,6 @@
 const truffleContract = require("@truffle/contract");
 const fs = require("fs");
 const path = require("path");
-const assert = require("assert");
 const { getWeb3 } = require("@umaprotocol/common");
 
 /**

@@ -11,7 +11,7 @@ const Uniswap = artifacts.require("Uniswap");
 contract("UniswapPriceFeed.js", function(accounts) {
   const owner = accounts[0];
 
-  let mockUniswap;
+  let uniswapMock;
   let uniswapPriceFeed;
   let mockTime = 0;
   let dummyLogger;

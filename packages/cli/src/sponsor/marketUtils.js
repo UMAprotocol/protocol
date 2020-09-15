@@ -77,7 +77,7 @@ const getMarketSummary = async (web3, artifacts) => {
 };
 
 async function getCollateralizationRatio(web3, empAddress, collateral, tokens) {
-  const { toBN, toWei } = web3.utils;
+  const { toBN } = web3.utils;
   let priceFeed;
   try {
     // TODO: change createReferencePriceFeedForEmp to allow a null or undefined logger instead of forcing the caller

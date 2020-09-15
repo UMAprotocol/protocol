@@ -22,10 +22,10 @@ contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
-  let syntheticToken;
   let emp;
   let uniswap;
   let constructorParams;
+  let identifierWhitelist;
 
   let defaultUniswapPricefeedConfig;
   let defaultMedianizerPricefeedConfig;
@@ -75,8 +75,6 @@ contract("index.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    syntheticToken = await Token.at(await emp.tokenCurrency());
 
     uniswap = await UniswapMock.new();
 

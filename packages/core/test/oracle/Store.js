@@ -15,7 +15,6 @@ contract("Store", function(accounts) {
   const erc20TokenOwner = accounts[2];
   const rando = accounts[3];
 
-  const identifier = web3.utils.utf8ToHex("id");
   const arbitraryTokenAddr = web3.utils.randomHex(20);
 
   // TODO Add test final fee for test identifier

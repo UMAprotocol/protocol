@@ -101,48 +101,37 @@ async function runExport() {
   console.log("✅ All contract correctly transferred roles!");
 }
 
-// Ensure that the contract specified has the latest contract code deployed at the `upgradeAddresses`
-compiledByteCodeMatchesDeployed = async contract => {
-  // `getCode` returns the bytecode of the actual contract deployed on chain
-  const onChainByteCode = await web3.eth.getCode(upgradeAddresses[contract.contractName]);
-  // `deployedBytecode` returns the bytecode that would be deployed had the truffle artifact been migrated on-chain.
-  // This corresponds to the latest versions of the code and as such the assertion validates that the new
-  // contract code has been deployed.
-  const compiledByteCode = contract.toJSON().deployedBytecode;
-  assert.equal(onChainByteCode, compiledByteCode);
-};
-
 // Ensure that the finder has the correct contract address for a given interface name
-finderMatchesDeployment = async (contract, interfaceName) => {
+async function finderMatchesDeployment(contract, interfaceName) {
   const finder = await Finder.deployed();
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
   const finderSetAddress = await finder.getImplementationAddress(interfaceNameBytes32);
   const deployedAddress = upgradeAddresses[contract.contractName];
   assert.equal(web3.utils.toChecksumAddress(finderSetAddress), web3.utils.toChecksumAddress(deployedAddress));
-};
+}
 
 // Ensure that a given contract is owned by the NewGovernor
-contractOwnedByNewGovernor = async contract => {
+async function contractOwnedByNewGovernor(contract) {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const currentOwner = await contractInstance.owner();
   assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(upgradeAddresses.Governor));
-};
+}
 
 // Ensure that a given contract's multirole for `owner` is set to the new GovGovernor
-newGovernorHasOwnerRole = async contract => {
+async function newGovernorHasOwnerRole(contract) {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const roleHolder = await contractInstance.getMember(ownerRole);
   assert.equal(web3.utils.toChecksumAddress(roleHolder), web3.utils.toChecksumAddress(upgradeAddresses.Governor));
-};
+}
 
 // Ensure that a given contract's multirole for `owner` is set to the foundation multisig wallet
-contractOwnerRoleByFoundation = async contract => {
+async function contractOwnerRoleByFoundation(contract) {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
   assert.equal(web3.utils.toChecksumAddress(exclusiveRoleHolder), web3.utils.toChecksumAddress(foundationWallet));
-};
+}
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

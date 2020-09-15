@@ -2,14 +2,7 @@ const winston = require("winston");
 const lodash = require("lodash");
 
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
-const {
-  mineTransactionsAtTime,
-  advanceBlockAndSetTime,
-  MAX_SAFE_JS_INT,
-  stopMining,
-  startMining
-} = require("@umaprotocol/common");
-const { delay } = require("../../src/helpers/delay.js");
+const { mineTransactionsAtTime } = require("@umaprotocol/common");
 
 const BalancerMock = artifacts.require("BalancerMock");
 const Balancer = artifacts.require("Balancer");
@@ -29,7 +22,7 @@ contract("BalancerPriceFeed.js", async function(accounts) {
   before(async function() {
     startTime = (await web3.eth.getBlock("latest")).timestamp + blockTime * 100;
     balancerMock = await BalancerMock.new({ from: owner });
-    for (i of lodash.times(premine)) {
+    for (let i of lodash.times(premine)) {
       endTime = startTime + blockTime * i;
       // we are artificially setting price to block mined index
       const tx = await balancerMock.contract.methods.setPrice(i);

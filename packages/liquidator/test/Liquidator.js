@@ -10,7 +10,6 @@ const {
 } = require("@umaprotocol/common");
 
 // Script to test
-const { CONSTANTS } = require("../test/common");
 const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { Liquidator } = require("../src/liquidator.js");
 const { OneInchExchange } = require("../src/OneInchExchange.js");
@@ -54,7 +53,6 @@ contract("Liquidator.js", function(accounts) {
       const contractCreator = accounts[4];
       const liquidityProvider = accounts[5];
 
-      let tokenFactory;
       let finder;
       let collateralToken;
       let emp;
@@ -103,7 +101,7 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.mint(liquidatorBot, convert("100000"), { from: contractCreator });
 
         // Create identifier whitelist and register the price tracking ticker with it.
-        identifierWhitelist = await IdentifierWhitelist.deployed();
+        const identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
       });
 

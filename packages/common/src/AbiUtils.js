@@ -19,6 +19,7 @@ function getAllContracts() {
   // it won't work.
   if (process.browser) {
     // This only works in webpack.
+    // eslint-disable-next-line no-unused-vars
     const requireContext = require("require-context");
 
     // Note: all arguments must be hardcoded here for webpack to bundle the files correctly.

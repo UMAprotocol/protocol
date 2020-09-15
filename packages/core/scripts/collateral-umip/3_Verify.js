@@ -26,7 +26,7 @@ async function runExport() {
   console.log("Upgrade Verified!");
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

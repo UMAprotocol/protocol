@@ -4,7 +4,7 @@ const ReentrancyMock = artifacts.require("ReentrancyMock");
 const ReentrancyAttack = artifacts.require("ReentrancyAttack");
 
 // Extends https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.0.1/test/utils/ReentrancyGuard.test.js.
-contract("Lockable", function(accounts) {
+contract("Lockable", function() {
   let reentrancyMock;
   describe("nonReentrant and nonReentrant modifiers", function() {
     beforeEach(async function() {

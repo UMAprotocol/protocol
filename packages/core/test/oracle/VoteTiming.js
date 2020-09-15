@@ -2,9 +2,12 @@ const { didContractThrow } = require("@umaprotocol/common");
 
 const VoteTimingTest = artifacts.require("VoteTimingTest");
 
-contract("VoteTiming", function(accounts) {
+contract("VoteTiming", function() {
   const COMMIT_PHASE = "0";
   const REVEAL_PHASE = "1";
+
+  let voteTiming;
+
   beforeEach(async function() {
     voteTiming = await VoteTimingTest.new("100");
   });

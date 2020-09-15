@@ -1,4 +1,4 @@
-const { toWei, toBN, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, MAX_UINT_VAL, parseFixed } = require("@umaprotocol/common");
@@ -11,8 +11,7 @@ const {
   ExpiringMultiPartyEventClient,
   PriceFeedMockScaled: PriceFeedMock,
   SpyTransport,
-  lastSpyLogIncludes,
-  ConvertDecimals
+  lastSpyLogIncludes
 } = require("@umaprotocol/financial-templates-lib");
 
 // Truffle artifacts
@@ -49,6 +48,7 @@ contract("ContractMonitor.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
+      let finder;
 
       // Test object for EMP event client
       let eventClient;
@@ -62,13 +62,15 @@ contract("ContractMonitor.js", function(accounts) {
       // re-used variables
       let expirationTime;
       let constructorParams;
+      let identifier;
+      let convert;
+      let contractMonitor;
 
       // Keep track of new sponsor transactions for testing `checkForNewSponsors` method.
       let newSponsorTxn;
 
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,

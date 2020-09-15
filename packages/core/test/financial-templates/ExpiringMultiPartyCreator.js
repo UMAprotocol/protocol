@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL } = require("@umaprotocol/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -12,8 +12,6 @@ const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Timer = artifacts.require("Timer");
-const Finder = artifacts.require("Finder");
 
 contract("ExpiringMultiPartyCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -51,7 +49,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       withdrawalLiveness: 7200
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });

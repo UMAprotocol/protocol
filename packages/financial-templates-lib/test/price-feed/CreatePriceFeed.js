@@ -28,6 +28,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   let mockTime = 1588376548;
   let networker;
+  let logger;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -236,7 +237,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     try {
       // Creation should fail because this test network has no deployed uniswap contract and UNISWAP_ADDRESS isn't
       // provided in the environment.
-      const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+      await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
     } catch (error) {
       didThrow = true;
     }
@@ -423,7 +424,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    const medianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    await createPriceFeed(logger, web3, networker, getTime, config);
 
     // medianizedFeeds is missing.
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
@@ -509,7 +510,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       timerAddress: Timer.address
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: accounts[0]
     });

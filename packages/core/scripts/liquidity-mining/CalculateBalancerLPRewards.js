@@ -101,7 +101,7 @@ async function _calculatePayoutsBetweenBlocks(
 ) {
   // Create a structure to store the payouts for all historic shareholders.
   let shareHolderPayout = {};
-  for (shareHolder of shareHolders) {
+  for (let shareHolder of shareHolders) {
     shareHolderPayout[shareHolder] = toBN("0");
   }
 
@@ -115,7 +115,7 @@ async function _calculatePayoutsBetweenBlocks(
     cliProgress.Presets.shades_classic
   );
   progressBar.start(snapshotsToTake, 0);
-  for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
+  for (let currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
     shareHolderPayout = await _updatePayoutAtBlock(bPool, currentBlock, shareHolderPayout, umaPerSnapshot);
     progressBar.update(Math.ceil((currentBlock - fromBlock) / blocksPerSnapshot) + 1);
   }
@@ -170,7 +170,7 @@ function _saveShareHolderPayout(
   umaPerWeek
 ) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
-  for (shareHolder of Object.keys(shareHolderPayout)) {
+  for (let shareHolder of Object.keys(shareHolderPayout)) {
     if (shareHolderPayout[shareHolder].toString() == "0") delete shareHolderPayout[shareHolder];
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }

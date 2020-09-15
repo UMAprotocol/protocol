@@ -1,4 +1,4 @@
-const { toWei, toBN } = web3.utils;
+const { toWei } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
@@ -63,7 +63,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
-        finder = await Finder.deployed();
+        const finder = await Finder.deployed();
         mockOracle = await MockOracle.new(finder.address, Timer.address);
         const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);

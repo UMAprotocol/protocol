@@ -123,6 +123,7 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
         // This filters out the parts of the commitment that we don't need to send to solidity.
         // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
         // the solidity struct.
+        // eslint-disable-next-line no-unused-vars
         const { price, salt, ...rest } = commitment;
         return rest;
       }),

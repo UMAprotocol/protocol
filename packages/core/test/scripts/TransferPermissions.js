@@ -1,5 +1,4 @@
 const TransferPermissions = require("../../scripts/TransferPermissions.js");
-const assertPackage = require("assert");
 
 const Finder = artifacts.require("Finder");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");

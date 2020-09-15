@@ -96,7 +96,7 @@ function _stripExecOutput(output) {
   return output
     .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
     .replace(/\s\s+/g, " ") // Remove tabbed chars
-    .replace(/\"/g, ""); // Remove escaped quotes
+    .replace(/"/g, ""); // Remove escaped quotes
 }
 
 function _getChildProcessIdentifier(req) {

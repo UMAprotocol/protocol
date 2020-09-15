@@ -26,12 +26,15 @@ contract("TokenBalanceClient.js", function(accounts) {
 
       // Test object for EMP event client
       let client;
-      let collateralToken;
 
-      let identifier;
+      // Contracts
+      let collateralToken;
+      let syntheticToken;
+
+      // Shared convert function.
       let convert;
+
       before(async function() {
-        identifier = `${tokenConfig.tokenName}TEST`;
         convert = Convert(tokenConfig.collateralDecimals);
         // The TokenBalance Client is independent of the EMP and simply needs two tokens to monitor.
         collateralToken = await Token.new(

@@ -57,7 +57,7 @@ async function runExport() {
   console.table(identifierTable);
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

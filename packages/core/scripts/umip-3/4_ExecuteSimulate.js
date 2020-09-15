@@ -26,14 +26,10 @@ const TokenFactory = artifacts.require("TokenFactory");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
-const { interfaceName } = require("@umaprotocol/common");
-
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 const largeDaiTokenHolder = "0x4d10ae710bd8d1c31bd7465c8cbc3add6f279e81";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
-
-const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
 const upgradeAddresses = {
@@ -45,6 +41,8 @@ const upgradeAddresses = {
   Governor: Governor.address,
   Finder: Finder.address // Finder was not upgraded in UMIP3
 };
+
+let snapshotId;
 
 async function runExport() {
   console.log("Running UMIP-3 Upgrade vote simulator🔥");
@@ -267,7 +265,7 @@ async function runExport() {
 
   await addressWhitelist.addToWhitelist(collateralToken.address);
 
-  constructorParams = {
+  const constructorParams = {
     expirationTimestamp: "1590969600", // one week contract
     collateralAddress: collateralToken.address,
     priceFeedIdentifier: web3.utils.utf8ToHex("ETHBTC"),
@@ -469,7 +467,7 @@ async function runExport() {
   await revertToSnapshot(web3, snapshotId);
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

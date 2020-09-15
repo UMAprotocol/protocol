@@ -40,7 +40,7 @@ contract("ExpiringMultiParty", function(accounts) {
       timerAddress: timer.address
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: accounts[0]
     });

@@ -25,6 +25,7 @@ contract("DesignatedVoting", function(accounts) {
   let voting;
   let votingToken;
   let designatedVoting;
+  let supportedIdentifiers;
   let signature;
 
   let tokenBalance;

@@ -21,6 +21,10 @@ contract("BalanceMonitor.js", function(accounts) {
   const liquidatorBot = accounts[1];
   const disputerBot = accounts[2];
 
+  // Contracts
+  let collateralToken;
+  let syntheticToken;
+
   // Test object for EMP event client
   let balanceMonitor;
   let tokenBalanceClient;

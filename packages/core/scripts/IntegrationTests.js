@@ -48,6 +48,7 @@ contract("IntegrationTest", function(accounts) {
   let mockOracle;
   let collateralTokenWhitelist;
   let expiringMultiParty;
+  let store;
 
   // Re-used variables
   let constructorParams;
@@ -95,12 +96,12 @@ contract("IntegrationTest", function(accounts) {
     };
 
     // register the price identifer within the identifer whitelist
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });
 
-    finder = await Finder.deployed();
+    const finder = await Finder.deployed();
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
@@ -165,7 +166,6 @@ contract("IntegrationTest", function(accounts) {
     const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
     const baseNumTokens = toBN(toWei("100")); // starting number of tokens created by sponsor
     const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
-    const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
     const redeemAmount = toBN(toWei("1")); // The number of synthetic tokens to redeem for collateral
@@ -365,7 +365,6 @@ contract("IntegrationTest", function(accounts) {
     const baseCollateralAmount = toBN(toWei("150.333333333333333333")); // starting amount of collateral deposited by sponsor
     const baseNumTokens = toBN(toWei("99.333333333333333333")); // starting number of tokens created by sponsor
     const settlementPrice = toBN(toWei("1.000000000000000001")); // Price the contract resolves to
-    const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("0.999999999999999999")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("9.999999999999999999")); // Amount of additional collateral to add to a position
     const redeemAmount = toBN(toWei("0.999999999999999999")); // The number of synthetic tokens to redeem for collateral
@@ -577,10 +576,8 @@ contract("IntegrationTest", function(accounts) {
     const runRedeemTokens = true; // if the sponsor should have a chance to redeem some of their tokens
 
     // Tunable parameters
-    const baseCollateralAmount = toBN(toWei("150.333333333333333333")); // starting amount of collateral deposited by sponsor
     const baseNumTokens = toBN(toWei("99.333333333333333333")); // starting number of tokens created by sponsor
     const settlementPrice = toBN(toWei("1.000000000000000001")); // Price the contract resolves to
-    const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("0.999999999999999999")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("9.999999999999999999")); // Amount of additional collateral to add to a position
     const redeemAmount = toBN(toWei("0.999999999999999999")); // The number of synthetic tokens to redeem for collateral
