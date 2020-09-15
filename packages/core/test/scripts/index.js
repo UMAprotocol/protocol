@@ -19,7 +19,7 @@ contract("index.js", function() {
     assert.throws(() => getAddress("Voting", networkId + 1));
 
     // Bad contract name.
-    assert.throws(() => getAddress("Nonsense", networkId));
+    assert.isNull(getAddress("Nonsense", networkId));
   });
 
   it("Truffle contract", function() {
