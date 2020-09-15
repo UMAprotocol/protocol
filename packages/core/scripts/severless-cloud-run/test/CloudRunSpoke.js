@@ -2,7 +2,6 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Enables testing http requests to an express spoke.
 const request = require("supertest");
-const path = require("path");
 
 // Script to test
 const spoke = require("../CloudRunSpoke");

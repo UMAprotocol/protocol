@@ -7,7 +7,7 @@ module.exports = {
   extends: ["plugin:prettier/recommended", "eslint:recommended"],
   plugins: ["prettier", "mocha"],
   parserOptions: {
-    ecmaVersion: 10
+    ecmaVersion: 11
   },
   rules: {
     "prettier/prettier": ["error"],

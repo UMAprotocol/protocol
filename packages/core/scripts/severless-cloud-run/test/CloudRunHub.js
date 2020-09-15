@@ -2,7 +2,6 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
-const path = require("path");
 
 // Script to test
 const hub = require("../CloudRunHub");
@@ -53,7 +52,7 @@ contract("CloudRunHub.js", function(accounts) {
     process.env[key] = value;
   };
   const unsetEnvironmentVariables = () => {
-    for (key of setEnvironmentVariableKes) {
+    for (let key of setEnvironmentVariableKes) {
       delete process.env[key];
     }
     setEnvironmentVariableKes = [];
@@ -117,8 +116,6 @@ contract("CloudRunHub.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    syntheticToken = await Token.at(await emp.tokenCurrency());
 
     uniswap = await UniswapMock.new();
 

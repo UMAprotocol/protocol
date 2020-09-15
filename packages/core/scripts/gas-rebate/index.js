@@ -565,13 +565,9 @@ async function Main(callback) {
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
     console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
     console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
-    let endBlock, startBlock;
-    try {
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
-    } catch (err) {
-      throw err;
-    }
+
+    let endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
+    let startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
 
     // Fetch gas price data in parallel
     const pricePromises = [];
