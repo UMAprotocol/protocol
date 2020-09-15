@@ -5,7 +5,7 @@ const {
   createFormatFunction,
   createEtherscanLinkMarkdown,
   createObjectFromDefaultProps
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 class CRMonitor {
   /**

@@ -1,7 +1,7 @@
 const Finder = artifacts.require("Finder");
 const Migrations = artifacts.require("Migrations");
 const Registry = artifacts.require("Registry");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 const checkDeploymentValidity = async function(callback) {
   try {

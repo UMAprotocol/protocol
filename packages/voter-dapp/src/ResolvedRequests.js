@@ -31,7 +31,7 @@ import {
   IDENTIFIER_BLACKLIST,
   getPrecisionForIdentifier,
   formatFixed
-} from "@umaprotocol/common";
+} from "@uma/common";
 
 import VoteData from "./containers/VoteData";
 

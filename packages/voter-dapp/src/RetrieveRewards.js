@@ -4,7 +4,7 @@ import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { PriceRequestStatusEnum, MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "@umaprotocol/common";
+import { PriceRequestStatusEnum, MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "@uma/common";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {

@@ -1,4 +1,4 @@
-const { VotePhasesEnum, getLatestEvent, IDENTIFIER_BLACKLIST } = require("@umaprotocol/common");
+const { VotePhasesEnum, getLatestEvent, IDENTIFIER_BLACKLIST } = require("@uma/common");
 
 /**
  * First, sorts all price requests chronologically from earliest to latest.

@@ -9,7 +9,7 @@ const { viewLiquidationDetailsMenu } = require("./viewLiquidationDetails");
 const { getLiquidationEvents } = require("./liquidationUtils");
 const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { getCollateralizationRatio } = require("./marketUtils.js");
-const { createFormatFunction } = require("@umaprotocol/common");
+const { createFormatFunction } = require("@uma/common");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");

@@ -10,8 +10,8 @@ const Finder = artifacts.require("Finder");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Governor = artifacts.require("Governor");
 
-const { interfaceName } = require("@umaprotocol/common");
-const { PublicNetworks } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
+const { PublicNetworks } = require("@uma/common");
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");

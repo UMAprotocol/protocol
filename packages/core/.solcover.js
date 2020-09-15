@@ -1,1 +1,1 @@
-module.exports = require("@umaprotocol/common").SolcoverConfig;
+module.exports = require("@uma/common").SolcoverConfig;

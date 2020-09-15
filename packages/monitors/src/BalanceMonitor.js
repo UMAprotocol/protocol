@@ -1,10 +1,6 @@
 // This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 
-const {
-  createFormatFunction,
-  createEtherscanLinkMarkdown,
-  createObjectFromDefaultProps
-} = require("@umaprotocol/common");
+const { createFormatFunction, createEtherscanLinkMarkdown, createObjectFromDefaultProps } = require("@uma/common");
 
 class BalanceMonitor {
   /**
