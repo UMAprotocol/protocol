@@ -9,6 +9,21 @@ function createJsonTransport() {
     format: combine(
       timestamp(),
       printf(info => {
+        let { timestamp, level, error, ...args } = info;
+        if (error) {
+          // If there is an error then convert it from a Javascript error object into a string.
+          error = JSON.parse(
+            JSON.stringify(
+              error
+                .replace(/\r?\n|\r/g, "")
+                .replace(/\s\s+/g, " ") // Remove tabbed chars
+                .replace(/\\"/g, ""), // Remove escaped quotes
+              Object.getOwnPropertyNames(error) // Turn the json object into a parsable structure.
+            )
+          );
+
+          info = { timestamp, level, error, ...args };
+        }
         return JSON.stringify(info);
       })
     )

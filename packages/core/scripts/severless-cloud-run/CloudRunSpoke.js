@@ -83,21 +83,32 @@ function _execShellCommand(cmd, inputEnv) {
   return new Promise(resolve => {
     exec(cmd, { env: { ...process.env, ...inputEnv, stdio: "inherit", shell: true } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
-      stdout = _stripExecOutput(stdout);
-      stderr = _stripExecOutput(stderr);
+      stdout = _stripExecStdout(stdout);
+      stderr = _stripExecStdError(stderr);
       resolve({ error, stdout, stderr });
     });
   });
 }
 
-// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
-function _stripExecOutput(output) {
+// Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
+function _stripExecStdout(output) {
   if (!output) return output;
-  const strippedOutput = output
-    .replace(/\r?\n|\r/g, ",") // Remove escaped new line chars
-    .replace(/\\"/g, '"'); // Remove escaped quotes
-
+  const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
+  // Parse the outputs into a json object to get an array of logs.
   return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+}
+
+// Format stderr outputs.
+function _stripExecStdError(output) {
+  if (!output) return output;
+  return _regexStrip(output).replace(/\r?\n|\r/g, ""); // Remove escaped new line chars. Replace with no space.
+}
+
+// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
+function _regexStrip(output) {
+  return output
+    .replace(/\s\s+/g, " ") // Remove tabbed chars
+    .replace(/\\"/g, ""); // Remove escaped quotes
 }
 
 function _getChildProcessIdentifier(req) {
