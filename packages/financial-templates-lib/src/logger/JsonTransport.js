@@ -1,4 +1,5 @@
-// This transport enables Winston logging to the console.
+// This transport enables Winston logging to the console in json objects. Used to convert multiple json outputs from one
+// execution into an array of json objects used upstream in serverless bots.
 const winston = require("winston");
 const { format } = winston;
 const { combine, timestamp, printf } = format;
