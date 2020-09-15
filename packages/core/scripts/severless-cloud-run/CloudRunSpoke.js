@@ -107,8 +107,8 @@ function _stripExecStdError(output) {
 // This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
 function _regexStrip(output) {
   return output
-    .replace(/\s\s+/g, " ") // Remove tabbed chars
-    .replace(/\\"/g, ""); // Remove escaped quotes
+    .replace(/\s\s+/g, " ") // Remove tabbed chars.
+    .replace(/\\"/g, ""); // Remove escaped quotes.
 }
 
 function _getChildProcessIdentifier(req) {

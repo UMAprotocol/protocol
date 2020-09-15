@@ -18,8 +18,8 @@ function createJsonTransport() {
             JSON.stringify(
               error
                 .replace(/\r?\n|\r/g, "")
-                .replace(/\s\s+/g, " ") // Remove tabbed chars
-                .replace(/\\"/g, ""), // Remove escaped quotes
+                .replace(/\s\s+/g, " ") // Remove tabbed chars.
+                .replace(/\\"/g, ""), // Remove escaped quotes.
               Object.getOwnPropertyNames(error) // Turn the json object into a parsable structure.
             )
           );
