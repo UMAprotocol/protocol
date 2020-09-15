@@ -35,7 +35,9 @@ function getAddress(contractName, networkId) {
   const artifact = getArtifact(contractName);
 
   if (!artifact.networks[networkId]) {
-    throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
+    return null;
+    // For now we will return null to not break upstream tests in some edge cases, like the serverless bots.
+    // throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
   }
   return artifact.networks[networkId].address;
 }

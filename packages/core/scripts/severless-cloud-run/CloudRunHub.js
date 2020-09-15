@@ -18,17 +18,15 @@
  * curl -X POST -H 'Content-type: application/json' --data '{"bucket":"bot-configs","configFile":"global-bot-config.json"}' https://localhost:8080
  */
 
-// TODO: add integration tests between this CloudRunnerHub and CloudResponse.
-
 const express = require("express");
-const app = express();
-app.use(express.json()); // Enables json to be parsed by the express process.
+const hub = express();
+hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
 const { URL } = require("url");
 
 // GCP helpers.
-const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run.
+const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
 const storage = new Storage();
@@ -39,24 +37,29 @@ const datastore = new Datastore();
 const Web3 = require("web3");
 
 const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
+let logger;
+let protocolRunnerUrl;
+let customNodeUrl;
+let hubConfig = { configRetrieval: "localStorage", saveQueriedBlock: "localStorage", spokeRunner: "localStorage" };
 
-app.post("/", async (req, res) => {
+hub.post("/", async (req, res) => {
   try {
-    Logger.debug({
-      at: "CloudRunnerHub",
-      message: "Running cloud runner hub query",
+    logger.debug({
+      at: "CloudRunHub",
+      message: "Running CloudRun hub query",
       reqBody: req.body
     });
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
-      throw new Error("ERROR: Body missing json bucket or file parameters!");
+      throw new Error("Body missing json bucket or file parameters!");
     }
+    // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
+    const configObject = await _fetchConfig(req.body.bucket, req.body.configFile);
 
-    // Get the config file from the GCP bucket
-    const configObject = await _fetchConfigObject(req.body.bucket, req.body.configFile);
-
-    // Fetch the last block number this given config file queried the blockchain at.
+    // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
+    if (!configObject || !lastQueriedBlockNumber)
+      throw new Error("CloudRun hub requires a config object and a last updated block number!");
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
@@ -69,17 +72,14 @@ app.post("/", async (req, res) => {
     let promiseArray = [];
     for (const botName in configObject) {
       const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      if (process.env.ENVIRONMENT == "production") {
-        promiseArray.push(_executeCloudRun(process.env.PROTOCOL_RUNNER_URL, botConfig));
-      } else {
-        promiseArray.push(_postJson(process.env.PROTOCOL_RUNNER_URL, botConfig));
-      }
+      promiseArray.push(_executeCloudRunSpoke(protocolRunnerUrl, botConfig));
     }
-    Logger.debug({
-      at: "CloudRunnerHub",
-      message: "Executing cloud run query from config file",
+    logger.debug({
+      at: "CloudRunHub",
+      message: "Executing CloudRun query from config file",
       lastQueriedBlockNumber,
       latestBlockNumber,
+      protocolRunnerUrl,
       botsExecuted: Object.keys(configObject)
     });
 
@@ -88,120 +88,144 @@ app.post("/", async (req, res) => {
     // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
 
-    Logger.debug({
-      at: "CloudRunnerHub",
+    logger.debug({
+      at: "CloudRunHub",
       message: "Batch execution promise resolved",
       results
     });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
-    let thrownErrors = [];
+    let errorOutputs = [];
+    let validOutputs = [];
     results.forEach((result, index) => {
-      if (result.status == "rejected") {
-        // If the child process in the spoke crashed it will return 400 (rejected).
-        thrownErrors.push({
+      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.value?.execResponse?.stderr) {
+        // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
+        // correctly but contained an error.
+        errorOutputs.push({
           status: result.status,
-          execResponse: result.reason.response.data,
+          execResponse: result?.value?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
-      } else if (result.value.execResponse.error) {
-        // If the child process exited correctly but contained an error.
-        thrownErrors.push({
+      } else {
+        validOutputs.push({
           status: result.status,
-          execResponse: result.value.execResponse,
+          execResponse: result?.value?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
       }
     });
-    if (thrownErrors.length > 0) {
-      throw thrownErrors;
+    if (errorOutputs.length > 0) {
+      throw { errorOutputs, validOutputs };
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
-    Logger.debug({
-      at: "CloudRunnerHub",
+    logger.debug({
+      at: "CloudRunHub",
       message: "All calls returned correctly",
-      thrownErrors: null
+      output: { errorOutputs, validOutputs }
     });
-    res.status(200).send({ message: "All calls returned correctly", error: null });
-  } catch (thrownErrors) {
-    Logger.error({
-      at: "CloudRunnerHub",
-      message: "CloudRunner hub error 🌩 ",
-      thrownErrors
+    res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
+  } catch (errorOutput) {
+    logger.error({
+      at: "CloudRunHub",
+      message: "Some calls returned errors 🚨",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
-    res.status(400).send({ message: "Something went wrong in cloud runner hub execution", thrownErrors });
+
+    res.status(500).send({
+      message: "Some calls returned errors",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
+    });
   }
 });
 
-// Fetch a `file` from a GCP `bucket`. This function uses a readStream which is converted into a buffer such that the
-// config file does not need to first be downloaded from the bucket. This will use the local service account.
-const _fetchConfigObject = async (bucket, file) => {
-  const requestPromise = new Promise((resolve, reject) => {
-    let buf = "";
-    storage
-      .bucket(bucket)
-      .file(file)
-      .createReadStream()
-      .on("data", d => (buf += d))
-      .on("end", () => resolve(buf))
-      .on("error", e => reject(e));
-  });
+// Execute a CloudRun Post command on a given `url` with a provided json `body`. This is used to initiate the spoke
+// instance from the hub. If running in gcp mode then local service account must be permissioned to execute this command.
+const _executeCloudRunSpoke = async (url, body) => {
+  if (hubConfig.spokeRunner == "gcp") {
+    const targetAudience = new URL(url).origin;
 
-  return JSON.parse(await requestPromise);
+    const client = await auth.getIdTokenClient(targetAudience);
+    const res = await client.request({
+      url: url,
+      method: "post",
+      data: body
+    });
+
+    return res.data;
+  } else if (hubConfig.spokeRunner == "localStorage") {
+    return _postJson(url, body);
+  }
 };
 
-// Execute a Cloud Run Post command on a given `url` with a provided json `body`. The local service account must
-// be permissioned to execute this command.
-const _executeCloudRun = async (url, body) => {
-  const targetAudience = new URL(url).origin;
-
-  const client = await auth.getIdTokenClient(targetAudience);
-  const res = await client.request({
-    url: url,
-    method: "post",
-    data: body
-  });
-
-  return res.data;
+// Fetch configs for cloud run hub. Either read from a gcp bucket or local storage. GCP uses a readStream which is
+// converted into a buffer such that the config file does not need to first be downloaded from the bucket.
+// This will use the local service account.
+const _fetchConfig = async (bucket, file) => {
+  if (hubConfig.configRetrieval == "gcp") {
+    const requestPromise = new Promise((resolve, reject) => {
+      let buf = "";
+      storage
+        .bucket(bucket)
+        .file(file)
+        .createReadStream()
+        .on("data", d => (buf += d))
+        .on("end", () => resolve(buf))
+        .on("error", e => reject(e));
+    });
+    return JSON.parse(await requestPromise);
+  } else if (hubConfig.configRetrieval == "localStorage") {
+    const config = process.env[`${bucket}-${file}`];
+    if (!config) {
+      throw new Error(`No local storage config found for ${bucket}-${file}`);
+    }
+    return JSON.parse(config);
+  }
 };
 
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entry kind and
 // `lastHubUpdateBlockNumber` is the entry ID. Will override the previous value on each run.
 async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
-  const key = datastore.key(["BlockNumberLog", configIdentifier]);
-  const dataBlob = {
-    key: key,
-    data: {
-      blockNumber
-    }
-  };
-
-  // Saves the entity
-  await datastore.save(dataBlob);
+  if (hubConfig.saveQueriedBlock == "gcp") {
+    const key = datastore.key(["BlockNumberLog", configIdentifier]);
+    const dataBlob = {
+      key: key,
+      data: {
+        blockNumber
+      }
+    };
+    await datastore.save(dataBlob); // Saves the entity
+  } else if (hubConfig.saveQueriedBlock == "localStorage") {
+    process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
+  }
 }
 
 // Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
-  const key = datastore.key(["BlockNumberLog", configIdentifier]);
-  const [dataField] = await datastore.get(key);
-
-  // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
-  if (dataField == undefined) return await _getLatestBlockNumber();
-  return dataField.blockNumber;
+  if (hubConfig.saveQueriedBlock == "gcp") {
+    const key = datastore.key(["BlockNumberLog", configIdentifier]);
+    const [dataField] = await datastore.get(key);
+    // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
+    if (dataField == undefined) return await _getLatestBlockNumber();
+    return dataField.blockNumber;
+  } else if (hubConfig.saveQueriedBlock == "localStorage") {
+    return process.env[`lastQueriedBlockNumber-${configIdentifier}`] != undefined
+      ? process.env[`lastQueriedBlockNumber-${configIdentifier}`]
+      : await _getLatestBlockNumber();
+  }
 }
 
 // Get the latest block number from `CUSTOM_NODE_URL`. Used to update the `lastSeenBlockNumber` after each run.
 async function _getLatestBlockNumber() {
-  const web3 = new Web3(process.env.CUSTOM_NODE_URL);
+  const web3 = new Web3(customNodeUrl);
   return await web3.eth.getBlockNumber();
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
 function _appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
-  config.environmentVariables["STARTING_BLOCK_NUMBER"] = lastQueriedBlockNumber + 1;
+  config.environmentVariables["STARTING_BLOCK_NUMBER"] = Number(lastQueriedBlockNumber) + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
   return config;
 }
@@ -220,18 +244,44 @@ async function _postJson(url, body) {
   return await response.json(); // extract JSON from the http response
 }
 
-const port = process.env.PORT || 8080;
-app.listen(port, () => {
-  Logger.debug({
-    at: "CloudRunnerHub",
-    message: "Initalized Cloud Runner hub instance",
-    processEnvironment: process.env,
-    port
-  });
-  // The cloud runner hub should have a configured URL to define the remote instance & a local node URL to boot.
-  if (!process.env.PROTOCOL_RUNNER_URL || !process.env.CUSTOM_NODE_URL) {
+// Start the hub's async listening process. Enables injection of a logging instance & port for testing.
+async function Poll(_Logger = Logger, port = 8080, _ProtocolRunnerUrl, _CustomNodeUrl, _hubConfig) {
+  // The CloudRun hub should have a configured URL to define the remote instance & a local node URL to boot.
+  if (!_ProtocolRunnerUrl || !_CustomNodeUrl) {
     throw new Error(
-      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a cloud run instance and Ethereum node"
+      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a CloudRun spoke instance and an Ethereum node"
     );
   }
-});
+
+  // Set configs to be used in the sererless execution.
+  logger = _Logger;
+  protocolRunnerUrl = _ProtocolRunnerUrl;
+  customNodeUrl = _CustomNodeUrl;
+  if (_hubConfig) hubConfig = _hubConfig;
+
+  return hub.listen(port, () => {
+    logger.debug({
+      at: "CloudRunHub",
+      message: "CloudRun hub initialized",
+      protocolRunnerUrl,
+      customNodeUrl,
+      hubConfig,
+      port,
+      processEnvironment: process.env
+    });
+  });
+}
+// If called directly by node, start the Poll process. If imported as a module then do nothing.
+if (require.main === module) {
+  // add the logger, port, protocol runnerURL and custom node URL as params.
+  Poll(
+    Logger,
+    process.env.PORT,
+    process.env.PROTOCOL_RUNNER_URL,
+    process.env.CUSTOM_NODE_URL,
+    process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null
+  ).then(() => {});
+}
+
+hub.Poll = Poll;
+module.exports = hub;
