@@ -34,6 +34,7 @@ contract("CloudRunHub.js", function(accounts) {
   let emp;
   let uniswap;
   let defaultUniswapPricefeedConfig;
+  let identifierWhitelist;
 
   let hubSpy;
   let hubSpyLogger;
@@ -168,7 +169,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testCloudRunMonitor: {
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: "yarn monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -202,7 +203,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testServerlessMonitor: {
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: "yarn monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -212,7 +213,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunLiquidator: {
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../liquidator/index.js --network test`,
+        cloudRunCommand: "yarn liquidator --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-liquidator",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -222,7 +223,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunDisputer: {
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../disputer/index.js --network test`,
+        cloudRunCommand: "yarn disputer --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-disputer",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -272,7 +273,7 @@ contract("CloudRunHub.js", function(accounts) {
     const hubConfig = {
       testServerlessMonitor: {
         // Creates no error.
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: "yarn monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -283,7 +284,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../BADPATH/../liquidator/index.js --network test`,
+        cloudRunCommand: "yarn INVALID --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -294,7 +295,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
-        cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+        cloudRunCommand: "yarn monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error2",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -334,7 +335,9 @@ contract("CloudRunHub.js", function(accounts) {
     // Check the error outputs.
     assert.equal(responseObject.output.errorOutputs[0].botIdentifier, "testServerlessMonitorError"); // Check that the valid output is the expected bot
     assert.equal(responseObject.output.errorOutputs[1].botIdentifier, "testServerlessMonitorError2"); // Check that the valid output is the expected bot
-    assert.isTrue(responseObject.output.errorOutputs[0].execResponse.stderr.includes("Cannot find module")); // invalid path error
+    assert.isTrue(
+      responseObject.output.errorOutputs[0].execResponse.stderr.includes("error Command INVALID not found")
+    ); // invalid path error
     assert.isTrue(
       responseObject.output.errorOutputs[1].execResponse.stderr.includes(
         "Returned values aren't valid, did it run Out of Gas?"

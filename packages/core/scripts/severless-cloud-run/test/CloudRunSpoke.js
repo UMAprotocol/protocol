@@ -123,7 +123,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   });
   it("Cloud Run Spoke can correctly execute bot logic with valid body", async function() {
     const validBody = {
-      cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+      cloudRunCommand: "yarn monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
@@ -142,7 +142,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid path)", async function() {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
-      cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../INVALID/index.js --network test`,
+      cloudRunCommand: "yarn monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -161,7 +161,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid body)", async function() {
     // Invalid config should error out before entering the main while loop in the bot.
     const invalidConfigBody = {
-      cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+      cloudRunCommand: "yarn monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -180,7 +180,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid network identifier)", async function() {
     // Invalid price feed config should error out before entering main while loop
     const invalidPriceFeed = {
-      cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network INVALID`,
+      cloudRunCommand: "yarn monitors --network INVALID",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -199,7 +199,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid emp)", async function() {
     // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {
-      cloudRunCommand: `node ${path.resolve(__dirname)}/../../../../monitors/index.js --network test`,
+      cloudRunCommand: "yarn monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
