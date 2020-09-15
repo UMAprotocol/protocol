@@ -81,7 +81,7 @@ function Dashboard() {
       </AppBar>
       {designatedVotingHelpers}
       <RetrieveRewards votingAccount={votingAccount} />
-      <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} />
+      <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} snapshotContract="Voting" />
       <ResolvedRequests votingAccount={votingAccount} />
     </div>
   );

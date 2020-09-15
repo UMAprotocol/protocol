@@ -95,5 +95,6 @@ module.exports = {
   deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask,
   getMessageSignatureTruffle,
+  getMessageSignatureMetamask,
   signMessage
 };
