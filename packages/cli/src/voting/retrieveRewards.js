@@ -1,6 +1,6 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const style = require("../textStyle");
-const { batchRetrieveRewards, getVotingRoles } = require("@umaprotocol/common");
+const { batchRetrieveRewards, getVotingRoles } = require("@uma/common");
 const getAvailableRewards = require("./getRewardsByRoundId");
 const inquirer = require("inquirer");
 const argv = require("minimist")(process.argv.slice());

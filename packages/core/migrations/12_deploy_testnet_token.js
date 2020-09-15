@@ -1,5 +1,5 @@
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const { deploy, setToExistingAddress, getKeysForNetwork, PublicNetworks } = require("@umaprotocol/common");
+const { deploy, setToExistingAddress, getKeysForNetwork, PublicNetworks } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

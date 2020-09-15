@@ -33,7 +33,7 @@ const fs = require("fs");
 const path = require("path");
 const Web3 = require("web3");
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
-const { getAbi, getAddress } = require("@umaprotocol/core");
+const { getAbi, getAddress } = require("@uma/core");
 
 /** *****************************************
  *

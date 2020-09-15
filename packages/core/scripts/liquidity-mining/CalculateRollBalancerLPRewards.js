@@ -16,7 +16,7 @@ const path = require("path");
 const Web3 = require("web3");
 const erc20 = require("../../build/contracts/ERC20.json");
 const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
-const { delay } = require("@umaprotocol/financial-templates-lib");
+const { delay } = require("@uma/financial-templates-lib");
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 

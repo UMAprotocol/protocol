@@ -15,7 +15,7 @@ const {
   batchCommitVotes,
   getLatestEvent,
   signMessage
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 

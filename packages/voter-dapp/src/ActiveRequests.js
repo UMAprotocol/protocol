@@ -49,7 +49,7 @@ import {
   getPrecisionForIdentifier,
   parseFixed,
   formatFixed
-} from "@umaprotocol/common";
+} from "@uma/common";
 import { useTableStyles } from "./Styles.js";
 
 const snapshotMessage = "Sign For Snapshot";

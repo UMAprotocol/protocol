@@ -7,7 +7,7 @@
  */
 const { toBN } = web3.utils;
 const argv = require("minimist")(process.argv.slice(), { string: ["time"] });
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const Finder = artifacts.require("Finder");

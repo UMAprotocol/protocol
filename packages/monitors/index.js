@@ -14,7 +14,7 @@ const {
   createTokenPriceFeedForEmp,
   waitForLogger,
   delay
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
 const { ContractMonitor } = require("./src/ContractMonitor");
@@ -23,8 +23,8 @@ const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@umaprotocol/core");
-const { getWeb3 } = require("@umaprotocol/common");
+const { getAbi, getAddress } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.

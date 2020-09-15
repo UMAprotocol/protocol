@@ -7,7 +7,7 @@ const {
   createEtherscanLinkMarkdown,
   revertWrapper,
   createObjectFromDefaultProps
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 class ContractMonitor {
   /**

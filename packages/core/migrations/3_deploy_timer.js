@@ -1,5 +1,5 @@
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming } = require("@umaprotocol/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

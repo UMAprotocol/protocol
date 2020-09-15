@@ -1,6 +1,6 @@
 const style = require("../textStyle");
 const argv = require("minimist")(process.argv.slice());
-const { getPrecisionForIdentifier, formatFixed } = require("@umaprotocol/common");
+const { getPrecisionForIdentifier, formatFixed } = require("@uma/common");
 
 /**
  * Return the list of votes (that the voter has participated in) that have successfully resolved a price

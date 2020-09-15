@@ -2,9 +2,9 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { getIsWeth, unwrapToEth, getCurrencySymbol } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
-const { LiquidationStatesEnum } = require("@umaprotocol/common");
+const { LiquidationStatesEnum } = require("@uma/common");
 const { liquidationStateToDisplay } = require("./liquidationUtils");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 /**
  * @notice Display details about all liquidation events for this sponsor.
