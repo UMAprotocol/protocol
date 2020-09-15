@@ -11,7 +11,8 @@ function createJsonTransport() {
       printf(info => {
         let { timestamp, level, error, ...args } = info;
         if (error) {
-          // If there is an error then convert it from a Javascript error object into a string.
+          // If there is an error then convert it from a Javascript error object into a json object. Json.stringify is
+          // used to remove the javascript error notation with message and sack and convert it to a key-value paired object.
           error = JSON.parse(
             JSON.stringify(
               error
