@@ -4,6 +4,7 @@
 
 // Transport objects
 const ConsoleTransport = require("./ConsoleTransport");
+const JsonTransport = require("./JsonTransport");
 const SlackTransport = require("./SlackTransport");
 const PagerDutyTransport = require("./PagerDutyTransport");
 
@@ -18,7 +19,7 @@ if (process.env.ENVIRONMENT == "serverless") {
   const { LoggingWinston } = require("@google-cloud/logging-winston");
   require("@google-cloud/trace-agent").start();
   transports.push(new LoggingWinston());
-  transports.push(ConsoleTransport.createConsoleTransport(false));
+  transports.push(JsonTransport.createJsonTransport());
 }
 
 // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
