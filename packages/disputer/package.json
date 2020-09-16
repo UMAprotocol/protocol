@@ -18,7 +18,8 @@
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "publishConfig": {
-    "registry": "https://registry.npmjs.com/"
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   },
   "repository": {
     "type": "git",
