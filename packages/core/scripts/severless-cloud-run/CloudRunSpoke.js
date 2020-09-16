@@ -99,14 +99,16 @@ function _stripExecStdout(output) {
     const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
     return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
   } catch (error) {
-    return _regexStrip(output).replace(/\r?\n|\r/g, "");
+    return _regexStrip(output).replace(/\r?\n|\r/g, " ");
   }
 }
 
 // Format stderr outputs.
 function _stripExecStdError(output) {
   if (!output) return output;
-  return _regexStrip(output).replace(/\r?\n|\r/g, ""); // Remove escaped new line chars. Replace with no space.
+  return _regexStrip(output)
+    .replace(/\r?\n|\r/g, "")
+    .replace(/\"/g, ""); // Remove escaped new line chars. Replace with no space.
 }
 
 // This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
