@@ -99,7 +99,7 @@ hub.post("/", async (req, res) => {
     let errorOutputs = [];
     let validOutputs = [];
     results.forEach((result, index) => {
-      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code == "500") {
+      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code != "200") {
         // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
         // correctly but contained an error.
         errorOutputs.push({
