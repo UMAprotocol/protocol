@@ -1,8 +1,8 @@
 // This script simulates a vote from a large token holder to ratify the proposal from script 1_Propose.js.
 // It is intended to be run on a main-net Ganache fork with the foundation wallet unlocked. Leading on
 // from the previous script run a ganache cli instance as:
-// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc
-// then run the script as: truffle exec ./scripts/umip-3/2_VoteSimulate.js --network mainnet-fork
+// ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
+// then run the script as: yarn truffle exec ./scripts/umip-3/2_VoteSimulate.js --network mainnet-fork
 
 const assert = require("assert").strict;
 
@@ -120,9 +120,9 @@ async function runExport() {
    *******************************************************/
 
   // send the foundation wallet some eth to submit the Tx
-  await web3.eth.sendTransaction({ from: accounts[0], to: foundationWallet, value: web3.utils.toWei("1") });
+  await web3.eth.sendTransaction({ from: accounts[0], to: foundationWallet, value: web3.utils.toWei("1"), gas: 2000000 });
 
-  const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet });
+  const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet, gas: 2000000 });
   console.log("Voting Tx done!", VoteTx.tx);
 
   /** *****************************************************
@@ -141,7 +141,7 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
 
-  const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet });
+  const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet, gas: 2000000 });
   console.log("Reveal Tx done!", revealTx.tx);
 
   currentTime = (await voting.getCurrentTime()).toNumber();
@@ -169,7 +169,7 @@ async function runExport() {
   // for every transactions within the proposal
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");
-    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: foundationWallet });
+    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: foundationWallet, gas: 2000000 });
     console.log("Transaction", i, "submitted! tx", tx.tx);
   }
 
