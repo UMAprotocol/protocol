@@ -1,4 +1,4 @@
-const { didContractThrow } = require("@umaprotocol/common");
+const { didContractThrow } = require("@uma/common");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const MockAdministratee = artifacts.require("MockAdministratee");

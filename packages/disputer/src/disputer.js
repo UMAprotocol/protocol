@@ -2,7 +2,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   revertWrapper,
   createObjectFromDefaultProps
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 class Disputer {
   /**

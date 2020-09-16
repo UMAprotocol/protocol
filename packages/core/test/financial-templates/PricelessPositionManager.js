@@ -1,7 +1,7 @@
 // Libraries and helpers
-const { PositionStatesEnum, didContractThrow } = require("@umaprotocol/common");
+const { PositionStatesEnum, didContractThrow } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");

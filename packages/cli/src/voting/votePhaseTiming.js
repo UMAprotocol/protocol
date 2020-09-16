@@ -1,4 +1,4 @@
-const { VotePhasesEnum } = require("@umaprotocol/common");
+const { VotePhasesEnum } = require("@uma/common");
 const moment = require("moment");
 const SECONDS_IN_DAY = 86400;
 const MINUTES_IN_HOUR = 60;

@@ -12,7 +12,7 @@ const {
   getKeysForNetwork,
   deploy,
   enableControllableTiming
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

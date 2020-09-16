@@ -11,7 +11,7 @@ const {
   SpyTransport,
   lastSpyLogIncludes,
   lastSpyLogLevel
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");

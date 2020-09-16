@@ -7,7 +7,7 @@ const {
   LiquidationStatesEnum,
   PostWithdrawLiquidationRewardsStatusTranslations,
   ConvertDecimals
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 // Script to test
 const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
@@ -23,7 +23,7 @@ const {
   lastSpyLogLevel,
   spyLogIncludes,
   spyLogLevel
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Contracts and helpers
 const OneSplitMock = artifacts.require("OneSplitMock");

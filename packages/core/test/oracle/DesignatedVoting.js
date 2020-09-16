@@ -5,7 +5,7 @@ const {
   getRandomUnsignedInt,
   computeVoteHash,
   signMessage
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const Finder = artifacts.require("Finder");

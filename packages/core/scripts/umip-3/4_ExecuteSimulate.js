@@ -11,7 +11,7 @@ const {
   takeSnapshot,
   revertToSnapshot,
   computeVoteHash
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");

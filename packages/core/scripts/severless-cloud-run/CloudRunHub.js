@@ -36,7 +36,7 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { Logger } = require("@umaprotocol/financial-templates-lib");
+const { Logger } = require("@uma/financial-templates-lib");
 let logger;
 let protocolRunnerUrl;
 let customNodeUrl;

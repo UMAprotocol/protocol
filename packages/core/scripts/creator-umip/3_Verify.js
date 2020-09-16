@@ -9,7 +9,7 @@ const assert = require("assert");
 const Registry = artifacts.require("Registry");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["creator"] });
-const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");

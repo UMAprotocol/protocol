@@ -8,7 +8,7 @@ const Registry = artifacts.require("Registry");
 const Governor = artifacts.require("Governor");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["creator"] });
-const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 

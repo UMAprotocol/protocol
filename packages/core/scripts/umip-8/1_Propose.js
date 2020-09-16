@@ -8,8 +8,8 @@ const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Governor = artifacts.require("Governor");
 const Finder = artifacts.require("Finder");
 
-const { PublicNetworks } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { PublicNetworks } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 

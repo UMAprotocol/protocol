@@ -14,7 +14,7 @@ const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const VotingToken = artifacts.require("VotingToken");
 const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
-const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
 const tdr = require("truffle-deploy-registry");
 

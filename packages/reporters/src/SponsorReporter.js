@@ -1,4 +1,4 @@
-const { createFormatFunction } = require("@umaprotocol/common");
+const { createFormatFunction } = require("@uma/common");
 const chalkPipe = require("chalk-pipe");
 const italic = chalkPipe("italic");
 

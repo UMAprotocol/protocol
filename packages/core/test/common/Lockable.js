@@ -1,4 +1,4 @@
-const { didContractThrow } = require("@umaprotocol/common");
+const { didContractThrow } = require("@uma/common");
 
 const ReentrancyMock = artifacts.require("ReentrancyMock");
 const ReentrancyAttack = artifacts.require("ReentrancyAttack");

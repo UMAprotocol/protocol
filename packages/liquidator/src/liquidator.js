@@ -4,7 +4,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
   revertWrapper
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 const { ALTERNATIVE_ETH_ADDRESS, MAX_SLIPPAGE, INVERSE_SLIPPAGE } = require("./constants");
 

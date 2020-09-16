@@ -6,8 +6,8 @@
  * Example: `$(npm bin)/truffle exec ./scripts/local/WithdrawLiquidationEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
  */
 const { fromWei, toBN, utf8ToHex } = web3.utils;
-const { LiquidationStatesEnum } = require("@umaprotocol/common");
-const { interfaceName } = require("@umaprotocol/common");
+const { LiquidationStatesEnum } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

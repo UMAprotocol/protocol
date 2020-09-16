@@ -1,5 +1,5 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
-const { PositionStatesEnum } = require("@umaprotocol/common");
+const { PositionStatesEnum } = require("@uma/common");
 
 const showExpiredMarketDetails = async (web3, artifacts, emp) => {
   const SyntheticToken = artifacts.require("SyntheticToken");

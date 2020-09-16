@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 // JS libs
 const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
@@ -16,11 +16,11 @@ const {
   createReferencePriceFeedForEmp,
   waitForLogger,
   delay
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@umaprotocol/core");
-const { getWeb3 } = require("@umaprotocol/common");
+const { getAbi, getAddress } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.

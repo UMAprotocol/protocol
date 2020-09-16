@@ -5,7 +5,7 @@
  * Example: `$(npm bin)/truffle exec ./scripts/local/DisputeEMP.js --network test --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --id 0`
  */
 const { toWei, fromWei, toBN } = web3.utils;
-const { LiquidationStatesEnum } = require("@umaprotocol/common");
+const { LiquidationStatesEnum } = require("@uma/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

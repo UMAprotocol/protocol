@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8 } = web3.utils;
-const { didContractThrow, MAX_UINT_VAL } = require("@umaprotocol/common");
+const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract

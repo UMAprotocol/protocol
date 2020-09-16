@@ -1,7 +1,7 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@umaprotocol/common");
+const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@uma/common");
 const Promise = require("bluebird");
 
 class ExpiringMultiPartyClient {

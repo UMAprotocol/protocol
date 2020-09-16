@@ -15,7 +15,7 @@ const {
   deriveKeyPairFromSignatureTruffle,
   getKeyGenMessage,
   computeVoteHash
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");

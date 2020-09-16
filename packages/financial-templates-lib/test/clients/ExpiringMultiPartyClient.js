@@ -2,8 +2,8 @@ const { toWei } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
-const { interfaceName } = require("@umaprotocol/common");
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 
 const { ExpiringMultiPartyClient } = require("../../src/clients/ExpiringMultiPartyClient");
 

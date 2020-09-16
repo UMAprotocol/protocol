@@ -4,7 +4,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["input_csv"] }
 const fs = require("fs");
 
 const { toBN, toWei } = web3.utils;
-const { RegistryRolesEnum } = require("@umaprotocol/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");

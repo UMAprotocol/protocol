@@ -15,7 +15,7 @@ const {
   batchCommitVotes,
   getLatestEvent,
   signMessage
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 
 const SUPPORTED_IDENTIFIERS = {
   "BTC/USD": {

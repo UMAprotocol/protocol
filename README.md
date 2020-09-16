@@ -155,7 +155,7 @@ run `yarn` to update the lockfile.
 The standard way to pull a JS element from another package is to reference it like this:
 
 ```js
-const { importedObject } = require("@umaprotocol/some-package")
+const { importedObject } = require("@uma/some-package")
 ```
 
 Note: the require will resolve to the `main` file specified in the `package.json` file. If you'd like to import a different file, you
@@ -163,15 +163,15 @@ should ensure that that file is exported in the `files` directive inside the `pa
 import it using the following syntax:
 
 ```js
-const { importedObject } = require("@umaprotocol/some-package/path/to/some/file")
+const { importedObject } = require("@uma/some-package/path/to/some/file")
 ```
 
 Note: if this file isn't exported by the `files` directive, it will work locally, but fail when run via an npm installation.
 
-To install this dependency you're using in `@umaprotocol/my-package`, you should run the following command:
+To install this dependency you're using in `@uma/my-package`, you should run the following command:
 
 ```
-yarn lerna add @umaprotocol/some-package --scope @umaprotocol/my-package
+yarn lerna add @uma/some-package --scope @uma/my-package
 ```
 
 By default, this will symlink the package in `node_modules` rather than attempting to pull the package via npm. This allows
@@ -206,16 +206,16 @@ To run a yarn command in a particular sub-package, you can run the following fro
 yarn workspace <package_name> <script>
 ```
 
-For instance, this could be used to run the build command in the `@umaprotocol/core` package:
+For instance, this could be used to run the build command in the `@uma/core` package:
 
 ```
-yarn workspace @umaprotocol/core build
+yarn workspace @uma/core build
 ```
 
-or to install the truffle package as a devDependency in the `@umaprotocol/liquidator` package:
+or to install the truffle package as a devDependency in the `@uma/liquidator` package:
 
 ```
-yarn workspace @umaprotocol/liquidator add truffle --dev
+yarn workspace @uma/liquidator add truffle --dev
 ```
 
 To run a package script in _every_ package that has a script by that name, you should use `lerna`:

@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -16,7 +16,7 @@ const UniswapMock = artifacts.require("UniswapMock");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@umaprotocol/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];

@@ -12,7 +12,7 @@ const {
   takeSnapshot,
   revertToSnapshot,
   computeVoteHash
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
 // Address which holds a lot of UMA tokens to mock a majority vote

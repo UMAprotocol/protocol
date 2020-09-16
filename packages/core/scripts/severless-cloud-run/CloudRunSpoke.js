@@ -14,7 +14,7 @@ const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger } = require("@umaprotocol/financial-templates-lib");
+const { Logger } = require("@uma/financial-templates-lib");
 let logger;
 
 spoke.post("/", async (req, res) => {

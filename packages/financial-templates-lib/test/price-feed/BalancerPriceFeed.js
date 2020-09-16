@@ -2,7 +2,7 @@ const winston = require("winston");
 const lodash = require("lodash");
 
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
-const { mineTransactionsAtTime } = require("@umaprotocol/common");
+const { mineTransactionsAtTime } = require("@uma/common");
 
 const BalancerMock = artifacts.require("BalancerMock");
 const Balancer = artifacts.require("Balancer");

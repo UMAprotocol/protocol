@@ -1,7 +1,7 @@
 const truffleContract = require("@truffle/contract");
 const fs = require("fs");
 const path = require("path");
-const { getWeb3 } = require("@umaprotocol/common");
+const { getWeb3 } = require("@uma/common");
 
 /**
  * @notice Gets the truffle artifact for an UMA contract.
