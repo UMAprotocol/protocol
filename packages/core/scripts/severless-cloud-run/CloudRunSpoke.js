@@ -93,9 +93,14 @@ function _execShellCommand(cmd, inputEnv) {
 // Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
 function _stripExecStdout(output) {
   if (!output) return output;
-  const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
-  // Parse the outputs into a json object to get an array of logs.
-  return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable form
+  // if the spoke was running a process that did not correctly generate a winston log. In this case simply return the stripped output.
+  try {
+    const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
+    return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+  } catch (error) {
+    return _regexStrip(output).replace(/\r?\n|\r/g, "");
+  }
 }
 
 // Format stderr outputs.
