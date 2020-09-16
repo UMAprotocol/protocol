@@ -25,6 +25,7 @@ contract("PricelessPositionManager", function(accounts) {
   const tokenHolder = accounts[2];
   const other = accounts[3];
   const collateralOwner = accounts[4];
+  const beneficiary = accounts[5];
 
   // Contracts
   let collateral;
@@ -69,18 +70,37 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await collateral.balanceOf(pricelessPositionManager.address), expectedTotalCollateral.toString());
   };
 
+  const expectNoExcessCollateralToTrim = async () => {
+    let collateralTrimAmount = await pricelessPositionManager.trimExcess.call(collateral.address);
+    await pricelessPositionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+
+    assert.equal(collateralTrimAmount.toString(), "0");
+    assert.equal(beneficiaryCollateralBalance.toString(), "0");
+  };
+
+  const expectAndDrainExcessCollateral = async () => {
+    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
+    await pricelessPositionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+    collateral.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
+
+    // Assert that nonzero collateral was drained.
+    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
+  };
+
   before(async function() {
+    store = await Store.deployed();
+    tokenFactory = await TokenFactory.deployed();
+  });
+
+  beforeEach(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
     collateral = await MarginToken.new("UMA", "UMA", 18, { from: collateralOwner });
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
-    store = await Store.deployed();
-    tokenFactory = await TokenFactory.deployed();
-  });
-
-  beforeEach(async function() {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     timer = await Timer.deployed();
     await timer.setCurrentTime(startTimestamp);
@@ -114,9 +134,14 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+  });
+
+  afterEach(async () => {
+    await expectNoExcessCollateralToTrim();
   });
 
   it("Valid constructor params", async function() {
@@ -134,6 +159,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
+          beneficiary, // _excessTokenBeneficiary
           { from: contractDeployer }
         )
       )
@@ -153,6 +179,7 @@ contract("PricelessPositionManager", function(accounts) {
           tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
+          beneficiary, // _excessTokenBeneficiary
           { from: contractDeployer }
         )
       )
@@ -185,6 +212,8 @@ contract("PricelessPositionManager", function(accounts) {
           syntheticName, // _syntheticName (unchanged)
           syntheticSymbol, // _syntheticSymbol (unchanged)
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
+          timer.address, // _timerAddress (unchanged)
+          beneficiary, // _excessTokenBeneficiary (unchanged)
           { from: contractDeployer }
         )
       )
@@ -208,6 +237,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
 
@@ -236,6 +266,9 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: initialPositionTokens.toString() },
       { from: other }
     );
+
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
 
     // Create the initial pricelessPositionManager.
     const createTokens = toWei("100");
@@ -267,6 +300,9 @@ contract("PricelessPositionManager", function(accounts) {
 
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
+
     // Deposit.
     const depositCollateral = toWei("50");
     expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(depositCollateral));
@@ -280,6 +316,9 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
+
     // Withdraw.
     const withdrawCollateral = toWei("20");
     expectedSponsorCollateral = expectedSponsorCollateral.sub(toBN(withdrawCollateral));
@@ -292,6 +331,9 @@ contract("PricelessPositionManager", function(accounts) {
     let sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), withdrawCollateral);
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
 
     // Redeem 50% of the tokens for 50% of the collateral.
     const redeemTokens = toWei("50");
@@ -319,6 +361,9 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
+
     // Create additional.
     const createAdditionalTokens = toWei("10");
     const createAdditionalCollateral = toWei("110");
@@ -331,6 +376,9 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
 
     // Redeem full.
     const redeemRemainingTokens = toWei("60");
@@ -351,6 +399,9 @@ contract("PricelessPositionManager", function(accounts) {
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
+
+    // Periodic check for no excess collateral.
+    await expectNoExcessCollateralToTrim();
 
     // Contract state should not have changed.
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
@@ -740,6 +791,9 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.caller == other;
     });
 
+    // No excess collateral post expiry.
+    await expectNoExcessCollateralToTrim();
+
     // Settling an expired position should revert if the contract has expired but the DVM has not yet returned a price.
     assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: tokenHolder })));
 
@@ -763,6 +817,9 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED);
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+
+    // No excess collateral post settlement.
+    await expectNoExcessCollateralToTrim();
 
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
@@ -853,6 +910,9 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+    // No excess collateral after all have settled.
+    await expectNoExcessCollateralToTrim();
   });
 
   it("Non sponsor can't deposit, redeem, withdraw, or transfer", async function() {
@@ -1181,6 +1241,9 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "29");
       assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "28");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "30");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("settleExpired() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // Expire the contract
@@ -1273,6 +1336,9 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("withdraw() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to withdraw 12 collateral.
@@ -1294,6 +1360,9 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
       assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("redeem() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to redeem 9 tokens. (9/20 = 0.45) tokens should result in a proportional redemption of the totalPositionCollateral,
@@ -1315,6 +1384,9 @@ contract("PricelessPositionManager", function(accounts) {
 
       // Expected number of synthetic tokens are burned.
       assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), "11");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
   });
 
@@ -1605,6 +1677,36 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: "16" }, { from: sponsor })));
   });
 
+  it("Can withdraw excess collateral", async function() {
+    // Attempt to redeem a position smaller s.t. the resulting position is less than 5 wei tokens (the min sponsor
+    // position size)
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+
+    await pricelessPositionManager.create({ rawValue: "40" }, { rawValue: "20" }, { from: sponsor });
+
+    // Transfer extra collateral in.
+    await collateral.transfer(pricelessPositionManager.address, web3.utils.toWei("10"), { from: sponsor });
+    let excessCollateral = await pricelessPositionManager.trimExcess.call(collateral.address);
+    await pricelessPositionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+    assert.equal(excessCollateral.toString(), web3.utils.toWei("10"));
+    assert.equal(beneficiaryCollateralBalance.toString(), web3.utils.toWei("10"));
+    await collateral.transfer(sponsor, web3.utils.toWei("10"), { from: beneficiary });
+
+    // Transfer extra tokens in.
+    await tokenCurrency.transfer(pricelessPositionManager.address, "10", { from: sponsor });
+    let excessTokens = await pricelessPositionManager.trimExcess.call(tokenCurrency.address);
+    await pricelessPositionManager.trimExcess(tokenCurrency.address);
+    let beneficiaryTokenBalance = await tokenCurrency.balanceOf(beneficiary);
+    assert.equal(excessTokens.toString(), "10");
+    assert.equal(beneficiaryTokenBalance.toString(), "10");
+
+    // Redeem still succeeds.
+    await tokenCurrency.transfer(sponsor, "10", { from: beneficiary });
+    await pricelessPositionManager.redeem({ rawValue: "20" }, { from: sponsor });
+  });
+
   it("Non-standard ERC20 delimitation", async function() {
     // To test non-standard ERC20 token delimitation a new ERC20 token is created which has 6 decimal points of precision.
     // A new priceless position manager is then created and and set to use this token as collateral. To generate values
@@ -1625,6 +1727,7 @@ contract("PricelessPositionManager", function(accounts) {
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
