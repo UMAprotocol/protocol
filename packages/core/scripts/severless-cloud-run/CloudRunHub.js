@@ -126,14 +126,25 @@ hub.post("/", async (req, res) => {
     });
     res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
   } catch (errorOutput) {
+    logger.debug({
+      at: "CloudRunHub",
+      message: "Some spoke calls returned errors (details)🚨",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
+    });
     logger.error({
       at: "CloudRunHub",
-      message: "Some calls returned errors 🚨",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
+      message: "Some spoke calls returned errors 🚨",
+      output:
+        errorOutput instanceof Error
+          ? errorOutput.message
+          : {
+              errorOutputs: Object.keys(errorOutput.errorOutputs), // eslint-disable-line indent
+              validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
+            } // eslint-disable-line indent
     });
 
     res.status(500).send({
-      message: "Some calls returned errors",
+      message: "Some spoke calls returned errors",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
   }
