@@ -34,7 +34,7 @@ async function runExport() {
         data: addCreatorToRegistryTx
       }
     ],
-    { from: proposerWallet, gas: 2000000  }
+    { from: proposerWallet, gas: 2000000 }
   );
 
   console.log(`

@@ -120,7 +120,12 @@ async function runExport() {
    *******************************************************/
 
   // send the foundation wallet some eth to submit the Tx
-  await web3.eth.sendTransaction({ from: accounts[0], to: foundationWallet, value: web3.utils.toWei("1"), gas: 2000000 });
+  await web3.eth.sendTransaction({
+    from: accounts[0],
+    to: foundationWallet,
+    value: web3.utils.toWei("1"),
+    gas: 2000000
+  });
 
   const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet, gas: 2000000 });
   console.log("Voting Tx done!", VoteTx.tx);
@@ -169,7 +174,10 @@ async function runExport() {
   // for every transactions within the proposal
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");
-    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: foundationWallet, gas: 2000000 });
+    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), {
+      from: foundationWallet,
+      gas: 2000000
+    });
     console.log("Transaction", i, "submitted! tx", tx.tx);
   }
 
