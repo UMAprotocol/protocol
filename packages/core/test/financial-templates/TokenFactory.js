@@ -1,4 +1,4 @@
-const { didContractThrow } = require("@umaprotocol/common");
+const { didContractThrow } = require("@uma/common");
 
 // Tested Contract
 const TokenFactory = artifacts.require("TokenFactory");

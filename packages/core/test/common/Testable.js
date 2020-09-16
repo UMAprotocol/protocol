@@ -1,4 +1,4 @@
-const { didContractThrow } = require("@umaprotocol/common");
+const { didContractThrow } = require("@uma/common");
 
 const TestableTest = artifacts.require("TestableTest");
 const Timer = artifacts.require("Timer");

@@ -82,6 +82,11 @@ contract Liquidatable is PricelessPositionManager {
 
     // Immutable contract parameters:
     // Amount of time for pending liquidation before expiry.
+    // !!Note: The lower the liquidation liveness value, the more risk incurred by sponsors.
+    //       Extremely low liveness values increase the chance that opportunistic invalid liquidations
+    //       expire without dispute, thereby decreasing the usability for sponsors and increasing the risk
+    //       for the contract as a whole. An insolvent contract is extremely risky for any sponsor or synthetic
+    //       token holder for the contract.
     uint256 public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
     FixedPoint.Unsigned public collateralRequirement;
@@ -186,7 +191,8 @@ contract Liquidatable is PricelessPositionManager {
 
     /**
      * @notice Liquidates the sponsor's position if the caller has enough
-     * synthetic tokens to retire the position's outstanding tokens.
+     * synthetic tokens to retire the position's outstanding tokens. Liquidations above
+     * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address of the sponsor to liquidate.
@@ -298,12 +304,17 @@ contract Liquidatable is PricelessPositionManager {
         );
 
         // If this liquidation is a subsequent liquidation on the position, and the liquidation size is larger than
-        // minSponsorTokens, then re-set the liveness. This enables a liquidation against a withdraw request to be
-        // "dragged out" if the position is very large.
+        // some "griefing threshold", then re-set the liveness. This enables a liquidation against a withdraw request to be
+        // "dragged out" if the position is very large and liquidators need time to gather funds. The griefing threshold
+        // is enforced so that liquidations for trivially small # of tokens cannot drag out an honest sponsor's slow withdrawal.
+
+        // We arbitrarily set the "griefing threshold" to `minSponsorTokens` because it is the only parameter
+        // denominated in token currency units and we can avoid adding another parameter.
+        FixedPoint.Unsigned memory griefingThreshold = minSponsorTokens;
         if (
-            positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // this is a subsequent liquidation.
-            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // liveness has not passed yet.
-            maxTokensToLiquidate.isGreaterThanOrEqual(minSponsorTokens) // above the minimum threshold.
+            positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // The position is undergoing a slow withdrawal.
+            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // The slow withdrawal has not yet expired.
+            tokensLiquidated.isGreaterThanOrEqual(griefingThreshold) // The liquidated token count is above a "griefing threshold".
         ) {
             positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
         }

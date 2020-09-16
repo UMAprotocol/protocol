@@ -59,7 +59,7 @@ echo '#                                                                  #'
 echo '# 3/16. Advancing to start of next voting round                    #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-yarn run truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
+yarn run truffle exec ./scripts/local/AdvanceToCommitPhase.js --network test
 echo "- ✅ Advanced to next commit phase!"
 
 # Prompt user to import account[0] from Ganache into Metamask
@@ -116,7 +116,13 @@ echo '# 7/16. Snapshotting voting token balances                         #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 echo "- Before reveals can take place, a snapshot of current voting token balances must be taken"
-yarn run truffle exec ./scripts/local/SnapshotCurrentRound.js --network test
+select yn in "Continue" "Help" "Exit"; do
+    case $yn in
+        Continue ) break;;
+        Help ) echo "🚸 Click and sign to generate snapshot for current round.";;
+        Exit ) exit;;
+    esac
+done
 
 # Prompt user to reveal votes
 echo -e '\n####################################################################'
@@ -204,7 +210,13 @@ echo '# 13/16. Snapshotting voting token balances                        #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 echo "- Before reveals can take place, a snapshot of current voting token balances must be taken"
-yarn run truffle exec ./scripts/local/SnapshotCurrentRound.js --network test
+select yn in "Continue" "Help" "Exit"; do
+    case $yn in
+        Continue ) break;;
+        Help ) echo "🚸 Click and sign to generate snapshot for current round.";;
+        Exit ) exit;;
+    esac
+done
 
 # Prompt user to reveal votes
 echo -e '\n####################################################################'

@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow, ZERO_ADDRESS } = require("@umaprotocol/common");
+const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
@@ -39,7 +39,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     store = await Store.deployed();
 
     constructorParams = {
-      expirationTimestamp: "1625097600",
+      expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
@@ -65,12 +65,18 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), tokenFactory.address);
   });
 
-  it("Arbitrary expiration timestamps should work", async function() {
+  it("Expiration timestamp must be in future", async function() {
     // Change to arbitrary expiration timestamp in the future
-    const arbitraryExpiration = "1898918401"; // 2030-03-05T05:20:01.000Z
+    const arbitraryExpiration = "1298918401"; // Monday, February 28, 2011 6:40:01 PM
     // Set to a valid expiry.
     constructorParams.expirationTimestamp = arbitraryExpiration.toString();
-    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
   });
 
   it("Cannot have empty synthetic token symbol", async function() {
@@ -121,9 +127,33 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     );
   });
 
+  it("Withdrawal liveness cannot be too large", async function() {
+    // Change only the withdrawal liveness
+    constructorParams.withdrawalLiveness = MAX_UINT_VAL;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
   it("Liquidation liveness must not be 0", async function() {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = 0;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Liquidation liveness cannot be too large", async function() {
+    // Change only the liquidation liveness
+    constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {

@@ -8,7 +8,7 @@ const {
   MAX_SAFE_JS_INT,
   stopMining,
   startMining
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 
 const BalancerMock = artifacts.require("BalancerMock");

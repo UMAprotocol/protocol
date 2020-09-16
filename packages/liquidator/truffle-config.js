@@ -1,4 +1,4 @@
 const path = require("path");
-const wkdir = path.dirname(require.resolve("@umaprotocol/core/package.json"));
+const wkdir = path.dirname(require.resolve("@uma/core/package.json"));
 
-module.exports = require("@umaprotocol/common").getTruffleConfig(wkdir);
+module.exports = require("@uma/common").getTruffleConfig(wkdir);

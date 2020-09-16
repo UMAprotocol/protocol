@@ -1,6 +1,6 @@
 const web3 = require("web3");
 
-const { VotePhasesEnum } = require("@umaprotocol/common");
+const { VotePhasesEnum } = require("@uma/common");
 
 const secondsPerDay = web3.utils.toBN(86400);
 

@@ -1,6 +1,6 @@
 const { toWei, toBN } = web3.utils;
 
-const { advanceBlockAndSetTime } = require("@umaprotocol/common");
+const { advanceBlockAndSetTime } = require("@uma/common");
 
 const { _updatePayoutAtBlock, _calculatePayoutsBetweenBlocks } = require("../CalculateRollBalancerLPRewards");
 

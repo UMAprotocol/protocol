@@ -1,4 +1,4 @@
-const { RegistryRolesEnum, didContractThrow } = require("@umaprotocol/common");
+const { RegistryRolesEnum, didContractThrow } = require("@uma/common");
 
 const truffleAssert = require("truffle-assertions");
 

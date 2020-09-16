@@ -2,7 +2,7 @@ const truffleContract = require("@truffle/contract");
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
-const { getWeb3 } = require("@umaprotocol/common");
+const { getWeb3 } = require("@uma/common");
 
 /**
  * @notice Gets the truffle artifact for an UMA contract.
@@ -35,7 +35,9 @@ function getAddress(contractName, networkId) {
   const artifact = getArtifact(contractName);
 
   if (!artifact.networks[networkId]) {
-    throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
+    return null;
+    // For now we will return null to not break upstream tests in some edge cases, like the serverless bots.
+    // throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
   }
   return artifact.networks[networkId].address;
 }

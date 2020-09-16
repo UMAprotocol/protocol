@@ -41,6 +41,7 @@ import {
   BATCH_MAX_COMMITS,
   BATCH_MAX_REVEALS,
   getAdminRequestId,
+  getMessageSignatureMetamask,
   isAdminRequest,
   decodeTransaction,
   translateAdminVote,
@@ -48,8 +49,12 @@ import {
   getPrecisionForIdentifier,
   parseFixed,
   formatFixed
-} from "@umaprotocol/common";
+} from "@uma/common";
 import { useTableStyles } from "./Styles.js";
+
+const snapshotMessage = "Sign For Snapshot";
+const snapshotHint =
+  "Snapshotting is the act of recording the current UMA Token distribution for vote weighting. This needs to be done once before votes can be revealed for this round. The snapshot function cannot be called through another contract.";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -72,7 +77,23 @@ const toPriceRequestKey = (identifier, time) => time + "," + identifier;
 const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
   votingAccount + "," + time + "," + identifier;
 
-function ActiveRequests({ votingAccount, votingGateway }) {
+// Snapshot button with hint, sets some default props
+function SnapshotButton({ hint = snapshotHint, onClick = x => x }) {
+  return (
+    <div>
+      <Button variant="contained" color="primary" onClick={onClick}>
+        Snapshot Balances
+      </Button>
+      <Tooltip title={hint} placement="right">
+        <IconButton>
+          <HelpIcon />
+        </IconButton>
+      </Tooltip>
+    </div>
+  );
+}
+
+function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
@@ -89,6 +110,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const allPendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
+  // currentRoundId can be undefined so we need a default value here
+  const round = useCacheCall("Voting", "rounds", currentRoundId || "");
 
   // Only display non-blacklisted price requests (uniquely identifier by identifier name and timestamp)
   const [showSpamRequests, setShowSpamRequests] = useState(false);
@@ -302,7 +325,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       }
     }
 
-    decryptAll();
+    decryptAll().catch(err => console.log(err));
     return () => {
       didCancel = true;
     };
@@ -311,6 +334,17 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
   const { send: batchRevealFunction, status: revealStatus } = useCacheSend(votingGateway, "batchReveal");
+  const { send: snapshotCurrentRound, status: snapshotStatus } = useCacheSend(snapshotContract, "snapshotCurrentRound");
+
+  const onSnapshotHandler = () => {
+    const hashedSnapshotMessage = web3.utils.soliditySha3(snapshotMessage);
+    return getMessageSignatureMetamask(web3, hashedSnapshotMessage, account)
+      .then(signature => {
+        return snapshotCurrentRound(signature, { from: account });
+      })
+      .catch(err => console.log("snapshot error", err));
+  };
+
   const onClickHandler = () => {
     const reveals = [];
     for (const index in checkboxesChecked) {
@@ -330,6 +364,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend(votingGateway, "batchCommit");
+
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
@@ -462,7 +497,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return totalSelected <= limit;
   };
 
-  const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
+  const snapshotButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId === "0";
+  const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId !== "0";
   const revealButtonEnabled =
     statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
@@ -735,7 +771,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           })}
         </TableBody>
       </Table>
-      {revealButtonShown ? (
+      {snapshotButtonShown && <SnapshotButton onClick={onSnapshotHandler} hint={snapshotHint} />}
+      {revealButtonShown && (
         <Button
           variant="contained"
           color="primary"
@@ -744,8 +781,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         >
           Reveal selected
         </Button>
-      ) : (
-        ""
       )}
       {saveButtonShown ? (
         <Button

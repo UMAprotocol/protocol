@@ -2,7 +2,7 @@ const inquirer = require("inquirer");
 const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
-const { constructReveal, batchRevealVotes, getVotingRoles, VotePhasesEnum } = require("@umaprotocol/common");
+const { constructReveal, batchRevealVotes, getVotingRoles, VotePhasesEnum } = require("@uma/common");
 
 /**
  * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.
@@ -16,6 +16,7 @@ const revealVotes = async (web3, oracle, designatedVoting) => {
   const pendingRequests = await oracle.getPendingRequests();
   const roundId = await oracle.getCurrentRoundId();
   const roundPhase = await oracle.getVotePhase();
+  const round = await oracle.rounds(roundId);
   const account = await getDefaultAccount(web3);
 
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.
@@ -30,6 +31,8 @@ const revealVotes = async (web3, oracle, designatedVoting) => {
     );
   } else if (filteredRequests.length === 0) {
     console.log("No pending votes to reveal!");
+  } else if (round.snapshotId.toString() === "0") {
+    console.log("Snapshot must be taken before reveal");
   } else {
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {

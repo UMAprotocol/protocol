@@ -125,7 +125,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     // Max value of an unsigned integer.
     uint256 private constant UINT_MAX = ~uint256(0);
 
-    bytes32 public snapshotMessage = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked("Sign For Snapshot")));
+    bytes32 public snapshotMessageHash = ECDSA.toEthSignedMessageHash(keccak256(bytes("Sign For Snapshot")));
 
     /***************************************
      *                EVENTS                *
@@ -357,7 +357,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
         // Require public snapshot require signature to ensure caller is an EOA.
-        require(ECDSA.recover(snapshotMessage, signature) == msg.sender, "Signature must match sender");
+        require(ECDSA.recover(snapshotMessageHash, signature) == msg.sender, "Signature must match sender");
         uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
     }

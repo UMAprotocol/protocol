@@ -1,5 +1,5 @@
 const Voting = artifacts.require("Voting");
-const { signMessage } = require("@umaprotocol/common");
+const { signMessage } = require("@uma/common");
 
 const snapshotRound = async callback => {
   try {

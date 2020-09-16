@@ -10,14 +10,14 @@
  */
 
 const express = require("express");
-const server = express();
-server.use(express.json()); // Enables json to be parsed by the express process.
+const spoke = express();
+spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger, waitForLogger } = require("@umaprotocol/financial-templates-lib");
+const { Logger } = require("@uma/financial-templates-lib");
 let logger;
 
-server.post("/", async (req, res) => {
+spoke.post("/", async (req, res) => {
   try {
     logger.debug({
       at: "CloudRunSpoke",
@@ -46,24 +46,21 @@ server.post("/", async (req, res) => {
     const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
-      // execResponse is a json object with keys error, stdout and stderr. Convert this into a string for consistent
-      // handling between the winston logger and the http response.
-      throw new Error(JSON.stringify(execResponse));
+      throw execResponse;
     }
     logger.debug({
       at: "CloudRunSpoke",
-      message: "Process exited correctly",
+      message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
-    await waitForLogger(logger);
 
     res.status(200).send({
-      message: "Process exited without error",
+      message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
-  } catch (error) {
+  } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
     logger.debug({
@@ -71,21 +68,20 @@ server.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      error: typeof error === "string" ? new Error(JSON.stringify(error)) : error
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
     });
-    await waitForLogger(logger);
 
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      error: error instanceof Error ? error.message : JSON.stringify(error) // HTTP response should only contain strings in json
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
     });
   }
 });
 
 function _execShellCommand(cmd, inputEnv) {
   return new Promise(resolve => {
-    exec(cmd, { env: { ...process.env, ...inputEnv } }, (error, stdout, stderr) => {
+    exec(cmd, { env: { ...process.env, ...inputEnv, stdio: "inherit", shell: true } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
       stdout = _stripExecOutput(stdout);
       stderr = _stripExecOutput(stderr);
@@ -108,10 +104,10 @@ function _getChildProcessIdentifier(req) {
   return req.body.environmentVariables.BOT_IDENTIFIER || null;
 }
 
-// Start the server's async listening process. Enables injection of a logging instance & port for testing.
+// Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
-  return server.listen(port, () => {
+  return spoke.listen(port, () => {
     logger.debug({
       at: "CloudRunSpoke",
       message: "Cloud Run spoke initialized",
@@ -121,9 +117,8 @@ async function Poll(injectedLogger = Logger, port = 8080) {
 }
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
-  const port = process.env.PORT;
-  Poll(Logger, port).then(() => {}); // Use the default winston logger & env port.
+  Poll(Logger, process.env.PORT).then(() => {}); // Use the default winston logger & env port.
 }
 
-server.Poll = Poll;
-module.exports = server;
+spoke.Poll = Poll;
+module.exports = spoke;

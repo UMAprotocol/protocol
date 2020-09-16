@@ -1,5 +1,5 @@
 const DecodeTransactionData = require("../../scripts/DecodeTransactionData");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("@umaprotocol/common");
+const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");

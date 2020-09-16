@@ -17,7 +17,7 @@ describe("index.js", function() {
     assert.throws(() => getAddress("Nonsense", 1));
 
     // Bad network.
-    assert.throws(() => getAddress("Voting", 41));
+    assert.isNull(getAddress("Voting", 41));
   });
 
   it("Get Truffle Contract", function() {

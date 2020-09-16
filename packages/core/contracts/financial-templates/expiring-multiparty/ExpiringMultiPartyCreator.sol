@@ -95,7 +95,16 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
         require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
+        require(params.expirationTimestamp > now, "Invalid expiration time");
         _requireWhitelistedCollateral(params.collateralAddress);
+
+        // We don't want EMP deployers to be able to intentionally or unintentionally set
+        // liveness periods that could induce arithmetic overflow, but we also don't want
+        // to be opinionated about what livenesses are "correct", so we will somewhat
+        // arbitrarily set the liveness upper bound to 100 years (5200 weeks). In practice, liveness
+        // periods even greater than a few days would make the EMP unusable for most users.
+        require(params.withdrawalLiveness < 5200 weeks, "Withdrawal liveness too large");
+        require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
         // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;

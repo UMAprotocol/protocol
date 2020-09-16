@@ -1,7 +1,7 @@
 const { toWei, toBN, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { interfaceName, MAX_UINT_VAL, parseFixed } = require("@umaprotocol/common");
+const { interfaceName, MAX_UINT_VAL, parseFixed } = require("@uma/common");
 
 // Script to test
 const { ContractMonitor } = require("../src/ContractMonitor");
@@ -13,7 +13,7 @@ const {
   SpyTransport,
   lastSpyLogIncludes,
   ConvertDecimals
-} = require("@umaprotocol/financial-templates-lib");
+} = require("@uma/financial-templates-lib");
 
 // Truffle artifacts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

@@ -1,6 +1,6 @@
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
 const Finder = artifacts.require("Finder");
-const { getKeysForNetwork, deploy } = require("@umaprotocol/common");
+const { getKeysForNetwork, deploy } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

@@ -1,7 +1,7 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { parseFixed } = require("@umaprotocol/common");
+const { parseFixed } = require("@uma/common");
 
 // Script to test
 const { TokenBalanceClient } = require("../../src/clients/TokenBalanceClient");

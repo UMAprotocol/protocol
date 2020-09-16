@@ -7,7 +7,7 @@
  * Example: $(npm bin)/truffle exec ./scripts/local/PushPriceEMP.js --network test --id 1 --price 1.2
  */
 const { toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const { interfaceName } = require("@umaprotocol/common");
+const { interfaceName } = require("@uma/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const MockOracle = artifacts.require("MockOracle");

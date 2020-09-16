@@ -1,14 +1,14 @@
 {
-  "name": "@umaprotocol/voter-dapp",
-  "version": "1.0.0-alpha.13",
+  "name": "@uma/voter-dapp",
+  "version": "1.0.0",
   "private": true,
   "dependencies": {
     "@apollo/client": "^3.0.2",
     "@material-ui/core": "^4.3.1",
     "@material-ui/icons": "^3.0.2",
     "@material-ui/styles": "^4.3.0",
-    "@umaprotocol/common": "^1.0.0-alpha.13",
-    "@umaprotocol/core": "^1.0.0-alpha.13",
+    "@uma/common": "^1.0.0",
+    "@uma/core": "^1.0.0",
     "@umaprotocol/react-plugin": "^1.5.5",
     "@umaprotocol/store": "^1.5.7",
     "bignumber.js": "^8.0.1",
@@ -54,7 +54,8 @@
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "publishConfig": {
-    "registry": "https://registry.npmjs.com/"
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   },
   "repository": {
     "type": "git",

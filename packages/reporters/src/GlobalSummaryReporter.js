@@ -6,10 +6,10 @@ const {
   addSign,
   revertWrapper,
   averageBlockTimeSeconds
-} = require("@umaprotocol/common");
+} = require("@uma/common");
 const { getUniswapClient, queries: uniswapQueries } = require("./graphql/uniswapSubgraph");
 const { getUmaClient, queries: umaQueries } = require("./graphql/umaSubgraph");
-const { getUniswapPairDetails } = require("@umaprotocol/financial-templates-lib");
+const { getUniswapPairDetails } = require("@uma/financial-templates-lib");
 const chalkPipe = require("chalk-pipe");
 const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");

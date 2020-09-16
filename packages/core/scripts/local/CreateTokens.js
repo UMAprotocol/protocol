@@ -4,7 +4,7 @@
  * Example: `$(npm bin)/truffle exec ./scripts/local/CreateTokens.js --network test --tokens 1000 --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9`
  */
 const { toWei, toBN } = web3.utils;
-const { MAX_UINT_VAL } = require("@umaprotocol/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
