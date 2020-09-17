@@ -166,7 +166,7 @@ for (const [id, { name }] of Object.entries(PublicNetworks)) {
 addLocalNetwork(networks, "test");
 
 // Mainnet fork is just a local network with id 1.
-addLocalNetwork(networks, "mainnet-fork", { network_id: 1 });
+addLocalNetwork(networks, "mainnet-fork", { network_id: 1, gas: 6721975 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", {
