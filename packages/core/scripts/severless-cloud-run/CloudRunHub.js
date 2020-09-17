@@ -96,26 +96,26 @@ hub.post("/", async (req, res) => {
     });
 
     // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
-    let errorOutputs = [];
-    let validOutputs = [];
+    let errorOutputs = {};
+    let validOutputs = {};
     results.forEach((result, index) => {
-      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code != "200") {
+      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code == "500") {
         // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
         // correctly but contained an error.
-        errorOutputs.push({
+        errorOutputs[Object.keys(configObject)[index]] = {
           status: result.status,
           execResponse: result?.value?.execResponse || result?.reason?.response?.data?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
-        });
+        };
       } else {
-        validOutputs.push({
+        validOutputs[Object.keys(configObject)[index]] = {
           status: result.status,
           execResponse: result?.value?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
-        });
+        };
       }
     });
-    if (errorOutputs.length > 0) {
+    if (Object.keys(errorOutputs).length > 0) {
       throw { errorOutputs, validOutputs };
     }
 
