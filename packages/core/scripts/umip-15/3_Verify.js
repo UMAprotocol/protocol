@@ -2,8 +2,9 @@
 // assigned ownerships and roles. It can be run on the main net after the upgrade is completed
 // or on the local Ganache mainnet fork to validate the execution of the previous  two scripts.
 // This script does not need any wallets unlocked and does not make any on-chain state changes. It can be run as:
-// yarn truffle exec ./scripts/umip-14/3_Verify.js --network mainnet-fork --votingAddress 0x-new-voting-contract-address
-
+// yarn truffle exec ./scripts/UMIP-15/3_Verify.js --network mainnet-fork --votingAddress 0x-new-voting-contract-address
+// votingAddress is optional. If not included then the script will pull from the current truffle artifacts. This lets
+// you verify the output before running yarn load-addresses
 const assert = require("assert").strict;
 const argv = require("minimist")(process.argv.slice(), { string: ["votingAddress"] });
 
@@ -14,10 +15,11 @@ const Governor = artifacts.require("Governor");
 const { interfaceName } = require("@uma/common");
 
 async function runExport() {
-  console.log("Running UMIP-14 Upgrade Verifier🔥");
-
-  if (!argv.votingAddress) {
-    throw new Error("Specify a votingAddress paramter as address of the new voting contract");
+  console.log("Running UMIP-15 Upgrade Verifier🔥");
+  let votingAddress = argv.votingAddress;
+  if (!votingAddress) {
+    console.log("No votingAddress paramter specified. Using the voting address form truffle artifacts");
+    votingAddress = Voting.address;
   }
 
   console.log(" 1. Validating finder registration addresses...");
@@ -26,12 +28,12 @@ async function runExport() {
   const finder = await Finder.deployed();
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName.Oracle);
   const finderSetAddress = await finder.getImplementationAddress(interfaceNameBytes32);
-  assert.equal(web3.utils.toChecksumAddress(finderSetAddress), web3.utils.toChecksumAddress(argv.votingAddress));
+  assert.equal(web3.utils.toChecksumAddress(finderSetAddress), web3.utils.toChecksumAddress(votingAddress));
 
   console.log("✅ Voting registered interfaces match!");
   console.log(" 2. Validating deployed contracts are owned by governor...");
 
-  const contractInstance = await Voting.at(argv.votingAddress);
+  const contractInstance = await Voting.at(votingAddress);
   const currentOwner = await contractInstance.owner();
   assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(Governor.address));
 

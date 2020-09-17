@@ -1,8 +1,8 @@
 // This script generates and submits an an upgrade to the DVM to swap out the Voting contract with an updated version as
-// part of UMIP-14. It can be run on a local ganache fork of the main net or can be run directly on the main net to
+// part of UMIP-15. It can be run on a local ganache fork of the main net or can be run directly on the main net to
 // execute the upgrade transactions. To run this on the localhost first fork main net into Ganache with the
 // proposerWallet unlocked as follows: ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as: yarn truffle exec ./scripts/umip-14/1_Propose.js --network mainnet-fork from core
+// Then execute the script as: yarn truffle exec ./scripts/UMIP-15/1_Propose.js --network mainnet-fork from core
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
@@ -21,7 +21,7 @@ async function runExport() {
   let snapshot = await takeSnapshot(web3);
   snapshotId = snapshot["result"];
 
-  console.log("Running UMIP-14 Upgrade🔥");
+  console.log("Running UMIP-15 Upgrade🔥");
   const networkId = await web3.eth.net.getId();
   console.log("Connected to network id", networkId);
 

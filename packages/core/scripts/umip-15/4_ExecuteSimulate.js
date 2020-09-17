@@ -1,5 +1,5 @@
 // This script is used to execute some basic operations on the DVM after the 1_Propose, 2_VoteSimulate, 3_Verify flow is
-//  compleat for UMIP-14 upgrade.
+//  compleat for UMIP-15 upgrade.
 
 const assert = require("assert").strict;
 
@@ -36,15 +36,6 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
-const upgradeAddresses = {
-  Voting: Voting.address,
-  Registry: Registry.address,
-  Store: Store.address,
-  FinancialContractsAdmin: FinancialContractsAdmin.address,
-  IdentifierWhitelist: IdentifierWhitelist.address,
-  Governor: Governor.address,
-  Finder: Finder.address // Finder was not upgraded in UMIP3
-};
 
 async function runExport() {
   console.log("Running UMIP-3 Upgrade vote simulator🔥");
@@ -60,22 +51,28 @@ async function runExport() {
    ***********************************/
   console.log("1. LOADING DEPLOYED CONTRACTS");
 
+  let votingAddress = argv.votingAddress;
+  if (!votingAddress) {
+    console.log("No votingAddress paramter specified. Using the voting address form truffle artifacts");
+    votingAddress = Voting.address;
+  }
+
   const collateralToken = await Token.at(PublicNetworks[1].daiAddress);
   console.log("collateralToken loaded \t\t", collateralToken.address);
 
-  const registry = await Registry.at(upgradeAddresses.Registry);
+  const registry = await Registry.deployed();
   console.log("registry loaded \t\t", registry.address);
 
-  const finder = await Finder.at(upgradeAddresses.Finder);
+  const finder = await Finder.deployed();
   console.log("finder loaded \t\t\t", finder.address);
 
-  const voting = await Voting.at(upgradeAddresses.Voting);
+  const voting = await Voting.at(votingAddress);
   console.log("voting loaded \t\t\t", voting.address);
 
-  const identifierWhitelist = await IdentifierWhitelist.at(upgradeAddresses.IdentifierWhitelist);
+  const identifierWhitelist = await IdentifierWhitelist.deployed();
   console.log("identifierWhitelist loaded \t", identifierWhitelist.address);
 
-  const governor = await Governor.at(upgradeAddresses.Governor);
+  const governor = await Governor.deployed();
   console.log("governor loaded \t\t", governor.address);
 
   /** *****************************
