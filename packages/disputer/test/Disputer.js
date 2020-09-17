@@ -29,6 +29,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 const configs = [
   { tokenName: "UMA", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
@@ -50,6 +51,7 @@ contract("Disputer.js", function(accounts) {
       let emp;
       let syntheticToken;
       let mockOracle;
+      let store;
 
       let spy;
       let spyLogger;
@@ -94,6 +96,7 @@ contract("Disputer.js", function(accounts) {
         });
         const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        store = await Store.deployed();
 
         const constructorParams = {
           expirationTimestamp: "20345678900",
@@ -110,7 +113,8 @@ contract("Disputer.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          timerAddress: Timer.address
+          timerAddress: Timer.address,
+          excessTokenBeneficiary: store.address
         };
 
         identifierWhitelist = await IdentifierWhitelist.deployed();
