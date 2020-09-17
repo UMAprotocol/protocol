@@ -48,19 +48,19 @@
     "address": "0xf8bdAb5d675F76eD863fF9Fa35B129A6e43e71cA"
   },
   {
-    "contractName": "ExpiringMultiPartyLib",
-    "address": "0x9C53D9f4E959b1cd2eE25C45f50aFf45dca471CE"
-  },
-  {
-    "contractName": "ExpiringMultiPartyCreator",
-    "address": "0x8f6e999530787492c62CfA5A8C937A4Be5886A13"
-  },
-  {
     "contractName": "IdentifierWhitelist",
     "address": "0xeF9c374b7976941fCAf5e501eaB531E430463fC6"
   },
   {
     "contractName": "Voting",
     "address": "0x10E241725178991417E65fadE965Ca1F07852283"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0xB79F6eF89c86115a7b63C240DF7339ff7514847F"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xF763D367E1302A16716b6c40783A17c1aC754F2E"
   }
 ]
