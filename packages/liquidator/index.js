@@ -133,7 +133,7 @@ async function run({
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
-    logger.info({
+    logger.debug({
       at: "Liquidator#index",
       message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
     });

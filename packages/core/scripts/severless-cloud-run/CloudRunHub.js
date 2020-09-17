@@ -36,7 +36,7 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { Logger, waitForLogger } = require("@uma/financial-templates-lib");
+const { Logger } = require("@uma/financial-templates-lib");
 let logger;
 let protocolRunnerUrl;
 let customNodeUrl;
@@ -47,7 +47,8 @@ hub.post("/", async (req, res) => {
     logger.debug({
       at: "CloudRunHub",
       message: "Running CloudRun hub query",
-      reqBody: req.body
+      reqBody: req.body,
+      hubConfig
     });
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
@@ -100,12 +101,12 @@ hub.post("/", async (req, res) => {
     let errorOutputs = [];
     let validOutputs = [];
     results.forEach((result, index) => {
-      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.value?.execResponse?.stderr) {
+      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code != "200") {
         // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
         // correctly but contained an error.
         errorOutputs.push({
           status: result.status,
-          execResponse: result?.value?.execResponse,
+          execResponse: result?.value?.execResponse || result?.reason?.response?.data?.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         });
       } else {
@@ -171,10 +172,29 @@ const _executeCloudRunSpoke = async (url, body) => {
   }
 };
 
-// Fetch configs for cloud run hub. Either read from a gcp bucket or local storage. GCP uses a readStream which is
-// converted into a buffer such that the config file does not need to first be downloaded from the bucket.
-// This will use the local service account.
+// Fetch configs for cloud run hub. Either read from a gcp bucket, local storage or a git repo. Github configs can pull
+// from a private github repo using the provided Authorization token. GCP uses a readStream which is converted into a
+// buffer such that the config file does not need to first be downloaded from the bucket. This will use the local service
+// account. Local configs are read directly from the process's environment variables.
 const _fetchConfig = async (bucket, file) => {
+  if (hubConfig.configRetrieval == "git") {
+    const response = await fetch(
+      `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `token ${hubConfig.gitSettings.accessToken}`,
+          "Content-type": "application/json",
+          Accept: "application/vnd.github.v3.raw",
+          "Accept-Charset": "utf-8"
+        }
+      }
+    );
+    const config = await response.json(); // extract JSON from the http response
+    // If there is a message in the config response then something went wrong in fetching from github api.
+    if (config.message) throw new Error(`Could not fetch config! :${JSON.stringify(config)}`);
+    return config;
+  }
   if (hubConfig.configRetrieval == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {
       let buf = "";
@@ -287,12 +307,20 @@ async function Poll(_Logger = Logger, port = 8080, _ProtocolRunnerUrl, _CustomNo
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
   // add the logger, port, protocol runnerURL and custom node URL as params.
+  hubConfig;
+  try {
+    hubConfig = process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null;
+  } catch (error) {
+    console.error("Malformed hub config!", hubConfig);
+    process.exit(1);
+  }
+
   Poll(
     Logger,
     process.env.PORT,
     process.env.PROTOCOL_RUNNER_URL,
     process.env.CUSTOM_NODE_URL,
-    process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null
+    hubConfig
   ).then(() => {});
 }
 
