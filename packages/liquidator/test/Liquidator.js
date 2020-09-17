@@ -34,6 +34,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "WETH", collateralDecimals: 18 },
@@ -113,6 +114,7 @@ contract("Liquidator.js", function(accounts) {
         });
         const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        const store = await Store.deployed();
 
         const constructorParams = {
           expirationTimestamp: "20345678900",
@@ -129,7 +131,8 @@ contract("Liquidator.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("5") },
-          timerAddress: Timer.address
+          timerAddress: Timer.address,
+          excessTokenBeneficiary: store.address
         };
 
         // Deploy a new expiring multi party

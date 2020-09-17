@@ -10,6 +10,7 @@ const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
+const Store = artifacts.require("Store");
 
 const collateral = {
   "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3"
@@ -64,6 +65,7 @@ const percentToFixedPoint = percent => {
 const actualDeploy = async inputCsv => {
   const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
   const identifierWhitelist = await IdentifierWhitelist.deployed();
+  const store = await Store.deployed();
 
   // Add EMP as a registered financial contract template factory.
   const registry = await Registry.deployed();
@@ -98,7 +100,8 @@ const actualDeploy = async inputCsv => {
       disputeBondPct: percentToFixedPoint(params.disputeBond),
       sponsorDisputeRewardPct: percentToFixedPoint(params.sponsorDisputeReward),
       disputerDisputeRewardPct: percentToFixedPoint(params.disputeReward),
-      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens)
+      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
+      excessTokenBeneficiary: store.address
     };
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);

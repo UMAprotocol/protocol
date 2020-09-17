@@ -9,6 +9,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const {
   createPriceFeed,
@@ -29,6 +30,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   let mockTime = 1588376548;
   let networker;
   let logger;
+  let store;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -45,6 +47,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     logger = winston.createLogger({
       silent: true
     });
+    store = await Store.deployed();
   });
 
   it("No type", async function() {
@@ -186,7 +189,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -228,7 +232,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -291,7 +296,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -324,7 +330,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -350,7 +357,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -472,7 +480,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     let emp = await ExpiringMultiParty.new(constructorParams);
@@ -507,7 +516,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();

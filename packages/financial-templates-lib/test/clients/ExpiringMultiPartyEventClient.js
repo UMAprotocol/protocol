@@ -105,7 +105,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          timerAddress: timer.address
+          timerAddress: timer.address,
+          excessTokenBeneficiary: store.address
         };
 
         emp = await ExpiringMultiParty.new(constructorParams);

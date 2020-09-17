@@ -22,6 +22,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "WETH", collateralDecimals: 18 },
@@ -94,6 +95,7 @@ contract("ContractMonitor.js", function(accounts) {
         const timer = await Timer.deployed();
         await timer.setCurrentTime(currentTime.toString());
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
+        const store = await Store.deployed();
 
         constructorParams = {
           isTest: true,
@@ -111,7 +113,8 @@ contract("ContractMonitor.js", function(accounts) {
           disputeBondPct: { rawValue: toWei("0.1") },
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-          minSponsorTokens: { rawValue: toWei("1") }
+          minSponsorTokens: { rawValue: toWei("1") },
+          excessTokenBeneficiary: store.address
         };
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston

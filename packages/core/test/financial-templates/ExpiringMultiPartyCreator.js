@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8 } = web3.utils;
-const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
+const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
@@ -12,6 +12,7 @@ const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Store = artifacts.require("Store");
 
 contract("ExpiringMultiPartyCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -21,6 +22,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
   let expiringMultiPartyCreator;
   let registry;
   let collateralTokenWhitelist;
+  let store;
 
   // Re-used variables
   let constructorParams;
@@ -34,6 +36,8 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
+    store = await Store.deployed();
+
     constructorParams = {
       expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
       collateralAddress: collateralToken.address,
@@ -46,7 +50,8 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
-      withdrawalLiveness: 7200
+      withdrawalLiveness: 7200,
+      excessTokenBeneficiary: store.address
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -149,6 +154,18 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
   it("Liquidation liveness cannot be too large", async function() {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Beneficiary cannot be 0x0", async function() {
+    // Change only the beneficiary address.
+    constructorParams.excessTokenBeneficiary = ZERO_ADDRESS;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
