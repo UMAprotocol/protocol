@@ -107,7 +107,8 @@ contract("CloudRunHub.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: (await Timer.deployed()).address
+      timerAddress: (await Timer.deployed()).address,
+      excessTokenBeneficiary: "0x0000000000000000000000000000000000000000"
     };
 
     // Deploy a new expiring multi party
@@ -139,9 +140,9 @@ contract("CloudRunHub.js", function(accounts) {
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(emptyBodyResponse.res.text.includes("Some calls returned errors"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
   it("Cloud Run Hub rejects invalid json request bodies", async function() {
@@ -149,9 +150,9 @@ contract("CloudRunHub.js", function(accounts) {
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(invalidBodyResponse.res.text.includes("Some calls returned errors"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
   it("Cloud Run Hub can correctly execute bot logic with valid body and config", async function() {
@@ -313,8 +314,8 @@ contract("CloudRunHub.js", function(accounts) {
     console.log("responseObject", JSON.stringify(responseObject));
 
     // Check that the http response contains correct logs
-    assert.equal(responseObject.message, "Some calls returned errors"); // Final text in monitor loop.
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors")); // The hub should have exited correctly.
+    assert.equal(responseObject.message, "Some spoke calls returned errors"); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors")); // The hub should have exited correctly.
     assert.equal(lastSpyLogLevel(hubSpy), "error"); // most recent log level should be "error"
     assert.equal(responseObject.output.errorOutputs.length, 2); // should be 2 errors
     assert.equal(responseObject.output.validOutputs.length, 1); // should be 1 valid output

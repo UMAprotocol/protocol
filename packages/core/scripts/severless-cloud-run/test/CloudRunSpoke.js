@@ -76,7 +76,8 @@ contract("CloudRunSpoke.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: (await Timer.deployed()).address
+      timerAddress: (await Timer.deployed()).address,
+      excessTokenBeneficiary: "0x0000000000000000000000000000000000000000"
     };
 
     // Deploy a new expiring multi party
