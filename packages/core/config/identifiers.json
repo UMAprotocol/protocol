@@ -16,5 +16,13 @@
   "ETH/BTC": {},
   "COMPUSD": {},
   "USDETH": {},
-  "USDBTC": {}
+  "USDBTC": {},
+  "PERL/USDT": {},
+  "USDT/PERL": {},
+  "CHF/USD": {},
+  "GBP/USD": {},
+  "XAU/USD": {},
+  "SPX/USD": {},
+  "XTI/USD": {},
+  "XAG/USD": {}
 }
