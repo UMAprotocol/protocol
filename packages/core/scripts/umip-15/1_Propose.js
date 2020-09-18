@@ -120,7 +120,7 @@ async function runExport() {
         data: upgraderExecuteUpgradeTx
       }
     ],
-    { from: proposerWallet }
+    { from: proposerWallet, gas: 2000000 }
   );
 
   console.log("Contracts deployed and proposal done!🎉");
