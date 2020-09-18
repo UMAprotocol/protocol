@@ -79,7 +79,6 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
   let pendingRequests = await voting.getPendingRequests();
-  console.log("pendingRequests", pendingRequests);
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
   /** *****************************************************
