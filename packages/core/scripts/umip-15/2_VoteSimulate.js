@@ -78,7 +78,6 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
   let pendingRequests = await voting.getPendingRequests();
-  console.log("pendingRequests", pendingRequests);
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
   /** *****************************************************
@@ -182,7 +181,6 @@ async function runExport() {
   const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
 
-  console.log("proposal", proposal);
   // for every transactions within the proposal
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");

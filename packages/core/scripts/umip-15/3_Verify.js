@@ -38,16 +38,22 @@ async function runExport() {
   const currentOwner = await newVotingContract.owner();
   assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(Governor.address));
 
-  console.log("✅ Voting correctly transferred ownership!");
+  console.log("✅ New Voting correctly transferred ownership!");
 
-  console.log(" 3. Validating old voting is in migrated state & still owned by governor...");
+  console.log(" 3. Validating old voting is in migrated state...");
 
   const oldVotingContract = await Voting.deployed();
   const migrationAddress = await oldVotingContract.migratedAddress();
   assert.notEqual(migrationAddress, zeroAddress);
-  assert.equal(await oldVotingContract.owner(), Governor.address);
 
-  console.log("✅ Voting correctly transferred ownership!");
+  console.log("✅ Voting correctly in migration state!");
+
+  console.log(" 4. Validating old voting contract and finder is owned by governor...");
+
+  assert.equal(await oldVotingContract.owner(), Governor.address);
+  assert.equal(await finder.owner(), Governor.address);
+
+  console.log("✅ Old Voting & finder correctly transferred ownership back to governor!");
 }
 
 run = async function(callback) {
