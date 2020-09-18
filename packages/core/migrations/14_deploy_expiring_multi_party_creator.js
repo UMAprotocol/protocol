@@ -54,7 +54,9 @@ module.exports = async function(deployer, network, accounts) {
     // and throws an error if its already linked. So we'll just ignore it...
     try {
       await ExpiringMultiPartyCreator.link(empLib);
-    } catch (e) {}
+    } catch (e) {
+      // Allow this to fail in the Buidler case.
+    }
   } else {
     // Truffle
     await deploy(deployer, network, ExpiringMultiPartyLib);

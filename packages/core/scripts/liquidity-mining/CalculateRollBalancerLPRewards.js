@@ -129,7 +129,7 @@ async function _calculatePayoutsBetweenBlocks(
 ) {
   // Create a structure to store the payouts for all historic shareholders.
   let shareHolderPayout = {};
-  for (shareHolder of shareHolders) {
+  for (let shareHolder of shareHolders) {
     shareHolderPayout[shareHolder] = toBN("0");
   }
 
@@ -143,7 +143,7 @@ async function _calculatePayoutsBetweenBlocks(
     cliProgress.Presets.shades_classic
   );
   progressBar.start(Math.ceil((toBlock - fromBlock) / blocksPerSnapshot), 0);
-  for (currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
+  for (let currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
     shareHolderPayout = await _updatePayoutAtBlock(
       bPool1,
       bPool2,
@@ -193,7 +193,7 @@ async function _updatePayoutAtBlock(bPool1, bPool2, synth1, synth2, blockNumber,
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   let promiseArraybPool1 = [];
   let promiseArraybPool2 = [];
-  for (shareHolder of Object.keys(shareHolderPayout)) {
+  for (let shareHolder of Object.keys(shareHolderPayout)) {
     promiseArraybPool1.push(bPool1.methods.balanceOf(shareHolder).call(undefined, blockNumber));
     promiseArraybPool2.push(bPool2.methods.balanceOf(shareHolder).call(undefined, blockNumber));
   }
@@ -201,7 +201,7 @@ async function _updatePayoutAtBlock(bPool1, bPool2, synth1, synth2, blockNumber,
   await delay(5); // slow down the queries between these massive promise arrays. Helps to keep Infura happy.
   const balanceResultsbPool2 = await Promise.allSettled(promiseArraybPool2);
   // For each balance result, calculate their associated payment addition.
-  for ([index, shareHolder] of Object.keys(shareHolderPayout).entries()) {
+  for (let [index, shareHolder] of Object.keys(shareHolderPayout).entries()) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
     if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value === "0") continue;
     // Calculate the shareholders pool1 value by taking their balance of BPT * BPT price.
@@ -243,7 +243,7 @@ function _saveShareHolderPayout(
   blocksPerSnapshot
 ) {
   // First, clean the shareHolderPayout of all zero recipients and convert from wei scaled number.
-  for (shareHolder of Object.keys(shareHolderPayout)) {
+  for (let shareHolder of Object.keys(shareHolderPayout)) {
     if (shareHolderPayout[shareHolder].toString() == "0") delete shareHolderPayout[shareHolder];
     else shareHolderPayout[shareHolder] = fromWei(shareHolderPayout[shareHolder]);
   }

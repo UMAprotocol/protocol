@@ -2,7 +2,6 @@ const { didContractThrow } = require("@uma/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
-const Finder = artifacts.require("Finder");
 
 contract("DesignatedVotingFactory", function(accounts) {
   const owner = accounts[1];

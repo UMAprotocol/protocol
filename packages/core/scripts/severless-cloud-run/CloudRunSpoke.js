@@ -108,7 +108,7 @@ function _stripExecStdError(output) {
   if (!output) return output;
   return _regexStrip(output)
     .replace(/\r?\n|\r/g, "")
-    .replace(/\"/g, ""); // Remove escaped new line chars. Replace with no space.
+    .replace(/"/g, ""); // Remove escaped new line chars. Replace with no space.
 }
 
 // This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.

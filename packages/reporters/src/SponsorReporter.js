@@ -1,8 +1,6 @@
-const { createFormatFunction, createShortHexString } = require("@uma/common");
+const { createFormatFunction } = require("@uma/common");
 const chalkPipe = require("chalk-pipe");
-const bold = chalkPipe("bold");
 const italic = chalkPipe("italic");
-const dim = chalkPipe("dim");
 
 class SponsorReporter {
   constructor(expiringMultiPartyClient, tokenBalanceClient, walletsToMonitor, priceFeed, empProps) {

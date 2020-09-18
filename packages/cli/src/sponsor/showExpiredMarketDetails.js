@@ -1,4 +1,3 @@
-const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { PositionStatesEnum } = require("@uma/common");
 

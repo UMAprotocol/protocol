@@ -1,4 +1,4 @@
-const { ONE_SPLIT_ADDRESS, ALTERNATIVE_ETH_ADDRESS, GAS_LIMIT, GAS_LIMIT_BUFFER } = require("./constants");
+const { ALTERNATIVE_ETH_ADDRESS, GAS_LIMIT, GAS_LIMIT_BUFFER } = require("./constants");
 
 class OneInchExchange {
   /**

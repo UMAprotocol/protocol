@@ -24,13 +24,8 @@ class MetaMaskTruffleProvider {
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  getAddress(idx) {
-    return getWrappedProviderOrThrow().getAddress(idx);
-  }
-
-  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   getAddress(...all) {
-    return getWrappedProviderOrThrow().getAddress(...all);
+    return this.getWrappedProviderOrThrow().getAddress(...all);
   }
 
   // Returns the underlying wrapped provider.

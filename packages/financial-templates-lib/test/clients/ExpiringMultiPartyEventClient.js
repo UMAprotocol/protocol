@@ -78,7 +78,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
-        finder = await Finder.deployed();
+        const finder = await Finder.deployed();
         timer = await Timer.deployed();
         store = await Store.deployed();
         mockOracle = await MockOracle.new(finder.address, timer.address);
@@ -753,7 +753,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 
         // Create liquidation (in the past)
-        const txObject1 = await emp.createLiquidation(
+        await emp.createLiquidation(
           sponsor1,
           { rawValue: "0" },
           { rawValue: toWei("99999") },

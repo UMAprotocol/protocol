@@ -25,6 +25,7 @@ contract("index.js", function(accounts) {
   let emp;
   let collateralToken;
   let uniswap;
+  let identifierWhitelist;
 
   let defaultPriceFeedConfig;
   let constructorParams;

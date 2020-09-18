@@ -1,6 +1,5 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["ownershipAddress"] });
 
-const Finder = artifacts.require("Finder");
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
 
 async function run(deployedFactory, ownershipAddress) {

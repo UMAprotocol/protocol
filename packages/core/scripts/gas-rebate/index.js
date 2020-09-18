@@ -41,7 +41,7 @@ const { getAbi, getAddress } = require("@uma/core");
  *
  *******************************************/
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
-const { toBN, toWei, fromWei, BN } = web3.utils;
+const { toBN, toWei, fromWei } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
   {
@@ -216,7 +216,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
 
   const progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
 
-  for (i = 0; i < claimedRewards.length; i++) {
+  for (let i = 0; i < claimedRewards.length; i++) {
     const claim = claimedRewards[i];
     const voter = claim.returnValues.voter;
     const roundId = claim.returnValues.roundId;
@@ -401,7 +401,7 @@ async function calculateRebate({
       console.log("*                                       *");
       console.log("*=======================================*");
     }
-    [revealRebates, claimRebates] = await Promise.all(parsePromises);
+    const [revealRebates, claimRebates] = await Promise.all(parsePromises);
 
     if (!debug) {
       console.log("\n\n*=======================================*");
@@ -565,13 +565,9 @@ async function Main(callback) {
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
     console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
     console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
-    let endBlock, startBlock;
-    try {
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
-    } catch (err) {
-      throw err;
-    }
+
+    let endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
+    let startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
 
     // Fetch gas price data in parallel
     const pricePromises = [];

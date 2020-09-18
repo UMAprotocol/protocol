@@ -47,7 +47,7 @@ contract("GasEstimator.js", function() {
         level: "info",
         transports: [new winston.transports.Console()]
       });
-      gasEstimator = new GasEstimator(dummyLogger, (updateThreshold = 2), (defaultFastPriceGwei = 10));
+      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* defaultFastPriceGwei */ 10);
     });
 
     it("Default parameters are set correctly", () => {

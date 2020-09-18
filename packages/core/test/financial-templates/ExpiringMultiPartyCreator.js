@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -54,7 +54,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       excessTokenBeneficiary: store.address
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });

@@ -1,6 +1,6 @@
 const ResultComputationTest = artifacts.require("ResultComputationTest");
 
-contract("ResultComputation", function(accounts) {
+contract("ResultComputation", function() {
   it("Basic", async function() {
     const resultComputation = await ResultComputationTest.new();
 

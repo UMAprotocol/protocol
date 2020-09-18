@@ -17,8 +17,6 @@ const {
   signMessage
 } = require("@uma/common");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
-
 const SUPPORTED_IDENTIFIERS = {
   "BTC/USD": {
     numerator: {
@@ -255,36 +253,6 @@ async function fetchIntrinioForexPrice(request, config, isProd) {
   // TODO(ptare): Forex quotes don't appear to have trade prices!?
   const price = jsonOutput.prices[0].open_bid;
   const time = jsonOutput.prices[0].occurred_at;
-  if (isProd) {
-    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
-  }
-  return web3.utils.toWei(price.toString());
-}
-
-async function fetchIntrinioCryptoPrice(request, config, isProd) {
-  const url = [
-    "https://api-v2.intrinio.com/crypto/prices?",
-    "api_key=" + process.env.INTRINIO_API_KEY,
-    "&currency=" + config.symbol,
-    "&page_size=1",
-    "&timeframe=m1"
-  ]
-    .concat(getIntrinioTimeArguments(request.time))
-    .join("");
-  if (isProd) {
-    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
-  }
-  const jsonOutput = await getJson(url);
-  if (isProd) {
-    console.log("Intrinio response:", jsonOutput);
-  }
-
-  if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
-    throw "Failed to get data from Intrinio";
-  }
-
-  const price = jsonOutput.prices[0].open;
-  const time = jsonOutput.prices[0].time;
   if (isProd) {
     console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
   }
@@ -768,7 +736,7 @@ async function runVoting(isProd) {
   }
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   // For production script, unnecessary to return stats on successful, skipped, failed requests or batch data
   await runVoting({ isProd: true });
   callback();

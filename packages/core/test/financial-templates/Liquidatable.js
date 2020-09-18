@@ -655,6 +655,7 @@ contract("Liquidatable", function(accounts) {
   describe("Full liquidation has been created", () => {
     // Used to catch events.
     let liquidationResult;
+    let liquidationTime;
 
     beforeEach(async () => {
       // Create position
@@ -1636,6 +1637,8 @@ contract("Liquidatable", function(accounts) {
   });
 
   describe("Underlying position expires during a pending liquidation", () => {
+    let liquidationTime;
+
     beforeEach(async () => {
       // Fast forward time to right before expiry so that you can still create a liquidation.
       let positionExpiry = await liquidationContract.expirationTimestamp();
@@ -1710,6 +1713,8 @@ contract("Liquidatable", function(accounts) {
     const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
+
+    let USDCLiquidationContract;
     beforeEach(async () => {
       // Start by creating a ERC20 token with different delimitations. 6 decimals for USDC
       collateralToken = await TestnetERC20.new("USDC", "USDC", 6);

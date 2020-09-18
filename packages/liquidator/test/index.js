@@ -44,7 +44,7 @@ contract("index.js", function(accounts) {
     collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
 
     oneSplitMock = await OneSplitMock.new();

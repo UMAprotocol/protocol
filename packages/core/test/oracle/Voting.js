@@ -27,8 +27,7 @@ contract("Voting", function(accounts) {
   let voting;
   let votingToken;
   let registry;
-  let timer;
-  let finder;
+  let supportedIdentifiers;
 
   const account1 = accounts[0];
   const account2 = accounts[1];
@@ -73,11 +72,6 @@ contract("Voting", function(accounts) {
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
     await registry.registerContract([], registeredContract, { from: account1 });
     signature = await signMessage(web3, snapshotMessage, account1);
-  });
-
-  beforeEach(async () => {
-    finder = await Finder.deployed();
-    timer = await Timer.deployed();
   });
 
   it("Constructor", async function() {
@@ -1558,8 +1552,6 @@ contract("Voting", function(accounts) {
     }
 
     await moveToNextRound(voting);
-
-    const roundId = await voting.getCurrentRoundId();
 
     // Commit without emitting any encrypted messages
     const result = await voting.batchCommit(

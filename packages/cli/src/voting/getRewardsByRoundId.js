@@ -49,7 +49,7 @@ const getRewardsByRound = async (web3, votingContract, account) => {
       if (potentialRewards !== "0") {
         const resolvedVote = {
           price,
-          name: `${web3.utils.hexToUtf8(identifier)} @ ${style.formatSecondsToUtc(time)}`,
+          name: `${web3.utils.hexToUtf8(identifier)} @ ${style.formatSecondsToUtc(time)}`,
           identifier,
           time,
           roundId,
@@ -86,7 +86,7 @@ const getRewardsByRound = async (web3, votingContract, account) => {
     });
   });
   roundIds = roundIds.sort((a, b) => {
-    return parseInt(a.id) - parseInt(a.id);
+    return parseInt(a.id) - parseInt(b.id);
   });
 
   return { rewardsByRoundId, roundIds };

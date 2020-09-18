@@ -1,4 +1,4 @@
-const { toWei, toBN, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, parseFixed } = require("@uma/common");
@@ -45,9 +45,8 @@ contract("CRMonitor.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
-
-      // Test object for EMP event client
-      let eventClient;
+      let timer;
+      let finder;
 
       // Price feed mock
       let priceFeedMock;
@@ -62,10 +61,11 @@ contract("CRMonitor.js", function(accounts) {
       let monitorConfig;
       let crMonitor;
       let empProps;
+      let identifier;
+      let convert;
 
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
@@ -290,7 +290,7 @@ contract("CRMonitor.js", function(accounts) {
             ]
           };
 
-          balanceMonitor = new CRMonitor({
+          crMonitor = new CRMonitor({
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
             priceFeed: priceFeedMock,

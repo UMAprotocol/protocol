@@ -68,7 +68,7 @@ contract("scripts/Voting.js", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
-    supportedIdentifiers = await IdentifierWhitelist.deployed();
+    const supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
 
@@ -337,7 +337,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = (await voting.getCurrentTime()).toNumber() - testTransactions;
 
     // Request Oracle prices.
-    for (i = 0; i < testTransactions; i++) {
+    for (let i = 0; i < testTransactions; i++) {
       let timeToVote = time + i;
       await voting.requestPrice(identifier, timeToVote.toString());
     }
@@ -359,7 +359,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during commit phase`
     );
     let result = await votingSystem.runIteration(USE_PROD_LOGS);
-    batchesExpected = Math.ceil(testTransactions / BATCH_MAX_COMMITS);
+    let batchesExpected = Math.ceil(testTransactions / BATCH_MAX_COMMITS);
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
     assert.equal(result.skipped.length, 0);

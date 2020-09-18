@@ -2,7 +2,7 @@ const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceF
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("CryptoWatchPriceFeed.js", function(accounts) {
+contract("CryptoWatchPriceFeed.js", function() {
   let cryptoWatchPriceFeed;
   let invertedCryptoWatchPriceFeed;
   let mockTime = 1588376548;

@@ -63,7 +63,6 @@ const percentToFixedPoint = percent => {
 };
 
 const actualDeploy = async inputCsv => {
-  const deployer = (await web3.eth.getAccounts())[0];
   const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const store = await Store.deployed();

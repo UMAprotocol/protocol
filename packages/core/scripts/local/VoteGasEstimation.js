@@ -39,7 +39,7 @@ async function run() {
   // Allow owner to mint new tokens
   await votingToken.addMember("1", owner);
 
-  for (var i = 0; i < numVoters; i++) {
+  for (let i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
     const balance = await votingToken.balanceOf(voter);
     const floorBalance = web3.utils.toBN(web3.utils.toWei("100", "ether"));
@@ -56,7 +56,7 @@ async function run() {
 
   console.log("Voting tokens total supply:", (await votingToken.totalSupply()).toString());
 
-  for (var i = 0; i < numRounds; i++) {
+  for (let i = 0; i < numRounds; i++) {
     console.group(`\n*** Round ${i} ***`);
     await cycleRound(voting, votingToken, identifier, time, accounts);
     time += numPriceRequests;
@@ -64,7 +64,7 @@ async function run() {
   }
 
   console.group("\nVoter token balances post-test:");
-  for (var i = 0; i < numVoters; i++) {
+  for (let i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
     const balance = await votingToken.balanceOf(voter);
     console.log(`- Voter #${i}: ${balance.toString()}`);
@@ -81,7 +81,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   let gasUsedPriceRequest = 0;
   console.group("\nEstimating gas usage: requestPrice");
 
-  for (var i = 0; i < numPriceRequests; i++) {
+  for (let i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
     const gasUsed = result.receipt.gasUsed;
     console.log(`Price Request #${i}: ${gasUsed}`);
@@ -101,10 +101,10 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   let gasUsedCommitVote = 0;
   console.group("\nEstimating gas usage: commitVote");
 
-  for (var i = 0; i < numPriceRequests; i++) {
+  for (let i = 0; i < numPriceRequests; i++) {
     console.group(`Price request #${i}`);
 
-    for (var j = 0; j < numVoters; j++) {
+    for (let j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const voter = getVoter(accounts, j);
       const hash = computeVoteHash({
@@ -138,10 +138,10 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   let gasUsedRevealVote = 0;
   console.group("\nEstimating gas usage: revealVote");
 
-  for (var i = 0; i < numPriceRequests; i++) {
+  for (let i = 0; i < numPriceRequests; i++) {
     console.group(`Price request #${i}`);
 
-    for (var j = 0; j < numVoters; j++) {
+    for (let j = 0; j < numVoters; j++) {
       const voter = getVoter(accounts, j);
 
       const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });

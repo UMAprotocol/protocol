@@ -1,7 +1,5 @@
 const { didContractThrow } = require("@uma/common");
 
-const truffleAssert = require("truffle-assertions");
-
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const MockAdministratee = artifacts.require("MockAdministratee");
 

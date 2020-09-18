@@ -41,7 +41,7 @@ contract("ExpiringMultiParty", function(accounts) {
       excessTokenBeneficiary: accounts[0]
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: accounts[0]
     });

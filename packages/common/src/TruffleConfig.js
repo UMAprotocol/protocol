@@ -39,6 +39,7 @@ const gas = undefined; // Defining this as undefined (rather than leaving undefi
 function getNodeUrl(networkName) {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
+    const name = networkName.split("_")[0];
     return process.env.CUSTOM_NODE_URL || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
   }
 

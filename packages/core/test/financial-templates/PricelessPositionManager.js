@@ -36,6 +36,8 @@ contract("PricelessPositionManager", function(accounts) {
   let financialContractsAdmin;
   let timer;
   let tokenFactory;
+  let finder;
+  let store;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -1349,7 +1351,7 @@ contract("PricelessPositionManager", function(accounts) {
       // From the user's POV, they will see their balance decrease by 11, so we should send them 11 collateral not 12.
       const initialCollateral = await collateral.balanceOf(sponsor);
       await pricelessPositionManager.requestWithdrawal({ rawValue: "12" }, { from: sponsor });
-      startTime = await pricelessPositionManager.getCurrentTime();
+      let startTime = await pricelessPositionManager.getCurrentTime();
       await pricelessPositionManager.setCurrentTime(startTime.addn(withdrawalLiveness));
       await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
       const finalCollateral = await collateral.balanceOf(sponsor);
