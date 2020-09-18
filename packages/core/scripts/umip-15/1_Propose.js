@@ -11,6 +11,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
+const Umip15Upgrader = artifacts.require("Umip15Upgrader");
 
 const { takeSnapshot, revertToSnapshot, interfaceName } = require("@uma/common");
 
@@ -22,13 +23,7 @@ async function runExport() {
   snapshotId = snapshot["result"];
 
   console.log("Running UMIP-15 Upgrade🔥");
-  const networkId = await web3.eth.net.getId();
-  console.log("Connected to network id", networkId);
-
-  /** ********************************
-   * 1. Load contract infrastructure *
-   ***********************************/
-  console.log("1. Loading deployed contract state");
+  console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
   const registry = await Registry.deployed();
   console.log("registry loaded \t\t", registry.address);
@@ -36,8 +31,8 @@ async function runExport() {
   const finder = await Finder.deployed();
   console.log("finder loaded \t\t\t", finder.address);
 
-  const voting = await Voting.deployed();
-  console.log("voting loaded \t\t\t", voting.address);
+  const existingVoting = await Voting.deployed();
+  console.log("voting loaded \t\t\t", existingVoting.address);
 
   const votingToken = await VotingToken.deployed();
   console.log("finder loaded \t\t\t", votingToken.address);
@@ -45,10 +40,7 @@ async function runExport() {
   const governor = await Governor.deployed();
   console.log("governor loaded \t\t", governor.address);
 
-  /** ********************************
-   * 1. Deploying new Voting for DVM *
-   ***********************************/
-  console.log("2. Deploying voting.sol");
+  console.log("2. DEPLOYED UPGRADED VOTING.SOL");
 
   // Set the GAT percentage to 5%
   const gatPercentage = { rawValue: web3.utils.toWei("0.05", "ether") };
@@ -73,18 +65,41 @@ async function runExport() {
     { from: proposerWallet }
   );
 
-  console.log("Deployed voting contract: ", newVoting.address);
+  console.log("Deployed voting contract:\t", newVoting.address);
 
-  console.log("3. Setting governor as owner");
+  console.log("3. DEPLOYED UMIP-15UPGRADER.sol");
+  const umip15Upgrader = await Umip15Upgrader.new(
+    governor.address,
+    existingVoting.address,
+    newVoting.address,
+    finder.address,
+    {
+      from: proposerWallet
+    }
+  );
+
+  console.log("Deployed UMIP-upgrader\t", umip15Upgrader.address);
+
+  console.log("4. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNOR");
   await newVoting.transferOwnership(governor.address, { from: proposerWallet });
 
-  console.log("4. Crafting and submitting upgrade proposal");
+  console.log("5. CRAFTING GOVERNOR TRANSACTIONS");
 
-  const changeVotingAddressInFinderTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), newVoting.address)
+  const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(umip15Upgrader.address).encodeABI();
+
+  console.log("5.a. Transfer finder ownership tx data:", transferFinderOwnershipTx);
+
+  const transferExistingVotingOwnershipTx = existingVoting.contract.methods
+    .transferOwnership(umip15Upgrader.address)
     .encodeABI();
 
-  console.log("Change voting address in finder tx data:", changeVotingAddressInFinderTx);
+  console.log("5.b. Transfer existing voting ownership tx data:", transferExistingVotingOwnershipTx);
+
+  const upgraderExecuteUpgradeTx = umip15Upgrader.contract.methods.upgrade().encodeABI();
+
+  console.log("5.c. Upgrader Execute Upgrade tx data:", upgraderExecuteUpgradeTx);
+
+  console.log("6. SENDING PROPOSAL TXS TO GOVERNOR");
 
   // Send the proposal to governor
   await governor.propose(
@@ -92,7 +107,17 @@ async function runExport() {
       {
         to: finder.address,
         value: 0,
-        data: changeVotingAddressInFinderTx
+        data: transferFinderOwnershipTx
+      },
+      {
+        to: existingVoting.address,
+        value: 0,
+        data: transferExistingVotingOwnershipTx
+      },
+      {
+        to: umip15Upgrader.address,
+        value: 0,
+        data: upgraderExecuteUpgradeTx
       }
     ],
     { from: proposerWallet }

@@ -14,15 +14,16 @@ const Governor = artifacts.require("Governor");
 
 const { interfaceName } = require("@uma/common");
 
+const zeroAddress = "0x0000000000000000000000000000000000000000";
+
 async function runExport() {
   console.log("Running UMIP-15 Upgrade Verifier🔥");
   let votingAddress = argv.votingAddress;
   if (!votingAddress) {
-    console.log("No votingAddress paramter specified. Using the voting address form truffle artifacts");
-    votingAddress = Voting.address;
+    throw new Error("No votingAddress paramter specified! Define the new voting contract.");
   }
 
-  console.log(" 1. Validating finder registration addresses...");
+  console.log(" 1. Validating finder registration of new voting contract addresses...");
 
   // The finder should correctly match the addresses of new contracts
   const finder = await Finder.deployed();
@@ -33,9 +34,18 @@ async function runExport() {
   console.log("✅ Voting registered interfaces match!");
   console.log(" 2. Validating deployed contracts are owned by governor...");
 
-  const contractInstance = await Voting.at(votingAddress);
-  const currentOwner = await contractInstance.owner();
+  const newVotingContract = await Voting.at(votingAddress);
+  const currentOwner = await newVotingContract.owner();
   assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(Governor.address));
+
+  console.log("✅ Voting correctly transferred ownership!");
+
+  console.log(" 3. Validating old voting is in migrated state & still owned by governor...");
+
+  const oldVotingContract = await Voting.deployed();
+  const migrationAddress = await oldVotingContract.migratedAddress();
+  assert.notEqual(migrationAddress, zeroAddress);
+  assert.equal(await oldVotingContract.owner(), Governor.address);
 
   console.log("✅ Voting correctly transferred ownership!");
 }

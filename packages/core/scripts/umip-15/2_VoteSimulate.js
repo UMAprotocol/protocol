@@ -11,17 +11,16 @@ const {
   advanceBlockAndSetTime,
   takeSnapshot,
   revertToSnapshot,
-  computeVoteHash
+  computeVoteHash,
+  signMessage
 } = require("@uma/common");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
+const argv = require("minimist")(process.argv.slice(), { boolean: ["revert", "shouldSignSnapshot"] });
 
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
-
-const resetStateAfterSimulation = false;
 
 async function runExport() {
   console.log("Running Upgrade vote simulator🔥");
@@ -79,6 +78,7 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
   let pendingRequests = await voting.getPendingRequests();
+  console.log("pendingRequests", pendingRequests);
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
   /** *****************************************************
@@ -146,6 +146,17 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
 
+  // Once the Voting module has been upgraded in the DVM the round requires a signature to snapshot the current
+  // balances before vote reveals. This enables the script to be re-run after the UMIP-15 upgrade to validate the
+  // new Voting contract has been deployed.
+  if (argv.shouldSignSnapshot) {
+    const account = (await web3.eth.getAccounts())[0];
+    console.log("GENERATING SIGNATURE TO SNAPSHOT CURRENT ROUND");
+    const snapshotMessage = "Sign For Snapshot";
+    signature = await signMessage(web3, snapshotMessage, account);
+    await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
+  }
+
   const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet, gas: 2000000 });
   console.log("Reveal Tx done!", revealTx.tx);
 
@@ -171,6 +182,7 @@ async function runExport() {
   const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
 
+  console.log("proposal", proposal);
   // for every transactions within the proposal
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");
