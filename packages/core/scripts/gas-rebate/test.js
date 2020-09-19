@@ -1,6 +1,9 @@
 // How to run:
-// 0) Run mainnet-fork on port 9545: ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --port 9545
-// 1) Truffle test against mainnet-fork: yarn truffle test ./packages/core/scripts/gas-rebate/test.js
+// 0) Start ganache (testnet or mainnet-fork doesn't matter, this test does not send any txns):
+//     - ganache-cli -p 9545 -e 10000000000 -l 9000000
+// 1) Truffle test:
+//     - yarn truffle test ./packages/core/scripts/gas-rebate/test.js
+
 const Main = require("./index");
 
 const { fromWei, toBN, toWei } = web3.utils;
@@ -41,7 +44,6 @@ contract("Gas Rebate: index.js", function() {
       this.dailyAvgUmaEthPrices = await Main.getHistoricalUmaEthPrice(this.dailyAvgGasPrices);
     });
     it("Expect both reveal and claim rebates and outputs are reasonable", async function() {
-      console.log(this.dailyAvgGasPrices, this.dailyAvgUmaEthPrices);
       const result = await Main.calculateRebate({
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
