@@ -1,3 +1,6 @@
+// How to run:
+// 0) Run mainnet-fork on port 9545: ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --port 9545
+// 1) Truffle test against mainnet-fork: yarn truffle test ./packages/core/scripts/gas-rebate/test.js
 const Main = require("./index");
 
 const { fromWei, toBN, toWei } = web3.utils;
@@ -20,12 +23,25 @@ contract("Gas Rebate: index.js", function() {
     });
   });
 
+  describe("getHistoricalUmaEthPrice", function() {
+    it("Returns an array: {timestamp, avgPx}", async function() {
+      const gasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
+      const umaPrices = await Main.getHistoricalUmaEthPrice(gasPrices);
+      assert.isTrue(umaPrices.length > 0);
+      umaPrices.forEach(px => {
+        assert.isTrue(px.timestamp >= 0, "timestamp is negative");
+        assert.isTrue(Number(px.avgPx) > 0, "price is not positive");
+      });
+    });
+  });
+
   describe("calculateRebate", function() {
     beforeEach(async function() {
       this.dailyAvgGasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
       this.dailyAvgUmaEthPrices = await Main.getHistoricalUmaEthPrice(this.dailyAvgGasPrices);
     });
     it("Expect both reveal and claim rebates and outputs are reasonable", async function() {
+      console.log(this.dailyAvgGasPrices, this.dailyAvgUmaEthPrices);
       const result = await Main.calculateRebate({
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
@@ -66,8 +82,22 @@ contract("Gas Rebate: index.js", function() {
           Number(claimRebates.totals.totalEthSpent) <= Number(fromWei(upperLimitEthSpentClaims.toString()))
       );
 
-      // TODO: Test that UMA output is correct
-
+      // Ball park estimate for UMA to repay uses the lower and upper ETH spent approximations, assuming
+      // UMA-ETH is between 0.01 and 0.07. !!This assumption might need updating
+      const umaToEthLowerLimit = toBN(toWei("0.01"));
+      const umaToEthUpperLimit = toBN(toWei("0.07"));
+      const lowerLimitUmaRebateReveals = lowerLimitEthSpentReveals.mul(Main.SCALING_FACTOR).div(umaToEthUpperLimit);
+      const upperLimitUmaRebateReveals = upperLimitEthSpentReveals.mul(Main.SCALING_FACTOR).div(umaToEthLowerLimit);
+      const lowerLimitUmaRebateClaims = lowerLimitEthSpentClaims.mul(Main.SCALING_FACTOR).div(umaToEthUpperLimit);
+      const upperLimitUmaRebateClaims = upperLimitEthSpentClaims.mul(Main.SCALING_FACTOR).div(umaToEthLowerLimit);
+      assert.isTrue(
+        Number(revealRebates.totals.totalUmaRepaid) >= Number(fromWei(lowerLimitUmaRebateReveals.toString())) &&
+          Number(revealRebates.totals.totalUmaRepaid) <= Number(fromWei(upperLimitUmaRebateReveals.toString()))
+      );
+      assert.isTrue(
+        Number(claimRebates.totals.totalUmaRepaid) >= Number(fromWei(lowerLimitUmaRebateClaims.toString())) &&
+          Number(claimRebates.totals.totalUmaRepaid) <= Number(fromWei(upperLimitUmaRebateClaims.toString()))
+      );
       // Test that rebate output (the one used to submit the disperse.app txn) is equal to the sum of the reveal
       // and claim debug logs
       const umaToPayAccount = result.rebateOutput.shareHolderPayout;

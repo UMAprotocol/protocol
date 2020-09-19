@@ -273,6 +273,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
       gasUsed,
       gasPrice: transactionDayGasData.avgGwei,
       ethToPay: Number(fromWei(ethToPay)),
+      umaEthPrice: transactionDayUmaData.avgPx,
       umaToPay: Number(fromWei(umaToPay)),
       claimTxn
     };
