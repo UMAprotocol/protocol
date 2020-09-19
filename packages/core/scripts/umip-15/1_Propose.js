@@ -13,15 +13,18 @@ const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
 const Umip15Upgrader = artifacts.require("Umip15Upgrader");
 
-const { takeSnapshot, revertToSnapshot, interfaceName } = require("@uma/common");
+const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+let snapshot;
+let snapshotId;
 
 async function runExport() {
-  let snapshot = await takeSnapshot(web3);
-  snapshotId = snapshot["result"];
-
+  if (argv.revert) {
+    snapshot = await takeSnapshot(web3);
+    snapshotId = snapshot["result"];
+  }
   console.log("Running UMIP-15 Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
@@ -49,7 +52,7 @@ async function runExport() {
   const inflationRate = { rawValue: web3.utils.toWei("0.0005", "ether") };
 
   // Set the rewards expiration timeout.
-  const rewardsExpirationTimeout = 60 * 60 * 24 * 14; // Two weeks.
+  const rewardsExpirationTimeout = 1000 * 365 * 24 * 60 * 60; // 1000 years.
 
   // Set phase length to one day.
   const secondsPerDay = "86400";
@@ -85,25 +88,37 @@ async function runExport() {
 
   console.log("5. CRAFTING GOVERNOR TRANSACTIONS");
 
+  // Add Voting contract as a minter, so rewards can be minted in the existing token.
+  // Note: this transaction must come before the owner is moved to the new Governor.
+  const minter = "1";
+  const addVotingAsTokenMinterTx = votingToken.contract.methods.addMember(minter, newVoting.address).encodeABI();
+
+  console.log("5.a. Add minting roll to new voting contract:", addVotingAsTokenMinterTx);
+
   const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(umip15Upgrader.address).encodeABI();
 
-  console.log("5.a. Transfer finder ownership tx data:", transferFinderOwnershipTx);
+  console.log("5.b. Transfer finder ownership tx data:", transferFinderOwnershipTx);
 
   const transferExistingVotingOwnershipTx = existingVoting.contract.methods
     .transferOwnership(umip15Upgrader.address)
     .encodeABI();
 
-  console.log("5.b. Transfer existing voting ownership tx data:", transferExistingVotingOwnershipTx);
+  console.log("5.c. Transfer existing voting ownership tx data:", transferExistingVotingOwnershipTx);
 
   const upgraderExecuteUpgradeTx = umip15Upgrader.contract.methods.upgrade().encodeABI();
 
-  console.log("5.c. Upgrader Execute Upgrade tx data:", upgraderExecuteUpgradeTx);
+  console.log("5.d. Upgrader Execute Upgrade tx data:", upgraderExecuteUpgradeTx);
 
   console.log("6. SENDING PROPOSAL TXS TO GOVERNOR");
 
   // Send the proposal to governor
   await governor.propose(
     [
+      {
+        to: votingToken.address,
+        value: 0,
+        data: addVotingAsTokenMinterTx
+      },
       {
         to: finder.address,
         value: 0,
@@ -131,7 +146,7 @@ async function runExport() {
   }
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {
