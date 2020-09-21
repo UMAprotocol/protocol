@@ -151,8 +151,6 @@ const run = async function(callback) {
     await runExport();
   } catch (err) {
     console.error(err);
-    console.log("SCRIPT CRASHED...REVERTING STATE...", snapshotId);
-    await revertToSnapshot(web3, snapshotId);
     callback(err);
     return;
   }
