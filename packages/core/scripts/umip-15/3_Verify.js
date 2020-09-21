@@ -56,7 +56,7 @@ async function runExport() {
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor!");
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

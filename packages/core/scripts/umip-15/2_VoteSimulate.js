@@ -25,7 +25,7 @@ const Governor = artifacts.require("Governor");
 async function runExport() {
   console.log("Running Upgrade vote simulator🔥");
   let snapshot = await takeSnapshot(web3);
-  snapshotId = snapshot["result"];
+  let snapshotId = snapshot["result"];
   console.log("Snapshotting starting state...", snapshotId);
 
   /** *********************************
@@ -168,7 +168,7 @@ async function runExport() {
     const account = (await web3.eth.getAccounts())[0];
     console.log("GENERATING SIGNATURE TO SNAPSHOT CURRENT ROUND");
     const snapshotMessage = "Sign For Snapshot";
-    signature = await signMessage(web3, snapshotMessage, account);
+    let signature = await signMessage(web3, snapshotMessage, account);
     await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
   }
 
@@ -222,14 +222,13 @@ async function runExport() {
   }
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {
     console.error(err);
-    // If the script crashes revert the state to the snapshotted state
-    console.log("SCRIPT CRASHED...REVERTING STATE...", snapshotId);
-    await revertToSnapshot(web3, snapshotId);
+    callback(err);
+    return;
   }
   callback();
 };

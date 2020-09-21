@@ -13,14 +13,14 @@ const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
 const Umip15Upgrader = artifacts.require("Umip15Upgrader");
 
-const { takeSnapshot, revertToSnapshot, interfaceName } = require("@uma/common");
+const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 async function runExport() {
   let snapshot = await takeSnapshot(web3);
-  snapshotId = snapshot["result"];
+  let snapshotId = snapshot["result"];
 
   console.log("Running UMIP-15 Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
@@ -131,13 +131,11 @@ async function runExport() {
   }
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {
     console.error(err);
-    console.log("SCRIPT CRASHED...REVERTING STATE...", snapshotId);
-    await revertToSnapshot(web3, snapshotId);
     callback(err);
     return;
   }
