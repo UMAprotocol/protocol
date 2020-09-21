@@ -21,6 +21,7 @@ const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
+let snapshotId;
 
 async function runExport() {
   console.log("Running Upgrade vote simulator🔥");
@@ -168,7 +169,7 @@ async function runExport() {
     const account = (await web3.eth.getAccounts())[0];
     console.log("GENERATING SIGNATURE TO SNAPSHOT CURRENT ROUND");
     const snapshotMessage = "Sign For Snapshot";
-    signature = await signMessage(web3, snapshotMessage, account);
+    let signature = await signMessage(web3, snapshotMessage, account);
     await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
   }
 
@@ -222,7 +223,7 @@ async function runExport() {
   }
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {
