@@ -2,7 +2,7 @@
 // It can be run on mainnet after the upgrade is completed or on the local Ganache mainnet fork to validate the
 // execution of the previous two scripts. This script does not need any wallets unlocked and does not make any on-chain
 // state changes. It can be run as:
-// truffle exec ./scripts/creator-umip/3_Verify.js --network mainnet-fork --creator 0x0139d00c416e9F40465a95481F4E36422a0A5fcc
+// yarn truffle exec ./scripts/creator-umip/3_Verify.js --network mainnet-fork --creator 0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87
 
 const assert = require("assert");
 
@@ -20,7 +20,7 @@ async function runExport() {
   console.log("Upgrade Verified!");
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

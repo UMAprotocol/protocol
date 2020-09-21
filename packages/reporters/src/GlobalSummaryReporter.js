@@ -971,7 +971,7 @@ class GlobalSummaryReporter {
    *
    * *******************************************************/
 
-  _getTokenHolderCount = async () => {
+  async _getTokenHolderCount() {
     try {
       // Rate limiting for free tier ("freekey"):
       // - Requests are limited to 5 per second, 50/min, 200/hour, 2000/24hours, 3000/week.
@@ -983,7 +983,7 @@ class GlobalSummaryReporter {
       console.error(err);
       return -1;
     }
-  };
+  }
 
   // Converts an interval in seconds to block height
   async _getLookbackTimeInBlocks(lookbackTimeInSeconds) {

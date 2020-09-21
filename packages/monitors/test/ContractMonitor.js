@@ -1,4 +1,4 @@
-const { toWei, toBN, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, MAX_UINT_VAL, parseFixed } = require("@uma/common");
@@ -11,8 +11,7 @@ const {
   ExpiringMultiPartyEventClient,
   PriceFeedMockScaled: PriceFeedMock,
   SpyTransport,
-  lastSpyLogIncludes,
-  ConvertDecimals
+  lastSpyLogIncludes
 } = require("@uma/financial-templates-lib");
 
 // Truffle artifacts
@@ -23,6 +22,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "WETH", collateralDecimals: 18 },
@@ -49,6 +49,7 @@ contract("ContractMonitor.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
+      let finder;
 
       // Test object for EMP event client
       let eventClient;
@@ -62,13 +63,15 @@ contract("ContractMonitor.js", function(accounts) {
       // re-used variables
       let expirationTime;
       let constructorParams;
+      let identifier;
+      let convert;
+      let contractMonitor;
 
       // Keep track of new sponsor transactions for testing `checkForNewSponsors` method.
       let newSponsorTxn;
 
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
@@ -92,6 +95,7 @@ contract("ContractMonitor.js", function(accounts) {
         const timer = await Timer.deployed();
         await timer.setCurrentTime(currentTime.toString());
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
+        const store = await Store.deployed();
 
         constructorParams = {
           isTest: true,
@@ -109,7 +113,8 @@ contract("ContractMonitor.js", function(accounts) {
           disputeBondPct: { rawValue: toWei("0.1") },
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-          minSponsorTokens: { rawValue: toWei("1") }
+          minSponsorTokens: { rawValue: toWei("1") },
+          excessTokenBeneficiary: store.address
         };
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston

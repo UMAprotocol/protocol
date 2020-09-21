@@ -93,7 +93,7 @@ async function run({
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
-    logger.info({
+    logger.debug({
       at: "Disputer#index",
       message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
     });
@@ -147,7 +147,7 @@ async function run({
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
-    while (true) {
+    for (;;) {
       await retry(
         async () => {
           await disputer.update();

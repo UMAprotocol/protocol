@@ -1,4 +1,3 @@
-const Voting = artifacts.require("Voting");
 const IdentiferWhitelist = artifacts.require("IdentifierWhitelist");
 const { getKeysForNetwork } = require("@uma/common");
 const identifiers = require("../config/identifiers");

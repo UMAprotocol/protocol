@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { parseFixed } = require("@ethersproject/bignumber");
 
-const { toWei, toBN, utf8ToHex } = web3.utils;
+const { toWei, toBN } = web3.utils;
 
 // Script to test
 const { Disputer } = require("../src/disputer.js");
@@ -29,6 +29,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 const configs = [
   { tokenName: "UMA", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
@@ -50,6 +51,7 @@ contract("Disputer.js", function(accounts) {
       let emp;
       let syntheticToken;
       let mockOracle;
+      let store;
 
       let spy;
       let spyLogger;
@@ -61,6 +63,7 @@ contract("Disputer.js", function(accounts) {
 
       let gasEstimator;
       let empClient;
+      let disputer;
 
       const zeroAddress = "0x0000000000000000000000000000000000000000";
       const unreachableDeadline = MAX_UINT_VAL;
@@ -88,12 +91,13 @@ contract("Disputer.js", function(accounts) {
 
       beforeEach(async function() {
         // Create a mockOracle and finder. Register the mockMoracle with the finder.
-        finder = await Finder.deployed();
+        const finder = await Finder.deployed();
         mockOracle = await MockOracle.new(finder.address, Timer.address, {
           from: contractCreator
         });
         const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        store = await Store.deployed();
 
         const constructorParams = {
           expirationTimestamp: "20345678900",
@@ -110,10 +114,11 @@ contract("Disputer.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          timerAddress: Timer.address
+          timerAddress: Timer.address,
+          excessTokenBeneficiary: store.address
         };
 
-        identifierWhitelist = await IdentifierWhitelist.deployed();
+        const identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
           from: accounts[0]
         });
@@ -155,7 +160,7 @@ contract("Disputer.js", function(accounts) {
         gasEstimator = new GasEstimator(spyLogger);
 
         // Create a new instance of the disputer to test
-        config = {
+        const config = {
           disputeDelay: 0
         };
 
@@ -421,7 +426,7 @@ contract("Disputer.js", function(accounts) {
         it("Cannot set `disputeDelay` < 0", async function() {
           let errorThrown;
           try {
-            config = {
+            const config = {
               disputeDelay: -1
             };
             disputer = new Disputer({
@@ -442,7 +447,7 @@ contract("Disputer.js", function(accounts) {
         });
 
         it("Sets `disputeDelay` to 60 seconds", async function() {
-          config = {
+          const config = {
             disputeDelay: 60
           };
           disputer = new Disputer({

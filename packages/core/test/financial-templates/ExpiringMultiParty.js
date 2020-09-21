@@ -37,10 +37,11 @@ contract("ExpiringMultiParty", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: timer.address
+      timerAddress: timer.address,
+      excessTokenBeneficiary: accounts[0]
     };
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: accounts[0]
     });

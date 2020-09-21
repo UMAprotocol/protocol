@@ -24,13 +24,13 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
     it("Correctly splits payout over all liquidity providers (balanced case)", async function() {
       // Create 10e18 tokens to distribute, sending 2e18 to each liquidity provider.
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
       }
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN("0");
       }
 
@@ -50,7 +50,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Validate that each shareholder got the right number of tokens for the given block. Expecting 1/5 of all rewards
       // per shareholder as equal token distribution.
       const expectedPayoutPerShareholder = toBN(tokensPerSnapShot).divn(shareHolders.length);
-      for (shareholder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerShareholder.toString());
       }
     });
@@ -61,7 +61,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN("0");
       }
 
@@ -81,7 +81,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Validate that the single shareholder got all rewards and all other shareholders got none at the given block.
       assert.equal(payoutAtBlock[shareHolders[0]].toString(), tokensPerSnapShot);
       const expectedPayoutPerOtherShareholder = toWei("0");
-      for (shareholder of shareHolders.slice(1, 6)) {
+      for (let shareHolder of shareHolders.slice(1, 6)) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerOtherShareholder.toString());
       }
     });
@@ -97,7 +97,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
       let shareHolderPayout = {};
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN("0");
       }
 
@@ -137,7 +137,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       // Validate the other shareholders got no rewards.
       const expectedPayoutPerOtherShareholder = toWei("0");
-      for (shareholder of shareHolders.slice(2, 6)) {
+      for (let shareHolder of shareHolders.slice(2, 6)) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerOtherShareholder.toString());
       }
     });
@@ -154,7 +154,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
     it("Correctly splits rewards over n blocks (simple case)", async function() {
       // Create 10e18 tokens to distribute, sending 2e18 to each liquidity provider.
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
       }
       // Capture the starting block number.
@@ -165,7 +165,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const snapshotsToTake = 10;
       const blocksPerSnapshot = 1; // Set to 1 to capture a snapshot at every block.
       const blocksToAdvance = snapshotsToTake * blocksPerSnapshot;
-      for (i = 0; i < blocksToAdvance; i++) {
+      for (let i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, startingBlockTimestamp + 15 * (1 + i));
       }
       const endingBlockNumber = await web3.eth.getBlockNumber();
@@ -189,7 +189,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const expectedTotalRewardsDistributed = toBN(rewardsPerSnapshot).muln(snapshotsToTake);
       const expectedIndividualRewardsDistributed = expectedTotalRewardsDistributed.divn(shareHolders.length);
       let totalRewardsDistributed = toBN("0");
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         assert.isTrue(Object.keys(intervalPayout).includes(shareHolder));
         assert.equal(intervalPayout[shareHolder].toString(), expectedIndividualRewardsDistributed.toString());
         totalRewardsDistributed = totalRewardsDistributed.add(intervalPayout[shareHolder]);
@@ -203,7 +203,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       //      shareholder2 2^2=4e18 ... and so on for the 5 shareholders.
 
       let index = 0;
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei(Math.pow(2, index).toString()), { from: contractCreator });
         index += 1;
       }
@@ -216,7 +216,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const snapshotsToTake = 15;
       const blocksPerSnapshot = 8;
       const blocksToAdvance = snapshotsToTake * blocksPerSnapshot;
-      for (i = 0; i < blocksToAdvance; i++) {
+      for (let i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, startingBlockTimestamp + 15 * (1 + i));
       }
       const endingBlockNumber = await web3.eth.getBlockNumber();
@@ -236,7 +236,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Validate that the individual rewards distributed mach expected for each shareholder.
       let expectedTotalRewardsDistributed = toBN(rewardsPerSnapshot).muln(snapshotsToTake);
       index = 0;
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         const shareHolderFrac = toBN(toWei(Math.pow(2, index).toString()))
           .mul(toBN(toWei("1")))
           .div(toBN(toWei("31")));
@@ -252,14 +252,14 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Create 10e18 tokens. Start with all LPs owning 1/5 of the supply (2e18 each). For this test we will move tokens
       // around over a number of blocks and validate that the LPs get paid the correct output. This test will update a
       // "local" expectoration of the payouts as blocks progress and then compare it to what the script returns.
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
       }
       const rewardsPerSnapshot = toWei("10"); // For each snapshot in time, payout 10e18 tokens
 
       // Create a data structure to store expected payouts as we move token balances over time.
       let shareHolderPayout = {};
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN("0");
       }
 
@@ -274,13 +274,13 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       // Advance over 2.5 snapshot windows. This is equivalent to 25 blocks. Block count: 0 -> 24
       const blocksToAdvance = 2.5 * blocksPerSnapshot;
-      for (i = 0; i < blocksToAdvance; i++) {
+      for (let i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, startingBlockTimestamp + 15 * (1 + i));
       }
 
       // At this point each shareholder has earned 1/5 of all rewards for 3 snapshot periods (0, 1 & 2). As the time was
       // advanced 2.5 blocks, the last 5 blocks are not counted at this point as it is between snapshots (for snapshot 3).
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         shareHolderPayout[shareHolder] = toBN(rewardsPerSnapshot)
           .muln(3) // 3 periods captured,
           .divn(5); // 1/5 of the rewards.
@@ -288,7 +288,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       // Next, let's assume that all shareholders transfer all of their tokens to one LP (shareHolder0). This will
       // create another 5 transactions bringing the block count: 25 -> 30
-      for (shareHolder of shareHolders.slice(1, shareHolders.length)) {
+      for (let shareHolder of shareHolders.slice(1, shareHolders.length)) {
         await bpToken.transfer(shareHolders[0], (await bpToken.balanceOf(shareHolder)).toString(), {
           from: shareHolder
         });
@@ -296,7 +296,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       // Advance over another 2.5 snapshot windows. This takes the block cound from 30 -> 55
       let recentBlockTimestamp = await web3.eth.getBlock(await web3.eth.getBlockNumber()).timestamp;
-      for (i = 0; i < blocksToAdvance; i++) {
+      for (let i = 0; i < blocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, recentBlockTimestamp + 15 * (1 + i));
       }
 
@@ -308,7 +308,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
 
       // Then, all token holders transfer their tokens to a new wallet. This will advance the block count from 55 -> 60
       const newShareHolder = accounts[9];
-      for (shareHolder of shareHolders) {
+      for (let shareHolder of shareHolders) {
         await bpToken.transfer(newShareHolder, (await bpToken.balanceOf(shareHolder)).toString(), {
           from: shareHolder
         });
@@ -317,7 +317,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // Finally, advance the timestamp until the end of the period. This will advance blocks from 60 -> 100
       recentBlockTimestamp = await web3.eth.getBlock(await web3.eth.getBlockNumber()).timestamp;
       const finalBlocksToAdvance = startingBlockNumber + totalBlocksToAdvance - (await web3.eth.getBlockNumber());
-      for (i = 0; i < finalBlocksToAdvance; i++) {
+      for (let i = 0; i < finalBlocksToAdvance; i++) {
         await advanceBlockAndSetTime(web3, recentBlockTimestamp + 15 * (1 + i));
       }
 
@@ -338,7 +338,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       );
 
       // Validate that the individual rewards distributed mach expected for each shareholder.
-      for (shareHolder of Object.keys(shareHolderPayout)) {
+      for (let shareHolder of Object.keys(shareHolderPayout)) {
         assert.equal(shareHolderPayout[shareHolder].toString(), intervalPayout[shareHolder].toString());
       }
     });

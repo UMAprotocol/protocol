@@ -10,7 +10,6 @@ const {
 } = require("@uma/common");
 
 // Script to test
-const { CONSTANTS } = require("../test/common");
 const { ALTERNATIVE_ETH_ADDRESS } = require("../src/constants");
 const { Liquidator } = require("../src/liquidator.js");
 const { OneInchExchange } = require("../src/OneInchExchange.js");
@@ -35,6 +34,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "WETH", collateralDecimals: 18 },
@@ -54,7 +54,6 @@ contract("Liquidator.js", function(accounts) {
       const contractCreator = accounts[4];
       const liquidityProvider = accounts[5];
 
-      let tokenFactory;
       let finder;
       let collateralToken;
       let emp;
@@ -103,7 +102,7 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.mint(liquidatorBot, convert("100000"), { from: contractCreator });
 
         // Create identifier whitelist and register the price tracking ticker with it.
-        identifierWhitelist = await IdentifierWhitelist.deployed();
+        const identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
       });
 
@@ -115,6 +114,7 @@ contract("Liquidator.js", function(accounts) {
         });
         const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        const store = await Store.deployed();
 
         const constructorParams = {
           expirationTimestamp: "20345678900",
@@ -131,7 +131,8 @@ contract("Liquidator.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("5") },
-          timerAddress: Timer.address
+          timerAddress: Timer.address,
+          excessTokenBeneficiary: store.address
         };
 
         // Deploy a new expiring multi party

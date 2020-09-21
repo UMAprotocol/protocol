@@ -93,7 +93,7 @@ function slackFormatter(info) {
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey], null, 2)}\n`
+                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`
               }
             });
             // Else if not a address, transaction or object then print as ` - key: value`

@@ -74,7 +74,7 @@ const viewWithdrawRewardsMenu = async (web3, artifacts, emp, liquidation, id) =>
   const backChoice = "Back";
   // Sponsors can withdraw rewards only if a liquidation has been disputed successfully.
   const withdrawAction = "Dispute succeeded; withdraw rewards";
-  choices = [{ name: backChoice }];
+  const choices = [{ name: backChoice }];
 
   // Check if the sponsor can withdraw by seeing if `withdrawLiquidation` reverts.
   try {

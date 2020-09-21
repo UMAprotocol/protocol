@@ -1,7 +1,6 @@
 const EmergencyShutdown = require("../../scripts/EmergencyShutdown");
 
 const MockAdministratee = artifacts.require("MockAdministratee");
-const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("scripts/EmergencyShutdown.js", function(accounts) {
   const owner = accounts[0];

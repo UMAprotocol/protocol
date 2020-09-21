@@ -12,6 +12,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const Store = artifacts.require("Store");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -22,10 +23,10 @@ contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
-  let syntheticToken;
   let emp;
   let uniswap;
   let constructorParams;
+  let identifierWhitelist;
 
   let defaultUniswapPricefeedConfig;
   let defaultMedianizerPricefeedConfig;
@@ -54,6 +55,7 @@ contract("index.js", function(accounts) {
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
+    const store = await Store.deployed();
 
     constructorParams = {
       expirationTimestamp: "12345678900",
@@ -70,13 +72,12 @@ contract("index.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      timerAddress: Timer.address,
+      excessTokenBeneficiary: store.address
     };
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    syntheticToken = await Token.at(await emp.tokenCurrency());
 
     uniswap = await UniswapMock.new();
 
@@ -136,7 +137,8 @@ contract("index.js", function(accounts) {
       "UNKNOWN",
       constructorParams.tokenFactoryAddress,
       constructorParams.minSponsorTokens,
-      constructorParams.timerAddress
+      constructorParams.timerAddress,
+      contractCreator
     );
 
     // Create a spy logger to catch all log messages to validate re-try attempts.

@@ -335,7 +335,7 @@ class Liquidator {
             reserveCurrencyAddress: this.reserveCurrencyAddress,
             syntheticTokenAddress: this.syntheticToken.options.address,
             reserveWeiNeeded,
-            idealReserveWeiNeeded,
+            idealReserveWeiNeeded: idealReserveWeiNeededBN.toString(),
             slippage,
             sponsor: position.sponsor,
             inputPrice: scaledPrice.toString(),
@@ -575,7 +575,9 @@ class Liquidator {
               from: this.empContract.options.address
             })
           );
-        } catch (error) {}
+        } catch (error) {
+          // Ignore any errors as this indicates that there is nothing to do yet.
+        }
       }
 
       const logResult = {

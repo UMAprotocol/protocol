@@ -61,7 +61,7 @@ async function run() {
 
   console.log("Executing the following tests:", tests, "\nThis script can take a while to run.\n");
 
-  for (j = 0; j < tests.length; j++) {
+  for (let j = 0; j < tests.length; j++) {
     // Binary search parameters. search starts at 64 and will either half our double if it finds
     // it can fit that number within one block. Algorithm iterates until there is convergence
     let requestNum = 32;
@@ -169,7 +169,7 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
   const price = getRandomSignedInt();
 
   // Generate Commitments. We will use single commit so no upper bound from the previous test
-  for (var i = 0; i < requestNum; i++) {
+  for (let i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
     const hash = computeVoteHash({
       price,
@@ -208,7 +208,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   const salts = [];
   const price = getRandomSignedInt();
 
-  for (var i = 0; i < requestNum; i++) {
+  for (let i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
     const hash = computeVoteHash({
       price,
@@ -235,7 +235,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   await moveToNextRound(voting);
 
   let pendingRequests = [];
-  for (var i = 0; i < requestNum; i++) {
+  for (let i = 0; i < requestNum; i++) {
     pendingRequests.push({ identifier: identifier, time: time + i });
   }
 

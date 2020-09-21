@@ -1,7 +1,7 @@
 const { PriceHistory, BlockHistory } = require("../../src/price-feed/utils");
 
 // Moved this into same file to see if there are issues with 2 tests files mining blocks
-contract("Price Feed Utils", async function(accounts) {
+contract("Price Feed Utils", async function() {
   let blockHistory, priceHistory;
   const blockCount = 10;
 
@@ -60,7 +60,6 @@ contract("Price Feed Utils", async function(accounts) {
     });
     it("pruneByTimestamp", async function() {
       const blockHistory = BlockHistory(getBlock);
-      const priceHistory = PriceHistory(getPrice);
       await blockHistory.update(blockCount, blockCount);
       blockHistory.pruneByTimestamp(5);
       const result = blockHistory.listBlocks();

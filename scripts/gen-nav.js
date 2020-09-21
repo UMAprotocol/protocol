@@ -2,7 +2,6 @@
 
 const path = require("path");
 const proc = require("child_process");
-const fs = require("fs");
 const startCase = require("lodash.startcase");
 
 const mapFile = process.argv[2];

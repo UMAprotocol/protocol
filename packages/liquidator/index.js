@@ -6,7 +6,6 @@ const retry = require("async-retry");
 // Helpers
 const { MAX_UINT_VAL } = require("@uma/common");
 // JS libs
-const { ONE_SPLIT_ADDRESS } = require("./src/constants");
 const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -133,7 +132,7 @@ async function run({
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
-    logger.info({
+    logger.debug({
       at: "Liquidator#index",
       message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
     });
@@ -196,7 +195,7 @@ async function run({
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
-    while (true) {
+    for (;;) {
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.

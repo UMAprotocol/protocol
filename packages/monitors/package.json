@@ -18,7 +18,8 @@
     "winston": "^3.2.1"
   },
   "publishConfig": {
-    "registry": "https://registry.npmjs.com/"
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   },
   "repository": {
     "type": "git",

@@ -146,6 +146,7 @@ async function runExport() {
   let synthetic;
   let emp;
   let store;
+  let mockOracle;
 
   // User roles.
   let contractDeployer;
@@ -175,6 +176,8 @@ async function runExport() {
   let actualFeesCollected;
   // Cumulative fee multiplier used by contract to track fees. Multiplied by raw collateral to get "credited" collateral.
   let actualFeeMultiplier;
+  let other;
+  let expectedRemainingCollateral;
 
   // Misc.
   let breakdown; // Fill with CollateralBreakdown() objects for pretty printing.
@@ -1141,7 +1144,7 @@ async function runExport() {
    *****************************************************************************/
 }
 
-run = async function(callback) {
+const run = async function(callback) {
   try {
     await runExport();
   } catch (err) {

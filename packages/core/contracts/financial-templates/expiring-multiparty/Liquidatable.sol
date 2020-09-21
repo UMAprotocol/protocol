@@ -61,6 +61,7 @@ contract Liquidatable is PricelessPositionManager {
         address finderAddress;
         address tokenFactoryAddress;
         address timerAddress;
+        address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -165,7 +166,8 @@ contract Liquidatable is PricelessPositionManager {
             params.syntheticSymbol,
             params.tokenFactoryAddress,
             params.minSponsorTokens,
-            params.timerAddress
+            params.timerAddress,
+            params.excessTokenBeneficiary
         )
         nonReentrant()
     {

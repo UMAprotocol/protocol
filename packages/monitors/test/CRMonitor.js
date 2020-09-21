@@ -1,4 +1,4 @@
-const { toWei, toBN, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, parseFixed } = require("@uma/common");
@@ -23,6 +23,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "WETH", collateralDecimals: 18 },
@@ -44,9 +45,8 @@ contract("CRMonitor.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
-
-      // Test object for EMP event client
-      let eventClient;
+      let timer;
+      let finder;
 
       // Price feed mock
       let priceFeedMock;
@@ -61,10 +61,11 @@ contract("CRMonitor.js", function(accounts) {
       let monitorConfig;
       let crMonitor;
       let empProps;
+      let identifier;
+      let convert;
 
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
-        convertCollateralToWei = num => ConvertDecimals(tokenConfig.collateralDecimals, 18, web3)(num).toString();
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
@@ -94,6 +95,7 @@ contract("CRMonitor.js", function(accounts) {
         timer = await Timer.deployed();
         await timer.setCurrentTime(currentTime.toString());
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
+        const store = await Store.deployed();
 
         constructorParams = {
           isTest: true,
@@ -111,7 +113,8 @@ contract("CRMonitor.js", function(accounts) {
           disputeBondPct: { rawValue: toWei("0.1") },
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-          minSponsorTokens: { rawValue: toWei("1") }
+          minSponsorTokens: { rawValue: toWei("1") },
+          excessTokenBeneficiary: store.address
         };
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
@@ -287,7 +290,7 @@ contract("CRMonitor.js", function(accounts) {
             ]
           };
 
-          balanceMonitor = new CRMonitor({
+          crMonitor = new CRMonitor({
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
             priceFeed: priceFeedMock,

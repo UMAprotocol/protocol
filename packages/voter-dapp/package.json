@@ -29,8 +29,8 @@
     "truffle": "^5.1.37"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "SKIP_PREFLIGHT_CHECK=true react-scripts start",
+    "build": "SKIP_PREFLIGHT_CHECK=true react-scripts build",
     "eject": "react-scripts eject",
     "clean": "rm -rf build"
   },
@@ -54,7 +54,8 @@
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "publishConfig": {
-    "registry": "https://registry.npmjs.com/"
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   },
   "repository": {
     "type": "git",

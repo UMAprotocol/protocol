@@ -44,10 +44,6 @@
     "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   },
   {
-    "contractName": "ExpiringMultiPartyLib",
-    "address": "0xCb08678e4381Be3E264E6A0037E3297Ca56a583e"
-  },
-  {
     "contractName": "TokenFactory",
     "address": "0x7c96d6235CfaaCcAc5d80fCe74E6032B25dd1F03"
   },
@@ -56,7 +52,11 @@
     "address": "0xdBF90434dF0B98219f87d112F37d74B1D90758c7"
   },
   {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x38015ddB8b34c84934Cff058F571349Cc7d4139d"
+  },
+  {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0xad8fD1f418FB860A383c9D4647880af7f043Ef39"
+    "address": "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87"
   }
 ]

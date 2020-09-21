@@ -4,7 +4,7 @@ const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 
-contract("scripts/DecodeTransactionData.js", function(accounts) {
+contract("scripts/DecodeTransactionData.js", function() {
   it("Decode registerContract", async function() {
     const contractAddress = web3.utils.randomHex(20);
 

@@ -37,7 +37,7 @@ contract("DepositBox", function(accounts) {
     collateralToken = await Token.new("ETH", "ETH", 18, { from: contractCreator });
 
     // Whitelist price feed identifier.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractCreator
     });

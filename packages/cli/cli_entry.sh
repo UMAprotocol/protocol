@@ -15,4 +15,4 @@ SCRIPT_DIR=$(dirname $SCRIPT_FILE)
 cd $SCRIPT_DIR
 
 echo "Starting CLI..."
-$(npm bin)/truffle exec ./cli.js "$@"
+npx truffle exec ./cli.js "$@"

@@ -1,4 +1,4 @@
-const { toWei, toBN } = web3.utils;
+const { toWei } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
@@ -14,6 +14,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Store = artifacts.require("Store");
 
 const configs = [
   { tokenName: "UMA", collateralDecimals: 18 },
@@ -37,6 +38,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
+      let store;
       let identifier;
       let convert;
 
@@ -62,8 +64,10 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
 
+        store = await Store.deployed();
+
         // Create a mockOracle and finder. Register the mockOracle with the finder.
-        finder = await Finder.deployed();
+        const finder = await Finder.deployed();
         mockOracle = await MockOracle.new(finder.address, Timer.address);
         const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -85,7 +89,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          timerAddress: Timer.address
+          timerAddress: Timer.address,
+          excessTokenBeneficiary: store.address
         };
 
         // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.

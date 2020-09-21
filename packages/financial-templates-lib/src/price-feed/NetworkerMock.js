@@ -1,11 +1,13 @@
 // A mock of the Networker to allow the user to check the inputs and set the outputs of network requests.
 class NetworkerMock {
-  // Value that will hold the most recent input to getJson.
-  getJsonInputs = [];
+  constructor() {
+    // Value that will hold the most recent input to getJson.
+    this.getJsonInputs = [];
 
-  // Value that will be returned on the next call to getJson.
-  // Users of this mock should set this value to force getJson to return the value.
-  getJsonReturns = [];
+    // Value that will be returned on the next call to getJson.
+    // Users of this mock should set this value to force getJson to return the value.
+    this.getJsonReturns = [];
+  }
 
   // Mocked getJson function.
   async getJson(url) {

@@ -2,7 +2,6 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
-const path = require("path");
 
 // Script to test
 const hub = require("../CloudRunHub");
@@ -48,7 +47,7 @@ contract("CloudRunHub.js", function(accounts) {
     process.env[key] = value;
   };
   const unsetEnvironmentVariables = () => {
-    for (key of setEnvironmentVariableKes) {
+    for (let key of setEnvironmentVariableKes) {
       delete process.env[key];
     }
     setEnvironmentVariableKes = [];
@@ -107,13 +106,12 @@ contract("CloudRunHub.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: (await Timer.deployed()).address
+      timerAddress: (await Timer.deployed()).address,
+      excessTokenBeneficiary: "0x0000000000000000000000000000000000000000"
     };
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    syntheticToken = await Token.at(await emp.tokenCurrency());
 
     uniswap = await UniswapMock.new();
 
@@ -139,9 +137,9 @@ contract("CloudRunHub.js", function(accounts) {
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(emptyBodyResponse.res.text.includes("Some calls returned errors"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
   it("Cloud Run Hub rejects invalid json request bodies", async function() {
@@ -149,9 +147,9 @@ contract("CloudRunHub.js", function(accounts) {
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(invalidBodyResponse.res.text.includes("Some calls returned errors"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
   it("Cloud Run Hub can correctly execute bot logic with valid body and config", async function() {
@@ -164,7 +162,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testCloudRunMonitor: {
-        cloudRunCommand: "yarn monitors --network test",
+        cloudRunCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -186,7 +184,7 @@ contract("CloudRunHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
     assert.isTrue(spyLogIncludes(hubSpy, -3, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited with no error")); // The spoke should have exited correctly.
-    assert.isTrue(lastSpyLogIncludes(spokeSpy, `startingBlock: ${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
+    assert.isTrue(lastSpyLogIncludes(spokeSpy, `${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
   });
   it("Cloud Run Hub can correctly execute multiple bots in parallel", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
@@ -198,7 +196,7 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testServerlessMonitor: {
-        cloudRunCommand: "yarn monitors --network test",
+        cloudRunCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -208,7 +206,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunLiquidator: {
-        cloudRunCommand: "yarn liquidator --network test",
+        cloudRunCommand: "yarn --silent liquidator --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-liquidator",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -218,7 +216,7 @@ contract("CloudRunHub.js", function(accounts) {
         }
       },
       testCloudRunDisputer: {
-        cloudRunCommand: "yarn disputer --network test",
+        cloudRunCommand: "yarn --silent disputer --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-disputer",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -240,8 +238,8 @@ contract("CloudRunHub.js", function(accounts) {
 
     // Check that the http response contains correct logs
     assert.equal(responseObject.message, "All calls returned correctly"); // Final text in monitor loop.
-    assert.equal(responseObject.output.errorOutputs.length, 0); // should be no errors
-    assert.equal(responseObject.output.validOutputs.length, 3); // should be 3 valid outputs
+    assert.equal(Object.keys(responseObject.output.errorOutputs).length, 0); // should be no errors
+    assert.equal(Object.keys(responseObject.output.validOutputs).length, 3); // should be 3 valid outputs
 
     // Check hub has correct logs.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
@@ -268,7 +266,7 @@ contract("CloudRunHub.js", function(accounts) {
     const hubConfig = {
       testServerlessMonitor: {
         // Creates no error.
-        cloudRunCommand: "yarn monitors --network test",
+        cloudRunCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -279,7 +277,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
-        cloudRunCommand: "yarn INVALID --network test",
+        cloudRunCommand: "yarn --silent INVALID --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -290,7 +288,7 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
-        cloudRunCommand: "yarn monitors --network test",
+        cloudRunCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           BOT_IDENTIFIER: "test-serverless-monitor-error2",
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -310,31 +308,38 @@ contract("CloudRunHub.js", function(accounts) {
 
     assert.equal(errorResponse.res.statusCode, 500); // error code
     const responseObject = JSON.parse(errorResponse.res.text); // extract json response
-    console.log("responseObject", JSON.stringify(responseObject));
 
     // Check that the http response contains correct logs
-    assert.equal(responseObject.message, "Some calls returned errors"); // Final text in monitor loop.
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some calls returned errors")); // The hub should have exited correctly.
+    assert.equal(responseObject.message, "Some spoke calls returned errors"); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors")); // The hub should have exited correctly.
     assert.equal(lastSpyLogLevel(hubSpy), "error"); // most recent log level should be "error"
-    assert.equal(responseObject.output.errorOutputs.length, 2); // should be 2 errors
-    assert.equal(responseObject.output.validOutputs.length, 1); // should be 1 valid output
+    assert.equal(Object.keys(responseObject.output.errorOutputs).length, 2); // should be 2 errors
+    assert.equal(Object.keys(responseObject.output.validOutputs).length, 1); // should be 1 valid output
 
     // Check the valid outputs.
-    assert.equal(responseObject.output.validOutputs[0].botIdentifier, "testServerlessMonitor"); // Check that the valid output is the expected bot
+    assert.equal(responseObject.output.validOutputs["testServerlessMonitor"].botIdentifier, "testServerlessMonitor"); // Check that the valid output is the expected bot
     assert.isTrue(
-      responseObject.output.validOutputs[0].execResponse.stdout.includes(
-        "End of serverless execution loop - terminating process, bot-identifier: test-serverless-monitor"
+      responseObject.output.validOutputs["testServerlessMonitor"].execResponse.stdout.includes(
+        "End of serverless execution loop - terminating process"
       )
     );
 
     // Check the error outputs.
-    assert.equal(responseObject.output.errorOutputs[0].botIdentifier, "testServerlessMonitorError"); // Check that the valid output is the expected bot
-    assert.equal(responseObject.output.errorOutputs[1].botIdentifier, "testServerlessMonitorError2"); // Check that the valid output is the expected bot
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError"].botIdentifier,
+      "testServerlessMonitorError"
+    ); // Check that the valid output is the expected bot
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError2"].botIdentifier,
+      "testServerlessMonitorError2"
+    ); // Check that the valid output is the expected bot
     assert.isTrue(
-      responseObject.output.errorOutputs[0].execResponse.stderr.includes("error Command INVALID not found")
+      responseObject.output.errorOutputs["testServerlessMonitorError"].execResponse.stderr.includes(
+        "error Command INVALID not found"
+      )
     ); // invalid path error
     assert.isTrue(
-      responseObject.output.errorOutputs[1].execResponse.stderr.includes(
+      responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
         "Returned values aren't valid, did it run Out of Gas?"
       )
     ); // invalid emp error

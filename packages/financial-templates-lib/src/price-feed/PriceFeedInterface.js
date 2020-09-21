@@ -21,7 +21,7 @@ class PriceFeedInterface {
   // return `null` or `undefined`. If the historical price could not be computed for any other reason, this method
   // should return `null` or `undefined`.
   // Note: derived classes *must* override this method.
-  getHistoricalPrice(time) {
+  getHistoricalPrice(/* time */) {
     this._abstractFunctionCalled();
   }
 

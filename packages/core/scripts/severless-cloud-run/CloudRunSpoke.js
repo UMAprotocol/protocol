@@ -83,20 +83,39 @@ function _execShellCommand(cmd, inputEnv) {
   return new Promise(resolve => {
     exec(cmd, { env: { ...process.env, ...inputEnv, stdio: "inherit", shell: true } }, (error, stdout, stderr) => {
       // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
-      stdout = _stripExecOutput(stdout);
-      stderr = _stripExecOutput(stderr);
+      stdout = _stripExecStdout(stdout);
+      stderr = _stripExecStdError(stderr);
       resolve({ error, stdout, stderr });
     });
   });
 }
 
-// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
-function _stripExecOutput(output) {
+// Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
+function _stripExecStdout(output) {
   if (!output) return output;
+  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable form
+  // if the spoke was running a process that did not correctly generate a winston log. In this case simply return the stripped output.
+  try {
+    const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
+    return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+  } catch (error) {
+    return _regexStrip(output).replace(/\r?\n|\r/g, " ");
+  }
+}
+
+// Format stderr outputs.
+function _stripExecStdError(output) {
+  if (!output) return output;
+  return _regexStrip(output)
+    .replace(/\r?\n|\r/g, "")
+    .replace(/"/g, ""); // Remove escaped new line chars. Replace with no space.
+}
+
+// This Regex removes unnasasary punctuation from the logs and formats the output in a digestible fashion.
+function _regexStrip(output) {
   return output
-    .replace(/\r?\n|\r/g, "") // Remove escaped new line chars
-    .replace(/\s\s+/g, " ") // Remove tabbed chars
-    .replace(/\"/g, ""); // Remove escaped quotes
+    .replace(/\s\s+/g, " ") // Remove tabbed chars.
+    .replace(/\\"/g, ""); // Remove escaped quotes.
 }
 
 function _getChildProcessIdentifier(req) {

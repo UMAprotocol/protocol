@@ -42,7 +42,7 @@ class ExpiringMultiPartyEventClient {
     this.lastUpdateTimestamp = 0;
   }
   // Delete all events within the client
-  clearState = async () => {
+  async clearState() {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
@@ -55,7 +55,7 @@ class ExpiringMultiPartyEventClient {
     this.finalFeeEvents = [];
     this.liquidationWithdrawnEvents = [];
     this.settleExpiredPositionEvents = [];
-  };
+  }
 
   getAllNewSponsorEvents() {
     return this.newSponsorEvents;

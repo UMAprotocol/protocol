@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
-const { isAdminRequest, getAdminRequestId, decodeTransaction, getAbiDecoder } = require("@uma/common");
+const { isAdminRequest, getAdminRequestId, decodeTransaction } = require("@uma/common");
 
 async function decodeGovernorProposal(artifacts, id) {
   const Governor = artifacts.require("Governor");
@@ -73,7 +73,7 @@ async function admin(artifacts, web3) {
     return;
   }
 
-  while (true) {
+  for (;;) {
     const maxId = numProposals.subn(1).toString();
     const userEntry = await viewAdminMenu(maxId);
 

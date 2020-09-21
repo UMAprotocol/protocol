@@ -35,6 +35,7 @@ const WETH9 = artifacts.require("WETH9");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Store = artifacts.require("Store");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier"] });
 
 // Contracts we need to interact with.
@@ -44,6 +45,7 @@ let mockOracle;
 let identifierWhitelist;
 let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
+let store;
 
 const empCollateralTokenMap = {
   COMPUSD: TestnetERC20,
@@ -76,7 +78,7 @@ const deployEMP = async callback => {
 
     if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
-      finder = await Finder.deployed();
+      const finder = await Finder.deployed();
       mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
@@ -87,6 +89,8 @@ const deployEMP = async callback => {
       await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
       console.log("Whitelisted collateral currency");
     }
+
+    store = await Store.deployed();
 
     // Create a new EMP
     const constructorParams = {
@@ -101,7 +105,8 @@ const deployEMP = async callback => {
       disputerDisputeRewardPct: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
       liquidationLiveness: 7200,
-      withdrawalLiveness: 7200
+      withdrawalLiveness: 7200,
+      excessTokenBeneficiary: store.address
     };
 
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
