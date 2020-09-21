@@ -1,3 +1,9 @@
+// How to run:
+// 0) Start ganache (testnet or mainnet-fork doesn't matter, this test does not send any txns):
+//     - ganache-cli -p 9545 -e 10000000000 -l 9000000
+// 1) Truffle test:
+//     - yarn truffle test ./packages/core/scripts/gas-rebate/test.js
+
 const Main = require("./index");
 
 const { fromWei, toBN, toWei } = web3.utils;
@@ -8,17 +14,6 @@ contract("Gas Rebate: index.js", function() {
   // September 2 2020, 1 full day after reveal period ends for Admin 10, so it contains some claim-rewards events
   const TEST_END_BLOCK = 10778455;
   const REBATE_LABEL = 9999;
-
-  describe("getHistoricalEthPrice", function() {
-    it("Returns an array: {timestamp, avgPx}", async function() {
-      const prices = await Main.getHistoricalEthPrice(TEST_START_BLOCK, TEST_END_BLOCK);
-      assert.isTrue(prices.length > 0);
-      prices.forEach(px => {
-        assert.isTrue(px.timestamp >= 0, "timestamp is negative");
-        assert.isTrue(Number(px.avgPx) > 0, "price is not positive");
-      });
-    });
-  });
 
   describe("getHistoricalGasPrice", function() {
     it("Returns an array: {timestamp, avgGwei}", async function() {
@@ -31,27 +26,30 @@ contract("Gas Rebate: index.js", function() {
     });
   });
 
-  describe("getUmaPrice", function() {
-    it("Returns an array: {timestamp, avgGwei}", async function() {
-      const price = await Main.getUmaPrice();
-      assert.isTrue(price > 0);
+  describe("getHistoricalUmaEthPrice", function() {
+    it("Returns an array: {timestamp, avgPx}", async function() {
+      const gasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
+      const umaPrices = await Main.getHistoricalUmaEthPrice(gasPrices);
+      assert.isTrue(umaPrices.length > 0);
+      umaPrices.forEach(px => {
+        assert.isTrue(px.timestamp >= 0, "timestamp is negative");
+        assert.isTrue(Number(px.avgPx) > 0, "price is not positive");
+      });
     });
   });
 
   describe("calculateRebate", function() {
     beforeEach(async function() {
       this.dailyAvgGasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
-      this.dailyAvgEthPrices = await Main.getHistoricalEthPrice(TEST_START_BLOCK, TEST_END_BLOCK);
-      this.currentUmaPrice = await Main.getUmaPrice();
+      this.dailyAvgUmaEthPrices = await Main.getHistoricalUmaEthPrice(this.dailyAvgGasPrices);
     });
     it("Expect both reveal and claim rebates and outputs are reasonable", async function() {
       const result = await Main.calculateRebate({
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgEthPrices: this.dailyAvgEthPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
-        currentUmaPrice: this.currentUmaPrice,
         debug: true
       });
 
@@ -87,18 +85,13 @@ contract("Gas Rebate: index.js", function() {
       );
 
       // Ball park estimate for UMA to repay uses the lower and upper ETH spent approximations, assuming
-      // ETH is between $200 and $800
-      const ethToUmaLowerLimit = toBN(toWei("200"))
-        .mul(Main.SCALING_FACTOR)
-        .div(this.currentUmaPrice);
-      const ethToUmaUpperLimit = toBN(toWei("800"))
-        .mul(Main.SCALING_FACTOR)
-        .div(this.currentUmaPrice);
-      const lowerLimitUmaRebateReveals = lowerLimitEthSpentReveals.mul(ethToUmaLowerLimit).div(Main.SCALING_FACTOR);
-      const upperLimitUmaRebateReveals = upperLimitEthSpentReveals.mul(ethToUmaUpperLimit).div(Main.SCALING_FACTOR);
-      const lowerLimitUmaRebateClaims = lowerLimitEthSpentClaims.mul(ethToUmaLowerLimit).div(Main.SCALING_FACTOR);
-      const upperLimitUmaRebateClaims = upperLimitEthSpentClaims.mul(ethToUmaUpperLimit).div(Main.SCALING_FACTOR);
-      console.log(lowerLimitUmaRebateReveals.toString(), upperLimitUmaRebateReveals.toString());
+      // UMA-ETH is between 0.01 and 0.07. !!This assumption might need updating
+      const umaToEthLowerLimit = toBN(toWei("0.01"));
+      const umaToEthUpperLimit = toBN(toWei("0.07"));
+      const lowerLimitUmaRebateReveals = lowerLimitEthSpentReveals.mul(Main.SCALING_FACTOR).div(umaToEthUpperLimit);
+      const upperLimitUmaRebateReveals = upperLimitEthSpentReveals.mul(Main.SCALING_FACTOR).div(umaToEthLowerLimit);
+      const lowerLimitUmaRebateClaims = lowerLimitEthSpentClaims.mul(Main.SCALING_FACTOR).div(umaToEthUpperLimit);
+      const upperLimitUmaRebateClaims = upperLimitEthSpentClaims.mul(Main.SCALING_FACTOR).div(umaToEthLowerLimit);
       assert.isTrue(
         Number(revealRebates.totals.totalUmaRepaid) >= Number(fromWei(lowerLimitUmaRebateReveals.toString())) &&
           Number(revealRebates.totals.totalUmaRepaid) <= Number(fromWei(upperLimitUmaRebateReveals.toString()))
@@ -107,7 +100,6 @@ contract("Gas Rebate: index.js", function() {
         Number(claimRebates.totals.totalUmaRepaid) >= Number(fromWei(lowerLimitUmaRebateClaims.toString())) &&
           Number(claimRebates.totals.totalUmaRepaid) <= Number(fromWei(upperLimitUmaRebateClaims.toString()))
       );
-
       // Test that rebate output (the one used to submit the disperse.app txn) is equal to the sum of the reveal
       // and claim debug logs
       const umaToPayAccount = result.rebateOutput.shareHolderPayout;
@@ -131,9 +123,8 @@ contract("Gas Rebate: index.js", function() {
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgEthPrices: this.dailyAvgEthPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
-        currentUmaPrice: this.currentUmaPrice,
         debug: true,
         revealOnly: true
       });
@@ -149,9 +140,8 @@ contract("Gas Rebate: index.js", function() {
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgEthPrices: this.dailyAvgEthPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
-        currentUmaPrice: this.currentUmaPrice,
         debug: true,
         claimOnly: true
       });
