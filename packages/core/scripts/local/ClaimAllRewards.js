@@ -4,6 +4,8 @@ const Voting = artifacts.require("Voting");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["round"] });
 
+const { toBN, toWei } = web3.utils;
+
 // This script claims all voter's rewards for the round provided.
 async function claimRewards() {
   const voting = await Voting.deployed();
@@ -24,6 +26,31 @@ async function claimRewards() {
       votersToPriceRequests[voter] = [newPriceRequest];
     }
   }
+
+  const retrievableRewards = (
+    await Promise.all(
+      Object.entries(votersToPriceRequests).map(async ([voter, priceRequests]) => {
+        try {
+          const output = await voting.retrieveRewards.call(voter, argv.round, priceRequests);
+          if (output.toString() === "0") {
+            return null;
+          } else if (toBN(output.toString()).gt(toBN(toWei("100000000")))) {
+            // If the output is bigger than 100MM tokens, that means this is _really_ a revert.
+            return null;
+          } else {
+            return [voter, priceRequests];
+          }
+        } catch (error) {
+          return null;
+        }
+      })
+    )
+  ).filter(element => element !== null);
+
+  retrievableRewards.map(([voter, priceRequests]) => {
+    voter;
+    priceRequests;
+  });
 
   for (const [voter, priceRequests] of Object.entries(votersToPriceRequests)) {
     try {
