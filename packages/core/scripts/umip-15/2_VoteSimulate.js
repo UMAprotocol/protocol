@@ -21,11 +21,12 @@ const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
+let snapshotId, snapshot;
 
 async function runExport() {
   console.log("Running Upgrade vote simulator🔥");
-  let snapshot = await takeSnapshot(web3);
-  let snapshotId = snapshot["result"];
+  snapshot = await takeSnapshot(web3);
+  snapshotId = snapshot["result"];
   console.log("Snapshotting starting state...", snapshotId);
 
   /** *********************************
