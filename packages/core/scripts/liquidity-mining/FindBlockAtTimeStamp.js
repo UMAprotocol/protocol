@@ -12,12 +12,12 @@ const FindBlockAtTimeStamp = async callback => {
   try {
     const dateTime = moment.utc(argv.dateTime, "YYYY-MM-DD  HH:mm Z");
     if (!dateTime.isValid()) {
-      throw new Error("Missing or invalid parameter! Provide `dateTime` must be strings formatted `YYYY-MM-DD  HH:mm`");
+      throw new Error("Missing or invalid parameter! Provide `dateTime` must be strings formatted `YYYY-MM-DD HH:mm`");
     }
     console.log(`⏱  Finding closest block to ${argv.dateTime}. Note time is interpreted as UTC time.`);
     // Get the closet block number to the dateTime provided.
     const { blockNumber, error } = await _findBlockNumberAtTimestamp(web3, dateTime.unix());
-    console.log(`👀 Closest block to ${argv.dateTime} is ${blockNumber} with an error of ${error} seconds`);
+    console.log(`👀 Closest block to ${argv.dateTime} is ${blockNumber} with an error of ${error} seconds.`);
   } catch (err) {
     console.error(err);
     callback(err);
