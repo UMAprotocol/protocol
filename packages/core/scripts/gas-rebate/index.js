@@ -41,7 +41,7 @@ const { getAbi, getAddress } = require("@uma/core");
  *
  *******************************************/
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
-const { toBN, toWei, fromWei } = web3.utils;
+const { toBN, toWei, fromWei, toChecksumAddress } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
   {
@@ -213,6 +213,12 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
   };
 }
 
+// The UMA dev account sometimes claims rewards on behalf of other voters, to save them gas
+// speed up the reward retrieval, and ensure that no rewards expire. We want to ignore RewardsRetrieved
+// events that arise from such a batch retrieval.
+// Example of such a transaction: https://etherscan.io/tx/0xed907cc499fb6bdccb6fb350dd8dd9cf90e7b24c855a5e857b24156f18e0e4bb#eventlog
+const UMA_DEV_ACCOUNT = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
+
 async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
   const rewardedVotersToRebate = {};
 
@@ -220,32 +226,37 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
 
   for (let i = 0; i < claimedRewards.length; i++) {
     const claim = claimedRewards[i];
-    const voter = claim.returnValues.voter;
-    const roundId = claim.returnValues.roundId;
-    const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
-    const requestTime = claim.returnValues.time;
     const [transactionBlock, transactionReceipt] = await Promise.all([
       web3.eth.getBlock(claim.blockNumber),
       web3.eth.getTransactionReceipt(claim.transactionHash)
     ]);
-    const gasUsed = parseInt(transactionReceipt.gasUsed);
-    const txnTimestamp = transactionBlock.timestamp;
+    // Check if claim txn was sent by an UMA dev batch retrieval.
+    if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
+      const voter = claim.returnValues.voter;
+      const roundId = claim.returnValues.roundId;
+      const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
+      const requestTime = claim.returnValues.time;
 
-    const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-    const val = {
-      voter,
-      roundId,
-      requestTime,
-      identifier,
-      claim: {
-        transactionBlock: transactionBlock.number,
-        hash: transactionReceipt.transactionHash,
-        gasUsed,
-        txnTimestamp
-      }
-    };
+      const gasUsed = parseInt(transactionReceipt.gasUsed);
+      const txnTimestamp = transactionBlock.timestamp;
 
-    rewardedVotersToRebate[key] = val;
+      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+      const val = {
+        voter,
+        roundId,
+        requestTime,
+        identifier,
+        claim: {
+          transactionBlock: transactionBlock.number,
+          hash: transactionReceipt.transactionHash,
+          gasUsed,
+          txnTimestamp
+        }
+      };
+
+      rewardedVotersToRebate[key] = val;
+    }
+
     progressBarClaim.update(i + 1);
   }
   progressBarClaim.stop();
@@ -410,13 +421,19 @@ async function calculateRebate({
     if (revealRebates && !debug) {
       const savePath = `${path.resolve(__dirname)}/debug/Reveals_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(revealRebates.rebateReceipts, null, 4));
-      console.log("🗄  Reveal Transactions successfully written to", savePath);
+      console.log(
+        `🗄 ${Object.keys(revealRebates.rebateReceipts).length} Reveal Transactions successfully written to`,
+        savePath
+      );
       console.log("㊗️ Reveal Totals:", revealRebates.totals);
     }
     if (claimRebates && !debug) {
       const savePath = `${path.resolve(__dirname)}/debug/Claims_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(claimRebates.rebateReceipts, null, 4));
-      console.log("🗄  Claim Transactions successfully written to", savePath);
+      console.log(
+        `🗄 ${Object.keys(claimRebates.rebateReceipts).length} Claim Transactions successfully written to`,
+        savePath
+      );
       console.log("㊗️ Claim Totals:", claimRebates.totals);
     }
     // Output JSON parseable via disperse.app
