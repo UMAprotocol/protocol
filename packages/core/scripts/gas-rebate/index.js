@@ -41,7 +41,7 @@ const { getAbi, getAddress } = require("@uma/core");
  *
  *******************************************/
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
-const { toBN, toWei, fromWei } = web3.utils;
+const { toBN, toWei, fromWei, toChecksumAddress } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
   {
@@ -231,7 +231,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
       web3.eth.getTransactionReceipt(claim.transactionHash)
     ]);
     // Check if claim txn was sent by an UMA dev batch retrieval.
-    if (transactionReceipt.from !== UMA_DEV_ACCOUNT) {
+    if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
       const voter = claim.returnValues.voter;
       const roundId = claim.returnValues.roundId;
       const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
