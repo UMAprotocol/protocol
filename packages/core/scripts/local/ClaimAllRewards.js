@@ -1,8 +1,9 @@
-// Usage: $(npm bin)/truffle exec ./scripts/ClaimAllRewards.js --round <round_id> --network mainnet_mnemonic
+// Usage: $(npm bin)/truffle exec ./scripts/ClaimAllRewards.js --round <round_id> --batcherAddress 0x82458d1C812D7c930Bb3229c9e159cbabD9AA8Cb --network mainnet_mnemonic
 
 const Voting = artifacts.require("Voting");
+const TransactionBatcher = artifacts.require("TransactionBatcher");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["round"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["round", "batcherAddress"] });
 
 const { toBN, toWei } = web3.utils;
 
@@ -38,6 +39,7 @@ async function claimRewards() {
             // If the output is bigger than 100MM tokens, that means this is _really_ a revert.
             return null;
           } else {
+            console.log("Found Rewards for voter", voter);
             return [voter, priceRequests];
           }
         } catch (error) {
@@ -47,22 +49,23 @@ async function claimRewards() {
     )
   ).filter(element => element !== null);
 
-  retrievableRewards.map(([voter, priceRequests]) => {
-    voter;
-    priceRequests;
+  const dataArray = retrievableRewards.map(([voter, priceRequests]) => {
+    return voting.contract.methods.retrieveRewards(voter, argv.round, priceRequests).encodeABI();
   });
 
-  for (const [voter, priceRequests] of Object.entries(votersToPriceRequests)) {
-    try {
-      await voting.retrieveRewards.call(voter, argv.round, priceRequests);
-    } catch (err) {
-      console.log("Could not reveal for voter", voter);
-      console.log(err);
-      continue;
-    }
+  const valuesArray = dataArray.map(() => "0");
+  const targetArray = dataArray.map(() => voting.address);
 
-    await voting.retrieveRewards(voter, argv.round, priceRequests);
+  const transactionBatcher = await TransactionBatcher.at(argv.batcherAddress);
+  const txn = transactionBatcher.contract.methods.batchSend(targetArray, valuesArray, dataArray);
+  const account = (await web3.eth.getAccounts())[0];
+  const gasEstimate = await txn.estimateGas({ from: account });
+
+  if (gasEstimate > 9000000) {
+    throw "The transaction requires too mucn gas. Will need to be split up.";
   }
+
+  await transactionBatcher.batchSend(targetArray, valuesArray, dataArray);
 }
 
 async function wrapper(callback) {
