@@ -62,7 +62,7 @@ async function claimRewards() {
   const gasEstimate = await txn.estimateGas({ from: account });
 
   if (gasEstimate > 9000000) {
-    throw "The transaction requires too mucn gas. Will need to be split up.";
+    throw "The transaction requires too much gas. Will need to be split up.";
   }
 
   await transactionBatcher.batchSend(targetArray, valuesArray, dataArray);
