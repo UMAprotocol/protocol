@@ -4,8 +4,8 @@ const { toWei, utf8ToHex } = web3.utils;
 const request = require("supertest");
 
 // Script to test
-const hub = require("../CloudRunHub");
-const spoke = require("../CloudRunSpoke");
+const hub = require("../ServerlessHub");
+const spoke = require("../ServerlessSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -21,7 +21,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 
-contract("CloudRunHub.js", function(accounts) {
+contract("ServerlessHub.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
@@ -161,10 +161,9 @@ contract("CloudRunHub.js", function(accounts) {
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
-      testCloudRunMonitor: {
-        cloudRunCommand: "yarn --silent monitors --network test",
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
@@ -196,29 +195,26 @@ contract("CloudRunHub.js", function(accounts) {
 
     const hubConfig = {
       testServerlessMonitor: {
-        cloudRunCommand: "yarn --silent monitors --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
         }
       },
-      testCloudRunLiquidator: {
-        cloudRunCommand: "yarn --silent liquidator --network test",
+      testServerlessLiquidator: {
+        serverlessCommand: "yarn --silent liquidator --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-liquidator",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
         }
       },
-      testCloudRunDisputer: {
-        cloudRunCommand: "yarn --silent disputer --network test",
+      testServerlessDisputer: {
+        serverlessCommand: "yarn --silent disputer --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-disputer",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
@@ -248,11 +244,8 @@ contract("CloudRunHub.js", function(accounts) {
     assert.isTrue(spyLogIncludes(hubSpy, -2, "Batch execution promise resolved")); // Check that all promises within the bach resolved.
 
     // Check that each bot identifier returned the correct exit code.
-    for (const spokeConfig of Object.keys(hubConfig)) {
-      const childProcessIdentifier = hubConfig[spokeConfig].environmentVariables.BOT_IDENTIFIER;
-      assert.isTrue(
-        spyLogIncludes(hubSpy, -2, `Process exited with no error","childProcessIdentifier":"${childProcessIdentifier}`)
-      );
+    for (const botName of Object.keys(hubConfig)) {
+      assert.isTrue(spyLogIncludes(hubSpy, -2, `Process exited with no error","childProcessIdentifier":"${botName}`));
     }
   });
   it("Cloud Run Hub can correctly deal with some bots erroring out in execution", async function() {
@@ -266,9 +259,8 @@ contract("CloudRunHub.js", function(accounts) {
     const hubConfig = {
       testServerlessMonitor: {
         // Creates no error.
-        cloudRunCommand: "yarn --silent monitors --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-monitor",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
@@ -277,9 +269,8 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
-        cloudRunCommand: "yarn --silent INVALID --network test",
+        serverlessCommand: "yarn --silent INVALID --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-monitor-error",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
@@ -288,9 +279,8 @@ contract("CloudRunHub.js", function(accounts) {
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
-        cloudRunCommand: "yarn --silent monitors --network test",
+        serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          BOT_IDENTIFIER: "test-serverless-monitor-error2",
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: "0x0000000000000000000000000000000000000000",

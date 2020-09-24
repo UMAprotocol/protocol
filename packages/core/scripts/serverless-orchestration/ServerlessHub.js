@@ -1,21 +1,21 @@
 /**
- * @notice This script reads in a global configuration file stored on GCP buckets and executes parallel Cloud Run
- * instances for each configured bot. This enables one global config file to define all bot instances. This drastically
- * simplifying the devops and management overhead for spinning up new instances as this can be done by simply updating
- * a config file. This script is designed to be run within a GCP Cloud Run (or cloud function) environment with a
- * permissioned service account to pull config objects from GCP buckets and execute Cloud Run functions.
+ * @notice This script reads in a global configuration file stored and executes  parallel serverless instances for each
+ * configured bot. This enables one global config file to define all bot instances. This drastically simplifying the
+ * devops and management overhead for spinning up new instances as this can be done by simply updating a single config
+ * file. This script is designed to be run within a number of different environments:
+ * 1)  GCP Cloud Run (or cloud function) environment with a permissioned service account. This enables infinite scalability
+ * to run thousands of parallel bot processes.
+ * 2) Local machine to enable simple orchestration between a number of bot processes all running on one main process.
+ * Configurations for the bots are pulled from from either a) localStorage, b) github or c) GCP storage bucket.
+ * The main configurations for the serverless hub are:
+ * 1) PORT: local port to run the hub on. if not specified will default to 8080
+ * 2) SPOKE_URL: http url to a serverless spoke instance. This could be local host (if running locally) or a GCP
+ * cloud run/cloud function URL which will spin up new instances for each parallel bot execution.
+ * 3) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
+ 4 ) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to 
+ * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process. 
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
- *
- * If you want to run it in your local environment, you need to do the following configuration changes:
- * 1) Set the environment variable PROTOCOL_RUNNER_URL to point to your remote cloud run instance URL.
- * 2) To access service accounts you need to configure your local environment with the associated config file. Go to:
- * https://console.cloud.google.com/apis/credentials/serviceaccountkey and generate a json config file. Save this to
- * a safe place. Then, set the environment variable GOOGLE_APPLICATION_CREDENTIALS to point to this config file.
- * 3) Once this is done the script can be started by running: node ../reporters/cloud-run-scripts/CloudRunnerHub.js
- * This will start a restful API server on PORT (default 8080).
- * 4) call the restful query using CURL as:
- * curl -X POST -H 'Content-type: application/json' --data '{"bucket":"bot-configs","configFile":"global-bot-config.json"}' https://localhost:8080
  */
 
 const express = require("express");
@@ -38,15 +38,15 @@ const Web3 = require("web3");
 
 const { Logger } = require("@uma/financial-templates-lib");
 let logger;
-let protocolRunnerUrl;
+let spokeUrl;
 let customNodeUrl;
 let hubConfig = { configRetrieval: "localStorage", saveQueriedBlock: "localStorage", spokeRunner: "localStorage" };
 
 hub.post("/", async (req, res) => {
   try {
     logger.debug({
-      at: "CloudRunHub",
-      message: "Running CloudRun hub query",
+      at: "ServerlessHub",
+      message: "Running Serverless hub query",
       reqBody: req.body,
       hubConfig
     });
@@ -60,7 +60,7 @@ hub.post("/", async (req, res) => {
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
     if (!configObject || !lastQueriedBlockNumber)
-      throw new Error("CloudRun hub requires a config object and a last updated block number!");
+      throw new Error("Serverless hub requires a config object and a last updated block number!");
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
@@ -72,15 +72,15 @@ hub.post("/", async (req, res) => {
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
     for (const botName in configObject) {
-      const botConfig = _appendBlockNumberEnvVars(configObject[botName], lastQueriedBlockNumber, latestBlockNumber);
-      promiseArray.push(_executeCloudRunSpoke(protocolRunnerUrl, botConfig));
+      const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
+      promiseArray.push(_executeServerlessSpoke(spokeUrl, botConfig));
     }
     logger.debug({
-      at: "CloudRunHub",
-      message: "Executing CloudRun query from config file",
+      at: "ServerlessHub",
+      message: "Executing Serverless query from config file",
       lastQueriedBlockNumber,
       latestBlockNumber,
-      protocolRunnerUrl,
+      spokeUrl,
       botsExecuted: Object.keys(configObject)
     });
 
@@ -90,7 +90,7 @@ hub.post("/", async (req, res) => {
     const results = await Promise.allSettled(promiseArray);
 
     logger.debug({
-      at: "CloudRunHub",
+      at: "ServerlessHub",
       message: "Batch execution promise resolved",
       results
     });
@@ -99,18 +99,27 @@ hub.post("/", async (req, res) => {
     let errorOutputs = {};
     let validOutputs = {};
     results.forEach((result, index) => {
-      if (result.status == "rejected" || result?.value?.execResponse?.error || result?.reason?.code == "500") {
-        // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
-        // correctly but contained an error.
+      // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
+      // correctly but contained an error.
+      if (
+        result.status == "rejected" ||
+        (result.value && result.value.execResponse && result.value.execResponse.error) ||
+        (result.reason && result.reason.code == "500")
+      ) {
         errorOutputs[Object.keys(configObject)[index]] = {
           status: result.status,
-          execResponse: result?.value?.execResponse || result?.reason?.response?.data?.execResponse,
+          execResponse:
+            (result.value && result.value.execResponse) ||
+            (result.reason &&
+              result.reason.response &&
+              result.reason.response.data &&
+              result.reason.response.data.execResponse),
           botIdentifier: Object.keys(configObject)[index]
         };
       } else {
         validOutputs[Object.keys(configObject)[index]] = {
           status: result.status,
-          execResponse: result?.value?.execResponse,
+          execResponse: result.value && result.value.execResponse,
           botIdentifier: Object.keys(configObject)[index]
         };
       }
@@ -121,19 +130,19 @@ hub.post("/", async (req, res) => {
 
     // If no errors and got to this point correctly then return a 200 success status.
     logger.debug({
-      at: "CloudRunHub",
+      at: "ServerlessHub",
       message: "All calls returned correctly",
       output: { errorOutputs, validOutputs }
     });
     res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
   } catch (errorOutput) {
     logger.debug({
-      at: "CloudRunHub",
+      at: "ServerlessHub",
       message: "Some spoke calls returned errors (details)🚨",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
     logger.error({
-      at: "CloudRunHub",
+      at: "ServerlessHub",
       message: "Some spoke calls returned errors 🚨",
       output:
         errorOutput instanceof Error
@@ -151,9 +160,9 @@ hub.post("/", async (req, res) => {
   }
 });
 
-// Execute a CloudRun Post command on a given `url` with a provided json `body`. This is used to initiate the spoke
+// Execute a serverless POST command on a given `url` with a provided json `body`. This is used to initiate the spoke
 // instance from the hub. If running in gcp mode then local service account must be permissioned to execute this command.
-const _executeCloudRunSpoke = async (url, body) => {
+const _executeServerlessSpoke = async (url, body) => {
   if (hubConfig.spokeRunner == "gcp") {
     const targetAudience = new URL(url).origin;
 
@@ -170,7 +179,7 @@ const _executeCloudRunSpoke = async (url, body) => {
   }
 };
 
-// Fetch configs for cloud run hub. Either read from a gcp bucket, local storage or a git repo. Github configs can pull
+// Fetch configs for serverless hub. Either read from a gcp bucket, local storage or a git repo. Github configs can pull
 // from a private github repo using the provided Authorization token. GCP uses a readStream which is converted into a
 // buffer such that the config file does not need to first be downloaded from the bucket. This will use the local service
 // account. Local configs are read directly from the process's environment variables.
@@ -254,10 +263,11 @@ async function _getLatestBlockNumber() {
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
-function _appendBlockNumberEnvVars(config, lastQueriedBlockNumber, latestBlockNumber) {
+function _appendEnvVars(config, botName, lastQueriedBlockNumber, latestBlockNumber) {
   // The starting block number should be one block after the last queried block number to not double report that block.
   config.environmentVariables["STARTING_BLOCK_NUMBER"] = Number(lastQueriedBlockNumber) + 1;
   config.environmentVariables["ENDING_BLOCK_NUMBER"] = latestBlockNumber;
+  config.environmentVariables["BOT_IDENTIFIER"] = botName;
   return config;
 }
 
@@ -276,25 +286,25 @@ async function _postJson(url, body) {
 }
 
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(_Logger = Logger, port = 8080, _ProtocolRunnerUrl, _CustomNodeUrl, _hubConfig) {
-  // The CloudRun hub should have a configured URL to define the remote instance & a local node URL to boot.
-  if (!_ProtocolRunnerUrl || !_CustomNodeUrl) {
+async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
+  // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
+  if (!_spokeURL || !_CustomNodeUrl) {
     throw new Error(
-      "Bad environment! Specify a `PROTOCOL_RUNNER_URL` & `CUSTOM_NODE_URL` to point to the a CloudRun spoke instance and an Ethereum node"
+      "Bad environment! Specify a `SPOKE_URL` & `CUSTOM_NODE_URL` to point to the a Serverless spoke instance and an Ethereum node"
     );
   }
 
   // Set configs to be used in the sererless execution.
   logger = _Logger;
-  protocolRunnerUrl = _ProtocolRunnerUrl;
+  spokeUrl = _spokeURL;
   customNodeUrl = _CustomNodeUrl;
   if (_hubConfig) hubConfig = _hubConfig;
 
   return hub.listen(port, () => {
     logger.debug({
-      at: "CloudRunHub",
-      message: "CloudRun hub initialized",
-      protocolRunnerUrl,
+      at: "ServerlessHub",
+      message: "Serverless hub initialized",
+      spokeUrl,
       customNodeUrl,
       hubConfig,
       port,
@@ -313,13 +323,7 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  Poll(
-    Logger,
-    process.env.PORT,
-    process.env.PROTOCOL_RUNNER_URL,
-    process.env.CUSTOM_NODE_URL,
-    hubConfig
-  ).then(() => {});
+  Poll(Logger, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig).then(() => {});
 }
 
 hub.Poll = Poll;

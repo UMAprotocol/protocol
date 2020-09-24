@@ -4,7 +4,7 @@ const { toWei, utf8ToHex } = web3.utils;
 const request = require("supertest");
 
 // Script to test
-const spoke = require("../CloudRunSpoke");
+const spoke = require("../ServerlessSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -20,7 +20,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes } = require("@uma/financial-templates-lib");
 
-contract("CloudRunSpoke.js", function(accounts) {
+contract("ServerlessSpoke.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
@@ -104,9 +104,9 @@ contract("CloudRunSpoke.js", function(accounts) {
     const emptyBodyResponse = await sendRequest(emptyBody);
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(emptyBodyResponse.res.text.includes("Process exited with error"));
-    assert.isTrue(emptyBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("Missing serverlessCommand in json body"));
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Missing serverlessCommand in json body"));
   });
   it("Cloud Run Spoke rejects invalid json request bodies", async function() {
     // body missing cloud run command.
@@ -114,13 +114,13 @@ contract("CloudRunSpoke.js", function(accounts) {
     const invalidBodyResponse = await sendRequest(invalidBody);
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(invalidBodyResponse.res.text.includes("Process exited with error"));
-    assert.isTrue(invalidBodyResponse.res.text.includes("Missing cloudRunCommand in json body"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("Missing serverlessCommand in json body"));
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Missing cloudRunCommand in json body"));
+    assert.isTrue(lastSpyLogIncludes(spy, "Missing serverlessCommand in json body"));
   });
   it("Cloud Run Spoke can correctly execute bot logic with valid body", async function() {
     const validBody = {
-      cloudRunCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "yarn --silent monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
@@ -139,7 +139,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid path)", async function() {
     // Invalid path should error out when trying to run an executable that does not exist
     const invalidPathBody = {
-      cloudRunCommand: "yarn --silent INVALID --network test",
+      serverlessCommand: "yarn --silent INVALID --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -159,7 +159,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid body)", async function() {
     // Invalid config should error out before entering the main while loop in the bot.
     const invalidConfigBody = {
-      cloudRunCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "yarn --silent monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -178,7 +178,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid network identifier)", async function() {
     // Invalid price feed config should error out before entering main while loop
     const invalidPriceFeed = {
-      cloudRunCommand: "yarn --silent monitors --network INVALID",
+      serverlessCommand: "yarn --silent monitors --network INVALID",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
@@ -197,7 +197,7 @@ contract("CloudRunSpoke.js", function(accounts) {
   it("Cloud Run Spoke can correctly returns errors over http calls(invalid emp)", async function() {
     // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {
-      cloudRunCommand: "yarn --silent monitors --network test",
+      serverlessCommand: "yarn --silent monitors --network test",
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
