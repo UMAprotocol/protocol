@@ -194,7 +194,7 @@ function ResolvedRequests({ votingAccount }) {
       </Typography>
       <Dialog onClose={handleCloseDialogs} open={openExplainAdminDialog}>
         <DialogTitle>Admin Proposal</DialogTitle>
-        {explainAdminDialogData && (
+        {explainAdminDialogData !== null && (
           <DialogContent>
             <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
               {decodeRequestIndex(explainAdminDialogData)}
