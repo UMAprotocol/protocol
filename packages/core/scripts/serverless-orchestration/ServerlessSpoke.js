@@ -1,11 +1,12 @@
 /**
- * @notice This script enables Google Cloud Run functions to execute any arbitrary command from the UMA Docker container.
- * Cloud Run provides a privileged REST endpoint that can be called to spin up a Docker container. This endpoint is
- * expected to respond on PORT. Upon receiving a request, this script executes a child process and responds to the
- * REST query with the output of the process execution. The REST query sent to the API is expected to be a POST
- * with a body formatted as: {"cloudRunCommand":<some-command-to-run>, environmentVariables: <env-variable-object>}
- * the some-command-to-run is any execution process. For example to run the monitor bot this could be set to:
- * { "cloudRunCommand":"npx truffle exec ../monitors/index.js --network mainnet_mnemonic" }. `environmentVariables` is
+ * @notice This script enables serverless functions to execute any arbitrary command from the UMA Docker container.
+ * This can be run on a local machine, within GCP cloud run or GCP cloud function environments. Cloud Run provides a
+ * privileged REST endpoint that can be called to spin up a Docker container. This endpoint is expected to respond on
+ * PORT. Upon receiving a request, this script executes a child process and responds to the  REST query with the output
+ * of the process execution. The REST query sent to the API is expected to be a POST with a body formatted as:
+ * {"serverlessCommand":<some-command-to-run>, environmentVariables: <env-variable-object>}
+ * the some-command-to-run is any execution process within the UMA docker container. For example to run the monitor bot
+ * this could be set to:  { "serverlessCommand":"yarn --silent monitors --network mainnet_mnemonic" }. `environmentVariables` is
  * optional. If included the child process will have additional parameters appended with these params.
  */
 
@@ -20,13 +21,13 @@ let logger;
 spoke.post("/", async (req, res) => {
   try {
     logger.debug({
-      at: "CloudRunSpoke",
-      message: "Executing GCP Cloud Run API Call",
+      at: "ServerlessSpoke",
+      message: "Executing serverless spoke call",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       reqBody: req.body
     });
-    if (!req.body.cloudRunCommand) {
-      throw new Error("Missing cloudRunCommand in json body! At least this param is needed to run the spoke");
+    if (!req.body.serverlessCommand) {
+      throw new Error("Missing serverlessCommand in json body! At least this param is needed to run the spoke");
     }
 
     // Iterate over the provided environment variables and ensure that they are all strings. This enables json configs
@@ -43,13 +44,13 @@ spoke.post("/", async (req, res) => {
       });
     }
 
-    const execResponse = await _execShellCommand(req.body.cloudRunCommand, processedEnvironmentVariables);
+    const execResponse = await _execShellCommand(req.body.serverlessCommand, processedEnvironmentVariables);
 
     if (execResponse.error) {
       throw execResponse;
     }
     logger.debug({
-      at: "CloudRunSpoke",
+      at: "ServerlessSpoke",
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
@@ -64,7 +65,7 @@ spoke.post("/", async (req, res) => {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
     logger.debug({
-      at: "CloudRunSpoke",
+      at: "ServerlessSpoke",
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
@@ -128,8 +129,8 @@ async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
   return spoke.listen(port, () => {
     logger.debug({
-      at: "CloudRunSpoke",
-      message: "Cloud Run spoke initialized",
+      at: "ServerlessSpoke",
+      message: "serverless spoke initialized",
       port
     });
   });
