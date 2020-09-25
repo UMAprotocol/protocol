@@ -33,10 +33,14 @@ const { transports } = require("./Transports");
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
+// Note that if running in tests we dont want to yield the logger so check if there is a `test` in the process args.
 async function waitForLogger(logger) {
-  const loggerDone = new Promise(resolve => logger.on("finish", resolve));
-  logger.end();
-  return await loggerDone;
+  if (require("minimist")(process.argv.slice(), {})._.indexOf("test") == -1) {
+    const loggerDone = new Promise(resolve => logger.on("finish", resolve));
+    logger.end();
+    return await loggerDone;
+  }
+  return true;
 }
 
 // If the log entry contains an error then extract the stack trace as the error message.
