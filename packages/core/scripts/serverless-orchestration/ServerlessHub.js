@@ -36,7 +36,7 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { Logger, waitForLogger } = require("@uma/financial-templates-lib");
+const { Logger } = require("@uma/financial-templates-lib");
 let logger;
 let spokeUrl;
 let customNodeUrl;
@@ -134,7 +134,7 @@ hub.post("/", async (req, res) => {
       message: "All calls returned correctly",
       output: { errorOutputs, validOutputs }
     });
-    await waitForLogger(logger);
+
     res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
   } catch (errorOutput) {
     logger.debug({
@@ -153,7 +153,7 @@ hub.post("/", async (req, res) => {
               validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
             } // eslint-disable-line indent
     });
-    await waitForLogger(logger);
+
     res.status(500).send({
       message: "Some spoke calls returned errors",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
