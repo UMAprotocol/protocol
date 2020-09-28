@@ -23,7 +23,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PricelessPositionManager is FeePayer, AdministrateeInterface {
+contract PositionManager is FeePayer, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
