@@ -23,7 +23,7 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
     throw new Error("Missing or invalid parameter! Provide week, rollNum & tokenName");
   }
 
-  console.log(`🧶 Joining LM payouts between week ${week} and roll ${rollNum} for ${tokenName}`);
+  console.log(`🧶 Joining LM payouts between week ${week} and roll # ${rollNum} for ${tokenName}`);
 
   // Read in the weekly rewards. This file contains the post roll weekly rewards.
   const weeklyRewardsRaw = fs.readFileSync(
@@ -39,17 +39,9 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
 
   // Sanity check: for the pool inputs to be valid, the second pool in the roll should be the weekly rewards pool.
   // We are rolling from pool1Address into pool2Address and so we should end up in pool2Address from the weekly rewards.
-  // Alternatively, in the split pool case, the first pool should equal the first roll pool and the second pool should
-  // equal the second roll pool.
-  if (weeklyRewards.poolAddress && rollRewards.pool2Address != weeklyRewards.poolAddress)
+  if (rollRewards.pool2Address != weeklyRewards.poolAddress)
     throw "The second rolled pool address must equal the incoming weekly rewards pool";
-  else if (
-    weeklyRewards.splitPeriodPool1Address &&
-    weeklyRewards.splitPeriodPool2Address &&
-    (rollRewards.pool1Address != weeklyRewards.splitPeriodPool1Address ||
-      rollRewards.pool2Address != weeklyRewards.splitPeriodPool2Address)
-  )
-    throw "The first pool address in the roll must equal the first pool in the split period and the second pool in the roll must equal the second split period.";
+
   const joinedPayouts = _joinPayouts(weeklyRewards, rollRewards);
 
   console.log("👉👈 Successfully joined payouts");
@@ -73,10 +65,7 @@ function _joinPayouts(weeklyRewards, rollRewards) {
   // Note that the `outputData.toBlock` is preserved from the weeklyRewards object.
   // Store the original weeklyRewards in a key `weeklyShareHolderPayoutBeforeRollJoin` for prosperity.
   outputData.weeklyShareHolderPayoutBeforeRollJoin = JSON.parse(JSON.stringify(weeklyRewards.shareHolderPayout));
-  if (weeklyRewards.umaPerWeek) outputData.umaPerWeek = weeklyRewards.umaPerWeek + rollRewards.umaPerWeek;
-  else if (weeklyRewards.splitUmaPerPeriod1 && weeklyRewards.splitUmaPerPeriod2)
-    outputData.umaPerWeek =
-      weeklyRewards.splitUmaPerPeriod1 + weeklyRewards.splitUmaPerPeriod2 + rollRewards.umaPerWeek;
+  outputData.umaPerWeek = weeklyRewards.umaPerWeek + rollRewards.umaPerWeek;
   // Next, iterate over all shareholders in the shareholders in the rollRewards and if they are present in the weeklyRewards
   // then add their balances together. If they are not present in the weeklyRewards then their balance stays the same.
   // Note that if a shareholder is only in weeklyRewards (not rollRewards) then they are not iterated over in this loop.
