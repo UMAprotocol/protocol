@@ -10,6 +10,11 @@
   "blocksPerSnapshot": 256,
   "splitUmaPerPeriod1": 7173,
   "splitUmaPerPeriod2": 3534,
+  "poolAddress": ["0x7aa7305838d858f7089f86fc136d0816baacb0d8", "0x2dd7255b487a62d738110bd10f8bc4b4ea989778"],
+  "rollNum": 1,
+  "endRollBlock": 10947420,
+  "fromBlock": 10921633,
+  "umaPerWeek": 25000,
   "shareHolderPayout": {
     "0x004c7f45a2cee4336a07480fc8fa78c101c10409": "275.147750680792755925",
     "0x00b591bc2b682a0b30dd72bac9406bfa13e5d3cd": "9.914838558547706038",
@@ -508,10 +513,6 @@
     "0xfba0c7c2a6722ef8bd342846ab9b53cbbbf295d8": "4.383072492593408934",
     "0xfdc6a17917115498a3ed417d4a89224685f26ea3": "20.126362404127295865"
   },
-  "poolAddress": ["0x7aa7305838d858f7089f86fc136d0816baacb0d8", "0x2dd7255b487a62d738110bd10f8bc4b4ea989778"],
-  "rollNum": 1,
-  "endRollBlock": 10947420,
-  "fromBlock": 10921633,
   "weeklyShareHolderPayoutBeforeRollJoin": {
     "0x004c7f45a2cee4336a07480fc8fa78c101c10409": "75.259578013120127936",
     "0x00b591bc2b682a0b30dd72bac9406bfa13e5d3cd": "5.411342116509403864",
@@ -729,6 +730,5 @@
     "0xf307077dd0e27a382e93f2e3d13a9c6584582332": "0.078538293149647621",
     "0xf737cf1a705c8ff6ac2592db084b8fe3c338daf5": "8.029787577450323999",
     "0xfba0c7c2a6722ef8bd342846ab9b53cbbbf295d8": "4.383072492593408934"
-  },
-  "umaPerWeek": 25000
+  }
 }
