@@ -3,9 +3,7 @@ import { gql } from "@apollo/client";
 export const PRICE_REQUEST_VOTING_DATA = gql`
   query priceRequestRounds {
     priceRequestRounds {
-      identifier {
-        id
-      }
+      id
       roundId
       time
       totalSupplyAtSnapshot
