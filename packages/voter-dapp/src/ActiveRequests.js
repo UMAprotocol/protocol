@@ -497,7 +497,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     return totalSelected <= limit;
   };
 
-  const snapshotButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId === "0";
+  const snapshotButtonShown =
+    votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId === "0" && pendingRequests.length > 0;
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId !== "0";
   const revealButtonEnabled =
     statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
