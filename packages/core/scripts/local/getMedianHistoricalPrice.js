@@ -56,7 +56,7 @@ async function getMedianHistoricalPrice(callback) {
     }
 
     // Get a price.
-    const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime);
+    const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
     console.log(`${queryIdentifier} price @ ${queryTime} = ${fromWei(queryPrice.toString())}`);
   } catch (err) {
     callback(err);
