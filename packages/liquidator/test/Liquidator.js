@@ -33,7 +33,7 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  { tokenName: "WETH", collateralDecimals: 18 },
+  // { tokenName: "WETH", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
 ];
 
@@ -675,10 +675,20 @@ contract("Liquidator.js", function(accounts) {
           await liquidator.update();
           await liquidator.liquidatePositions(amountToLiquidate);
 
-          // 5 error + 2 info
-          assert.equal(spy.callCount, 3);
+          // console.log(spy.getCall(4).lastArg)
+          console.log(spy.getCall(3).lastArg);
+          console.log(spy.getCall(2).lastArg);
+          console.log(spy.getCall(1).lastArg);
+          console.log(spy.getCall(0).lastArg);
+          // 2 partial liquidations. This behavior has changed slightly from previous test
+          // as the liquidation amount calculator is slightly improved. Previous calculation
+          // did not take into account current bot balance correctly and overestimated liquidation
+          // amount causing an error.
+          assert.equal(spy.callCount, 4);
+          assert.equal(spyLogLevel(spy, 3), "info");
+          assert.isTrue(spyLogIncludes(spy, 3, "liquidated"));
           assert.equal(spyLogLevel(spy, 2), "error");
-          assert.isTrue(spyLogIncludes(spy, 2, "Failed to liquidate position"));
+          assert.isTrue(spyLogIncludes(spy, 2, "partial liquidation"));
           assert.equal(spyLogLevel(spy, 1), "info");
           assert.isTrue(spyLogIncludes(spy, 1, "liquidated"));
           assert.equal(spyLogLevel(spy, 0), "error");
@@ -707,10 +717,13 @@ contract("Liquidator.js", function(accounts) {
           let positionObject = await emp.positions(sponsor1);
           assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
 
-          // Sponsor2 should have its full position left
-          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("100"));
+          // Sponsor2 should not have its full position left, it was partially liquidated
+          // Bot has 3 tokens left after first liquidation, and this brings position
+          // to just at the min sponsor size of 5.
+          // (8-3)/8 = 5/8, 5/8 * 100 = 62.5
+          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("62.5"));
           positionObject = await emp.positions(sponsor2);
-          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("8"));
+          assert.equal(positionObject.tokensOutstanding.rawValue, toWei("5"));
         });
         describe("Partial liquidations", function() {
           it("amount-to-liquidate > min-sponsor-tokens", async function() {
