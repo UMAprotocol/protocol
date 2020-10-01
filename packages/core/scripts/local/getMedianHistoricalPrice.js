@@ -4,7 +4,7 @@
  * We provide default configurations for querying median prices on specific markets across some exchanges and markets.
  * This script should serve as a template for constructing other historical median queries.
  *  *
- * @dev How to run: $(npm bin)/truffle exec ./scripts/local/GetMedianHistoricalPrice.js --network mainnet --identifier <PRICE-FEED IDENTIFIER> --time <TIMESTAMP IN SECONDS>
+ * @dev How to run: yarn truffle exec ./packages/core/scripts/local/getMedianHistoricalPrice.js --network mainnet_mnemonic --identifier USDBTC --time 1601503200
  */
 const { fromWei } = web3.utils;
 const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
