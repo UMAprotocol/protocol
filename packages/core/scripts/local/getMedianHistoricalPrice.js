@@ -55,7 +55,9 @@ async function getMedianHistoricalPrice(callback) {
       queryTime = argv.time;
     }
 
-    // Get a price.
+    // Get a price. This requests the Cryptowatch API for the specific exchange prices at the timestamp.
+    // The default exchanges to fetch prices for are based on UMIP's and can be found in:
+    // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
     console.log(`${queryIdentifier} price @ ${queryTime} = ${fromWei(queryPrice.toString())}`);
   } catch (err) {

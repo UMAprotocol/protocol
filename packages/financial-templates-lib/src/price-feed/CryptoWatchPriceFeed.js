@@ -62,7 +62,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time, debug = false) {
+  getHistoricalPrice(time) {
     if (this.lastUpdateTime === undefined) {
       return undefined;
     }
@@ -99,10 +99,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
     }
 
-    if (debug) {
-      let priceDebug = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
-      console.log(`Price for exchange: ${this.exchange} => ${this.web3.utils.fromWei(priceDebug.toString())}`);
-    }
     return this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
   }
 

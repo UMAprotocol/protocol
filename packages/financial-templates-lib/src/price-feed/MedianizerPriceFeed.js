@@ -29,12 +29,21 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Takes the median of all of the constituent price feeds' historical prices.
   getHistoricalPrice(time, debug = false) {
-    const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time, debug));
+    const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
 
     if (historicalPrices.some(element => element === undefined || element === null)) {
       return null;
     }
 
+    if (debug) {
+      this.priceFeeds.forEach(pricefeed => {
+        console.log(
+          `Price for exchange: ${pricefeed.exchange} => ${pricefeed.web3.utils.fromWei(
+            pricefeed.getHistoricalPrice(time).toString()
+          )}`
+        );
+      });
+    }
     return this._computeMedian(historicalPrices);
   }
 
