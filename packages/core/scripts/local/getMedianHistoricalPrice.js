@@ -72,6 +72,19 @@ async function getMedianHistoricalPrice(callback) {
         precisionToUse
       )}`
     );
+
+    console.log(
+      "\n⚠️ If you want to manually verify the specific exchange prices, you can make GET requests to: \n- https://api.cryptowat.ch/markets/<EXCHANGE-NAME>/<PAIR>/ohlc?after=<TIMESTAMP>&before=<TIMESTAMP>&periods=60"
+    );
+    console.log(
+      "- e.g. curl https://api.cryptowat.ch/markets/coinbase-pro/ethusd/ohlc?after=1601503080&before=1601503080&periods=60"
+    );
+    console.log(
+      '\n⚠️ This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'
+    );
+    console.log(
+      "- We use the OpenPrice to compute the median. Note that you might need to invert the prices for certain identifiers like USDETH."
+    );
   } catch (err) {
     callback(err);
     return;
