@@ -66,7 +66,6 @@ contract("Liquidator.js", function(accounts) {
       let spyLogger;
 
       let oneSplitMock;
-      let oneInch;
       let gasEstimator;
       let empClient;
       let liquidatorConfig;
@@ -160,7 +159,6 @@ contract("Liquidator.js", function(accounts) {
 
         // OneInch instances
         oneSplitMock = await OneSplitMock.new();
-        oneInch = null;
 
         // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
         empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
@@ -183,7 +181,6 @@ contract("Liquidator.js", function(accounts) {
 
         liquidator = new Liquidator({
           logger: spyLogger,
-          oneInchClient: oneInch,
           expiringMultiPartyClient: empClient,
           gasEstimator,
           votingContract: mockOracle.contract,
@@ -552,7 +549,6 @@ contract("Liquidator.js", function(accounts) {
             };
             liquidator = new Liquidator({
               logger: spyLogger,
-              oneInchClient: oneInch,
               expiringMultiPartyClient: empClient,
               gasEstimator,
               votingContract: mockOracle.contract,
@@ -577,7 +573,6 @@ contract("Liquidator.js", function(accounts) {
             };
             liquidator = new Liquidator({
               logger: spyLogger,
-              oneInchClient: oneInch,
               expiringMultiPartyClient: empClient,
               gasEstimator,
               votingContract: mockOracle.contract,
@@ -600,7 +595,6 @@ contract("Liquidator.js", function(accounts) {
           };
           liquidator = new Liquidator({
             logger: spyLogger,
-            oneInchClient: oneInch,
             expiringMultiPartyClient: empClient,
             gasEstimator,
             votingContract: mockOracle.contract,
@@ -658,7 +652,6 @@ contract("Liquidator.js", function(accounts) {
             liquidatorConfig = { logOverrides: { positionLiquidated: "not a valid log level" } };
             liquidator = new Liquidator({
               logger: spyLogger,
-              oneInchClient: oneInch,
               expiringMultiPartyClient: empClient,
               gasEstimator,
               votingContract: mockOracle.contract,
@@ -674,6 +667,7 @@ contract("Liquidator.js", function(accounts) {
           }
           assert.isTrue(errorThrown);
         });
+        // This test only applies to one inch integration
         it("amount-to-liquidate > min-sponsor-tokens, swaps reserveToken (ETH) for tokenCurrency on OneSplit", async function() {
           const oneInchClient = new OneInchExchange({
             web3,
@@ -708,7 +702,7 @@ contract("Liquidator.js", function(accounts) {
           priceFeedMock.setCurrentPrice(toBN(toWei("25")));
 
           await liquidator.update();
-          await liquidator.liquidatePositions(amountToLiquidate);
+          await liquidator.liquidatePositionsWithOneInch(amountToLiquidate);
 
           // 4 info + 2 error level events should be sent at the conclusion of the 3 successful (incl. 1 partial) and 2 not enough synthetic.
           assert.equal(spy.callCount, 8);
@@ -1006,7 +1000,6 @@ contract("Liquidator.js", function(accounts) {
             liquidatorConfig = { logOverrides: { positionLiquidated: "warn" } };
             liquidator = new Liquidator({
               logger: spyLogger,
-              oneInchClient: oneInch,
               expiringMultiPartyClient: empClient,
               gasEstimator,
               votingContract: mockOracle.contract,

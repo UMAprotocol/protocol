@@ -148,6 +148,210 @@ class Liquidator {
       at: "Liquidator",
       message: "Checking for liquidatable positions and preforming liquidations"
     });
+    // If an override is provided, use that price. Else, get the latest price from the price feed.
+    const price = liquidatorOverridePrice
+      ? this.toBN(liquidatorOverridePrice.toString())
+      : this.priceFeed.getCurrentPrice();
+
+    if (!price) {
+      throw new Error("Cannot liquidate: price feed returned invalid value");
+    }
+
+    // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
+    // `price` value, the more collateral that the position is required to have to be correctly collateralized.
+    // Therefore, we add a buffer by deriving scaledPrice = price * (1 - crThreshold)
+    const scaledPrice = price
+      .mul(this.toBN(this.toWei("1")).sub(this.toBN(this.toWei(this.crThreshold.toString()))))
+      .div(this.toBN(this.toWei("1")));
+
+    // Calculate the maxCollateralPerToken as the scaled price, multiplied by the contracts CRRatio. For a liquidation
+    // to be accepted by the contract the position's collateralization ratio must be between [minCollateralPerToken,
+    // maxCollateralPerToken] ∴ maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens. This criterion
+    // checks for a positions correct capitalization, not collateralization. In order to liquidate a position that is
+    // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
+    const maxCollateralPerToken = this.toBN(scaledPrice)
+      .mul(this.toBN(this.empCRRatio))
+      .div(this.toBN(this.toWei("1")));
+
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Checking for under collateralized positions",
+      liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
+      inputPrice: price.toString(),
+      scaledPrice: scaledPrice.toString(),
+      empCRRatio: this.empCRRatio.toString(),
+      maxCollateralPerToken: maxCollateralPerToken.toString(),
+      crThreshold: this.crThreshold
+    });
+
+    // Get the latest undercollateralized positions from the client.
+    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPrice);
+
+    if (underCollateralizedPositions.length === 0) {
+      this.logger.debug({
+        at: "Liquidator",
+        message: "No undercollateralized position"
+      });
+      return;
+    }
+
+    for (const position of underCollateralizedPositions) {
+      this.logger.debug({
+        at: "Liquidator",
+        message: "Detected a liquidatable position",
+        scaledPrice: scaledPrice.toString(),
+        position: JSON.stringify(position)
+      });
+
+      // Note: query the time again during each iteration to ensure the deadline is set reasonably.
+      const currentBlockTime = this.empClient.getLastUpdateTime();
+
+      // Calculate the amount of tokens we will attempt to liquidate.
+      let tokensToLiquidate;
+
+      // If the user specifies `maxTokensToLiquidateWei`, then we must make sure that it follows an important constraint:
+      // we cannot bring the position down below the `minSponsorPosition`.
+      if (maxTokensToLiquidateWei) {
+        // First, we check if `maxTokensToLiquidateWei > tokensOutstanding`, if so then we'll liquidate the full position.
+        if (this.toBN(maxTokensToLiquidateWei).gte(this.toBN(position.numTokens))) {
+          tokensToLiquidate = this.toBN(position.numTokens);
+        } else {
+          // If we're not liquidating the full position, then we cannot liquidate the position below the `minSponsorTokens` constraint.
+          // `positionTokensAboveMinimum` is the maximum amount of tokens any liquidator can liquidate while taking `minSponsorTokens` into account.
+          const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
+
+          // Finally, we cannot liquidate more than `maxTokensToLiquidate`.
+          tokensToLiquidate = this.BN.min(positionTokensAboveMinimum, this.toBN(maxTokensToLiquidateWei));
+        }
+      } else {
+        // If `maxTokensToLiquidateWei` is not specified, then we will attempt to liquidate the full position.
+        tokensToLiquidate = this.toBN(position.numTokens);
+      }
+
+      // If `tokensToLiquidate` is 0, then skip this liquidation. Due to the if-statement branching above, `tokensToLiquidate == 0`
+      // is only possible if the `positionTokensAboveMinimum == 0` && `maxTokensToLiquidate < position.numTokens`. In other words,
+      // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
+      // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
+      // client-side.
+      if (tokensToLiquidate.isZero()) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          error: new Error("Refusing to liquidate 0 tokens")
+        });
+        continue;
+      }
+
+      // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
+      if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei.toString()
+        });
+      }
+
+      // Create the liquidation transaction.
+      const liquidation = this.empContract.methods.createLiquidation(
+        position.sponsor,
+        { rawValue: this.liquidationMinPrice },
+        { rawValue: maxCollateralPerToken.toString() },
+        { rawValue: tokensToLiquidate.toString() },
+        parseInt(currentBlockTime) + this.liquidationDeadline
+      );
+
+      // Send the transaction or report failure.
+      let receipt;
+      let txnConfig;
+      try {
+        // Configure tx config object
+        const gasEstimation = await liquidation.estimateGas({ from: this.account });
+        txnConfig = {
+          from: this.account,
+          gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        };
+
+        // Make sure to keep trying with this nonce
+        const nonce = await this.web3.eth.getTransactionCount(this.account);
+
+        // Min Gas Price, with a max gasPrice of x4
+        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
+        const maxGasPrice = 2 * 3 * minGasPrice;
+
+        // Doubles gasPrice every iteration
+        const gasPriceScalingFunction = ynatm.DOUBLES;
+
+        this.logger.debug({
+          at: "Liquidator",
+          message: "Liquidating position",
+          position: position,
+          inputPrice: scaledPrice.toString(),
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          txnConfig
+        });
+
+        // Receipt without events
+        receipt = await ynatm.send({
+          sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
+          minGasPrice,
+          maxGasPrice,
+          gasPriceScalingFunction,
+          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+        });
+      } catch (error) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Failed to liquidate position🚨",
+          error
+        });
+        continue;
+      }
+
+      const logResult = {
+        tx: receipt && receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
+      };
+
+      // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
+      this.logger[this.logOverrides.positionLiquidated || "info"]({
+        at: "Liquidator",
+        message: "Position has been liquidated!🔫",
+        position: position,
+        inputPrice: scaledPrice.toString(),
+        txnConfig,
+        liquidationResult: logResult
+      });
+    }
+  }
+
+  // Process positions the same way, but pull in tokens from 1inch if balance is not adequate.
+  // This is currently disabled until we can take a second look at it. Its easy to re-enable
+  // by adding this specific call to process positions in the liquidator/index.
+  async liquidatePositionsWithOneInch(maxTokensToLiquidateWei, liquidatorOverridePrice) {
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Checking for liquidatable positions and preforming liquidations"
+    });
 
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice

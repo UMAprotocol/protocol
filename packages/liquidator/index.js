@@ -144,6 +144,11 @@ async function run({
 
     let oneInchClient = null;
     if (oneSplitAddress) {
+      logger.info({
+        at: "Liquidator#index",
+        message:
+          "WARNING: 1Inch functionality has been temporarily removed, oneSplitAddress setting will have no effect on bot logic"
+      });
       oneInchClient = new OneInchExchange({
         web3,
         gasEstimator,
