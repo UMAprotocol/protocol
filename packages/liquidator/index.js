@@ -6,7 +6,6 @@ const retry = require("async-retry");
 // Helpers
 const { MAX_UINT_VAL } = require("@uma/common");
 // JS libs
-const { OneInchExchange } = require("./src/OneInchExchange");
 const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
@@ -142,26 +141,16 @@ async function run({
     const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
     const gasEstimator = new GasEstimator(logger);
 
-    let oneInchClient = null;
     if (oneSplitAddress) {
       logger.info({
         at: "Liquidator#index",
         message:
           "WARNING: 1Inch functionality has been temporarily removed, oneSplitAddress setting will have no effect on bot logic"
       });
-      oneInchClient = new OneInchExchange({
-        web3,
-        gasEstimator,
-        logger,
-        oneSplitAbi: getAbi("OneSplit"),
-        erc20TokenAbi: getAbi("ExpandedERC20"),
-        oneSplitAddress
-      });
     }
 
     const liquidator = new Liquidator({
       logger,
-      oneInchClient,
       expiringMultiPartyClient: empClient,
       gasEstimator,
       votingContract: voting,
