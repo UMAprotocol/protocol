@@ -11,6 +11,12 @@ const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-te
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
 
+const UMIP_PRECISION = {
+  USDBTC: 8,
+  USDETH: 5
+};
+const DEFAULT_PRECISION = 5;
+
 async function getMedianHistoricalPrice(callback) {
   try {
     // If user did not specify an identifier, provide a default value.
@@ -54,12 +60,18 @@ async function getMedianHistoricalPrice(callback) {
     } else {
       queryTime = argv.time;
     }
+    console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
 
     // Get a price. This requests the Cryptowatch API for the specific exchange prices at the timestamp.
     // The default exchanges to fetch prices for are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
-    console.log(`${queryIdentifier} price @ ${queryTime} = ${fromWei(queryPrice.toString())}`);
+    const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
+    console.log(
+      `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
+        precisionToUse
+      )}`
+    );
   } catch (err) {
     callback(err);
     return;

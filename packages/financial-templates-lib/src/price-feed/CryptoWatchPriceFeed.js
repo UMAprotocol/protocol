@@ -62,7 +62,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time) {
+  getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
       return undefined;
     }
@@ -99,7 +99,15 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
     }
 
-    return this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+    let returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+    if (verbose) {
+      console.log(
+        `- (${this.exchange}:${this.pair}) Found historical OHLC open price @ ${
+          match.openTime
+        }: ${this.web3.utils.fromWei(returnPrice.toString())}`
+      );
+    }
+    return returnPrice;
   }
 
   getLastUpdateTime() {
