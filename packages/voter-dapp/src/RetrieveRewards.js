@@ -85,24 +85,32 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
       }
     }
 
+    // Check retrieveRewards return value before calling.
+    const VotingContract = drizzle.contracts.Voting;
+    const pendingRewardsPromise = VotingContract.methods
+      .retrieveRewards(votingAccount, oldestUnclaimedRound.toString(), toRetrieve)
+      .call();
+
     // Create the txn send function and return it.
     const retrieveRewards = () => {
       send(votingAccount, oldestUnclaimedRound.toString(), toRetrieve);
     };
 
-    return { ready: true, send: retrieveRewards, status };
+    return { ready: true, send: retrieveRewards, status, pendingRewardsPromise };
   }
 }
 
 function RetrieveRewards({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const classes = useTableStyles();
+  const { web3 } = drizzle;
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const governorAddress = drizzle.contracts.Governor.address;
 
   // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
+  const [pendingRewards, setPendingRewards] = useState("0");
 
   // Determines the list of roundIds to query for. Will return undefined if the user wants to search the entire history.
   const roundIds = useMemo(() => {
@@ -204,6 +212,15 @@ function RetrieveRewards({ votingAccount }) {
 
   // Construct the claim rewards transaction.
   const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount);
+  if (rewardsTxn.pendingRewardsPromise) {
+    rewardsTxn.pendingRewardsPromise
+      .then(_pendingRewards => {
+        if (pendingRewards) {
+          setPendingRewards(web3.utils.fromWei(_pendingRewards.toString()));
+        }
+      })
+      .catch(err => console.error(`retrieveRewards.call failed:`, err));
+  }
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
@@ -211,9 +228,12 @@ function RetrieveRewards({ votingAccount }) {
     body = "Loading";
   } else if (rewardsTxn.send) {
     body = (
-      <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
-        Claim Your Rewards
-      </Button>
+      <>
+        <div>Claimable rewards: {pendingRewards}</div>
+        <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
+          Claim Your Rewards
+        </Button>
+      </>
     );
   } else if (!queryAllRounds) {
     body = (
