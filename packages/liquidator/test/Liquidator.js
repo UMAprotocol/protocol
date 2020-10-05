@@ -33,7 +33,7 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  // { tokenName: "WETH", collateralDecimals: 18 },
+  { tokenName: "WETH", collateralDecimals: 18 },
   { tokenName: "BTC", collateralDecimals: 8 }
 ];
 
@@ -168,7 +168,8 @@ contract("Liquidator.js", function(accounts) {
         empProps = {
           crRatio: await emp.collateralRequirement(),
           priceIdentifier: await emp.priceIdentifier(),
-          minSponsorSize: await emp.minSponsorTokens()
+          minSponsorSize: await emp.minSponsorTokens(),
+          liquidationLiveness: await emp.liquidationLiveness()
         };
 
         liquidator = new Liquidator({
@@ -675,11 +676,6 @@ contract("Liquidator.js", function(accounts) {
           await liquidator.update();
           await liquidator.liquidatePositions(amountToLiquidate);
 
-          // console.log(spy.getCall(4).lastArg)
-          console.log(spy.getCall(3).lastArg);
-          console.log(spy.getCall(2).lastArg);
-          console.log(spy.getCall(1).lastArg);
-          console.log(spy.getCall(0).lastArg);
           // 2 partial liquidations. This behavior has changed slightly from previous test
           // as the liquidation amount calculator is slightly improved. Previous calculation
           // did not take into account current bot balance correctly and overestimated liquidation
@@ -977,6 +973,157 @@ contract("Liquidator.js", function(accounts) {
             // There should be one liquidation created.
             assert.equal(liquidationObject.length, 1);
           });
+        });
+      });
+      describe("enabling withdraw defense feature", () => {
+        it("should initilize when enabled", async () => {
+          const liquidatorConfig = {
+            whaleDefenseFundWei: 1,
+            defenseActivationPercent: 50
+          };
+          const liquidator = new Liquidator({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            gasEstimator,
+            votingContract: mockOracle.contract,
+            syntheticToken: syntheticToken.contract,
+            priceFeed: priceFeedMock,
+            account: accounts[0],
+            empProps,
+            config: liquidatorConfig
+          });
+          assert.ok(liquidator);
+        });
+        it("should enable and not affect existing logic if not triggered", async () => {
+          const liquidatorConfig = {
+            whaleDefenseFundWei: 1,
+            defenseActivationPercent: 50
+          };
+          const liquidator = new Liquidator({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            gasEstimator,
+            votingContract: mockOracle.contract,
+            syntheticToken: syntheticToken.contract,
+            priceFeed: priceFeedMock,
+            account: accounts[0],
+            empProps,
+            config: liquidatorConfig
+          });
+          // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+          await emp.create({ rawValue: convert("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+          // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+          await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+          // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+          // Start with a mocked price of 1 usd per token.
+          // This puts both sponsors over collateralized so no liquidations should occur.
+          priceFeedMock.setCurrentPrice("1");
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+          assert.equal(spy.callCount, 0); // No info level logs should be sent.
+
+          // There should be no liquidations created from any sponsor account
+          assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
+          assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+
+          // Both token sponsors should still have their positions with full collateral.
+          assert.equal((await emp.getCollateral(sponsor1)).rawValue, convert("125"));
+          assert.equal((await emp.getCollateral(sponsor2)).rawValue, convert("150"));
+
+          // If sponsor1 requests a withdrawal of any amount of collateral above 5 units at the given price of 1 usd per token
+          // their remaining position becomes undercollateralized. Say they request to withdraw 10 units of collateral.
+          // This places their position with a CR of: 115 / (100 * 1) * 100 = 115%. This is below the CR threshold.
+          await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
+
+          priceFeedMock.setCurrentPrice("1");
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+          assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
+
+          // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
+          // amount of collateral minus the collateral withdrawn. 125 - 10 = 115
+          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+          assert.equal(liquidationObject.sponsor, sponsor1);
+          assert.equal(liquidationObject.liquidator, liquidatorBot);
+          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+          assert.equal(liquidationObject.liquidatedCollateral, convert("115"));
+          assert.equal(liquidationObject.lockedCollateral, convert("125"));
+
+          // Advance the timer to the liquidation expiry.
+          const liquidationTime = liquidationObject.liquidationTime;
+          const liquidationLiveness = 1000;
+          await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+
+          // Now that the liquidation has expired, the liquidator can withdraw rewards.
+          const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+          await liquidator.update();
+          await liquidator.withdrawRewards();
+          assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
+
+          // Liquidator should have their collateral increased by Sponsor1's collateral.
+          const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+          assert.equal(
+            toBN(collateralPreWithdraw)
+              .add(toBN(convert("125")))
+              .toString(),
+            collateralPostWithdraw.toString()
+          );
+
+          // Liquidation data should have been deleted.
+          assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+
+          // The other two positions should not have any liquidations associated with them.
+          assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+        });
+        it("should trigger and only submit the emp minimum position", async () => {
+          const liquidatorConfig = {
+            // entire fund dedicated to strategy
+            whaleDefenseFundWei: toWei("90"),
+            // will extend even if withdraw progress is 0% (typically this would be set to 50% +)
+            defenseActivationPercent: 0
+          };
+          const liquidator = new Liquidator({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            gasEstimator,
+            votingContract: mockOracle.contract,
+            syntheticToken: syntheticToken.contract,
+            priceFeed: priceFeedMock,
+            account: accounts[0],
+            empProps,
+            config: liquidatorConfig
+          });
+          // sponsor1 creates a position with 120 units of collateral, creating 100 synthetic tokens.
+          await emp.create({ rawValue: convert("120") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+          // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+          // does not have enough to liquidate entire position
+          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("90") }, { from: liquidatorBot });
+
+          // Start with a mocked price of 1 usd per token.
+          // This puts both sponsors over collateralized so no liquidations should occur.
+          priceFeedMock.setCurrentPrice("1");
+          // sponsor withdraws below collat ratio
+          await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
+          // amount of collateral minus the collateral withdrawn. 120 - 10 = 110
+          let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+          assert.equal(liquidationObject.sponsor, sponsor1);
+          assert.equal(liquidationObject.liquidator, liquidatorBot);
+          assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+          // minimum liquidation size / outstanding tokens * (outstanding collateral - withdraw amount)
+          // 5 / 100 * ( 120 -10) = 5.5
+          assert.equal(liquidationObject.liquidatedCollateral, convert("5.5"));
+          // minimum liquidation size / outstanding tokens * outstading collateral
+          // 5 / 100 * 120 = 6
+          assert.equal(liquidationObject.lockedCollateral, convert("6"));
         });
       });
     });

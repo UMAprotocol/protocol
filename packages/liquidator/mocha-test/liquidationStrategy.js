@@ -270,13 +270,6 @@ describe("LiquidatorStrategy", () => {
     });
     assert(result[3].rawValue, position.numTokens);
 
-    // should produce a log
-    let eventcount = 0;
-    events.once("log", (type, data) => {
-      assert.equal(type, "error");
-      assert(data);
-      eventcount++;
-    });
     // should not produce result
     result = strat.processPosition({
       position,
@@ -287,6 +280,5 @@ describe("LiquidatorStrategy", () => {
       maxTokensToLiquidateWei: "100"
     });
     assert(!result);
-    assert.equal(eventcount, 1);
   });
 });

@@ -61,6 +61,7 @@ class Liquidator {
     this.empMinSponsorSize = empProps.minSponsorSize;
 
     this.empIdentifier = empProps.priceIdentifier;
+    this.empLiquidationLiveness = empProps.LiquidationLiveness;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -120,6 +121,21 @@ class Liquidator {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
           return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
         }
+      },
+      whaleDefenseFundWei: {
+        // by default make this disabled
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return this.toBN(x).gte(this.toBN("0"));
+        }
+      },
+      defenseActivationPercent: {
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return parseFloat(x) >= 0 && parseFloat(x) <= 100;
+        }
       }
     };
 
@@ -131,13 +147,13 @@ class Liquidator {
     this.liquidationStrategy = LiquidationStrategy(
       {
         ...configWithDefaults,
-        empMinSponsorSize: this.empMinSponsorSize
+        empMinSponsorSize: empProps.minSponsorSize,
+        withdrawalLiveness: empProps.liquidationLiveness
       },
       this.web3.utils,
       (type, severity, data = {}) => {
         if (type !== "log") return;
         if (this.logger[severity] == null) throw new Error("Unknown logger severity: " + severity);
-        // console.log('strategy log',{type,severity,data})
         this.logger[severity]({
           // merge in common data
           at: "Liquidator",
@@ -151,28 +167,6 @@ class Liquidator {
   // Update the empClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
   async update() {
     await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
-  }
-
-  async liquidatePosition({
-    position,
-    price,
-    maxTokensToLiquidateWei,
-    maxCollateralPerToken,
-    currentBlockTime,
-    syntheticTokenBalance
-  }) {
-    assert(position, "requires position");
-    assert(price, "requires price");
-    assert(maxCollateralPerToken, "requires maxCollateralPerToken");
-    assert(currentBlockTime, "requires currentBlockTime");
-    assert(syntheticTokenBalance, "requires syntheticTokenBalance");
-    const liquidationParams = this.liquidatorStrategy.processPosition({
-      syntheticTokenBalance,
-      positionTokens: position.numTokens,
-      empMinSponsorSize: this.empMinSponsorSize,
-      maxTokensToLiquidateWei
-    });
-    return liquidationParams;
   }
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   // If `maxTokensToLiquidateWei` is not passed in, then the bot will attempt to liquidate the full position.
@@ -239,69 +233,8 @@ class Liquidator {
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
+      const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
 
-      // Calculate the amount of tokens we will attempt to liquidate.
-      let tokensToLiquidate;
-
-      // If the user specifies `maxTokensToLiquidateWei`, then we must make sure that it follows an important constraint:
-      // we cannot bring the position down below the `minSponsorPosition`.
-      if (maxTokensToLiquidateWei) {
-        // First, we check if `maxTokensToLiquidateWei > tokensOutstanding`, if so then we'll liquidate the full position.
-        if (this.toBN(maxTokensToLiquidateWei).gte(this.toBN(position.numTokens))) {
-          tokensToLiquidate = this.toBN(position.numTokens);
-        } else {
-          // If we're not liquidating the full position, then we cannot liquidate the position below the `minSponsorTokens` constraint.
-          // `positionTokensAboveMinimum` is the maximum amount of tokens any liquidator can liquidate while taking `minSponsorTokens` into account.
-          const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
-
-          // Finally, we cannot liquidate more than `maxTokensToLiquidate`.
-          tokensToLiquidate = this.BN.min(positionTokensAboveMinimum, this.toBN(maxTokensToLiquidateWei));
-        }
-      } else {
-        // If `maxTokensToLiquidateWei` is not specified, then we will attempt to liquidate the full position.
-        tokensToLiquidate = this.toBN(position.numTokens);
-      }
-
-      // If `tokensToLiquidate` is 0, then skip this liquidation. Due to the if-statement branching above, `tokensToLiquidate == 0`
-      // is only possible if the `positionTokensAboveMinimum == 0` && `maxTokensToLiquidate < position.numTokens`. In other words,
-      // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
-      // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
-      // client-side.
-      if (tokensToLiquidate.isZero()) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          error: new Error("Refusing to liquidate 0 tokens")
-        });
-        continue;
-      }
-
-      let syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
-      const notEnoughTokens = syntheticTokenBalance.lt(tokensToLiquidate);
-
-      // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
-      if (tokensToLiquidate.gt(this.toBN(syntheticTokenBalance))) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          maxTokensToLiquidateWei: maxTokensToLiquidateWei.toString()
-        });
-      }
-
-      // Create the liquidation transaction.
-      const liquidation = this.empContract.methods.createLiquidation(
       // run strategy based on configs and current state
       // will return liquidation arguments or nothing
       // if it returns nothing it means this position cant be or shouldnt be liquidated
@@ -320,33 +253,44 @@ class Liquidator {
         // for logging
         inputPrice: scaledPrice.toString()
       });
-      console.log({
-        // position is assumed to be undercollateralized
-        position,
-        // need to know our current balance
-        empMinSponsorSize: this.empMinSponsorSize.toString(),
-        syntheticTokenBalance: syntheticTokenBalance.toString(),
-        // this is required to create liquidation object
-        maxCollateralPerToken: maxCollateralPerToken.toString(),
-        // sets an effective max we should liquidate.
-        tokensToLiquidate: tokensToLiquidate.toString(),
-        currentBlockTime,
-        // for logging
-        inputPrice: scaledPrice.toString()
-      });
-      console.log([
-        position.sponsor,
-        { rawValue: this.liquidationMinPrice },
-        { rawValue: maxCollateralPerToken.toString() },
-        { rawValue: tokensToLiquidate.toString() },
-        parseInt(currentBlockTime) + this.liquidationDeadline
-      ]);
-      console.log({ liquidationArgs });
 
       // we couldnt liquidate, this typically would only happen if our balance is 0
       // This gets logged as an event, see constructor
       if (!liquidationArgs) {
+        // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
+        // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
+        // client-side.
+        this.logger.error({
+          at: "Liquidator",
+          message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: "0",
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          error: new Error("Refusing to liquidate 0 tokens")
+        });
         continue;
+      }
+      const [, , , { rawValue: tokensToLiquidateString }] = liquidationArgs;
+      const tokensToLiquidate = this.toBN(tokensToLiquidateString);
+
+      // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
+      if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
+          sponsor: position.sponsor,
+          inputPrice: scaledPrice.toString(),
+          position: position,
+          minLiquidationPrice: this.liquidationMinPrice,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          tokensToLiquidate: tokensToLiquidate.toString(),
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null
+        });
       }
 
       // liquidation strategy will control how much to liquidate

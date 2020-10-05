@@ -1,4 +1,7 @@
 const assert = require("assert");
+// This module is responsible for sizing liquidation positions.
+// If a defensive strategy is enabled, it will check withdraw positions
+// to see if they require an extension rather than full liquidation.
 module.exports = (config, libs, emit = x => x) => {
   const {
     // how much money to set aside for defense in tokens
@@ -20,7 +23,10 @@ module.exports = (config, libs, emit = x => x) => {
 
   // these are only needed if WDF is activated
   whaleDefenseFundWei &&
-    assert(defenseActivationPercent >= 0, "Requires defenseActivationPercent to bet set between 0 and 100");
+    assert(
+      defenseActivationPercent !== null && defenseActivationPercent >= 0,
+      "Requires defenseActivationPercent to bet set between 0 and 100"
+    );
   whaleDefenseFundWei && assert(withdrawalLiveness, "requires withdrawalLiveness");
 
   // Function which packs the arguments for a liquidation.
@@ -109,6 +115,18 @@ module.exports = (config, libs, emit = x => x) => {
           currentBlockTime
         })
       ) {
+        // we are using the WDF to liquidate. We need to alert user
+        emit("log", "info", {
+          message:
+            "Liquidator bot is extending withdraw deadline, funds may need to be added to liquidate full position",
+          position: position,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
+          whaleDefenseFundWei: whaleDefenseFundWei.toString(),
+          currentBlockTime,
+          ...logInfo
+        });
         // this assume empMinSponsorSize will always be <= maxTokensToLiquidate
         return createLiquidationParams({
           sponsor: position.sponsor,
@@ -130,18 +148,6 @@ module.exports = (config, libs, emit = x => x) => {
 
     // check if we should try to liquidate this position
     if (shouldLiquidate({ tokensToLiquidate })) {
-      // currently the system emits an error if we are doing a partial liquidation
-      if (toBN(tokensToLiquidate).lt(toBN(position.numTokens))) {
-        emit("log", "error", {
-          message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
-          sponsor: position.sponsor,
-          position: position,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
-          ...logInfo
-        });
-      }
       // We should liquidate the entire position using our capital - wdf
       return createLiquidationParams({
         sponsor: position.sponsor,
@@ -150,28 +156,7 @@ module.exports = (config, libs, emit = x => x) => {
         maxCollateralPerToken
       });
     }
-    // console.log('emitting',{
-    //   message: "Liquidation strategy decided not to liquidate an undercollateralized position",
-    //   sponsor: position.sponsor,
-    //   position: position,
-    //   maxLiquidationPrice: maxCollateralPerToken.toString(),
-    //   tokensToLiquidate: tokensToLiquidate.toString(),
-    //   maxTokensToLiquidate: maxTokensToLiquidate.toString(),
-    //   syntheticTokenBalance: syntheticTokenBalance.toString(),
-    //   ...logInfo,
-    // })
     // we dont liquidate, dont return anything. Probably because amount to liquidate is 0
-    // emit a log
-    emit("log", "error", {
-      message: "Liquidation strategy decided not to liquidate an undercollateralized position",
-      sponsor: position.sponsor,
-      position: position,
-      maxLiquidationPrice: maxCollateralPerToken.toString(),
-      tokensToLiquidate: tokensToLiquidate.toString(),
-      syntheticTokenBalance: syntheticTokenBalance.toString(),
-      maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
-      ...logInfo
-    });
   }
 
   // Pure function which just calculates how far a timer has progressed between 0 and 100
