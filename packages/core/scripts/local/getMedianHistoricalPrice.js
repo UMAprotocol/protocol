@@ -3,7 +3,8 @@
  * It could be used for example to query a price before committing a vote for a DVM price request.
  * We provide default configurations for querying median prices on specific markets across some exchanges and markets.
  * This script should serve as a template for constructing other historical median queries.
- *  *
+ *
+ * @notice This script will fail if the `--time` is not within a 4 day lookback window and one of the medianized pricefeeds is a cryptowatch price feed.
  * @dev How to run: yarn truffle exec ./packages/core/scripts/local/getMedianHistoricalPrice.js --network mainnet_mnemonic --identifier USDBTC --time 1601503200
  */
 const { fromWei } = web3.utils;
