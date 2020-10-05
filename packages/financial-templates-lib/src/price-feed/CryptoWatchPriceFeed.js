@@ -101,11 +101,18 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     let returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
     if (verbose) {
+      console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${match.closeTime}`);
+      console.log(`- ✅ Open Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
       console.log(
-        `- (${this.exchange}:${this.pair}) Found historical OHLC open price @ ${
-          match.openTime
-        }: ${this.web3.utils.fromWei(returnPrice.toString())}`
+        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${match.closeTime}&before=${match.closeTime}&periods=60`
       );
+      console.log(
+        '- This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'
+      );
+      console.log(
+        "- We use the OpenPrice to compute the median. Note that you might need to invert the prices for certain identifiers like USDETH."
+      );
+      console.groupEnd();
     }
     return returnPrice;
   }

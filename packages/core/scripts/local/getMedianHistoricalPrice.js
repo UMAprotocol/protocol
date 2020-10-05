@@ -42,7 +42,7 @@ async function getMedianHistoricalPrice(callback) {
       new Networker(dummyLogger),
       getTime,
       null,
-      { lookback: 345600 }, // Empirically, Cryptowatch API returns data up to ~4 days back.
+      { lookback: 345600 }, // Empirically, Cryptowatch API only returns data up to ~4 days back.
       queryIdentifier
     );
     if (!medianizerPriceFeed) {
@@ -62,8 +62,7 @@ async function getMedianHistoricalPrice(callback) {
     }
     console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
 
-    // Get a price. This requests the Cryptowatch API for the specific exchange prices at the timestamp.
-    // The default exchanges to fetch prices for are based on UMIP's and can be found in:
+    // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
@@ -71,19 +70,6 @@ async function getMedianHistoricalPrice(callback) {
       `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
         precisionToUse
       )}`
-    );
-
-    console.log(
-      "\n⚠️ If you want to manually verify the specific exchange prices, you can make GET requests to: \n- https://api.cryptowat.ch/markets/<EXCHANGE-NAME>/<PAIR>/ohlc?after=<TIMESTAMP>&before=<TIMESTAMP>&periods=60"
-    );
-    console.log(
-      "- e.g. curl https://api.cryptowat.ch/markets/coinbase-pro/ethusd/ohlc?after=1601503080&before=1601503080&periods=60"
-    );
-    console.log(
-      '\n⚠️ This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'
-    );
-    console.log(
-      "- We use the OpenPrice to compute the median. Note that you might need to invert the prices for certain identifiers like USDETH."
     );
   } catch (err) {
     callback(err);
