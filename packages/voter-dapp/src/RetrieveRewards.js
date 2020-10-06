@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
@@ -85,18 +85,12 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
       }
     }
 
-    // Check retrieveRewards return value before calling.
-    const VotingContract = drizzle.contracts.Voting;
-    const pendingRewardsPromise = VotingContract.methods
-      .retrieveRewards(votingAccount, oldestUnclaimedRound.toString(), toRetrieve)
-      .call();
-
     // Create the txn send function and return it.
     const retrieveRewards = () => {
       send(votingAccount, oldestUnclaimedRound.toString(), toRetrieve);
     };
 
-    return { ready: true, send: retrieveRewards, status, pendingRewardsPromise };
+    return { ready: true, send: retrieveRewards, status, oldestUnclaimedRound, toRetrieve };
   }
 }
 
@@ -212,15 +206,20 @@ function RetrieveRewards({ votingAccount }) {
 
   // Construct the claim rewards transaction.
   const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount);
-  if (rewardsTxn.pendingRewardsPromise) {
-    rewardsTxn.pendingRewardsPromise
-      .then(_pendingRewards => {
-        if (pendingRewards) {
+
+  // Check `retrieveRewards` return value without submitting the transaction, and save it to state.
+  useEffect(() => {
+    const VotingContract = drizzle.contracts.Voting;
+    if (rewardsTxn.oldestUnclaimedRound && rewardsTxn.toRetrieve) {
+      VotingContract.methods
+        .retrieveRewards(votingAccount, rewardsTxn.oldestUnclaimedRound.toString(), rewardsTxn.toRetrieve)
+        .call()
+        .then(_pendingRewards => {
           setPendingRewards(web3.utils.fromWei(_pendingRewards.toString()));
-        }
-      })
-      .catch(err => console.error(`retrieveRewards.call failed:`, err));
-  }
+        })
+        .catch(err => console.error(`retrieveRewards.call failed:`, err));
+    }
+  }, [votingAccount, rewardsTxn.oldestUnclaimedRound, rewardsTxn.toRetrieve]);
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
