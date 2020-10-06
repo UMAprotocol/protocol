@@ -1,5 +1,5 @@
 {
-  "rebate": 1,
+  "rebate": "1",
   "fromBlock": 10752294,
   "toBlock": 10996987,
   "priceData": {
