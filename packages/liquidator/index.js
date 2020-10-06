@@ -60,6 +60,26 @@ async function run({
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
+    // Returns whether the EMP has expired yet
+    const checkIsExpiredPromise = async () => {
+      const [expirationTimestamp, contractTimestamp] = await Promise.all([
+        emp.methods.expirationTimestamp().call(),
+        emp.methods.getCurrentTime().call()
+      ]);
+      // Check if EMP is expired.
+      if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "EMP is expired, can only withdraw dispute rewards 🕰",
+          expirationTimestamp,
+          contractTimestamp
+        });
+        return true;
+      } else {
+        return false;
+      }
+    };
+
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const [
       collateralRequirement,
@@ -67,29 +87,18 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      expirationTimestamp,
-      contractTimestamp
+      isExpired
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
       emp.methods.priceIdentifier().call(),
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
-      emp.methods.expirationTimestamp().call(),
-      emp.methods.getCurrentTime().call()
+      checkIsExpiredPromise()
     ]);
 
-    // Check if EMP is expired.
-    let isExpired = false;
-    if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
-      logger.info({
-        at: "Liquidator#index",
-        message: "EMP is expired, can only withdraw dispute rewards 🕰",
-        expirationTimestamp,
-        contractTimestamp
-      });
-      isExpired = true;
-    }
+    // Initial EMP expiry status
+    let IS_EXPIRED = isExpired;
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -165,53 +174,43 @@ async function run({
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
-    if (!isExpired && toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
-      });
-    }
-    if (!isExpired && toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-        syntheticApprovalTx: syntheticApprovalTx.transactionHash
-      });
+    if (!IS_EXPIRED) {
+      if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+        await gasEstimator.update();
+        const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+          from: accounts[0],
+          gasPrice: gasEstimator.getCurrentFastPrice()
+        });
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved EMP to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApprovalTx.transactionHash
+        });
+      }
+      if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+        await gasEstimator.update();
+        const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+          from: accounts[0],
+          gasPrice: gasEstimator.getCurrentFastPrice()
+        });
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+          syntheticApprovalTx: syntheticApprovalTx.transactionHash
+        });
+      }
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
-      // Check if EMP is expired.
-      const [expirationTimestamp, contractTimestamp] = await Promise.all([
-        emp.methods.expirationTimestamp().call(),
-        emp.methods.getCurrentTime().call()
-      ]);
-      if (!isExpired && Number(contractTimestamp) >= Number(expirationTimestamp)) {
-        logger.info({
-          at: "Liquidator#index",
-          message: "EMP has expired during the main loop, will only withdraw dispute rewards 🕰",
-          expirationTimestamp,
-          contractTimestamp
-        });
-        isExpired = true;
-      }
+      // Check if EMP expired before running current iteration.
+      IS_EXPIRED = await checkIsExpiredPromise();
 
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          if (!isExpired) {
+          if (!IS_EXPIRED) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
             const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();

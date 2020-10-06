@@ -159,10 +159,12 @@ contract("index.js", function(accounts) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
 
-    // There should only be 1 log that communicates that bot is exiting early,
-    // which indicates that no approvals were sent.
-    assert.equal(spy.getCalls().length, 1);
+    // There should be 2 logs that communicates that contract has expired,
+    // and no logs about approvals.
+    console.log(spy.getCalls());
+    assert.equal(spy.getCalls().length, 2);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
+    assert.isTrue(spyLogIncludes(spy, 1, "expired"));
   });
 
   it("Post EMP expiry, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
@@ -275,10 +277,11 @@ contract("index.js", function(accounts) {
       empClient.getDisputedLiquidations()
     );
 
-    // 2 logs should be shown. First one displays an "expired" log, second one is for the withdrawn dispute rewards.
-    assert.equal(spy.getCalls().length, 2);
+    // 3 logs should be shown. First two are about the contract expiry, third one is for the withdrawn dispute rewards.
+    assert.equal(spy.getCalls().length, 3);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
-    assert.isTrue(spyLogIncludes(spy, 1, "Liquidation withdrawn"));
+    assert.isTrue(spyLogIncludes(spy, 1, "expired"));
+    assert.isTrue(spyLogIncludes(spy, 2, "Liquidation withdrawn"));
     assert.equal(spy.getCall(-1).lastArg.amount, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
   });
 
