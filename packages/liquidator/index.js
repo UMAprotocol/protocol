@@ -192,6 +192,21 @@ async function run({
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
+      // Check if EMP is expired.
+      const [expirationTimestamp, contractTimestamp] = await Promise.all([
+        emp.methods.expirationTimestamp().call(),
+        emp.methods.getCurrentTime().call()
+      ]);
+      if (!isExpired && Number(contractTimestamp) >= Number(expirationTimestamp)) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "EMP has expired during the main loop, will only withdraw dispute rewards 🕰",
+          expirationTimestamp,
+          contractTimestamp
+        });
+        isExpired = true;
+      }
+
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
