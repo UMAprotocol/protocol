@@ -4,7 +4,13 @@ import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { PriceRequestStatusEnum, MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "@uma/common";
+import {
+  PriceRequestStatusEnum,
+  MAX_UINT_VAL,
+  MAX_SAFE_JS_INT,
+  BATCH_MAX_RETRIEVALS,
+  formatWithMaxDecimals
+} from "@uma/common";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -228,7 +234,7 @@ function RetrieveRewards({ votingAccount }) {
   } else if (rewardsTxn.send) {
     body = (
       <>
-        <div>Claimable rewards: {pendingRewards}</div>
+        <div>Claimable rewards: {formatWithMaxDecimals(pendingRewards, 4, 4, false, false)}</div>
         <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
           Claim Your Rewards
         </Button>
