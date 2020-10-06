@@ -52,6 +52,7 @@ contract("Disputer.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let store;
+      let timer;
 
       let spy;
       let spyLogger;
@@ -98,12 +99,13 @@ contract("Disputer.js", function(accounts) {
         const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
         store = await Store.deployed();
+        timer = await Timer.deployed();
 
         const constructorParams = {
-          expirationTimestamp: "20345678900",
+          expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
-          finderAddress: Finder.address,
+          finderAddress: finder.address,
           tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
           syntheticName: `Test ${identifier} Token`,
@@ -114,7 +116,7 @@ contract("Disputer.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          timerAddress: Timer.address,
+          timerAddress: timer.address,
           excessTokenBeneficiary: store.address
         };
 

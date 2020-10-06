@@ -79,15 +79,16 @@ async function run({
       emp.methods.getCurrentTime().call()
     ]);
 
-    // If EMP is expired, exit early.
-    if (contractTimestamp >= expirationTimestamp) {
+    // Check if EMP is expired.
+    let isExpired = false;
+    if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
       logger.info({
         at: "Liquidator#index",
-        message: "EMP is expired, cannot liquidate any positions 🕰",
+        message: "EMP is expired, can only withdraw dispute rewards 🕰",
         expirationTimestamp,
         contractTimestamp
       });
-      return;
+      isExpired = true;
     }
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
@@ -163,7 +164,8 @@ async function run({
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+    // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
+    if (!isExpired && toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
       const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
         from: accounts[0],
@@ -175,7 +177,7 @@ async function run({
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
-    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+    if (!isExpired && toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
       const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
         from: accounts[0],
@@ -194,10 +196,12 @@ async function run({
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
-          // considers override price if the user has specified one.
-          const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
-          await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
+          if (!isExpired) {
+            // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
+            // considers override price if the user has specified one.
+            const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
+            await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
+          }
           // Check for any finished liquidations that can be withdrawn.
           await liquidator.withdrawRewards();
         },
