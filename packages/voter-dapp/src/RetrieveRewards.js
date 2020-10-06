@@ -234,7 +234,7 @@ function RetrieveRewards({ votingAccount }) {
   } else if (rewardsTxn.send) {
     body = (
       <>
-        <div>Claimable rewards: {formatWithMaxDecimals(pendingRewards, 4, 4, false, false)}</div>
+        <div>Claimable rewards: {formatWithMaxDecimals(pendingRewards, 2, 4, false, false)}</div>
         <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
           Claim Your Rewards
         </Button>
