@@ -1078,7 +1078,7 @@ contract("PositionManager", function(accounts) {
       assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
 
-      // Drain excess collateral left because of precesion loss.
+      // Drain excess collateral left because of precision loss.
       await expectAndDrainExcessCollateral();
     });
     it("withdraw() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
