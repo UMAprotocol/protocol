@@ -1131,7 +1131,7 @@ contract("PositionManager", function(accounts) {
     });
   });
 
-  it("Oracle swap post expiry", async function() {
+  it("Oracle swap post shutdown", async function() {
     // Approvals
     await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
     await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: tokenHolder });
