@@ -57,23 +57,10 @@ async function run({
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [priceIdentifier, collateralTokenAddress, expirationTimestamp, contractTimestamp] = await Promise.all([
+    const [priceIdentifier, collateralTokenAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
-      emp.methods.collateralCurrency().call(),
-      emp.methods.expirationTimestamp().call(),
-      emp.methods.getCurrentTime().call()
+      emp.methods.collateralCurrency().call()
     ]);
-
-    // If EMP is expired, exit early.
-    if (contractTimestamp >= expirationTimestamp) {
-      logger.info({
-        at: "Disputer#index",
-        message: "EMP is expired, cannot dispute any liquidations 🕰",
-        expirationTimestamp,
-        contractTimestamp
-      });
-      return;
-    }
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const [currentAllowance, collateralCurrencyDecimals] = await Promise.all([
