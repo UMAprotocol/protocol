@@ -500,7 +500,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
-        // Set the emergency shutdown price as resolved from the DVM. If DVM has not resolve will revert.
+        // Set the emergency shutdown price as resolved from the DVM. If DVM has not resolved will revert.
         if (emergencyShutdownPrice.isEqual(FixedPoint.fromUnscaledUint(0))) {
             emergencyShutdownPrice = _getOracleEmergencyShutdownPrice();
         }
