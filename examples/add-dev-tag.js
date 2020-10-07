@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { ethers } = require("ethers");
 const Web3 = require("web3");
 const { getAbi } = require("@uma/core");
