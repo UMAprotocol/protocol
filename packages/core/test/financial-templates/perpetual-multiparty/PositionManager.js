@@ -988,7 +988,7 @@ contract("PositionManager", function(accounts) {
       await expectAndDrainExcessCollateral();
     });
     it("settleEmergencyShutdown() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
-      // Expire the contract (emergency shutdown).
+      // Emergency shutdown the contract
       const emergencyShutdownTime = await positionManager.getCurrentTime();
       await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
 
