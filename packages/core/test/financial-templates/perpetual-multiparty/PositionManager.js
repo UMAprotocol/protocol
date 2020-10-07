@@ -1174,7 +1174,7 @@ contract("PositionManager", function(accounts) {
       from: contractDeployer
     });
 
-    // Settle expired should still work even if the new oracle has no price.
+    // Settle emergency shutdown should still work even if the new oracle has no price.
     initialCollateral = await collateral.balanceOf(sponsor);
     await positionManager.settleEmergencyShutdown({ from: sponsor });
     collateralPaid = (await collateral.balanceOf(sponsor)).sub(initialCollateral);
