@@ -488,7 +488,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice If the contract is emergency shutdown then all token holders and sponsors can redeem their tokens or
      * remaining collateral for underlying at the prevailing price defined by a DVM vote.
-     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
