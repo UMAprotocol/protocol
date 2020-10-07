@@ -70,7 +70,7 @@ async function run({
       if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
         logger.info({
           at: "Liquidator#index",
-          message: "EMP is expired, can only withdraw dispute rewards 🕰",
+          message: "EMP is expired, can only withdraw liquidator dispute rewards 🕰",
           expirationTimestamp,
           contractTimestamp
         });
