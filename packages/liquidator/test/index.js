@@ -161,7 +161,6 @@ contract("index.js", function(accounts) {
 
     // There should be 2 logs that communicates that contract has expired,
     // and no logs about approvals.
-    console.log(spy.getCalls());
     assert.equal(spy.getCalls().length, 2);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
     assert.isTrue(spyLogIncludes(spy, 1, "expired"));
