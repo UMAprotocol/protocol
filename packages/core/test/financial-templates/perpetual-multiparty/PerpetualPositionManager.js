@@ -5,7 +5,7 @@ const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 
 // Contracts to test
-const PositionManager = artifacts.require("PositionManager");
+const PerpetualPositionManager = artifacts.require("PerpetualPositionManager");
 
 // Other UMA related contracts and mocks
 const Store = artifacts.require("Store");
@@ -19,7 +19,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
-contract("PositionManager", function(accounts) {
+contract("PerpetualPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -121,7 +121,7 @@ contract("PositionManager", function(accounts) {
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create the instance of the positionManager to test against.
-    positionManager = await PositionManager.new(
+    positionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
@@ -159,7 +159,7 @@ contract("PositionManager", function(accounts) {
     // Pricefeed identifier must be whitelisted.
     assert(
       await didContractThrow(
-        PositionManager.new(
+        PerpetualPositionManager.new(
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
           finder.address, // _finderAddress
@@ -182,7 +182,7 @@ contract("PositionManager", function(accounts) {
       .pow(toBN(256))
       .subn(10)
       .toString();
-    positionManager = await PositionManager.new(
+    positionManager = await PerpetualPositionManager.new(
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
@@ -1404,7 +1404,7 @@ contract("PositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
-    let custompositionManager = await PositionManager.new(
+    let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
       finder.address, // _finderAddress
