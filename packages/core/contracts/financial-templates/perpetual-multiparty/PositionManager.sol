@@ -475,6 +475,12 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
+    /**
+     * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back any
+     * `collateralCurrency`. This is done by a sponsor to increase position CR.
+     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
+     */
     function repay(FixedPoint.Unsigned memory numTokens)
         public
         notEmergencyShutdown()
