@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "./PositionManager.sol";
+import "./PerpetualPositionManager.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 
@@ -18,7 +18,7 @@ import "../../common/implementation/FixedPoint.sol";
  * liquidations and compensate position sponsors who had their position incorrectly liquidated. Importantly, a
  * prospective disputer must deposit a dispute bond that they can lose in the case of an unsuccessful dispute.
  */
-contract PerpetualLiquidatable is PositionManager {
+contract PerpetualLiquidatable is PerpetualPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
