@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, ZERO_ADDRESS, LiquidationStatesEnum, interfaceName } = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -12,20 +12,28 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 const Store = artifacts.require("Store");
+const MockOracle = artifacts.require("MockOracle");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
+  const sponsorUndercollateralized = accounts[1];
+  const sponsorOvercollateralized = accounts[2];
+  const liquidator = contractCreator;
+  const disputer = accounts[4];
 
   let collateralToken;
   let syntheticToken;
   let emp;
   let uniswap;
   let store;
+  let timer;
+  let mockOracle;
+  let finder;
 
   let defaultPriceFeedConfig;
 
@@ -46,25 +54,13 @@ contract("index.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
 
     store = await Store.deployed();
-
-    constructorParams = {
-      expirationTimestamp: "20345678900",
-      withdrawalLiveness: "1000",
-      collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
-      liquidationLiveness: "1000",
-      collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
-    };
+    timer = await Timer.deployed();
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
+      from: contractCreator
+    });
+    const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
@@ -76,6 +72,24 @@ contract("index.js", function(accounts) {
     });
 
     // Deploy a new expiring multi party
+    constructorParams = {
+      expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100,
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralToken.address,
+      finderAddress: finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      syntheticName: "ETH/BTC synthetic token",
+      syntheticSymbol: "ETH/BTC",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.2") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: timer.address,
+      excessTokenBeneficiary: store.address
+    };
     emp = await ExpiringMultiParty.new(constructorParams);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
@@ -103,22 +117,8 @@ contract("index.js", function(accounts) {
 
     collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
     constructorParams = {
-      expirationTimestamp: "20345678900",
-      withdrawalLiveness: "1000",
-      collateralAddress: collateralToken.address,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
-      liquidationLiveness: "1000",
-      collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      ...constructorParams,
+      collateralAddress: collateralToken.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
 
@@ -143,16 +143,12 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    const earlyExpiryConstructorParams = {
-      ...constructorParams,
-      expirationTimestamp: "11345678900"
-    };
-    let earlyExpiryEmp = await ExpiringMultiParty.new(earlyExpiryConstructorParams);
+    await emp.setCurrentTime(await emp.expirationTimestamp());
 
     await Poll.run({
       logger: spyLogger,
       web3,
-      empAddress: earlyExpiryEmp.address,
+      empAddress: emp.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -163,8 +159,129 @@ contract("index.js", function(accounts) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
 
-    // There should only be 1 log that communicates that bot is exiting early
+    // There should be 2 logs that communicates that contract has expired,
+    // and no logs about approvals.
+    assert.equal(spy.getCalls().length, 2);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
+    assert.isTrue(spyLogIncludes(spy, 1, "expired"));
+  });
+
+  it("Post EMP expiry, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
+    // Create 2 positions, 1 undercollateralized and 1 sufficiently collateralized.
+    // Liquidate the sufficiently collateralized one, and dispute the liquidation.
+    // We'll assume that the dispute will resolve to a price of 1, so there must be 1.2 units of collateral for every 1 unit of synthetic.
+    await collateralToken.addMember(1, contractCreator, {
+      from: contractCreator
+    });
+    await collateralToken.mint(sponsorUndercollateralized, toWei("110"), { from: contractCreator });
+    await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
+    await collateralToken.approve(emp.address, toWei("110"), { from: sponsorUndercollateralized });
+    await collateralToken.approve(emp.address, toWei("130"), { from: sponsorOvercollateralized });
+    await emp.create({ rawValue: toWei("110") }, { rawValue: toWei("100") }, { from: sponsorUndercollateralized });
+    await emp.create({ rawValue: toWei("130") }, { rawValue: toWei("100") }, { from: sponsorOvercollateralized });
+
+    // Send liquidator enough synthetic to liquidate one position.
+    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsorOvercollateralized });
+    await syntheticToken.approve(emp.address, toWei("100"), { from: liquidator });
+
+    // Check that the liquidator is correctly detecting the undercollateralized position
+    const empClientSpy = sinon.spy();
+    const empClientSpyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: empClientSpy })]
+    });
+    const empClient = new ExpiringMultiPartyClient(empClientSpyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    await empClient.update();
+    assert.deepStrictEqual(
+      [
+        {
+          sponsor: sponsorUndercollateralized,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("110"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        }
+      ],
+      empClient.getUnderCollateralizedPositions(toWei("1"))
+    );
+
+    // Liquidate the over collateralized position and dispute the liquidation.
+    const liquidationTime = await emp.getCurrentTime();
+    await emp.createLiquidation(
+      sponsorOvercollateralized,
+      { rawValue: toWei("1.3") },
+      { rawValue: toWei("1.3") },
+      { rawValue: toWei("100") },
+      MAX_UINT_VAL,
+      { from: liquidator }
+    );
+
+    // Next, expire the contract.
+    await emp.setCurrentTime(await emp.expirationTimestamp());
+
+    // Dispute & push a dispute resolution price.
+    await collateralToken.mint(disputer, toWei("13"), { from: contractCreator });
+    await collateralToken.approve(emp.address, toWei("13"), { from: disputer });
+    await emp.dispute(0, sponsorOvercollateralized, { from: disputer });
+    await mockOracle.pushPrice(utf8ToHex("ETH/BTC"), liquidationTime, toWei("1"));
+
+    // Running the liquidator now should settle and withdraw rewards from the successful dispute,
+    // and ignore undercollateralized positions.
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
+
+    // EMP client should still detect an undercollateralized position and one disputed liquidation with some unwithdrawn rewards.
+    await empClient.update();
+    assert.deepStrictEqual(
+      [
+        {
+          sponsor: sponsorUndercollateralized,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("110"),
+          hasPendingWithdrawal: false,
+          withdrawalRequestPassTimestamp: "0",
+          withdrawalRequestAmount: "0"
+        }
+      ],
+      empClient.getUnderCollateralizedPositions(toWei("1"))
+    );
+    assert.deepStrictEqual(
+      [
+        {
+          sponsor: sponsorOvercollateralized,
+          id: "0",
+          state: LiquidationStatesEnum.DISPUTE_SUCCEEDED,
+          numTokens: toWei("100"),
+          liquidatedCollateral: toWei("130"),
+          lockedCollateral: toWei("130"),
+          liquidationTime: liquidationTime.toString(),
+          liquidator: ZERO_ADDRESS,
+          disputer
+        }
+      ],
+      empClient.getDisputedLiquidations()
+    );
+
+    // 3 logs should be shown. First two are about the contract expiry, third one is for the withdrawn dispute rewards.
+    assert.equal(spy.getCalls().length, 3);
+    assert.isTrue(spyLogIncludes(spy, 0, "expired"));
+    assert.isTrue(spyLogIncludes(spy, 1, "expired"));
+    assert.isTrue(spyLogIncludes(spy, 2, "Liquidation withdrawn"));
+    assert.equal(spy.getCall(-1).lastArg.amount, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
   });
 
   it("Allowances are set", async function() {

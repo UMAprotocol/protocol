@@ -1,10 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { PriceRequestStatusEnum, MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "@uma/common";
+import {
+  PriceRequestStatusEnum,
+  MAX_UINT_VAL,
+  MAX_SAFE_JS_INT,
+  BATCH_MAX_RETRIEVALS,
+  formatWithMaxDecimals
+} from "@uma/common";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -90,19 +96,21 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
       send(votingAccount, oldestUnclaimedRound.toString(), toRetrieve);
     };
 
-    return { ready: true, send: retrieveRewards, status };
+    return { ready: true, send: retrieveRewards, status, oldestUnclaimedRound, toRetrieve };
   }
 }
 
 function RetrieveRewards({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const classes = useTableStyles();
+  const { web3 } = drizzle;
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const governorAddress = drizzle.contracts.Governor.address;
 
   // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
+  const [pendingRewards, setPendingRewards] = useState("0");
 
   // Determines the list of roundIds to query for. Will return undefined if the user wants to search the entire history.
   const roundIds = useMemo(() => {
@@ -205,15 +213,32 @@ function RetrieveRewards({ votingAccount }) {
   // Construct the claim rewards transaction.
   const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount);
 
+  // Check `retrieveRewards` return value without submitting the transaction, and save it to state.
+  useEffect(() => {
+    const VotingContract = drizzle.contracts.Voting;
+    if (rewardsTxn.oldestUnclaimedRound && rewardsTxn.toRetrieve) {
+      VotingContract.methods
+        .retrieveRewards(votingAccount, rewardsTxn.oldestUnclaimedRound.toString(), rewardsTxn.toRetrieve)
+        .call()
+        .then(_pendingRewards => {
+          setPendingRewards(web3.utils.fromWei(_pendingRewards.toString()));
+        })
+        .catch(err => console.error(`retrieveRewards.call failed:`, err));
+    }
+  }, [votingAccount, rewardsTxn.oldestUnclaimedRound, rewardsTxn.toRetrieve]);
+
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";
   if (!rewardsTxn.ready) {
     body = "Loading";
   } else if (rewardsTxn.send) {
     body = (
-      <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
-        Claim Your Rewards
-      </Button>
+      <>
+        <div>Claimable rewards: {formatWithMaxDecimals(pendingRewards, 2, 4, false, false)}</div>
+        <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
+          Claim Your Rewards
+        </Button>
+      </>
     );
   } else if (!queryAllRounds) {
     body = (
