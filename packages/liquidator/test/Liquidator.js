@@ -57,6 +57,7 @@ contract("Liquidator.js", function(accounts) {
       let syntheticToken;
       let mockOracle;
       let priceFeedMock;
+      let timer;
 
       let spy;
       let spyLogger;
@@ -107,12 +108,13 @@ contract("Liquidator.js", function(accounts) {
         const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
         const store = await Store.deployed();
+        timer = await Timer.deployed();
 
         const constructorParams = {
-          expirationTimestamp: "20345678900",
+          expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
-          finderAddress: Finder.address,
+          finderAddress: finder.address,
           tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: utf8ToHex(identifier),
           syntheticName: `Test ${collateralToken} Token`,
@@ -123,7 +125,7 @@ contract("Liquidator.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("5") },
-          timerAddress: Timer.address,
+          timerAddress: timer.address,
           excessTokenBeneficiary: store.address
         };
 

@@ -112,18 +112,6 @@ jobs:
       - run:
           name: Run tests
           command: yarn run test
-  test_fork:
-    docker:
-      - image: circleci/node:lts
-      - image: trufflesuite/ganache-cli
-        command: NODE_OPTIONS="--max-old-space-size=4096" ganache-cli -l 9000000 -f https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 -p 9545
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run tests
-          command: yarn run test-fork
   coverage:
     docker:
       - image: circleci/node:lts
@@ -207,10 +195,6 @@ workflows:
           requires:
             - checkout_and_install
       - test:
-          context: api_keys
-          requires:
-            - build
-      - test_fork:
           context: api_keys
           requires:
             - build
