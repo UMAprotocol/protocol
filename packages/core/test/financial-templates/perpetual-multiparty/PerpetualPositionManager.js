@@ -769,7 +769,7 @@ contract("PerpetualPositionManager", function(accounts) {
       await positionManager.totalTokensOutstanding()
     );
 
-    // Tokens paid back to contract and the token debt decrease should both equal 50 tokens.
+    // Tokens paid back to contract,the token debt decrease and decrease in outstanding should all equal 40 tokens.
     assert.equal(tokensPaid.toString(), toWei("40"));
     assert.equal(tokenDebtDecreased.toString(), toWei("40"));
     assert.equal(totalTokensOutstandingDecreased.toString(), toWei("40"));
