@@ -23,7 +23,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PositionManager is FeePayer, AdministrateeInterface {
+contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -131,7 +131,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Construct the PositionManager.
+     * @notice Construct the PerpetualPositionManager.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
@@ -617,7 +617,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Accessor method for the total collateral stored within the PositionManager.
+     * @notice Accessor method for the total collateral stored within the PerpetualPositionManager.
      * @return totalCollateral amount of all collateral within the position manager.
      */
     function totalPositionCollateral()
