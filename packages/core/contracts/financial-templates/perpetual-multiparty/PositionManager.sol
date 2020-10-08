@@ -369,7 +369,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external nonReentrant() {
+    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
