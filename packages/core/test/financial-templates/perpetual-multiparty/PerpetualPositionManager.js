@@ -424,19 +424,15 @@ contract("PerpetualPositionManager", function(accounts) {
     });
 
     // All other actions are locked.
+    assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(
       await didContractThrow(
         positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor })
       )
     );
-    assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
-    assert(await didContractThrow(positionManager.remargin({ from: sponsor })));
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest({ other }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.withdrawPassedRequest({ from: sponsor })));
 
     // Can't withdraw before time is up.
     await positionManager.setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
@@ -526,6 +522,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // Reset store state.
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
+
   it("Global collateralization ratio checks", async function() {
     await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
     await collateral.approve(positionManager.address, toWei("100000"), { from: other });
@@ -1497,7 +1494,9 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(custompositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
-    let settleEmergencyShutdownResult = await custompositionManager.settleEmergencyShutdown({ from: tokenHolder });
+    let settleEmergencyShutdownResult = await custompositionManager.settleEmergencyShutdown({
+      from: tokenHolder
+    });
     const tokenHolderFinalCollateral = await USDCToken.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
