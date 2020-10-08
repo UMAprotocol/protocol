@@ -5,7 +5,7 @@ const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 
 // Contracts to test
-const PerpetualPositionManager = artifacts.require("PerpetualPositionManager");
+const PositionManager = artifacts.require("PositionManager");
 
 // Other UMA related contracts and mocks
 const Store = artifacts.require("Store");
@@ -19,7 +19,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
-contract("PerpetualPositionManager", function(accounts) {
+contract("PositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -121,7 +121,7 @@ contract("PerpetualPositionManager", function(accounts) {
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create the instance of the positionManager to test against.
-    positionManager = await PerpetualPositionManager.new(
+    positionManager = await PositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
@@ -159,7 +159,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // Pricefeed identifier must be whitelisted.
     assert(
       await didContractThrow(
-        PerpetualPositionManager.new(
+        PositionManager.new(
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
           finder.address, // _finderAddress
@@ -182,7 +182,7 @@ contract("PerpetualPositionManager", function(accounts) {
       .pow(toBN(256))
       .subn(10)
       .toString();
-    positionManager = await PerpetualPositionManager.new(
+    positionManager = await PositionManager.new(
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
@@ -424,15 +424,19 @@ contract("PerpetualPositionManager", function(accounts) {
     });
 
     // All other actions are locked.
-    assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(
       await didContractThrow(
         positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor })
       )
     );
+    assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
+    assert(await didContractThrow(positionManager.remargin({ from: sponsor })));
+    assert(await didContractThrow(positionManager.transferPositionPassedRequest({ other }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.withdrawPassedRequest({ from: sponsor })));
 
     // Can't withdraw before time is up.
     await positionManager.setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
@@ -522,7 +526,6 @@ contract("PerpetualPositionManager", function(accounts) {
     // Reset store state.
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
-
   it("Global collateralization ratio checks", async function() {
     await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
     await collateral.approve(positionManager.address, toWei("100000"), { from: other });
@@ -742,6 +745,63 @@ contract("PerpetualPositionManager", function(accounts) {
     await positionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: sponsor });
 
     assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("2"));
+  });
+
+  it("Sponsor can use repay to decrease their debt", async function() {
+    await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("1000"), { from: sponsor });
+
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100") }, { from: sponsor });
+
+    const initialSponsorTokens = await tokenCurrency.balanceOf(sponsor);
+    const initialSponsorTokenDebt = toBN((await positionManager.positions(sponsor)).tokensOutstanding.rawValue);
+    const initialTotalTokensOutstanding = await positionManager.totalTokensOutstanding();
+
+    const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
+
+    // Event is correctly emitted.
+    truffleAssert.eventEmitted(repayResult, "Repay", ev => {
+      return ev.sponsor == sponsor && ev.numTokensRepaid == toWei("40") && ev.newTokenCount == toWei("60");
+    });
+
+    const tokensPaid = initialSponsorTokens.sub(await tokenCurrency.balanceOf(sponsor));
+    const tokenDebtDecreased = initialSponsorTokenDebt.sub(
+      toBN((await positionManager.positions(sponsor)).tokensOutstanding.rawValue)
+    );
+    const totalTokensOutstandingDecreased = initialTotalTokensOutstanding.sub(
+      await positionManager.totalTokensOutstanding()
+    );
+
+    // Tokens paid back to contract and the token debt decrease should both equal 50 tokens.
+    assert.equal(tokensPaid.toString(), toWei("40"));
+    assert.equal(tokenDebtDecreased.toString(), toWei("40"));
+    assert.equal(totalTokensOutstandingDecreased.toString(), toWei("40"));
+
+    // Can not request to repay more than their token balance. Sponsor has remaining 60. max they can repay is 60
+    assert.equal((await positionManager.positions(sponsor)).tokensOutstanding.rawValue, toWei("60"));
+    assert(await didContractThrow(positionManager.repay({ rawValue: toWei("65") }, { from: sponsor })));
+
+    // Can not repay to position less than minimum sponsor size. Minimum sponsor size is 5 wei. Repaying 60 - 3 wei
+    // would leave the position at a size of 2 wei, which is less than acceptable minimum.
+    assert(
+      await didContractThrow(
+        positionManager.repay(
+          {
+            rawValue: toBN(toWei("60"))
+              .subn(3)
+              .toString()
+          },
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Can repay all outstanding tokens, effectively wiping all debt in position.
+    await positionManager.repay({ rawValue: toWei("60") }, { from: sponsor });
+    assert.equal((await positionManager.positions(sponsor)).tokensOutstanding.rawValue, toWei("0"));
+
+    // As all debt has been repaid even repaying 1 wei should revert.
+    assert(await didContractThrow(positionManager.repay({ rawValue: "1" }, { from: sponsor })));
   });
 
   it("Basic fees", async function() {
@@ -1344,7 +1404,7 @@ contract("PerpetualPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
-    let custompositionManager = await PerpetualPositionManager.new(
+    let custompositionManager = await PositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
       finder.address, // _finderAddress
@@ -1437,9 +1497,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(custompositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
-    let settleEmergencyShutdownResult = await custompositionManager.settleEmergencyShutdown({
-      from: tokenHolder
-    });
+    let settleEmergencyShutdownResult = await custompositionManager.settleEmergencyShutdown({ from: tokenHolder });
     const tokenHolderFinalCollateral = await USDCToken.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
