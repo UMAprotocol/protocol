@@ -155,7 +155,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      */
     constructor(ConstructorParams memory params)
         public
-        PositionManager(
+        PerpetualPositionManager(
             params.withdrawalLiveness,
             params.collateralAddress,
             params.finderAddress,
