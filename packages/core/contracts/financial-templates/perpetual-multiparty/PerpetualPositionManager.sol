@@ -23,7 +23,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PositionManager is FeePayer, AdministrateeInterface {
+contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -32,10 +32,6 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
-
-    // Stores the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or settlement.
-    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
-    ContractState public contractState;
 
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
@@ -67,8 +63,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
-    // Time that this contract expires. Should not change post-construction unless an emergency shutdown occurs.
-    uint256 public expirationTimestamp;
+
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     // !!Note: The lower the withdrawal liveness value, the more risk incurred by the contract.
     //       Extremely low liveness values increase the chance that opportunistic invalid withdrawal requests
@@ -79,8 +74,11 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     // Minimum number of tokens in a sponsor's position.
     FixedPoint.Unsigned public minSponsorTokens;
 
-    // The expiry price pulled from the DVM.
-    FixedPoint.Unsigned public expiryPrice;
+    // Expiry price pulled from the DVM in the case of an emergency shutdown.
+    FixedPoint.Unsigned public emergencyShutdownPrice;
+
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
@@ -101,37 +99,29 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
-    event ContractExpired(address indexed caller);
-    event SettleExpiredPosition(
+    event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
+    event SettleEmergencyShutdown(
         address indexed caller,
         uint256 indexed collateralReturned,
         uint256 indexed tokensBurned
     );
-    event EmergencyShutdown(address indexed caller, uint256 originalExpirationTimestamp, uint256 shutdownTimestamp);
 
     /****************************************
      *               MODIFIERS              *
      ****************************************/
-
-    modifier onlyPreExpiration() {
-        _onlyPreExpiration();
-        _;
-    }
-
-    modifier onlyPostExpiration() {
-        _onlyPostExpiration();
-        _;
-    }
 
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
         _;
     }
 
-    // Check that the current state of the pricelessPositionManager is Open.
-    // This prevents multiple calls to `expire` and `EmergencyShutdown` post expiration.
-    modifier onlyOpenState() {
-        _onlyOpenState();
+    modifier notEmergencyShutdown() {
+        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
+        _;
+    }
+
+    modifier isEmergencyShutdown() {
+        _isEmergencyShutdown();
         _;
     }
 
@@ -141,8 +131,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Construct the PricelessPositionManager
-     * @param _expirationTimestamp unix timestamp of when the contract will expire.
+     * @notice Construct the PerpetualPositionManager.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
@@ -151,13 +140,10 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be
-     * sent.
-     * Must be set to 0x0 for production environments that use live time.
+     * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
+     * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
      */
     constructor(
-        uint256 _expirationTimestamp,
         uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
@@ -169,10 +155,8 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         address _timerAddress,
         address _excessTokenBeneficiary
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
-        require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
-        expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
@@ -190,16 +174,12 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      * Once the request liveness is passed, the sponsor can execute the transfer and specify the new sponsor.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
-    function requestTransferPosition() public onlyPreExpiration() nonReentrant() {
+    function requestTransferPosition() public notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
 
-        // Make sure the proposed expiration of this request is not post-expiry.
-        uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime < expirationTimestamp, "Request expires post-expiry");
-
         // Update the position object for the user.
-        positionData.transferPositionRequestPassTimestamp = requestPassTime;
+        positionData.transferPositionRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
 
         emit RequestTransferPosition(msg.sender);
     }
@@ -212,7 +192,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function transferPositionPassedRequest(address newSponsorAddress)
         public
-        onlyPreExpiration()
+        notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
@@ -243,7 +223,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending transfer position request.
      */
-    function cancelTransferPosition() external onlyPreExpiration() nonReentrant() {
+    function cancelTransferPosition() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
 
@@ -262,7 +242,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function depositTo(address sponsor, FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyPreExpiration()
+        notEmergencyShutdown()
         noPendingWithdrawal(sponsor)
         fees()
         nonReentrant()
@@ -299,7 +279,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyPreExpiration()
+        notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
@@ -328,7 +308,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyPreExpiration()
+        notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
@@ -339,12 +319,8 @@ contract PositionManager is FeePayer, AdministrateeInterface {
             "Invalid collateral amount"
         );
 
-        // Make sure the proposed expiration of this request is not post-expiry.
-        uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime < expirationTimestamp, "Request expires post-expiry");
-
         // Update the position object for the user.
-        positionData.withdrawalRequestPassTimestamp = requestPassTime;
+        positionData.withdrawalRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
         positionData.withdrawalRequestAmount = collateralAmount;
 
         emit RequestWithdrawal(msg.sender, collateralAmount.rawValue);
@@ -359,7 +335,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function withdrawPassedRequest()
         external
-        onlyPreExpiration()
+        notEmergencyShutdown()
         fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
@@ -393,7 +369,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external nonReentrant() {
+    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
@@ -404,7 +380,8 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Creates tokens by creating a new position or by augmenting an existing position. Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
+     * @notice Creates tokens by creating a new position or by augmenting an existing position. Pulls `collateralAmount
+     * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
      * `collateralCurrency`.
@@ -413,7 +390,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
-        onlyPreExpiration()
+        notEmergencyShutdown()
         fees()
         nonReentrant()
     {
@@ -459,6 +436,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function redeem(FixedPoint.Unsigned memory numTokens)
         public
+        notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
@@ -496,39 +474,48 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
+    function repay(FixedPoint.Unsigned memory numTokens)
+        public
+        notEmergencyShutdown()
+        noPendingWithdrawal(msg.sender)
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory amountRepaired)
+    {
+        // TODO: implementation
+    }
+
     /**
-     * @notice After a contract has passed expiry all token holders can redeem their tokens for underlying at the
-     * prevailing price defined by the DVM from the `expire` function.
-     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of
+     * @notice If the contract is emergency shutdown then all token holders and sponsors can redeem their tokens or
+     * remaining collateral for underlying at the prevailing price defined by a DVM vote.
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function settleExpired()
+    function settleEmergencyShutdown()
         external
-        onlyPostExpiration()
+        isEmergencyShutdown()
         fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
-        // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
-        require(contractState != ContractState.Open, "Unexpired position");
-
-        // Get the current settlement price and store it. If it is not resolved will revert.
-        if (contractState != ContractState.ExpiredPriceReceived) {
-            expiryPrice = _getOraclePrice(expirationTimestamp);
-            contractState = ContractState.ExpiredPriceReceived;
+        // Set the emergency shutdown price as resolved from the DVM. If DVM has not resolved will revert.
+        if (emergencyShutdownPrice.isEqual(FixedPoint.fromUnscaledUint(0))) {
+            emergencyShutdownPrice = _getOracleEmergencyShutdownPrice();
         }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(expiryPrice);
+        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(emergencyShutdownPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
         if (_getFeeAdjustedCollateral(positionData.rawCollateral).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(expiryPrice);
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(
+                emergencyShutdownPrice
+            );
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
@@ -557,7 +544,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
-        emit SettleExpiredPosition(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
+        emit SettleEmergencyShutdown(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
 
         // Transfer tokens & collateral and burn the redeemed tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -568,40 +555,19 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     /****************************************
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
-
-    /**
-     * @notice Locks contract state in expired and requests oracle price.
-     * @dev this function can only be called once the contract is expired and can't be re-called.
-     */
-    function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
-        contractState = ContractState.ExpiredPriceRequested;
-
-        // The final fee for this request is paid out of the contract rather than by the caller.
-        _payFinalFees(address(this), _computeFinalFees());
-        _requestOraclePrice(expirationTimestamp);
-
-        emit ContractExpired(msg.sender);
-    }
-
     /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
-     * to occur via the standard `settleExpired` function. Contract state is set to `ExpiredPriceRequested`
-     * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
-     * `emergencyShutdown` as the governor who would call the function would also receive the fees.
+     * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() nonReentrant() {
+    function emergencyShutdown() external override notEmergencyShutdown() nonReentrant() {
         require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
-        contractState = ContractState.ExpiredPriceRequested;
-        // Expiratory time now becomes the current time (emergency shutdown time).
-        // Price requested at this time stamp. `settleExpired` can now withdraw at this timestamp.
-        uint256 oldExpirationTimestamp = expirationTimestamp;
-        expirationTimestamp = getCurrentTime();
-        _requestOraclePrice(expirationTimestamp);
+        emergencyShutdownTimestamp = getCurrentTime();
+        _requestOraclePrice(emergencyShutdownTimestamp);
 
-        emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
+        emit EmergencyShutdown(msg.sender, emergencyShutdownTimestamp);
     }
 
     /**
@@ -610,7 +576,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
-    function remargin() external override onlyPreExpiration() nonReentrant() {
+    function remargin() external override notEmergencyShutdown() nonReentrant() {
         return;
     }
 
@@ -651,8 +617,8 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
-     * @return totalCollateral amount of all collateral within the Expiring Multi Party Contract.
+     * @notice Accessor method for the total collateral stored within the PerpetualPositionManager.
+     * @return totalCollateral amount of all collateral within the position manager.
      */
     function totalPositionCollateral()
         external
@@ -753,11 +719,12 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOracleEmergencyShutdownPrice() internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        require(emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
+        require(oracle.hasPrice(priceIdentifier, emergencyShutdownTimestamp), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(priceIdentifier, emergencyShutdownTimestamp);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
@@ -808,16 +775,12 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     // These internal functions are supposed to act identically to modifiers, but re-used modifiers
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-    function _onlyOpenState() internal view {
-        require(contractState == ContractState.Open, "Contract state is not OPEN");
+    function _notEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
     }
 
-    function _onlyPreExpiration() internal view {
-        require(getCurrentTime() < expirationTimestamp, "Only callable pre-expiry");
-    }
-
-    function _onlyPostExpiration() internal view {
-        require(getCurrentTime() >= expirationTimestamp, "Only callable post-expiry");
+    function _isEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
     }
 
     function _onlyCollateralizedPosition(address sponsor) internal view {
