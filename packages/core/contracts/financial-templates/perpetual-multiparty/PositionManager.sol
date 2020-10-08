@@ -116,12 +116,12 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     modifier notEmergencyShutdown() {
-        _notEmergencyShutdown();
+        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
         _;
     }
 
-    modifier onlyEmergencyShutdown() {
-        _onlyEmergencyShutdown();
+    modifier isEmergencyShutdown() {
+        _isEmergencyShutdown();
         _;
     }
 
@@ -495,7 +495,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
      */
     function settleEmergencyShutdown()
         external
-        onlyEmergencyShutdown()
+        isEmergencyShutdown()
         fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
@@ -779,7 +779,7 @@ contract PositionManager is FeePayer, AdministrateeInterface {
         require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
     }
 
-    function _onlyEmergencyShutdown() internal view {
+    function _isEmergencyShutdown() internal view {
         require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
     }
 

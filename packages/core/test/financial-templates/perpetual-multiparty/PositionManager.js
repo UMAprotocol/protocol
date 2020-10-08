@@ -858,6 +858,17 @@ contract("PositionManager", function(accounts) {
     // Before the DVM has resolved a price withdrawals should be disabled (as with settlement at maturity).
     assert(await didContractThrow(positionManager.settleEmergencyShutdown({ from: sponsor })));
 
+    // All contract functions should also blocked as emergency shutdown.
+    assert(
+      await didContractThrow(
+        positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor })
+      )
+    );
+    assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
+
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
     await mockOracle.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"));
@@ -1139,8 +1150,8 @@ contract("PositionManager", function(accounts) {
 
     // Create one position with 200 synthetic tokens to mint with 300 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
-    const numTokens = toWei("200");
     const amountCollateral = toWei("300");
+    const numTokens = toWei("200");
     await positionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
 
     // Transfer 100 the tokens from the sponsor to two separate holders. IRL this happens through the sponsor selling
@@ -1191,6 +1202,39 @@ contract("PositionManager", function(accounts) {
     await positionManager.settleEmergencyShutdown({ from: other });
     collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
+  });
+
+  it("Oracle price can resolve to 0", async function() {
+    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: tokenHolder });
+
+    // For the price to resolve to 0 the outcome is likely a binary event (1 for true, 0 for false.)
+    await positionManager.create({ rawValue: toWei("300") }, { rawValue: toWei("200") }, { from: sponsor });
+    await tokenCurrency.transfer(tokenHolder, toWei("100"), {
+      from: sponsor
+    });
+
+    // Emergency shutdown contract to enable settlement.
+    const emergencyShutdownTime = await positionManager.getCurrentTime();
+    await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 0. This means that
+    // each token debt is worth 0 and the sponsor should get back their full collateral, even though they dont have all
+    // the tokens. The token holder should get nothing.
+    await mockOracle.pushPrice(priceFeedIdentifier, emergencyShutdownTime, toWei("0"));
+
+    // Token holder should receive 0 collateral tokens for their 100 synthetic tokens as the price is 0.
+    let initialCollateral = await collateral.balanceOf(tokenHolder);
+    await positionManager.settleEmergencyShutdown({ from: tokenHolder });
+    let collateralPaid = (await collateral.balanceOf(tokenHolder)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("0"));
+
+    // Settle emergency from the sponsor should give them back all their collateral, as token debt is worth 0.
+    initialCollateral = await collateral.balanceOf(sponsor);
+    await positionManager.settleEmergencyShutdown({ from: sponsor });
+    collateralPaid = (await collateral.balanceOf(sponsor)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("300"));
   });
 
   it("Undercapitalized contract", async function() {
