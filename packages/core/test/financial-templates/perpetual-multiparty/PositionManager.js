@@ -924,6 +924,10 @@ contract("PositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
+    assert(await didContractThrow(positionManager.remargin({ from: sponsor })));
+    assert(await didContractThrow(positionManager.transferPositionPassedRequest({ other }, { from: sponsor })));
+    assert(await didContractThrow(positionManager.withdrawPassedRequest({ from: sponsor })));
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
