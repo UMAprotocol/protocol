@@ -61,7 +61,7 @@ class Liquidator {
     this.empMinSponsorSize = empProps.minSponsorSize;
 
     this.empIdentifier = empProps.priceIdentifier;
-    this.empLiquidationLiveness = empProps.LiquidationLiveness;
+    this.empLiquidationLiveness = empProps.liquidationLiveness;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -143,24 +143,36 @@ class Liquidator {
     const configWithDefaults = createObjectFromDefaultProps(config, defaultConfig);
     Object.assign(this, configWithDefaults);
 
+    // generalize log emitter, use it to attach default data to all logs
+    const log = (severity = "info", data = {}) => {
+      // would rather just throw here and let index.js capture and log, but
+      // its currently not set up to add in the additional context for the error
+      // so it has to be done here.
+      if (logger[severity] == null) {
+        return logger.error({
+          at: "Liquidator",
+          ...data,
+          error: "Trying to submit log with unknown severity: " + severity
+        });
+      }
+      return logger[severity]({
+        at: "Liquidator",
+        // could add in additional context for any error thrown,
+        // such as state of emp or bot configuration data
+        minLiquidationPrice: this.liquidationMinPrice,
+        ...data
+      });
+    };
+    this.log = log;
+
     // this takes in config, and emits log events
     this.liquidationStrategy = LiquidationStrategy(
       {
         ...configWithDefaults,
-        empMinSponsorSize: empProps.minSponsorSize,
-        withdrawalLiveness: empProps.liquidationLiveness
+        ...empProps
       },
       this.web3.utils,
-      (type, severity, data = {}) => {
-        if (type !== "log") return;
-        if (this.logger[severity] == null) throw new Error("Unknown logger severity: " + severity);
-        this.logger[severity]({
-          // merge in common data
-          at: "Liquidator",
-          minLiquidationPrice: this.liquidationMinPrice,
-          ...data
-        });
-      }
+      log
     );
   }
 
@@ -274,8 +286,9 @@ class Liquidator {
         });
         continue;
       }
-      const [, , , { rawValue: tokensToLiquidateString }] = liquidationArgs;
-      const tokensToLiquidate = this.toBN(tokensToLiquidateString);
+
+      // pulls the tokens to liquidate parameter out of the liquidation arguments
+      const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);
 
       // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
       if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {

@@ -369,4 +369,23 @@ contract("index.js", function(accounts) {
     assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
     assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
   });
+  it("starts with wdf params and runs without errors", async function() {
+    const liquidatorConfig = {
+      whaleDefenseFundWei: "1000000",
+      defenseActivationPercent: 50
+    };
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig,
+      liquidatorConfig
+    });
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
+  });
 });

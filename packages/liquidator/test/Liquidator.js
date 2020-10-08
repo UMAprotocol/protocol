@@ -1125,6 +1125,115 @@ contract("Liquidator.js", function(accounts) {
           // 5 / 100 * 120 = 6
           assert.equal(liquidationObject.lockedCollateral, convert("6"));
         });
+        it("trigger multiple extensions and finally full liquidation", async () => {
+          const liquidatorConfig = {
+            // entire fund dedicated to strategy, allows 3 extensions
+            whaleDefenseFundWei: toBN(empProps.minSponsorSize)
+              .mul(toBN(10))
+              .toString(),
+            // will extend even if withdraw progress is 80% complete
+            defenseActivationPercent: 80
+          };
+          const liquidationLiveness = empProps.liquidationLiveness.toNumber();
+          const liquidator = new Liquidator({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            gasEstimator,
+            votingContract: mockOracle.contract,
+            syntheticToken: syntheticToken.contract,
+            priceFeed: priceFeedMock,
+            account: accounts[0],
+            empProps,
+            config: liquidatorConfig
+          });
+          await emp.create({ rawValue: convert("120") }, { rawValue: toWei("100") }, { from: sponsor1 });
+          await emp.create({ rawValue: convert("120") }, { rawValue: toWei("100") }, { from: sponsor2 });
+          // we have enough to fully liquidate one, then we have to extend the other
+          // wdf is 50, leaving 50 after first liquidation (200-100-50)
+          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("200") }, { from: liquidatorBot });
+
+          // Start with a mocked price of 1 usd per token.
+          // This puts both sponsors over collateralized so no liquidations should occur.
+          priceFeedMock.setCurrentPrice("1");
+
+          // both sponsors under collateralized
+          await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
+          await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor2 });
+
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          let [sponsor1Liquidation, sponsor2Liquidation] = [
+            (await emp.getLiquidations(sponsor1))[0],
+            (await emp.getLiquidations(sponsor2))[0]
+          ];
+          let sponsor2Positions = await emp.positions(sponsor2);
+
+          assert.equal(sponsor1Liquidation.liquidatedCollateral, convert("110"));
+          // 120 - 10 / 2 (half tokens liquidated)
+          assert.equal(sponsor2Liquidation.liquidatedCollateral, convert("55"));
+
+          // advance time to 50% of liquidation. This should not trigger extension until 80%
+          let nextTime = Math.ceil(
+            Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.5
+          );
+
+          await emp.setCurrentTime(nextTime);
+          // running again, should have no change
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          let sponsor2Liquidations = await emp.getLiquidations(sponsor2);
+          sponsor2Positions = await emp.positions(sponsor2);
+          // no new liquidations
+          assert.equal(sponsor2Liquidations.length, 1);
+
+          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.2);
+
+          await emp.setCurrentTime(nextTime);
+          // running again, should have another liquidation
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          sponsor2Liquidations = await emp.getLiquidations(sponsor2);
+          sponsor2Positions = await emp.positions(sponsor2);
+          assert.equal(sponsor2Liquidations.length, 2);
+          // min collateral for min liquidation
+          assert.equal(sponsor2Liquidations[1].liquidatedCollateral.rawValue, convert("5.5"));
+          // show position has been extended
+          assert.equal(
+            sponsor2Positions.withdrawalRequestPassTimestamp.toNumber(),
+            Number(sponsor2Liquidations[0].liquidationTime) + Number(liquidationLiveness)
+          );
+
+          // another extension
+          // advance time to 80% of liquidation
+          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.2);
+          await emp.setCurrentTime(nextTime);
+          // running again, should have another liquidation
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          sponsor2Liquidations = await emp.getLiquidations(sponsor2);
+          sponsor2Positions = await emp.positions(sponsor2);
+
+          // show a third liquidation has been added
+          assert.equal(sponsor2Liquidations.length, 3);
+
+          // finally allow full liquidation by adding more tokens to bot
+          await emp.create({ rawValue: convert("1000") }, { rawValue: toWei("200") }, { from: liquidatorBot });
+
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          sponsor2Liquidations = await emp.getLiquidations(sponsor2);
+          sponsor2Positions = await emp.positions(sponsor2);
+
+          // show a third liquidation has been added
+          assert.equal(sponsor2Liquidations.length, 4);
+          // show position has been fully liquidated
+          assert.equal(sponsor2Positions.tokensOutstanding, "0");
+        });
       });
     });
   }
