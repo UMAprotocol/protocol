@@ -719,18 +719,23 @@ contract PositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
-    function _getOracleEmergencyShutdownPrice() internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
-        require(oracle.hasPrice(priceIdentifier, emergencyShutdownTimestamp), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, emergencyShutdownTimestamp);
+        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
         return FixedPoint.Unsigned(uint256(oraclePrice));
+    }
+
+    // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
+    function _getOracleEmergencyShutdownPrice() internal view returns (FixedPoint.Unsigned memory) {
+        require(emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
+        return _getOraclePrice(emergencyShutdownTimestamp);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
