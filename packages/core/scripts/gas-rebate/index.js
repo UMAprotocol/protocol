@@ -26,7 +26,7 @@ const moment = require("moment");
 const fetch = require("node-fetch");
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["start", "end"],
+  string: ["start", "end", "rebateNumber"],
   boolean: ["reveal-only", "claim-only"]
 });
 const fs = require("fs");
@@ -563,7 +563,7 @@ async function Main(callback) {
     console.log("*                                       *");
     console.log("*=======================================*");
 
-    const rebateNumber = 1;
+    const rebateNumber = argv.rebateNumber ? argv.rebateNumber : "1";
     const endDate = argv.end ? argv.end : Math.round(Date.now() / 1000 - 24 * 60 * 60); // Default: Current time minus 1 day.
     const startDate = argv.start ? argv.start : endDate - 60 * 60 * 24 * 5; // Default: End time - 5 days
     console.log(`- Using start date: ${moment.unix(startDate).toString()}`);

@@ -36,7 +36,7 @@ const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier"] });
+const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier", "collateral"] });
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -47,11 +47,8 @@ let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
 let store;
 
-const empCollateralTokenMap = {
-  COMPUSD: TestnetERC20,
-  "ETH/BTC": TestnetERC20,
-  USDETH: WETH9,
-  USDBTC: TestnetERC20
+const isUsingWeth = identifier => {
+  return identifier.toUpperCase().endsWith("ETH");
 };
 
 /** ***************************************************
@@ -72,12 +69,18 @@ const deployEMP = async callback => {
       console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
     }
 
-    // renBTC TestnetERC20: 0x2426C4aaF20DD4501709dDa05d79ebC552d3aE3E
-    // DAI TestnetERC20: switch `.at(x)` to `.deployed()`
-    collateralToken = await empCollateralTokenMap[identifierBase].at("0x2426C4aaF20DD4501709dDa05d79ebC552d3aE3E");
+    // This subs in WETH where necessary.
+    const TokenContract = isUsingWeth(identifierBase) ? WETH9 : TestnetERC20;
+
+    if (!argv.collateral) {
+      collateralToken = await TokenContract.deployed();
+    } else {
+      // Mainnet renBTC: 0x2426C4aaF20DD4501709dDa05d79ebC552d3aE3E
+      collateralToken = await TokenContract.at(argv.collateral);
+    }
 
     if (argv.test) {
-      // Create a mockOracle and finder. Register the mockOracle with the finder.
+      // When running in test mode, deploy a mock oracle and whitelist the collateral currency used.
       const finder = await Finder.deployed();
       mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
@@ -85,7 +88,7 @@ const deployEMP = async callback => {
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
       // Whitelist collateral currency
-      collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+      collateralTokenWhitelist = await AddressWhitelist.deployed();
       await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
       console.log("Whitelisted collateral currency");
     }
@@ -94,7 +97,7 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: "1601503200", // 09/30/2020 @ 10:00pm (UTC)
+      expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
@@ -128,28 +131,33 @@ const deployEMP = async callback => {
     console.log(`Deployer address @ ${deployer}`);
     console.table(constructorParams);
 
-    // If in test environment, create an initial position so that we can create additional positions via the sponsor CLI.
-    // This step assumes that the web3 has access to the account at index 1 (i.e. accounts[1]).
-    if (argv.test && collateralToken.address === (await TestnetERC20.deployed()).address) {
+    if (argv.test) {
       const initialSponsor = accounts[1];
-      await collateralToken.allocateTo(initialSponsor, toWei("1200"));
+
+      // Grab tokens differently in the WETH case.
+      if (isUsingWeth(identifierBase)) {
+        // Mint accounts[1] collateral.
+        await collateralToken.deposit({ value: toWei("1200"), from: initialSponsor });
+
+        // Mint accounts[0] collateral.
+        await collateralToken.deposit({ value: toWei("1000000"), from: accounts[0] });
+        console.log("Converted 1,000,000 collateral WETH for accounts[0]");
+      } else {
+        // Mint accounts[1] collateral.
+        await collateralToken.allocateTo(initialSponsor, toWei("1200"));
+
+        // Mint accounts[0] collateral.
+        await collateralToken.allocateTo(accounts[0], toWei("1000000"));
+      }
+      console.log("Minted account 1 1200 collateral tokens and account 0 1,000,000 collateral tokens");
+
+      // Create the in initial position.
       await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
       await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
-      console.log("Created an initial position with CR = 120 % for the sponsor: ", initialSponsor);
-
-      // Mint accounts[0] collateral.
-      await collateralToken.allocateTo(accounts[0], toWei("1000000"));
-      console.log("Minted accounts[0] 1,000,000 collateral tokens");
-    } else if (argv.test && collateralToken.address === (await WETH9.deployed()).address) {
-      const initialSponsor = accounts[1];
-      await collateralToken.deposit({ value: toWei("1200"), from: initialSponsor });
-      await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
-      await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
-      console.log("Created an initial position with CR = 120 % for the sponsor: ", initialSponsor);
-
-      // Mint accounts[0] collateral.
-      await collateralToken.deposit({ value: toWei("1000000"), from: accounts[0] });
-      console.log("Converted 1,000,000 collateral WETH for accounts[0]");
+      console.log(
+        "Created an initial position with 1.2 collateral tokens for each synthetic token for the sponsor:",
+        initialSponsor
+      );
     }
   } catch (err) {
     console.error(err);

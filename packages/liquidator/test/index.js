@@ -11,7 +11,6 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
-const OneSplitMock = artifacts.require("OneSplitMock");
 const Store = artifacts.require("Store");
 
 // Custom winston transport module to monitor winston log outputs
@@ -22,7 +21,6 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-te
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
-  let oneSplitMock;
   let collateralToken;
   let syntheticToken;
   let emp;
@@ -47,7 +45,6 @@ contract("index.js", function(accounts) {
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
 
-    oneSplitMock = await OneSplitMock.new();
     store = await Store.deployed();
 
     constructorParams = {
@@ -129,7 +126,6 @@ contract("index.js", function(accounts) {
       logger: spyLogger,
       web3,
       empAddress: emp.address,
-      oneSplitAddress: oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -157,7 +153,6 @@ contract("index.js", function(accounts) {
       logger: spyLogger,
       web3,
       empAddress: earlyExpiryEmp.address,
-      oneSplitAddress: oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -177,7 +172,6 @@ contract("index.js", function(accounts) {
       logger: spyLogger,
       web3,
       empAddress: emp.address,
-      oneSplitAddress: oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -195,7 +189,6 @@ contract("index.js", function(accounts) {
       logger: spyLogger,
       web3,
       empAddress: emp.address,
-      oneSplitAddress: oneSplitMock.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -232,7 +225,6 @@ contract("index.js", function(accounts) {
         logger: spyLogger,
         web3,
         empAddress: emp.address,
-        oneSplitAddress: oneSplitMock.address,
         pollingDelay,
         errorRetries,
         errorRetriesTimeout,

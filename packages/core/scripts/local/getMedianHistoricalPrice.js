@@ -3,13 +3,20 @@
  * It could be used for example to query a price before committing a vote for a DVM price request.
  * We provide default configurations for querying median prices on specific markets across some exchanges and markets.
  * This script should serve as a template for constructing other historical median queries.
- *  *
- * @dev How to run: $(npm bin)/truffle exec ./scripts/local/GetMedianHistoricalPrice.js --network mainnet --identifier <PRICE-FEED IDENTIFIER> --time <TIMESTAMP IN SECONDS>
+ *
+ * @notice This script will fail if the `--time` is not within a 4 day lookback window and one of the medianized pricefeeds is a cryptowatch price feed.
+ * @dev How to run: yarn truffle exec ./packages/core/scripts/local/getMedianHistoricalPrice.js --network mainnet_mnemonic --identifier USDBTC --time 1601503200
  */
 const { fromWei } = web3.utils;
 const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
+
+const UMIP_PRECISION = {
+  USDBTC: 8,
+  USDETH: 5
+};
+const DEFAULT_PRECISION = 5;
 
 async function getMedianHistoricalPrice(callback) {
   try {
@@ -36,7 +43,7 @@ async function getMedianHistoricalPrice(callback) {
       new Networker(dummyLogger),
       getTime,
       null,
-      { lookback: 345600 }, // Empirically, Cryptowatch API returns data up to ~4 days back.
+      { lookback: 345600 }, // Empirically, Cryptowatch API only returns data up to ~4 days back.
       queryIdentifier
     );
     if (!medianizerPriceFeed) {
@@ -54,10 +61,17 @@ async function getMedianHistoricalPrice(callback) {
     } else {
       queryTime = argv.time;
     }
+    console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
 
-    // Get a price.
-    const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime);
-    console.log(`${queryIdentifier} price @ ${queryTime} = ${fromWei(queryPrice.toString())}`);
+    // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
+    // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
+    const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
+    const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
+    console.log(
+      `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
+        precisionToUse
+      )}`
+    );
   } catch (err) {
     callback(err);
     return;
