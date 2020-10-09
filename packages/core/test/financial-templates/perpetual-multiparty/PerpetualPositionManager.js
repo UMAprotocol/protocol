@@ -793,11 +793,19 @@ contract("PerpetualPositionManager", function(accounts) {
       )
     );
 
-    // Can repay all outstanding tokens, effectively wiping all debt in position.
-    await positionManager.repay({ rawValue: toWei("60") }, { from: sponsor });
-    assert.equal((await positionManager.positions(sponsor)).tokensOutstanding.rawValue, toWei("0"));
+    // Can repay up to the minimum sponsor size
+    await positionManager.repay(
+      {
+        rawValue: toBN(toWei("60"))
+          .sub(toBN(minSponsorTokens))
+          .toString()
+      },
+      { from: sponsor }
+    );
 
-    // As all debt has been repaid even repaying 1 wei should revert.
+    assert.equal((await positionManager.positions(sponsor)).tokensOutstanding.rawValue, minSponsorTokens);
+
+    // As at the minimum sponsor size even removing 1 wei wll revert.
     assert(await didContractThrow(positionManager.repay({ rawValue: "1" }, { from: sponsor })));
   });
 
