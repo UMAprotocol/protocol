@@ -491,7 +491,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
 
-        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size OR all tokens are repaid.
+        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
         require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
         positionData.tokensOutstanding = newTokenCount;
