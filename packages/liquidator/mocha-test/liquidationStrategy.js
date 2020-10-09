@@ -32,23 +32,23 @@ describe("LiquidatorStrategy", () => {
     };
     let strat = Strategy(config, { toBN, BN });
 
-    let result = strat.withdrawProgressPercent(100, 100, 101);
+    let result = strat.utils.withdrawProgressPercent(100, 100, 101);
     assert.equal(result, 100);
 
-    result = strat.withdrawProgressPercent(100, 100, 0);
+    result = strat.utils.withdrawProgressPercent(100, 100, 0);
     assert.equal(result, 0);
 
-    result = strat.withdrawProgressPercent(100, 100, 1);
+    result = strat.utils.withdrawProgressPercent(100, 100, 1);
     // comparing floats
     assert.equal(result.toFixed(2), "1.00");
 
-    result = strat.withdrawProgressPercent(1000, 1000, 1);
+    result = strat.utils.withdrawProgressPercent(1000, 1000, 1);
     assert.equal(result.toFixed(2), "0.10");
 
-    result = strat.withdrawProgressPercent(1000, 1000, 500);
+    result = strat.utils.withdrawProgressPercent(1000, 1000, 500);
     assert.equal(result.toFixed(2), "50.00");
 
-    result = strat.withdrawProgressPercent(1000, 2000, 1500);
+    result = strat.utils.withdrawProgressPercent(1000, 2000, 1500);
     assert.equal(result.toFixed(2), "50.00");
   });
   it("createLiquidationParams", () => {
@@ -62,7 +62,7 @@ describe("LiquidatorStrategy", () => {
       tokensToLiquidate: "1000",
       currentBlockTime: 100
     };
-    let result = strat.createLiquidationParams(params);
+    let result = strat.utils.createLiquidationParams(params);
     assert(result.length);
     assert.equal(result[0], params.sponsor);
     assert.equal(result[1].rawValue, "0");
@@ -80,7 +80,7 @@ describe("LiquidatorStrategy", () => {
       liquidationLiveness: 1000
     };
     let strat = Strategy(config, { toBN, BN });
-    let result = strat.calculateTokensToLiquidate({
+    let result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 10,
       maxTokensToLiquidateWei: "1000"
@@ -97,7 +97,7 @@ describe("LiquidatorStrategy", () => {
       },
       { toBN, BN }
     );
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 10,
       whaleDefenseFundWei: 95,
@@ -116,7 +116,7 @@ describe("LiquidatorStrategy", () => {
       { toBN, BN }
     );
 
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 50,
       whaleDefenseFundWei: 60,
@@ -125,7 +125,7 @@ describe("LiquidatorStrategy", () => {
     // should respsect wdf reserve value
     assert.equal(result.toString(), "40");
 
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 8,
       positionTokens: 10,
       maxTokensToLiquidateWei: "1000"
@@ -144,7 +144,7 @@ describe("LiquidatorStrategy", () => {
       { toBN, BN }
     );
 
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 1000,
       maxTokensToLiquidateWei: "1000"
@@ -163,7 +163,7 @@ describe("LiquidatorStrategy", () => {
       { toBN, BN }
     );
 
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 101,
       maxTokensToLiquidateWei: "1000"
@@ -171,7 +171,7 @@ describe("LiquidatorStrategy", () => {
     // should respsect empminsponsor size
     assert.equal(result.toString(), "1");
 
-    result = strat.calculateTokensToLiquidate({
+    result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 1000,
       positionTokens: 10000,
       maxTokensToLiquidateWei: "100"
@@ -184,9 +184,9 @@ describe("LiquidatorStrategy", () => {
       minSponsorSize: "10"
     };
     let strat = Strategy(config, { toBN, BN });
-    let result = strat.shouldLiquidate({ tokensToLiquidate: "100000" });
+    let result = strat.utils.shouldLiquidate({ tokensToLiquidate: "100000" });
     assert(result);
-    result = strat.shouldLiquidate({ tokensToLiquidate: "0" });
+    result = strat.utils.shouldLiquidate({ tokensToLiquidate: "0" });
     assert(!result);
   });
   it("shouldLiquidateMinimum", () => {
@@ -200,13 +200,13 @@ describe("LiquidatorStrategy", () => {
       withdrawalRequestPassTimestamp: 1000,
       numTokens: "100"
     };
-    let result = strat.shouldLiquidateMinimum({
+    let result = strat.utils.shouldLiquidateMinimum({
       position,
       syntheticTokenBalance: "50",
       currentBlockTime: 500
     });
     assert(result);
-    result = strat.shouldLiquidateMinimum({
+    result = strat.utils.shouldLiquidateMinimum({
       position,
       // our token balance is high enough to liquidate full position
       // so this should not active minimum
@@ -214,14 +214,14 @@ describe("LiquidatorStrategy", () => {
       currentBlockTime: 500
     });
     assert(!result);
-    result = strat.shouldLiquidateMinimum({
+    result = strat.utils.shouldLiquidateMinimum({
       position,
       syntheticTokenBalance: "50",
       // sponsor has not passed the withdraw liveness % complete to liquidate
       currentBlockTime: 0
     });
     assert(!result);
-    result = strat.shouldLiquidateMinimum({
+    result = strat.utils.shouldLiquidateMinimum({
       position,
       syntheticTokenBalance: "50",
       // withdraw has passed liveness

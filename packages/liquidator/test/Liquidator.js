@@ -1229,7 +1229,7 @@ contract("Liquidator.js", function(accounts) {
           sponsor2Liquidations = await emp.getLiquidations(sponsor2);
           sponsor2Positions = await emp.positions(sponsor2);
 
-          // show a third liquidation has been added
+          // show a fourth liquidation has been added ( final liquidation)
           assert.equal(sponsor2Liquidations.length, 4);
           // show position has been fully liquidated
           assert.equal(sponsor2Positions.tokensOutstanding, "0");

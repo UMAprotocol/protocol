@@ -1,21 +1,41 @@
 const assert = require("assert");
 /**
- * This module is responsible for sizing liquidation positions.
- * If a defensive strategy is enabled, it will check withdraw positions
- * to see if they require an extension rather than full liquidation.
+ * This module is responsible for sizing liquidation positions.  If a defensive strategy is enabled, it
+ * will check withdraw positions to see if they require an extension rather than full liquidation.
  * @constructor
  * @param {object} config - State configuration, env vars, contract vars
- * @property {number} config.whaleDefenseFundWei - Optional value which enables strategy if above 0. Specify the reserves to hold in tokens to allow for defense strategy. 0 disables.
- * @property {number} config.defenseActivationPercent - The % past liveness a position needs to be before its extended. Optional unless whaleDefenseFundWei is enabled.
- * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount of time after this time has passed
- * @property {number} config.liquidationLiveness - Optional unless whaleDefenseFundWei is enabled. The positions liveness duration, set by emp contract.
+ * @property {number} config.whaleDefenseFundWei - Optional value which enables strategy if above 0. Specify the
+ * reserves to hold in tokens to allow for defense strategy. 0 disables.
+ * @property {number} config.defenseActivationPercent - The % past liveness a position needs to be before its
+ * extended. Optional unless whaleDefenseFundWei is enabled.
+ * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
+ * of time after this time has passed
+ * @property {number} config.liquidationLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
+ * liveness duration, set by emp contract.
  * @property {number} config.minSponsorSize - Emp minimum sponsor position size in tokens.
+ * Example:
+ * {
+ *   whaleDefenseFundWei: '10000000000000000000',
+ *   defenseActivationPercent: 80,
+ *   liquidationDeadline: 300,
+ *   liquidationLiveness: 10000,
+ *   minSponsorSize: '5000000000000000000'
+ * }
  * @param {object} deps - Library dependencies
  * @property {object} deps.toBN - toBN function
  * @property {object} deps.BN - BN utilities
+ * Example:
+ * {
+ *   toBN: Web3.utils.toBN,
+ *   BN: Web3.utils.BN,
+ * }
  * @callback emit - A way to emit logs to an external logger
  * @param {string} severity - Log level severity
  * @param {object} data - Any data you want to be sent in log
+ * Example:
+ * function log(severity,data){
+ *   logger[severity]({ at:'Liquidator', ...data })
+ * }
  */
 module.exports = (
   {
@@ -219,13 +239,16 @@ module.exports = (
   }
 
   return {
-    // main public function
+    // Main function
     processPosition,
-    // private functions exposed for testing
-    shouldLiquidate,
-    shouldLiquidateMinimum,
-    createLiquidationParams,
-    withdrawProgressPercent,
-    calculateTokensToLiquidate
+    // Utility calls exposed for testing or other use
+    // Not really needed outside this module
+    utils: {
+      shouldLiquidate,
+      shouldLiquidateMinimum,
+      createLiquidationParams,
+      withdrawProgressPercent,
+      calculateTokensToLiquidate
+    }
   };
 };
