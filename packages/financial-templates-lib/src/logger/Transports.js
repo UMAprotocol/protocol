@@ -9,6 +9,7 @@ const SlackTransport = require("./SlackTransport");
 const PagerDutyTransport = require("./PagerDutyTransport");
 
 require("dotenv").config();
+const argv = require("minimist")(process.argv.slice(), {});
 
 // Transports array to store all winston transports.
 let transports = [];
@@ -32,7 +33,7 @@ else if (process.env.ENVIRONMENT == "production") {
 }
 
 // If there is "test" in the environment then skip the slack or pagerduty.
-if (require("minimist")(process.argv.slice(), {})._.indexOf("test") == -1) {
+if (argv._.indexOf("test") == -1) {
   // If there is a slack web hook, add to the transports array to enable slack messages.
   if (process.env.SLACK_WEBHOOK) {
     transports.push(SlackTransport.createSlackTransport(process.env.SLACK_WEBHOOK));
