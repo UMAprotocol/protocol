@@ -11,7 +11,8 @@ const {
   advanceBlockAndSetTime,
   takeSnapshot,
   revertToSnapshot,
-  computeVoteHash
+  computeVoteHash,
+  signMessage
 } = require("@uma/common");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
@@ -145,6 +146,12 @@ async function runExport() {
     "currentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
+
+  console.log("📸 Generating a voting token snapshot.");
+  const account = (await web3.eth.getAccounts())[0];
+  const snapshotMessage = "Sign For Snapshot";
+  let signature = await signMessage(web3, snapshotMessage, account);
+  await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
 
   const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet, gas: 2000000 });
   console.log("Reveal Tx done!", revealTx.tx);
