@@ -10,8 +10,14 @@ const collateralToSend = "100000";
 const tokensToCreate = "100";
 const approvalAmount = "99999999999999999999";
 
-const tagToAppend = "deadbeef";
 const nodeUrl = "http://127.0.0.1:9545";
+const developerAddress = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
+
+function getTagBytes(address) {
+  const paddedAddress = web3.utils.padLeft(address, 64);
+  // 32 byte "f" is the delimeter (very large number), then the padded address needs to have its "0x" prefix removed.
+  return "f".repeat(64) + paddedAddress.slice(2);
+}
 
 async function createAndTagEthers(empAddress, collateralAddress, providerUrl) {
   const provider = new ethers.providers.JsonRpcProvider(providerUrl);
@@ -26,7 +32,7 @@ async function createAndTagEthers(empAddress, collateralAddress, providerUrl) {
     { rawValue: ethers.utils.parseUnits(tokensToCreate) }
   );
 
-  unsignedTxn.data = unsignedTxn.data.concat(tagToAppend);
+  unsignedTxn.data = unsignedTxn.data.concat(getTagBytes(developerAddress));
   console.log(await signer.sendTransaction(unsignedTxn));
 }
 
@@ -44,7 +50,7 @@ async function createAndTagWeb3(empAddress, collateralAddress, providerUrl) {
     .create({ rawValue: web3.utils.toWei(collateralToSend) }, { rawValue: web3.utils.toWei(tokensToCreate) })
     .encodeABI();
 
-  encodedData = encodedData.concat(tagToAppend);
+  encodedData = encodedData.concat(getTagBytes(developerAddress));
 
   console.log(
     await web3.eth.sendTransaction({
