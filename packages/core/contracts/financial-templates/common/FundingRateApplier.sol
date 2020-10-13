@@ -81,7 +81,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         FixedPoint.Unsigned memory latestFundingRate = _getLatestFundingRate();
         if (!lastUpdateFundingRate.isEqual(latestFundingRate)) {
             cumulativeFundingRateMultiplier = cumulativeFundingRateMultiplier.mul(
-                latestFundingRate.sub(latestFundingRate).add(1)
+                latestFundingRate.sub(latestFundingRate).add(FixedPoint.fromUnscaledUint(1))
             );
             lastUpdateFundingRate = latestFundingRate;
         }
