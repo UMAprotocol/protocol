@@ -189,10 +189,11 @@ module.exports = (
   // end - end time that withdraw passes in unix seconds ts
   // now - current block time in unix seconds ts
   function withdrawProgressPercent(duration, end, now) {
-    const elapsed = end - now;
-    if (elapsed <= 0) return 100;
-    if (elapsed >= duration) return 0;
-    return 100 * (1 - elapsed / duration);
+    const start = end - duration;
+    const elapsed = now - start;
+    if (elapsed <= 0) return 0;
+    if (elapsed >= duration) return 100;
+    return 100 * (elapsed / duration);
   }
 
   // Should we try to delay this withdrawal. Update this logic to change conditions to run delay strategy.
