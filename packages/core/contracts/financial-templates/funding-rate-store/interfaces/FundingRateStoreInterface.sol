@@ -1,6 +1,9 @@
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
+
+import "../../../common/implementation/FixedPoint.sol";
 
 
 interface FundingRateStoreInterface {
-    function getLatestFundingRateForIdentifier(bytes32 identifier) external view returns (int256);
+    function getFundingRateForIdentifier(bytes32 identifier) external view returns (FixedPoint.Unsigned memory);
 }
