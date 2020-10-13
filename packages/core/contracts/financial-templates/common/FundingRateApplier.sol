@@ -20,6 +20,7 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
  */
 
 abstract contract FundingRateApplier is Testable, Lockable {
+    using SafeMath for int256;
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -34,7 +35,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
 
     bytes32 identifer;
 
-    int256 lastUpdateFundingRate;
+    FixedPoint.Unsigned public lastUpdateFundingRate;
 
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
 
@@ -52,12 +53,13 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     constructor(
-        uint256 _initialFundingRate,
+        FixedPoint.Unsigned memory _initialFundingRate,
         address _fpFinderAddress,
         address _timerAddress,
         bytes32 _identifer
     ) public Testable(_timerAddress) nonReentrant() {
-        cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(_initialFundingRate);
+        cumulativeFundingRateMultiplier = _initialFundingRate;
+        lastUpdateFundingRate = FixedPoint.fromUnscaledUint(0);
         fpFinder = FinderInterface(_fpFinderAddress);
         lastUpdateTime = getCurrentTime();
         identifer = _identifer;
@@ -76,8 +78,11 @@ abstract contract FundingRateApplier is Testable, Lockable {
      ****************************************/
 
     function _updateFunding() internal {
-        int256 latestFundingRate = _getLatestFundingRate();
-        if (lastUpdateFundingRate != latestFundingRate) {
+        FixedPoint.Unsigned memory latestFundingRate = _getLatestFundingRate();
+        if (!lastUpdateFundingRate.isEqual(latestFundingRate)) {
+            cumulativeFundingRateMultiplier = cumulativeFundingRateMultiplier.mul(
+                latestFundingRate.sub(latestFundingRate).add(1)
+            );
             lastUpdateFundingRate = latestFundingRate;
         }
     }
@@ -86,8 +91,9 @@ abstract contract FundingRateApplier is Testable, Lockable {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _getLatestFundingRate() internal view returns (int256) {
+    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
         FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        return fundingRateStore.getLatestFundingRateForIdentifier(identifer);
+        // PROBLEM this is only signed. fixed point does not support unsigned numbers? we might need to make a change here
+        return FixedPoint.Unsigned(uint256(fundingRateStore.getLatestFundingRateForIdentifier(identifer)));
     }
 }
