@@ -62,6 +62,7 @@ contract("FundingRateApplier", function() {
         ev.newMultiplier == toWei("1.05") &&
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
+        ev.latestFundingRate == toWei("1.01") &&
         ev.effectiveFundingRateForPaymentPeriod == toWei("1.05")
       );
     });
@@ -81,6 +82,7 @@ contract("FundingRateApplier", function() {
         ev.newMultiplier == toWei("0.945") &&
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
+        ev.latestFundingRate == toWei("0.98") &&
         ev.effectiveFundingRateForPaymentPeriod == toWei("0.9")
       );
     });
@@ -100,6 +102,7 @@ contract("FundingRateApplier", function() {
         ev.newMultiplier == toWei("0.945") &&
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
+        ev.latestFundingRate == toWei("1") &&
         ev.effectiveFundingRateForPaymentPeriod == toWei("1")
       );
     });
