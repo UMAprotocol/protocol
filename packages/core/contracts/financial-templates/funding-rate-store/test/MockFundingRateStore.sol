@@ -41,6 +41,9 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         view
         returns (FixedPoint.Unsigned memory fundingRate)
     {
+        if (fundingRates[identifier].length == 0) {
+            return FixedPoint.fromUnscaledUint(1);
+        }
         return fundingRates[identifier][fundingRates[identifier].length - 1].fundingRate;
     }
 }

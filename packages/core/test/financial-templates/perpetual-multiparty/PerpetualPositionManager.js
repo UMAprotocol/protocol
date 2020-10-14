@@ -11,6 +11,7 @@ const PerpetualPositionManager = artifacts.require("PerpetualPositionManager");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
@@ -38,6 +39,8 @@ contract("PerpetualPositionManager", function(accounts) {
   let timer;
   let tokenFactory;
   let finder;
+  let fpFinder;
+  let mockFundingRateStore;
   let store;
 
   // Initial constant values
@@ -120,11 +123,21 @@ contract("PerpetualPositionManager", function(accounts) {
 
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
+    // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
+
+    fpFinder = await Finder.new({ from: contractDeployer });
+    mockFundingRateStore = await MockFundingRateStore.new(timer.address, { from: contractDeployer });
+    const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);
+    await fpFinder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
+      from: contractDeployer
+    });
+
     // Create the instance of the positionManager to test against.
     positionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
+      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
@@ -132,7 +145,7 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
+      { from: contractDeployer, gasLimit: 8000000000 }
     );
     tokenCurrency = await SyntheticToken.at(await positionManager.tokenCurrency());
   });

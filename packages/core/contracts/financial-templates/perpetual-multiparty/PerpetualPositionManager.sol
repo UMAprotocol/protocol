@@ -15,6 +15,7 @@ import "../../oracle/implementation/Constants.sol";
 
 import "../common/TokenFactory.sol";
 import "../common/FeePayer.sol";
+import "../common/FundingRateApplier.sol";
 
 
 /**
@@ -23,7 +24,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
+contract PerpetualPositionManager is FeePayer, FundingRateApplier, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -60,9 +61,6 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
 
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
-
-    // Unique identifier for DVM price feed ticker.
-    bytes32 public priceIdentifier;
 
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     // !!Note: The lower the withdrawal liveness value, the more risk incurred by the contract.
@@ -147,6 +145,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
+        address _fpFinderAddress,
         bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol,
@@ -154,14 +153,18 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
+    )
+        public
+        FeePayer(_collateralAddress, _finderAddress, _timerAddress)
+        FundingRateApplier(FixedPoint.fromUnscaledUint(1), _fpFinderAddress, _priceIdentifier, _timerAddress)
+        nonReentrant()
+    {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
-        priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
@@ -174,7 +177,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
      * Once the request liveness is passed, the sponsor can execute the transfer and specify the new sponsor.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
-    function requestTransferPosition() public notEmergencyShutdown() nonReentrant() {
+    function requestTransferPosition() public notEmergencyShutdown() updateFundingRate() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
 
@@ -194,6 +197,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         public
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
+        updateFundingRate()
         nonReentrant()
     {
         require(
@@ -223,7 +227,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending transfer position request.
      */
-    function cancelTransferPosition() external notEmergencyShutdown() nonReentrant() {
+    function cancelTransferPosition() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
 
@@ -245,6 +249,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         notEmergencyShutdown()
         noPendingWithdrawal(sponsor)
         fees()
+        updateFundingRate()
         nonReentrant()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
@@ -282,6 +287,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -310,6 +316,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         public
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
+        updateFundingRate()
         nonReentrant()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -337,6 +344,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         external
         notEmergencyShutdown()
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -369,7 +377,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
+    function cancelWithdrawal() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
@@ -392,6 +400,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         public
         notEmergencyShutdown()
         fees()
+        updateFundingRate()
         nonReentrant()
     {
         PositionData storage positionData = positions[msg.sender];
@@ -439,6 +448,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -479,6 +489,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountRepaired)
     {
@@ -497,6 +508,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         external
         isEmergencyShutdown()
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -512,10 +524,14 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
         if (_getFeeAdjustedCollateral(positionData.rawCollateral).isGreaterThan(0)) {
-            // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(
-                emergencyShutdownPrice
-            );
+            // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
+            // the funding rate applied.
+
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
+                positionData
+                    .tokensOutstanding
+            )
+                .mul(emergencyShutdownPrice);
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
@@ -561,7 +577,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override notEmergencyShutdown() nonReentrant() {
+    function emergencyShutdown() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
         require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
         emergencyShutdownTimestamp = getCurrentTime();
@@ -576,7 +592,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
-    function remargin() external override notEmergencyShutdown() nonReentrant() {
+    function remargin() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
         return;
     }
 

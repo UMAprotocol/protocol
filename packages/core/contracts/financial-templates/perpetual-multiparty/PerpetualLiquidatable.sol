@@ -58,6 +58,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         uint256 withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
+        address fpFinderAddress;
         address tokenFactoryAddress;
         address timerAddress;
         address excessTokenBeneficiary;
@@ -159,6 +160,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.withdrawalLiveness,
             params.collateralAddress,
             params.finderAddress,
+            params.fpFinderAddress,
             params.priceFeedIdentifier,
             params.syntheticName,
             params.syntheticSymbol,
@@ -211,6 +213,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     )
         external
         fees()
+        updateFundingRate()
         notEmergencyShutdown()
         nonReentrant()
         returns (
@@ -349,6 +352,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
@@ -397,6 +401,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -415,9 +420,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(settlementPrice).mul(
-            feeAttenuation
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue = _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding)
+            .mul(settlementPrice)
+            .mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
@@ -524,8 +529,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
-            liquidation.settlementPrice
+        FixedPoint.Unsigned memory tokenRedemptionValue = _getFundingRateAppliedTokenDebt(
+            liquidation.tokensOutstanding.mul(liquidation.settlementPrice)
         );
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio.

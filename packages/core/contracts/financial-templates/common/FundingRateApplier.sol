@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
+import "../../common/implementation/Timer.sol";
 
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
@@ -20,7 +20,7 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-contract FundingRateApplier is Testable, Lockable {
+contract FundingRateApplier is Lockable {
     using SafeMath for int256;
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
@@ -37,7 +37,7 @@ contract FundingRateApplier is Testable, Lockable {
     uint256 lastUpdateTime;
 
     // Identifier in funding rate store to query for.
-    bytes32 identifer;
+    bytes32 priceIdentifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -48,6 +48,8 @@ contract FundingRateApplier is Testable, Lockable {
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
 
+    Timer timer;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -55,8 +57,9 @@ contract FundingRateApplier is Testable, Lockable {
     // TODO: Decide which params to emit in this event.
     event NewFundingRate(
         uint256 indexed newMultiplier,
+        uint256 indexed lastUpdateTime,
         uint256 indexed updateTime,
-        uint256 indexed paymentPeriod,
+        uint256 paymentPeriod,
         uint256 effectiveFundingRateForPaymentPeriod
     );
 
@@ -64,7 +67,7 @@ contract FundingRateApplier is Testable, Lockable {
      *              MODIFIERS               *
      ****************************************/
 
-    modifier updateFunding {
+    modifier updateFundingRate {
         _applyEffectiveFundingRatePerToken();
         _;
     }
@@ -72,13 +75,15 @@ contract FundingRateApplier is Testable, Lockable {
     constructor(
         FixedPoint.Unsigned memory _initialFundingRate,
         address _fpFinderAddress,
-        address _timerAddress,
-        bytes32 _identifer
-    ) public Testable(_timerAddress) nonReentrant() {
+        bytes32 _priceIdentifier,
+        address _timerAddress
+    ) public nonReentrant() {
         cumulativeFundingRateMultiplier = _initialFundingRate;
         fpFinder = FinderInterface(_fpFinderAddress);
-        lastUpdateTime = getCurrentTime();
-        identifer = _identifer;
+        lastUpdateTime = timer.getCurrentTime();
+        priceIdentifier = _priceIdentifier;
+
+        timer = Timer(_timerAddress);
     }
 
     function _getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
@@ -105,23 +110,26 @@ contract FundingRateApplier is Testable, Lockable {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _applyEffectiveFundingRatePerToken() internal {
-        uint256 currentTime = getCurrentTime();
-        uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
-
+    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
         FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        FixedPoint.Unsigned memory _latestFundingRatePerSecondPerToken = fundingRateStore.getFundingRateForIdentifier(
-            identifer
-        );
+        return fundingRateStore.getFundingRateForIdentifier(priceIdentifier);
+    }
+
+    function _applyEffectiveFundingRatePerToken() internal {
+        uint256 currentTime = timer.getCurrentTime();
+        uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
+        FixedPoint.Unsigned memory _latestFundingRatePerSecondPerToken = _getLatestFundingRate();
 
         // Determine whether `_latestFundingRate` implies a negative or positive funding rate,
         // and apply it over a pay period.
         FixedPoint.Unsigned memory effectiveFundingRateForPeriodPerToken;
         FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
 
+        // This if else logic is needed to keep the calculations strictly positive to accommodate FixedPoint.Unsigned
         if (_latestFundingRatePerSecondPerToken.isEqual(ONE)) {
             effectiveFundingRateForPeriodPerToken = ONE;
         } else if (_latestFundingRatePerSecondPerToken.isGreaterThan(ONE)) {
+            // effectiveFundingRateForPeriodPerToken = 1 + (_latestFundingRatePerSecondPerToken - 1) * paymentPeriod
             effectiveFundingRateForPeriodPerToken = ONE.add(
                 _latestFundingRatePerSecondPerToken.sub(ONE).mul(paymentPeriod)
             );
@@ -129,6 +137,7 @@ contract FundingRateApplier is Testable, Lockable {
                 effectiveFundingRateForPeriodPerToken
             );
         } else {
+            // effectiveFundingRateForPeriodPerToken = 1 - (1 - _latestFundingRatePerSecondPerToken) * paymentPeriod
             effectiveFundingRateForPeriodPerToken = ONE.sub(
                 ONE.sub(_latestFundingRatePerSecondPerToken).mul(paymentPeriod)
             );
@@ -137,13 +146,14 @@ contract FundingRateApplier is Testable, Lockable {
             );
         }
 
-        lastUpdateTime = currentTime;
-
         emit NewFundingRate(
             cumulativeFundingRateMultiplier.rawValue,
+            currentTime,
             lastUpdateTime,
             paymentPeriod,
             effectiveFundingRateForPeriodPerToken.rawValue
         );
+
+        lastUpdateTime = currentTime;
     }
 }
