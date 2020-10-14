@@ -34,7 +34,7 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
 
     // Validate property value, regardless if coming from `overrideProps` or `defaultProps`.
     if (!defaultProps[prop].isValid(newObject[prop])) {
-      throw new Error("Attempting to set configuration field with invalid value");
+      throw new Error(`Attempting to set configuration field with invalid value on ${prop}`);
     }
   });
 

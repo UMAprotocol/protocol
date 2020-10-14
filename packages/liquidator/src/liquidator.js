@@ -6,6 +6,8 @@ const {
   revertWrapper
 } = require("@uma/common");
 
+const LiquidationStrategy = require("./liquidationStrategy");
+
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
@@ -59,6 +61,7 @@ class Liquidator {
     this.empMinSponsorSize = empProps.minSponsorSize;
 
     this.empIdentifier = empProps.priceIdentifier;
+    this.empLiquidationLiveness = empProps.liquidationLiveness;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -118,18 +121,65 @@ class Liquidator {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
           return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
         }
+      },
+      whaleDefenseFundWei: {
+        // by default make this disabled
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return this.toBN(x).gte(this.toBN("0"));
+        }
+      },
+      defenseActivationPercent: {
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return parseFloat(x) >= 0 && parseFloat(x) <= 100;
+        }
       }
     };
 
     // Validate and set config settings to class state.
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    const configWithDefaults = createObjectFromDefaultProps(config, defaultConfig);
+    Object.assign(this, configWithDefaults);
+
+    // generalize log emitter, use it to attach default data to all logs
+    const log = (severity = "info", data = {}) => {
+      // would rather just throw here and let index.js capture and log, but
+      // its currently not set up to add in the additional context for the error
+      // so it has to be done here.
+      if (logger[severity] == null) {
+        return logger.error({
+          at: "Liquidator",
+          ...data,
+          error: "Trying to submit log with unknown severity: " + severity
+        });
+      }
+      return logger[severity]({
+        at: "Liquidator",
+        // could add in additional context for any error thrown,
+        // such as state of emp or bot configuration data
+        minLiquidationPrice: this.liquidationMinPrice,
+        ...data
+      });
+    };
+    this.log = log;
+
+    // this takes in config, and emits log events
+    this.liquidationStrategy = LiquidationStrategy(
+      {
+        ...configWithDefaults,
+        ...empProps
+      },
+      this.web3.utils,
+      log
+    );
   }
 
   // Update the empClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
   async update() {
     await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
-
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   // If `maxTokensToLiquidateWei` is not passed in, then the bot will attempt to liquidate the full position.
   // If liquidatorOverridePrice is provided then the liquidator bot will override the price feed with this input price.
@@ -195,35 +245,33 @@ class Liquidator {
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
+      const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
 
-      // Calculate the amount of tokens we will attempt to liquidate.
-      let tokensToLiquidate;
+      // run strategy based on configs and current state
+      // will return liquidation arguments or nothing
+      // if it returns nothing it means this position cant be or shouldnt be liquidated
+      const liquidationArgs = this.liquidationStrategy.processPosition({
+        // position is assumed to be undercollateralized
+        position,
+        // need to know our current balance to know how much to save for defense fund
+        syntheticTokenBalance,
+        // this is required to create liquidation object
+        maxCollateralPerToken,
+        // maximum tokens we can liquidate in position
+        maxTokensToLiquidateWei,
+        // minimim position size, as well as minimum liquidation to extend withdraw
+        empMinSponsorSize: this.empMinSponsorSize,
+        currentBlockTime,
+        // for logging
+        inputPrice: scaledPrice.toString()
+      });
 
-      // If the user specifies `maxTokensToLiquidateWei`, then we must make sure that it follows an important constraint:
-      // we cannot bring the position down below the `minSponsorPosition`.
-      if (maxTokensToLiquidateWei) {
-        // First, we check if `maxTokensToLiquidateWei > tokensOutstanding`, if so then we'll liquidate the full position.
-        if (this.toBN(maxTokensToLiquidateWei).gte(this.toBN(position.numTokens))) {
-          tokensToLiquidate = this.toBN(position.numTokens);
-        } else {
-          // If we're not liquidating the full position, then we cannot liquidate the position below the `minSponsorTokens` constraint.
-          // `positionTokensAboveMinimum` is the maximum amount of tokens any liquidator can liquidate while taking `minSponsorTokens` into account.
-          const positionTokensAboveMinimum = this.toBN(position.numTokens).sub(this.toBN(this.empMinSponsorSize));
-
-          // Finally, we cannot liquidate more than `maxTokensToLiquidate`.
-          tokensToLiquidate = this.BN.min(positionTokensAboveMinimum, this.toBN(maxTokensToLiquidateWei));
-        }
-      } else {
-        // If `maxTokensToLiquidateWei` is not specified, then we will attempt to liquidate the full position.
-        tokensToLiquidate = this.toBN(position.numTokens);
-      }
-
-      // If `tokensToLiquidate` is 0, then skip this liquidation. Due to the if-statement branching above, `tokensToLiquidate == 0`
-      // is only possible if the `positionTokensAboveMinimum == 0` && `maxTokensToLiquidate < position.numTokens`. In other words,
-      // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
-      // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
-      // client-side.
-      if (tokensToLiquidate.isZero()) {
+      // we couldnt liquidate, this typically would only happen if our balance is 0
+      // This gets logged as an event, see constructor
+      if (!liquidationArgs) {
+        // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
+        // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
+        // client-side.
         this.logger.error({
           at: "Liquidator",
           message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
@@ -232,11 +280,15 @@ class Liquidator {
           position: position,
           minLiquidationPrice: this.liquidationMinPrice,
           maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
+          tokensToLiquidate: "0",
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
           error: new Error("Refusing to liquidate 0 tokens")
         });
         continue;
       }
+
+      // pulls the tokens to liquidate parameter out of the liquidation arguments
+      const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);
 
       // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
       if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
@@ -249,18 +301,13 @@ class Liquidator {
           minLiquidationPrice: this.liquidationMinPrice,
           maxLiquidationPrice: maxCollateralPerToken.toString(),
           tokensToLiquidate: tokensToLiquidate.toString(),
-          maxTokensToLiquidateWei: maxTokensToLiquidateWei.toString()
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null
         });
       }
 
-      // Create the liquidation transaction.
-      const liquidation = this.empContract.methods.createLiquidation(
-        position.sponsor,
-        { rawValue: this.liquidationMinPrice },
-        { rawValue: maxCollateralPerToken.toString() },
-        { rawValue: tokensToLiquidate.toString() },
-        parseInt(currentBlockTime) + this.liquidationDeadline
-      );
+      // liquidation strategy will control how much to liquidate
+      const liquidation = this.empContract.methods.createLiquidation(...liquidationArgs);
 
       // Send the transaction or report failure.
       let receipt;
