@@ -37,7 +37,7 @@ contract FundingRateApplier is Testable, Lockable {
     uint256 lastUpdateTime;
 
     // Identifier in funding rate store to query for.
-    bytes32 identifer;
+    bytes32 identifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -57,6 +57,7 @@ contract FundingRateApplier is Testable, Lockable {
         uint256 indexed newMultiplier,
         uint256 indexed updateTime,
         uint256 indexed paymentPeriod,
+        uint256 latestFundingRate,
         uint256 effectiveFundingRateForPaymentPeriod
     );
 
@@ -64,23 +65,54 @@ contract FundingRateApplier is Testable, Lockable {
      *              MODIFIERS               *
      ****************************************/
 
+    // modifier that calls applyFundingRate().
     modifier updateFunding {
-        _applyEffectiveFundingRatePerToken();
+        applyFundingRate();
         _;
     }
 
+    /**
+     * @notice Constructs the FundingRateApplier contract. Called by child contracts.
+     * @param _initialFundingRate Starting funding rate multiplier.
+     * @param _fpFinderAddress Finder used to discover financial-product-related contracts.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * @param _identifier Unique identifier for DVM price feed ticker for child financial contract.
+     * Must be set to 0x0 for production environments that use live time.
+     */
     constructor(
         FixedPoint.Unsigned memory _initialFundingRate,
         address _fpFinderAddress,
         address _timerAddress,
-        bytes32 _identifer
+        bytes32 _identifier
     ) public Testable(_timerAddress) nonReentrant() {
+        // TODO: Should we constrain `_initialFundingRate > x && < y`?
         cumulativeFundingRateMultiplier = _initialFundingRate;
         fpFinder = FinderInterface(_fpFinderAddress);
         lastUpdateTime = getCurrentTime();
-        identifer = _identifer;
+        identifier = _identifier;
     }
 
+    /****************************************
+     *         PUBLIC FUNCTIONS           *
+     ****************************************/
+
+    /**
+     * @notice Fetches the latest funding rate from the Store, scales it over the time period since the last update,
+     * and uses this effective rate to set a new funding rate multiplier.
+     * @dev A funding rate of 1.0 reported by the Store implies a neutral funding rate, meaning that the current multiplier
+     * should not change.
+     */
+    function applyFundingRate() public {
+        _applyEffectiveFundingRatePerToken();
+    }
+
+    /****************************************
+     *         INTERNAL FUNCTIONS           *
+     ****************************************/
+
+    // Returns a token amount scaled by the current funding rate multiplier.
+    // Note: if the contract has paid fees since it was deployed, the raw
+    // value should be larger than the returned value.
     function _getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
         internal
         view
@@ -89,29 +121,22 @@ contract FundingRateApplier is Testable, Lockable {
         return rawTokenDebt.mul(cumulativeFundingRateMultiplier);
     }
 
-    /****************************************
-     *         PUBLIC FUNCTIONS           *
-     ****************************************/
-
-    function applyFundingRate() external {
-        _applyEffectiveFundingRatePerToken();
-    }
-
-    /****************************************
-     *         INTERNAL FUNCTIONS           *
-     ****************************************/
-
     function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
+    // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
+    // and multiplies the current multiplier by the effective fee.
+    // A funding rate < 1 will reduce the multiplier, and a funding rate of > 1 will increase the multiplier.
+    // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
+    // values < 1 as "negative".
     function _applyEffectiveFundingRatePerToken() internal {
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
         FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
         FixedPoint.Unsigned memory _latestFundingRatePerSecondPerToken = fundingRateStore.getFundingRateForIdentifier(
-            identifer
+            identifier
         );
 
         // Determine whether `_latestFundingRate` implies a negative or positive funding rate,
@@ -120,8 +145,14 @@ contract FundingRateApplier is Testable, Lockable {
         FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
 
         if (_latestFundingRatePerSecondPerToken.isEqual(ONE)) {
+            // If `_latestFundingRate` == 1, then maintain the current multiplier.
+
             effectiveFundingRateForPeriodPerToken = ONE;
         } else if (_latestFundingRatePerSecondPerToken.isGreaterThan(ONE)) {
+            // If `_latestFundingRate` > 1, then first scale the funding over the pay period:
+            // (`_latestFundingRate` - 1) * payPeriod = effectiveFundingRate.
+            // Next, multiply the current multipier by (1 + effectiveFundingRate).
+
             effectiveFundingRateForPeriodPerToken = ONE.add(
                 _latestFundingRatePerSecondPerToken.sub(ONE).mul(paymentPeriod)
             );
@@ -129,6 +160,10 @@ contract FundingRateApplier is Testable, Lockable {
                 effectiveFundingRateForPeriodPerToken
             );
         } else {
+            // If `_latestFundingRate` < 1, then first scale the funding over the pay period:
+            // (1 - `_latestFundingRate`) * payPeriod = effectiveFundingRate.
+            // Next, multiply the current multipier by (1 - effectiveFundingRate).
+
             effectiveFundingRateForPeriodPerToken = ONE.sub(
                 ONE.sub(_latestFundingRatePerSecondPerToken).mul(paymentPeriod)
             );
@@ -143,6 +178,7 @@ contract FundingRateApplier is Testable, Lockable {
             cumulativeFundingRateMultiplier.rawValue,
             lastUpdateTime,
             paymentPeriod,
+            _latestFundingRatePerSecondPerToken.rawValue,
             effectiveFundingRateForPeriodPerToken.rawValue
         );
     }
