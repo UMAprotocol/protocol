@@ -99,6 +99,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
+    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
     event SettleEmergencyShutdown(
         address indexed caller,
@@ -443,7 +444,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
@@ -474,15 +475,35 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
+    /**
+     * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
+     * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
+     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
+     */
     function repay(FixedPoint.Unsigned memory numTokens)
         public
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountRepaired)
     {
-        // TODO: implementation
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
+
+        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
+        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
+        positionData.tokensOutstanding = newTokenCount;
+
+        // Update the totalTokensOutstanding after redemption.
+        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
+
+        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
+
+        // Transfer the tokens back from the sponsor and burn them.
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     /**
@@ -834,7 +855,7 @@ contract PerpetualPositionManager is FeePayer, AdministrateeInterface {
         pure
         returns (FixedPoint.Unsigned memory ratio)
     {
-        if (!numTokens.isGreaterThan(0)) {
+        if (numTokens.isLessThanOrEqual(0)) {
             return FixedPoint.fromUnscaledUint(0);
         } else {
             return collateral.div(numTokens);
