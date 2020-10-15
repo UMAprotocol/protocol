@@ -1402,7 +1402,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
     });
   });
-
   describe("Weird Edge cases", () => {
     it("Liquidating 0 tokens always results in a successful Dispute", async () => {
       // Liquidations for 0 tokens should be blocked but they are not. They will harmlessly always cause a successful dispute because

@@ -16,5 +16,5 @@ interface FundingRateStoreInterface {
      * @return FixedPoint representing the funding rate for the given identifier. Rates > 1 represent "positive"
      * funding rates, and < 1 represent "negative" funding rates.
      */
-    function getFundingRateForIdentifier(bytes32 identifier) external view returns (FixedPoint.Unsigned memory);
+    function getLatestFundingRateForIdentifier(bytes32 identifier) external view returns (FixedPoint.Unsigned memory);
 }

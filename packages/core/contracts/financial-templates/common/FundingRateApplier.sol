@@ -39,6 +39,12 @@ contract FundingRateApplier is Lockable {
     // Identifier in funding rate store to query for.
     bytes32 public priceIdentifier;
 
+    // Expiry price pulled from the DVM in the case of an emergency shutdown.
+    FixedPoint.Unsigned public emergencyShutdownPrice;
+
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
+
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
     // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -69,6 +75,16 @@ contract FundingRateApplier is Lockable {
 
     modifier updateFundingRate {
         _applyEffectiveFundingRatePerToken();
+        _;
+    }
+
+    modifier notEmergencyShutdown() {
+        _notEmergencyShutdown();
+        _;
+    }
+
+    modifier isEmergencyShutdown() {
+        _isEmergencyShutdown();
         _;
     }
 
@@ -108,20 +124,19 @@ contract FundingRateApplier is Lockable {
         _applyEffectiveFundingRatePerToken();
     }
 
-    /****************************************
-     *         INTERNAL FUNCTIONS           *
-     ****************************************/
-
     // Returns a token amount scaled by the current funding rate multiplier.
-    // Note: if the contract has paid fees since it was deployed, the raw
-    // value should be larger than the returned value.
+    // Note: if the contract has paid fees since it was deployed, the raw value should be larger than the returned value.
     function _getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
-        internal
+        public
         view
         returns (FixedPoint.Unsigned memory tokenDebt)
     {
         return rawTokenDebt.mul(cumulativeFundingRateMultiplier);
     }
+
+    /****************************************
+     *         INTERNAL FUNCTIONS           *
+     ****************************************/
 
     function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
@@ -129,7 +144,7 @@ contract FundingRateApplier is Lockable {
 
     function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
         FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        return fundingRateStore.getFundingRateForIdentifier(priceIdentifier);
+        return fundingRateStore.getLatestFundingRateForIdentifier(priceIdentifier);
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
@@ -137,7 +152,7 @@ contract FundingRateApplier is Lockable {
     // A funding rate < 1 will reduce the multiplier, and a funding rate of > 1 will increase the multiplier.
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
-    function _applyEffectiveFundingRatePerToken() internal {
+    function _applyEffectiveFundingRatePerToken() internal notEmergencyShutdown() {
         uint256 currentTime = timer.getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
         FixedPoint.Unsigned memory _latestFundingRatePerSecondPerToken = _getLatestFundingRate();
@@ -186,5 +201,13 @@ contract FundingRateApplier is Lockable {
         );
 
         lastUpdateTime = currentTime;
+    }
+
+    function _notEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
+    }
+
+    function _isEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
     }
 }

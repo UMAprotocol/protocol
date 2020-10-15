@@ -72,12 +72,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     // Minimum number of tokens in a sponsor's position.
     FixedPoint.Unsigned public minSponsorTokens;
 
-    // Expiry price pulled from the DVM in the case of an emergency shutdown.
-    FixedPoint.Unsigned public emergencyShutdownPrice;
-
-    // Timestamp used in case of emergency shutdown.
-    uint256 public emergencyShutdownTimestamp;
-
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
 
@@ -111,16 +105,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
-        _;
-    }
-
-    modifier notEmergencyShutdown() {
-        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
-        _;
-    }
-
-    modifier isEmergencyShutdown() {
-        _isEmergencyShutdown();
         _;
     }
 
@@ -523,13 +507,14 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
+     * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function settleEmergencyShutdown()
         external
         isEmergencyShutdown()
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -540,13 +525,15 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(emergencyShutdownPrice);
+        FixedPoint.Unsigned memory totalRedeemableCollateral = _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(
+            emergencyShutdownPrice
+        );
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
         if (_getFeeAdjustedCollateral(positionData.rawCollateral).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
-            // the funding rate applied.
+            // the funding rate applied to the outstanding token debt.
 
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
                 positionData
@@ -817,14 +804,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     // These internal functions are supposed to act identically to modifiers, but re-used modifiers
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-    function _notEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
-    }
-
-    function _isEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
-    }
-
     function _onlyCollateralizedPosition(address sponsor) internal view {
         require(
             _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
