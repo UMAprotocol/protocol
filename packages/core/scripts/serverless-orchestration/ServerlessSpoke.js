@@ -15,7 +15,7 @@ const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger } = require("@uma/financial-templates-lib");
+const { Logger, delay } = require("@uma/financial-templates-lib");
 let logger;
 
 spoke.post("/", async (req, res) => {
@@ -55,7 +55,7 @@ spoke.post("/", async (req, res) => {
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse
     });
-
+    await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
@@ -71,7 +71,7 @@ spoke.post("/", async (req, res) => {
       jsonBody: req.body,
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse
     });
-
+    await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
