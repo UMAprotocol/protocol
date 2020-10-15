@@ -67,7 +67,7 @@ contract FundingRateApplier is Testable, Lockable {
 
     // modifier that calls applyFundingRate().
     modifier updateFunding {
-        applyFundingRate();
+        _applyEffectiveFundingRatePerToken();
         _;
     }
 
@@ -90,20 +90,6 @@ contract FundingRateApplier is Testable, Lockable {
         fpFinder = FinderInterface(_fpFinderAddress);
         lastUpdateTime = getCurrentTime();
         identifier = _identifier;
-    }
-
-    /****************************************
-     *         PUBLIC FUNCTIONS           *
-     ****************************************/
-
-    /**
-     * @notice Fetches the latest funding rate from the Store, scales it over the time period since the last update,
-     * and uses this effective rate to set a new funding rate multiplier.
-     * @dev A funding rate of 1.0 reported by the Store implies a neutral funding rate, meaning that the current multiplier
-     * should not change.
-     */
-    function applyFundingRate() public {
-        _applyEffectiveFundingRatePerToken();
     }
 
     /****************************************
@@ -139,39 +125,15 @@ contract FundingRateApplier is Testable, Lockable {
             identifier
         );
 
-        // Determine whether `_latestFundingRate` implies a negative or positive funding rate,
-        // and apply it over a pay period.
         FixedPoint.Unsigned memory effectiveFundingRateForPeriodPerToken;
-        FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
-
-        if (_latestFundingRatePerSecondPerToken.isEqual(ONE)) {
-            // If `_latestFundingRate` == 1, then maintain the current multiplier.
-
-            effectiveFundingRateForPeriodPerToken = ONE;
-        } else if (_latestFundingRatePerSecondPerToken.isGreaterThan(ONE)) {
-            // If `_latestFundingRate` > 1, then first scale the funding over the pay period:
-            // (`_latestFundingRate` - 1) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 + effectiveFundingRate).
-
-            effectiveFundingRateForPeriodPerToken = ONE.add(
-                _latestFundingRatePerSecondPerToken.sub(ONE).mul(paymentPeriod)
-            );
-            cumulativeFundingRateMultiplier = cumulativeFundingRateMultiplier.mul(
-                effectiveFundingRateForPeriodPerToken
-            );
-        } else {
-            // If `_latestFundingRate` < 1, then first scale the funding over the pay period:
-            // (1 - `_latestFundingRate`) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 - effectiveFundingRate).
-
-            effectiveFundingRateForPeriodPerToken = ONE.sub(
-                ONE.sub(_latestFundingRatePerSecondPerToken).mul(paymentPeriod)
-            );
-            cumulativeFundingRateMultiplier = cumulativeFundingRateMultiplier.mul(
-                effectiveFundingRateForPeriodPerToken
-            );
-        }
-
+        (
+            cumulativeFundingRateMultiplier,
+            effectiveFundingRateForPeriodPerToken
+        ) = _calculateEffectiveFundingRatePerToken(
+            paymentPeriod,
+            _latestFundingRatePerSecondPerToken,
+            cumulativeFundingRateMultiplier
+        );
         lastUpdateTime = currentTime;
 
         emit NewFundingRate(
@@ -181,5 +143,44 @@ contract FundingRateApplier is Testable, Lockable {
             _latestFundingRatePerSecondPerToken.rawValue,
             effectiveFundingRateForPeriodPerToken.rawValue
         );
+    }
+
+    function _calculateEffectiveFundingRatePerToken(
+        uint256 paymentPeriodSeconds,
+        FixedPoint.Unsigned memory fundingRatePerSecondPerToken,
+        FixedPoint.Unsigned memory feeMultiplier
+    ) internal pure returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory) {
+        // Determine whether `fundingRatePerSecondPerToken` implies a negative or positive funding rate,
+        // and apply it over a pay period.
+        FixedPoint.Unsigned memory effectiveFundingRateForPeriodPerToken;
+        FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
+
+        FixedPoint.Unsigned memory newFeeMultiplier;
+        if (fundingRatePerSecondPerToken.isEqual(ONE)) {
+            // If `fundingRatePerSecondPerToken` == 1, then maintain the current multiplier.
+
+            effectiveFundingRateForPeriodPerToken = ONE;
+            newFeeMultiplier = feeMultiplier;
+        } else if (fundingRatePerSecondPerToken.isGreaterThan(ONE)) {
+            // If `fundingRatePerSecondPerToken` > 1, then first scale the funding over the pay period:
+            // (`fundingRatePerSecondPerToken` - 1) * payPeriod = effectiveFundingRate.
+            // Next, multiply the current multipier by (1 + effectiveFundingRate).
+
+            effectiveFundingRateForPeriodPerToken = ONE.add(
+                fundingRatePerSecondPerToken.sub(ONE).mul(paymentPeriodSeconds)
+            );
+            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriodPerToken);
+        } else {
+            // If `fundingRatePerSecondPerToken` < 1, then first scale the funding over the pay period:
+            // (1 - `fundingRatePerSecondPerToken`) * payPeriod = effectiveFundingRate.
+            // Next, multiply the current multipier by (1 - effectiveFundingRate).
+
+            effectiveFundingRateForPeriodPerToken = ONE.sub(
+                ONE.sub(fundingRatePerSecondPerToken).mul(paymentPeriodSeconds)
+            );
+            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriodPerToken);
+        }
+
+        return (newFeeMultiplier, effectiveFundingRateForPeriodPerToken);
     }
 }
