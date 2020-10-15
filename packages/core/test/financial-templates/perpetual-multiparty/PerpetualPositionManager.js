@@ -124,7 +124,6 @@ contract("PerpetualPositionManager", function(accounts) {
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
-
     fpFinder = await Finder.new({ from: contractDeployer });
     mockFundingRateStore = await MockFundingRateStore.new(timer.address, { from: contractDeployer });
     const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);

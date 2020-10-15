@@ -15,12 +15,13 @@ const Liquidatable = artifacts.require("PerpetualLiquidatable");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
-contract("Liquidatable", function(accounts) {
+contract("PerpetualLiquidatable", function(accounts) {
   // Roles
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -73,7 +74,9 @@ contract("Liquidatable", function(accounts) {
   let identifierWhitelist;
   let priceFeedIdentifier;
   let mockOracle;
+  let mockFundingRateStore;
   let finder;
+  let fpFinder;
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
@@ -115,10 +118,21 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
+    fpFinder = await Finder.new({ from: contractDeployer });
+    mockFundingRateStore = await MockFundingRateStore.new(timer.address, {
+      from: contractDeployer
+    });
+    const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);
+    await fpFinder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
+      from: contractDeployer
+    });
+
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: finder.address,
+      fpFinderAddress: fpFinder.address,
       tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test UMA Token",
@@ -134,7 +148,9 @@ contract("Liquidatable", function(accounts) {
     };
 
     // Deploy liquidation contract and set global params
-    liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+    liquidationContract = await Liquidatable.new(liquidatableParameters, {
+      from: contractDeployer
+    });
 
     // Get newly created synthetic token
     syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
@@ -147,10 +163,14 @@ contract("Liquidatable", function(accounts) {
     await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
 
     // Mint dispute bond to disputer
-    await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), { from: contractDeployer });
+    await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), {
+      from: contractDeployer
+    });
 
     // Set allowance for contract to pull collateral tokens from sponsor
-    await collateralToken.increaseAllowance(liquidationContract.address, amountOfCollateral, { from: sponsor });
+    await collateralToken.increaseAllowance(liquidationContract.address, amountOfCollateral, {
+      from: sponsor
+    });
 
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.increaseAllowance(liquidationContract.address, disputeBond.add(finalFeeAmount), {
@@ -158,10 +178,14 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Set allowance for contract to pull the final fee from the liquidator
-    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: liquidator });
+    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, {
+      from: liquidator
+    });
 
     // Set allowance for contract to pull synthetic tokens from liquidator
-    await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, { from: liquidator });
+    await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, {
+      from: liquidator
+    });
 
     // Get store
     store = await Store.deployed();
