@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../common/FundingRateApplier.sol";
 
 
-// A mock oracle used for testing.
+// A mock funding rate applier used for testing.
 contract MockFundingRateApplier is FundingRateApplier {
     constructor(
         FixedPoint.Unsigned memory _initialFundingRate,
