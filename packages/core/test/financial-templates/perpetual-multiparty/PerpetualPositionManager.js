@@ -199,6 +199,7 @@ contract("PerpetualPositionManager", function(accounts) {
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
+      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
@@ -1426,6 +1427,7 @@ contract("PerpetualPositionManager", function(accounts) {
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
       finder.address, // _finderAddress
+      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol

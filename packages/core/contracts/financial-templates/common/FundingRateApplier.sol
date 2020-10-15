@@ -34,10 +34,10 @@ contract FundingRateApplier is Lockable {
     FinderInterface public fpFinder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
-    uint256 lastUpdateTime;
+    uint256 public lastUpdateTime;
 
     // Identifier in funding rate store to query for.
-    bytes32 priceIdentifier;
+    bytes32 public priceIdentifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -88,10 +88,10 @@ contract FundingRateApplier is Lockable {
     ) public nonReentrant() {
         cumulativeFundingRateMultiplier = _initialFundingRate;
         fpFinder = FinderInterface(_fpFinderAddress);
-        lastUpdateTime = timer.getCurrentTime();
         priceIdentifier = _priceIdentifier;
 
         timer = Timer(_timerAddress);
+        lastUpdateTime = timer.getCurrentTime();
     }
 
     /****************************************
