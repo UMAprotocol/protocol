@@ -5,8 +5,8 @@ pragma experimental ABIEncoderV2;
 import "../common/FundingRateApplier.sol";
 
 
-// A mock funding rate applier used for testing.
-contract MockFundingRateApplier is FundingRateApplier {
+// Implements FundingRateApplier internal methods to enable unit testing.
+contract FundingRateApplierTest is FundingRateApplier {
     constructor(
         FixedPoint.Unsigned memory _initialFundingRate,
         address _fpFinderAddress,
@@ -15,15 +15,14 @@ contract MockFundingRateApplier is FundingRateApplier {
     ) public FundingRateApplier(_initialFundingRate, _fpFinderAddress, _timerAddress, _identifier) {}
 
     function applyFundingRate() public {
-        _applyEffectiveFundingRatePerToken();
+        _applyEffectiveFundingRate();
     }
 
-    function calculateEffectiveFundingRatePerToken(
+    function calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
-        FixedPoint.Unsigned memory fundingRatePerSecondPerToken,
+        FixedPoint.Unsigned memory fundingRatePerSecond,
         FixedPoint.Unsigned memory feeMultiplier
     ) public pure returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory) {
-        return
-            _calculateEffectiveFundingRatePerToken(paymentPeriodSeconds, fundingRatePerSecondPerToken, feeMultiplier);
+        return _calculateEffectiveFundingRate(paymentPeriodSeconds, fundingRatePerSecond, feeMultiplier);
     }
 }

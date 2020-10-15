@@ -3,7 +3,7 @@ const { assert } = require("chai");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
-const FundingRateApplier = artifacts.require("MockFundingRateApplier");
+const FundingRateApplier = artifacts.require("FundingRateApplierTest");
 const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 
 // Helper contracts
@@ -49,7 +49,7 @@ contract("FundingRateApplier", function() {
     // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
     // Effective Fee: 0.0015 * 20 = 0.03, funding rate is positive so add +1 => 1.03
     // Cumulative Multiplier: 1 * 1.03 = 1.03
-    const test1 = await fundingRateApplier.calculateEffectiveFundingRatePerToken(
+    const test1 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("1.0015") },
       { rawValue: toWei("1") }
@@ -60,7 +60,7 @@ contract("FundingRateApplier", function() {
     // Previous test but change the starting multiplier to 1.05:
     // Effective Fee: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
     // Cumulative Multiplier: 1.05 * 1.03 = 1.0815
-    const test2 = await fundingRateApplier.calculateEffectiveFundingRatePerToken(
+    const test2 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("1.0015") },
       { rawValue: toWei("1.05") }
@@ -71,7 +71,7 @@ contract("FundingRateApplier", function() {
     // Previous test but change the funding rate to -0.15%:
     // Effective Fee: 0.0015 * 20 = 0.03, funding rate is negative so subtract from 1 => 0.97
     // Cumulative Multiplier: 1.05 * 0.97 = 1.0185
-    const test3 = await fundingRateApplier.calculateEffectiveFundingRatePerToken(
+    const test3 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("0.9985") },
       { rawValue: toWei("1.05") }
@@ -82,7 +82,7 @@ contract("FundingRateApplier", function() {
     // Previous test but change the funding rate to 0% meaning that the multiplier shouldn't change:
     // Effective Fee: 0 * 20 = 0, funding rate is neutral so => 1
     // Cumulative Multiplier: 1.05 * 1 = 1.05
-    const test4 = await fundingRateApplier.calculateEffectiveFundingRatePerToken(
+    const test4 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("1") },
       { rawValue: toWei("1.05") }
