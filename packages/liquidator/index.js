@@ -87,14 +87,16 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      isExpired
+      isExpired,
+      liquidationLiveness
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
       emp.methods.priceIdentifier().call(),
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
-      checkIsExpiredPromise()
+      checkIsExpiredPromise(),
+      emp.methods.liquidationLiveness().call()
     ]);
 
     // Initial EMP expiry status
@@ -111,7 +113,8 @@ async function run({
     const empProps = {
       crRatio: collateralRequirement,
       priceIdentifier: priceIdentifier,
-      minSponsorSize: minSponsorTokens
+      minSponsorSize: minSponsorTokens,
+      liquidationLiveness
     };
 
     // Price feed must use same # of decimals as collateral currency.
@@ -287,6 +290,8 @@ async function Poll(callback) {
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
+      //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
+      //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
       //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
       liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the

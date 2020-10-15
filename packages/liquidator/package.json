@@ -31,7 +31,9 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "truffle test",
+    "test": "truffle test && yarn mocha",
+    "test-log": "truffle test ./test/*.js --network=test logInTest",
+    "mocha": "mocha mocha-test",
     "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
   },
   "bugs": {

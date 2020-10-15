@@ -39,7 +39,7 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         external
         override
         view
-        returns (FixedPoint.Unsigned memory fundingRate)
+        returns (FixedPoint.Unsigned memory)
     {
         if (fundingRates[identifier].length == 0) {
             return FixedPoint.fromUnscaledUint(1);
