@@ -3,7 +3,7 @@ const { assert } = require("chai");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
-const FundingRateApplier = artifacts.require("FundingRateApplier");
+const FundingRateApplier = artifacts.require("FundingRateApplierTest");
 const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 
 // Helper contracts
@@ -38,7 +38,59 @@ contract("FundingRateApplier", function() {
     assert.equal(await fundingRateApplier.fpFinder(), finder.address);
   });
 
-  it("Apply positive and negative effective funding rates", async () => {
+  it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
+    let fundingRateApplier = await FundingRateApplier.new(
+      { rawValue: toWei("1") }, // This starting multiplier doesn't matter for this test.
+      finder.address,
+      timer.address,
+      utf8ToHex(identifier)
+    );
+
+    // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add +1 => 1.03
+    // Cumulative Multiplier: 1 * 1.03 = 1.03
+    const test1 = await fundingRateApplier.calculateEffectiveFundingRate(
+      20,
+      { rawValue: toWei("1.0015") },
+      { rawValue: toWei("1") }
+    );
+    assert.equal(test1[0].rawValue, toWei("1.03"));
+    assert.equal(test1[1].rawValue, toWei("1.03"));
+
+    // Previous test but change the starting multiplier to 1.05:
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
+    // Cumulative Multiplier: 1.05 * 1.03 = 1.0815
+    const test2 = await fundingRateApplier.calculateEffectiveFundingRate(
+      20,
+      { rawValue: toWei("1.0015") },
+      { rawValue: toWei("1.05") }
+    );
+    assert.equal(test2[0].rawValue, toWei("1.0815"));
+    assert.equal(test2[1].rawValue, toWei("1.03"));
+
+    // Previous test but change the funding rate to -0.15%:
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is negative so subtract from 1 => 0.97
+    // Cumulative Multiplier: 1.05 * 0.97 = 1.0185
+    const test3 = await fundingRateApplier.calculateEffectiveFundingRate(
+      20,
+      { rawValue: toWei("0.9985") },
+      { rawValue: toWei("1.05") }
+    );
+    assert.equal(test3[0].rawValue, toWei("1.0185"));
+    assert.equal(test3[1].rawValue, toWei("0.97"));
+
+    // Previous test but change the funding rate to 0% meaning that the multiplier shouldn't change:
+    // Effective Rate: 0 * 20 = 0, funding rate is neutral so => 1
+    // Cumulative Multiplier: 1.05 * 1 = 1.05
+    const test4 = await fundingRateApplier.calculateEffectiveFundingRate(
+      20,
+      { rawValue: toWei("1") },
+      { rawValue: toWei("1.05") }
+    );
+    assert.equal(test4[0].rawValue, toWei("1.05"));
+    assert.equal(test4[1].rawValue, toWei("1"));
+  });
+  it("Applying positive and negative effective funding rates sets state and emits events correctly", async () => {
     let fundingRateApplier = await FundingRateApplier.new(
       { rawValue: toWei("1") },
       finder.address,

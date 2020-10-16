@@ -1033,10 +1033,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // Initially cumulativeFundingRateMultiplier is set to 1e18
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
-    assert.equal(
-      (await mockFundingRateStore.getLatestFundingRateForIdentifier(priceFeedIdentifier)).toString(),
-      toWei("1")
-    );
+    assert.equal((await mockFundingRateStore.getFundingRateForIdentifier(priceFeedIdentifier)).toString(), toWei("1"));
 
     // Set a positive funding rate of 1.01 in the store and apply it for a period of 5 seconds. New funding rate should
     // be 1 * (1 + (1.01 - 1) * 5) = 1.05
@@ -1044,7 +1041,7 @@ contract("PerpetualPositionManager", function(accounts) {
       rawValue: toWei("1.01")
     });
     assert.equal(
-      (await mockFundingRateStore.getLatestFundingRateForIdentifier(priceFeedIdentifier)).toString(),
+      (await mockFundingRateStore.getFundingRateForIdentifier(priceFeedIdentifier)).toString(),
       toWei("1.01")
     );
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds

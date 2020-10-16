@@ -72,6 +72,12 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     // Minimum number of tokens in a sponsor's position.
     FixedPoint.Unsigned public minSponsorTokens;
 
+    // Expiry price pulled from the DVM in the case of an emergency shutdown.
+    FixedPoint.Unsigned public emergencyShutdownPrice;
+
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
+
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
 
@@ -105,6 +111,16 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
+        _;
+    }
+
+    modifier notEmergencyShutdown() {
+        _notEmergencyShutdown();
+        _;
+    }
+
+    modifier isEmergencyShutdown() {
+        _isEmergencyShutdown();
         _;
     }
 
@@ -579,6 +595,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     /****************************************
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
+
+    function applyFundingRate() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
+        return;
+    }
+
     /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
@@ -651,6 +672,15 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+    }
+
+    function getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
+        external
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory totalCollateral)
+    {
+        return _getFundingRateAppliedTokenDebt(rawTokenDebt);
     }
 
     /****************************************
@@ -809,6 +839,14 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
             _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
             "Position has no collateral"
         );
+    }
+
+    function _notEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
+    }
+
+    function _isEmergencyShutdown() internal view {
+        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
     }
 
     // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the

@@ -35,7 +35,7 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         fundingRates[identifier].push(FundingRate(fundingRate, time));
     }
 
-    function getLatestFundingRateForIdentifier(bytes32 identifier)
+    function getFundingRateForIdentifier(bytes32 identifier)
         external
         override
         view
