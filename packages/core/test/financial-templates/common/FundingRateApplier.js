@@ -47,7 +47,7 @@ contract("FundingRateApplier", function() {
     );
 
     // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
-    // Effective Fee: 0.0015 * 20 = 0.03, funding rate is positive so add +1 => 1.03
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add +1 => 1.03
     // Cumulative Multiplier: 1 * 1.03 = 1.03
     const test1 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
