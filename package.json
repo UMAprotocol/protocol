@@ -9,7 +9,7 @@
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
-    "test": "node --max-old-space-size=4096 ./node_modules/.bin/lerna run --stream --concurrency=1 test",
+    "test": "lerna run --stream --concurrency=1 test",
     "test-fork": "lerna run --stream --concurrency=1 test-fork",
     "load-addresses": "yarn workspace @uma/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
