@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../interface/FundingRateStoreInterface.sol";
+import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
 
 
@@ -25,7 +25,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
-    function getLatestFundingRateForIdentifier(bytes32 identifier)
+    function getFundingRateForIdentifier(bytes32 identifier)
         external
         override
         view
