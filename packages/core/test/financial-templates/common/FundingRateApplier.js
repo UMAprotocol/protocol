@@ -69,7 +69,7 @@ contract("FundingRateApplier", function() {
     assert.equal(test2[1].rawValue, toWei("1.03"));
 
     // Previous test but change the funding rate to -0.15%:
-    // Effective Fee: 0.0015 * 20 = 0.03, funding rate is negative so subtract from 1 => 0.97
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is negative so subtract from 1 => 0.97
     // Cumulative Multiplier: 1.05 * 0.97 = 1.0185
     const test3 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
