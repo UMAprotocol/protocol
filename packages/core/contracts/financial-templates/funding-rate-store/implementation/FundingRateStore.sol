@@ -40,10 +40,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         }
     }
 
-    function proposeRate(bytes32 identifier, FixedPoint.Unsigned memory rate) external {
+    function propose(bytes32 identifier, FixedPoint.Unsigned memory rate) external {
+        // TODO: ACLS on identifiers that can be proposed.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
+
+        // TODO: bond logic.
 
         require(proposalState != ProposalState.Pending, "Existing proposal still pending.");
 
