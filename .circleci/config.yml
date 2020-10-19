@@ -209,6 +209,10 @@ workflows:
           context: api_keys
           requires:
             - build
+      - gasreporter:
+          context: api_keys
+          requires:
+            - build
       - docs:
           requires:
             - checkout_and_install
