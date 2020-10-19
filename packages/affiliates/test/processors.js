@@ -25,5 +25,6 @@ test('processor',t=>{
     t.equal(result.d,2/3)
     t.end()
   })
-
+  t.test('simulate',t=>{
+  })
 })

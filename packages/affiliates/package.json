@@ -5,7 +5,9 @@
   "license": "MIT",
   "dependencies": {
     "@google-cloud/bigquery": "^5.3.0",
-    "highland": "^2.13.5"
+    "highland": "^2.13.5",
+    "moment": "^2.29.1",
+    "ethers": "^5.0.17"
   },
   "devDependencies":{
     "tape":"^5.0.1"
