@@ -73,6 +73,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   let syntheticToken;
   let identifierWhitelist;
   let priceFeedIdentifier;
+  let fundingRateIdentifier;
   let mockOracle;
   let mockFundingRateStore;
   let finder;
@@ -106,6 +107,10 @@ contract("PerpetualLiquidatable", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
+    fundingRateIdentifier = web3.utils.utf8ToHex("ETHUSD-Funding-Rate");
+    await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier, {
+      from: contractDeployer
+    });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
@@ -120,6 +125,8 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
     fpFinder = await Finder.new({ from: contractDeployer });
+    const fpFinderInterfaceName = web3.utils.utf8ToHex(interfaceName.FinancialProductFinder);
+    await finder.changeImplementationAddress(fpFinderInterfaceName, fpFinder.address, { from: contractDeployer });
     mockFundingRateStore = await MockFundingRateStore.new(timer.address, {
       from: contractDeployer
     });
@@ -132,9 +139,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: finder.address,
-      fpFinderAddress: fpFinder.address,
       tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
+      fundingRateIdentifier: fundingRateIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
       liquidationLiveness: liquidationLiveness.toString(),

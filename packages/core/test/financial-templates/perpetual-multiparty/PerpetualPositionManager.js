@@ -51,6 +51,7 @@ contract("PerpetualPositionManager", function(accounts) {
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
   const priceFeedIdentifier = utf8ToHex("ETHUSD");
+  const fundingRateFeedIdentifier = utf8ToHex("ETHUSD-Funding-Rate"); // example identifier for funding rate.
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
@@ -121,10 +122,16 @@ contract("PerpetualPositionManager", function(accounts) {
     const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
 
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address, {
+      from: contractDeployer
+    });
+
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
     fpFinder = await Finder.new({ from: contractDeployer });
+    const fpFinderInterfaceName = utf8ToHex(interfaceName.FinancialProductFinder);
+    await finder.changeImplementationAddress(fpFinderInterfaceName, fpFinder.address, { from: contractDeployer });
     mockFundingRateStore = await MockFundingRateStore.new(timer.address, { from: contractDeployer });
     const mockFundingRateStoreName = utf8ToHex(interfaceName.FundingRateStore);
     await fpFinder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
@@ -136,15 +143,15 @@ contract("PerpetualPositionManager", function(accounts) {
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
-      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer, gasLimit: 8000000000 }
+      { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await positionManager.tokenCurrency());
   });
@@ -176,6 +183,7 @@ contract("PerpetualPositionManager", function(accounts) {
           collateral.address, // _collateralAddress
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
+          fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
           syntheticName, // _syntheticName
           syntheticSymbol, // _syntheticSymbol
           tokenFactory.address, // _tokenFactoryAddress
@@ -198,8 +206,8 @@ contract("PerpetualPositionManager", function(accounts) {
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
       finder.address, // _finderAddress
-      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       tokenFactory.address, // _tokenFactoryAddress
@@ -1033,15 +1041,18 @@ contract("PerpetualPositionManager", function(accounts) {
     // Initially cumulativeFundingRateMultiplier is set to 1e18
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
-    assert.equal((await mockFundingRateStore.getFundingRateForIdentifier(priceFeedIdentifier)).toString(), toWei("1"));
+    assert.equal(
+      (await mockFundingRateStore.getFundingRateForIdentifier(fundingRateFeedIdentifier)).toString(),
+      toWei("1")
+    );
 
     // Set a positive funding rate of 1.01 in the store and apply it for a period of 5 seconds. New funding rate should
     // be 1 * (1 + (1.01 - 1) * 5) = 1.05
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1.01")
     });
     assert.equal(
-      (await mockFundingRateStore.getFundingRateForIdentifier(priceFeedIdentifier)).toString(),
+      (await mockFundingRateStore.getFundingRateForIdentifier(fundingRateFeedIdentifier)).toString(),
       toWei("1.01")
     );
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
@@ -1057,7 +1068,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Set the funding rate to a negative funding rate of 0.98 in the store and apply it for 5 seconds. New funding rate
     // should be 1.05 * (1 - (1 - 0.98) * 5) = 0.945
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("0.98")
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
@@ -1065,7 +1076,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
 
     // Setting the funding rate to zero (no payments made, synth trading at parity) should no change the cumulativeFundingRateMultiplier.
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1")
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(withdrawalLiveness)).toString()); // Advance the time by the withdrawal liveness
@@ -1074,7 +1085,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Check that the remaining functions update the funding rate accordingly.
     // Have already checked: a) create b) requestWithdrawal and c) withdrawPassedRequest
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1.01")
     });
 
@@ -1085,7 +1096,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // requestTransferPosition. For this we will need to advance time by the withdrawlLiveness to pass the request withdraw.
     // Set the funding rate to something more reasonable like 0.001% per second as 1.0001 as advancing over a long duration.
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1.0001")
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(withdrawalLiveness)).toString());
@@ -1167,7 +1178,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
 
     // Add a funding rate to the fundingRateStore. let's say a value of 0.005% per second.
-    await mockFundingRateStore.setFundingRate(priceFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1.0005")
     });
 
@@ -1662,8 +1673,8 @@ contract("PerpetualPositionManager", function(accounts) {
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
       finder.address, // _finderAddress
-      fpFinder.address, // _fpFinderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       tokenFactory.address, // _tokenFactoryAddress

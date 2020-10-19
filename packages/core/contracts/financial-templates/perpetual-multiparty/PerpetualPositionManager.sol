@@ -11,6 +11,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/TokenFactory.sol";
@@ -61,6 +62,9 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
+
+    // Identifier in funding rate store to query for.
+    bytes32 public priceIdentifier;
 
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     // !!Note: The lower the withdrawal liveness value, the more risk incurred by the contract.
@@ -146,8 +150,8 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
-        address _fpFinderAddress,
         bytes32 _priceIdentifier,
+        bytes32 _fundingRateIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol,
         address _tokenFactoryAddress,
@@ -157,7 +161,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     )
         public
         FeePayer(_collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(FixedPoint.fromUnscaledUint(1), _fpFinderAddress, _priceIdentifier, _timerAddress)
+        FundingRateApplier(
+            FinderInterface(_finderAddress).getImplementationAddress("FinancialProductFinder"),
+            _fundingRateIdentifier,
+            _timerAddress
+        )
         nonReentrant()
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -166,6 +174,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
+        priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 

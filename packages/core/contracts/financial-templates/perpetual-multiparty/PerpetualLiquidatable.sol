@@ -58,11 +58,11 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         uint256 withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
-        address fpFinderAddress;
         address tokenFactoryAddress;
         address timerAddress;
         address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
+        bytes32 fundingRateIdentifier;
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned minSponsorTokens;
@@ -160,8 +160,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.withdrawalLiveness,
             params.collateralAddress,
             params.finderAddress,
-            params.fpFinderAddress,
             params.priceFeedIdentifier,
+            params.fundingRateIdentifier,
             params.syntheticName,
             params.syntheticSymbol,
             params.tokenFactoryAddress,

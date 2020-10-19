@@ -37,7 +37,7 @@ contract FundingRateApplier is Lockable {
     uint256 public lastUpdateTime;
 
     // Identifier in funding rate store to query for.
-    bytes32 public priceIdentifier;
+    bytes32 public fundingRateIdentifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -57,9 +57,9 @@ contract FundingRateApplier is Lockable {
     event NewFundingRate(
         uint256 indexed newMultiplier,
         uint256 lastUpdateTime,
-        uint256 indexed updateTime,
+        uint256 updateTime,
         uint256 indexed paymentPeriod,
-        uint256 latestFundingRate,
+        uint256 indexed latestFundingRate,
         uint256 effectiveFundingRateForPaymentPeriod
     );
 
@@ -74,24 +74,24 @@ contract FundingRateApplier is Lockable {
 
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
-     * @param _initialFundingRate Starting funding rate multiplier.
      * @param _fpFinderAddress Finder used to discover financial-product-related contracts.
-     * @param _priceIdentifier Unique identifier for DVM price feed ticker for child financial contract.
+     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        FixedPoint.Unsigned memory _initialFundingRate,
         address _fpFinderAddress,
-        bytes32 _priceIdentifier,
+        bytes32 _fundingRateIdentifier,
         address _timerAddress
     ) public nonReentrant() {
-        cumulativeFundingRateMultiplier = _initialFundingRate;
         fpFinder = FinderInterface(_fpFinderAddress);
-        priceIdentifier = _priceIdentifier;
+        fundingRateIdentifier = _fundingRateIdentifier;
 
         timer = Timer(_timerAddress);
         lastUpdateTime = timer.getCurrentTime();
+
+        // Seed the initial funding rate in the cumulativeFundingRateMultiplier as the latest funding rate from the store.
+        cumulativeFundingRateMultiplier = _getLatestFundingRate();
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
@@ -109,6 +109,11 @@ contract FundingRateApplier is Lockable {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
+    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
+        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
+        return fundingRateStore.getFundingRateForIdentifier(fundingRateIdentifier);
+    }
+
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
     // and multiplies the current multiplier by the effective fee.
     // A funding rate < 1 will reduce the multiplier, and a funding rate of > 1 will increase the multiplier.
@@ -118,10 +123,7 @@ contract FundingRateApplier is Lockable {
         uint256 currentTime = timer.getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
-        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        FixedPoint.Unsigned memory _latestFundingRatePerSecond = fundingRateStore.getFundingRateForIdentifier(
-            priceIdentifier
-        );
+        FixedPoint.Unsigned memory _latestFundingRatePerSecond = _getLatestFundingRate();
 
         FixedPoint.Unsigned memory effectiveFundingRateForPeriod;
         (cumulativeFundingRateMultiplier, effectiveFundingRateForPeriod) = _calculateEffectiveFundingRate(
