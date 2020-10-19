@@ -125,6 +125,17 @@ jobs:
           command: ./ci/coverage.sh ~/protocol/packages/core
       - store_artifacts:
           path: packages/core/coverage
+  gasreporter:
+    docker:
+      - image: circleci/node:lts
+    working_directory: ~/protocol
+    steps:
+      - checkout
+      - restore_cache:
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run eth gas reporter code checks
+          command: npx codechecks
   dapp_build:
     docker:
       - image: circleci/node:lts
