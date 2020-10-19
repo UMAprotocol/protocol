@@ -6,8 +6,7 @@ const interfaceName = {
   Store: "Store",
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
-  FundingRateStore: "FundingRateStore",
-  FinancialProductFinder: "FinancialProductFinder"
+  FundingRateStore: "FundingRateStore"
 };
 
 module.exports = {
