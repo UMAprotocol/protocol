@@ -36,7 +36,7 @@
     "/src/**/*.js"
   ],
   "scripts": {
-    "test": "truffle test"
+    "test": "../../scripts/prerun_ganache.sh 'truffle test'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
