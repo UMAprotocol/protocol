@@ -15,12 +15,13 @@ const Liquidatable = artifacts.require("PerpetualLiquidatable");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
-contract("Liquidatable", function(accounts) {
+contract("PerpetualLiquidatable", function(accounts) {
   // Roles
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -72,7 +73,9 @@ contract("Liquidatable", function(accounts) {
   let syntheticToken;
   let identifierWhitelist;
   let priceFeedIdentifier;
+  let fundingRateIdentifier;
   let mockOracle;
+  let mockFundingRateStore;
   let finder;
   let liquidatableParameters;
   let store;
@@ -103,6 +106,10 @@ contract("Liquidatable", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
+    fundingRateIdentifier = web3.utils.utf8ToHex("ETHUSD-Funding-Rate");
+    await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier, {
+      from: contractDeployer
+    });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
@@ -115,12 +122,22 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    // Create mock funding rate store & add it to the finder.
+    mockFundingRateStore = await MockFundingRateStore.new(timer.address, {
+      from: contractDeployer
+    });
+    const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);
+    await finder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
+      from: contractDeployer
+    });
+
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
+      fundingRateIdentifier: fundingRateIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
       liquidationLiveness: liquidationLiveness.toString(),
@@ -134,7 +151,9 @@ contract("Liquidatable", function(accounts) {
     };
 
     // Deploy liquidation contract and set global params
-    liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+    liquidationContract = await Liquidatable.new(liquidatableParameters, {
+      from: contractDeployer
+    });
 
     // Get newly created synthetic token
     syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
@@ -147,10 +166,14 @@ contract("Liquidatable", function(accounts) {
     await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
 
     // Mint dispute bond to disputer
-    await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), { from: contractDeployer });
+    await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), {
+      from: contractDeployer
+    });
 
     // Set allowance for contract to pull collateral tokens from sponsor
-    await collateralToken.increaseAllowance(liquidationContract.address, amountOfCollateral, { from: sponsor });
+    await collateralToken.increaseAllowance(liquidationContract.address, amountOfCollateral, {
+      from: sponsor
+    });
 
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.increaseAllowance(liquidationContract.address, disputeBond.add(finalFeeAmount), {
@@ -158,10 +181,14 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Set allowance for contract to pull the final fee from the liquidator
-    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: liquidator });
+    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, {
+      from: liquidator
+    });
 
     // Set allowance for contract to pull synthetic tokens from liquidator
-    await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, { from: liquidator });
+    await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, {
+      from: liquidator
+    });
 
     // Get store
     store = await Store.deployed();
@@ -1378,7 +1405,6 @@ contract("Liquidatable", function(accounts) {
       });
     });
   });
-
   describe("Weird Edge cases", () => {
     it("Liquidating 0 tokens always results in a successful Dispute", async () => {
       // Liquidations for 0 tokens should be blocked but they are not. They will harmlessly always cause a successful dispute because
