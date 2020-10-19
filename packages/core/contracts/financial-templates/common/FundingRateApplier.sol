@@ -93,8 +93,8 @@ contract FundingRateApplier is Lockable {
         timer = Timer(_timerAddress);
         lastUpdateTime = timer.getCurrentTime();
 
-        // Seed the initial funding rate in the cumulativeFundingRateMultiplier as the latest funding rate from the store.
-        cumulativeFundingRateMultiplier = _getLatestFundingRate();
+        // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
+        cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
