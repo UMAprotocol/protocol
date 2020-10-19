@@ -63,7 +63,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
 
-    // Identifier in funding rate store to query for.
+    // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
 
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.

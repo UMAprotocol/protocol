@@ -48,6 +48,9 @@ contract FundingRateApplier is Lockable {
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
 
+    // FundingRateApplier and FeePayer are both at the same inheritance level within the PerpetualPositionManager. As a
+    // result, they cant both be instances of the Testable contract. to accommodate this the FundingRateApplier has an
+    // instance of timer which enables it to be tested in the same way it would be if it was an instance of Tesable.
     Timer timer;
 
     /****************************************
