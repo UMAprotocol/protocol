@@ -16,13 +16,13 @@ test('SharedAttributions',t=>{
   })
   t.test('attribute a',t=>{
     const result = attributions.attribute('test','a',1)
-    t.equal(result.a,1)
+    t.equal(result.a,'1')
     t.end()
   })
   t.test('attribute b',t=>{
     const result = attributions.attribute('test','b',1)
-    t.equal(result.a,1)
-    t.equal(result.b,1)
+    t.equal(result.a,'1')
+    t.equal(result.b,'1')
     t.end()
   })
   t.test('calcShare',t=>{

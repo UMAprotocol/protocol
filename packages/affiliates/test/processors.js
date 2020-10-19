@@ -1,30 +1,38 @@
 const test = require('tape')
 const lodash = require("lodash");
-const Processor = require('../libs/processors')
+const {AttributionHistory} = require('../libs/processors')
 
-test('processor',t=>{
-  let processor  
+test('AttributionHistory',t=>{
+  let processor
   t.test('init',t=>{
-    processor = Processor()
+    processor = AttributionHistory()
     t.ok(processor)
+    t.ok(processor.history)
+    t.ok(processor.attributions)
     t.end()
   })
-  t.test('insertBalance',t=>{
-    processor.insertBalance('a',1,1)
-    processor.insertBalance('b',2,1)
+  t.test('process events',t=>{
+    const events = lodash.times(100,i=>{
+      return {
+        blockNumber:i+1,
+        args:[
+         'useraddr ' + i % 13,
+         'affiliateaddr ' + i % 3,
+          (i * 100).toString()
+        ]
+      }
+    })
+    events.forEach(e=>processor.handleEvent(e.blockNumber,e.args))
+
+    console.log(processor.history)
+    // console.log(processor.attributions.snapshot())
+
+    lodash.times(100,i=>{
+      const snapshot = processor.history.lookup(i+1)
+      t.ok(snapshot.attributions)
+      t.equal(snapshot.blockNumber,i+1)
+    })
+
     t.end()
-  })
-  t.test('insertAttribution',t=>{
-    processor.insertAttribution('c','a',2)
-    processor.insertAttribution('d','b',2)
-    t.end()
-  })
-  t.test('shares',t=>{
-    const result = processor.shares()
-    t.equal(result.c,1/3)
-    t.equal(result.d,2/3)
-    t.end()
-  })
-  t.test('simulate',t=>{
   })
 })

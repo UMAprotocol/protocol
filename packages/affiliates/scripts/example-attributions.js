@@ -4,7 +4,7 @@ const highland = require('highland')
 const assert = require("assert")
 const {DecodeLog} = require('../libs/contracts')
 const {abi} = require('../../core/build/contracts/PricelessPositionManager')
-const {EmpBalances,EmpBalancesHistory} = require('../libs/processors')
+const {EmpBalances} = require('../libs/processors')
 
 // uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC 
 const empContract = '0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9'
@@ -33,23 +33,22 @@ async function runTest(){
   const query = makeQuery(empContract,moment('9/20/2020','MM/DD/YYYY').valueOf())
   const stream = await client.createQueryStream({query})
   const decode = DecodeLog(abi)
-  const balancesHistory = EmpBalancesHistory()
+  const balances = EmpBalances()
 
   await highland(stream)
     // .doto(console.log)
     .map(log=>{
       try{
-        return decode(log,{blockNumber:log.block_number})
+        return decode(log)
       }catch(err){
         // decoding log error, abi probably missing an event
         console.log('error decoding log:',err)
       }
     })
     .compact()
-    
     .doto(log=>{
       try{
-        balancesHistory.handleEvent(log.blockNumber,log)
+        balances.handleEvent(log)
       }catch(err){
         console.log(err,log)
       }
@@ -57,18 +56,12 @@ async function runTest(){
     .last()
     .toPromise(Promise)
 
-  console.log('blocks updated count',balancesHistory.blocks.length)
-  const checkblocks = balancesHistory.blocks.slice(0,10)
-  checkblocks.forEach(blockNumber=>{
-    const result = balancesHistory.history.lookup(blockNumber)
-    console.log(result)
-  })
-
-  // console.log(balances.collateral.snapshot())
-  // console.log(balances.tokens.snapshot())
+  console.log(balances.getCollateral().snapshot())
+  console.log(balances.getTokens().snapshot())
 }
 
 runTest().then(console.log).catch(console.log)
+
 
 
 

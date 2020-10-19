@@ -25,18 +25,29 @@ function SharedAttributions(){
     return data
   }
   function attribute(user,affiliate,amount){
+    assert(user,'requires user')
+    assert(affiliate,'requires affiliate')
+    assert(amount,'requires amount')
     const data = getOrCreate(user)
-    if(data[affiliate] == null) data[affiliate] = 0
-    data[affiliate] += amount
+    if(data[affiliate] == null) data[affiliate] = '0'
+    data[affiliate] = (BigInt(data[affiliate]) + BigInt(amount)).toString()
     return set(user,data)
   }
   function calculateShare(user,affiliate){
     const data = get(user)
     if(data[affiliate] == null) return 0
     const sum = Object.values(data).reduce((sum,val)=>{
-      return sum+val
-    },0)
-    return data[affiliate] / sum
+      return sum + BigInt(val)
+    },0n)
+    const scale = 100000000n
+    return Number(BigInt(data[affiliate]) * scale / sum) / Number(scale)
+  }
+
+  function snapshot(){
+    return [...addresses.entries()].reduce((result,[key,value])=>{
+      result[key] = value
+      return result
+    },{})
   }
 
   return {
@@ -46,6 +57,7 @@ function SharedAttributions(){
     getOrCreate,
     attribute,
     calculateShare,
+    snapshot,
   }
 }
 
@@ -149,6 +161,7 @@ function History(){
   const history = []
   // Used internally, but will insert a block into cache sorted by timestamp
   function insert(data) {
+    assert(data.blockNumber ,'requires blockNumber')
     const index = lodash.sortedIndexBy(history, data, "blockNumber");
     history.splice(index, 0, data);
     return data;
@@ -158,8 +171,11 @@ function History(){
     if (history[index] && history[index].blockNumber === blockNumber) return history[index];
     return history[index - 1];
   }
+  function length(){
+    return history.length
+  }
   return {
-    insert,lookup
+    insert,lookup,history,length
   }
 }
 

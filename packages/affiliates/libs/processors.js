@@ -1,44 +1,78 @@
-const {SharedAttributions, Balances} = require('./models')
+const {Balances,History, SharedAttributions} = require('./models')
 const assert = require("assert")
-// composes the models into a processor which takes in
-// events: balance update (insertBalance) and attribution (insertAttribution)
-// once events are processed gets total shares as json object
-function Processor(config){
-  const balances = Balances()
+
+// keeps snapshots of all attributions to affiliates keyed by user
+function AttributionHistory(){
+  // stores complete balances for all events
   const attributions = SharedAttributions()
+  // stores snapshots we can lookup by block
+  const history = History()
+  let lastBlockNumber
 
-  function mintEvent(){
-  }
-  function depositTo(){
-  }
-  function deposit(){
-  }
-  function transferPositionPassedRequest(){
-  }
-  function snapshot(){
-  }
-  function addBalanceByDelta(address,balance,blockNumber){
-  }
-
-  function insertBalance(address,balance,blockNumber){
-    histories.insert(address,{blockNumber,balance})
-  }
-
-  function insertAttribution(affiliateAddress,userAddress,blockNumber){
-    const result = histories.lookup(userAddress,blockNumber)
-    if(!result) return
-    attributions.add(affiliateAddress,result.balance)
-  }
-
-  function shares(){
-    return attributions.listPercents()
+  // takes a snapshot of balances if the next event falls on a new block
+  function handleEvent(blockNumber,args=[]){
+    assert(blockNumber,'requires blockNumber')
+    if(lastBlockNumber == null){
+      lastBlockNumber = blockNumber
+      history.insert({
+        blockNumber,
+        attributions:attributions.snapshot(),
+      })
+    }else if(lastBlockNumber < blockNumber){
+      history.insert({
+        blockNumber,
+        attributions:attributions.snapshot(),
+      })
+      lastBlockNumber = blockNumber
+    }
+    attributions.attribute(...args)
   }
 
   return {
-    insertAttribution,
-    insertBalance,
-    shares,
+    attributions,
+    history,
+    handleEvent,
   }
+}
+
+function EmpBalancesHistory(){
+  // stores complete balances for all events
+  const balances = EmpBalances()
+  // stores snapshots we can lookup by block
+  const history = History()
+  let lastBlockNumber
+  const blocks = []
+
+  // takes a snapshot of balances if the next event falls on a new block
+  function handleEvent(blockNumber,event){
+    assert(blockNumber,'requires blockNumber')
+    if(lastBlockNumber == null){
+      lastBlockNumber = blockNumber
+      blocks.push(blockNumber)
+      history.insert({
+        blockNumber,
+        tokens:balances.tokens.snapshot(),
+        collateral:balances.collateral.snapshot(),
+      })
+    }else if(lastBlockNumber < blockNumber){
+      history.insert({
+        blockNumber,
+        tokens:balances.tokens.snapshot(),
+        collateral:balances.collateral.snapshot(),
+      })
+      blocks.push(blockNumber)
+      lastBlockNumber = blockNumber
+    }
+    balances.handleEvent(event)
+  }
+
+  return {
+    balances,
+    history,
+    handleEvent,
+    blocks,
+  }
+
 }
 
 function EmpBalances(handlers={},{collateral,tokens}={}){
@@ -50,7 +84,6 @@ function EmpBalances(handlers={},{collateral,tokens}={}){
       // nothing
     },
     RequestTransferPositionExecuted(oldSponsor, newSponsor){
-      // console.log('transfer',oldSponsor,newSponsor)
       const collateralBalance = collateral.get(oldSponsor)
       collateral.set(oldSponsor,'0')
       collateral.set(newSponsor,collateralBalance.toString())
@@ -63,25 +96,21 @@ function EmpBalances(handlers={},{collateral,tokens}={}){
       // nothing
     },
     Deposit(sponsor, collateralAmount){
-      // console.log('deposit',sponsor,collateralAmount.toString())
       collateral.add(sponsor,collateralAmount.toString())
     },
     Withdrawal(sponsor, collateralAmount){
-      // console.log('withdrawal',sponsor,collateralAmount.toString())
       collateral.sub(sponsor,collateralAmount.toString())
     },
     RequestWithdrawal(sponsor, collateralAmount){
       // nothing
     },
     RequestWithdrawalExecuted(sponsor, collateralAmount){
-      // console.log('request withdraw executed',sponsor,collateralAmount.toString())
       collateral.sub(sponsor,collateralAmount.toString())
     },
     RequestWithdrawalCanceled(sponsor, collateralAmount){
       // nothing
     },
     PositionCreated(sponsor, collateralAmount, tokenAmount){
-      // console.log('position created',sponsor,collateralAmount.toString(),tokenAmount.toString())
       collateral.add(sponsor,collateralAmount.toString())
       tokens.add(sponsor,tokenAmount.toString())
     },
@@ -92,7 +121,6 @@ function EmpBalances(handlers={},{collateral,tokens}={}){
       // nothing
     },
     Redeem(sponsor, collateralAmount, tokenAmount){
-      // console.log('redeem',sponsor,collateralAmount.toString(),tokenAmount.toString())
       collateral.sub(sponsor,collateralAmount.toString())
       tokens.sub(sponsor,tokenAmount).toString()
     },
@@ -124,12 +152,14 @@ function EmpBalances(handlers={},{collateral,tokens}={}){
   }
   return {
     handleEvent,
-    getCollateral,
-    getTokens,
+    collateral,
+    tokens
   }
 }
 
 
 module.exports = {
-  EmpBalances
+  EmpBalances,
+  EmpBalancesHistory,
+  AttributionHistory,
 }
