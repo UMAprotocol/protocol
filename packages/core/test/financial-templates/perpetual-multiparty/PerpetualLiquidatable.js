@@ -77,7 +77,6 @@ contract("PerpetualLiquidatable", function(accounts) {
   let mockOracle;
   let mockFundingRateStore;
   let finder;
-  let fpFinder;
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
@@ -123,15 +122,12 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    // Create mock funding rate store & a fpFinder. Set the mock funding rate store in the fpFinder.
-    fpFinder = await Finder.new({ from: contractDeployer });
-    const fpFinderInterfaceName = web3.utils.utf8ToHex(interfaceName.FinancialProductFinder);
-    await finder.changeImplementationAddress(fpFinderInterfaceName, fpFinder.address, { from: contractDeployer });
+    // Create mock funding rate store & add it to the finder.
     mockFundingRateStore = await MockFundingRateStore.new(timer.address, {
       from: contractDeployer
     });
     const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);
-    await fpFinder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
+    await finder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
       from: contractDeployer
     });
 

@@ -31,7 +31,7 @@ contract FundingRateApplier is Lockable {
      ****************************************/
 
     // Points to financial product-related contracts like the funding rate store.
-    FinderInterface public fpFinder;
+    FinderInterface fpFinder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
@@ -77,17 +77,17 @@ contract FundingRateApplier is Lockable {
 
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
-     * @param _fpFinderAddress Finder used to discover financial-product-related contracts.
+     * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        address _fpFinderAddress,
+        address _finderAddress,
         bytes32 _fundingRateIdentifier,
         address _timerAddress
     ) public nonReentrant() {
-        fpFinder = FinderInterface(_fpFinderAddress);
+        fpFinder = FinderInterface(_finderAddress);
         fundingRateIdentifier = _fundingRateIdentifier;
 
         timer = Timer(_timerAddress);
