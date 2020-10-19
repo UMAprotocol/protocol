@@ -31,7 +31,7 @@ contract FundingRateApplier is Lockable {
      ****************************************/
 
     // Points to financial product-related contracts like the funding rate store.
-    FinderInterface fpFinder;
+    FinderInterface public fpFinder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
