@@ -80,7 +80,7 @@ function Balances(){
   }
   function set(addr,balance){
     amount = BigInt(balance)
-    assert(balance >= 0n,'balance must be >= 0: ' + balance)
+    // assert(balance >= 0n,'balance must be >= 0: ' + balance)
     balances.set(addr,balance)
     return balance
   }

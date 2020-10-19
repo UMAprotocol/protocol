@@ -1,6 +1,9 @@
 const test = require('tape')
 const lodash = require("lodash");
-const {AttributionHistory} = require('../libs/processors')
+const {AttributionHistory,EmpBalancesHistory} = require('../libs/processors')
+const logs = require('../datasets/uUSDwETH-DEC-logs')
+const {DecodeLog} = require('../libs/contracts')
+const {abi} = require('../../core/build/contracts/PricelessPositionManager')
 
 test('AttributionHistory',t=>{
   let processor
@@ -33,6 +36,31 @@ test('AttributionHistory',t=>{
       t.equal(snapshot.blockNumber,i+1)
     })
 
+    t.end()
+  })
+})
+test('Process Datset',t=>{
+  let balancesHistory, attributionsHistory, decode
+  t.test('init',t=>{
+    balancesHistory = EmpBalancesHistory()
+    attributionsHistory = AttributionHistory()
+    decode = DecodeLog(abi)
+    t.ok(balancesHistory)
+    t.ok(attributionsHistory)
+    t.end()
+  })
+  t.test('balances',t=>{
+    logs.forEach(log=>{
+      try{
+        log = decode(log,{blockNumber:log.block_number})
+        balancesHistory.handleEvent(log.blockNumber,log)
+      }catch(err){
+        // decoding log error, abi probably missing an event
+        console.log('error decoding log:',err)
+      }
+    })
+    t.ok(balancesHistory.balances.collateral.snapshot())
+    t.ok(balancesHistory.balances.tokens.snapshot())
     t.end()
   })
 })
