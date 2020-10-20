@@ -1,165 +1,177 @@
-const {Balances,History, SharedAttributions} = require('./models')
-const assert = require("assert")
+const { Balances, History, SharedAttributions } = require("./models");
+const assert = require("assert");
 
 // keeps snapshots of all attributions to affiliates keyed by user
-function AttributionHistory(){
+function AttributionHistory() {
   // stores complete balances for all events
-  const attributions = SharedAttributions()
+  const attributions = SharedAttributions();
   // stores snapshots we can lookup by block
-  const history = History()
-  let lastBlockNumber
+  const history = History();
+  let lastBlockNumber;
 
   // takes a snapshot of balances if the next event falls on a new block
-  function handleEvent(blockNumber,args=[]){
-    assert(blockNumber,'requires blockNumber')
-    if(lastBlockNumber == null){
-      lastBlockNumber = blockNumber
+  function handleEvent(blockNumber, args = []) {
+    assert(blockNumber, "requires blockNumber");
+    if (lastBlockNumber == null) {
+      lastBlockNumber = blockNumber;
       history.insert({
         blockNumber,
-        attributions:attributions.snapshot(),
-      })
-    }else if(lastBlockNumber < blockNumber){
+        attributions: attributions.snapshot()
+      });
+    } else if (lastBlockNumber < blockNumber) {
       history.insert({
         blockNumber,
-        attributions:attributions.snapshot(),
-      })
-      lastBlockNumber = blockNumber
+        attributions: attributions.snapshot()
+      });
+      lastBlockNumber = blockNumber;
     }
-    attributions.attribute(...args)
+    attributions.attribute(...args);
   }
 
   return {
     attributions,
     history,
-    handleEvent,
-  }
+    handleEvent
+  };
 }
 
-function EmpBalancesHistory(){
+function EmpBalancesHistory() {
   // stores complete balances for all events
-  const balances = EmpBalances()
+  const balances = EmpBalances();
   // stores snapshots we can lookup by block
-  const history = History()
-  let lastBlockNumber
-  const blocks = []
+  const history = History();
+  let lastBlockNumber;
+  const blocks = [];
 
   // takes a snapshot of balances if the next event falls on a new block
-  function handleEvent(blockNumber,event){
-    assert(blockNumber,'requires blockNumber')
-    if(lastBlockNumber == null){
-      lastBlockNumber = blockNumber
-      blocks.push(blockNumber)
+  function handleEvent(blockNumber, event) {
+    assert(blockNumber, "requires blockNumber");
+    if (lastBlockNumber == null) {
+      lastBlockNumber = blockNumber;
+      blocks.push(blockNumber);
       history.insert({
         blockNumber,
-        tokens:balances.tokens.snapshot(),
-        collateral:balances.collateral.snapshot(),
-      })
-    }else if(lastBlockNumber < blockNumber){
+        tokens: balances.tokens.snapshot(),
+        collateral: balances.collateral.snapshot()
+      });
+    } else if (lastBlockNumber < blockNumber) {
       history.insert({
         blockNumber,
-        tokens:balances.tokens.snapshot(),
-        collateral:balances.collateral.snapshot(),
-      })
-      blocks.push(blockNumber)
-      lastBlockNumber = blockNumber
+        tokens: balances.tokens.snapshot(),
+        collateral: balances.collateral.snapshot()
+      });
+      blocks.push(blockNumber);
+      lastBlockNumber = blockNumber;
     }
-    balances.handleEvent(event)
+    balances.handleEvent(event);
   }
 
   return {
     balances,
     history,
     handleEvent,
-    blocks,
-  }
-
+    blocks
+  };
 }
 
-function EmpBalances(handlers={},{collateral,tokens}={}){
-  collateral = collateral || Balances()
-  tokens = tokens || Balances()
+function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
+  collateral = collateral || Balances();
+  tokens = tokens || Balances();
 
   handlers = {
-    RequestTransferPosition(oldSponsor){
+    RequestTransferPosition(oldSponsor) {
       // nothing
     },
-    RequestTransferPositionExecuted(oldSponsor, newSponsor){
-      const collateralBalance = collateral.get(oldSponsor)
-      collateral.set(oldSponsor,'0')
-      collateral.set(newSponsor,collateralBalance.toString())
+    RequestTransferPositionExecuted(oldSponsor, newSponsor) {
+      const collateralBalance = collateral.get(oldSponsor);
+      collateral.set(oldSponsor, "0");
+      collateral.set(newSponsor, collateralBalance.toString());
 
-      const tokenBalance = tokens.get(oldSponsor)
-      tokens.set(oldSponsor,'0')
-      tokens.set(newSponsor,tokenBalance.toString())
+      const tokenBalance = tokens.get(oldSponsor);
+      tokens.set(oldSponsor, "0");
+      tokens.set(newSponsor, tokenBalance.toString());
     },
-    RequestTransferPositionCanceled(oldSponsor){
+    RequestTransferPositionCanceled(oldSponsor) {
       // nothing
     },
-    Deposit(sponsor, collateralAmount){
-      collateral.add(sponsor,collateralAmount.toString())
+    Deposit(sponsor, collateralAmount) {
+      collateral.add(sponsor, collateralAmount.toString());
     },
-    Withdrawal(sponsor, collateralAmount){
-      collateral.sub(sponsor,collateralAmount.toString())
+    Withdrawal(sponsor, collateralAmount) {
+      collateral.sub(sponsor, collateralAmount.toString());
     },
-    RequestWithdrawal(sponsor, collateralAmount){
+    RequestWithdrawal(sponsor, collateralAmount) {
       // nothing
     },
-    RequestWithdrawalExecuted(sponsor, collateralAmount){
-      collateral.sub(sponsor,collateralAmount.toString())
+    RequestWithdrawalExecuted(sponsor, collateralAmount) {
+      collateral.sub(sponsor, collateralAmount.toString());
     },
-    RequestWithdrawalCanceled(sponsor, collateralAmount){
+    RequestWithdrawalCanceled(sponsor, collateralAmount) {
       // nothing
     },
-    PositionCreated(sponsor, collateralAmount, tokenAmount){
-      collateral.add(sponsor,collateralAmount.toString())
-      tokens.add(sponsor,tokenAmount.toString())
+    PositionCreated(sponsor, collateralAmount, tokenAmount) {
+      collateral.add(sponsor, collateralAmount.toString());
+      tokens.add(sponsor, tokenAmount.toString());
     },
-    NewSponsor(sponsor){
+    NewSponsor(sponsor) {
       // nothing
     },
-    EndedSponsorPosition(sponsor){
+    EndedSponsorPosition(sponsor) {
       // nothing
     },
-    Redeem(sponsor, collateralAmount, tokenAmount){
-      collateral.sub(sponsor,collateralAmount.toString())
-      tokens.sub(sponsor,tokenAmount).toString()
+    Redeem(sponsor, collateralAmount, tokenAmount) {
+      collateral.sub(sponsor, collateralAmount.toString());
+      tokens.sub(sponsor, tokenAmount).toString();
     },
-    ContractExpired(caller){
+    ContractExpired(caller) {
       // nothing
     },
-    SettleExpiredPosition( caller, collateralReturned, tokensBurned){
-      collateral.sub(sponsor,collateralReturned.toString())
-      tokens.sub(sponsor,tokensBurned.toString())
+    SettleExpiredPosition(caller, collateralReturned, tokensBurned) {
+      collateral.sub(sponsor, collateralReturned.toString());
+      tokens.sub(sponsor, tokensBurned.toString());
     },
-    EmergencyShutdown(caller, originalExpirationTimestamp, shutdownTimestamp){
+    LiquidationCreated(
+      sponsor,
+      liquidator,
+      liquidationId,
+      tokensOutstanding,
+      lockedCollateral,
+      liquidatedCollateral,
+      liquidationTime
+    ) {
+      collateral.sub(sponsor, liquidatedCollateral.toString());
+      tokens.sub(sponsor, tokensOutstanding.toString());
+    },
+    LiquidationWithdrawn(caller, originalExpirationTimestamp, shutdownTimestamp) {
+      // nothing
+    },
+    LiquidationDisputed(caller, originalExpirationTimestamp, shutdownTimestamp) {
       // nothing
     },
     // override defaults
     ...handlers
+  };
+
+  function handleEvent({ name, args = [] }) {
+    assert(handlers[name], "No handler for event: " + name);
+    return handlers[name](...args);
   }
 
-
-  function handleEvent({name,args=[]}){
-    assert(handlers[name],'No handler for event: ' + name)
-    return handlers[name](...args)
+  function getCollateral() {
+    return collateral;
   }
-
-  function getCollateral(){
-    return collateral
-  }
-  function getTokens(){
-    return tokens
+  function getTokens() {
+    return tokens;
   }
   return {
     handleEvent,
     collateral,
     tokens
-  }
+  };
 }
-
 
 module.exports = {
   EmpBalances,
   EmpBalancesHistory,
-  AttributionHistory,
-}
+  AttributionHistory
+};
