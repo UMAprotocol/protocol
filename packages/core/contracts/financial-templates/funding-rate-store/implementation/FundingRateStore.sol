@@ -23,7 +23,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
 
     uint256 proposalLiveness;
 
-    constructor(address _timerAddress) public Testable(_timerAddress) {}
+    constructor(uint256 _proposalLiveness, address _timerAddress) public Testable(_timerAddress) {
+        require(_proposalLiveness > 0, "Proposal liveness is 0");
+        proposalLiveness = _proposalLiveness;
+    }
 
     function getFundingRateForIdentifier(bytes32 identifier)
         external
