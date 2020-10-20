@@ -57,8 +57,8 @@ async function runTest() {
     .last()
     .toPromise(Promise);
 
-  console.log("blocks updated count", balancesHistory.blocks.length);
-  const checkblocks = balancesHistory.blocks.slice(0, 10);
+  console.log("blocks updated count", balancesHistory.history.length());
+  const checkblocks = balancesHistory.history.history.slice(0, 10).map(x=>x.blockNumber);
   checkblocks.forEach(blockNumber => {
     const result = balancesHistory.history.lookup(blockNumber);
     console.log(result);

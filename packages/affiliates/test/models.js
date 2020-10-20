@@ -1,6 +1,8 @@
 const test = require("tape");
 const lodash = require("lodash");
-const { History, BalanceHistories, Attributions, Balances, SharedAttributions } = require("../libs/models");
+const { History, BalanceHistories, Attributions, Balances, SharedAttributions, Prices } = require("../libs/models");
+const Coingecko = require('../libs/coingecko')
+const moment = require("moment");
 
 test("SharedAttributions", t => {
   let attributions;
@@ -144,3 +146,22 @@ test("Attributions", t => {
     t.end();
   });
 });
+
+test("Prices",t=>{
+  let prices,seed
+  const token = '0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9'
+  t.test('init',async t=>{
+    seed =await Coingecko().chart(token,'usd','10')
+    console.log(seed.prices)
+    prices = Prices(seed.prices)
+    t.ok(seed)
+    t.ok(prices)
+    t.end()
+  })
+  t.test('lookup',t=>{
+    const time = moment().subtract(5,'days').valueOf()
+    const result = prices.lookup(time)
+    t.ok(result[0]<=time)
+    t.end()
+  })
+})

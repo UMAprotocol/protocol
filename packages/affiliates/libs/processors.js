@@ -1,5 +1,6 @@
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
+const {decodeAttribution} = require('./contracts')
 
 // keeps snapshots of all attributions to affiliates keyed by user
 function AttributionHistory() {
@@ -9,52 +10,58 @@ function AttributionHistory() {
   const history = History();
   let lastBlockNumber;
 
-  // takes a snapshot of balances if the next event falls on a new block
-  function handleEvent(blockNumber, args = []) {
-    assert(blockNumber, "requires blockNumber");
-    if (lastBlockNumber == null) {
-      lastBlockNumber = blockNumber;
-      history.insert({
-        blockNumber,
-        attributions: attributions.snapshot()
-      });
-    } else if (lastBlockNumber < blockNumber) {
-      history.insert({
-        blockNumber,
-        attributions: attributions.snapshot()
-      });
-      lastBlockNumber = blockNumber;
+  // this probably needs to be re-thought to take into
+  // consideration token amounts as well as collateral
+  const Handlers = ({affiliate,user}) =>{
+    return {
+      create( collateralAmount, numTokens){
+        attributions.attribute(user,affiliate,collateralAmount)
+      },
+      deposit(sponsor, collateralAmount){
+        attributions.attribute(user,affiliate,collateralAmount)
+      },
+      depositTo(sponsor, collateralAmount){
+        attributions.attribute(user,affiliate,collateralAmount)
+      },
+      transferPositionPassedRequest(newSponsorAddress){
+        attributions.attribute(newSponsorAddress,affiliate,collateralAmount)
+      },
     }
-    attributions.attribute(...args);
   }
 
+  function handleEvent({user,affiliate},{name,args=[]}) {
+    assert(affiliate,'requires affiliate address')
+    assert(user,'requires user address')
+    const handlers = Handlers({user,affiliate})
+    assert(handlers[name], "No handler for event: " + name);
+    return handlers[name](...args);
+  }
+
+  // event is a decoded transaction
   function handleTransaction(blockNumber, event) {
     assert(blockNumber, "requires blockNumber");
     if (lastBlockNumber == null) {
       lastBlockNumber = blockNumber;
-      blocks.push(blockNumber);
-      history.insert({
-        blockNumber,
-        tokens: balances.tokens.snapshot(),
-        collateral: balances.collateral.snapshot()
-      });
     } else if (lastBlockNumber < blockNumber) {
       history.insert({
-        blockNumber,
-        tokens: balances.tokens.snapshot(),
-        collateral: balances.collateral.snapshot()
+        blockNumber:lastBlockNumber,
+        attributions: attributions.snapshot()
       });
-      blocks.push(blockNumber);
       lastBlockNumber = blockNumber;
     }
-    balances.handleEvent(event);
+    // both of these things arent stored in tx data
+    const affiliate = decodeAttribution(event.input)
+    const user = event.fromAddress
+    console.log({affiliate,user})
+    handleEvent({user,affiliate},event)
+
   }
 
   return {
     attributions,
     history,
     handleEvent,
-    handleTransaction
+    handleTransaction,
   };
 }
 
@@ -64,26 +71,18 @@ function EmpBalancesHistory() {
   // stores snapshots we can lookup by block
   const history = History();
   let lastBlockNumber;
-  const blocks = [];
 
   // takes a snapshot of balances if the next event falls on a new block
   function handleEvent(blockNumber, event) {
     assert(blockNumber, "requires blockNumber");
     if (lastBlockNumber == null) {
       lastBlockNumber = blockNumber;
-      blocks.push(blockNumber);
-      history.insert({
-        blockNumber,
-        tokens: balances.tokens.snapshot(),
-        collateral: balances.collateral.snapshot()
-      });
     } else if (lastBlockNumber < blockNumber) {
       history.insert({
-        blockNumber,
+        blockNumber:lastBlockNumber,
         tokens: balances.tokens.snapshot(),
         collateral: balances.collateral.snapshot()
       });
-      blocks.push(blockNumber);
       lastBlockNumber = blockNumber;
     }
     console.log("BALANCER HANDLER", event);
@@ -94,7 +93,6 @@ function EmpBalancesHistory() {
     balances,
     history,
     handleEvent,
-    blocks
   };
 }
 
