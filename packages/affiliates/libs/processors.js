@@ -28,10 +28,33 @@ function AttributionHistory() {
     attributions.attribute(...args);
   }
 
+  function handleTransaction(blockNumber, event) {
+    assert(blockNumber, "requires blockNumber");
+    if (lastBlockNumber == null) {
+      lastBlockNumber = blockNumber;
+      blocks.push(blockNumber);
+      history.insert({
+        blockNumber,
+        tokens: balances.tokens.snapshot(),
+        collateral: balances.collateral.snapshot()
+      });
+    } else if (lastBlockNumber < blockNumber) {
+      history.insert({
+        blockNumber,
+        tokens: balances.tokens.snapshot(),
+        collateral: balances.collateral.snapshot()
+      });
+      blocks.push(blockNumber);
+      lastBlockNumber = blockNumber;
+    }
+    balances.handleEvent(event);
+  }
+
   return {
     attributions,
     history,
-    handleEvent
+    handleEvent,
+    handleTransaction
   };
 }
 
@@ -63,6 +86,7 @@ function EmpBalancesHistory() {
       blocks.push(blockNumber);
       lastBlockNumber = blockNumber;
     }
+    console.log("BALANCER HANDLER", event);
     balances.handleEvent(event);
   }
 

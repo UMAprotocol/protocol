@@ -11,7 +11,19 @@ function DecodeLog(abi, meta = {}) {
     };
   };
 }
+function DecodeTransaction(abi, meta = {}) {
+  assert(abi, "requries abi");
+  const iface = new ethers.utils.Interface(abi);
+  return (transaction, props = {}) => {
+    return {
+      ...iface.parseTransaction({ data: transaction.input }),
+      ...meta,
+      ...props
+    };
+  };
+}
 
 module.exports = {
-  DecodeLog
+  DecodeLog,
+  DecodeTransaction
 };
