@@ -44,8 +44,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         // Raw collateral value. This value should never be accessed directly -- always use _getFeeAdjustedCollateral().
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
         FixedPoint.Unsigned rawCollateral;
-        // Tracks pending transfer position requests. A transfer position request is pending if `transferPositionRequestPassTimestamp != 0`.
-        uint256 transferPositionRequestPassTimestamp;
     }
 
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
@@ -88,9 +86,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *                EVENTS                *
      ****************************************/
 
-    event RequestTransferPosition(address indexed oldSponsor);
-    event RequestTransferPositionExecuted(address indexed oldSponsor, address indexed newSponsor);
-    event RequestTransferPositionCanceled(address indexed oldSponsor);
     event Deposit(address indexed sponsor, uint256 indexed collateralAmount);
     event Withdrawal(address indexed sponsor, uint256 indexed collateralAmount);
     event RequestWithdrawal(address indexed sponsor, uint256 indexed collateralAmount);
@@ -176,71 +171,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     /****************************************
      *          POSITION FUNCTIONS          *
      ****************************************/
-
-    /**
-     * @notice Requests to transfer ownership of the caller's current position to a new sponsor address.
-     * Once the request liveness is passed, the sponsor can execute the transfer and specify the new sponsor.
-     * @dev The liveness length is the same as the withdrawal liveness.
-     */
-    function requestTransferPosition() public notEmergencyShutdown() updateFundingRate() nonReentrant() {
-        PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
-
-        // Update the position object for the user.
-        positionData.transferPositionRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
-
-        emit RequestTransferPosition(msg.sender);
-    }
-
-    /**
-     * @notice After a passed transfer position request (i.e., by a call to `requestTransferPosition` and waiting
-     * `withdrawalLiveness`), transfers ownership of the caller's current position to `newSponsorAddress`.
-     * @dev Transferring positions can only occur if the recipient does not already have a position.
-     * @param newSponsorAddress is the address to which the position will be transferred.
-     */
-    function transferPositionPassedRequest(address newSponsorAddress)
-        public
-        notEmergencyShutdown()
-        noPendingWithdrawal(msg.sender)
-        updateFundingRate()
-        nonReentrant()
-    {
-        require(
-            _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
-                FixedPoint.fromUnscaledUint(0)
-            ),
-            "Sponsor already has position"
-        );
-        PositionData storage positionData = _getPositionData(msg.sender);
-        require(
-            positionData.transferPositionRequestPassTimestamp != 0 &&
-                positionData.transferPositionRequestPassTimestamp <= getCurrentTime(),
-            "Invalid transfer request"
-        );
-
-        // Reset transfer request.
-        positionData.transferPositionRequestPassTimestamp = 0;
-
-        positions[newSponsorAddress] = positionData;
-        delete positions[msg.sender];
-
-        emit RequestTransferPositionExecuted(msg.sender, newSponsorAddress);
-        emit NewSponsor(newSponsorAddress);
-        emit EndedSponsorPosition(msg.sender);
-    }
-
-    /**
-     * @notice Cancels a pending transfer position request.
-     */
-    function cancelTransferPosition() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
-        PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
-
-        emit RequestTransferPositionCanceled(msg.sender);
-
-        // Reset withdrawal request.
-        positionData.transferPositionRequestPassTimestamp = 0;
-    }
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the specified sponsor's position.
