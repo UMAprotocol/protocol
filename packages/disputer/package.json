@@ -30,7 +30,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "../../scripts/prerun_ganache.sh 'truffle test'"
+    "test": "truffle test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

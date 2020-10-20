@@ -31,7 +31,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "../../scripts/prerun_ganache.sh 'truffle test' && yarn mocha",
+    "test": "truffle test && yarn mocha",
     "test-log": "truffle test ./test/*.js --network=test logInTest",
     "mocha": "mocha mocha-test",
     "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
