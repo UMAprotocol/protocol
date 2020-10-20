@@ -28,6 +28,7 @@ contract("Perpetual", function(accounts) {
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
+      fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FundingRate"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",

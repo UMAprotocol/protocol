@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
+import "../../common/implementation/Timer.sol";
 
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
@@ -20,7 +20,7 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-contract FundingRateApplier is Testable, Lockable {
+contract FundingRateApplier is Lockable {
     using SafeMath for int256;
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
@@ -34,10 +34,10 @@ contract FundingRateApplier is Testable, Lockable {
     FinderInterface public fpFinder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
-    uint256 lastUpdateTime;
+    uint256 public lastUpdateTime;
 
     // Identifier in funding rate store to query for.
-    bytes32 identifier;
+    bytes32 public fundingRateIdentifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -48,16 +48,21 @@ contract FundingRateApplier is Testable, Lockable {
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
 
+    // FundingRateApplier and FeePayer are both at the same inheritance level within the PerpetualPositionManager. As a
+    // result, they cant both be instances of the Testable contract. to accommodate this the FundingRateApplier has an
+    // instance of timer which enables it to be tested in the same way it would be if it was an instance of Tesable.
+    Timer timer;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
 
-    // TODO: Decide which params to emit in this event.
     event NewFundingRate(
         uint256 indexed newMultiplier,
-        uint256 indexed updateTime,
+        uint256 lastUpdateTime,
+        uint256 updateTime,
         uint256 indexed paymentPeriod,
-        uint256 latestFundingRate,
+        uint256 indexed latestFundingRate,
         uint256 effectiveFundingRateForPaymentPeriod
     );
 
@@ -65,36 +70,32 @@ contract FundingRateApplier is Testable, Lockable {
      *              MODIFIERS               *
      ****************************************/
 
-    // modifier that calls applyFundingRate().
-    modifier updateFunding {
+    modifier updateFundingRate {
         _applyEffectiveFundingRate();
         _;
     }
 
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
-     * @param _initialFundingRate Starting funding rate multiplier.
-     * @param _fpFinderAddress Finder used to discover financial-product-related contracts.
+     * @param _finderAddress Finder used to discover financial-product-related contracts.
+     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _timerAddress Contract that stores the current time in a testing environment.
-     * @param _identifier Unique identifier for DVM price feed ticker for child financial contract.
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        FixedPoint.Unsigned memory _initialFundingRate,
-        address _fpFinderAddress,
-        address _timerAddress,
-        bytes32 _identifier
-    ) public Testable(_timerAddress) nonReentrant() {
-        // TODO: Should we constrain `_initialFundingRate > x && < y`?
-        cumulativeFundingRateMultiplier = _initialFundingRate;
-        fpFinder = FinderInterface(_fpFinderAddress);
-        lastUpdateTime = getCurrentTime();
-        identifier = _identifier;
-    }
+        address _finderAddress,
+        bytes32 _fundingRateIdentifier,
+        address _timerAddress
+    ) public nonReentrant() {
+        fpFinder = FinderInterface(_finderAddress);
+        fundingRateIdentifier = _fundingRateIdentifier;
 
-    /****************************************
-     *         INTERNAL FUNCTIONS           *
-     ****************************************/
+        timer = Timer(_timerAddress);
+        lastUpdateTime = timer.getCurrentTime();
+
+        // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
+        cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
+    }
 
     // Returns a token amount scaled by the current funding rate multiplier.
     // Note: if the contract has paid fees since it was deployed, the raw
@@ -111,19 +112,21 @@ contract FundingRateApplier is Testable, Lockable {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
+    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
+        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
+        return fundingRateStore.getFundingRateForIdentifier(fundingRateIdentifier);
+    }
+
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
     // and multiplies the current multiplier by the effective fee.
     // A funding rate < 1 will reduce the multiplier, and a funding rate of > 1 will increase the multiplier.
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
-        uint256 currentTime = getCurrentTime();
+        uint256 currentTime = timer.getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
-        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        FixedPoint.Unsigned memory _latestFundingRatePerSecond = fundingRateStore.getFundingRateForIdentifier(
-            identifier
-        );
+        FixedPoint.Unsigned memory _latestFundingRatePerSecond = _getLatestFundingRate();
 
         FixedPoint.Unsigned memory effectiveFundingRateForPeriod;
         (cumulativeFundingRateMultiplier, effectiveFundingRateForPeriod) = _calculateEffectiveFundingRate(
@@ -131,15 +134,17 @@ contract FundingRateApplier is Testable, Lockable {
             _latestFundingRatePerSecond,
             cumulativeFundingRateMultiplier
         );
-        lastUpdateTime = currentTime;
 
         emit NewFundingRate(
             cumulativeFundingRateMultiplier.rawValue,
             lastUpdateTime,
+            currentTime,
             paymentPeriod,
             _latestFundingRatePerSecond.rawValue,
             effectiveFundingRateForPeriod.rawValue
         );
+
+        lastUpdateTime = currentTime;
     }
 
     function _calculateEffectiveFundingRate(
