@@ -23,9 +23,6 @@ test("AttributionHistory", t => {
     });
     events.forEach(e => processor.handleEvent(e.blockNumber, e.args));
 
-    console.log(processor.history);
-    // console.log(processor.attributions.snapshot())
-
     lodash.times(100, i => {
       const snapshot = processor.history.lookup(i + 1);
       t.ok(snapshot.attributions);

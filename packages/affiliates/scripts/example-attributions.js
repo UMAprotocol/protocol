@@ -56,8 +56,8 @@ async function runTest() {
     .last()
     .toPromise(Promise);
 
-  console.log(balances.getCollateral().snapshot());
-  console.log(balances.getTokens().snapshot());
+  console.log(balances.balances.collateral.snapshot());
+  console.log(balances.balances.tokens.snapshot());
 }
 
 runTest()
