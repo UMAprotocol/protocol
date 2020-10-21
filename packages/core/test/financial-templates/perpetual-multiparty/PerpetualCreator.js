@@ -195,6 +195,10 @@ contract("PerpetualCreator", function(accounts) {
       hexToUtf8(constructorParams.fundingRateIdentifier)
     );
 
+    // Cumulative multipliers are set to default.
+    assert.equal(await perpetual.cumulativeFeeMultiplier(), "0");
+    assert.equal(await perpetual.cumulativeFundingRateMultiplier(), "0");
+
     // Deployed Perpetual timer should be same as Perpetual creator.
     assert.equal(await perpetual.timerAddress(), await perpetualCreator.timerAddress());
   });
