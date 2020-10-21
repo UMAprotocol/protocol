@@ -670,7 +670,7 @@ library FixedPoint {
      * @param b a FixedPoint.Signed.
      * @return the product of `a` and `b`.
      */
-    function mulCeil(Signed memory a, int256 b) internal pure returns (Signed memory) {
+    function mulAwayFromZero(Signed memory a, int256 b) internal pure returns (Signed memory) {
         // Since b is an int, there is no risk of truncation and we can just mul it normally
         return Signed(a.rawValue.mul(b));
     }
