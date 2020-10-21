@@ -23,12 +23,15 @@ function DecodeTransaction(abi, meta = {}) {
   };
 }
 
-function decodeAttribution(data,delimiter="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000"){
-  return data.split(delimiter)[1]
+function decodeAttribution(
+  data,
+  delimiter = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000"
+) {
+  return data.split(delimiter)[1];
 }
 
 module.exports = {
   DecodeLog,
   DecodeTransaction,
-  decodeAttribution,
+  decodeAttribution
 };

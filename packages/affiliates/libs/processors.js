@@ -1,6 +1,6 @@
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
-const {decodeAttribution} = require('./contracts')
+const { decodeAttribution } = require("./contracts");
 
 // keeps snapshots of all attributions to affiliates keyed by user
 function AttributionHistory() {
@@ -12,27 +12,27 @@ function AttributionHistory() {
 
   // this probably needs to be re-thought to take into
   // consideration token amounts as well as collateral
-  const Handlers = ({affiliate,user}) =>{
+  const Handlers = ({ affiliate, user }) => {
     return {
-      create( collateralAmount, numTokens){
-        attributions.attribute(user,affiliate,collateralAmount)
+      create(collateralAmount, numTokens) {
+        attributions.attribute(user, affiliate, collateralAmount);
       },
-      deposit(sponsor, collateralAmount){
-        attributions.attribute(user,affiliate,collateralAmount)
+      deposit(sponsor, collateralAmount) {
+        attributions.attribute(user, affiliate, collateralAmount);
       },
-      depositTo(sponsor, collateralAmount){
-        attributions.attribute(user,affiliate,collateralAmount)
+      depositTo(sponsor, collateralAmount) {
+        attributions.attribute(user, affiliate, collateralAmount);
       },
-      transferPositionPassedRequest(newSponsorAddress){
-        attributions.attribute(newSponsorAddress,affiliate,collateralAmount)
-      },
-    }
-  }
+      transferPositionPassedRequest(newSponsorAddress) {
+        attributions.attribute(newSponsorAddress, affiliate, collateralAmount);
+      }
+    };
+  };
 
-  function handleEvent({user,affiliate},{name,args=[]}) {
-    assert(affiliate,'requires affiliate address')
-    assert(user,'requires user address')
-    const handlers = Handlers({user,affiliate})
+  function handleEvent({ user, affiliate }, { name, args = [] }) {
+    assert(affiliate, "requires affiliate address");
+    assert(user, "requires user address");
+    const handlers = Handlers({ user, affiliate });
     assert(handlers[name], "No handler for event: " + name);
     return handlers[name](...args);
   }
@@ -44,24 +44,22 @@ function AttributionHistory() {
       lastBlockNumber = blockNumber;
     } else if (lastBlockNumber < blockNumber) {
       history.insert({
-        blockNumber:lastBlockNumber,
+        blockNumber: lastBlockNumber,
         attributions: attributions.snapshot()
       });
       lastBlockNumber = blockNumber;
     }
     // both of these things arent stored in tx data
-    const affiliate = decodeAttribution(event.input)
-    const user = event.fromAddress
-    console.log({affiliate,user})
-    handleEvent({user,affiliate},event)
-
+    const affiliate = decodeAttribution(event.input);
+    const user = event.fromAddress;
+    handleEvent({ user, affiliate }, event);
   }
 
   return {
     attributions,
     history,
     handleEvent,
-    handleTransaction,
+    handleTransaction
   };
 }
 
@@ -79,20 +77,20 @@ function EmpBalancesHistory() {
       lastBlockNumber = blockNumber;
     } else if (lastBlockNumber < blockNumber) {
       history.insert({
-        blockNumber:lastBlockNumber,
+        blockNumber: lastBlockNumber,
+        blockTimestamp: event.blockTimestamp,
         tokens: balances.tokens.snapshot(),
         collateral: balances.collateral.snapshot()
       });
       lastBlockNumber = blockNumber;
     }
-    console.log("BALANCER HANDLER", event);
     balances.handleEvent(event);
   }
 
   return {
     balances,
     history,
-    handleEvent,
+    handleEvent
   };
 }
 
