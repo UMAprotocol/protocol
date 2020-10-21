@@ -209,6 +209,9 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       hexToUtf8(constructorParams.priceFeedIdentifier)
     );
 
+    // Cumulative multipliers are set to default.
+    assert.equal(await expiringMultiParty.cumulativeFeeMultiplier(), "0");
+
     // Deployed EMP timer should be same as EMP creator.
     assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
   });
