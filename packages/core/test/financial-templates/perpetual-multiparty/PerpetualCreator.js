@@ -3,23 +3,23 @@ const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
-const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
+const PerpetualCreator = artifacts.require("PerpetualCreator");
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 
-contract("ExpiringMultiPartyCreator", function(accounts) {
+contract("PerpetualCreator", function(accounts) {
   let contractCreator = accounts[0];
 
   // Contract variables
   let collateralToken;
-  let expiringMultiPartyCreator;
+  let perpetualCreator;
   let registry;
   let collateralTokenWhitelist;
   let store;
@@ -30,7 +30,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
   beforeEach(async () => {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     registry = await Registry.deployed();
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    perpetualCreator = await PerpetualCreator.deployed();
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
@@ -39,9 +39,9 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     store = await Store.deployed();
 
     constructorParams = {
-      expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
+      fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FUNDING"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -62,21 +62,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
 
   it("TokenFactory address should be set on construction", async function() {
     const tokenFactory = await TokenFactory.deployed();
-    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), tokenFactory.address);
-  });
-
-  it("Expiration timestamp must be in future", async function() {
-    // Change to arbitrary expiration timestamp in the future
-    const arbitraryExpiration = "1298918401"; // Monday, February 28, 2011 6:40:01 PM
-    // Set to a valid expiry.
-    constructorParams.expirationTimestamp = arbitraryExpiration.toString();
-    assert(
-      await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator
-        })
-      )
-    );
+    assert.equal(await perpetualCreator.tokenFactoryAddress(), tokenFactory.address);
   });
 
   it("Cannot have empty synthetic token symbol", async function() {
@@ -84,7 +70,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.syntheticSymbol = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -96,7 +82,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.syntheticName = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -108,7 +94,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.collateralAddress = await Token.new("UMA", "UMA", 18, { from: contractCreator }).address;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -120,7 +106,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.withdrawalLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -132,7 +118,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.withdrawalLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -144,7 +130,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.liquidationLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -156,7 +142,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
@@ -168,64 +154,65 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams.excessTokenBeneficiary = ZERO_ADDRESS;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )
     );
   });
 
-  it("Can create new instances of ExpiringMultiParty", async function() {
+  it("Can create new instances of Perpetual", async function() {
     // Use `.call` to get the returned value from the function.
-    let functionReturnedAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {
+    let functionReturnedAddress = await perpetualCreator.createPerpetual.call(constructorParams, {
       from: contractCreator
     });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
       from: contractCreator
     });
 
     // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
-    let expiringMultiPartyAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
-      expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
-      return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
 
     // Ensure value returned from the event is the same as returned from the function.
-    assert.equal(functionReturnedAddress, expiringMultiPartyAddress);
+    assert.equal(functionReturnedAddress, perpetualAddress);
 
-    // Instantiate an instance of the expiringMultiParty and check a few constants that should hold true.
-    let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
+    // Instantiate an instance of the perpetual and check a few constants that should hold true.
+    let perpetual = await Perpetual.at(perpetualAddress);
 
-    assert.equal(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
     // Liquidation liveness should be the same value as set in the constructor params.
-    assert.equal(await expiringMultiParty.liquidationLiveness(), constructorParams.liquidationLiveness.toString());
+    assert.equal(await perpetual.liquidationLiveness(), constructorParams.liquidationLiveness.toString());
     // Withdrawal liveness should be the same value as set in the constructor params.
-    assert.equal(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness.toString());
+    assert.equal(await perpetual.withdrawalLiveness(), constructorParams.withdrawalLiveness.toString());
+    assert.equal(hexToUtf8(await perpetual.priceIdentifier()), hexToUtf8(constructorParams.priceFeedIdentifier));
     assert.equal(
-      hexToUtf8(await expiringMultiParty.priceIdentifier()),
-      hexToUtf8(constructorParams.priceFeedIdentifier)
+      hexToUtf8(await perpetual.fundingRateIdentifier()),
+      hexToUtf8(constructorParams.fundingRateIdentifier)
     );
 
     // Cumulative multipliers are set to default.
-    assert.equal((await expiringMultiParty.cumulativeFeeMultiplier()).toString(), toWei("1"));
+    assert.equal((await perpetual.cumulativeFeeMultiplier()).toString(), toWei("1"));
+    assert.equal((await perpetual.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
-    // Deployed EMP timer should be same as EMP creator.
-    assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
+    // Deployed Perpetual timer should be same as Perpetual creator.
+    assert.equal(await perpetual.timerAddress(), await perpetualCreator.timerAddress());
   });
 
-  it("Creation correctly registers ExpiringMultiParty within the registry", async function() {
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+  it("Creation correctly registers Perpetual within the registry", async function() {
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
       from: contractCreator
     });
 
-    let expiringMultiPartyAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
-      expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
-      return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
-    assert.isTrue(await registry.isContractRegistered(expiringMultiPartyAddress));
+    assert.isTrue(await registry.isContractRegistered(perpetualAddress));
   });
 });
