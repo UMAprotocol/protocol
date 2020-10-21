@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, toBN } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -210,7 +210,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     );
 
     // Cumulative multipliers are set to default.
-    assert.equal(await expiringMultiParty.cumulativeFeeMultiplier(), "0");
+    assert.equal(await expiringMultiParty.cumulativeFeeMultiplier(), toBN(toWei("1")));
 
     // Deployed EMP timer should be same as EMP creator.
     assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
