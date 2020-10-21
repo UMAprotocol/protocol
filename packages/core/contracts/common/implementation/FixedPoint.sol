@@ -31,15 +31,6 @@ library FixedPoint {
     }
 
     /**
-     * @notice Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`.
-     * @param a uint to convert into a FixedPoint.
-     * @return the converted FixedPoint.
-     */
-    function fromUnscaledUint(uint256 a) internal pure returns (Unsigned memory) {
-        return Unsigned(a.mul(FP_SCALING_FACTOR));
-    }
-
-    /**
      * @notice Whether `a` is equal to `b`.
      * @param a a FixedPoint.
      * @param b a uint256.
@@ -408,7 +399,7 @@ library FixedPoint {
 
     /**
      * @notice Constructs a `Signed` from an unscaled int, e.g., `b=5` gets stored internally as `5**18`.
-     * @param an int to convert into a FixedPoint.Signed.
+     * @param a int to convert into a FixedPoint.Signed.
      * @return the converted FixedPoint.Signed.
      */
     function fromUnscaledInt(int256 a) internal pure returns (Signed memory) {
@@ -659,14 +650,17 @@ library FixedPoint {
      * @param b a FixedPoint.Signed.
      * @return the product of `a` and `b`.
      */
-    function mulCeil(Signed memory a, Signed memory b) internal pure returns (Signed memory) {
+    function mulAwayFromZero(Signed memory a, Signed memory b) internal pure returns (Signed memory) {
         int256 mulRaw = a.rawValue.mul(b.rawValue);
-        int256 mulFloor = mulRaw / SFP_SCALING_FACTOR;
-        int256 mod = mulRaw.mod(SFP_SCALING_FACTOR);
+        int256 mulTowardsZero = mulRaw / SFP_SCALING_FACTOR;
+        // Manual mod because SignedSafeMath doesn't support it.
+        int256 mod = mulRaw % SFP_SCALING_FACTOR;
         if (mod != 0) {
-            return Signed(mulFloor.add(1));
+            bool isResultPositive = isLessThan(a, 0) == isLessThan(b, 0);
+            int256 valueToAdd = isResultPositive ? int256(1) : int256(-1);
+            return Signed(mulTowardsZero.add(valueToAdd));
         } else {
-            return Signed(mulFloor);
+            return Signed(mulTowardsZero);
         }
     }
 
@@ -728,9 +722,12 @@ library FixedPoint {
     function divAwayFromZero(Signed memory a, Signed memory b) internal pure returns (Signed memory) {
         int256 aScaled = a.rawValue.mul(SFP_SCALING_FACTOR);
         int256 divTowardsZero = aScaled.div(b.rawValue);
-        int256 mod = aScaled.mod(b.rawValue);
+        // Manual mod because SignedSafeMath doesn't support it.
+        int256 mod = aScaled % b.rawValue;
         if (mod != 0) {
-            return Signed(divTowardsZero.add(1));
+            bool isResultPositive = isLessThan(a, 0) == isLessThan(b, 0);
+            int256 valueToAdd = isResultPositive ? int256(1) : int256(-1);
+            return Signed(divTowardsZero.add(valueToAdd));
         } else {
             return Signed(divTowardsZero);
         }
@@ -750,13 +747,13 @@ library FixedPoint {
     }
 
     /**
-     * @notice Raises an `Signed` to the power of an unscaled int256, reverting on overflow. E.g., `b=2` squares `a`.
+     * @notice Raises an `Signed` to the power of an unscaled uint256, reverting on overflow. E.g., `b=2` squares `a`.
      * @dev This will "floor" the result.
      * @param a a FixedPoint.Signed.
-     * @param b an int256.
+     * @param b a uint256 (negative exponents are not allowed).
      * @return output is `a` to the power of `b`.
      */
-    function pow(Signed memory a, int256 b) internal pure returns (Signed memory output) {
+    function pow(Signed memory a, uint256 b) internal pure returns (Signed memory output) {
         output = fromUnscaledInt(1);
         for (uint256 i = 0; i < b; i = i.add(1)) {
             output = mul(output, a);
