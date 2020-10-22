@@ -77,7 +77,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
     // Timestamp used in case of emergency shutdown.
-    uint256 private emergencyShutdownTimestamp;
+    uint256 public emergencyShutdownTimestamp;
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
