@@ -1170,7 +1170,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal(sponsorFinalSynthetic, 0);
   });
 
-  describe("Precision loss is handled as expected", () => {
+  describe("Precision loss as a result of regular fees is handled as expected", () => {
     beforeEach(async () => {
       // Create a new position with:
       // - 30 collateral
@@ -1361,6 +1361,74 @@ contract("PerpetualPositionManager", function(accounts) {
 
       // Drain excess collateral left because of precesion loss.
       await expectAndDrainExcessCollateral();
+    });
+  });
+
+  describe("Precision loss as a result of the funding rate multiplier is handled as expected", () => {
+    beforeEach(async () => {
+      // Create a new position with:
+      // - any amount of collateral
+      // - 30 wei synthetic tokens
+      await collateral.approve(positionManager.address, "100000", { from: sponsor });
+      const numTokens = "30";
+      const amountCollateral = "1";
+      await positionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+      await tokenCurrency.approve(positionManager.address, numTokens, { from: sponsor });
+    });
+    it("Funding rate multiplier updates shows precision loss", async function() {
+      // Set the funding rate multiplier to 1.000000000000000002 after 1 second.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("1.000000000000000002")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // Apply the funding rate and check that the multiplier is set correctly.
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.000000000000000002"));
+
+      // Now set the funding rate to 0.999999999999999999 and advance by another second.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("0.999999999999999999")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // The new multiplier will be:
+      // 1.000000000000000002 * 0.999999999999999999 = 1.000000000000000000999999999999999998
+      // This result gets truncated after the first 18 decimals and floored to 1.000000000000000000
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
+    });
+    it("Funding-Rate-Adjusted sponsor debt shows precision loss", async function() {
+      // Set the funding rate multiplier to 0.95 after 1 second.
+      // After 1 second, the adjusted token debt will be 30 * 0.95 = 28.5 wei, which will be truncated to 28.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("0.95")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // Apply the funding rate and check that the multiplier is set correctly.
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+
+      // Query adjusted debt.
+      const rawDebt = (await positionManager.positions(sponsor)).tokensOutstanding;
+      const adjustedDebt = await positionManager.getFundingRateAppliedTokenDebt(rawDebt);
+
+      // Without precision loss the adjusted debt would be 28.5
+      assert.equal(adjustedDebt.toString(), "28");
+
+      // However, this does not result in inconsistencies because the contract only deals with
+      // adjusted, not raw debt.
+
+      // If the sponsor redeems all of their tokens they will still receive 100% of their collateral.
+      const initialCollateral = await collateral.balanceOf(sponsor);
+      await positionManager.redeem({ rawValue: "30" }, { from: sponsor });
+      const finalCollateral = await collateral.balanceOf(sponsor);
+      assert.equal(finalCollateral.sub(initialCollateral), "1");
+      const positionDebt = (await positionManager.positions(sponsor)).tokensOutstanding;
+      assert.equal(positionDebt.toString(), "0");
+      const positionCollateral = (await positionManager.positions(sponsor)).rawCollateral;
+      assert.equal(positionCollateral.toString(), "0");
     });
   });
 
