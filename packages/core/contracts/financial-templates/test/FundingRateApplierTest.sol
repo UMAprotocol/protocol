@@ -19,9 +19,14 @@ contract FundingRateApplierTest is FundingRateApplier {
 
     function calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
-        FixedPoint.Unsigned memory fundingRatePerSecond,
-        FixedPoint.Unsigned memory feeMultiplier
-    ) public pure returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory) {
-        return _calculateEffectiveFundingRate(paymentPeriodSeconds, fundingRatePerSecond, feeMultiplier);
+        FixedPoint.Signed memory fundingRatePerSecond,
+        FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
+    ) public pure returns (FixedPoint.Unsigned memory, FixedPoint.Signed memory) {
+        return
+            _calculateEffectiveFundingRate(
+                paymentPeriodSeconds,
+                fundingRatePerSecond,
+                currentCumulativeFundingRateMultiplier
+            );
     }
 }

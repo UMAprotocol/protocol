@@ -1,6 +1,7 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
@@ -21,10 +22,10 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
  */
 
 contract FundingRateApplier is Lockable {
-    using SafeMath for int256;
-    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
+    using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     /****************************************
      * FUNDING RATE APPLIER DATA STRUCTURES *
@@ -62,8 +63,8 @@ contract FundingRateApplier is Lockable {
         uint256 lastUpdateTime,
         uint256 updateTime,
         uint256 indexed paymentPeriod,
-        uint256 indexed latestFundingRate,
-        uint256 effectiveFundingRateForPaymentPeriod
+        int256 indexed latestFundingRate,
+        int256 periodRate
     );
 
     /****************************************
@@ -86,7 +87,7 @@ contract FundingRateApplier is Lockable {
         address _finderAddress,
         bytes32 _fundingRateIdentifier,
         address _timerAddress
-    ) public nonReentrant() {
+    ) public {
         fpFinder = FinderInterface(_finderAddress);
         fundingRateIdentifier = _fundingRateIdentifier;
 
@@ -112,7 +113,7 @@ contract FundingRateApplier is Lockable {
         return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
+    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
         FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
         return fundingRateStore.getFundingRateForIdentifier(fundingRateIdentifier);
     }
@@ -126,10 +127,10 @@ contract FundingRateApplier is Lockable {
         uint256 currentTime = timer.getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
-        FixedPoint.Unsigned memory _latestFundingRatePerSecond = _getLatestFundingRate();
+        FixedPoint.Signed memory _latestFundingRatePerSecond = _getLatestFundingRate();
 
-        FixedPoint.Unsigned memory effectiveFundingRateForPeriod;
-        (cumulativeFundingRateMultiplier, effectiveFundingRateForPeriod) = _calculateEffectiveFundingRate(
+        FixedPoint.Signed memory periodRate;
+        (cumulativeFundingRateMultiplier, periodRate) = _calculateEffectiveFundingRate(
             paymentPeriod,
             _latestFundingRatePerSecond,
             cumulativeFundingRateMultiplier
@@ -141,7 +142,7 @@ contract FundingRateApplier is Lockable {
             currentTime,
             paymentPeriod,
             _latestFundingRatePerSecond.rawValue,
-            effectiveFundingRateForPeriod.rawValue
+            periodRate.rawValue
         );
 
         lastUpdateTime = currentTime;
@@ -149,32 +150,29 @@ contract FundingRateApplier is Lockable {
 
     function _calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
-        FixedPoint.Unsigned memory fundingRatePerSecond,
-        FixedPoint.Unsigned memory feeMultiplier
-    ) internal pure returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory) {
+        FixedPoint.Signed memory fundingRatePerSecond,
+        FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
+    ) internal pure returns (FixedPoint.Unsigned memory, FixedPoint.Signed memory) {
         // Determine whether `fundingRatePerSecond` implies a negative or positive funding rate,
         // and apply it over a pay period.
-        FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
-        FixedPoint.Unsigned memory effectiveFundingRateForPeriod = ONE;
+        FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
 
-        // If `fundingRatePerSecond` == 1, then maintain the current multiplier.
-        FixedPoint.Unsigned memory newFeeMultiplier = feeMultiplier;
-        if (fundingRatePerSecond.isGreaterThan(ONE)) {
-            // If `fundingRatePerSecond` > 1, then first scale the funding over the pay period:
-            // (`fundingRatePerSecond` - 1) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 + effectiveFundingRate).
+        // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
+        FixedPoint.Signed memory periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
-            effectiveFundingRateForPeriod = ONE.add(fundingRatePerSecond.sub(ONE).mul(paymentPeriodSeconds));
-            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriod);
-        } else if (fundingRatePerSecond.isLessThan(ONE)) {
-            // If `fundingRatePerSecond` < 1, then first scale the funding over the pay period:
-            // (1 - `fundingRatePerSecond`) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 - effectiveFundingRate).
+        // Add one to create the multiplier to scale the existing fee multiplier.
+        FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
 
-            effectiveFundingRateForPeriod = ONE.sub(ONE.sub(fundingRatePerSecond).mul(paymentPeriodSeconds));
-            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriod);
-        }
+        // Max with 0 to ensure the multiplier isn't negative, then cast to an Unsigned.
+        FixedPoint.Unsigned memory unsignedPeriodMultiplier = FixedPoint.fromSigned(
+            FixedPoint.max(signedPeriodMultiplier, FixedPoint.fromUnscaledInt(0))
+        );
 
-        return (newFeeMultiplier, effectiveFundingRateForPeriod);
+        // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new cumulative funding rate multiplier.
+        FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(
+            unsignedPeriodMultiplier
+        );
+
+        return (newCumulativeFundingRateMultiplier, periodRate);
     }
 }

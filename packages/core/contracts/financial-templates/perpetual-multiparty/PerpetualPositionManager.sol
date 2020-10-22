@@ -156,7 +156,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         public
         FeePayer(_collateralAddress, _finderAddress, _timerAddress)
         FundingRateApplier(_finderAddress, _fundingRateIdentifier, _timerAddress)
-        nonReentrant()
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -555,7 +554,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
-    function remargin() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function remargin() external override {
         return;
     }
 
@@ -564,7 +563,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
      * @param token address of the ERC20 token whose excess balance should be drained.
      */
-    function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
+    function trimExcess(IERC20 token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
 
         if (address(token) == address(collateralCurrency)) {
