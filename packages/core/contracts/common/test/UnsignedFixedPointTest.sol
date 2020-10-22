@@ -4,7 +4,7 @@ import "../implementation/FixedPoint.sol";
 
 
 // Wraps the FixedPoint library for testing purposes.
-contract FixedPointTest {
+contract UnsignedFixedPointTest {
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint256;
     using SafeMath for uint256;

@@ -1,8 +1,8 @@
 const { didContractThrow } = require("@uma/common");
 
-const FixedPointTest = artifacts.require("FixedPointTest");
+const FixedPointTest = artifacts.require("UnsignedFixedPointTest");
 
-contract("FixedPoint", function() {
+contract("UnsignedFixedPoint", function() {
   const uint_max = web3.utils.toBN("115792089237316195423570985008687907853269984665640564039457584007913129639935");
 
   it("Construction", async function() {
@@ -15,7 +15,7 @@ contract("FixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapFromUnscaledUint(tenToSixty)));
   });
 
-  it("Comparison", async function() {
+  it("Unsigned Comparison", async function() {
     const fixedPoint = await FixedPointTest.new();
 
     assert.isTrue(await fixedPoint.wrapIsGreaterThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
@@ -39,7 +39,7 @@ contract("FixedPoint", function() {
     assert.isTrue(await fixedPoint.wrapIsLessThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
   });
 
-  it("Mixed Comparison", async function() {
+  it("Unsigned Mixed Comparison", async function() {
     const fixedPoint = await FixedPointTest.new();
 
     assert.isTrue(await fixedPoint.wrapMixedIsEqual(web3.utils.toWei("2"), "2"));
