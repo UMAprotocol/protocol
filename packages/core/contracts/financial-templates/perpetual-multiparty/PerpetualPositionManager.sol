@@ -663,8 +663,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         FixedPoint.Unsigned memory startingGlobalCollateral = _getFeeAdjustedCollateral(rawTotalPositionCollateral);
 
         // Remove the collateral and outstanding from the overall total position.
-        FixedPoint.Unsigned memory remainingRawCollateral = positionToLiquidate.rawCollateral;
-        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
+        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(positionToLiquidate.rawCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
@@ -703,8 +702,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
-        OracleInterface oracle = _getOracle();
-        oracle.requestPrice(priceIdentifier, requestedTime);
+        _getOracle().requestPrice(priceIdentifier, requestedTime);
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
