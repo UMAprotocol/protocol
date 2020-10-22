@@ -12,7 +12,6 @@ const coingecko = Coingecko();
 const ethers = require("ethers");
 const { delay } = require("@uma/financial-templates-lib");
 
-// uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC
 const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
 
 const empContracts = ["0xaBBee9fC7a882499162323EEB7BF6614193312e3", "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56"];
@@ -204,8 +203,8 @@ async function runTest() {
 
   const payoutPerSnapshot = rewardsPerBlock * snapshotSteps;
 
-  // loop over each snapshot generated in the cumulativeValueLocked data set and compute the pro-rata contribution of each
-  // developer by dividing their contribution against the total at each snapshot.
+  // loop over each snapshot generated in the cumulativeValueLocked data set and compute the pro-rata contribution of
+  // each developer by dividing their contribution against the total at each snapshot.
   let finalDevPayouts = {};
   Object.values(cumulativeValueLocked).forEach(snapShot => {
     const totalLiquidAtSnapshot = Object.values(snapShot).reduce((a, b) => a + b, 0);

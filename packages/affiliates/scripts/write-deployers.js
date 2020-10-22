@@ -1,5 +1,5 @@
-// Generates a sample logs file uUSDwETH-DEC-logs.json containing mocked transaction logs. Used in  testing so the
-// scripts dont need to rerun the GCP big query.
+// Generates a sample deployers file uUSDwETH-DEC-deployers.json containing logs sent to the emp factor used to find the
+// creator of a given EMP.
 
 const { BigQuery } = require("@google-cloud/bigquery");
 const moment = require("moment");
@@ -8,9 +8,9 @@ const assert = require("assert");
 const Path = require("path");
 const fs = require("fs");
 
-// uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC
-const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-logs.json");
+const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
+
+const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-deployers.json");
 
 function makeQuery(contract, start, end = Date.now()) {
   assert(contract, "requires contract");
@@ -34,7 +34,7 @@ const client = new BigQuery();
 async function runTest() {
   // returns a node read stream
   const query = makeQuery(
-    empContract,
+    empCreator,
     moment("9/20/2020", "MM/DD/YYYY").valueOf(),
     moment("10/20/2020", "MM/DD/YYYY").valueOf()
   );

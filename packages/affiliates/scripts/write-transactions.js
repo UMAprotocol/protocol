@@ -33,7 +33,7 @@ function makeQuery(contract, start, end = Date.now()) {
     WHERE
       block_timestamp > TIMESTAMP('${start}')
       AND block_timestamp < TIMESTAMP('${end}')
-      AND LOWER(to_address)=LOWER('0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56')
+      AND LOWER(to_address)=LOWER('${contract}')
     ORDER BY block_timestamp ASC;
     `;
 }
