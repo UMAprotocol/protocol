@@ -155,7 +155,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     )
         public
         FeePayer(_collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateIdentifier, _timerAddress)
+        FundingRateApplier(_finderAddress, _fundingRateIdentifier)
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
