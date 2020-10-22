@@ -24,6 +24,7 @@ contract("SignedFixedPoint", function() {
     assert.equal(await fixedPoint.wrapFromSigned("0"), "0");
     assert.equal(await fixedPoint.wrapFromSigned(int_max), int_max.toString());
     assert(await didContractThrow(fixedPoint.wrapFromSigned("-1")));
+    assert(await didContractThrow(fixedPoint.wrapFromSigned(int_min)));
 
     // Unsigned -> Signed
     assert.equal(await fixedPoint.wrapFromUnsigned(toWei("100")), toWei("100"));
