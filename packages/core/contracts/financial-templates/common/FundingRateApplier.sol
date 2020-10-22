@@ -33,7 +33,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
      ****************************************/
 
     // Points to financial product-related contracts like the funding rate store.
-    FinderInterface public fpFinder;
+    FinderInterface private fpFinder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
@@ -104,8 +104,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
-        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        return fundingRateStore.getFundingRateForIdentifier(fundingRateIdentifier);
+        return _getFundingRateStore().getFundingRateForIdentifier(fundingRateIdentifier);
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
@@ -122,7 +121,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         FixedPoint.Signed memory periodRate;
         (cumulativeFundingRateMultiplier, periodRate) = _calculateEffectiveFundingRate(
             paymentPeriod,
-            _latestFundingRatePerSecond,
+            _getLatestFundingRate(),
             cumulativeFundingRateMultiplier
         );
 
@@ -142,13 +141,19 @@ abstract contract FundingRateApplier is Testable, Lockable {
         uint256 paymentPeriodSeconds,
         FixedPoint.Signed memory fundingRatePerSecond,
         FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
-    ) internal pure returns (FixedPoint.Unsigned memory, FixedPoint.Signed memory) {
+    )
+        internal
+        pure
+        returns (FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier, FixedPoint.Signed memory periodRate)
+    {
+        // Note: this method uses named return variables to save a little bytecode.
+
         // Determine whether `fundingRatePerSecond` implies a negative or positive funding rate,
         // and apply it over a pay period.
         FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
 
         // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
-        FixedPoint.Signed memory periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
+        periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
         // Add one to create the multiplier to scale the existing fee multiplier.
         FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
@@ -159,10 +164,6 @@ abstract contract FundingRateApplier is Testable, Lockable {
         );
 
         // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new cumulative funding rate multiplier.
-        FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(
-            unsignedPeriodMultiplier
-        );
-
-        return (newCumulativeFundingRateMultiplier, periodRate);
+        newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
 }
