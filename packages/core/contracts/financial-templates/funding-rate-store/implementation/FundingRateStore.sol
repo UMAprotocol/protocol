@@ -7,13 +7,13 @@ import "../../../common/implementation/Testable.sol";
 
 contract FundingRateStore is FundingRateStoreInterface, Testable {
     struct Proposal {
-        FixedPoint.Unsigned rate;
+        FixedPoint.Signed rate;
         uint256 time;
         address proposer;
     }
 
     struct FundingRateRecord {
-        FixedPoint.Unsigned rate;
+        FixedPoint.Signed rate;
         Proposal proposal;
     }
 
@@ -28,12 +28,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         proposalLiveness = _proposalLiveness;
     }
 
-    function getFundingRateForIdentifier(bytes32 identifier)
-        external
-        override
-        view
-        returns (FixedPoint.Unsigned memory)
-    {
+    function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
         if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
