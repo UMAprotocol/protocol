@@ -9,6 +9,14 @@ contract SignedFixedPointTest {
     using FixedPoint for int256;
     using SafeMath for int256;
 
+    function wrapFromSigned(int256 a) external pure returns (uint256) {
+        return FixedPoint.fromSigned(FixedPoint.Signed(a)).rawValue;
+    }
+
+    function wrapFromUnsigned(uint256 a) external pure returns (int256) {
+        return FixedPoint.fromUnsigned(FixedPoint.Unsigned(a)).rawValue;
+    }
+
     function wrapFromUnscaledInt(int256 a) external pure returns (int256) {
         return FixedPoint.fromUnscaledInt(a).rawValue;
     }

@@ -18,6 +18,18 @@ contract("SignedFixedPoint", function() {
     // Reverts on overflow.
     const tenToFiftyEight = toBN("10").pow(toBN("59"));
     assert(await didContractThrow(fixedPoint.wrapFromUnscaledInt(tenToFiftyEight)));
+
+    // Signed -> Unsigned
+    assert.equal(await fixedPoint.wrapFromSigned(toWei("100")), toWei("100"));
+    assert.equal(await fixedPoint.wrapFromSigned("0"), "0");
+    assert.equal(await fixedPoint.wrapFromSigned(int_max), int_max.toString());
+    assert(await didContractThrow(fixedPoint.wrapFromSigned("-1")));
+
+    // Unsigned -> Signed
+    assert.equal(await fixedPoint.wrapFromUnsigned(toWei("100")), toWei("100"));
+    assert.equal(await fixedPoint.wrapFromSigned("0"), "0");
+    assert.equal(await fixedPoint.wrapFromUnsigned(int_max), int_max.toString());
+    assert(await didContractThrow(fixedPoint.wrapFromUnsigned(int_max.addn(1))));
   });
 
   // This function tests all positive and negative variations/combinations of an input pair.

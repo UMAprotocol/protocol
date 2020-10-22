@@ -390,6 +390,7 @@ library FixedPoint {
 
     function fromSigned(Signed memory a) internal pure returns (Unsigned memory) {
         require(a.rawValue >= 0, "Negative value provided");
+        return Unsigned(uint256(a.rawValue));
     }
 
     function fromUnsigned(Unsigned memory a) internal pure returns (Signed memory) {
