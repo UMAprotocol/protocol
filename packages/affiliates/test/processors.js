@@ -20,7 +20,7 @@ test("AttributionHistory", t => {
   //   const events = lodash.times(100, i => {
   //     return {
   //       blockNumber: i + 1,
-  //       args: ["useraddr " + (i % 13), "affiliateaddr " + (i % 3), ((i + 1)).toString()]
+  //       args: ["useraddr " + (i % 13), "affiliateaddr " + (i % 3), (i + 1).toString()]
   //     };
   //   });
   //   events.forEach(e => processor.handleEvent(e.blockNumber, e.args));
@@ -38,28 +38,25 @@ test("AttributionHistory", t => {
     // create a new AttributionHistory
     attributionsHistory = AttributionHistory();
     decode = DecodeTransaction(abi);
-    console.log("transactions", transactions);
-    const allowedTransactions = ['create','deposit','depositTo']
+    const allowedTransactions = ["create", "deposit", "depositTo"];
 
     transactions.forEach(transaction => {
       try {
-        console.log("pre-decode", transaction);
-        const decoded = decode(transaction, { 
+        const decoded = decode(transaction, {
           // the transaction handler requires these fields which are on the raw transaction data
           blockNumber: transaction.block_number,
-          fromAddress:transaction.from_address,
-          input:transaction.input 
+          fromAddress: transaction.from_address,
+          input: transaction.input
         });
         // filter transactions we shouldnt process, could probably just do this in the handlers too
-        if(!allowedTransactions.includes(decoded.name)) return
-        console.log("Decoded tx", decoded);
-        attributionsHistory.handleTransaction(decoded.blockNumber, decoded)
+        if (!allowedTransactions.includes(decoded.name)) return;
+        attributionsHistory.handleTransaction(decoded.blockNumber, decoded);
       } catch (err) {
         // decoding transaction error, abi probably missing an event
         console.log("error decoding transaction:", err);
       }
     });
-    t.ok(attributionsHistory.history.length())
+    t.ok(attributionsHistory.history.length());
     // shows all snapshots
     // console.log(JSON.stringify(attributionsHistory.history.history,undefined,2))
     t.end();

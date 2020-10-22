@@ -17,7 +17,7 @@ function AttributionHistory() {
       create(collateralAmount, numTokens) {
         attributions.attribute(user, affiliate, collateralAmount);
       },
-      deposit(sponsor, collateralAmount) {
+      deposit(collateralAmount) {
         attributions.attribute(user, affiliate, collateralAmount);
       },
       depositTo(sponsor, collateralAmount) {
