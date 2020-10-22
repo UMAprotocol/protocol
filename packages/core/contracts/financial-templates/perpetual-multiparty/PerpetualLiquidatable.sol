@@ -214,6 +214,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         fees()
         notEmergencyShutdown()
+        updateFundingRate()
         nonReentrant()
         returns (
             uint256 liquidationId,
@@ -351,6 +352,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
@@ -399,6 +401,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
+        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -417,9 +420,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(settlementPrice).mul(
-            feeAttenuation
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue = _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding)
+            .mul(settlementPrice)
+            .mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
@@ -526,9 +529,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
-            liquidation.settlementPrice
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue = _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding)
+            .mul(liquidation.settlementPrice);
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
         FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);

@@ -80,6 +80,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
+  let timer;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -92,7 +93,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
   beforeEach(async () => {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
-    const timer = await Timer.deployed();
+    timer = await Timer.deployed();
     await timer.setCurrentTime(startTime);
 
     const tokenFactory = await TokenFactory.deployed();
@@ -426,6 +427,28 @@ contract("PerpetualLiquidatable", function(accounts) {
       truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsorPosition", ev => {
         return ev.sponsor == sponsor;
       });
+    });
+    it("Funding rate multiplier is updated", async () => {
+      // Initially cumulativeFundingRateMultiplier is set to 1e18
+
+      // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
+      // be 1 * (1 + (1.005 - 1) * 10) = 1.05)
+      await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("1.005")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+
+      // Creating a liquidation should update the funding rate multiplier
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: "0" },
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
     });
     it("Increments ID after creation", async () => {
       // Create first liquidation
@@ -833,6 +856,23 @@ contract("PerpetualLiquidatable", function(accounts) {
           expectedContractBalance.toString()
         );
       });
+      it("Funding rate multiplier is updated", async () => {
+        // Initially cumulativeFundingRateMultiplier is set to 1e18
+
+        // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
+        // be 1 * (1 + (1.005 - 1) * 10) = 1.05)
+        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+          rawValue: toWei("1.005")
+        });
+        await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+        // Disputing a liquidation should update the funding rate multiplier
+        await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+      });
       it("Throw if liquidation has already been disputed", async () => {
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
@@ -932,7 +972,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         // liquidation). Any price below 1.25 for a debt of 100 with 150 units of underlying should result in successful dispute.
 
         const liquidationTime = await liquidationContract.getCurrentTime();
-        const disputePrice = toWei("1");
+        const disputePrice = toWei("1.2");
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
 
         await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
@@ -946,6 +986,39 @@ contract("PerpetualLiquidatable", function(accounts) {
         await expectNoExcessCollateralToTrim();
 
         // We test that the event is emitted correctly for a successful dispute in a subsequent test.
+      });
+      it("Dispute succeeded because funding rate multiplier decreased sponsor debt outstanding", async () => {
+        const liquidationTime = await liquidationContract.getCurrentTime();
+
+        // We will set the funding rate multiplier to 0.95, which means that the sponsor's adjusted debt outstanding is equal to:
+        // 100 * 0.95 = 95
+        // So, if there is 150 collateral backing 95 token debt, with a collateral requirement of 1.2, then
+        // the price must be <= 150 / 1.2 / 95 = 1.316.
+
+        // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
+        // be 1 * (1 - (1 - 0.995) * 10) = 0.95)
+        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+          rawValue: toWei("0.995")
+        });
+        await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+
+        // Let's test using a price of 1.3, because this would price would have caused the dispute to fail
+        // without the funding rate multiplier adjusting sponsor debt.
+        const disputePrice = toWei("1.3");
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+
+        await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
+
+        // Test that withdrawLiquidation updated the multiplier.
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+
+        const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+
+        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
+        await expectNoExcessCollateralToTrim();
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -979,6 +1052,49 @@ contract("PerpetualLiquidatable", function(accounts) {
             ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED &&
             ev.settlementPrice.toString() == disputePrice.toString()
           );
+        });
+
+        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
+        await expectNoExcessCollateralToTrim();
+      });
+      it("Dispute failed because funding rate multiplier increased sponsor debt outstanding", async () => {
+        const liquidationTime = await liquidationContract.getCurrentTime();
+
+        // We will set the funding rate multiplier to 1.05, which means that the sponsor's adjusted debt outstanding is equal to:
+        // 100 * 1.05 = 105
+        // So, if there is 150 collateral backing 105 token debt, with a collateral requirement of 1.2, then
+        // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
+
+        // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
+        // be 1 * (1 - (1.005 - 1) * 10) = 1.05)
+        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+          rawValue: toWei("1.005")
+        });
+        await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+
+        // Let's test using a price of 1.2, because this would price would have caused the dispute to succeed
+        // without the funding rate multiplier adjusting sponsor debt.
+        const disputePrice = toWei("1.2");
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+
+        const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
+          liquidationParams.liquidationId,
+          sponsor,
+          {
+            from: liquidator
+          }
+        );
+
+        // Test that withdrawLiquidation updated the multiplier.
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+
+        // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
+        // if the liquidator calls `withdrawLiquidation()` on a failed dispute, it will first `_settle` the contract
+        // and set its status to "DISPUTE_FAILED", but they will also withdraw all of the
+        // locked collateral in the contract (plus dispute bond), which will "delete" the liquidation and subsequently set
+        // its status to "UNINITIALIZED".
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+          return ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED;
         });
 
         // Check that excess collateral to be trimmed is still 0 after the withdrawal.
@@ -1334,6 +1450,46 @@ contract("PerpetualLiquidatable", function(accounts) {
 
           // Clean up store fees.
           await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
+        });
+        it("Funding rate multiplier modifies TRV", async () => {
+          // We will set the funding rate multiplier to 0.95, which means that both dispute rewards are scaled down by 0.95
+
+          // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
+          // be 1 * (1 - (1 - 0.995) * 10) = 0.95)
+          await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+            rawValue: toWei("0.995")
+          });
+          await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+
+          const adjustedDisputerReward = disputerDisputeReward.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
+          const adjustedSponsorReward = disputerDisputeReward.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
+          const adjustedTRV = settlementTRV.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
+
+          // Expected Disputer payment => disputer reward + dispute bond + final fee
+          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
+          let expectedPayment = adjustedDisputerReward.add(disputeBond).add(finalFeeAmount);
+          assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
+
+          // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
+          expectedPayment = adjustedTRV.sub(adjustedDisputerReward).sub(adjustedSponsorReward);
+          assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+
+          // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor });
+          expectedPayment = amountOfCollateral.sub(adjustedTRV).add(adjustedSponsorReward);
+          assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
+
+          // Test that withdrawLiquidation updated the multiplier for the time expired.
+          assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+
+          // All collateral should have been removed from the contract.
+          assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+          const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+          assert.equal(deletedLiquidation.liquidator, zeroAddress);
+          assert.equal(deletedLiquidation.sponsor, zeroAddress);
+          assert.equal(deletedLiquidation.disputer, zeroAddress);
+          assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
         });
       });
       describe("Dispute failed", () => {

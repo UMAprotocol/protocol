@@ -45,8 +45,9 @@ task("test")
 task("etherscan-verification", "Verifies contract on etherscan")
   .addParam("networkId", "Network Id in networks directory. (e.g. 1,4,42)")
   .addOptionalParam("empLibAddress", "EMPLib Address")
+  .addOptionalParam("perpLibAddress", "PerpLib Address")
   .setAction(async (taskArgs, bre) => {
-    const { networkId, empLibAddress } = taskArgs;
+    const { networkId, empLibAddress, perpLibAddress } = taskArgs;
 
     if (networkId === "42") {
       bre.config.etherscan.url = "https://api-kovan.etherscan.io/api";
@@ -88,7 +89,8 @@ task("etherscan-verification", "Verifies contract on etherscan")
     // Compile before verifying
     await bre.run(TASK_COMPILE);
 
-    // EMPLib here for library verification
+    // Get library addresses:
+    // - EMPLib
     let EMPLibAddress = empLibAddress;
     if (!EMPLibAddress) {
       try {
@@ -99,9 +101,24 @@ task("etherscan-verification", "Verifies contract on etherscan")
         return;
       }
     }
+    // - PerpLib
+    let PerpLibAddress = perpLibAddress;
+    if (!PerpLibAddress) {
+      try {
+        PerpLibAddress = deployed.filter(({ contractName }) => contractName === "PerpetualLib")[0].address;
+        console.log(chalkPipe("orange.bold")(`Found PerpLib address to be ${PerpLibAddress}`));
+      } catch (e) {
+        console.log(chalkPipe("red.bold")("PerpLib address not provided and was unable to find one"));
+        return;
+      }
+    }
+
     const libraries = {
       "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": {
         ExpiringMultiPartyLib: `${EMPLibAddress}`
+      },
+      "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": {
+        PerpetualLib: `${PerpLibAddress}`
       }
     };
 

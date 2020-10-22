@@ -192,7 +192,7 @@ contract("PerpetualPositionManager", function(accounts) {
     );
   });
 
-  it("Withdrawal/Transfer liveness overflow", async function() {
+  it("Withdrawal liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
     const largeLiveness = toBN(2)
       .pow(toBN(256))
@@ -221,13 +221,12 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: initialSponsorTokens },
       { from: sponsor }
     );
-    // Withdrawal/Transfer requests should fail due to overflow.
+    // Withdrawal requests should fail due to overflow.
     assert(
       await didContractThrow(
         positionManager.requestWithdrawal({ rawValue: initialSponsorCollateral }, { from: sponsor })
       )
     );
-    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
   });
 
   it("Lifecycle", async function() {
@@ -600,86 +599,6 @@ contract("PerpetualPositionManager", function(accounts) {
     await positionManager.withdraw({ rawValue: toWei("2") }, { from: other });
   });
 
-  it("Transfer position request", async function() {
-    const startTime = await positionManager.getCurrentTime();
-
-    // Create an initial large and lowly collateralized positionManager.
-    await collateral.approve(positionManager.address, initialPositionCollateral, { from: other });
-    await positionManager.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() },
-      { from: other }
-    );
-
-    // Create the initial positionManager.
-    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
-    const numTokens = toWei("100");
-    const amountCollateral = toWei("150");
-    await positionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
-    assert.equal((await positionManager.getCollateral(sponsor)).toString(), amountCollateral);
-    assert.equal(
-      (await positionManager.positions(other)).rawCollateral.toString(),
-      initialPositionCollateral.toString()
-    );
-    assert.equal((await positionManager.positions(tokenHolder)).rawCollateral.toString(), "0");
-
-    // Cannot execute or cancel a transfer before requesting one.
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest(other, { from: sponsor })));
-    assert(await didContractThrow(positionManager.cancelTransferPosition({ from: sponsor })));
-
-    // Request transfer. Check event is emitted.
-    const resultRequest = await positionManager.requestTransferPosition({ from: sponsor });
-    truffleAssert.eventEmitted(resultRequest, "RequestTransferPosition", ev => {
-      return ev.oldSponsor == sponsor;
-    });
-
-    // Cannot request another transfer while one is pending.
-    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
-
-    // Can't transfer before time is up.
-    await positionManager.setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest(tokenHolder, { from: sponsor })));
-
-    // Sponsor can cancel transfer. Ensure that event is emitted.
-    const resultCancel = await positionManager.cancelTransferPosition({ from: sponsor });
-    truffleAssert.eventEmitted(resultCancel, "RequestTransferPositionCanceled", ev => {
-      return ev.oldSponsor == sponsor;
-    });
-
-    // They can now request again.
-    await positionManager.requestTransferPosition({ from: sponsor });
-
-    // Advance time through liveness.
-    await positionManager.setCurrentTime((await positionManager.getCurrentTime()).toNumber() + withdrawalLiveness);
-
-    // Can't transfer if the target already has a positionManager.
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest(other, { from: sponsor })));
-
-    // Can't transfer if there is a pending withdrawal request.
-    await positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor });
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest(other, { from: sponsor })));
-    await positionManager.cancelWithdrawal({ from: sponsor });
-
-    // Execute transfer to new sponsor. Check event is emitted.
-    const result = await positionManager.transferPositionPassedRequest(tokenHolder, { from: sponsor });
-    truffleAssert.eventEmitted(result, "RequestTransferPositionExecuted", ev => {
-      return ev.oldSponsor == sponsor && ev.newSponsor == tokenHolder;
-    });
-    truffleAssert.eventEmitted(result, "NewSponsor", ev => {
-      return ev.sponsor == tokenHolder;
-    });
-    assert.equal((await positionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));
-    assert.equal((await positionManager.getCollateral(tokenHolder)).toString(), amountCollateral);
-
-    // Check that transfer-request related parameters in positionManager are reset.
-    const positionData = await positionManager.positions(sponsor);
-    assert.equal(positionData.transferPositionRequestPassTimestamp.toString(), 0);
-
-    // Contract state should not have changed.
-    assert.equal(await positionManager.emergencyShutdownTimestamp(), 0);
-    assert.equal((await positionManager.emergencyShutdownPrice()).toString(), 0);
-  });
-
   it("Non sponsor can use depositTo", async function() {
     await collateral.approve(positionManager.address, toWei("1000"), { from: other });
     await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
@@ -694,7 +613,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.getCollateral(other)).toString(), "0");
   });
 
-  it("Non sponsor can't deposit, redeem, withdraw, or transfer", async function() {
+  it("Non sponsor can't deposit, redeem, or withdraw", async function() {
     // Create an initial large and lowly collateralized positionManager.
     await collateral.approve(positionManager.address, initialPositionCollateral, { from: other });
     await positionManager.create(
@@ -709,9 +628,8 @@ contract("PerpetualPositionManager", function(accounts) {
     // Can't deposit without first creating a positionManager.
     assert(await didContractThrow(positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
 
-    // Can't request a withdrawal or transfer without first creating a positionManager.
+    // Can't request a withdrawal without first creating a positionManager.
     assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("0") }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
 
     // Even if the "sponsor" acquires a token somehow, they can't redeem.
     await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });
@@ -876,6 +794,10 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await collateral.balanceOf(sponsor)).toString(), expectedSponsorBalance.toString());
     assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
+    // Test that regular fees accrue after an emergency shutdown is triggered.
+    const shutdown = await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
+    truffleAssert.eventNotEmitted(shutdown, "EmergencyShutdown");
+
     // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
     const pfc = await positionManager.pfc();
@@ -950,9 +872,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(await didContractThrow(positionManager.requestTransferPosition({ from: sponsor })));
     assert(await didContractThrow(positionManager.remargin({ from: sponsor })));
-    assert(await didContractThrow(positionManager.transferPositionPassedRequest({ other }, { from: sponsor })));
     assert(await didContractThrow(positionManager.withdrawPassedRequest({ from: sponsor })));
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
@@ -1079,77 +999,55 @@ contract("PerpetualPositionManager", function(accounts) {
     await positionManager.withdrawPassedRequest({ from: sponsor }); // call another function on the contract.
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
 
-    // Check that the remaining functions update the funding rate accordingly.
+    // Check that the remaining functions update the funding rate accordingly. Use a new funding rate of 1.01.
     // Have already checked: a) create b) requestWithdrawal and c) withdrawPassedRequest
     await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
       rawValue: toWei("1.01")
     });
 
-    // requestTransferPosition
-    await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
-    await positionManager.requestTransferPosition({ from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95445")); // 0.945 * (1 + (1.01 - 1) * 1) = 0.95445
-
-    // requestTransferPosition. For this we will need to advance time by the withdrawlLiveness to pass the request withdraw.
-    // Set the funding rate to something more reasonable like 0.001% per second as 1.0001 as advancing over a long duration.
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
-      rawValue: toWei("1.0001")
-    });
-    await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(withdrawalLiveness)).toString());
-    await positionManager.transferPositionPassedRequest(other, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.049895")); // 0.95445 * (1 + (1.0001 - 1) * 1000) = 1.049895
-
-    // cancelTransferPosition
-    await positionManager.requestTransferPosition({ from: other });
-    await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
-    await positionManager.cancelTransferPosition({ from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.0499999895")); // 1.049895 * (1 + (1.0001 - 1) * 1) = 1.0499999895
-
     // depositTo
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
-    await positionManager.depositTo(other, { rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.05010498949895")); // 1.0499999895 * (1 + (1.0001 - 1) * 1) = 1.05010498949895
+    await positionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95445")); // 0.945 * (1 + (1.01 - 1) * 1) = 0.95445
 
     // deposit
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
-    await positionManager.deposit({ rawValue: toWei("1") }, { from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050209999997899895")); // 1.05010498949895 * (1 + (1.0001 - 1) * 1) = 1.050209999997899895
+    await positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor });
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.9639945")); // 0.95445 * (1 + (1.01 - 1) * 1) = 0.9639945
 
     // withdraw. To do a "fast" withdraw need to have the position above the GCR.
-    await positionManager.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }, { from: sponsor }); // position above GCR
+    await positionManager.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }, { from: other }); // position above GCR
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
-    await positionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050315020997899684")); // 1.050209999997899895* (1 + (1.0001 - 1) * 1) = 1.050315020997899684(9894)
-    // Note that this function rate calculation was also truncated. the true value of computation is 1.0503150209978996849895
-    // which has 22 decimal points. We can see that the fundingRateApplier simply truncates at the 18th (no rounding).
+    await positionManager.withdraw({ rawValue: toWei("1") }, { from: other });
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.973634445")); // 0.9639945 * (1 + (1.0001 - 1) * 1) = 0.973634445
 
     // cancelWithdrawal
     await positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: other });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.cancelWithdrawal({ from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050420052499999473")); // 1.0503150209978996849894 * (1 + (1.0001 - 1) * 1) = 1.050420052499999473(9684) truncated at the end.
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.98337078945")); // 0.973634445 * (1 + (1.0001 - 1) * 1) = 0.98337078945
 
     // redeem
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050525094505249472")); // 1.050420052499999473 * (1 + (1.0001 - 1) * 1) = 1.050525094505249472(9473) truncated at end.
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.9932044973445")); // 0.98337078945 * (1 + (1.0001 - 1) * 1) = 0.9932044973445
 
     // repay
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.repay({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050630147014699996")); // 1.050525094505249472 * (1 + (1.0001 - 1) * 1) = 1.050630147014699996(9472) truncated at end.
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.003136542317945")); // 0.9932044973445 * (1 + (1.0001 - 1) * 1) = 1.003136542317945
 
     // can directly call applyFundingRate
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.applyFundingRate({ from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050735210029401465")); // 1.050630147014699996 * (1 + (1.0001 - 1) * 1) = 1.050735210029401465(9996) truncated at end.
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.01316790774112445")); // 1.003136542317945 * (1 + (1.0001 - 1) * 1) = 1.01316790774112445
 
     // emergencyShutdown
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     const shutdownTimestamp = Number(await positionManager.getCurrentTime());
     await positionManager.setCurrentTime(shutdownTimestamp);
     await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050840283550404405")); // 1.050735210029401465 * (1 + (1.0001 - 1) * 1) = 1.050840283550404405(1465) truncated at end.
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.023299586818535694")); // 1.01316790774112445 * (1 + (1.0001 - 1) * 1) = 1.023299586818535694(5) truncated
 
     // As the contract is now emergency shutdown directly calling applyFundingRate should revert. Note that all previously
     // called functions will revert (such as create, redeem ect).
@@ -1159,7 +1057,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await mockOracle.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"));
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.050840283550404405")); // same as previous assert
+    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.023299586818535694")); // same as previous assert
   });
 
   it("cumulativeFundingRateMultiplier is correctly applied to emergency shutdown settlement price", async function() {
@@ -1272,7 +1170,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal(sponsorFinalSynthetic, 0);
   });
 
-  describe("Precision loss is handled as expected", () => {
+  describe("Precision loss as a result of regular fees is handled as expected", () => {
     beforeEach(async () => {
       // Create a new position with:
       // - 30 collateral
@@ -1411,7 +1309,6 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
       assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
       assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
-      assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
 
       // Drain excess collateral left because of precision loss.
@@ -1464,6 +1361,74 @@ contract("PerpetualPositionManager", function(accounts) {
 
       // Drain excess collateral left because of precesion loss.
       await expectAndDrainExcessCollateral();
+    });
+  });
+
+  describe("Precision loss as a result of the funding rate multiplier is handled as expected", () => {
+    beforeEach(async () => {
+      // Create a new position with:
+      // - any amount of collateral
+      // - 30 wei synthetic tokens
+      await collateral.approve(positionManager.address, "100000", { from: sponsor });
+      const numTokens = "30";
+      const amountCollateral = "1";
+      await positionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+      await tokenCurrency.approve(positionManager.address, numTokens, { from: sponsor });
+    });
+    it("Funding rate multiplier updates shows precision loss", async function() {
+      // Set the funding rate multiplier to 1.000000000000000002 after 1 second.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("1.000000000000000002")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // Apply the funding rate and check that the multiplier is set correctly.
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.000000000000000002"));
+
+      // Now set the funding rate to 0.999999999999999999 and advance by another second.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("0.999999999999999999")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // The new multiplier will be:
+      // 1.000000000000000002 * 0.999999999999999999 = 1.000000000000000000999999999999999998
+      // This result gets truncated after the first 18 decimals and floored to 1.000000000000000000
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
+    });
+    it("Funding-Rate-Adjusted sponsor debt shows precision loss", async function() {
+      // Set the funding rate multiplier to 0.95 after 1 second.
+      // After 1 second, the adjusted token debt will be 30 * 0.95 = 28.5 wei, which will be truncated to 28.
+      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+        rawValue: toWei("0.95")
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
+
+      // Apply the funding rate and check that the multiplier is set correctly.
+      await positionManager.applyFundingRate();
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+
+      // Query adjusted debt.
+      const rawDebt = (await positionManager.positions(sponsor)).tokensOutstanding;
+      const adjustedDebt = await positionManager.getFundingRateAppliedTokenDebt(rawDebt);
+
+      // Without precision loss the adjusted debt would be 28.5
+      assert.equal(adjustedDebt.toString(), "28");
+
+      // However, this does not result in inconsistencies because the contract only deals with
+      // adjusted, not raw debt.
+
+      // If the sponsor redeems all of their tokens they will still receive 100% of their collateral.
+      const initialCollateral = await collateral.balanceOf(sponsor);
+      await positionManager.redeem({ rawValue: "30" }, { from: sponsor });
+      const finalCollateral = await collateral.balanceOf(sponsor);
+      assert.equal(finalCollateral.sub(initialCollateral), "1");
+      const positionDebt = (await positionManager.positions(sponsor)).tokensOutstanding;
+      assert.equal(positionDebt.toString(), "0");
+      const positionCollateral = (await positionManager.positions(sponsor)).rawCollateral;
+      assert.equal(positionCollateral.toString(), "0");
     });
   });
 
@@ -1825,7 +1790,6 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
-    assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
 });
