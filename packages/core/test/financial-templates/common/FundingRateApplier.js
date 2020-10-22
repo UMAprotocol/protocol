@@ -30,14 +30,13 @@ contract("FundingRateApplier", function() {
     let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
 
     assert.equal(await fundingRateApplier.cumulativeFundingRateMultiplier(), toWei("1"));
-    assert.equal(await fundingRateApplier.fpFinder(), fpFinder.address);
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
     let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
 
     // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
-    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add +1 => 1.03
+    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
     // Cumulative Multiplier: 1 * 1.03 = 1.03
     const test1 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
@@ -45,7 +44,7 @@ contract("FundingRateApplier", function() {
       { rawValue: toWei("1") }
     );
     assert.equal(test1[0].rawValue, toWei("1.03"));
-    assert.equal(test1[1].rawValue, toWei("1.03"));
+    assert.equal(test1[1].rawValue, toWei("0.03"));
 
     // Previous test but change the starting multiplier to 1.05:
     // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
@@ -55,30 +54,30 @@ contract("FundingRateApplier", function() {
       { rawValue: toWei("0.0015") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test2[0].rawValue, toWei("0.0815"));
-    assert.equal(test2[1].rawValue, toWei("1.03"));
+    assert.equal(test2[0].rawValue, toWei("1.0815"));
+    assert.equal(test2[1].rawValue, toWei("0.03"));
 
     // Previous test but change the funding rate to -0.15%:
-    // Effective Rate: 0.0015 * 20 = 0.03, funding rate is negative so subtract from 1 => 0.97
+    // Effective Rate: -0.0015 * 20 = -0.03, funding rate is negative so subtract from 1 => 0.97
     // Cumulative Multiplier: 1.05 * 0.97 = 1.0185
     const test3 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("-0.0015") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test3[0].rawValue, toWei("-0.0185"));
-    assert.equal(test3[1].rawValue, toWei("0.97"));
+    assert.equal(test3[0].rawValue, toWei("1.0185"));
+    assert.equal(test3[1].rawValue, toWei("-0.03"));
 
     // Previous test but change the funding rate to 0% meaning that the multiplier shouldn't change:
-    // Effective Rate: 0 * 20 = 0, funding rate is neutral so => 1
+    // Effective Rate: 0 * 20 = 0, funding rate is neutral so no change to the cumulative multiplier.
     // Cumulative Multiplier: 1.05 * 1 = 1.05
     const test4 = await fundingRateApplier.calculateEffectiveFundingRate(
       20,
       { rawValue: toWei("0") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test4[0].rawValue, toWei("0"));
-    assert.equal(test4[1].rawValue, toWei("1"));
+    assert.equal(test4[0].rawValue, toWei("1.05"));
+    assert.equal(test4[1].rawValue, toWei("0"));
   });
   it("Applying positive and negative effective funding rates sets state and emits events correctly", async () => {
     let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
@@ -100,7 +99,7 @@ contract("FundingRateApplier", function() {
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
         ev.latestFundingRate == toWei("0.01") &&
-        ev.effectiveFundingRateForPaymentPeriod == toWei("0.05")
+        ev.periodRate == toWei("0.05")
       );
     });
 
@@ -120,7 +119,7 @@ contract("FundingRateApplier", function() {
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
         ev.latestFundingRate == toWei("-0.02") &&
-        ev.effectiveFundingRateForPaymentPeriod == toWei("-0.1")
+        ev.periodRate == toWei("-0.1")
       );
     });
 
@@ -140,7 +139,7 @@ contract("FundingRateApplier", function() {
         ev.updateTime == startingTime.toString() &&
         ev.paymentPeriod == "5" &&
         ev.latestFundingRate == toWei("0") &&
-        ev.effectiveFundingRateForPaymentPeriod == toWei("0")
+        ev.periodRate == toWei("0")
       );
     });
   });
