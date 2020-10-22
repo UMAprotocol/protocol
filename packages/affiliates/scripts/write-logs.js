@@ -2,6 +2,7 @@
 // scripts dont need to rerun the GCP big query.
 
 const { BigQuery } = require("@google-cloud/bigquery");
+const Queries = require('../libs/bigquery')
 const moment = require("moment");
 const highland = require("highland");
 const assert = require("assert");
@@ -11,35 +12,14 @@ const fs = require("fs");
 // uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC
 const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
 const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-logs.json");
-
-function makeQuery(contract, start, end = Date.now()) {
-  assert(contract, "requires contract");
-  assert(start, "requires start");
-  start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-  end = moment(end).format("YYYY-MM-DD hh:mm:ss");
-  return `
-    SELECT *
-    FROM
-      bigquery-public-data.crypto_ethereum.logs
-    WHERE
-      block_timestamp > TIMESTAMP('${start}')
-      AND block_timestamp < TIMESTAMP('${end}')
-      AND LOWER(address)=LOWER('${contract}')
-    ORDER BY block_timestamp ASC;
-    `;
-}
+const start = moment("9/20/2020", "MM/DD/YYYY").valueOf()
+const end = moment("10/20/2020", "MM/DD/YYYY").valueOf()
 
 const client = new BigQuery();
+const queries = Queries({client})
 
 async function runTest() {
-  // returns a node read stream
-  const query = makeQuery(
-    empContract,
-    moment("9/20/2020", "MM/DD/YYYY").valueOf(),
-    moment("10/20/2020", "MM/DD/YYYY").valueOf()
-  );
-
-  const queryStream = highland(await client.createQueryStream({ query }))
+  const queryStream = highland(await queries.streamLogsByContract(empContract,start,end))
     .map(JSON.stringify)
     .intersperse(",\n");
   const writeStream = fs.createWriteStream(dir);

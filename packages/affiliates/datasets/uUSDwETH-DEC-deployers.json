@@ -10,7 +10,9 @@
       "0x000000000000000000000000abbee9fc7a882499162323eeb7bf6614193312e3",
       "0x000000000000000000000000a0dff1f09a0dceda7641b7eb07c3bdbe66a06c35"
     ],
-    "block_timestamp": { "value": "2020-09-23T15:42:09.000Z" },
+    "block_timestamp": {
+      "value": "2020-09-23T15:42:09.000Z"
+    },
     "block_number": 10919742,
     "block_hash": "0x66f6f5a2feef42fba3c2892b84f698c71bec70a764f6c115832b36c54920874b"
   },
@@ -25,7 +27,9 @@
       "0x0000000000000000000000003605ec11ba7bd208501cbb24cd890bc58d2dba56",
       "0x000000000000000000000000a0dff1f09a0dceda7641b7eb07c3bdbe66a06c35"
     ],
-    "block_timestamp": { "value": "2020-09-23T15:54:59.000Z" },
+    "block_timestamp": {
+      "value": "2020-09-23T15:54:59.000Z"
+    },
     "block_number": 10919790,
     "block_hash": "0xe67d55d256a0175523aca5421df474b901cb9f2f5b07da52dc75d4e4a41320ae"
   },
@@ -40,7 +44,9 @@
       "0x000000000000000000000000306b19502c833c1522fbc36c9dd7531eda35862b",
       "0x00000000000000000000000053911776641d6df38b88b9ef27f920c617e3cb5e"
     ],
-    "block_timestamp": { "value": "2020-09-24T05:44:52.000Z" },
+    "block_timestamp": {
+      "value": "2020-09-24T05:44:52.000Z"
+    },
     "block_number": 10923466,
     "block_hash": "0x1d559cda7826da72d4938719e6e4f189fad41d5c801c955c21fbf2d149526917"
   }

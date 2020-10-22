@@ -1,5 +1,6 @@
+// TODO: use this to design a nice library call to handle params and output
 const { BigQuery } = require("@google-cloud/bigquery");
-const client = new BigQuery();
+const Queries = require('../libs/bigquery')
 const moment = require("moment");
 const highland = require("highland");
 const assert = require("assert");
@@ -11,6 +12,9 @@ const Coingecko = require("../libs/coingecko");
 const coingecko = Coingecko();
 const ethers = require("ethers");
 const { delay } = require("@uma/financial-templates-lib");
+
+const client = new BigQuery();
+const queries = Queries({client})
 
 const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
 
@@ -30,23 +34,6 @@ const devRewardsToDistribute = 50000;
 
 const rewardsPerBlock = devRewardsToDistribute / (endingBlock - startingBlock);
 
-function makeQuery(contract, start, end = Date.now()) {
-  assert(contract, "requires contract");
-  assert(start, "requires start");
-  start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-  end = moment(end).format("YYYY-MM-DD hh:mm:ss");
-  return `
-    SELECT *
-    FROM
-      bigquery-public-data.crypto_ethereum.logs
-    WHERE
-      block_timestamp > TIMESTAMP('${start}')
-      AND block_timestamp < TIMESTAMP('${end}')
-      AND LOWER(address)=LOWER('${contract}')
-    ORDER BY block_timestamp ASC;
-    `;
-}
-
 // returns array of EmpBalancesHistory objects for all provided empContracts over time.
 async function getEmpBalances(
   empContracts,
@@ -55,8 +42,8 @@ async function getEmpBalances(
 ) {
   // query starting before emp launch
   const empBalanceHistories = empContracts.map(async empContract => {
-    const query = makeQuery(empContract, start, end);
-    const streamEmpEvents = await client.createQueryStream({ query });
+    const streamEmpEvents = await queries.streamLogsByContract(empContract,start,end)
+
     const decode = DecodeLog(empAbi.abi);
     const balancesHistory = EmpBalancesHistory();
 
@@ -94,13 +81,10 @@ async function getEmpDeployers(
   start = moment("9/20/2020", "MM/DD/YYYY").valueOf(),
   end = moment("10/20/2020", "MM/DD/YYYY").valueOf()
 ) {
+  const streamQueryDeployer = await queries.streamLogsByContract(empCreator,start, end)
   // Get the contract deployer for each EMP.
-  const query = makeQuery(empCreator, start, end);
-  const streamQueryDeployer = await client.createQueryStream({ query });
   const decode = DecodeLog(empCreatorAbi.abi);
-  let empCreateLogs = [];
-  await highland(streamQueryDeployer)
-    // .doto(console.log)
+  const empCreateLogs = await highland(streamQueryDeployer)
     .map(log => {
       try {
         return decode(log, { blockNumber: log.block_number });
@@ -110,15 +94,9 @@ async function getEmpDeployers(
       }
     })
     .compact()
-    .doto(log => {
-      try {
-        empCreateLogs.push(log);
-      } catch (err) {
-        console.log(err, log);
-      }
-    })
-    .last()
+    .collect()
     .toPromise(Promise);
+
   let empCreators = {};
   empCreateLogs.forEach(log => {
     const empIndex = empContracts.indexOf(log.args.expiringMultiPartyAddress);
@@ -146,6 +124,7 @@ async function getEmpPriceHistories(
 }
 
 // Finds the closest needle value within an array haystack.
+// TODO: add this to prices model
 function closest(needle, haystack) {
   return haystack.reduce((a, b) => {
     const aDiff = Math.abs(a - needle);

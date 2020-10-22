@@ -1,20 +1,19 @@
 const { BigQuery } = require("@google-cloud/bigquery");
 const highland = require("highland");
+const Queries = require('../libs/bigquery')
+const moment = require('moment')
 
-const query = `
-SELECT *
-FROM
-  bigquery-public-data.crypto_ethereum.transactions
-WHERE
-  block_timestamp > TIMESTAMP('2020-10-06')
-  AND LOWER(to_address)=LOWER('0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56');
-`;
+const contract = '0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56'
+const start = moment('2020-10-06','YYYY-MM-DD').valueOf()
+const end = moment('2020-10-10','YYYY-MM-DD').valueOf()
 
 const client = new BigQuery();
+const queries = Queries({client})
+
 
 async function runTest() {
   // returns a node read stream
-  const stream = await client.createQueryStream({ query });
+  const stream = await queries.streamTransactionsByContract(contract,start,end)
   // highland wraps a stream and adds utilities simlar to lodash
   // https://caolan.github.io/highland/
   return (

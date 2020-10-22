@@ -1,4 +1,5 @@
 const { BigQuery } = require("@google-cloud/bigquery");
+const Queries = require('../libs/bigquery')
 const moment = require("moment");
 const highland = require("highland");
 const assert = require("assert");
@@ -6,32 +7,16 @@ const { DecodeLog } = require("../libs/contracts");
 const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
 const { EmpBalances, EmpBalancesHistory } = require("../libs/processors");
 
-// uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC
-const empContract = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
-
-function makeQuery(contract, start, end = Date.now()) {
-  assert(contract, "requires contract");
-  assert(start, "requires start");
-  start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-  end = moment(end).format("YYYY-MM-DD hh:mm:ss");
-  return `
-    SELECT *
-    FROM
-      bigquery-public-data.crypto_ethereum.logs
-    WHERE
-      block_timestamp > TIMESTAMP('${start}')
-      AND block_timestamp < TIMESTAMP('${end}')
-      AND LOWER(address)=LOWER('0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56')
-    ORDER BY block_timestamp ASC;
-    `;
-}
-
+// uUSDwETH-DEC
+const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
+const start = moment('2020-9-20','YYYY-MM-DD').valueOf()
+const end = moment('2020-10-10','YYYY-MM-DD').valueOf()
 const client = new BigQuery();
+const queries = Queries({client})
 
 async function runTest() {
   // query starting before emp launch
-  const query = makeQuery(empContract, moment("9/20/2020", "MM/DD/YYYY").valueOf());
-  const stream = await client.createQueryStream({ query });
+  const stream = await queries.streamLogsByContract(empContract,start,end)
   const decode = DecodeLog(abi);
   const balancesHistory = EmpBalancesHistory();
 
@@ -39,7 +24,7 @@ async function runTest() {
     // .doto(console.log)
     .map(log => {
       try {
-        return decode(log, { blockNumber: log.block_number });
+        return decode(log, { blockNumber: log.block_number, blockTimestamp:log.block_timestamp });
       } catch (err) {
         // decoding log error, abi probably missing an event
         console.log("error decoding log:", err);
@@ -58,12 +43,15 @@ async function runTest() {
     .toPromise(Promise);
 
   console.log("blocks updated count", balancesHistory.history.length());
+
+  // quick sanity check to make sure snapshots were generated from the first 10 blocks
   const checkblocks = balancesHistory.history.history.slice(0, 10).map(x=>x.blockNumber);
   checkblocks.forEach(blockNumber => {
     const result = balancesHistory.history.lookup(blockNumber);
     console.log(result);
   });
 
+  // show the latest balances
   // console.log(balances.collateral.snapshot())
   // console.log(balances.tokens.snapshot())
 }

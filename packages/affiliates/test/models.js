@@ -1,6 +1,6 @@
 const test = require("tape");
 const lodash = require("lodash");
-const { History, BalanceHistories, Attributions, Balances, SharedAttributions, Prices } = require("../libs/models");
+const { History, Balances, SharedAttributions, Prices } = require("../libs/models");
 const Coingecko = require('../libs/coingecko')
 const moment = require("moment");
 
@@ -29,7 +29,7 @@ test("SharedAttributions", t => {
   });
   t.test("calcShare", t => {
     const result = attributions.calculateShare("test", "a");
-    t.equal(result, 0.5);
+    t.equal(result, '500000');
     t.end();
   });
 });
@@ -87,72 +87,11 @@ test("History", t => {
   });
 });
 
-test("BalanceHistories", t => {
-  let histories;
-  t.test("init", t => {
-    histories = BalanceHistories();
-    t.ok(histories);
-    t.end();
-  });
-  t.test("create", t => {
-    const result = histories.create("test");
-    t.ok(result);
-    t.end();
-  });
-  t.test("insert", t => {
-    histories.insert("test", { blockNumber: 1, balance: 1 });
-    t.end();
-  });
-  t.test("lookup", t => {
-    const result = histories.lookup("test", 2);
-    t.ok(result);
-    t.equal(result.balance, 1);
-    t.end();
-  });
-});
-
-test("Attributions", t => {
-  let attributions;
-  t.test("init", t => {
-    attributions = Attributions();
-    t.ok(attributions);
-    t.end();
-  });
-  t.test("add", t => {
-    const result = attributions.add("a", 1);
-    t.ok(result);
-    t.end();
-  });
-  t.test("sub", t => {
-    attributions.add("b", 1);
-    const result = attributions.sub("b", 1);
-    t.equal(result, 0);
-    t.end();
-  });
-  t.test("sum", t => {
-    const result = attributions.getSum();
-    t.equal(result, 1);
-    t.end();
-  });
-  t.test("getPercent", t => {
-    const result = attributions.getPercent("a");
-    t.equal(result, 1);
-    t.end();
-  });
-  t.test("listPercents", t => {
-    const result = attributions.listPercents();
-    t.equal(result.a, 1);
-    t.notOk(result.b);
-    t.end();
-  });
-});
-
 test("Prices",t=>{
   let prices,seed
   const token = '0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9'
   t.test('init',async t=>{
     seed =await Coingecko().chart(token,'usd','10')
-    console.log(seed.prices)
     prices = Prices(seed.prices)
     t.ok(seed)
     t.ok(prices)

@@ -2,6 +2,7 @@
 // creator of a given EMP.
 
 const { BigQuery } = require("@google-cloud/bigquery");
+const Queries = require('../libs/bigquery')
 const moment = require("moment");
 const highland = require("highland");
 const assert = require("assert");
@@ -9,48 +10,16 @@ const Path = require("path");
 const fs = require("fs");
 
 const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
-
 const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-deployers.json");
-
-function makeQuery(contract, start, end = Date.now()) {
-  assert(contract, "requires contract");
-  assert(start, "requires start");
-  start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-  end = moment(end).format("YYYY-MM-DD hh:mm:ss");
-  return `
-    SELECT *
-    FROM
-      bigquery-public-data.crypto_ethereum.logs
-    WHERE
-      block_timestamp > TIMESTAMP('${start}')
-      AND block_timestamp < TIMESTAMP('${end}')
-      AND LOWER(address)=LOWER('${contract}')
-    ORDER BY block_timestamp ASC;
-    `;
-}
+const start = moment("9/20/2020", "MM/DD/YYYY").valueOf()
+const end = moment("10/20/2020", "MM/DD/YYYY").valueOf()
 
 const client = new BigQuery();
+const queries = Queries({client})
 
 async function runTest() {
-  // returns a node read stream
-  const query = makeQuery(
-    empCreator,
-    moment("9/20/2020", "MM/DD/YYYY").valueOf(),
-    moment("10/20/2020", "MM/DD/YYYY").valueOf()
-  );
-
-  const queryStream = highland(await client.createQueryStream({ query }))
-    .map(JSON.stringify)
-    .intersperse(",\n");
-  const writeStream = fs.createWriteStream(dir);
-
-  return new Promise((res, rej) => {
-    highland(["[\n", queryStream])
-      .append("]\n")
-      .flatten()
-      .pipe(writeStream)
-      .on("done", res);
-  });
+  const data = await queries.getLogsByContract(empCreator,start,end)
+  fs.writeFileSync(dir,JSON.stringify(data,null,2));
 }
 
 runTest()

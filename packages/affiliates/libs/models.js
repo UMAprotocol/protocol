@@ -16,6 +16,7 @@ function Prices(prices=[]){
     if (prices[index] === time) return prices[index];
     return prices[index - 1];
   }
+
   return {
     lookup,
     prices,
@@ -149,47 +150,6 @@ function Balances() {
   };
 }
 
-function BalanceDeltas() {
-  const deltas = new Map();
-  // function makeId(data){
-  // assert(data.hash,'requires hash')
-  // assert(data.index >= 0,'requires index')
-  // return [data.hash,data.index].join('!')
-  // }
-  function create(data) {
-    assert(data.hash, "requires hash");
-    assert(!deltas.has(data.hash), "delta already exists");
-    return set(data.hash, data);
-  }
-  function set(id, data = {}) {
-    assert(id, "requires id");
-    assert(data.delta, "requires delta");
-    assert(data.address, "requires address");
-    deltas.set(id, data);
-    return data;
-  }
-  function get(id) {
-    assert(deltas.has(hash), "no data for transaction");
-    return deltas.get(hash);
-  }
-  function balance(address) {
-    assert(address, "requires address");
-    let balance = 0;
-    deltas.forEach(data => {
-      if (data.address != address) return;
-      balance += data.delta;
-    });
-    return balance;
-  }
-  return {
-    create,
-    get,
-    set,
-    balance,
-    makeId
-  };
-}
-
 // hold any kind of data which can have a history by block number
 // and also has gaps, so that  not every block number is recorded.
 function History() {
@@ -217,113 +177,9 @@ function History() {
   };
 }
 
-// contains balance histories for multiple addresses
-function BalanceHistories() {
-  const histories = new Map();
-  function create(address) {
-    assert(!histories.has(address), "histories exist");
-    const result = History();
-    histories.set(address, result);
-    return result;
-  }
-  function get(address) {
-    assert(histories.has(address), "No history for address");
-    return histories.get(address);
-  }
-  function getOrCreate(address) {
-    try {
-      return get(address);
-    } catch (err) {
-      return create(address);
-    }
-  }
-  function insert(address, { blockNumber, balance }) {
-    const history = getOrCreate(address);
-    history.insert({ blockNumber, balance });
-  }
-  function lookup(address, blockNumber) {
-    const history = get(address);
-    return history.lookup(blockNumber);
-  }
-  return {
-    insert,
-    lookup,
-    get,
-    getOrCreate,
-    create
-  };
-}
-
-// collects total attributions for an address
-// and processes them into % shares
-function Attributions() {
-  const attributions = new Map();
-  let sum = 0;
-
-  function create(address, amount = 0) {
-    assert(!attributions.has(address), "already exists");
-    return set(address, amount);
-  }
-  function get(address) {
-    assert(attributions.has(address), "does not exist");
-    return attributions.get(address);
-  }
-
-  function getOrCreate(address, amount) {
-    try {
-      return get(address);
-    } catch (err) {
-      return create(address, amount);
-    }
-  }
-  function set(address, amount) {
-    attributions.set(address, amount);
-    return amount;
-  }
-  function add(address, amount) {
-    const total = getOrCreate(address);
-    sum += amount;
-    return set(address, total + amount);
-  }
-  function sub(address, amount) {
-    const total = getOrCreate(address);
-    sum -= amount;
-    return set(address, total - amount);
-  }
-  function getSum() {
-    return sum;
-  }
-  function getPercent(address) {
-    const balance = getOrCreate(address);
-    return balance / sum;
-  }
-  function listPercents() {
-    return [...attributions.keys()].reduce((result, address) => {
-      const percent = getPercent(address);
-      if (percent <= 0) return result;
-      result[address] = percent;
-      return result;
-    }, {});
-  }
-
-  return {
-    add,
-    sub,
-    create,
-    getOrCreate,
-    set,
-    getSum,
-    getPercent,
-    listPercents
-  };
-}
-
 module.exports = {
-  Attributions,
   SharedAttributions,
   History,
   Balances,
-  BalanceHistories,
-  BalanceDeltas,
   Prices,
 };
