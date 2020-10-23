@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Timer.sol";
 import "../../common/implementation/Testable.sol";
 
 import "../../oracle/interfaces/StoreInterface.sol";
@@ -76,7 +75,6 @@ abstract contract FundingRateApplier is Testable, Lockable {
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(address _finderAddress, bytes32 _fundingRateIdentifier) public {
         fpFinder = FinderInterface(_finderAddress);
@@ -148,22 +146,23 @@ abstract contract FundingRateApplier is Testable, Lockable {
     {
         // Note: this method uses named return variables to save a little bytecode.
 
-        // Determine whether `fundingRatePerSecond` implies a negative or positive funding rate,
-        // and apply it over a pay period.
-        FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
+        // The overall formula that this function is performing:
+        //   newCumulativeFundingRateMultiplier =
+        //   (1 + (fundingRatePerSecond * paymentPeriodSeconds)) * currentCumulativeFundingRateMultiplier.
 
         // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
         periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
         // Add one to create the multiplier to scale the existing fee multiplier.
-        FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
+        FixedPoint.Signed memory signedPeriodMultiplier = FixedPoint.fromUnscaledInt(1).add(periodRate);
 
         // Max with 0 to ensure the multiplier isn't negative, then cast to an Unsigned.
         FixedPoint.Unsigned memory unsignedPeriodMultiplier = FixedPoint.fromSigned(
             FixedPoint.max(signedPeriodMultiplier, FixedPoint.fromUnscaledInt(0))
         );
 
-        // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new cumulative funding rate multiplier.
+        // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new
+        // cumulative funding rate multiplier.
         newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
 }
