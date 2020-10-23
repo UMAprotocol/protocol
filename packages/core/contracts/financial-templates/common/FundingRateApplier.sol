@@ -31,8 +31,10 @@ abstract contract FundingRateApplier is Testable, Lockable {
      * FUNDING RATE APPLIER DATA STRUCTURES *
      ****************************************/
 
-    // Points to financial product-related contracts like the funding rate store.
-    FinderInterface private fpFinder;
+    // Locally stores the finder.
+    // This is private because it is expected that another contract, like the FeePayer, will publicly expose the finder
+    // address.
+    FinderInterface private finder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
@@ -77,7 +79,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      */
     constructor(address _finderAddress, bytes32 _fundingRateIdentifier) public {
-        fpFinder = FinderInterface(_finderAddress);
+        finder = FinderInterface(_finderAddress);
         fundingRateIdentifier = _fundingRateIdentifier;
 
         lastUpdateTime = getCurrentTime();
@@ -98,7 +100,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
-        return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
+        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 
     function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
@@ -149,12 +151,13 @@ abstract contract FundingRateApplier is Testable, Lockable {
         // The overall formula that this function is performing:
         //   newCumulativeFundingRateMultiplier =
         //   (1 + (fundingRatePerSecond * paymentPeriodSeconds)) * currentCumulativeFundingRateMultiplier.
+        FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
 
         // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
         periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
         // Add one to create the multiplier to scale the existing fee multiplier.
-        FixedPoint.Signed memory signedPeriodMultiplier = FixedPoint.fromUnscaledInt(1).add(periodRate);
+        FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
 
         // Max with 0 to ensure the multiplier isn't negative, then cast to an Unsigned.
         FixedPoint.Unsigned memory unsignedPeriodMultiplier = FixedPoint.fromSigned(
