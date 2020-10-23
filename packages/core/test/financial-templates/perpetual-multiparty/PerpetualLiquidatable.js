@@ -431,10 +431,10 @@ contract("PerpetualLiquidatable", function(accounts) {
     it("Funding rate multiplier is updated", async () => {
       // Initially cumulativeFundingRateMultiplier is set to 1e18
 
-      // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-      // be 1 * (1 + (1.005 - 1) * 10) = 1.05)
+      // Set a positive funding rate of 0.005 in the store and apply it for a period of 10 seconds. New funding rate should
+      // be 1 * (1 + 0.005 * 10) = 1.05)
       await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
-        rawValue: toWei("1.005")
+        rawValue: toWei("0.005")
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
@@ -860,9 +860,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         // Initially cumulativeFundingRateMultiplier is set to 1e18
 
         // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-        // be 1 * (1 + (1.005 - 1) * 10) = 1.05)
+        // be 1 * (1 + 0.005 * 10) = 1.05)
         await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
-          rawValue: toWei("1.005")
+          rawValue: toWei("0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
@@ -996,9 +996,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         // the price must be <= 150 / 1.2 / 95 = 1.316.
 
         // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
-        // be 1 * (1 - (1 - 0.995) * 10) = 0.95)
+        // be 1 * (1 - -0.005 * 10) = 0.95)
         await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
-          rawValue: toWei("0.995")
+          rawValue: toWei("-0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
@@ -1066,9 +1066,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
 
         // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-        // be 1 * (1 - (1.005 - 1) * 10) = 1.05)
+        // be 1 * (1 - 0.005 * 10) = 1.05)
         await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
-          rawValue: toWei("1.005")
+          rawValue: toWei("0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
@@ -1455,9 +1455,9 @@ contract("PerpetualLiquidatable", function(accounts) {
           // We will set the funding rate multiplier to 0.95, which means that both dispute rewards are scaled down by 0.95
 
           // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
-          // be 1 * (1 - (1 - 0.995) * 10) = 0.95)
+          // be 1 * (1 - -0.005 * 10) = 0.95)
           await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
-            rawValue: toWei("0.995")
+            rawValue: toWei("-0.005")
           });
           await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
