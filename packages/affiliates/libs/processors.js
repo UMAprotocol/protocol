@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
 const { decodeAttribution } = require("./contracts");
@@ -24,7 +25,7 @@ function AttributionHistory() {
         attributions.attribute(user, affiliate, collateralAmount);
       },
       transferPositionPassedRequest(newSponsorAddress) {
-        attributions.attribute(newSponsorAddress, affiliate, collateralAmount);
+        attributions.attribute(newSponsorAddress, affiliate);
       }
     };
   };
@@ -147,8 +148,8 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
       // nothing
     },
     SettleExpiredPosition(caller, collateralReturned, tokensBurned) {
-      collateral.sub(sponsor, collateralReturned.toString());
-      tokens.sub(sponsor, tokensBurned.toString());
+      collateral.sub(caller, collateralReturned.toString());
+      tokens.sub(caller, tokensBurned.toString());
     },
     LiquidationCreated(
       sponsor,
@@ -195,3 +196,5 @@ module.exports = {
   EmpBalancesHistory,
   AttributionHistory
 };
+
+/* eslint-enable no-unused-vars */

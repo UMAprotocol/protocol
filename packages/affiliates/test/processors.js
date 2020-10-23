@@ -1,9 +1,7 @@
 const test = require("tape");
-const lodash = require("lodash");
-const { AttributionHistory, EmpBalancesHistory } = require("../libs/processors");
-const logs = require("../datasets/uUSDwETH-DEC-logs");
+const { AttributionHistory } = require("../libs/processors");
 const transactions = require("../datasets/uUSDwETH-DEC-transactions");
-const { DecodeLog, decodeAttribution, DecodeTransaction } = require("../libs/contracts");
+const { DecodeTransaction } = require("../libs/contracts");
 const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
 
 test("AttributionHistory", t => {
@@ -17,8 +15,8 @@ test("AttributionHistory", t => {
   });
   t.test("process Dataset", t => {
     // create a new AttributionHistory
-    attributionsHistory = AttributionHistory();
-    decode = DecodeTransaction(abi);
+    const attributionsHistory = AttributionHistory();
+    const decode = DecodeTransaction(abi);
     const allowedTransactions = ["create", "deposit", "depositTo"];
 
     transactions.forEach(transaction => {

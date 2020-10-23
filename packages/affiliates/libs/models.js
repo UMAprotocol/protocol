@@ -8,10 +8,10 @@ const lodash = require("lodash");
 //   [ timestamp, price],
 //   [ timestamp, price],
 // ]
-function Prices(prices=[]){
+function Prices(prices = []) {
   function lookup(time) {
-    const index = lodash.sortedIndexBy(prices, [time], ([time])=>{
-      return time
+    const index = lodash.sortedIndexBy(prices, [time], ([time]) => {
+      return time;
     });
     if (prices[index] === time) return prices[index];
     return prices[index - 1];
@@ -19,7 +19,7 @@ function Prices(prices=[]){
 
   return {
     lookup,
-    prices,
+    prices
   };
 }
 
@@ -55,28 +55,28 @@ function SharedAttributions() {
     data[affiliate] = (BigInt(data[affiliate]) + BigInt(amount)).toString();
     return set(user, data);
   }
-  function calculateShare(user, affiliate,scale=1000000n) {
+  function calculateShare(user, affiliate, scale = 1000000n) {
     const data = get(user);
     if (data[affiliate] == null) return 0;
     const sum = Object.values(data).reduce((sum, val) => {
       return sum + BigInt(val);
     }, 0n);
-    return percent(data[affiliate],sum,scale).toString()
+    return percent(data[affiliate], sum, scale).toString();
   }
-  function percent(val,sum,scale=10000n){
-    return BigInt(val) * scale / BigInt(sum) 
+  function percent(val, sum, scale = 10000n) {
+    return (BigInt(val) * scale) / BigInt(sum);
   }
 
   // static function
-  function calculateShares(contributions={},scale=1000000n){
+  function calculateShares(contributions = {}, scale = 1000000n) {
     const sum = Object.values(contributions).reduce((sum, val) => {
       return sum + BigInt(val);
     }, 0n);
-    if(sum == 0n) return {};
-    return Object.entries(contributions).reduce((result,[key,value])=>{
-      result[key] = percent(value,sum,scale).toString()
-      return result
-    },{})
+    if (sum == 0n) return {};
+    return Object.entries(contributions).reduce((result, [key, value]) => {
+      result[key] = percent(value, sum, scale).toString();
+      return result;
+    }, {});
   }
 
   function snapshot() {
@@ -115,8 +115,7 @@ function Balances() {
     }
   }
   function set(addr, balance) {
-    amount = BigInt(balance);
-    assert(balance >= 0n,'balance must be >= 0: ' + balance)
+    assert(balance >= 0n, "balance must be >= 0: " + balance);
     balances.set(addr, balance);
     return balance;
   }
@@ -181,5 +180,5 @@ module.exports = {
   SharedAttributions,
   History,
   Balances,
-  Prices,
+  Prices
 };

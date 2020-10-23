@@ -1,20 +1,19 @@
 // TODO: use this to design a nice library call to handle params and output
 const { BigQuery } = require("@google-cloud/bigquery");
-const Queries = require('../libs/bigquery')
+const Queries = require("../libs/bigquery");
 const moment = require("moment");
 const highland = require("highland");
-const assert = require("assert");
-const { DecodeLog, getContractDeployer } = require("../libs/contracts");
+const { DecodeLog } = require("../libs/contracts");
 const empAbi = require("../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../core/build/contracts/ExpiringMultiPartyCreator");
-const { EmpBalances, EmpBalancesHistory } = require("../libs/processors");
+const { EmpBalancesHistory } = require("../libs/processors");
 const Coingecko = require("../libs/coingecko");
 const coingecko = Coingecko();
 const ethers = require("ethers");
 const { delay } = require("@uma/financial-templates-lib");
 
 const client = new BigQuery();
-const queries = Queries({client})
+const queries = Queries({ client });
 
 const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
 
@@ -25,7 +24,7 @@ const syntheticTokens = ["0xF06DdacF71e2992E2122A1a0168C6967aFdf63ce", "0xD16c79
 const syntheticTokenDecimals = [18, 18];
 
 const startingBlock = 11043617;
-const startingTimestamp = moment("9/20/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); //utc timestamp
+const startingTimestamp = moment("9/20/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); // utc timestamp
 
 const endingBlock = 11089341;
 const endingTimestamp = moment("10/19/2020 23:00:00", "MM/DD/YYYY HH:mm z").valueOf();
@@ -42,7 +41,7 @@ async function getEmpBalances(
 ) {
   // query starting before emp launch
   const empBalanceHistories = empContracts.map(async empContract => {
-    const streamEmpEvents = await queries.streamLogsByContract(empContract,start,end)
+    const streamEmpEvents = await queries.streamLogsByContract(empContract, start, end);
 
     const decode = DecodeLog(empAbi.abi);
     const balancesHistory = EmpBalancesHistory();
@@ -81,7 +80,7 @@ async function getEmpDeployers(
   start = moment("9/20/2020", "MM/DD/YYYY").valueOf(),
   end = moment("10/20/2020", "MM/DD/YYYY").valueOf()
 ) {
-  const streamQueryDeployer = await queries.streamLogsByContract(empCreator,start, end)
+  const streamQueryDeployer = await queries.streamLogsByContract(empCreator, start, end);
   // Get the contract deployer for each EMP.
   const decode = DecodeLog(empCreatorAbi.abi);
   const empCreateLogs = await highland(streamQueryDeployer)
@@ -115,7 +114,7 @@ async function getEmpPriceHistories(
   start = moment("9/20/2020", "MM/DD/YYYY").valueOf()
 ) {
   const daysBetween = moment().diff(start, "days");
-  coinHistories = await Promise.all(
+  const coinHistories = await Promise.all(
     empContracts.map(contract => coingecko.chart(contract.toLowerCase(), currency, daysBetween))
   );
   return coinHistories.map(historyObject => {
@@ -178,7 +177,7 @@ async function runTest() {
     });
   }
 
-  await delay(5); //HACK to deal with the promises not resolving correctly from the highland stream
+  await delay(5); // HACK to deal with the promises not resolving correctly from the highland stream
 
   const payoutPerSnapshot = rewardsPerBlock * snapshotSteps;
 
