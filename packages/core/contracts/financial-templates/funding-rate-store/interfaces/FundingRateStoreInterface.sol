@@ -13,8 +13,8 @@ interface FundingRateStoreInterface {
      * @notice Gets the latest funding rate for `identifier`.
      * @dev This method should never revert.
      * @param identifier uniquely identifier that the calling contracts wants to get a funding rate for.
-     * @return FixedPoint.Signed representing the funding rate for the given identifier. -1e16 implies a
-     * funding rate of -1%, whereas 1e16 implies a funding rate of 1%.
+     * @return FixedPoint.Signed representing the funding rate for the given identifier. 0.01 would represent a funding
+     * rate of 1% per second. -0.01 would represent a negative funding rate of -1% per second.
      */
     function getFundingRateForIdentifier(bytes32 identifier) external view returns (FixedPoint.Signed memory);
 }
