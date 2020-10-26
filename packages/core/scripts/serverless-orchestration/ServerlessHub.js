@@ -88,6 +88,7 @@ hub.post("/", async (req, res) => {
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
     // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
+    console.log(results)
 
     logger.debug({
       at: "ServerlessHub",
@@ -124,6 +125,7 @@ hub.post("/", async (req, res) => {
         };
       }
     });
+    console.log(errorOutputs)
     if (Object.keys(errorOutputs).length > 0) {
       throw { errorOutputs, validOutputs };
     }

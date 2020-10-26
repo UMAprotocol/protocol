@@ -83,7 +83,11 @@ spoke.post("/", async (req, res) => {
 function _execShellCommand(cmd, inputEnv) {
   return new Promise(resolve => {
     exec(cmd, { env: { ...process.env, ...inputEnv, stdio: "inherit", shell: true } }, (error, stdout, stderr) => {
-      // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
+      logger.debug({
+        at: "ServerlessSpoke",
+        stdout: stdout,
+        stderr: stderr
+      });      // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
       stdout = _stripExecStdout(stdout);
       stderr = _stripExecStdError(stderr);
       resolve({ error, stdout, stderr });

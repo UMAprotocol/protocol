@@ -120,18 +120,18 @@ async function run({
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
-      logger.info({
-        at: "Disputer#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
-      });
-    }
+    // if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+    //   await gasEstimator.update();
+    //   const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+    //     from: accounts[0],
+    //     gasPrice: gasEstimator.getCurrentFastPrice()
+    //   });
+    //   logger.info({
+    //     at: "Disputer#index",
+    //     message: "Approved EMP to transfer unlimited collateral tokens 💰",
+    //     collateralApprovalTx: collateralApprovalTx.transactionHash
+    //   });
+    // }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
