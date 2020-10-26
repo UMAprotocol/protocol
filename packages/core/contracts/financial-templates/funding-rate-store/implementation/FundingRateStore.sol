@@ -38,7 +38,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         }
     }
 
-    function propose(bytes32 identifier, FixedPoint.Unsigned memory rate) external {
+    function propose(bytes32 identifier, FixedPoint.Signed memory rate) external {
         // TODO: ACLS on identifiers that can be proposed.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 

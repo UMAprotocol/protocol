@@ -11,6 +11,12 @@ const FundingRateStore = artifacts.require("FundingRateStore");
 // Helper Contracts
 const Timer = artifacts.require("Timer");
 
+// Helper functions.
+async function incrementTime(contract, amount) {
+  const currentTime = await contract.getCurrentTime();
+  await contract.setCurrentTime(Number(currentTime) + amount);
+}
+
 contract("FundingRateStore", function(accounts) {
   let timer;
   let fundingRateStore;
@@ -32,8 +38,40 @@ contract("FundingRateStore", function(accounts) {
     assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), "0");
   });
 
-  it("Unexpired proposal", async function() {
+  describe("Unexpired Proposal", function() {
     const identifier = toHex("unexpired-proposal");
-    await fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: account1 });
+    beforeEach(async () => {
+      await fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: account1 });
+      await incrementTime(fundingRateStore, liveness - 1);
+    });
+
+    it("Initial rate persists", async function() {
+      assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), "0");
+    });
+
+    it("New proposal not allowed", async function() {
+      assert(
+        await didContractThrow(fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: account1 }))
+      );
+    });
+  });
+
+  describe("Expired Proposal", function() {
+    const identifier = toHex("expired-proposal");
+    beforeEach(async () => {
+      await fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: account1 });
+      await incrementTime(fundingRateStore, liveness);
+    });
+
+    it("New rate is retrieved", async function() {
+      assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.01"));
+    });
+
+    it("New proposal allowed", async function() {
+      await fundingRateStore.propose(identifier, { rawValue: toWei("-0.01") }, { from: account1 });
+
+      // Double check that existing value still persists even after a fresh proposal.
+      assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.01"));
+    });
   });
 });
