@@ -39,7 +39,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
     }
 
     function propose(bytes32 identifier, FixedPoint.Signed memory rate) external {
-        // TODO: ACLS on identifiers that can be proposed.
+        // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
