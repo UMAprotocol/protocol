@@ -21,7 +21,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
 
     mapping(bytes32 => FundingRateRecord) public fundingRateRecords;
 
-    uint256 proposalLiveness;
+    uint256 public proposalLiveness;
 
     constructor(uint256 _proposalLiveness, address _timerAddress) public Testable(_timerAddress) {
         require(_proposalLiveness > 0, "Proposal liveness is 0");
