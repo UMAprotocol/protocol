@@ -61,7 +61,7 @@ hub.post("/", async (req, res) => {
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
     if (!configObject || !lastQueriedBlockNumber)
       throw new Error(
-        `Serverless hub requires a config object and a last updated block number! configObject:${configObject} lastQueriedBlockNumber: ${lastQueriedBlockNumber}`
+        `Serverless hub requires a config object and a last updated block number! configObject:${configObject} lastQueriedBlockNumber:${lastQueriedBlockNumber}`
       );
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
