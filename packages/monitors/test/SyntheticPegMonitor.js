@@ -6,11 +6,18 @@ const sinon = require("sinon");
 const { SyntheticPegMonitor } = require("../src/SyntheticPegMonitor");
 
 // Mock and custom winston transport module to monitor winston log outputs
-const { PriceFeedMock, SpyTransport, lastSpyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
+const {
+  PriceFeedMock,
+  SpyTransport,
+  lastSpyLogIncludes,
+  lastSpyLogLevel,
+  InvalidPriceFeedMock
+} = require("@uma/financial-templates-lib");
 
 contract("SyntheticPegMonitor", function() {
   let uniswapPriceFeedMock;
   let medianizerPriceFeedMock;
+  let invalidPriceFeedMock;
 
   let spy;
   let spyLogger;
@@ -22,6 +29,7 @@ contract("SyntheticPegMonitor", function() {
   beforeEach(async function() {
     uniswapPriceFeedMock = new PriceFeedMock();
     medianizerPriceFeedMock = new PriceFeedMock();
+    invalidPriceFeedMock = new InvalidPriceFeedMock();
 
     empProps = {
       collateralCurrencySymbol: "DAI",
@@ -306,6 +314,28 @@ contract("SyntheticPegMonitor", function() {
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "-40.00")); // actual volatility
       assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
+    });
+
+    it("Sends detailed error message when missing volatility data", async function() {
+      syntheticPegMonitor = new SyntheticPegMonitor({
+        logger: spyLogger,
+        web3,
+        uniswapPriceFeed: invalidPriceFeedMock,
+        medianizerPriceFeed: invalidPriceFeedMock,
+        config: {},
+        empProps
+      });
+      invalidPriceFeedMock.setLastUpdateTime(999);
+
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
+      assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
+      assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
+
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
+      assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
+      assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
     });
 
     it("Stress testing with a lot of historical price data points", async function() {

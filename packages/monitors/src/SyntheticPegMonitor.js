@@ -142,7 +142,7 @@ class SyntheticPegMonitor {
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
 
-    if (volData.latestTime) {
+    if (Object.keys(volData).includes("latestTime")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
@@ -194,9 +194,8 @@ class SyntheticPegMonitor {
     const pricefeed = this.uniswapPriceFeed;
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
-    console.log(volData);
 
-    if (volData.latestTime) {
+    if (Object.keys(volData).includes("latestTime")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
