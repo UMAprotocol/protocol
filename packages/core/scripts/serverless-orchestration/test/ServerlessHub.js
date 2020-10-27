@@ -20,6 +20,7 @@ const UniswapMock = artifacts.require("UniswapMock");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
+const { assert } = require("chai");
 
 contract("ServerlessHub.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -136,6 +137,11 @@ contract("ServerlessHub.js", function(accounts) {
     // empty body.
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
+
+    // Error in the Hub itself should not append any error messages
+    const responseObject = JSON.parse(emptyBodyResponse.res.text); // extract json response
+    assert.equal(responseObject.errorMessages.length, 0); //
+
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(emptyBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
@@ -146,6 +152,11 @@ contract("ServerlessHub.js", function(accounts) {
     // body missing cloud run command.
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
+
+    // Error in the Hub itself should not append any error messages
+    const responseObject = JSON.parse(invalidBodyResponse.res.text); // extract json response
+    assert.equal(responseObject.errorMessages.length, 0); //
+
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
     assert.isTrue(invalidBodyResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
@@ -333,5 +344,10 @@ contract("ServerlessHub.js", function(accounts) {
         "Returned values aren't valid, did it run Out of Gas?"
       )
     ); // invalid emp error
+
+    // Check the error messages.
+    assert.equal(responseObject.errorMessages.length, 2); // should be 2 error messages
+    assert.isTrue(responseObject.errorMessages[0].includes("error Command INVALID not found")); // invalid path error
+    assert.isTrue(responseObject.errorMessages[1].includes("Returned values aren't valid, did it run Out of Gas?")); // invalid emp error
   });
 });

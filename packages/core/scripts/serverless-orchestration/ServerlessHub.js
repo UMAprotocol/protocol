@@ -173,7 +173,8 @@ hub.post("/", async (req, res) => {
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      errorMessages
     });
   }
 });
