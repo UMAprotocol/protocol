@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -27,6 +28,7 @@ import "../common/FundingRateApplier.sol";
 contract PerpetualPositionManager is FeePayer, FundingRateApplier, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20;
     using SafeERC20 for IERC20Standard;
     using SafeERC20 for ExpandedIERC20;
 
@@ -161,7 +163,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
-        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, collateralCurrency.decimals());
+        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, IERC20Standard(_collateralAddress).decimals());
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
@@ -563,7 +565,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
      * @param token address of the ERC20 token whose excess balance should be drained.
      */
-    function trimExcess(IERC20Standard token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
+    function trimExcess(IERC20 token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
 
         if (address(token) == address(collateralCurrency)) {

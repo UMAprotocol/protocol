@@ -1864,13 +1864,11 @@ contract("PerpetualLiquidatable", function(accounts) {
     const USDCScalingFactor = toBN("1000000000000"); // 1e12
 
     // By dividing the pre-defined parameters by the scaling factor 1e12 they are brought down from 1e18 to 1e6
-    const USDCPricePerToken = pricePerToken.div(USDCScalingFactor); // 1.5e6
-    const USDCDisputePrice = settlementPrice.div(USDCScalingFactor); // 1.0e6
     const USDCAmountOfCollateral = amountOfCollateral.div(USDCScalingFactor); // 150e6
-    // Note: the number of synthetics does not get scaled. This is still the 100e18 as with other tests.
+    const USDCAmountOfSynthetic = amountOfSynthetic.div(USDCScalingFactor); // 150e6
 
     // Next, re-define a number of constants used before in terms of the newly scaled variables
-    const USDCSettlementTRV = amountOfSynthetic.mul(USDCDisputePrice).div(toBN(toWei("1"))); // 100e6
+    const USDCSettlementTRV = USDCAmountOfSynthetic.mul(settlementPrice).div(toBN(toWei("1"))); // 100e6
     const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
@@ -1885,6 +1883,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Update the liquidatableParameters to use the new token as collateral and deploy a new Liquidatable contract
       let USDCLiquidatableParameters = liquidatableParameters;
       USDCLiquidatableParameters.collateralAddress = collateralToken.address;
+      USDCLiquidatableParameters.minSponsorTokens = { rawValue: minSponsorTokens.div(USDCScalingFactor).toString() };
       USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
         from: contractDeployer
       });
@@ -1907,18 +1906,18 @@ contract("PerpetualLiquidatable", function(accounts) {
       // a value of 100e18.
       await USDCLiquidationContract.create(
         { rawValue: USDCAmountOfCollateral.toString() },
-        { rawValue: amountOfSynthetic.toString() },
+        { rawValue: USDCAmountOfSynthetic.toString() },
         { from: sponsor }
       );
       // Transfer USDCSynthetic tokens to a liquidator
-      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      await syntheticToken.transfer(liquidator, USDCAmountOfSynthetic, { from: sponsor });
 
       // Create a Liquidation which can be tested against.
       await USDCLiquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
-        { rawValue: USDCPricePerToken.toString() },
-        { rawValue: amountOfSynthetic.toString() },
+        { rawValue: pricePerToken.toString() }, // Prices should use 18 decimals.
+        { rawValue: USDCAmountOfSynthetic.toString() },
         unreachableDeadline,
         { from: liquidator }
       );
@@ -1930,7 +1929,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       beforeEach(async () => {
         // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
         const liquidationTime = await USDCLiquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, USDCDisputePrice.toString());
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
         // What is tested in the assertions that follow focus specifically on instances whewre in collateral
         // moves around. Other kinds of tests (like revert on Rando calls) are not tested again for brevity
       });
@@ -2086,7 +2085,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       beforeEach(async () => {
         // Settle the dispute as FAILED. To achieve this the liquidation must be correct.
         const liquidationTime = await USDCLiquidationContract.getCurrentTime();
-        const disputePrice = toBN(toWei("1.3")).div(USDCScalingFactor);
+        const disputePrice = toBN(toWei("1.3")); // Prices should always be in 18 decimals.
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
       });
       it("Liquidator calls, liquidation is deleted", async () => {
