@@ -88,7 +88,6 @@ hub.post("/", async (req, res) => {
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
     // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
-    console.log(results)
 
     logger.debug({
       at: "ServerlessHub",
@@ -125,7 +124,6 @@ hub.post("/", async (req, res) => {
         };
       }
     });
-    console.log(errorOutputs)
     if (Object.keys(errorOutputs).length > 0) {
       throw { errorOutputs, validOutputs };
     }
@@ -144,6 +142,22 @@ hub.post("/", async (req, res) => {
       message: "Some spoke calls returned errors (details)🚨",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
+
+    // Construct detailed error messages to log.
+    let errorMessages = [];
+    if (!(errorOutput instanceof Error)) {
+      // TODO: Handle other types of errors, such as
+      // => "request to http://localhost:8081/ failed, reason: socket hang up",
+      errorMessages = Object.keys(errorOutput.errorOutputs).map(_spoke => {
+        try {
+          return errorOutput.errorOutputs[_spoke].execResponse.stderr;
+        } catch (err) {
+          // `errorMessages` is in an unexpected JSON shape.
+          return "Hub unable to parse error";
+        }
+      });
+    }
+
     logger.error({
       at: "ServerlessHub",
       message: "Some spoke calls returned errors 🚨",
@@ -152,7 +166,8 @@ hub.post("/", async (req, res) => {
           ? errorOutput.message
           : {
               errorOutputs: Object.keys(errorOutput.errorOutputs), // eslint-disable-line indent
-              validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
+              validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
+              errorMessages // eslint-disable-line indent
             } // eslint-disable-line indent
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.

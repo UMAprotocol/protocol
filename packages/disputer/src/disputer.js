@@ -81,7 +81,6 @@ class Disputer {
 
   // Update the client and gasEstimator clients.
   async update() {
-    console.log(this.priceFeed)
     await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
 
