@@ -1,19 +1,19 @@
-const test = require("tape");
+const { assert } = require("chai")
 const { AttributionHistory } = require("../libs/processors");
 const transactions = require("../datasets/uUSDwETH-DEC-transactions");
 const { DecodeTransaction } = require("../libs/contracts");
 const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
 
-test("AttributionHistory", t => {
+describe("AttributionHistory", function() {
   let processor;
-  t.test("init", t => {
+  it("init", function(){
     processor = AttributionHistory();
-    t.ok(processor);
-    t.ok(processor.history);
-    t.ok(processor.attributions);
-    t.end();
+    assert.ok(processor);
+    assert.ok(processor.history);
+    assert.ok(processor.attributions);
   });
-  t.test("process Dataset", t => {
+  it("process Dataset", function() {
+    this.timeout(10000)
     // create a new AttributionHistory
     const attributionsHistory = AttributionHistory();
     const decode = DecodeTransaction(abi);
@@ -35,10 +35,9 @@ test("AttributionHistory", t => {
         console.log("error decoding transaction:", err);
       }
     });
-    t.ok(attributionsHistory.history.length());
+    assert.ok(attributionsHistory.history.length());
     // shows all snapshots
     // console.log(JSON.stringify(attributionsHistory.history.history,undefined,2))
-    t.end();
   });
 });
 // TODO: add more tests for EmpBalances, EmpBalanceHistory

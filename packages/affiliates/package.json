@@ -8,10 +8,14 @@
     "ethers": "^5.0.17",
     "highland": "^2.13.5",
     "lodash": "^4.17.20",
+    "mkdirp": "^1.0.4",
     "moment": "^2.29.1"
   },
   "devDependencies": {
     "mocha": "^8.2.0",
     "tape": "^5.0.1"
+  },
+  "scripts": {
+    "test": "mocha"
   }
 }

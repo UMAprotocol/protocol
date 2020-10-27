@@ -1,107 +1,97 @@
-const test = require("tape");
+const { assert } = require("chai")
 const { History, Balances, SharedAttributions, Prices } = require("../libs/models");
 const Coingecko = require("../libs/coingecko");
 const moment = require("moment");
 
-test("SharedAttributions", t => {
+describe("SharedAttributions", function(){
   let attributions;
-  t.test("init", t => {
+  it("init", function(){
     attributions = SharedAttributions();
-    t.ok(attributions);
-    t.end();
+    assert.ok(attributions);
   });
-  t.test("create", t => {
+  it("create", function(){
     const result = attributions.create("test");
-    t.ok(result);
-    t.end();
+    assert.ok(result);
   });
-  t.test("attribute a", t => {
+  it("attribute a", function(){
     const result = attributions.attribute("test", "a", 1);
-    t.equal(result.a, "1");
-    t.end();
+    assert.equal(result.a, "1");
   });
-  t.test("attribute b", t => {
+  it("attribute b", function(){
     const result = attributions.attribute("test", "b", 1);
-    t.equal(result.a, "1");
-    t.equal(result.b, "1");
-    t.end();
+    assert.equal(result.a, "1");
+    assert.equal(result.b, "1");
   });
-  t.test("calcShare", t => {
+  it("calcShare", function(){
     const result = attributions.calculateShare("test", "a");
-    t.equal(result, "500000");
-    t.end();
+    assert.equal(result, "500000");
   });
 });
 
-test("Balances", t => {
+describe("Balances", function(){
   let balances;
-  t.test("init", t => {
+  it("init", function(){
     balances = Balances();
-    t.ok(balances);
-    t.end();
+    assert.ok(balances);
   });
-  t.test("create", t => {
+  it("create", function(){
     const result = balances.create("test");
-    t.equal(result, "0");
-    t.end();
+    assert.equal(result, "0");
   });
-  t.test("get", t => {
+  it("get", function(){
     const result = balances.get("test");
-    t.equal(result, "0");
-    t.end();
+    assert.equal(result, "0");
   });
-  t.test("add", t => {
+  it("add", function(){
     const result = balances.add("test", 2);
-    t.equal(result, "2");
-    t.end();
+    assert.equal(result, "2");
   });
-  t.test("sub", t => {
+  it("sub", function(){
     const result = balances.sub("test", 1);
-    t.equal(result, "1");
-    t.end();
+    assert.equal(result, "1");
   });
-  t.test("snapshot", t => {
+  it("snapshot", function(){
     const result = balances.snapshot();
-    t.equal(result.test, "1");
-    t.end();
+    assert.equal(result.test, "1");
   });
 });
 
-test("History", t => {
+describe("History", function() {
   let history;
-  t.test("init", t => {
+  it("init", function() {
     history = History();
-    t.ok(history);
-    t.end();
+    assert.ok(history);
   });
-  t.test("insert", t => {
+  it("lookup", function() {
     history.insert({ blockNumber: 1, balance: 1 });
-    t.end();
-  });
-  t.test("lookup", t => {
     const result = history.lookup(1);
-    t.equal(result.balance, 1);
-    t.equal(result.blockNumber, 1);
-    t.end();
+    assert.equal(result.balance, 1);
+    assert.equal(result.blockNumber, 1);
   });
 });
 
-test("Prices", t => {
+describe("Prices", function(){
   let prices, seed;
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
-  t.test("init", async t => {
+  it("init", async function(){
     seed = await Coingecko().chart(token, "usd", "10");
     prices = Prices(seed.prices);
-    t.ok(seed);
-    t.ok(prices);
-    t.end();
+    assert.ok(seed);
+    assert.ok(prices);
   });
-  t.test("lookup", t => {
+  it("lookup", function(){
     const time = moment()
       .subtract(5, "days")
       .valueOf();
     const result = prices.lookup(time);
-    t.ok(result[0] <= time);
-    t.end();
+    assert.ok(result[0] <= time);
+  });
+  it("closest", function(){
+    const time = moment()
+      .subtract(5, "days")
+      .valueOf();
+    const result = prices.closest(time);
+    assert.ok(result[0])
+    assert.ok(result[1])
   });
 });

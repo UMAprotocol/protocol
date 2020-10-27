@@ -6,18 +6,22 @@ const Queries = require("../libs/bigquery");
 const moment = require("moment");
 const Path = require("path");
 const fs = require("fs");
+const mkdirp = require('mkdirp')
+const params = require('../test/datasets/set1')
 
-const empCreator = "0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87";
-const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-deployers.json");
-const start = moment("9/20/2020", "MM/DD/YYYY").valueOf();
-const end = moment("10/20/2020", "MM/DD/YYYY").valueOf();
+const {empCreator, startingTimestamp, endingTimestamp} = params
+const basePath = Path.join(__dirname, "../test/datasets")
+const subDir = Path.join(basePath,params.name,'logs')
+const path = Path.join(subDir,`${empCreator}.json`)
 
 const client = new BigQuery();
 const queries = Queries({ client });
 
 async function runTest() {
-  const data = await queries.getLogsByContract(empCreator, start, end);
-  fs.writeFileSync(dir, JSON.stringify(data, null, 2));
+  await mkdirp(subDir)
+  const data = await queries.getLogsByContract(empCreator, startingTimestamp, endingTimestamp);
+  fs.writeFileSync(path, JSON.stringify(data, null, 2));
+  return data
 }
 
 runTest()

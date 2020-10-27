@@ -12,7 +12,7 @@ module.exports = (host = "https://api.coingecko.com") => {
     assert(currency, "requires currency symbol");
     assert(days, "requires days of history");
     return call(
-      `${host}/api/v3/coins/ethereum/contract/${contract}/market_chart/?vs_currency=${currency}&days=${days}`
+      `${host}/api/v3/coins/ethereum/contract/${contract.toLowerCase()}/market_chart/?vs_currency=${currency}&days=${days}`
     );
   }
 

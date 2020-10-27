@@ -17,9 +17,25 @@ function Prices(prices = []) {
     return prices[index - 1];
   }
 
+  function closest(needle, haystack=prices) {
+    return haystack.reduce((a, b) => {
+      const aDiff = Math.abs(a[0] - needle);
+      const bDiff = Math.abs(b[0] - needle);
+
+      // if differences are equal, return larger? timestamp
+      if (aDiff == bDiff) {
+        return a < b ? a : b;
+      }
+      // if diffs are diff, return smallest diff
+      return bDiff < aDiff ? b : a;
+
+    });
+  }
+
   return {
     lookup,
-    prices
+    prices,
+    closest,
   };
 }
 
@@ -153,7 +169,7 @@ function Balances() {
 // and also has gaps, so that  not every block number is recorded.
 function History() {
   const history = [];
-  // Used internally, but will insert a block into cache sorted by timestamp
+  // Used internally, but will insert a block into cache sorted by timestamp ascending
   function insert(data) {
     assert(data.blockNumber, "requires blockNumber");
     const index = lodash.sortedIndexBy(history, data, "blockNumber");
@@ -163,6 +179,8 @@ function History() {
   function lookup(blockNumber) {
     const index = lodash.sortedIndexBy(history, { blockNumber }, "blockNumber");
     if (history[index] && history[index].blockNumber === blockNumber) return history[index];
+    const result = history[index -1]
+    assert(result,`history does not go back far enough: looked up ${blockNumber} vs earliest ${history[0].blockNumber}`)
     return history[index - 1];
   }
   function length() {

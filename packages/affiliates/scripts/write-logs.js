@@ -7,29 +7,27 @@ const moment = require("moment");
 const highland = require("highland");
 const Path = require("path");
 const fs = require("fs");
+const mkdirp = require('mkdirp')
+const params = require('../test/datasets/set1')
 
-// uUSDwETH Synthetic Token Expiring  uUSDwETH-DEC
-const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-const dir = Path.join(__dirname, "../datasets/uUSDwETH-DEC-logs.json");
-const start = moment("9/20/2020", "MM/DD/YYYY").valueOf();
-const end = moment("10/20/2020", "MM/DD/YYYY").valueOf();
+const Promise = require('bluebird')
+
+const {empContracts, startingTimestamp, endingTimestamp} = params
+
+const basePath = Path.join(__dirname, "../test/datasets")
+const subDir = Path.join(basePath,params.name,'logs')
 
 const client = new BigQuery();
 const queries = Queries({ client });
 
 async function runTest() {
-  const queryStream = highland(await queries.streamLogsByContract(empContract, start, end))
-    .map(JSON.stringify)
-    .intersperse(",\n");
-  const writeStream = fs.createWriteStream(dir);
-
-  return new Promise(res => {
-    highland(["[\n", queryStream])
-      .append("]\n")
-      .flatten()
-      .pipe(writeStream)
-      .on("done", res);
-  });
+  await mkdirp(subDir)
+  await Promise.map(empContracts,async contract=>{
+    const data = await queries.getLogsByContract(contract,startingTimestamp, endingTimestamp)
+    const path = Path.join(subDir,`${contract}.json`)
+    console.log('writing',data.length,'events')
+    fs.writeFileSync(path, JSON.stringify(data, null, 2));
+  })
 }
 
 runTest()
