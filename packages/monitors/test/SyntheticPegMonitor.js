@@ -325,6 +325,19 @@ contract("SyntheticPegMonitor", function() {
         config: {},
         empProps
       });
+
+      // Test when no update time in the price feed is set.
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
+      assert.isTrue(lastSpyLogIncludes(spy, "null")); // historical time for which we cannot retrieve price data for
+      assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
+
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
+      assert.isTrue(lastSpyLogIncludes(spy, "null")); // historical time for which we cannot retrieve price data for
+      assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
+
+      // Test when update time is set.
       invalidPriceFeedMock.setLastUpdateTime(999);
 
       await syntheticPegMonitor.checkPegVolatility();
