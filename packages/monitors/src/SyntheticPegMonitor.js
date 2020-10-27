@@ -142,12 +142,12 @@ class SyntheticPegMonitor {
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
 
-    if (Object.keys(volData).includes("latestTime")) {
+    if (Object.keys(volData).includes("errorData")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Medianizer",
-        historicalTime: volData.latestTime,
+        historicalTime: volData.errorData.latestTime,
         lookback: this.volatilityWindow
       });
       return;
@@ -195,12 +195,12 @@ class SyntheticPegMonitor {
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
 
-    if (Object.keys(volData).includes("latestTime")) {
+    if (Object.keys(volData).includes("errorData")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Uniswap",
-        historicalTime: volData.latestTime,
+        historicalTime: volData.errorData.latestTime,
         lookback: this.volatilityWindow
       });
       return;
@@ -250,7 +250,9 @@ class SyntheticPegMonitor {
     const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
     if (!volData) {
       return {
-        latestTime: latestTime ? latestTime : 0 // Return this for error logging purposes
+        errorData: {
+          latestTime: latestTime ? latestTime : 0
+        }
       };
     }
 
