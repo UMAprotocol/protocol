@@ -250,7 +250,7 @@ class SyntheticPegMonitor {
     const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
     if (!volData) {
       return {
-        latestTime // Return this for error logging purposes
+        latestTime: latestTime ? latestTime : 0 // Return this for error logging purposes
       };
     }
 
