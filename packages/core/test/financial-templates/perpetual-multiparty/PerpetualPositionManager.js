@@ -1644,6 +1644,8 @@ contract("PerpetualPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
+
+    console.log(tokenCurrency);
     // Create the initial custompositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
 

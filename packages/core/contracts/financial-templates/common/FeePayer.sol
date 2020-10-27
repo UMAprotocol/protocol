@@ -1,9 +1,9 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
+import "../../common/interfaces/IERC20Standard.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
@@ -22,14 +22,14 @@ import "../../oracle/implementation/Constants.sol";
 abstract contract FeePayer is Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Standard;
 
     /****************************************
      *      FEE PAYER DATA STRUCTURES       *
      ****************************************/
 
     // The collateral currency used to back the positions in this contract.
-    IERC20 public collateralCurrency;
+    IERC20Standard public collateralCurrency;
 
     // Finder contract used to look up addresses for UMA system contracts.
     FinderInterface public finder;
@@ -75,7 +75,7 @@ abstract contract FeePayer is Testable, Lockable {
         address _finderAddress,
         address _timerAddress
     ) public Testable(_timerAddress) {
-        collateralCurrency = IERC20(_collateralAddress);
+        collateralCurrency = IERC20Standard(_collateralAddress);
         finder = FinderInterface(_finderAddress);
         lastPaymentTime = getCurrentTime();
         cumulativeFeeMultiplier = FixedPoint.fromUnscaledUint(1);
