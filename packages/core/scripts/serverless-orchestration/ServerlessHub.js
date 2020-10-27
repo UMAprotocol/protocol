@@ -362,4 +362,4 @@ if (require.main === module) {
 }
 
 hub.Poll = Poll;
-module.exports = { hub, _getLastQueriedBlockNumber };
+module.exports = hub;
