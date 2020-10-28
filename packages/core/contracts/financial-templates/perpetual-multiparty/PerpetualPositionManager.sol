@@ -20,6 +20,57 @@ import "../common/FundingRateApplier.sol";
 
 
 /**
+ * @title Stateless library providing helper functions to compute multiparty collateral and debt adjustments.
+ */
+library PositionLib {
+    using FixedPoint for FixedPoint.Unsigned;
+
+    /**
+     * @notice Given debt outstanding and current debt holdings, returns the amount of collateral to repay
+     * assuming a settlement price.
+     * @param _settlementPrice Value of 1 synthetic denominated in collateral token.
+     * @param _syntheticBalance Amount of synthetic tokens holdings.
+     * @param _syntheticPosition Amount of synthetic debt outstanding in position.
+     * @param _collateralPosition Amount of collateral locked in position.
+     * @param _totalCollateralPosition Amount of collateral locked in all positions in contract.
+     * @return collateralToSettle The amount of collateral to repay.
+     */
+    function getSettlementValue(
+        FixedPoint.Unsigned memory _settlementPrice,
+        FixedPoint.Unsigned memory _syntheticBalance, // _getFundingRateAppliedTokenDebt(synthetic.balanceOf())
+        FixedPoint.Unsigned memory _syntheticPosition, // _getFundingRateAppliedTokenDebt(positionData.tokensOutstanding)
+        FixedPoint.Unsigned memory _collateralPosition, // _getFeeAdjustedCollateral(positionData.rawCollateral)
+        FixedPoint.Unsigned memory _totalCollateralPosition // _getFeeAdjustedCollateral(rawTotalPositionCollateral)
+    ) internal pure returns (FixedPoint.Unsigned memory) {
+        // Collateral to repay is equal to at least the value of the synthetic balance denominated in collateral.
+        FixedPoint.Unsigned memory collateralToSettle = _syntheticBalance.mul(_settlementPrice);
+
+        // If there is outstanding position collateral and debt, then collateral to repay also includes the excess collateral in the position.
+        if (_collateralPosition.isGreaterThan(0)) {
+            // Excess collateral is equal to position (collateral - debt).
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = _syntheticPosition.mul(_settlementPrice);
+
+            // If the debt is greater than the remaining collateral, the excess collateral is 0
+            FixedPoint.Unsigned memory positionExcessCollateral = tokenDebtValueInCollateral.isLessThan(
+                _collateralPosition
+            )
+                ? _collateralPosition.sub(tokenDebtValueInCollateral)
+                : FixedPoint.Unsigned(0);
+
+            // Add the excess collateral to the collateral to repay
+            collateralToSettle = collateralToSettle.add(positionExcessCollateral);
+        }
+
+        // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
+        // the caller will get as much collateral as the contract can pay out.
+        FixedPoint.Unsigned memory payout = FixedPoint.min(_totalCollateralPosition, collateralToSettle);
+
+        return payout;
+    }
+}
+
+
+/**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
@@ -79,7 +130,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
     // Timestamp used in case of emergency shutdown.
-    uint256 public emergencyShutdownTimestamp;
+    uint256 private emergencyShutdownTimestamp;
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
@@ -462,34 +513,45 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
             emergencyShutdownPrice = _getOracleEmergencyShutdownPrice();
         }
 
-        // Get caller's tokens balance and calculate amount of underlying entitled to them.
+        PositionData storage positionData = positions[msg.sender];
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(
-            emergencyShutdownPrice
+        FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
+        FixedPoint.Unsigned memory payout = PositionLib.getSettlementValue(
+            emergencyShutdownPrice,
+            tokensToRedeem,
+            _getFundingRateAppliedTokenDebt(positionData.tokensOutstanding),
+            positionCollateral,
+            _getFeeAdjustedCollateral(rawTotalPositionCollateral)
         );
 
+        // Get caller's tokens balance and calculate amount of underlying entitled to them.
+        // FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
+        // FixedPoint.Unsigned memory totalRedeemableCollateral = _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(
+        //     emergencyShutdownPrice
+        // );
+
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
-        PositionData storage positionData = positions[msg.sender];
-        if (_getFeeAdjustedCollateral(positionData.rawCollateral).isGreaterThan(0)) {
+        // PositionData storage positionData = positions[msg.sender];
+        if (positionCollateral.isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
             // the funding rate applied to the outstanding token debt.
 
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
-                positionData
-                    .tokensOutstanding
-            )
-                .mul(emergencyShutdownPrice);
-            FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
+            // FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
+            //     positionData
+            //         .tokensOutstanding
+            // )
+            //     .mul(emergencyShutdownPrice);
+            // FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
-                positionCollateral
-            )
-                ? positionCollateral.sub(tokenDebtValueInCollateral)
-                : FixedPoint.Unsigned(0);
+            // FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
+            //     positionCollateral
+            // )
+            //     ? positionCollateral.sub(tokenDebtValueInCollateral)
+            //     : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
-            totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
+            // totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
 
             // Reset the position state as all the value has been removed after settlement.
             delete positions[msg.sender];
@@ -498,10 +560,10 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout = FixedPoint.min(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalRedeemableCollateral
-        );
+        // FixedPoint.Unsigned memory payout = FixedPoint.min(
+        //     _getFeeAdjustedCollateral(rawTotalPositionCollateral),
+        //     totalRedeemableCollateral
+        // );
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
