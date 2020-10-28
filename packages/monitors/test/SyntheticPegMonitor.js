@@ -487,7 +487,6 @@ contract("SyntheticPegMonitor", function() {
         await syntheticPegMonitor.checkSyntheticVolatility();
         errorThrown = false;
       } catch (err) {
-        console.error(err);
         errorThrown = true;
       }
       assert.isFalse(errorThrown);
