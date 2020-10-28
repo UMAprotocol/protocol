@@ -20,7 +20,6 @@ const UniswapMock = artifacts.require("UniswapMock");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
-const { assert } = require("chai");
 
 contract("ServerlessHub.js", function(accounts) {
   const contractCreator = accounts[0];
