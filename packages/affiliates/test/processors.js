@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const { AttributionHistory } = require("../libs/processors");
-const transactions = require("../datasets/uUSDwETH-DEC-transactions");
+const transactions = require("./datasets/uUSDwETH-DEC-transactions");
 const { DecodeTransaction } = require("../libs/contracts");
 const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
 

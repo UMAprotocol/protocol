@@ -6,9 +6,6 @@ module.exports = {
   },
   extends: ["plugin:prettier/recommended", "eslint:recommended"],
   plugins: ["prettier", "mocha"],
-  parserOptions: {
-    ecmaVersion: 11
-  },
   rules: {
     "prettier/prettier": ["error"],
     indent: ["error", 2, { SwitchCase: 1 }],

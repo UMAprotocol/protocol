@@ -177,7 +177,7 @@ function History() {
       result,
       `history does not go back far enough: looked up ${blockNumber} vs earliest ${history[0].blockNumber}`
     );
-    return history[index - 1];
+    return result;
   }
   function length() {
     return history.length;
