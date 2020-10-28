@@ -60,7 +60,11 @@ hub.post("/", async (req, res) => {
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
     if (!configObject || !lastQueriedBlockNumber)
-      throw new Error("Serverless hub requires a config object and a last updated block number!");
+      throw new Error(
+        `Serverless hub requires a config object and a last updated block number! configObject:${JSON.stringify(
+          configObject
+        )} lastQueriedBlockNumber:${lastQueriedBlockNumber}`
+      );
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
@@ -261,7 +265,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
   // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
-  await retry(
+  return await retry(
     async () => {
       if (hubConfig.saveQueriedBlock == "gcp") {
         const key = datastore.key(["BlockNumberLog", configIdentifier]);
