@@ -17,7 +17,7 @@ function Prices(prices = []) {
     return prices[index - 1];
   }
 
-  function closest(needle, haystack=prices) {
+  function closest(needle, haystack = prices) {
     return haystack.reduce((a, b) => {
       const aDiff = Math.abs(a[0] - needle);
       const bDiff = Math.abs(b[0] - needle);
@@ -28,20 +28,19 @@ function Prices(prices = []) {
       }
       // if diffs are diff, return smallest diff
       return bDiff < aDiff ? b : a;
-
     });
   }
 
   return {
     lookup,
     prices,
-    closest,
+    closest
   };
 }
 
 // users show current ratio of affiliates tagged on thier deposits
 // keyed by user address, and show total attributed for each affiliate per user
-function SharedAttributions() {
+function SharedAttributions({ scale = 10n ** 18n } = {}) {
   const addresses = new Map();
   function create(user) {
     assert(!addresses.has(user), "Already has user");
@@ -52,11 +51,8 @@ function SharedAttributions() {
     return addresses.get(user);
   }
   function getOrCreate(user) {
-    try {
-      return get(user);
-    } catch (err) {
-      return create(user);
-    }
+    if (addresses.has(user)) return get(user);
+    return create(user);
   }
   function set(user, data) {
     addresses.set(user, data);
@@ -71,7 +67,7 @@ function SharedAttributions() {
     data[affiliate] = (BigInt(data[affiliate]) + BigInt(amount)).toString();
     return set(user, data);
   }
-  function calculateShare(user, affiliate, scale = 1000000n) {
+  function calculateShare(user, affiliate) {
     const data = get(user);
     if (data[affiliate] == null) return 0;
     const sum = Object.values(data).reduce((sum, val) => {
@@ -79,12 +75,12 @@ function SharedAttributions() {
     }, 0n);
     return percent(data[affiliate], sum, scale).toString();
   }
-  function percent(val, sum, scale = 10000n) {
+  function percent(val, sum) {
     return (BigInt(val) * scale) / BigInt(sum);
   }
 
   // static function
-  function calculateShares(contributions = {}, scale = 1000000n) {
+  function calculateShares(contributions = {}) {
     const sum = Object.values(contributions).reduce((sum, val) => {
       return sum + BigInt(val);
     }, 0n);
@@ -124,11 +120,8 @@ function Balances() {
     return balances.get(addr);
   }
   function getOrCreate(addr) {
-    try {
-      return get(addr);
-    } catch (err) {
-      return create(addr);
-    }
+    if (balances.has(addr)) return get(addr);
+    return create(addr);
   }
   function set(addr, balance) {
     assert(balance >= 0n, "balance must be >= 0: " + balance);
@@ -179,8 +172,11 @@ function History() {
   function lookup(blockNumber) {
     const index = lodash.sortedIndexBy(history, { blockNumber }, "blockNumber");
     if (history[index] && history[index].blockNumber === blockNumber) return history[index];
-    const result = history[index -1]
-    assert(result,`history does not go back far enough: looked up ${blockNumber} vs earliest ${history[0].blockNumber}`)
+    const result = history[index - 1];
+    assert(
+      result,
+      `history does not go back far enough: looked up ${blockNumber} vs earliest ${history[0].blockNumber}`
+    );
     return history[index - 1];
   }
   function length() {

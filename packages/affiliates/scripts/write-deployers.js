@@ -3,25 +3,24 @@
 
 const { BigQuery } = require("@google-cloud/bigquery");
 const Queries = require("../libs/bigquery");
-const moment = require("moment");
 const Path = require("path");
 const fs = require("fs");
-const mkdirp = require('mkdirp')
-const params = require('../test/datasets/set1')
+const mkdirp = require("mkdirp");
+const params = require("../test/datasets/set1");
 
-const {empCreator, startingTimestamp, endingTimestamp} = params
-const basePath = Path.join(__dirname, "../test/datasets")
-const subDir = Path.join(basePath,params.name,'logs')
-const path = Path.join(subDir,`${empCreator}.json`)
+const { empCreator, startingTimestamp, endingTimestamp } = params;
+const basePath = Path.join(__dirname, "../test/datasets");
+const subDir = Path.join(basePath, params.name, "logs");
+const path = Path.join(subDir, `${empCreator}.json`);
 
 const client = new BigQuery();
 const queries = Queries({ client });
 
 async function runTest() {
-  await mkdirp(subDir)
+  await mkdirp(subDir);
   const data = await queries.getLogsByContract(empCreator, startingTimestamp, endingTimestamp);
   fs.writeFileSync(path, JSON.stringify(data, null, 2));
-  return data
+  return data;
 }
 
 runTest()

@@ -91,7 +91,7 @@ function EmpBalancesHistory() {
   return {
     balances,
     history,
-    handleEvent,
+    handleEvent
   };
 }
 

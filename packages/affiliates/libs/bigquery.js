@@ -46,7 +46,7 @@ module.exports = ({ client } = {}) => {
         ORDER BY block_timestamp ASC;
       `;
     },
-    blocks(start,end,selection = ["*"]){
+    blocks(start, end, selection = ["*"]) {
       assert(start, "requires start");
       start = moment(start).format("YYYY-MM-DD hh:mm:ss");
       end = moment(end).format("YYYY-MM-DD hh:mm:ss");
@@ -59,8 +59,8 @@ module.exports = ({ client } = {}) => {
           timestamp >= TIMESTAMP('${start}')
           AND timestamp < TIMESTAMP('${end}')
         ORDER BY timestamp ASC;
-      `
-    },
+      `;
+    }
   };
 
   async function streamLogsByContract(...args) {
@@ -102,7 +102,9 @@ module.exports = ({ client } = {}) => {
     getTransactionsByContract,
     getBlocks,
     // exposed for testing or as utilities
-    queries,
-    client
+    utils: {
+      queries,
+      client
+    }
   };
 };

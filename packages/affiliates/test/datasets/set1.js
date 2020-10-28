@@ -14,7 +14,7 @@ const endingTimestamp = moment("10/19/2020 23:00:00", "MM/DD/YYYY HH:mm z").valu
 
 module.exports = {
   // this is the sub directory name
-  name:'set1',
+  name: "set1",
   // all other params to generate data set and use in tests
   empCreator,
   empContracts,
@@ -23,5 +23,5 @@ module.exports = {
   startingBlock,
   startingTimestamp,
   endingBlock,
-  endingTimestamp,
-}
+  endingTimestamp
+};

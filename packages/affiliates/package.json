@@ -1,5 +1,5 @@
 {
-  "name": "affiliates",
+  "name": "@uma/affiliates",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",

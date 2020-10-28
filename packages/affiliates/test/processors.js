@@ -1,4 +1,4 @@
-const { assert } = require("chai")
+const { assert } = require("chai");
 const { AttributionHistory } = require("../libs/processors");
 const transactions = require("../datasets/uUSDwETH-DEC-transactions");
 const { DecodeTransaction } = require("../libs/contracts");
@@ -6,14 +6,14 @@ const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
 
 describe("AttributionHistory", function() {
   let processor;
-  it("init", function(){
+  it("init", function() {
     processor = AttributionHistory();
     assert.ok(processor);
     assert.ok(processor.history);
     assert.ok(processor.attributions);
   });
   it("process Dataset", function() {
-    this.timeout(10000)
+    this.timeout(10000);
     // create a new AttributionHistory
     const attributionsHistory = AttributionHistory();
     const decode = DecodeTransaction(abi);
