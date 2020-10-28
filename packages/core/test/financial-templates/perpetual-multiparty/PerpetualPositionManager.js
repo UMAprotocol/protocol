@@ -1645,15 +1645,11 @@ contract("PerpetualPositionManager", function(accounts) {
     );
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
 
-    // Token currency and collateral have same # of decimals.
-    assert.equal(await tokenCurrency.decimals(), 6);
+    console.log(tokenCurrency);
+    // Create the initial custompositionManager position. 100 synthetics backed by 150 collat
+    const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
 
-    // Create the initial custom positionManager position. 100 synthetics backed by 150 collat
-    const createTokens = toBN("100")
-      .muln(1e6)
-      .toString();
-
-    // The collateral is delimited by the same number of decimals. 150 * 1e6
+    // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
       .toString();
@@ -1698,15 +1694,13 @@ contract("PerpetualPositionManager", function(accounts) {
     );
     assert.equal((await custompositionManager.totalTokensOutstanding()).toString(), expectedSponsorTokens.toString());
 
-    // By matching collateral and synthetic precision, we can assume that oracle price requests will always resolve to 18 decimals.
+    // The key with non-standard ERC20 delimitation is how the oracle responds to requests.
     // The two cases that need to be tested are responding to dispute requests and settlement.
     // Dispute and liquidation is tested in `Liquidatable.js`. Here we test settlement.
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     // Sponsor now has 50 synthetics and 200 collateral. Note that synthetic tokens are still represented with 1e18 base.
-    const tokenHolderTokens = toBN("50")
-      .muln(1e6)
-      .toString();
+    const tokenHolderTokens = toWei("50");
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
       from: sponsor
     });
@@ -1717,7 +1711,8 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
-    const redemptionPrice = toBN(toWei("1.2")); // 1.2*1e18
+    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC.
+    const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
     await mockOracle.pushPrice(priceFeedIdentifier, emergencyShutdownTime, redemptionPrice.toString());
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
