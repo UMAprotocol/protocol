@@ -482,7 +482,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             withdrawalAmount = collateral.add(finalFee);
             delete liquidations[sponsor][liquidationId];
         }
-        require(withdrawalAmount.isGreaterThan(0), "Invalid withdrawal amount");
 
         // Decrease the total collateral held in liquidatable by the amount withdrawn.
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
