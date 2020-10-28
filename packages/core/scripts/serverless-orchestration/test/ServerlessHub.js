@@ -54,8 +54,8 @@ contract("ServerlessHub.js", function(accounts) {
     setEnvironmentVariableKes = [];
   };
 
-  const sendHubRequest = body => {
-    return request(`http://localhost:${hubTestPort}`)
+  const sendHubRequest = (body, port = hubTestPort) => {
+    return request(`http://localhost:${port}`)
       .post("/")
       .send(body)
       .set("Accept", "application/json");
@@ -82,7 +82,7 @@ contract("ServerlessHub.js", function(accounts) {
       transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })]
     });
 
-    // Start the cloud run spoke instance with the spy logger injected.
+    // Start the serverless spoke instance with the spy logger injected.
     spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
     hubInstance = await hub.Poll(
@@ -133,37 +133,31 @@ contract("ServerlessHub.js", function(accounts) {
     unsetEnvironmentVariables();
   });
 
-  it("Cloud Run Hub rejects empty json request bodies", async function() {
+  it("ServerlessHub rejects empty json request bodies", async function() {
     // empty body.
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
 
     // Error in the Hub itself should not append any error messages
-    const responseObject = JSON.parse(emptyBodyResponse.res.text); // extract json response
-    assert.equal(responseObject.errorMessages.length, 0); //
-
     assert.equal(emptyBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(emptyBodyResponse.res.text.includes("Some spoke calls returned errors"));
+    assert.isTrue(emptyBodyResponse.res.text.includes("A fatal error occurred in the hub"));
     assert.isTrue(emptyBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("Cloud Run Hub rejects invalid json request bodies", async function() {
-    // body missing cloud run command.
+  it("ServerlessHub rejects invalid json request bodies", async function() {
+    // body missing serverless command.
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
 
     // Error in the Hub itself should not append any error messages
-    const responseObject = JSON.parse(invalidBodyResponse.res.text); // extract json response
-    assert.equal(responseObject.errorMessages.length, 0); //
-
     assert.equal(invalidBodyResponse.res.statusCode, 500); // error code
-    assert.isTrue(invalidBodyResponse.res.text.includes("Some spoke calls returned errors"));
+    assert.isTrue(invalidBodyResponse.res.text.includes("A fatal error occurred in the hub"));
     assert.isTrue(invalidBodyResponse.res.text.includes("Body missing json bucket or file parameters!"));
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("Cloud Run Hub can correctly execute bot logic with valid body and config", async function() {
+  it("ServerlessHub can correctly execute bot logic with valid body and config", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -196,7 +190,51 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited with no error")); // The spoke should have exited correctly.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, `${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
   });
-  it("Cloud Run Hub can correctly execute multiple bots in parallel", async function() {
+
+  it("ServerlessHub correctly deals with rejected spoke calls", async function() {
+    // valid config to send but set the spoke to be off-line
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      }
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const validBody = {
+      bucket: testBucket,
+      configFile: testConfigFile
+    };
+
+    const testHubPort = 8082; //create a separate port to run this specific test on.
+    const hubInstanceWithInvalidSpokePort = await hub.Poll(
+      hubSpyLogger, // injected spy logger
+      testHubPort, // port to run the hub for this test on
+      `http://localhost:11111`, // URL to execute spokes on
+      web3.currentProvider.host // custom node URL to enable the hub to query block numbers.
+    );
+
+    //not a port the spoke is running on. will get rejected
+    const rejectedResponse = await sendHubRequest(validBody, testHubPort);
+
+    assert.equal(rejectedResponse.res.statusCode, 500); // error code
+    assert.isTrue(rejectedResponse.res.text.includes("Some spoke calls returned errors"));
+    assert.isTrue(rejectedResponse.res.text.includes("rejected"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "rejected"));
+  });
+  it("ServerlessHub can correctly execute multiple bots in parallel", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -259,7 +297,7 @@ contract("ServerlessHub.js", function(accounts) {
       assert.isTrue(spyLogIncludes(hubSpy, -2, `Process exited with no error","childProcessIdentifier":"${botName}`));
     }
   });
-  it("Cloud Run Hub can correctly deal with some bots erroring out in execution", async function() {
+  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -325,7 +363,7 @@ contract("ServerlessHub.js", function(accounts) {
       )
     );
 
-    // Check the error outputs.
+    // Check the error outputs form the hub logger and the hub response.
     assert.equal(
       responseObject.output.errorOutputs["testServerlessMonitorError"].botIdentifier,
       "testServerlessMonitorError"
@@ -339,15 +377,12 @@ contract("ServerlessHub.js", function(accounts) {
         "error Command INVALID not found"
       )
     ); // invalid path error
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "error Command INVALID not found"));
     assert.isTrue(
       responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
         "Returned values aren't valid, did it run Out of Gas?"
       )
     ); // invalid emp error
-
-    // Check the error messages.
-    assert.equal(responseObject.errorMessages.length, 2); // should be 2 error messages
-    assert.isTrue(responseObject.errorMessages[0].includes("error Command INVALID not found")); // invalid path error
-    assert.isTrue(responseObject.errorMessages[1].includes("Returned values aren't valid, did it run Out of Gas?")); // invalid emp error
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Returned values aren't valid, did it run Out of Gas?"));
   });
 });

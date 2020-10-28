@@ -137,44 +137,43 @@ hub.post("/", async (req, res) => {
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
   } catch (errorOutput) {
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Some spoke calls returned errors (details)🚨",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
-    });
-
-    // Construct detailed error messages to log.
-    let errorMessages = [];
-    if (!(errorOutput instanceof Error)) {
-      // TODO: Handle other types of errors, such as
-      // => "request to http://localhost:8081/ failed, reason: socket hang up",
-      errorMessages = Object.keys(errorOutput.errorOutputs).map(_spoke => {
-        try {
-          return errorOutput.errorOutputs[_spoke].execResponse.stderr;
-        } catch (err) {
-          // `errorMessages` is in an unexpected JSON shape.
-          return "Hub unable to parse error";
-        }
+    // If the errorOutput is an instance of Error then we know that error was produced within the hub.
+    if (errorOutput instanceof Error) {
+      logger.error({
+        at: "ServerlessHub",
+        message: "A fatal error occurred in the hub",
+        output: errorOutput.message
+      });
+    } else {
+      // Else, the error was produced within one of the spokes. If this is the case then we need to process the errors a bit.
+      logger.debug({
+        at: "ServerlessHub",
+        message: "Some spoke calls returned errors (details)🚨",
+        output: errorOutput
+      });
+      logger.error({
+        at: "ServerlessHub",
+        message: "Some spoke calls returned errors 🚨",
+        errorOutputs: Object.keys(errorOutput.errorOutputs).map(spokeName => {
+          try {
+            return {
+              spokeName: spokeName,
+              errorReported: errorOutput.errorOutputs[spokeName].execResponse
+                ? errorOutput.errorOutputs[spokeName].execResponse.stderr
+                : JSON.stringify(errorOutput.errorOutputs[spokeName])
+            };
+          } catch (err) {
+            // `errorMessages` is in an unexpected JSON shape.
+            return "Hub unable to parse error";
+          }
+        }), // eslint-disable-line indent
+        validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
       });
     }
-
-    logger.error({
-      at: "ServerlessHub",
-      message: "Some spoke calls returned errors 🚨",
-      output:
-        errorOutput instanceof Error
-          ? errorOutput.message
-          : {
-              errorOutputs: Object.keys(errorOutput.errorOutputs), // eslint-disable-line indent
-              validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
-              errorMessages // eslint-disable-line indent
-            } // eslint-disable-line indent
-    });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
-      message: "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-      errorMessages
+      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
   }
 });
