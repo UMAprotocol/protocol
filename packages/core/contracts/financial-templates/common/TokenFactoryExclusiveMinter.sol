@@ -1,15 +1,15 @@
 pragma solidity ^0.6.0;
 
-import "./SyntheticToken.sol";
+import "./SyntheticTokenExclusiveMinter.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
-import "../../common/implementation/Lockable.sol";
+import "./TokenFactory.sol";
 
 
 /**
  * @title Factory for creating new mintable and burnable tokens.
  */
 
-contract TokenFactory is Lockable {
+contract TokenFactoryExclusiveMinter is TokenFactory {
     /**
      * @notice Create a new token and return it to the caller.
      * @dev The caller will become the only minter and burner and the new owner capable of assigning the roles.
@@ -22,9 +22,13 @@ contract TokenFactory is Lockable {
         string calldata tokenName,
         string calldata tokenSymbol,
         uint8 tokenDecimals
-    ) external virtual nonReentrant() returns (ExpandedIERC20 newToken) {
-        SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
-        mintableToken.addMinter(msg.sender);
+    ) external override nonReentrant() returns (ExpandedIERC20 newToken) {
+        SyntheticTokenExclusiveMinter mintableToken = new SyntheticTokenExclusiveMinter(
+            tokenName,
+            tokenSymbol,
+            tokenDecimals
+        );
+        mintableToken.resetMinter(msg.sender);
         mintableToken.addBurner(msg.sender);
         mintableToken.resetOwner(msg.sender);
         newToken = ExpandedIERC20(address(mintableToken));

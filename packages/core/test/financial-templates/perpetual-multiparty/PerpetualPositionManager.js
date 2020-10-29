@@ -15,8 +15,8 @@ const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
+const SyntheticTokenExclusiveMinter = artifacts.require("SyntheticTokenExclusiveMinter");
 const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -37,7 +37,6 @@ contract("PerpetualPositionManager", function(accounts) {
   let mockOracle;
   let financialContractsAdmin;
   let timer;
-  let tokenFactory;
   let finder;
   let mockFundingRateStore;
   let store;
@@ -93,7 +92,6 @@ contract("PerpetualPositionManager", function(accounts) {
 
   before(async function() {
     store = await Store.deployed();
-    tokenFactory = await TokenFactory.deployed();
   });
 
   beforeEach(async function() {
@@ -102,6 +100,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
+
+    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
 
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     timer = await Timer.deployed();
@@ -138,18 +140,19 @@ contract("PerpetualPositionManager", function(accounts) {
     positionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await positionManager.tokenCurrency());
+
+    // Give contract minting and burning permissions.
+    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
   });
 
   afterEach(async () => {
@@ -160,6 +163,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // PricelessPosition variables
     assert.equal(await positionManager.withdrawalLiveness(), withdrawalLiveness);
     assert.equal(await positionManager.collateralCurrency(), collateral.address);
+    assert.equal(await positionManager.tokenCurrency(), tokenCurrency.address);
     assert.equal(await positionManager.finder(), finder.address);
     assert.equal(hexToUtf8(await positionManager.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
     assert.equal(await positionManager.emergencyShutdownTimestamp(), 0);
@@ -177,12 +181,31 @@ contract("PerpetualPositionManager", function(accounts) {
         PerpetualPositionManager.new(
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-          syntheticName, // _syntheticName
-          syntheticSymbol, // _syntheticSymbol
-          tokenFactory.address, // _tokenFactoryAddress
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          timer.address, // _timerAddress
+          beneficiary, // _excessTokenBeneficiary
+          { from: contractDeployer }
+        )
+      )
+    );
+  });
+
+  it("Fails to construct if synthetic token does not have ane exclusive minter role", async function() {
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, { from: contractDeployer });
+
+    assert(
+      await didContractThrow(
+        PerpetualPositionManager.new(
+          withdrawalLiveness.toString(), // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
+          finder.address, // _finderAddress
+          priceFeedIdentifier, // _priceFeedIdentifier
+          fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -194,6 +217,10 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Withdrawal liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
+
     const largeLiveness = toBN(2)
       .pow(toBN(256))
       .subn(10)
@@ -201,17 +228,16 @@ contract("PerpetualPositionManager", function(accounts) {
     positionManager = await PerpetualPositionManager.new(
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
+    await tokenCurrency.resetMinter(positionManager.address);
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
@@ -232,6 +258,19 @@ contract("PerpetualPositionManager", function(accounts) {
   it("Lifecycle", async function() {
     // Create an initial large and lowly collateralized positionManager.
     await collateral.approve(positionManager.address, initialPositionCollateral, { from: other });
+
+    // Fails unless contract holds minter role.
+    await tokenCurrency.resetMinter(other);
+    assert(
+      await didContractThrow(
+        positionManager.create(
+          { rawValue: initialPositionCollateral.toString() },
+          { rawValue: initialPositionTokens.toString() },
+          { from: other }
+        )
+      )
+    );
+    await tokenCurrency.resetMinter(positionManager.address);
     await positionManager.create(
       { rawValue: initialPositionCollateral.toString() },
       { rawValue: initialPositionTokens.toString() },
@@ -315,6 +354,10 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Check redeem return value and event.
     const redeem = positionManager.redeem;
+    // Fails unless contract holds burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
     const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
     assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
     let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
@@ -689,6 +732,11 @@ contract("PerpetualPositionManager", function(accounts) {
     const initialSponsorTokenDebt = toBN((await positionManager.positions(sponsor)).tokensOutstanding.rawValue);
     const initialTotalTokensOutstanding = await positionManager.totalTokensOutstanding();
 
+    // Fails unless contract holds burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.repay({ rawValue: toWei("40") }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
+
     const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
 
     // Event is correctly emitted.
@@ -889,6 +937,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(positionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
+    // Fails unless contract holds burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.settleEmergencyShutdown({ from: contractDeployer })));
+    await tokenCurrency.addBurner(positionManager.address);
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
     assert.equal((await positionManager.emergencyShutdownPrice()).toString(), toWei("1.1"));
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
@@ -1629,21 +1681,23 @@ contract("PerpetualPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
+    const nonStandardToken = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 6);
+
     let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
+      nonStandardToken.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
+    tokenCurrency = await SyntheticTokenExclusiveMinter.at(await custompositionManager.tokenCurrency());
+    await tokenCurrency.resetMinter(custompositionManager.address);
+    await tokenCurrency.addBurner(custompositionManager.address);
 
     // Token currency and collateral have same # of decimals.
     assert.equal(await tokenCurrency.decimals(), 6);

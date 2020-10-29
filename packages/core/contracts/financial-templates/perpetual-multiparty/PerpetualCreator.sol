@@ -1,10 +1,14 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
+import "../common/TokenFactoryExclusiveMinter.sol";
+import "../common/SyntheticTokenExclusiveMinter.sol";
 import "./PerpetualLib.sol";
 
 
@@ -40,7 +44,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         uint256 liquidationLiveness;
         address excessTokenBeneficiary;
     }
-    // - Address of TokenFactory to pass into newly constructed Perpetual contracts
+    // Address of TokenFactory used to create a new synthetic token.
     address public tokenFactoryAddress;
 
     event CreatedPerpetual(address indexed perpetualAddress, address indexed deployerAddress);
@@ -65,7 +69,28 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
      * @return address of the deployed contract.
      */
     function createPerpetual(Params memory params) public nonReentrant() returns (address) {
-        address derivative = PerpetualLib.deploy(_convertParams(params));
+        // Create a new synthetic token using the params.
+        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
+        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
+        TokenFactoryExclusiveMinter tf = TokenFactoryExclusiveMinter(tokenFactoryAddress);
+        ExpandedIERC20 tokenCurrency = tf.createToken(
+            params.syntheticName,
+            params.syntheticSymbol,
+            IERC20Standard(params.collateralAddress).decimals()
+        );
+        require(
+            IERC20Standard(address(tokenCurrency)).decimals() == IERC20Standard(params.collateralAddress).decimals(),
+            "Invalid token precision"
+        );
+
+        address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
+
+        // Reset permission holders to new contract.
+        SyntheticTokenExclusiveMinter syntheticToken = SyntheticTokenExclusiveMinter(address(tokenCurrency));
+        syntheticToken.resetMinter(derivative);
+        syntheticToken.addBurner(derivative);
+        syntheticToken.removeBurner(address(this));
+        syntheticToken.resetOwner(derivative);
 
         _registerContract(new address[](0), address(derivative));
 
@@ -79,19 +104,16 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
      ****************************************/
 
     // Converts createPerpetual params to Perpetual constructor params.
-    function _convertParams(Params memory params)
+    function _convertParams(Params memory params, ExpandedIERC20 newTokenCurrency)
         private
         view
         returns (Perpetual.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
         constructorParams.finderAddress = finderAddress;
-        constructorParams.tokenFactoryAddress = tokenFactoryAddress;
         constructorParams.timerAddress = timerAddress;
 
         // Enforce configuration constraints.
-        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
-        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
         require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
@@ -106,11 +128,10 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
         // Input from function call.
+        constructorParams.tokenAddress = address(newTokenCurrency);
         constructorParams.collateralAddress = params.collateralAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.fundingRateIdentifier = params.fundingRateIdentifier;
-        constructorParams.syntheticName = params.syntheticName;
-        constructorParams.syntheticSymbol = params.syntheticSymbol;
         constructorParams.collateralRequirement = params.collateralRequirement;
         constructorParams.disputeBondPct = params.disputeBondPct;
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;

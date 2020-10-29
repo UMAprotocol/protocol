@@ -6,17 +6,16 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/interfaces/ExpandedIERC20.sol";
-import "../../common/interfaces/IERC20Standard.sol";
+import "../../common/interfaces/ExpandedIERC20ExclusiveMinter.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../common/TokenFactory.sol";
 import "../common/FeePayer.sol";
 import "../common/FundingRateApplier.sol";
+import "../common/SyntheticTokenExclusiveMinter.sol";
 
 
 /**
@@ -29,8 +28,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Standard;
-    using SafeERC20 for ExpandedIERC20;
+    using SafeERC20 for ExpandedIERC20ExclusiveMinter;
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
@@ -60,7 +58,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     FixedPoint.Unsigned public rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
-    ExpandedIERC20 public tokenCurrency;
+    ExpandedIERC20ExclusiveMinter public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
@@ -133,11 +131,9 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Construct the PerpetualPositionManager.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
+     * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _syntheticName name for the token contract that will be deployed.
-     * @param _syntheticSymbol symbol for the token contract that will be deployed.
-     * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
@@ -145,12 +141,10 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     constructor(
         uint256 _withdrawalLiveness,
         address _collateralAddress,
+        address _tokenAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
-        string memory _syntheticName,
-        string memory _syntheticSymbol,
-        address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
@@ -162,8 +156,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
-        TokenFactory tf = TokenFactory(_tokenFactoryAddress);
-        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, IERC20Standard(_collateralAddress).decimals());
+        tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
+
+        // TODO: Check that tokenCurrency has an Exclusive, not Shared, Minter role.
+        require(tokenCurrency.isMinterExclusive(), "Token minter role not exclusive");
+
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
@@ -328,7 +325,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
-     * `collateralCurrency`.
+     * `collateralCurrency`. This contract assumes that it holds the minting role for `tokenCurrency`.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
      */
@@ -375,7 +372,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
-     * `tokenCurrency`.
+     * `tokenCurrency`. This contract assumes that it holds the burner role for `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -424,6 +421,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * This contract assumes that it holds the burner role for `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function repay(FixedPoint.Unsigned memory numTokens)
@@ -458,6 +456,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * This contract assumes that it holds the burner role for `tokenCurrency`.
      * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
      * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.

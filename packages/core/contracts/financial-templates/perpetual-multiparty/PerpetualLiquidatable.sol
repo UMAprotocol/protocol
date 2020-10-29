@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./PerpetualPositionManager.sol";
-
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 
@@ -57,14 +57,12 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Params for PricelessPositionManager only.
         uint256 withdrawalLiveness;
         address collateralAddress;
+        address tokenAddress;
         address finderAddress;
-        address tokenFactoryAddress;
         address timerAddress;
         address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
-        string syntheticName;
-        string syntheticSymbol;
         FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
         uint256 liquidationLiveness;
@@ -159,12 +157,10 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         PerpetualPositionManager(
             params.withdrawalLiveness,
             params.collateralAddress,
+            params.tokenAddress,
             params.finderAddress,
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
-            params.syntheticName,
-            params.syntheticSymbol,
-            params.tokenFactoryAddress,
             params.minSponsorTokens,
             params.timerAddress,
             params.excessTokenBeneficiary
@@ -194,6 +190,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
+     * This contract assumes that it holds the burner role for `tokenCurrency`.
      * @param sponsor address of the sponsor to liquidate.
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.

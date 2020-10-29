@@ -6,6 +6,8 @@ const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
+const SyntheticTokenExclusiveMinter = artifacts.require("SyntheticTokenExclusiveMinter");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Contracts to unit test
@@ -17,7 +19,6 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -70,7 +71,8 @@ contract("PerpetualLiquidatable", function(accounts) {
   // Contracts
   let liquidationContract;
   let collateralToken;
-  let syntheticToken;
+  let syntheticToken; // ExpandedERC20
+  let _syntheticToken; // SyntheticToken (can reset roles)
   let identifierWhitelist;
   let priceFeedIdentifier;
   let fundingRateIdentifier;
@@ -96,10 +98,11 @@ contract("PerpetualLiquidatable", function(accounts) {
     timer = await Timer.deployed();
     await timer.setCurrentTime(startTime);
 
-    const tokenFactory = await TokenFactory.deployed();
-
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
+    _syntheticToken = await SyntheticTokenExclusiveMinter.new("Test UMA Token", "UMAETH", 18, {
+      from: contractDeployer
+    });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -135,12 +138,10 @@ contract("PerpetualLiquidatable", function(accounts) {
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
+      tokenAddress: _syntheticToken.address,
       finderAddress: finder.address,
-      tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
       fundingRateIdentifier: fundingRateIdentifier,
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMAETH",
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
@@ -156,8 +157,10 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    // Get newly created synthetic token
+    // Get newly created synthetic token and hand over permissions to the new derivative contract
     syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
+    await _syntheticToken.resetMinter(liquidationContract.address);
+    await _syntheticToken.addBurner(liquidationContract.address);
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
@@ -219,6 +222,19 @@ contract("PerpetualLiquidatable", function(accounts) {
 
   afterEach(async () => {
     await expectNoExcessCollateralToTrim();
+  });
+
+  it("Fails to construct if synthetic token does not have ane exclusive minter role", async function() {
+    _syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, { from: contractDeployer });
+    liquidatableParameters.tokenAddress = _syntheticToken.address;
+
+    assert(
+      await didContractThrow(
+        Liquidatable.new(liquidatableParameters, {
+          from: contractDeployer
+        })
+      )
+    );
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -351,6 +367,23 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal(tokensLiquidated.toString(), amountOfSynthetic.toString());
 
       const intitialBalance = await syntheticToken.balanceOf(liquidator);
+
+      // Fails unless contract holds burner role.
+      await _syntheticToken.removeBurner(liquidationContract.address);
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: "0" },
+            { rawValue: pricePerToken.toString() },
+            { rawValue: amountOfSynthetic.toString() },
+            unreachableDeadline,
+            { from: liquidator }
+          )
+        )
+      );
+      await _syntheticToken.addBurner(liquidationContract.address);
+
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -1669,6 +1702,8 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // Create  Liquidation
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      await _syntheticToken.resetMinter(edgeLiquidationContract.address);
+      await _syntheticToken.addBurner(edgeLiquidationContract.address);
       // Get newly created synthetic token
       const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation
@@ -1880,13 +1915,19 @@ contract("PerpetualLiquidatable", function(accounts) {
       await collateralToken.allocateTo(sponsor, toWei("100"));
       await collateralToken.allocateTo(disputer, toWei("100"));
 
+      _syntheticToken = await SyntheticTokenExclusiveMinter.new("USDCETH", "USDCETH", 6);
+
       // Update the liquidatableParameters to use the new token as collateral and deploy a new Liquidatable contract
       let USDCLiquidatableParameters = liquidatableParameters;
       USDCLiquidatableParameters.collateralAddress = collateralToken.address;
+      USDCLiquidatableParameters.tokenAddress = _syntheticToken.address;
       USDCLiquidatableParameters.minSponsorTokens = { rawValue: minSponsorTokens.div(USDCScalingFactor).toString() };
       USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
         from: contractDeployer
       });
+
+      await _syntheticToken.resetMinter(USDCLiquidationContract.address);
+      await _syntheticToken.addBurner(USDCLiquidationContract.address);
 
       // Get newly created synthetic token and set it as the global synthetic token.
       syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
@@ -2113,6 +2154,8 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
       liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      await _syntheticToken.resetMinter(liquidationContract.address);
+      await _syntheticToken.addBurner(liquidationContract.address);
       syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
 
       // Create a new position with:

@@ -7,6 +7,7 @@ const PerpetualCreator = artifacts.require("PerpetualCreator");
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const Perpetual = artifacts.require("Perpetual");
@@ -201,6 +202,32 @@ contract("PerpetualCreator", function(accounts) {
 
     // Deployed Perpetual timer should be same as Perpetual creator.
     assert.equal(await perpetual.timerAddress(), await perpetualCreator.timerAddress());
+  });
+
+  it("Constructs new synthetic currency properly", async function() {
+    // Create new derivative contract.
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
+      from: contractCreator
+    });
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+    let perpetual = await Perpetual.at(perpetualAddress);
+
+    // New synthetic currency and collateral currency should have the same precision.
+    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
+    const collateralCurrency = await Token.at(await perpetual.collateralCurrency());
+    assert.equal((await tokenCurrency.decimals()).toString(), (await collateralCurrency.decimals()).toString());
+
+    // New derivative contract holds correct permissions.
+    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
+    assert.isTrue(await tokenContract.isMinter(perpetualAddress));
+    assert.isTrue(await tokenContract.isBurner(perpetualAddress));
+    assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
+    assert.isFalse(await tokenContract.isMinter(perpetualCreator.address));
+    assert.isFalse(await tokenContract.isBurner(perpetualCreator.address));
   });
 
   it("Creation correctly registers Perpetual within the registry", async function() {
