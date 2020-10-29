@@ -21,8 +21,8 @@
 //      liquidationResult: logResult});
 //    In this log the liquidation and txnConfig are objects. these are spread as nested bullet points in the slack message.
 //    The amount is a string value. This is shown as a bullet point item.
-
-const SlackHook = require("winston-slack-webhook-transport");
+const Transport = require("winston-transport");
+const axios = require("axios").default;
 const { createEtherscanLinkMarkdown } = require("@uma/common");
 
 function slackFormatter(info) {
@@ -160,6 +160,71 @@ function slackFormatter(info) {
         }
       ]
     };
+  }
+}
+
+class SlackHook extends Transport {
+  constructor(opts) {
+    super(opts);
+    opts = opts || {};
+    this.name = opts.name || "slackWebhook";
+    this.level = opts.level || undefined;
+    this.webhookUrl = opts.webhookUrl;
+    this.formatter = opts.formatter || undefined;
+    this.mrkdwn = opts.mrkdwn || false;
+
+    this.axiosInstance = axios.create({
+      proxy: opts.proxy || undefined
+    });
+  }
+
+  async log(info, callback) {
+    let payload = {
+      mrkdwn: this.mrkdwn
+    };
+
+    let layout = this.formatter(info);
+    payload.text = layout.text || undefined;
+    payload.attachments = layout.attachments || undefined;
+    payload.blocks = layout.blocks || undefined;
+    let errorThrown = false;
+    // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
+    if (JSON.stringify(payload).length < 3000) {
+      let response = await this.axiosInstance.post(this.webhookUrl, payload);
+      if (response.status != 200) errorThrown = true;
+    } else {
+      // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
+      let messageIndex = 0;
+      let processedBlocks = [[]];
+      for (let block of payload.blocks) {
+        if (JSON.stringify(block).length > 3000) {
+          // If the block (one single part of a message) is larger than 3000 chars then we must redact part of the message.
+          const stringifiedBlock = JSON.stringify(block);
+          const redactedBlock =
+            stringifiedBlock.substr(0, 1000) +
+            "- MESSAGE REDACTED DUE TO LENGTH -" +
+            stringifiedBlock.substr(stringifiedBlock.length - 1000, stringifiedBlock.length);
+          block = JSON.parse(redactedBlock);
+        }
+        if (JSON.stringify([...processedBlocks[messageIndex], block]).length > 3000) {
+          // If the set blocks is larger than 3000 then we must increment the message index, to enable sending the set
+          // of messages over multiple calls to the slack API. The amounts to splitting up one Winston log into multiple
+          // slack messages with no single slack message exceeding the 3000 char limit.
+          messageIndex += 1;
+        }
+        if (!processedBlocks[messageIndex]) processedBlocks[messageIndex] = [];
+        processedBlocks[messageIndex].push(block);
+      }
+      // Iterate over each message to send and generate a axios call for each message.
+      for (const processedBlock of processedBlocks) {
+        payload.blocks = processedBlock;
+        let response = await this.axiosInstance.post(this.webhookUrl, payload);
+        if (response.status != 200) errorThrown = true;
+      }
+    }
+    callback();
+    if (!errorThrown) this.emit("logged", info);
+    else this.emit("error", errorThrown);
   }
 }
 
