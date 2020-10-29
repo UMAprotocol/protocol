@@ -75,7 +75,7 @@ describe("Prices", function() {
   let prices, seed;
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
   it("init", async function() {
-    seed = await Coingecko().chart(token, "usd", "10");
+    seed = await Coingecko().chart(token, "usd", 1600635600, 1603141200);
     prices = Prices(seed.prices);
     assert.ok(seed);
     assert.ok(prices);

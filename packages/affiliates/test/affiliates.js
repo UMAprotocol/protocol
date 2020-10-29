@@ -65,7 +65,7 @@ describe("DeployerRewards", function() {
   it("getPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = syntheticTokens;
-    const result = await affiliates.utils.getPriceHistory(address, startingTimestamp);
+    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {

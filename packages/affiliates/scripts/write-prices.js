@@ -7,7 +7,7 @@ const mkdirp = require("mkdirp");
 const params = require("../test/datasets/set1");
 
 const symbol = "usd";
-const days = moment.duration(params.endingTimestamp - params.startingTimestamp).days();
+const { startingTimestamp, endingTimestamp } = params;
 const basePath = Path.join(__dirname, "../test/datasets");
 const subDir = Path.join(basePath, params.name, "coingecko");
 
@@ -16,7 +16,7 @@ async function runTest() {
   await mkdirp(subDir);
   await Promise.each([...params.syntheticTokens], async address => {
     const path = Path.join(subDir, `${address}.json`);
-    const prices = await coingecko.chart(address, symbol, days);
+    const prices = await coingecko.chart(address, symbol, startingTimestamp / 1000, endingTimestamp / 1000);
     console.log("coingeckoPrices", address, prices);
     fs.writeFileSync(path, JSON.stringify(prices));
   });

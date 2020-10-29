@@ -40,9 +40,8 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
       []
     );
   }
-  async function getPriceHistory(address, start, currency = "usd") {
-    const daysBetween = moment().diff(start, "days");
-    const result = await coingecko.chart(address, currency, daysBetween);
+  async function getPriceHistory(address, currency = "usd", start, end) {
+    const result = await coingecko.chart(address, currency, start, end);
     return Prices(result.prices);
   }
   async function getBlocks(start, end) {
@@ -150,7 +149,10 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     totalRewards,
     tokenDecimals = []
   }) {
-    const tokenPrices = await Promise.map(tokensToPrice, async address => await getPriceHistory(address, startTime));
+    const tokenPrices = await Promise.map(
+      tokensToPrice,
+      async address => await getPriceHistory(address, startTime, endTime)
+    );
     const blocks = await getBlocks(startTime, endTime);
     const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);
     const empDeployers = await getEmpDeployerHistory(empCreatorAddress, startTime, endTime);

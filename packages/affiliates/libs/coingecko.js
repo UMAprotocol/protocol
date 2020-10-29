@@ -7,12 +7,15 @@ module.exports = (host = "https://api.coingecko.com") => {
     return result.data;
   }
 
-  function chart(contract, currency, days) {
-    assert(contract, "requires contract adddres");
+
+  // fetch historic prices for a `contract` denominated in `currency` between timestamp `from` and `to`
+  function chart(contract, currency, from, to) {
+    assert(contract, "requires contract address");
     assert(currency, "requires currency symbol");
-    assert(days, "requires days of history");
+    assert(from, "requires from timestamp");
+    assert(to, "requires to timestamp");
     return call(
-      `${host}/api/v3/coins/ethereum/contract/${contract.toLowerCase()}/market_chart/?vs_currency=${currency}&days=${days}`
+      `${host}/api/v3/coins/ethereum/contract/${contract.toLowerCase()}/market_chart/range/?vs_currency=${currency}&from=${from}&to=${to}`
     );
   }
 
