@@ -163,6 +163,8 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         // it does not know to whom the original token creator has granted minter privileges.
         require(tokenCurrency.isMinterExclusive(), "Token minter role not exclusive");
 
+        // TODO: Should this contract also check that it holds the owner role of the SyntheticToken?
+
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
