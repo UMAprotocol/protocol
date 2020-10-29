@@ -1,10 +1,10 @@
-const { DeployerRewards } = require("../libs/affiliates");
+const { DeployerRewards } = require("../../libs/affiliates");
 const { assert } = require("chai");
-const empAbi = require("../../core/build/contracts/ExpiringMultiParty");
-const empCreatorAbi = require("../../core/build/contracts/ExpiringMultiPartyCreator");
+const empAbi = require("../../../core/build/contracts/ExpiringMultiParty");
+const empCreatorAbi = require("../../../core/build/contracts/ExpiringMultiPartyCreator");
 const highland = require("highland");
 const datasetName = "set1";
-const params = require(`./datasets/${datasetName}`);
+const params = require(`../datasets/${datasetName}`);
 const {
   empCreator,
   empContracts,
@@ -18,23 +18,23 @@ const devRewardsToDistribute = "50000";
 function Queries() {
   return {
     streamLogsByContract(address) {
-      return highland(require(`./datasets/${datasetName}/logs/${address}`));
+      return highland(require(`../datasets/${datasetName}/logs/${address}`));
     },
     getLogsByContract(address) {
-      return require(`./datasets/${datasetName}/logs/${address}`);
+      return require(`../datasets/${datasetName}/logs/${address}`);
     },
     streamBlocks() {
-      return highland(require(`./datasets/${datasetName}/blocks`));
+      return highland(require(`../datasets/${datasetName}/blocks`));
     },
     getBlocks() {
-      return require(`./datasets/${datasetName}/blocks`);
+      return require(`../datasets/${datasetName}/blocks`);
     }
   };
 }
 function Coingecko() {
   return {
     chart(address) {
-      return require(`./datasets/${datasetName}/coingecko/${address}`);
+      return require(`../datasets/${datasetName}/coingecko/${address}`);
     }
   };
 }

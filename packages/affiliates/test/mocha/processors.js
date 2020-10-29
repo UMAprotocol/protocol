@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const { AttributionHistory } = require("../libs/processors");
 const transactions = require("./datasets/set1/tagged-transactions/0xaBBee9fC7a882499162323EEB7BF6614193312e3.json");
 const { DecodeTransaction } = require("../libs/contracts");
-const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
+const abi = getAbi("ExpiringMultiParty");
 
 describe("AttributionHistory", function() {
   let processor;

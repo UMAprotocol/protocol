@@ -16,6 +16,8 @@
     "tape": "^5.0.1"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "yarn test-mocha && yarn test-truffle",
+    "test-mocha": "mocha test/mocha/*.js",
+    "test-truffle": "truffle test test/truffle/*.js --network=test"
   }
 }
