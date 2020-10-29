@@ -159,6 +159,8 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
 
         // Check that tokenCurrency has an Exclusive, not Shared, Minter role.
+        // This important because this contract does not create the synthetic token, therefore
+        // it does not know to whom the original token creator has granted minter privileges.
         require(tokenCurrency.isMinterExclusive(), "Token minter role not exclusive");
 
         minSponsorTokens = _minSponsorTokens;
