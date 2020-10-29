@@ -158,7 +158,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
 
-        // TODO: Check that tokenCurrency has an Exclusive, not Shared, Minter role.
+        // Check that tokenCurrency has an Exclusive, not Shared, Minter role.
         require(tokenCurrency.isMinterExclusive(), "Token minter role not exclusive");
 
         minSponsorTokens = _minSponsorTokens;
