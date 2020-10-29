@@ -201,9 +201,9 @@ class SlackHook extends Transport {
           // If the block (one single part of a message) is larger than 3000 chars then we must redact part of the message.
           const stringifiedBlock = JSON.stringify(block);
           const redactedBlock =
-            stringifiedBlock.substr(0, 1000) +
+            stringifiedBlock.substr(0, 1400) +
             "-MESSAGE REDACTED DUE TO LENGTH-" +
-            stringifiedBlock.substr(stringifiedBlock.length - 1000, stringifiedBlock.length);
+            stringifiedBlock.substr(stringifiedBlock.length - 1400, stringifiedBlock.length);
           block = JSON.parse(redactedBlock);
         }
         if (JSON.stringify([...processedBlocks[messageIndex], block]).length > 3000) {
