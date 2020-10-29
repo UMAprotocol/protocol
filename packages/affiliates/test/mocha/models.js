@@ -1,6 +1,6 @@
 const { assert } = require("chai");
-const { History, Balances, SharedAttributions, Prices } = require("../libs/models");
-const Coingecko = require("../libs/coingecko");
+const { History, Balances, SharedAttributions, Prices } = require("../../libs/models");
+const Coingecko = require("../../libs/coingecko");
 const moment = require("moment");
 
 describe("SharedAttributions", function() {
