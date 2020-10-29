@@ -202,7 +202,7 @@ class SlackHook extends Transport {
           const stringifiedBlock = JSON.stringify(block);
           const redactedBlock =
             stringifiedBlock.substr(0, 1000) +
-            "- MESSAGE REDACTED DUE TO LENGTH -" +
+            "-MESSAGE REDACTED DUE TO LENGTH-" +
             stringifiedBlock.substr(stringifiedBlock.length - 1000, stringifiedBlock.length);
           block = JSON.parse(redactedBlock);
         }
