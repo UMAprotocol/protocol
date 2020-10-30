@@ -7,8 +7,8 @@ const PerpetualCreator = artifacts.require("PerpetualCreator");
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
+const SyntheticToken = artifacts.require("SyntheticTokenExclusiveMinter");
+const TokenFactory = artifacts.require("TokenFactoryExclusiveMinter");
 const Registry = artifacts.require("Registry");
 const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -226,8 +226,6 @@ contract("PerpetualCreator", function(accounts) {
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
-    assert.isFalse(await tokenContract.isMinter(perpetualCreator.address));
-    assert.isFalse(await tokenContract.isBurner(perpetualCreator.address));
   });
 
   it("Creation correctly registers Perpetual within the registry", async function() {

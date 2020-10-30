@@ -186,19 +186,18 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     /**
      * @notice Must be called before any sponsor can mint new synthetic debt. This function
      * should execute all prerequisite setup logic and run checks on the token currency.
+     * @dev Contract must have the Owner role for the `tokenCurrency`.
      */
     function initialize() public nonReentrant() {
         require(state == State.Uninitialized, "Already initialized");
 
-        // Check that `tokenCurrency` has given this contract its exclusive Owner role.
-        // This is important because this contract does not create the `tokenCurrency`, therefore
-        // it does not know to whom the original token creator has granted minter privileges, and
-        // this contract would be unsafe if a malicious actor controlled its Owner role.
-        tokenCurrency.resetOwner(address(this));
-
         // Grant this contract the ability to mint and burn tokens, neccessary to run contract actions.
+        // This will revert if this contract does not have the Owner role.
         tokenCurrency.resetMinter(address(this));
         tokenCurrency.addBurner(address(this));
+
+        // Check that the token currency has not minted any tokens yet.
+        require(tokenCurrency.totalSupply() == 0, "Token supply not 0");
 
         state = State.Initialized;
     }

@@ -4,11 +4,11 @@ const { didContractThrow } = require("@uma/common");
 const TokenFactory = artifacts.require("TokenFactoryExclusiveMinter");
 
 // Helper contracts
-const Token = artifacts.require("SyntheticToken");
+const Token = artifacts.require("SyntheticTokenExclusiveMinter");
 
 const { toWei, toBN } = web3.utils;
 
-contract("TokenFactory", function(accounts) {
+contract("TokenFactoryExclusiveMinter", function(accounts) {
   const contractDeployer = accounts[0];
   const tokenCreator = accounts[1];
   const rando = accounts[2];

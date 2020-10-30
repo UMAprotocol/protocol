@@ -20,7 +20,7 @@ abstract contract ExpandedERC20ExclusiveMinter is ExpandedIERC20ExclusiveMinter,
 
     /**
      * @notice Constructs the ExpandedERC20ExclusiveMinter.
-     * @dev Sets the initial minter to this contract.
+     * @dev Sets the initial minter and owner to the caller.
      * @param _tokenName The name which describes the new token.
      * @param _tokenSymbol The ticker abbreviation of the name. Ideally < 5 chars.
      * @param _tokenDecimals The number of decimals to define token precision.
@@ -32,7 +32,7 @@ abstract contract ExpandedERC20ExclusiveMinter is ExpandedIERC20ExclusiveMinter,
     ) public ERC20(_tokenName, _tokenSymbol) {
         _setupDecimals(_tokenDecimals);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
-        _createExclusiveRole(uint256(Roles.Minter), uint256(Roles.Owner), address(this));
+        _createExclusiveRole(uint256(Roles.Minter), uint256(Roles.Owner), msg.sender);
         _createSharedRole(uint256(Roles.Burner), uint256(Roles.Owner), new address[](0));
     }
 

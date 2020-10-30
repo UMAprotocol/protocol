@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/ExpandedIERC20ExclusiveMinter.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
@@ -74,7 +74,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         TokenFactoryExclusiveMinter tf = TokenFactoryExclusiveMinter(tokenFactoryAddress);
-        ExpandedIERC20 tokenCurrency = tf.createToken(
+        ExpandedIERC20ExclusiveMinter tokenCurrency = tf.createToken(
             params.syntheticName,
             params.syntheticSymbol,
             IERC20Standard(params.collateralAddress).decimals()
@@ -86,7 +86,8 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
 
         address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
 
-        // Reset permission holders to new contract.
+        // Give owner role to new derivative contract and initialize it.
+        tokenCurrency.resetOwner(derivative);
         Perpetual(derivative).initialize();
 
         _registerContract(new address[](0), address(derivative));
