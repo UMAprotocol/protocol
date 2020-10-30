@@ -93,7 +93,8 @@ describe("DeployerRewards", function() {
       tokensToPrice: syntheticTokens,
       tokenDecimals: syntheticTokenDecimals
     });
+    assert.ok(result);
     // WIP
-    console.log(result);
+    // console.log(result);
   });
 });
