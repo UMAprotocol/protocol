@@ -12,7 +12,7 @@ const deployTestnetToken = require("../migrations/12_deploy_testnet_token.js");
 const deployTokenfactory = require("../migrations/13_deploy_tokenfactory.js");
 const deployExpiringMultiPartyCreator = require("../migrations/14_deploy_expiring_multi_party_creator.js");
 const deployLocalWeth = require("../migrations/15_deploy_local_weth.js");
-const deployTokenFactoryExclusiveMinter = require("../migrations/16_deploy_tokenfactory_exclusive_minter.js.js");
+const deployTokenFactoryExclusiveMinter = require("../migrations/16_deploy_tokenfactory_exclusive_minter.js");
 const deployPerpetualCreator = require("../migrations/17_deploy_perpetual_creator.js");
 
 module.exports = async ({ network, web3 }) => {
