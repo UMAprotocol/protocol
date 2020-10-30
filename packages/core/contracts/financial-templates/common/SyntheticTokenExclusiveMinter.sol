@@ -26,7 +26,7 @@ contract SyntheticTokenExclusiveMinter is ExpandedERC20ExclusiveMinter, Lockable
      * @dev The caller must have the Owner role.
      * @param account The address to which the Minter role is added.
      */
-    function resetMinter(address account) external nonReentrant() {
+    function resetMinter(address account) external override nonReentrant() {
         resetMember(uint256(Roles.Minter), account);
     }
 
@@ -35,7 +35,7 @@ contract SyntheticTokenExclusiveMinter is ExpandedERC20ExclusiveMinter, Lockable
      * @dev The caller must have the Owner role.
      * @param account The address to which the Burner role is added.
      */
-    function addBurner(address account) external nonReentrant() {
+    function addBurner(address account) external override nonReentrant() {
         addMember(uint256(Roles.Burner), account);
     }
 
@@ -53,7 +53,7 @@ contract SyntheticTokenExclusiveMinter is ExpandedERC20ExclusiveMinter, Lockable
      * @dev The caller must have the Owner role.
      * @param account The new holder of the Owner role.
      */
-    function resetOwner(address account) external nonReentrant() {
+    function resetOwner(address account) external override nonReentrant() {
         resetMember(uint256(Roles.Owner), account);
     }
 

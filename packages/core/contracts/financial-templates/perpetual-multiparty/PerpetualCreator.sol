@@ -10,6 +10,7 @@ import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactoryExclusiveMinter.sol";
 import "../common/SyntheticTokenExclusiveMinter.sol";
 import "./PerpetualLib.sol";
+import "./Perpetual.sol";
 
 
 /**
@@ -86,11 +87,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
 
         // Reset permission holders to new contract.
-        SyntheticTokenExclusiveMinter syntheticToken = SyntheticTokenExclusiveMinter(address(tokenCurrency));
-        syntheticToken.resetMinter(derivative);
-        syntheticToken.addBurner(derivative);
-        syntheticToken.removeBurner(address(this));
-        syntheticToken.resetOwner(derivative);
+        Perpetual(derivative).initialize();
 
         _registerContract(new address[](0), address(derivative));
 

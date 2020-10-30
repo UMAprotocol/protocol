@@ -34,6 +34,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
+    // Contract must be Initialized before any tokens can be created, in order to ensure
+    // that `tokenCurrency` is setup properly.
+    enum State { Uninitialized, Initialized }
+    State private state;
+
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
@@ -107,6 +112,19 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *               MODIFIERS              *
      ****************************************/
 
+    /**
+     * @notice As long as `initialized()` reverts, no sponsor positions can be created.
+     * @dev The only contract action that needs to have this modifier is `create()`
+     * because all of the other actions will revert unless there is an existing sponsor position.
+     * Currently, `emergencyShutdown()` does not have this modifier which means that it is possible to
+     * emergency shutdown this contract pre-initialization. This should not be a problem since emergency shutdowns
+     * without any existing positions trigger maximum one price request and are otherwise harmless.
+     */
+    modifier initialized() {
+        _initialized();
+        _;
+    }
+
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
         _;
@@ -158,16 +176,31 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
 
-        // Check that tokenCurrency has an Exclusive, not Shared, Minter role.
-        // This important because this contract does not create the synthetic token, therefore
-        // it does not know to whom the original token creator has granted minter privileges.
-        require(tokenCurrency.isMinterExclusive(), "Token minter role not exclusive");
-
         // TODO: Should this contract also check that it holds the owner role of the SyntheticToken?
 
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
+    }
+
+    /**
+     * @notice Must be called before any sponsor can mint new synthetic debt. This function
+     * should execute all prerequisite setup logic and run checks on the token currency.
+     */
+    function initialize() public nonReentrant() {
+        require(state == State.Uninitialized, "Already initialized");
+
+        // Check that `tokenCurrency` has given this contract its exclusive Owner role.
+        // This is important because this contract does not create the `tokenCurrency`, therefore
+        // it does not know to whom the original token creator has granted minter privileges, and
+        // this contract would be unsafe if a malicious actor controlled its Owner role.
+        tokenCurrency.resetOwner(address(this));
+
+        // Grant this contract the ability to mint and burn tokens, neccessary to run contract actions.
+        tokenCurrency.resetMinter(address(this));
+        tokenCurrency.addBurner(address(this));
+
+        state = State.Initialized;
     }
 
     /****************************************
@@ -329,12 +362,13 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
-     * `collateralCurrency`. This contract assumes that it holds the minting role for `tokenCurrency`.
+     * `collateralCurrency`.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
      */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
+        initialized()
         notEmergencyShutdown()
         fees()
         updateFundingRate()
@@ -376,7 +410,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
-     * `tokenCurrency`. This contract assumes that it holds the burner role for `tokenCurrency`.
+     * `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -425,7 +459,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
-     * This contract assumes that it holds the burner role for `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function repay(FixedPoint.Unsigned memory numTokens)
@@ -827,5 +860,9 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         returns (FixedPoint.Unsigned memory ratio)
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
+    }
+
+    function _initialized() internal view {
+        require(state == State.Initialized, "Contract uninitialized");
     }
 }

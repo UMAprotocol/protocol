@@ -8,7 +8,7 @@ import "../interfaces/ExpandedIERC20ExclusiveMinter.sol";
 /**
  * @title Modifies the ExpandedERC20 contract by changing the minter role to an exclusive one.
  */
-contract ExpandedERC20ExclusiveMinter is ExpandedIERC20ExclusiveMinter, ERC20, MultiRole {
+abstract contract ExpandedERC20ExclusiveMinter is ExpandedIERC20ExclusiveMinter, ERC20, MultiRole {
     enum Roles {
         // Can set the minter and burner.
         Owner,
@@ -58,13 +58,5 @@ contract ExpandedERC20ExclusiveMinter is ExpandedIERC20ExclusiveMinter, ERC20, M
      */
     function burn(uint256 value) external override onlyRoleHolder(uint256(Roles.Burner)) {
         _burn(msg.sender, value);
-    }
-
-    /**
-     * @notice Returns true if the Minter roleId represents an initialized, exclusive roleId, or reverts.
-     * @return True if the Minter's roleId represents an Exclusive role.
-     */
-    function isMinterExclusive() public override view onlyExclusive(uint256(Roles.Minter)) returns (bool) {
-        return true;
     }
 }
