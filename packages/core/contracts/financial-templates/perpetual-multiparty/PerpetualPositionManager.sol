@@ -561,6 +561,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
+    // TODO: Should this method have the `initialized()` modifier?
     function applyFundingRate() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
         return;
     }
