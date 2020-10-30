@@ -23,7 +23,7 @@
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "ora": "^4.0.3",
-    "truffle": "^5.1.33",
+    "truffle": "^5.1.49",
     "truffle-deploy-registry": "^0.5.1",
     "winston": "^3.2.1"
   },

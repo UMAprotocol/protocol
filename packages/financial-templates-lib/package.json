@@ -19,7 +19,7 @@
     "winston-transport": "^4.3.0"
   },
   "devDependencies": {
-    "truffle": "^5.1.37"
+    "truffle": "^5.1.49"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
