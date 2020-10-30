@@ -15,7 +15,6 @@ import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
 import "../common/FundingRateApplier.sol";
-import "../common/SyntheticTokenExclusiveMinter.sol";
 
 
 /**
@@ -175,9 +174,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
-
-        // TODO: Should this contract also check that it holds the owner role of the SyntheticToken?
-
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
