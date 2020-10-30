@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./PerpetualPositionManager.sol";
+
 import "../../common/implementation/FixedPoint.sol";
 
 
