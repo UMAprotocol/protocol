@@ -92,7 +92,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
 
     balanceHistories = new Map(balanceHistories);
     empDeployers = new Map(empDeployers);
-    const rewardsPerBlock = BigInt(totalRewards) / BigInt(blocks.length);
+    const rewardsPerBlock = BigInt(totalRewards || 0n) / BigInt(blocks.length);
     const payoutPerSnapshot = rewardsPerBlock * BigInt(snapshotSteps);
 
     const valuePerSnapshot = blocks.reduce((result, block, index) => {
@@ -154,7 +154,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     const blocks = await getBlocks(startTime, endTime);
     const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);
     const empDeployers = await getEmpDeployerHistory(empCreatorAddress, startTime, endTime);
-
     return calculateRewards({
       startTime,
       endTime,
