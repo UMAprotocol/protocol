@@ -130,8 +130,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
       const totalValueLocked = valueByEmp.reduce((result, [, value]) => {
         return result.add(toBN(value));
       }, toBN("0"));
-
-      let cont = toBN("0");
       valueByEmp.forEach(([emp, value]) => {
         const deployer = empDeployers.get(emp);
         const contribution =
@@ -141,7 +139,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
                 .div(totalValueLocked)
             : toBN("0");
 
-        cont = cont.add(contribution);
         const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
 
         if (result[deployer] == null) result[deployer] = toBN("0");
