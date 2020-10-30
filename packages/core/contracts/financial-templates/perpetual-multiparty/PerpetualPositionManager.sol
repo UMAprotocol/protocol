@@ -488,7 +488,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
-     * This contract assumes that it holds the burner role for `tokenCurrency`.
      * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
      * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
