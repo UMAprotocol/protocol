@@ -1,10 +1,16 @@
 const axios = require("axios");
 const assert = require("assert");
+const { get } = require("lodash");
 
 module.exports = (host = "https://api.coingecko.com") => {
   async function call(url) {
-    const result = await axios(url);
-    return result.data;
+    try {
+      const result = await axios(url);
+      return result.data;
+    } catch (err) {
+      const msg = get(err, "response.data.error", "Coingecko error");
+      throw new Error(msg);
+    }
   }
 
   // fetch historic prices for a `contract` denominated in `currency` between timestamp `from` and `to`. Note timestamps

@@ -165,7 +165,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     const blocks = await getBlocks(startTime, endTime);
     const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);
     const empDeployers = await getEmpDeployerHistory(empCreatorAddress, startTime, endTime);
-
     return calculateRewards({
       startTime,
       endTime,
