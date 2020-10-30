@@ -216,15 +216,16 @@ contract("ServerlessHub.js", function(accounts) {
       configFile: testConfigFile
     };
 
-    const testHubPort = 8082; //create a separate port to run this specific test on.
-    const hubInstanceWithInvalidSpokePort = await hub.Poll(
+    const testHubPort = 8082; // create a separate port to run this specific test on.
+    // Create a hub instance with invalid spoke port
+    await hub.Poll(
       hubSpyLogger, // injected spy logger
       testHubPort, // port to run the hub for this test on
-      `http://localhost:11111`, // URL to execute spokes on
+      "http://localhost:11111", // URL to execute spokes on
       web3.currentProvider.host // custom node URL to enable the hub to query block numbers.
     );
 
-    //not a port the spoke is running on. will get rejected
+    // not a port the spoke is running on. will get rejected
     const rejectedResponse = await sendHubRequest(validBody, testHubPort);
 
     assert.equal(rejectedResponse.res.statusCode, 500); // error code
