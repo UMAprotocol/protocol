@@ -1,4 +1,5 @@
 const { DeployerRewards } = require("../libs/affiliates");
+const moment = require("moment");
 const { assert } = require("chai");
 const empAbi = require("../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../core/build/contracts/ExpiringMultiPartyCreator");
@@ -26,8 +27,11 @@ function Queries() {
     streamBlocks() {
       return highland(require(`./datasets/${datasetName}/blocks`));
     },
-    getBlocks() {
-      return require(`./datasets/${datasetName}/blocks`);
+    getBlocks(start, end) {
+      return require(`./datasets/${datasetName}/blocks`).filter(block => {
+        const blockTime = moment(block.timestamp.value).valueOf();
+        return blockTime >= start && blockTime <= end;
+      });
     }
   };
 }
@@ -82,18 +86,22 @@ describe("DeployerRewards", function() {
     assert(result.length);
   });
   // This is the big kahuna, full integration test. WIP
-  it("calculateRewards", async function() {
+  it.only("calculateRewards", async function() {
     this.timeout(100000);
+
+    const startingTimestamp1 = moment.utc("10/05/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); // utc timestamp
+    const endingTimestamp1 = moment.utc("10/12/2020 23:00:00", "MM/DD/YYYY HH:mm z").valueOf();
+
     const result = await affiliates.getRewards({
       totalRewards: devRewardsToDistribute,
-      startTime: startingTimestamp,
-      endTime: endingTimestamp,
+      startTime: startingTimestamp1,
+      endTime: endingTimestamp1,
       empWhitelist: empContracts,
       empCreatorAddress: empCreator,
       tokensToPrice: syntheticTokens,
       tokenDecimals: syntheticTokenDecimals
     });
     // WIP
-    console.log(result);
+    console.log("result", result);
   });
 });
