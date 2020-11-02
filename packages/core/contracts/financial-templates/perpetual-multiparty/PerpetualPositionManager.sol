@@ -132,7 +132,8 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * the synthetic tokens referenced by `_tokenAddress`. This contract's security assumes that no external accounts
      * can mint new tokens, which could be used to steal all of this contract's locked collateral.
      * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
-     * is assigned to this contract, and whose sole Minter role is assigned this contract.
+     * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
+     * total supply is 0 prior to construction of this contract.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _tokenAddress ERC20 token used as synthetic token.
