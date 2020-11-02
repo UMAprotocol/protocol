@@ -169,7 +169,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.timerAddress,
             params.excessTokenBeneficiary
         )
-        nonReentrant()
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
         require(

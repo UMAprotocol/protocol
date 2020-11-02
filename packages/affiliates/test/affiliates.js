@@ -65,7 +65,7 @@ describe("DeployerRewards", function() {
   it("getPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = syntheticTokens;
-    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    const result = await affiliates.utils.getPriceHistory(address, startingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {
@@ -93,7 +93,8 @@ describe("DeployerRewards", function() {
       tokensToPrice: syntheticTokens,
       tokenDecimals: syntheticTokenDecimals
     });
+    assert.ok(result);
     // WIP
-    console.log(result);
+    // console.log(result);
   });
 });

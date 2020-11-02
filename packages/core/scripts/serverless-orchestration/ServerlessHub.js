@@ -17,7 +17,7 @@
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
-
+const retry = require("async-retry");
 const express = require("express");
 const hub = express();
 hub.use(express.json()); // Enables json to be parsed by the express process.
@@ -60,7 +60,11 @@ hub.post("/", async (req, res) => {
     // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
     const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
     if (!configObject || !lastQueriedBlockNumber)
-      throw new Error("Serverless hub requires a config object and a last updated block number!");
+      throw new Error(
+        `Serverless hub requires a config object and a last updated block number! configObject:${JSON.stringify(
+          configObject
+        )} lastQueriedBlockNumber:${lastQueriedBlockNumber}`
+      );
 
     // Get the latest block number. The query will run from the last queried block number to the latest block number.
     const latestBlockNumber = await _getLatestBlockNumber();
@@ -137,25 +141,42 @@ hub.post("/", async (req, res) => {
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
   } catch (errorOutput) {
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Some spoke calls returned errors (details)🚨",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
-    });
-    logger.error({
-      at: "ServerlessHub",
-      message: "Some spoke calls returned errors 🚨",
-      output:
-        errorOutput instanceof Error
-          ? errorOutput.message
-          : {
-              errorOutputs: Object.keys(errorOutput.errorOutputs), // eslint-disable-line indent
-              validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
-            } // eslint-disable-line indent
-    });
+    // If the errorOutput is an instance of Error then we know that error was produced within the hub.
+    if (errorOutput instanceof Error) {
+      logger.error({
+        at: "ServerlessHub",
+        message: "A fatal error occurred in the hub",
+        output: errorOutput.message
+      });
+    } else {
+      // Else, the error was produced within one of the spokes. If this is the case then we need to process the errors a bit.
+      logger.debug({
+        at: "ServerlessHub",
+        message: "Some spoke calls returned errors (details)🚨",
+        output: errorOutput
+      });
+      logger.error({
+        at: "ServerlessHub",
+        message: "Some spoke calls returned errors 🚨",
+        errorOutputs: Object.keys(errorOutput.errorOutputs).map(spokeName => {
+          try {
+            return {
+              spokeName: spokeName,
+              errorReported: errorOutput.errorOutputs[spokeName].execResponse
+                ? errorOutput.errorOutputs[spokeName].execResponse.stderr
+                : JSON.stringify(errorOutput.errorOutputs[spokeName])
+            };
+          } catch (err) {
+            // `errorMessages` is in an unexpected JSON shape.
+            return "Hub unable to parse error";
+          }
+        }), // eslint-disable-line indent
+        validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
+      });
+    }
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
-      message: "Some spoke calls returned errors",
+      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
       output: errorOutput instanceof Error ? errorOutput.message : errorOutput
     });
   }
@@ -227,34 +248,66 @@ const _fetchConfig = async (bucket, file) => {
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entry kind and
 // `lastHubUpdateBlockNumber` is the entry ID. Will override the previous value on each run.
 async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
-  if (hubConfig.saveQueriedBlock == "gcp") {
-    const key = datastore.key(["BlockNumberLog", configIdentifier]);
-    const dataBlob = {
-      key: key,
-      data: {
-        blockNumber
+  // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
+  await retry(
+    async () => {
+      if (hubConfig.saveQueriedBlock == "gcp") {
+        const key = datastore.key(["BlockNumberLog", configIdentifier]);
+        const dataBlob = {
+          key: key,
+          data: {
+            blockNumber
+          }
+        };
+        await datastore.save(dataBlob); // Saves the entity
+      } else if (hubConfig.saveQueriedBlock == "localStorage") {
+        process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
       }
-    };
-    await datastore.save(dataBlob); // Saves the entity
-  } else if (hubConfig.saveQueriedBlock == "localStorage") {
-    process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
-  }
+    },
+    {
+      retries: 2,
+      minTimeout: 2000, // delay between retries in ms
+      onRetry: error => {
+        logger.debug({
+          at: "serverlessHub",
+          message: "An error was thrown when saving the previously queried block number - retrying",
+          error: typeof error === "string" ? new Error(error) : error
+        });
+      }
+    }
+  );
 }
 
 // Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
 // recorded by the bot to inform where searches should start from.
 async function _getLastQueriedBlockNumber(configIdentifier) {
-  if (hubConfig.saveQueriedBlock == "gcp") {
-    const key = datastore.key(["BlockNumberLog", configIdentifier]);
-    const [dataField] = await datastore.get(key);
-    // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
-    if (dataField == undefined) return await _getLatestBlockNumber();
-    return dataField.blockNumber;
-  } else if (hubConfig.saveQueriedBlock == "localStorage") {
-    return process.env[`lastQueriedBlockNumber-${configIdentifier}`] != undefined
-      ? process.env[`lastQueriedBlockNumber-${configIdentifier}`]
-      : await _getLatestBlockNumber();
-  }
+  // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
+  return await retry(
+    async () => {
+      if (hubConfig.saveQueriedBlock == "gcp") {
+        const key = datastore.key(["BlockNumberLog", configIdentifier]);
+        const [dataField] = await datastore.get(key);
+        // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
+        if (dataField == undefined) return await _getLatestBlockNumber();
+        return dataField.blockNumber;
+      } else if (hubConfig.saveQueriedBlock == "localStorage") {
+        return process.env[`lastQueriedBlockNumber-${configIdentifier}`] != undefined
+          ? process.env[`lastQueriedBlockNumber-${configIdentifier}`]
+          : await _getLatestBlockNumber();
+      }
+    },
+    {
+      retries: 2,
+      minTimeout: 2000, // delay between retries in ms
+      onRetry: error => {
+        logger.debug({
+          at: "serverlessHub",
+          message: "An error was thrown when fetching the most recent block number - retrying",
+          error: typeof error === "string" ? new Error(error) : error
+        });
+      }
+    }
+  );
 }
 
 // Get the latest block number from `CUSTOM_NODE_URL`. Used to update the `lastSeenBlockNumber` after each run.
