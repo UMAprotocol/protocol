@@ -6,6 +6,7 @@ const truffleAssert = require("truffle-assertions");
 const PerpetualCreator = artifacts.require("PerpetualCreator");
 
 // Helper Contracts
+const BasicERC20 = artifacts.require("BasicERC20");
 const Token = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticTokenExclusiveMinter");
 const TokenFactory = artifacts.require("TokenFactoryExclusiveMinter");
@@ -205,6 +206,13 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("Constructs new synthetic currency properly", async function() {
+    // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
+    collateralToken = await Token.new("UMA", "UMA", 8, { from: contractCreator });
+    constructorParams.collateralAddress = collateralToken.address;
+
+    // Whitelist collateral currency
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+
     // Create new derivative contract.
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
       from: contractCreator
@@ -226,6 +234,35 @@ contract("PerpetualCreator", function(accounts) {
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
+  });
+
+  it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function() {
+    // Collateral token does not implement decimals() so synthetic token should default to 18.
+    collateralToken = await BasicERC20.new(0, { from: contractCreator });
+    try {
+      await collateralToken.decimals();
+    } catch (err) {
+      assert.equal(err.message, "collateralToken.decimals is not a function");
+    }
+    constructorParams.collateralAddress = collateralToken.address;
+
+    // Whitelist collateral currency
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+
+    // Create new derivative contract.
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
+      from: contractCreator
+    });
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+    let perpetual = await Perpetual.at(perpetualAddress);
+
+    // New synthetic currency should have 18 precision.
+    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
+    assert.equal((await tokenCurrency.decimals()).toString(), "18");
   });
 
   it("Creation correctly registers Perpetual within the registry", async function() {

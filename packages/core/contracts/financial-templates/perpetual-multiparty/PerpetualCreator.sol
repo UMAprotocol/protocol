@@ -74,16 +74,15 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         TokenFactoryExclusiveMinter tf = TokenFactoryExclusiveMinter(tokenFactoryAddress);
+
+        // If the collateral token does not have a `decimals()` method,
+        // then a default precision of 18 will be applied to the newly created synthetic token.
+        uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
         ExpandedIERC20ExclusiveMinter tokenCurrency = tf.createToken(
             params.syntheticName,
             params.syntheticSymbol,
-            IERC20Standard(params.collateralAddress).decimals()
+            syntheticDecimals
         );
-        require(
-            IERC20Standard(address(tokenCurrency)).decimals() == IERC20Standard(params.collateralAddress).decimals(),
-            "Invalid token precision"
-        );
-
         address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
 
         // Give permissions to new derivative contract and then hand over ownership.
@@ -139,5 +138,16 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
         constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
+    }
+
+    // IERC20Standard.decimals() will revert if the collateral contract has not implemented the
+    // decimals() method, which is possible since the method is only an OPTIONAL method in the
+    // ERC20 standard: https://eips.ethereum.org/EIPS/eip-20#methods.
+    function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
+        try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
+            return _decimals;
+        } catch {
+            return 18;
+        }
     }
 }
