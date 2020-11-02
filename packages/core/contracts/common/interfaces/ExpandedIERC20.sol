@@ -19,7 +19,7 @@ abstract contract ExpandedIERC20 is IERC20 {
      */
     function mint(address to, uint256 value) external virtual returns (bool);
 
-    function resetMinter(address account) external virtual;
+    function addMinter(address account) external virtual;
 
     function addBurner(address account) external virtual;
 

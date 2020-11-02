@@ -4,7 +4,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 /**
- * @title Implements only the required ERC20 methods, for example not `decimals()`.
+ * @title Implements only the required ERC20 methods. This contract is used
+ * test how contracts handle ERC20 contracts that have not implemented `decimals()`
  * @dev Mostly copied from Consensys EIP-20 implementation:
  * https://github.com/ConsenSys/Tokens/blob/fdf687c69d998266a95f15216b1955a4965a0a6d/contracts/eip20/EIP20.sol
  */

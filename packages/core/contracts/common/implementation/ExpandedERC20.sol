@@ -32,7 +32,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     ) public ERC20(_tokenName, _tokenSymbol) {
         _setupDecimals(_tokenDecimals);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
-        _createExclusiveRole(uint256(Roles.Minter), uint256(Roles.Owner), msg.sender);
+        _createSharedRole(uint256(Roles.Minter), uint256(Roles.Owner), new address[](0));
         _createSharedRole(uint256(Roles.Burner), uint256(Roles.Owner), new address[](0));
     }
 
@@ -61,12 +61,12 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     }
 
     /**
-     * @notice Reset Owner role to account.
+     * @notice Add Minter role to account.
      * @dev The caller must have the Owner role.
      * @param account The address to which the Minter role is added.
      */
-    function resetMinter(address account) external virtual override {
-        resetMember(uint256(Roles.Minter), account);
+    function addMinter(address account) external virtual override {
+        addMember(uint256(Roles.Minter), account);
     }
 
     /**

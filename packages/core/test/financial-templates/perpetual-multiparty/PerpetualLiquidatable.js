@@ -156,7 +156,7 @@ contract("PerpetualLiquidatable", function(accounts) {
     });
 
     // Hand over synthetic token permissions to the new derivative contract
-    await syntheticToken.resetMinter(liquidationContract.address);
+    await syntheticToken.addMinter(liquidationContract.address);
     await syntheticToken.addBurner(liquidationContract.address);
 
     // Reset start time signifying the beginning of the first liquidation
@@ -1692,7 +1692,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      await syntheticToken.resetMinter(edgeLiquidationContract.address);
+      await syntheticToken.addMinter(edgeLiquidationContract.address);
       await syntheticToken.addBurner(edgeLiquidationContract.address);
       // Get newly created synthetic token
       const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
@@ -1916,7 +1916,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         from: contractDeployer
       });
 
-      await syntheticToken.resetMinter(USDCLiquidationContract.address);
+      await syntheticToken.addMinter(USDCLiquidationContract.address);
       await syntheticToken.addBurner(USDCLiquidationContract.address);
 
       // Get newly created synthetic token and set it as the global synthetic token.
@@ -2148,7 +2148,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       liquidatableParameters.tokenAddress = syntheticToken.address;
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
       liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      await syntheticToken.resetMinter(liquidationContract.address);
+      await syntheticToken.addMinter(liquidationContract.address);
       await syntheticToken.addBurner(liquidationContract.address);
 
       // Create a new position with:

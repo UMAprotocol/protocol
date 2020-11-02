@@ -24,7 +24,7 @@ contract TokenFactory is Lockable {
         uint8 tokenDecimals
     ) external nonReentrant() returns (ExpandedIERC20 newToken) {
         SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
-        mintableToken.resetMinter(msg.sender);
+        mintableToken.addMinter(msg.sender);
         mintableToken.addBurner(msg.sender);
         mintableToken.resetOwner(msg.sender);
         newToken = ExpandedIERC20(address(mintableToken));

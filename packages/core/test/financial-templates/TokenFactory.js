@@ -47,13 +47,14 @@ contract("TokenFactory", function(accounts) {
     assert.isTrue(await token.isBurner(tokenCreator));
 
     // Contract deployer should no longer be capable of adding new roles
-    assert(await didContractThrow(token.resetMinter(rando, { from: contractDeployer })));
+    assert(await didContractThrow(token.addMinter(rando, { from: contractDeployer })));
     assert(await didContractThrow(token.addBurner(rando, { from: contractDeployer })));
 
     // Creator should be able to add and remove a new minter
-    await token.resetMinter(rando, { from: tokenCreator });
+    await token.addMinter(rando, { from: tokenCreator });
     assert.isTrue(await token.isMinter(rando));
-    assert.isFalse(await token.isMinter(tokenCreator));
+    await token.removeMinter(rando, { from: tokenCreator });
+    assert.isFalse(await token.isMinter(rando));
 
     // Creator should be able to add a new burner
     await token.addBurner(rando, { from: tokenCreator });

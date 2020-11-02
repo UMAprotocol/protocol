@@ -150,7 +150,7 @@ contract("PerpetualPositionManager", function(accounts) {
     );
 
     // Give contract owner permissions.
-    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addMinter(positionManager.address);
     await tokenCurrency.addBurner(positionManager.address);
   });
 
@@ -215,7 +215,7 @@ contract("PerpetualPositionManager", function(accounts) {
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addMinter(positionManager.address);
     await tokenCurrency.addBurner(positionManager.address);
 
     const initialSponsorTokens = toWei("100");
@@ -349,7 +349,7 @@ contract("PerpetualPositionManager", function(accounts) {
     expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
     await collateral.approve(positionManager.address, createAdditionalCollateral, { from: sponsor });
     // Check that create fails if missing Minter role.
-    await tokenCurrency.resetMinter(contractDeployer);
+    await tokenCurrency.removeMinter(positionManager.address);
     assert(
       await didContractThrow(
         positionManager.create(
@@ -360,7 +360,7 @@ contract("PerpetualPositionManager", function(accounts) {
         )
       )
     );
-    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addMinter(positionManager.address);
     await positionManager.create(
       { rawValue: createAdditionalCollateral },
       { rawValue: createAdditionalTokens },
@@ -1674,7 +1674,7 @@ contract("PerpetualPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
-    await tokenCurrency.resetMinter(custompositionManager.address);
+    await tokenCurrency.addMinter(custompositionManager.address);
     await tokenCurrency.addBurner(custompositionManager.address);
 
     // Token currency and collateral have same # of decimals.
