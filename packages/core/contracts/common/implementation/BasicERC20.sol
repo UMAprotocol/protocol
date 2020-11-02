@@ -12,11 +12,15 @@ contract BasicERC20 is IERC20 {
     mapping(address => uint256) public balances;
     mapping(address => mapping(address => uint256)) public allowed;
 
-    uint256 public totalSupply;
+    uint256 private _totalSupply;
 
     constructor(uint256 _initialAmount) public {
         balances[msg.sender] = _initialAmount;
-        totalSupply = _initialAmount;
+        _totalSupply = _initialAmount;
+    }
+
+    function totalSupply() public override view returns (uint256) {
+        return _totalSupply;
     }
 
     function transfer(address _to, uint256 _value) public override returns (bool success) {
