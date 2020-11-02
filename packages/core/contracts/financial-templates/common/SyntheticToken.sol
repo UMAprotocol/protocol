@@ -22,7 +22,7 @@ contract SyntheticToken is ExpandedERC20, Lockable {
     ) public ExpandedERC20(tokenName, tokenSymbol, tokenDecimals) nonReentrant() {}
 
     /**
-     * @notice Reset Owner role to account.
+     * @notice Add Minter role to account.
      * @dev The caller must have the Owner role.
      * @param account The address to which the Minter role is added.
      */
