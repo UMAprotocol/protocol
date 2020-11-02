@@ -6,7 +6,7 @@ const Perpetual = artifacts.require("Perpetual");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("SyntheticTokenExclusiveMinter");
+const Token = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 
 contract("Perpetual", function(accounts) {

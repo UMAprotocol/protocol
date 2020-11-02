@@ -15,7 +15,7 @@ const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const SyntheticTokenExclusiveMinter = artifacts.require("SyntheticTokenExclusiveMinter");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -100,7 +100,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
-    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
       from: contractDeployer
     });
 
@@ -195,7 +195,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Withdrawal liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
-    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
       from: contractDeployer
     });
 
@@ -1659,7 +1659,7 @@ contract("PerpetualPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
-    const nonStandardToken = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 6);
+    const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
 
     let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
@@ -1673,7 +1673,7 @@ contract("PerpetualPositionManager", function(accounts) {
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticTokenExclusiveMinter.at(await custompositionManager.tokenCurrency());
+    tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
     await tokenCurrency.resetMinter(custompositionManager.address);
     await tokenCurrency.addBurner(custompositionManager.address);
 

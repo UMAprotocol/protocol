@@ -13,7 +13,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     enum Roles {
         // Can set the minter and burner.
         Owner,
-        // Addresses that can mint new tokens.
+        // Address that can mint new tokens.
         Minter,
         // Addresses that can burn tokens that address owns.
         Burner
@@ -32,7 +32,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     ) public ERC20(_tokenName, _tokenSymbol) {
         _setupDecimals(_tokenDecimals);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
-        _createSharedRole(uint256(Roles.Minter), uint256(Roles.Owner), new address[](0));
+        _createExclusiveRole(uint256(Roles.Minter), uint256(Roles.Owner), msg.sender);
         _createSharedRole(uint256(Roles.Burner), uint256(Roles.Owner), new address[](0));
     }
 

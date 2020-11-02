@@ -1,14 +1,14 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/interfaces/ExpandedIERC20ExclusiveMinter.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
-import "../common/TokenFactoryExclusiveMinter.sol";
-import "../common/SyntheticTokenExclusiveMinter.sol";
+import "../common/TokenFactory.sol";
+import "../common/SyntheticToken.sol";
 import "./PerpetualLib.sol";
 
 
@@ -72,16 +72,12 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
-        TokenFactoryExclusiveMinter tf = TokenFactoryExclusiveMinter(tokenFactoryAddress);
+        TokenFactory tf = TokenFactory(tokenFactoryAddress);
 
         // If the collateral token does not have a `decimals()` method,
         // then a default precision of 18 will be applied to the newly created synthetic token.
         uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
-        ExpandedIERC20ExclusiveMinter tokenCurrency = tf.createToken(
-            params.syntheticName,
-            params.syntheticSymbol,
-            syntheticDecimals
-        );
+        ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
         address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
 
         // Give permissions to new derivative contract and then hand over ownership.

@@ -8,8 +8,8 @@ const PerpetualCreator = artifacts.require("PerpetualCreator");
 // Helper Contracts
 const BasicERC20 = artifacts.require("BasicERC20");
 const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticTokenExclusiveMinter");
-const TokenFactory = artifacts.require("TokenFactoryExclusiveMinter");
+const SyntheticToken = artifacts.require("SyntheticToken");
+const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");

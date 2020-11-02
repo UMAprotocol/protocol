@@ -6,7 +6,7 @@ const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
-const SyntheticTokenExclusiveMinter = artifacts.require("SyntheticTokenExclusiveMinter");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Contracts to unit test
@@ -98,7 +98,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticTokenExclusiveMinter.new("Test UMA Token", "UMAETH", 18, {
+    syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
       from: contractDeployer
     });
 
@@ -1687,7 +1687,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      syntheticToken = await SyntheticTokenExclusiveMinter.new("Test UMA Token", "UMAETH", 18, {
+      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
         from: contractDeployer
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
@@ -1905,7 +1905,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       await collateralToken.allocateTo(sponsor, toWei("100"));
       await collateralToken.allocateTo(disputer, toWei("100"));
 
-      syntheticToken = await SyntheticTokenExclusiveMinter.new("USDCETH", "USDCETH", 6);
+      syntheticToken = await SyntheticToken.new("USDCETH", "USDCETH", 6);
 
       // Update the liquidatableParameters to use the new token as collateral and deploy a new Liquidatable contract
       let USDCLiquidatableParameters = liquidatableParameters;
@@ -2142,7 +2142,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   describe("Precision loss is handled as expected", () => {
     beforeEach(async () => {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
-      syntheticToken = await SyntheticTokenExclusiveMinter.new("Test UMA Token", "UMAETH", 18, {
+      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
         from: contractDeployer
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
