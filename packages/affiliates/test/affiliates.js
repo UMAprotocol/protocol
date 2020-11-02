@@ -69,7 +69,7 @@ describe("DeployerRewards", function() {
   it("getPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = syntheticTokens;
-    const result = await affiliates.utils.getPriceHistory(address, startingTimestamp);
+    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {
@@ -86,7 +86,7 @@ describe("DeployerRewards", function() {
     assert(result.length);
   });
   // This is the big kahuna, full integration test. WIP
-  it.only("calculateRewards", async function() {
+  it("calculateRewards", async function() {
     this.timeout(100000);
 
     const startingTimestamp1 = moment.utc("10/05/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); // utc timestamp
@@ -101,8 +101,7 @@ describe("DeployerRewards", function() {
       tokensToPrice: syntheticTokens,
       tokenDecimals: syntheticTokenDecimals
     });
-    assert.ok(result);
     // WIP
-    // console.log(result);
+    console.log("result", result);
   });
 });
