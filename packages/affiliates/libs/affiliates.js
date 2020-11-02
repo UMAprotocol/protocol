@@ -77,7 +77,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
   // this is adapted from scrips/example-contract-deployer-attributation.js
   function calculateRewards({
     empWhitelist = [],
-    snapshotSteps = 64,
+    snapshotSteps = 1,
     totalRewards,
     tokenPrices,
     blocks,
@@ -154,7 +154,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     tokensToPrice = [],
     empWhitelist = [],
     empCreatorAddress,
-    snapshotSteps = 64,
+    snapshotSteps = 1,
     totalRewards,
     tokenDecimals = []
   }) {

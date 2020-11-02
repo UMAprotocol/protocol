@@ -102,6 +102,8 @@ describe("DeployerRewards", function() {
       tokenDecimals: syntheticTokenDecimals
     });
     // WIP
-    console.log("result", result);
+
+    assert.equal(Object.keys(result).length, 1); // there should only be 1 deployer
+    assert.equal(Number(Object.values(result)[0]), Number(devRewardsToDistribute)); // the total rewards distributed should equal the number specified
   });
 });
