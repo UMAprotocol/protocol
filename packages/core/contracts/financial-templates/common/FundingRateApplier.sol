@@ -1,12 +1,13 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Timer.sol";
+import "../../common/implementation/Testable.sol";
 
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
@@ -20,18 +21,20 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-contract FundingRateApplier is Lockable {
-    using SafeMath for int256;
-    using SafeMath for uint256;
+abstract contract FundingRateApplier is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
+    using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     /****************************************
      * FUNDING RATE APPLIER DATA STRUCTURES *
      ****************************************/
 
-    // Points to financial product-related contracts like the funding rate store.
-    FinderInterface public fpFinder;
+    // Locally stores the finder.
+    // This is private because it is expected that another contract, like the FeePayer, will publicly expose the finder
+    // address.
+    FinderInterface private finder;
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
@@ -48,11 +51,6 @@ contract FundingRateApplier is Lockable {
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
 
-    // FundingRateApplier and FeePayer are both at the same inheritance level within the PerpetualPositionManager. As a
-    // result, they cant both be instances of the Testable contract. to accommodate this the FundingRateApplier has an
-    // instance of timer which enables it to be tested in the same way it would be if it was an instance of Tesable.
-    Timer timer;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -62,8 +60,8 @@ contract FundingRateApplier is Lockable {
         uint256 lastUpdateTime,
         uint256 updateTime,
         uint256 indexed paymentPeriod,
-        uint256 indexed latestFundingRate,
-        uint256 effectiveFundingRateForPaymentPeriod
+        int256 indexed latestFundingRate,
+        int256 periodRate
     );
 
     /****************************************
@@ -79,19 +77,12 @@ contract FundingRateApplier is Lockable {
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(
-        address _finderAddress,
-        bytes32 _fundingRateIdentifier,
-        address _timerAddress
-    ) public nonReentrant() {
-        fpFinder = FinderInterface(_finderAddress);
+    constructor(address _finderAddress, bytes32 _fundingRateIdentifier) public {
+        finder = FinderInterface(_finderAddress);
         fundingRateIdentifier = _fundingRateIdentifier;
 
-        timer = Timer(_timerAddress);
-        lastUpdateTime = timer.getCurrentTime();
+        lastUpdateTime = getCurrentTime();
 
         // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
         cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
@@ -109,12 +100,11 @@ contract FundingRateApplier is Lockable {
     }
 
     function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
-        return FundingRateStoreInterface(fpFinder.getImplementationAddress("FundingRateStore"));
+        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _getLatestFundingRate() internal view returns (FixedPoint.Unsigned memory) {
-        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
-        return fundingRateStore.getFundingRateForIdentifier(fundingRateIdentifier);
+    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
+        return _getFundingRateStore().getFundingRateForIdentifier(fundingRateIdentifier);
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
@@ -123,15 +113,15 @@ contract FundingRateApplier is Lockable {
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
-        uint256 currentTime = timer.getCurrentTime();
+        uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
-        FixedPoint.Unsigned memory _latestFundingRatePerSecond = _getLatestFundingRate();
+        FixedPoint.Signed memory _latestFundingRatePerSecond = _getLatestFundingRate();
 
-        FixedPoint.Unsigned memory effectiveFundingRateForPeriod;
-        (cumulativeFundingRateMultiplier, effectiveFundingRateForPeriod) = _calculateEffectiveFundingRate(
+        FixedPoint.Signed memory periodRate;
+        (cumulativeFundingRateMultiplier, periodRate) = _calculateEffectiveFundingRate(
             paymentPeriod,
-            _latestFundingRatePerSecond,
+            _getLatestFundingRate(),
             cumulativeFundingRateMultiplier
         );
 
@@ -141,7 +131,7 @@ contract FundingRateApplier is Lockable {
             currentTime,
             paymentPeriod,
             _latestFundingRatePerSecond.rawValue,
-            effectiveFundingRateForPeriod.rawValue
+            periodRate.rawValue
         );
 
         lastUpdateTime = currentTime;
@@ -149,32 +139,33 @@ contract FundingRateApplier is Lockable {
 
     function _calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
-        FixedPoint.Unsigned memory fundingRatePerSecond,
-        FixedPoint.Unsigned memory feeMultiplier
-    ) internal pure returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory) {
-        // Determine whether `fundingRatePerSecond` implies a negative or positive funding rate,
-        // and apply it over a pay period.
-        FixedPoint.Unsigned memory ONE = FixedPoint.fromUnscaledUint(1);
-        FixedPoint.Unsigned memory effectiveFundingRateForPeriod = ONE;
+        FixedPoint.Signed memory fundingRatePerSecond,
+        FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
+    )
+        internal
+        pure
+        returns (FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier, FixedPoint.Signed memory periodRate)
+    {
+        // Note: this method uses named return variables to save a little bytecode.
 
-        // If `fundingRatePerSecond` == 1, then maintain the current multiplier.
-        FixedPoint.Unsigned memory newFeeMultiplier = feeMultiplier;
-        if (fundingRatePerSecond.isGreaterThan(ONE)) {
-            // If `fundingRatePerSecond` > 1, then first scale the funding over the pay period:
-            // (`fundingRatePerSecond` - 1) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 + effectiveFundingRate).
+        // The overall formula that this function is performing:
+        //   newCumulativeFundingRateMultiplier =
+        //   (1 + (fundingRatePerSecond * paymentPeriodSeconds)) * currentCumulativeFundingRateMultiplier.
+        FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
 
-            effectiveFundingRateForPeriod = ONE.add(fundingRatePerSecond.sub(ONE).mul(paymentPeriodSeconds));
-            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriod);
-        } else if (fundingRatePerSecond.isLessThan(ONE)) {
-            // If `fundingRatePerSecond` < 1, then first scale the funding over the pay period:
-            // (1 - `fundingRatePerSecond`) * payPeriod = effectiveFundingRate.
-            // Next, multiply the current multipier by (1 - effectiveFundingRate).
+        // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
+        periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
-            effectiveFundingRateForPeriod = ONE.sub(ONE.sub(fundingRatePerSecond).mul(paymentPeriodSeconds));
-            newFeeMultiplier = feeMultiplier.mul(effectiveFundingRateForPeriod);
-        }
+        // Add one to create the multiplier to scale the existing fee multiplier.
+        FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
 
-        return (newFeeMultiplier, effectiveFundingRateForPeriod);
+        // Max with 0 to ensure the multiplier isn't negative, then cast to an Unsigned.
+        FixedPoint.Unsigned memory unsignedPeriodMultiplier = FixedPoint.fromSigned(
+            FixedPoint.max(signedPeriodMultiplier, FixedPoint.fromUnscaledInt(0))
+        );
+
+        // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new
+        // cumulative funding rate multiplier.
+        newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
 }

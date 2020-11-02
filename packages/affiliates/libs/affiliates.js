@@ -166,7 +166,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
   }) {
     const tokenPrices = await Promise.map(
       tokensToPrice,
-      async address => await getPriceHistory(address, startTime, endTime)
+      async address => await getPriceHistory(address, "usd", startTime, endTime)
     );
     const blocks = await getBlocks(startTime, endTime);
     const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);

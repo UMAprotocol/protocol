@@ -368,8 +368,8 @@ async function calculateRebate({
       rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
-      priceData: readablePriceData,
-      shareHolderPayout: {} // {[voter:string]: amountUmaToRebate:number}
+      shareHolderPayout: {}, // {[voter:string]: amountUmaToRebate:number}
+      priceData: readablePriceData
     };
 
     // Parallelize fetching of event data:

@@ -19,8 +19,8 @@ const queries = Queries({ client });
 async function runTest() {
   await mkdirp(subDir);
   const data = await queries.getLogsByContract(empCreator, startingTimestamp, endingTimestamp);
+  console.log("wrote", data.length, "deployer events");
   fs.writeFileSync(path, JSON.stringify(data, null, 2));
-  return data;
 }
 
 runTest()

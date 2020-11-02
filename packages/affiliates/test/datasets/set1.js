@@ -14,9 +14,9 @@ const syntheticTokens = [
 ];
 const syntheticTokenDecimals = [18, 18, 18];
 
-const startingTimestamp = moment("2020-09-20 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
+const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
 
-const endingTimestamp = moment("2020-10-20 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
 module.exports = {
   // this is the sub directory name
