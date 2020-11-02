@@ -340,8 +340,8 @@ contract("PerpetualLiquidatable", function(accounts) {
     it("Fails if contract does not have Burner role", async () => {
       await syntheticToken.removeBurner(liquidationContract.address);
 
-      // This liquidation should normally succeed using the same parameters as other
-      // successful liquidations, such as in the previous test.
+      // This liquidation should normally succeed using the same parameters as other successful liquidations,
+      // such as in the previous test.
       assert(
         await didContractThrow(
           liquidationContract.createLiquidation(
