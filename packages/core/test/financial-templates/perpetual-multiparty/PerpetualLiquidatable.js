@@ -155,10 +155,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    // Hand over synthetic token ownership to the new derivative contract
-    // and initialize it.
-    await syntheticToken.resetOwner(liquidationContract.address);
-    await liquidationContract.initialize();
+    // Hand over synthetic token permissions to the new derivative contract
+    await syntheticToken.resetMinter(liquidationContract.address);
+    await syntheticToken.addBurner(liquidationContract.address);
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
@@ -337,6 +336,24 @@ contract("PerpetualLiquidatable", function(accounts) {
         { from: liquidator }
       );
       assert.equal(liquidationId.toString(), liquidationParams.liquidationId.toString());
+    });
+    it("Fails if contract does not have Burner role", async () => {
+      await syntheticToken.removeBurner(liquidationContract.address);
+
+      // This liquidation should normally succeed using the same parameters as other
+      // successful liquidations, such as in the previous test.
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: "0" },
+            { rawValue: pricePerToken.toString() },
+            { rawValue: amountOfSynthetic.toString() },
+            unreachableDeadline,
+            { from: liquidator }
+          )
+        )
+      );
     });
     it("Pulls correct token amount", async () => {
       const { tokensLiquidated } = await liquidationContract.createLiquidation.call(
@@ -1675,8 +1692,8 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      await syntheticToken.resetOwner(edgeLiquidationContract.address);
-      await edgeLiquidationContract.initialize();
+      await syntheticToken.resetMinter(edgeLiquidationContract.address);
+      await syntheticToken.addBurner(edgeLiquidationContract.address);
       // Get newly created synthetic token
       const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation
@@ -1899,8 +1916,8 @@ contract("PerpetualLiquidatable", function(accounts) {
         from: contractDeployer
       });
 
-      await syntheticToken.resetOwner(USDCLiquidationContract.address);
-      await USDCLiquidationContract.initialize();
+      await syntheticToken.resetMinter(USDCLiquidationContract.address);
+      await syntheticToken.addBurner(USDCLiquidationContract.address);
 
       // Get newly created synthetic token and set it as the global synthetic token.
       syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
@@ -2131,8 +2148,8 @@ contract("PerpetualLiquidatable", function(accounts) {
       liquidatableParameters.tokenAddress = syntheticToken.address;
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
       liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      await syntheticToken.resetOwner(liquidationContract.address);
-      await liquidationContract.initialize();
+      await syntheticToken.resetMinter(liquidationContract.address);
+      await syntheticToken.addBurner(liquidationContract.address);
 
       // Create a new position with:
       // - 30 collateral

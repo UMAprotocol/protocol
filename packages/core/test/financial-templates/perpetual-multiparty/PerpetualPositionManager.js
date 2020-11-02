@@ -149,9 +149,9 @@ contract("PerpetualPositionManager", function(accounts) {
       { from: contractDeployer }
     );
 
-    // Give contract owner permissions and initialize it.
-    await tokenCurrency.resetOwner(positionManager.address);
-    await positionManager.initialize();
+    // Give contract owner permissions.
+    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
   });
 
   afterEach(async () => {
@@ -193,78 +193,6 @@ contract("PerpetualPositionManager", function(accounts) {
     );
   });
 
-  it("Cannot create positions before initialization", async function() {
-    // Create a new token so that we can transfer its ownership.
-    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
-      from: contractDeployer
-    });
-
-    positionManager = await PerpetualPositionManager.new(
-      withdrawalLiveness.toString(), // _withdrawalLiveness
-      collateral.address, // _collateralAddress
-      tokenCurrency.address, // _tokenAddress
-      finder.address, // _finderAddress
-      priceFeedIdentifier, // _priceFeedIdentifier
-      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
-      beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
-    );
-
-    // Cannot create a position before initializing, and cannot
-    // initialize before transferring ownership to contract.
-    assert(await didContractThrow(positionManager.initialize()));
-    await collateral.approve(positionManager.address, initialPositionCollateral, { from: other });
-    assert(
-      await didContractThrow(
-        positionManager.create(
-          { rawValue: initialPositionCollateral.toString() },
-          { rawValue: initialPositionTokens.toString() },
-          { from: other }
-        )
-      )
-    );
-
-    // Reset ownership so that initialization will succeed.
-    await tokenCurrency.resetOwner(positionManager.address);
-
-    // Create works post-initialization.
-    await positionManager.initialize();
-    await positionManager.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() },
-      { from: other }
-    );
-  });
-
-  it("Cannot initialize if token supply > 0", async function() {
-    // Create a new token so that we can transfer its ownership.
-    tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
-      from: contractDeployer
-    });
-
-    positionManager = await PerpetualPositionManager.new(
-      withdrawalLiveness.toString(), // _withdrawalLiveness
-      collateral.address, // _collateralAddress
-      tokenCurrency.address, // _tokenAddress
-      finder.address, // _finderAddress
-      priceFeedIdentifier, // _priceFeedIdentifier
-      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
-      beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
-    );
-
-    // Reset ownership so that initialization would normally succeed.
-    await tokenCurrency.resetOwner(positionManager.address);
-
-    // Cannot initialize when token supply > 0.
-    await tokenCurrency.mint(other, "1");
-    assert(await didContractThrow(positionManager.initialize()));
-  });
-
   it("Withdrawal liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
     tokenCurrency = await SyntheticTokenExclusiveMinter.new(syntheticName, syntheticSymbol, 18, {
@@ -287,8 +215,8 @@ contract("PerpetualPositionManager", function(accounts) {
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    await tokenCurrency.resetOwner(positionManager.address);
-    await positionManager.initialize();
+    await tokenCurrency.resetMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
@@ -394,6 +322,10 @@ contract("PerpetualPositionManager", function(accounts) {
     const redeem = positionManager.redeem;
     const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
     assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
+    // Check that redeem fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(redeem({ rawValue: redeemTokens }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
     let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
@@ -416,6 +348,19 @@ contract("PerpetualPositionManager", function(accounts) {
     expectedSponsorTokens = expectedSponsorTokens.add(toBN(createAdditionalTokens));
     expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
     await collateral.approve(positionManager.address, createAdditionalCollateral, { from: sponsor });
+    // Check that create fails if missing Minter role.
+    await tokenCurrency.resetMinter(contractDeployer);
+    assert(
+      await didContractThrow(
+        positionManager.create(
+          { rawValue: createAdditionalCollateral },
+          { rawValue: createAdditionalTokens },
+          { from: sponsor },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.resetMinter(positionManager.address);
     await positionManager.create(
       { rawValue: createAdditionalCollateral },
       { rawValue: createAdditionalTokens },
@@ -766,6 +711,10 @@ contract("PerpetualPositionManager", function(accounts) {
     const initialSponsorTokenDebt = toBN((await positionManager.positions(sponsor)).tokensOutstanding.rawValue);
     const initialTotalTokensOutstanding = await positionManager.totalTokensOutstanding();
 
+    // Check that repay fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.repay({ rawValue: toWei("40") }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
     const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
 
     // Event is correctly emitted.
@@ -966,6 +915,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(positionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
+    // Check that settlement fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.settleEmergencyShutdown({ from: tokenHolder })));
+    await tokenCurrency.addBurner(positionManager.address);
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
     assert.equal((await positionManager.emergencyShutdownPrice()).toString(), toWei("1.1"));
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
@@ -1721,8 +1674,8 @@ contract("PerpetualPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticTokenExclusiveMinter.at(await custompositionManager.tokenCurrency());
-    await tokenCurrency.resetOwner(custompositionManager.address);
-    await custompositionManager.initialize();
+    await tokenCurrency.resetMinter(custompositionManager.address);
+    await tokenCurrency.addBurner(custompositionManager.address);
 
     // Token currency and collateral have same # of decimals.
     assert.equal(await tokenCurrency.decimals(), 6);

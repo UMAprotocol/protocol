@@ -86,9 +86,10 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
 
         address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
 
-        // Give owner role to new derivative contract and initialize it.
+        // Give permissions to new derivative contract and then hand over ownership.
+        tokenCurrency.resetMinter(derivative);
+        tokenCurrency.addBurner(derivative);
         tokenCurrency.resetOwner(derivative);
-        Perpetual(derivative).initialize();
 
         _registerContract(new address[](0), address(derivative));
 

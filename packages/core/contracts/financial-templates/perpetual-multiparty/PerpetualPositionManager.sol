@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/interfaces/ExpandedIERC20ExclusiveMinter.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -27,16 +27,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for ExpandedIERC20ExclusiveMinter;
+    using SafeERC20 for ExpandedIERC20;
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
-
-    // Contract must be Initialized before any tokens can be created, in order to ensure
-    // that `tokenCurrency` is setup properly.
-    enum State { Uninitialized, Initialized }
-    State private state;
 
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
@@ -62,7 +57,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     FixedPoint.Unsigned public rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
-    ExpandedIERC20ExclusiveMinter public tokenCurrency;
+    ExpandedIERC20 public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
@@ -111,19 +106,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *               MODIFIERS              *
      ****************************************/
 
-    /**
-     * @notice As long as `initialized()` reverts, no sponsor positions can be created.
-     * @dev The only contract action that needs to have this modifier is `create()`
-     * because all of the other actions will revert unless there is an existing sponsor position.
-     * Currently, `emergencyShutdown()` does not have this modifier which means that it is possible to
-     * emergency shutdown this contract pre-initialization. This should not be a problem since emergency shutdowns
-     * without any existing positions trigger maximum one price request and are otherwise harmless.
-     */
-    modifier initialized() {
-        _initialized();
-        _;
-    }
-
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
         _;
@@ -146,6 +128,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     /**
      * @notice Construct the PerpetualPositionManager.
+     * @dev Deployer of this contract should consider carefully which parties have ability to mint and burn
+     * the synthetic tokens referenced by `_tokenAddress`. This contract's security assumes that no external accounts
+     * can mint new tokens, which could be used to steal all of this contract's locked collateral.
+     * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
+     * is assigned to this contract, and whose sole Minter role is assigned this contract.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _tokenAddress ERC20 token used as synthetic token.
@@ -173,29 +160,10 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
-        tokenCurrency = ExpandedIERC20ExclusiveMinter(_tokenAddress);
+        tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
-    }
-
-    /**
-     * @notice Must be called before any sponsor can mint new synthetic debt. This function
-     * should execute all prerequisite setup logic and run checks on the token currency.
-     * @dev Contract must have the Owner role for the `tokenCurrency`.
-     */
-    function initialize() public nonReentrant() {
-        require(state == State.Uninitialized, "Already initialized");
-
-        // Grant this contract the ability to mint and burn tokens, neccessary to run contract actions.
-        // This will revert if this contract does not have the Owner role.
-        tokenCurrency.resetMinter(address(this));
-        tokenCurrency.addBurner(address(this));
-
-        // Check that the token currency has not minted any tokens yet.
-        require(tokenCurrency.totalSupply() == 0, "Token supply not 0");
-
-        state = State.Initialized;
     }
 
     /****************************************
@@ -355,6 +323,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     /**
      * @notice Creates tokens by creating a new position or by augmenting an existing position. Pulls `collateralAmount
      * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Minter role for the `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
      * `collateralCurrency`.
@@ -363,7 +332,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
-        initialized()
         notEmergencyShutdown()
         fees()
         updateFundingRate()
@@ -406,6 +374,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
      * `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -454,6 +423,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function repay(FixedPoint.Unsigned memory numTokens)
@@ -488,6 +458,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
      * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -561,7 +532,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
-    // TODO: Should this method have the `initialized()` modifier?
     function applyFundingRate() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
         return;
     }
@@ -855,9 +825,5 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         returns (FixedPoint.Unsigned memory ratio)
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
-    }
-
-    function _initialized() internal view {
-        require(state == State.Initialized, "Contract uninitialized");
     }
 }

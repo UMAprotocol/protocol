@@ -190,6 +190,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param sponsor address of the sponsor to liquidate.
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
