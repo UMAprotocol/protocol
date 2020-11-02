@@ -13,7 +13,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     enum Roles {
         // Can set the minter and burner.
         Owner,
-        // Address that can mint new tokens.
+        // Addresses that can mint new tokens.
         Minter,
         // Addresses that can burn tokens that address owns.
         Burner
