@@ -74,8 +74,10 @@ describe("History", function() {
 describe("Prices", function() {
   let prices, seed;
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
+  const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+  const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
-    seed = await Coingecko().chart(token, "usd", "10");
+    seed = await Coingecko().chart(token, "usd", startingTimestamp / 1000, endingTimestamp / 1000);
     prices = Prices(seed.prices);
     assert.ok(seed);
     assert.ok(prices);

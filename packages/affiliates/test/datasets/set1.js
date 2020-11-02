@@ -6,9 +6,9 @@ const empContracts = ["0xaBBee9fC7a882499162323EEB7BF6614193312e3", "0x3605Ec11B
 const syntheticTokens = ["0xF06DdacF71e2992E2122A1a0168C6967aFdf63ce", "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9"];
 const syntheticTokenDecimals = [18, 18];
 
-const startingTimestamp = moment("9/23/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); // utc timestamp
+const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
 
-const endingTimestamp = moment("10/5/2020 23:00:00", "MM/DD/YYYY HH:mm z").valueOf();
+const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
 module.exports = {
   // this is the sub directory name
