@@ -16,9 +16,8 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
 
     struct FundingRate {
         // Represented in wei as a % of token amount charged per second.
-        // e.g. fundingRate = 1.01 means 1% of token amount charged per second.
-        FixedPoint.Unsigned fundingRate;
-        // int256 fundingRate;
+        // e.g. fundingRate = 0.01 means 1% of token amount charged per second.
+        FixedPoint.Signed fundingRate;
         uint256 timestamp; // Time the verified funding rate became available.
     }
 
@@ -30,19 +29,14 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
     function setFundingRate(
         bytes32 identifier,
         uint256 time,
-        FixedPoint.Unsigned memory fundingRate
+        FixedPoint.Signed memory fundingRate
     ) external {
         fundingRates[identifier].push(FundingRate(fundingRate, time));
     }
 
-    function getFundingRateForIdentifier(bytes32 identifier)
-        external
-        override
-        view
-        returns (FixedPoint.Unsigned memory)
-    {
+    function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
         if (fundingRates[identifier].length == 0) {
-            return FixedPoint.fromUnscaledUint(1);
+            return FixedPoint.fromUnscaledInt(0);
         }
         return fundingRates[identifier][fundingRates[identifier].length - 1].fundingRate;
     }

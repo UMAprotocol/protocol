@@ -155,8 +155,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
     )
         public
         FeePayer(_collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateIdentifier, _timerAddress)
-        nonReentrant()
+        FundingRateApplier(_finderAddress, _fundingRateIdentifier)
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -555,7 +554,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
-    function remargin() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function remargin() external override {
         return;
     }
 
@@ -564,7 +563,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
      * @param token address of the ERC20 token whose excess balance should be drained.
      */
-    function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
+    function trimExcess(IERC20 token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
 
         if (address(token) == address(collateralCurrency)) {
@@ -644,9 +643,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         _decrementCollateralBalances(positionData, collateralToRemove);
 
         // Ensure that the sponsor will meet the min position size after the reduction.
-        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
-        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
-        positionData.tokensOutstanding = newTokenCount;
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
+        require(
+            positionData.tokensOutstanding.isGreaterThanOrEqual(minSponsorTokens),
+            "Below minimum sponsor position"
+        );
 
         // Decrement the position's withdrawal amount.
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
@@ -662,8 +663,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         FixedPoint.Unsigned memory startingGlobalCollateral = _getFeeAdjustedCollateral(rawTotalPositionCollateral);
 
         // Remove the collateral and outstanding from the overall total position.
-        FixedPoint.Unsigned memory remainingRawCollateral = positionToLiquidate.rawCollateral;
-        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
+        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(positionToLiquidate.rawCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
@@ -702,12 +702,11 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
 
     // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
-        OracleInterface oracle = _getOracle();
-        oracle.requestPrice(priceIdentifier, requestedTime);
+        _getOracle().requestPrice(priceIdentifier, requestedTime);
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory price) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
@@ -822,10 +821,6 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         pure
         returns (FixedPoint.Unsigned memory ratio)
     {
-        if (numTokens.isLessThanOrEqual(0)) {
-            return FixedPoint.fromUnscaledUint(0);
-        } else {
-            return collateral.div(numTokens);
-        }
+        return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
     }
 }
