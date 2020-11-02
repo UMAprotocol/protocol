@@ -5,9 +5,11 @@ const highland = require("highland");
 const moment = require("moment");
 const Promise = require("bluebird");
 const assert = require("assert");
-const { parseFixed, getWeb3 } = require("@uma/common");
+
+const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
+
 const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
   assert(coingecko, "requires coingecko api");
   assert(queries, "requires queries class");
@@ -66,14 +68,12 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     }, []);
   }
 
-  // update this function to calculate a price.
-  // may want to instead get price based on collateral and collaterlization ratio
-  // returns a BigInt
-  function calculateValue(tokens, closestPrice) {
-    return tokens.mul(toBN(toWei(closestPrice.toString()))).div(toBN(toWei("1")));
+  // TODO: update this function to use underlying contracts GCR and total token debt.
+  function calculateValue(tokens, closestPrice, decimals) {
+    return tokens.mul(toBN(toWei(closestPrice.toString()))).div(toBN(toWei(decimals.toString())));
   }
 
-  // pure function to seperate out queries from calculations
+  // pure function to separate out queries from calculations
   // this is adapted from scrips/example-contract-deployer-attributation.js
   function calculateRewards({
     empWhitelist = [],
@@ -98,7 +98,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     const valuePerSnapshot = blocks.reduce((result, block, index) => {
       if (index % snapshotSteps !== 0) return result;
       const { timestamp } = block;
-
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
           const { tokens } = balanceHistories.get(empAddress).history.lookup(block.number);
@@ -108,24 +107,19 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
           const totalTokens = Object.values(tokens).reduce((result, value) => {
             return result.add(toBN(value));
           }, toBN("0"));
-          // need to conver total tokens to consistent decimals across all tokens
-          result.push([empAddress, calculateValue(totalTokens, closestPrice)]);
+          result.push([empAddress, calculateValue(totalTokens, closestPrice, decimals)]);
           return result;
         } catch (err) {
-          // this error is ok, it means we have block history before the emp had
-          // any events. this essentially means value locked at emp is 0 at this block.
-
+          // this error is ok, it means we have block history before the emp had any events. Locked value is 0 at this block.
           result.push([empAddress, 0]);
           return result;
         }
       }, []);
-
       result.push(valueByEmp);
-
       return result;
     }, []);
 
-    // per snapshot
+    // Per snapshot calculate the associated amount that each deployer is entitled to.
     let finalDeployerPayouts = valuePerSnapshot.reduce((result, valueByEmp) => {
       const totalValueLocked = valueByEmp.reduce((result, [, value]) => {
         return result.add(toBN(value));
@@ -134,19 +128,19 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
         const deployer = empDeployers.get(emp);
         const contribution =
           totalValueLocked.toString() != "0"
-            ? toBN(value)
-                .mul(toBN(toWei("1")))
-                .div(totalValueLocked)
-            : toBN("0");
-
+            ? toBN(value) // eslint-disable-line indent
+                .mul(toBN(toWei("1"))) // eslint-disable-line indent
+                .div(totalValueLocked) // eslint-disable-line indent
+            : toBN("0"); // eslint-disable-line indent
         const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
-
         if (result[deployer] == null) result[deployer] = toBN("0");
         result[deployer] = result[deployer].add(rewards);
       });
 
       return result;
     }, {});
+
+    // Finally convert the final bignumber output to strings for export.
     for (let contractDeployer of Object.keys(finalDeployerPayouts)) {
       finalDeployerPayouts[contractDeployer] = fromWei(finalDeployerPayouts[contractDeployer]);
     }
