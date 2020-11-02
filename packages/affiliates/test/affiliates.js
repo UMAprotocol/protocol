@@ -89,13 +89,13 @@ describe("DeployerRewards", function() {
   it("calculateRewards", async function() {
     this.timeout(100000);
 
-    const startingTimestamp1 = moment.utc("10/05/2020 23:00:00", "MM/DD/YYYY  HH:mm z").valueOf(); // utc timestamp
-    const endingTimestamp1 = moment.utc("10/12/2020 23:00:00", "MM/DD/YYYY HH:mm z").valueOf();
+    const startingTimestamp = moment("2020-10-01 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
+    const endingTimestamp = moment("2020-10-08 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
     const result = await affiliates.getRewards({
       totalRewards: devRewardsToDistribute,
-      startTime: startingTimestamp1,
-      endTime: endingTimestamp1,
+      startTime: startingTimestamp,
+      endTime: endingTimestamp,
       empWhitelist: empContracts,
       empCreatorAddress: empCreator,
       tokensToPrice: syntheticTokens,
