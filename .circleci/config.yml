@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - checkout
@@ -27,7 +27,7 @@ jobs:
             - ~/.ssh
   build:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -42,7 +42,7 @@ jobs:
             - ~/.ssh
   lint:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -52,7 +52,7 @@ jobs:
           command: ./ci/lint.sh
   docs:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -102,7 +102,7 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
@@ -114,7 +114,7 @@ jobs:
           command: yarn run test
   coverage:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - checkout
@@ -127,7 +127,7 @@ jobs:
           path: packages/core/coverage
   dapp_build:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -144,7 +144,7 @@ jobs:
           destination: voter-dapp-build
   deploy_to_staging:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -163,7 +163,7 @@ jobs:
           command: ./ci/deploy_to_staging.sh
   publish:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:12
     working_directory: ~/protocol
     steps:
       - add_ssh_keys:
