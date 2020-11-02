@@ -85,7 +85,6 @@ describe("DeployerRewards", function() {
     const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
     assert(result.length);
   });
-  // This is the big kahuna, full integration test. WIP
   it("calculateRewards", async function() {
     this.timeout(100000);
 
