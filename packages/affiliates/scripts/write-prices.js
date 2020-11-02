@@ -15,7 +15,7 @@ async function runTest() {
   await mkdirp(subDir);
   await Promise.each([...params.syntheticTokens], async address => {
     const path = Path.join(subDir, `${address}.json`);
-    const prices = await coingecko.chart(address, symbol, startingTimestamp / 1000, endingTimestamp / 1000);
+    const prices = await coingecko.chart(address, symbol, startingTimestamp, endingTimestamp);
     console.log("coingeckoPrices", address, prices);
     fs.writeFileSync(path, JSON.stringify(prices));
   });
