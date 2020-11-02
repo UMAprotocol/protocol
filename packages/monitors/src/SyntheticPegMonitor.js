@@ -142,11 +142,13 @@ class SyntheticPegMonitor {
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
 
-    if (!volData) {
+    if (Object.keys(volData).includes("errorData")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "Unable to get volatility data",
-        pricefeed: "Medianizer"
+        message: "Unable to get volatility data, missing historical price data",
+        pricefeed: "Medianizer",
+        historicalTime: volData.errorData.latestTime,
+        lookback: this.volatilityWindow
       });
       return;
     }
@@ -193,11 +195,13 @@ class SyntheticPegMonitor {
 
     const volData = await this._checkPricefeedVolatility(pricefeed);
 
-    if (!volData) {
+    if (Object.keys(volData).includes("errorData")) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "Unable to get volatility data",
-        pricefeed: "Uniswap"
+        message: "Unable to get volatility data, missing historical price data",
+        pricefeed: "Uniswap",
+        historicalTime: volData.errorData.latestTime,
+        lookback: this.volatilityWindow
       });
       return;
     }
@@ -237,14 +241,19 @@ class SyntheticPegMonitor {
     }
   }
 
-  // Return historical volatility for pricefeed over specified time range and latest price.
+  // Return historical volatility for pricefeed over specified time range and latest price,
+  // or returns the timestamp from which historical price cannot be found.
   async _checkPricefeedVolatility(pricefeed) {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
     const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
     if (!volData) {
-      return null;
+      return {
+        errorData: {
+          latestTime: latestTime ? latestTime : 0
+        }
+      };
     }
 
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
