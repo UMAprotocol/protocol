@@ -59,4 +59,31 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     function burn(uint256 value) external override onlyRoleHolder(uint256(Roles.Burner)) {
         _burn(msg.sender, value);
     }
+
+    /**
+     * @notice Reset Owner role to account.
+     * @dev The caller must have the Owner role.
+     * @param account The address to which the Minter role is added.
+     */
+    function resetMinter(address account) external virtual override {
+        resetMember(uint256(Roles.Minter), account);
+    }
+
+    /**
+     * @notice Add Burner role to account.
+     * @dev The caller must have the Owner role.
+     * @param account The address to which the Burner role is added.
+     */
+    function addBurner(address account) external virtual override {
+        addMember(uint256(Roles.Burner), account);
+    }
+
+    /**
+     * @notice Reset Owner role to account.
+     * @dev The caller must have the Owner role.
+     * @param account The new holder of the Owner role.
+     */
+    function resetOwner(address account) external virtual override {
+        resetMember(uint256(Roles.Owner), account);
+    }
 }
