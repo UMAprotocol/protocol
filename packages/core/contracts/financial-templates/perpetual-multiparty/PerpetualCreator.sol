@@ -10,7 +10,6 @@ import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactoryExclusiveMinter.sol";
 import "../common/SyntheticTokenExclusiveMinter.sol";
 import "./PerpetualLib.sol";
-import "./Perpetual.sol";
 
 
 /**
