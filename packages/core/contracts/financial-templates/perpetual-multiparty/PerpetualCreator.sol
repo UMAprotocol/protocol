@@ -140,9 +140,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
     }
 
-    // IERC20Standard.decimals() will revert if the collateral contract has not implemented the
-    // decimals() method, which is possible since the method is only an OPTIONAL method in the
-    // ERC20 standard: https://eips.ethereum.org/EIPS/eip-20#methods.
+    // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
+    // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
+    // https://eips.ethereum.org/EIPS/eip-20#methods.
     function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
         try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
             return _decimals;
