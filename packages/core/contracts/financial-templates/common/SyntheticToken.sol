@@ -27,7 +27,7 @@ contract SyntheticToken is ExpandedERC20, Lockable {
      * @param account The address to which the Minter role is added.
      */
     function addMinter(address account) external override nonReentrant() {
-        resetMember(uint256(Roles.Minter), account);
+        addMember(uint256(Roles.Minter), account);
     }
 
     /**
