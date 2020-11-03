@@ -5,7 +5,10 @@ const highland = require("highland");
 const moment = require("moment");
 const Promise = require("bluebird");
 const assert = require("assert");
-const { parseFixed } = require("@uma/common");
+
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
+const { toWei, toBN, fromWei } = web3.utils;
 
 const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
   assert(coingecko, "requires coingecko api");
@@ -65,18 +68,16 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     }, []);
   }
 
-  // update this function to calculate a price.
-  // may want to instead get price based on collateral and collaterlization ratio
-  // returns a BigInt
-  function calculateValue(tokens, closestPrice, decimals = 18) {
-    return BigInt(tokens) * BigInt(parseFixed(closestPrice.toFixed(decimals), decimals).toString());
+  // TODO: update this function to use underlying contracts GCR and total token debt.
+  function calculateValue(tokens, closestPrice, decimals) {
+    return tokens.mul(toBN(toWei(closestPrice.toString()))).div(toBN(toWei(decimals.toString())));
   }
 
-  // pure function to seperate out queries from calculations
+  // pure function to separate out queries from calculations
   // this is adapted from scrips/example-contract-deployer-attributation.js
   function calculateRewards({
     empWhitelist = [],
-    snapshotSteps = 64,
+    snapshotSteps = 1,
     totalRewards,
     tokenPrices,
     blocks,
@@ -91,52 +92,60 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
 
     balanceHistories = new Map(balanceHistories);
     empDeployers = new Map(empDeployers);
-    const rewardsPerBlock = BigInt(totalRewards) / BigInt(blocks.length);
-    const payoutPerSnapshot = rewardsPerBlock * BigInt(snapshotSteps);
 
+    const rewardsPerBlock = toBN(toWei(totalRewards)).div(toBN(blocks.length));
+    const payoutPerSnapshot = rewardsPerBlock.mul(toBN(snapshotSteps));
     const valuePerSnapshot = blocks.reduce((result, block, index) => {
       if (index % snapshotSteps !== 0) return result;
       const { timestamp } = block;
-
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
           const { tokens } = balanceHistories.get(empAddress).history.lookup(block.number);
           const decimals = tokenDecimals[empIndex];
           assert(decimals, "requires token decimals lookup");
           const [, closestPrice] = tokenPrices[empIndex].closest(timestamp);
-          const totalTokens = Object.values(tokens).reduce((a, b) => a + BigInt(b), 0n);
-          // console.log({closestPrice,totalTokens},BigInt(parseFixed(closestPrice.toFixed(18),18)))
-          // need to conver total tokens to consistent decimals across all tokens
+          const totalTokens = Object.values(tokens).reduce((result, value) => {
+            return result.add(toBN(value));
+          }, toBN("0"));
           result.push([empAddress, calculateValue(totalTokens, closestPrice, decimals)]);
           return result;
         } catch (err) {
-          // this error is ok, it means we have block history before the emp had
-          // any events. this essentially means value locked at emp is 0 at this block.
+          // this error is ok, it means we have block history before the emp had any events. Locked value is 0 at this block.
           result.push([empAddress, 0]);
           return result;
         }
       }, []);
-
       result.push(valueByEmp);
       return result;
     }, []);
 
-    // per snapshot
-    return valuePerSnapshot.reduce((result, valueByEmp) => {
+    // Per snapshot calculate the associated amount that each deployer is entitled to.
+    let finalDeployerPayouts = valuePerSnapshot.reduce((result, valueByEmp) => {
       const totalValueLocked = valueByEmp.reduce((result, [, value]) => {
-        return result + BigInt(value);
-      }, 0n);
+        return result.add(toBN(value));
+      }, toBN("0"));
       valueByEmp.forEach(([emp, value]) => {
-        // console.log({value,totalValueLocked})
         const deployer = empDeployers.get(emp);
-        // this math needs work
-        const contribution = totalValueLocked > 0n ? (BigInt(value) * (2n * 10n ** 18n)) / totalValueLocked : 0n;
-        const rewards = contribution * payoutPerSnapshot;
-        if (result[deployer] == null) result[deployer] = 0n;
-        result[deployer] = result[deployer] + rewards;
+        const contribution =
+          totalValueLocked.toString() != "0"
+            ? toBN(value) // eslint-disable-line indent
+                .mul(toBN(toWei("1"))) // eslint-disable-line indent
+                .div(totalValueLocked) // eslint-disable-line indent
+            : toBN("0"); // eslint-disable-line indent
+        const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
+        if (result[deployer] == null) result[deployer] = toBN("0");
+        result[deployer] = result[deployer].add(rewards);
       });
+
       return result;
     }, {});
+
+    // Finally convert the final bignumber output to strings for export.
+    for (let contractDeployer of Object.keys(finalDeployerPayouts)) {
+      finalDeployerPayouts[contractDeployer] = fromWei(finalDeployerPayouts[contractDeployer]);
+    }
+
+    return finalDeployerPayouts;
   }
 
   async function getRewards({
@@ -145,7 +154,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     tokensToPrice = [],
     empWhitelist = [],
     empCreatorAddress,
-    snapshotSteps = 64,
+    snapshotSteps = 1,
     totalRewards,
     tokenDecimals = []
   }) {
