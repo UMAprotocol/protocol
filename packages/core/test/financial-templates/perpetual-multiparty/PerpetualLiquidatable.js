@@ -6,6 +6,7 @@ const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Contracts to unit test
@@ -17,7 +18,6 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -96,10 +96,11 @@ contract("PerpetualLiquidatable", function(accounts) {
     timer = await Timer.deployed();
     await timer.setCurrentTime(startTime);
 
-    const tokenFactory = await TokenFactory.deployed();
-
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
+    syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+      from: contractDeployer
+    });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -135,12 +136,10 @@ contract("PerpetualLiquidatable", function(accounts) {
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: priceFeedIdentifier,
       fundingRateIdentifier: fundingRateIdentifier,
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMAETH",
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
@@ -156,8 +155,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    // Get newly created synthetic token
-    syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
+    // Hand over synthetic token permissions to the new derivative contract
+    await syntheticToken.addMinter(liquidationContract.address);
+    await syntheticToken.addBurner(liquidationContract.address);
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
@@ -337,6 +337,24 @@ contract("PerpetualLiquidatable", function(accounts) {
       );
       assert.equal(liquidationId.toString(), liquidationParams.liquidationId.toString());
     });
+    it("Fails if contract does not have Burner role", async () => {
+      await syntheticToken.removeBurner(liquidationContract.address);
+
+      // This liquidation should normally succeed using the same parameters as other successful liquidations,
+      // such as in the previous test.
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: "0" },
+            { rawValue: pricePerToken.toString() },
+            { rawValue: amountOfSynthetic.toString() },
+            unreachableDeadline,
+            { from: liquidator }
+          )
+        )
+      );
+    });
     it("Pulls correct token amount", async () => {
       const { tokensLiquidated } = await liquidationContract.createLiquidation.call(
         sponsor,
@@ -351,6 +369,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal(tokensLiquidated.toString(), amountOfSynthetic.toString());
 
       const intitialBalance = await syntheticToken.balanceOf(liquidator);
+
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -1668,7 +1687,13 @@ contract("PerpetualLiquidatable", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
+      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+        from: contractDeployer
+      });
+      liquidatableParameters.tokenAddress = syntheticToken.address;
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      await syntheticToken.addMinter(edgeLiquidationContract.address);
+      await syntheticToken.addBurner(edgeLiquidationContract.address);
       // Get newly created synthetic token
       const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation
@@ -1864,13 +1889,11 @@ contract("PerpetualLiquidatable", function(accounts) {
     const USDCScalingFactor = toBN("1000000000000"); // 1e12
 
     // By dividing the pre-defined parameters by the scaling factor 1e12 they are brought down from 1e18 to 1e6
-    const USDCPricePerToken = pricePerToken.div(USDCScalingFactor); // 1.5e6
-    const USDCDisputePrice = settlementPrice.div(USDCScalingFactor); // 1.0e6
     const USDCAmountOfCollateral = amountOfCollateral.div(USDCScalingFactor); // 150e6
-    // Note: the number of synthetics does not get scaled. This is still the 100e18 as with other tests.
+    const USDCAmountOfSynthetic = amountOfSynthetic.div(USDCScalingFactor); // 150e6
 
     // Next, re-define a number of constants used before in terms of the newly scaled variables
-    const USDCSettlementTRV = amountOfSynthetic.mul(USDCDisputePrice).div(toBN(toWei("1"))); // 100e6
+    const USDCSettlementTRV = USDCAmountOfSynthetic.mul(settlementPrice).div(toBN(toWei("1"))); // 100e6
     const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
     const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
@@ -1882,12 +1905,19 @@ contract("PerpetualLiquidatable", function(accounts) {
       await collateralToken.allocateTo(sponsor, toWei("100"));
       await collateralToken.allocateTo(disputer, toWei("100"));
 
+      syntheticToken = await SyntheticToken.new("USDCETH", "USDCETH", 6);
+
       // Update the liquidatableParameters to use the new token as collateral and deploy a new Liquidatable contract
       let USDCLiquidatableParameters = liquidatableParameters;
       USDCLiquidatableParameters.collateralAddress = collateralToken.address;
+      USDCLiquidatableParameters.tokenAddress = syntheticToken.address;
+      USDCLiquidatableParameters.minSponsorTokens = { rawValue: minSponsorTokens.div(USDCScalingFactor).toString() };
       USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
         from: contractDeployer
       });
+
+      await syntheticToken.addMinter(USDCLiquidationContract.address);
+      await syntheticToken.addBurner(USDCLiquidationContract.address);
 
       // Get newly created synthetic token and set it as the global synthetic token.
       syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
@@ -1907,18 +1937,18 @@ contract("PerpetualLiquidatable", function(accounts) {
       // a value of 100e18.
       await USDCLiquidationContract.create(
         { rawValue: USDCAmountOfCollateral.toString() },
-        { rawValue: amountOfSynthetic.toString() },
+        { rawValue: USDCAmountOfSynthetic.toString() },
         { from: sponsor }
       );
       // Transfer USDCSynthetic tokens to a liquidator
-      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      await syntheticToken.transfer(liquidator, USDCAmountOfSynthetic, { from: sponsor });
 
       // Create a Liquidation which can be tested against.
       await USDCLiquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
-        { rawValue: USDCPricePerToken.toString() },
-        { rawValue: amountOfSynthetic.toString() },
+        { rawValue: pricePerToken.toString() }, // Prices should use 18 decimals.
+        { rawValue: USDCAmountOfSynthetic.toString() },
         unreachableDeadline,
         { from: liquidator }
       );
@@ -1930,7 +1960,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       beforeEach(async () => {
         // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
         const liquidationTime = await USDCLiquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, USDCDisputePrice.toString());
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
         // What is tested in the assertions that follow focus specifically on instances whewre in collateral
         // moves around. Other kinds of tests (like revert on Rando calls) are not tested again for brevity
       });
@@ -2086,7 +2116,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       beforeEach(async () => {
         // Settle the dispute as FAILED. To achieve this the liquidation must be correct.
         const liquidationTime = await USDCLiquidationContract.getCurrentTime();
-        const disputePrice = toBN(toWei("1.3")).div(USDCScalingFactor);
+        const disputePrice = toBN(toWei("1.3")); // Prices should always be in 18 decimals.
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
       });
       it("Liquidator calls, liquidation is deleted", async () => {
@@ -2112,9 +2142,14 @@ contract("PerpetualLiquidatable", function(accounts) {
   describe("Precision loss is handled as expected", () => {
     beforeEach(async () => {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
+      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+        from: contractDeployer
+      });
+      liquidatableParameters.tokenAddress = syntheticToken.address;
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
       liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
-      syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
+      await syntheticToken.addMinter(liquidationContract.address);
+      await syntheticToken.addBurner(liquidationContract.address);
 
       // Create a new position with:
       // - 30 collateral

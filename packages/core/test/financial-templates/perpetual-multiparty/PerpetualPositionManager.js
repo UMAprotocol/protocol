@@ -16,7 +16,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -37,7 +36,6 @@ contract("PerpetualPositionManager", function(accounts) {
   let mockOracle;
   let financialContractsAdmin;
   let timer;
-  let tokenFactory;
   let finder;
   let mockFundingRateStore;
   let store;
@@ -93,7 +91,6 @@ contract("PerpetualPositionManager", function(accounts) {
 
   before(async function() {
     store = await Store.deployed();
-    tokenFactory = await TokenFactory.deployed();
   });
 
   beforeEach(async function() {
@@ -102,6 +99,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
+
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
 
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     timer = await Timer.deployed();
@@ -138,18 +139,19 @@ contract("PerpetualPositionManager", function(accounts) {
     positionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await positionManager.tokenCurrency());
+
+    // Give contract owner permissions.
+    await tokenCurrency.addMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
   });
 
   afterEach(async () => {
@@ -160,6 +162,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // PricelessPosition variables
     assert.equal(await positionManager.withdrawalLiveness(), withdrawalLiveness);
     assert.equal(await positionManager.collateralCurrency(), collateral.address);
+    assert.equal(await positionManager.tokenCurrency(), tokenCurrency.address);
     assert.equal(await positionManager.finder(), finder.address);
     assert.equal(hexToUtf8(await positionManager.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
     assert.equal(await positionManager.emergencyShutdownTimestamp(), 0);
@@ -177,12 +180,10 @@ contract("PerpetualPositionManager", function(accounts) {
         PerpetualPositionManager.new(
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-          syntheticName, // _syntheticName
-          syntheticSymbol, // _syntheticSymbol
-          tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -194,6 +195,10 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Withdrawal liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
+
     const largeLiveness = toBN(2)
       .pow(toBN(256))
       .subn(10)
@@ -201,17 +206,17 @@ contract("PerpetualPositionManager", function(accounts) {
     positionManager = await PerpetualPositionManager.new(
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
+    await tokenCurrency.addMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
@@ -317,6 +322,10 @@ contract("PerpetualPositionManager", function(accounts) {
     const redeem = positionManager.redeem;
     const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
     assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
+    // Check that redeem fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(redeem({ rawValue: redeemTokens }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
     let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
@@ -339,6 +348,19 @@ contract("PerpetualPositionManager", function(accounts) {
     expectedSponsorTokens = expectedSponsorTokens.add(toBN(createAdditionalTokens));
     expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
     await collateral.approve(positionManager.address, createAdditionalCollateral, { from: sponsor });
+    // Check that create fails if missing Minter role.
+    await tokenCurrency.removeMinter(positionManager.address);
+    assert(
+      await didContractThrow(
+        positionManager.create(
+          { rawValue: createAdditionalCollateral },
+          { rawValue: createAdditionalTokens },
+          { from: sponsor },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.addMinter(positionManager.address);
     await positionManager.create(
       { rawValue: createAdditionalCollateral },
       { rawValue: createAdditionalTokens },
@@ -689,6 +711,10 @@ contract("PerpetualPositionManager", function(accounts) {
     const initialSponsorTokenDebt = toBN((await positionManager.positions(sponsor)).tokensOutstanding.rawValue);
     const initialTotalTokensOutstanding = await positionManager.totalTokensOutstanding();
 
+    // Check that repay fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.repay({ rawValue: toWei("40") }, { from: sponsor })));
+    await tokenCurrency.addBurner(positionManager.address);
     const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
 
     // Event is correctly emitted.
@@ -889,6 +915,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(positionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
+    // Check that settlement fails if missing Burner role.
+    await tokenCurrency.removeBurner(positionManager.address);
+    assert(await didContractThrow(positionManager.settleEmergencyShutdown({ from: tokenHolder })));
+    await tokenCurrency.addBurner(positionManager.address);
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
     assert.equal((await positionManager.emergencyShutdownPrice()).toString(), toWei("1.1"));
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
@@ -1629,25 +1659,32 @@ contract("PerpetualPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
+    const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
+
     let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
+      nonStandardToken.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
-    // Create the initial custompositionManager position. 100 synthetics backed by 150 collat
-    const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
+    await tokenCurrency.addMinter(custompositionManager.address);
+    await tokenCurrency.addBurner(custompositionManager.address);
 
-    // however the collateral is now delimited by a different number of decimals. 150 * 1e6
+    // Token currency and collateral have same # of decimals.
+    assert.equal(await tokenCurrency.decimals(), 6);
+
+    // Create the initial custom positionManager position. 100 synthetics backed by 150 collat
+    const createTokens = toBN("100")
+      .muln(1e6)
+      .toString();
+    // The collateral is delimited by the same number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
       .toString();
@@ -1692,13 +1729,15 @@ contract("PerpetualPositionManager", function(accounts) {
     );
     assert.equal((await custompositionManager.totalTokensOutstanding()).toString(), expectedSponsorTokens.toString());
 
-    // The key with non-standard ERC20 delimitation is how the oracle responds to requests.
+    // By matching collateral and synthetic precision, we can assume that oracle price requests will always resolve to 18 decimals.
     // The two cases that need to be tested are responding to dispute requests and settlement.
     // Dispute and liquidation is tested in `Liquidatable.js`. Here we test settlement.
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     // Sponsor now has 50 synthetics and 200 collateral. Note that synthetic tokens are still represented with 1e18 base.
-    const tokenHolderTokens = toWei("50");
+    const tokenHolderTokens = toBN("50")
+      .muln(1e6)
+      .toString();
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
       from: sponsor
     });
@@ -1709,8 +1748,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
-    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC.
-    const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
+    const redemptionPrice = toBN(toWei("1.2")); // 1.2*1e18
     await mockOracle.pushPrice(priceFeedIdentifier, emergencyShutdownTime, redemptionPrice.toString());
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
