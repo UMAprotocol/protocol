@@ -84,6 +84,7 @@ contract("contracts", function(accounts) {
     });
     it("gets emp info", async function() {
       const result = await emp.info(empContract.address);
+      assert.equal(result.address, empContract.address);
       assert.equal(result.token.address, await empContract.tokenCurrency());
       assert.equal(result.token.decimals, 18);
       assert.equal(result.collateral.address, collateralToken.address);
