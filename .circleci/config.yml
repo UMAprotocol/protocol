@@ -187,7 +187,7 @@ workflows:
           context: api_keys
           requires:
             - checkout_and_install
-      - slither
+      # - slither
       - build:
           requires:
             - checkout_and_install
