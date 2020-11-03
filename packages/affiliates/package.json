@@ -18,6 +18,7 @@
   "scripts": {
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test/mocha/*.js",
-    "test-truffle": "truffle test test/truffle/*.js --network=test"
+    "test-truffle": "truffle test test/truffle/*.js --network=test",
+    "test-e2e": "mocha test/e2e/*.js"
   }
 }
