@@ -154,8 +154,8 @@ contract("FundingRateStore", function(accounts) {
       await store.setFinalFee(collateralCurrency.address, { rawValue: finalFeeAmount.toString() });
 
       // Mint proposer enough collateral to cover final fee.
-      await collateralCurrency.mint(proposer, finalFeeAmount);
-      await collateralCurrency.increaseAllowance(fundingRateStore.address, finalFeeAmount, { from: proposer });
+      await collateralCurrency.mint(proposer, toWei("100"));
+      await collateralCurrency.increaseAllowance(fundingRateStore.address, toWei("100"), { from: proposer });
 
       // Propose new funding rate
       proposalTime = await fundingRateStore.getCurrentTime();
@@ -163,8 +163,8 @@ contract("FundingRateStore", function(accounts) {
       await incrementTime(fundingRateStore, liveness - 1);
 
       // Mint disputer collateral to cover final fee bond as well.
-      await collateralCurrency.mint(disputer, finalFeeAmount);
-      await collateralCurrency.increaseAllowance(fundingRateStore.address, finalFeeAmount, { from: disputer });
+      await collateralCurrency.mint(disputer, toWei("100"));
+      await collateralCurrency.increaseAllowance(fundingRateStore.address, toWei("100"), { from: disputer });
     });
 
     it("Disputing unexpired proposal", async function() {
@@ -181,6 +181,9 @@ contract("FundingRateStore", function(accounts) {
       const disputeTxn = await fundingRateStore.dispute(identifier, { from: disputer });
       const postBalance = await collateralCurrency.balanceOf(disputer);
       assert.equal(finalFeeAmount.toString(), toBN(preBalance).sub(toBN(postBalance)));
+
+      // Can't dispute again because now there is no pending proposal.
+      assert(await didContractThrow(fundingRateStore.dispute(identifier, { from: disputer })));
 
       // Price request is enqueued.
       const pendingRequests = await mockOracle.getPendingQueries();
@@ -207,10 +210,102 @@ contract("FundingRateStore", function(accounts) {
           ev.disputer === disputer
         );
       });
+
+      // Can propose another proposal.
+      await fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: proposer });
+      // Now you can dispute because there is again a pending proposal
+      await fundingRateStore.dispute(identifier, { from: disputer });
     });
 
-    // - Settle dispute:
-    //     - Check that it reverts if there is no price request, rewards the winner, updates the current rate (without affecting a pending rate), emits an event, and deletes a dispute record
+    it("Settling FAILED disputed proposal", async function() {
+      const disputePrice = toWei("0.01");
+      await fundingRateStore.dispute(identifier, { from: disputer });
+      const newProposalTime = await fundingRateStore.getCurrentTime();
+      await fundingRateStore.propose(identifier, { rawValue: toWei("-0.01") }, { from: proposer });
+
+      // Reverts if price has not resolved yet.
+      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer })));
+      await mockOracle.pushPrice(identifier, proposalTime, disputePrice.toString());
+
+      // Reverts if identifier+time combo does not corresponding to a price requeust.
+      assert(
+        await didContractThrow(
+          fundingRateStore.withdrawDispute(toHex("WRONG-IDENTIFIER"), proposalTime, { from: disputer })
+        )
+      );
+      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, 123, { from: disputer })));
+
+      const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
+      const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      const settlementTxn = await fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer });
+
+      // Reverts if dispute is already settled.
+      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer })));
+
+      // Publish event was emitted.
+      truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
+        return (
+          toUtf8(ev.identifier) === toUtf8(identifier) &&
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposalTime.toString() &&
+          ev.proposer === proposer // For a FAILED dispute, the proposer in this event is credited to the proposer
+        );
+      });
+
+      // Funding rate is updated.
+      assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.01"));
+
+      // Disputed funding rate record is deleted.
+      const disputedProposal = await fundingRateStore.fundingRateDisputes(identifier, proposalTime);
+      isEmptyProposalStruct(disputedProposal.proposal);
+
+      // Pending funding rate proposal is untouched.
+      const pendingProposal = await fundingRateStore.fundingRateRecords(identifier);
+      assert.equal(pendingProposal.proposal.time, newProposalTime);
+      assert.equal(pendingProposal.proposal.rate, toWei("-0.01").toString());
+      assert.equal(pendingProposal.proposal.proposer, proposer);
+      assert.equal(pendingProposal.proposal.disputer, ZERO_ADDRESS);
+      assert.equal(pendingProposal.proposal.finalFee.toString(), finalFeeAmount.toString());
+
+      // Proposer receives final fee rebate, disputer receives nothing.
+      const postBalanceDisputer = await collateralCurrency.balanceOf(disputer);
+      const postBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      assert.equal(finalFeeAmount.toString(), toBN(postBalanceProposer).sub(toBN(preBalanceProposer)));
+      assert.equal("0", toBN(postBalanceDisputer).sub(toBN(preBalanceDisputer)));
+    });
+
+    it("Settling SUCCESSFUL disputed proposal", async function() {
+      const disputePrice = toWei("-0.01");
+      await fundingRateStore.dispute(identifier, { from: disputer });
+
+      await mockOracle.pushPrice(identifier, proposalTime, disputePrice.toString());
+
+      const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
+      const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      const settlementTxn = await fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer });
+
+      // Publish event was emitted.
+      truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
+        return (
+          toUtf8(ev.identifier) === toUtf8(identifier) &&
+          ev.rate.toString() === toWei("-0.01").toString() &&
+          ev.proposalTime.toString() === proposalTime.toString() &&
+          ev.proposer === disputer // For a SUCCESSFUL dispute, the proposer in this event is credited to the disputer
+        );
+      });
+
+      // Funding rate is updated.
+      assert.equal(
+        (await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(),
+        toWei("-0.01")
+      );
+
+      // Disputer receives final fee rebate, proposer receives nothing.
+      const postBalanceDisputer = await collateralCurrency.balanceOf(disputer);
+      const postBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      assert.equal(finalFeeAmount.toString(), toBN(postBalanceDisputer).sub(toBN(preBalanceDisputer)));
+      assert.equal("0", toBN(postBalanceProposer).sub(toBN(preBalanceProposer)));
+    });
 
     it("Cannot dispute expired proposal", async function() {
       await incrementTime(fundingRateStore, 1);

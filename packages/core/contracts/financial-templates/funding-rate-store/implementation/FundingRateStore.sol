@@ -163,11 +163,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
 
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
-        FixedPoint.Signed memory settlementRate = _getOraclePrice(identifier, proposalTime);
+        // If the fundingRateDispute struct has been deleted, then this call will also fail because the proposal
+        // time will be 0.
+        FixedPoint.Signed memory settlementRate = _getOraclePrice(identifier, fundingRateDispute.proposal.time);
 
-        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
-        // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
-        bool disputeSucceeded = settlementRate.isEqual(fundingRateDispute.proposal.rate.rawValue);
+        // Dispute was successful if settled rate is different from proposed rate.
+        bool disputeSucceeded = !settlementRate.isEqual(fundingRateDispute.proposal.rate);
         address proposer = disputeSucceeded
             ? fundingRateDispute.proposal.disputer
             : fundingRateDispute.proposal.proposer;
