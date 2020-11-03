@@ -1,4 +1,5 @@
 const { DeployerRewards } = require("../libs/affiliates");
+const moment = require("moment");
 const { assert } = require("chai");
 const empAbi = require("../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../core/build/contracts/ExpiringMultiPartyCreator");
@@ -26,8 +27,11 @@ function Queries() {
     streamBlocks() {
       return highland(require(`./datasets/${datasetName}/blocks`));
     },
-    getBlocks() {
-      return require(`./datasets/${datasetName}/blocks`);
+    getBlocks(start, end) {
+      return require(`./datasets/${datasetName}/blocks`).filter(block => {
+        const blockTime = moment(block.timestamp.value).valueOf();
+        return blockTime >= start && blockTime <= end;
+      });
     }
   };
 }
@@ -65,7 +69,7 @@ describe("DeployerRewards", function() {
   it("getPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = syntheticTokens;
-    const result = await affiliates.utils.getPriceHistory(address, startingTimestamp);
+    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {
@@ -81,9 +85,12 @@ describe("DeployerRewards", function() {
     const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
     assert(result.length);
   });
-  // This is the big kahuna, full integration test. WIP
   it("calculateRewards", async function() {
     this.timeout(100000);
+
+    const startingTimestamp = moment("2020-10-01 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
+    const endingTimestamp = moment("2020-10-08 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+
     const result = await affiliates.getRewards({
       totalRewards: devRewardsToDistribute,
       startTime: startingTimestamp,
@@ -93,8 +100,9 @@ describe("DeployerRewards", function() {
       tokensToPrice: syntheticTokens,
       tokenDecimals: syntheticTokenDecimals
     });
-    assert.ok(result);
     // WIP
-    // console.log(result);
+
+    assert.equal(Object.keys(result).length, 1); // there should only be 1 deployer
+    assert.equal(Number(Object.values(result)[0]), Number(devRewardsToDistribute)); // the total rewards distributed should equal the number specified
   });
 });
