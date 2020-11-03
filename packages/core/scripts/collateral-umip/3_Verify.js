@@ -2,7 +2,7 @@
 // It can be run on mainnet after the upgrade is completed or on the local Ganache mainnet fork to validate the
 // execution of the previous two scripts. This script does not need any wallets unlocked and does not make any on-chain
 // state changes. It can be run as:
-// yarn truffle exec ./scripts/collateral-umip/3_Verify.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1
+// yarn truffle exec ./scripts/collateral-umip/3_Verify.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 --collateral 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --fee 400
 
 const assert = require("assert").strict;
 
@@ -17,14 +17,17 @@ const argv = require("minimist")(process.argv.slice(), { string: ["collateral", 
 
 async function getDecimals(collateralAddress, decimalsArg) {
   const collateral = await ERC20.at(collateralAddress);
-  try {
-    const decimals = (await collateral.decimals()).toString();
-    return decimals;
-  } catch (error) {
-    if (!decimalsArg) {
+  if (decimalsArg) {
+    console.log(`Using user input decimals: ${decimalsArg} for collateral: ${collateralAddress}`);
+    return decimalsArg;
+  } else {
+    try {
+      const decimals = (await collateral.decimals()).toString();
+      console.log(`Using decimals returned by contract: ${decimals} for collateral ${collateralAddress}`);
+      return decimals;
+    } catch (error) {
       throw "Must provide --decimals if token has no decimals function.";
     }
-    return decimalsArg;
   }
 }
 

@@ -2,7 +2,7 @@
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as: yarn truffle exec ./scripts/collateral-umip/1_Propose.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 from core
+// Then execute the script as: yarn truffle exec ./scripts/collateral-umip/1_Propose.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 --collateral 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --fee 400 from core
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
@@ -19,14 +19,17 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function getDecimals(collateralAddress, decimalsArg) {
   const collateral = await ERC20.at(collateralAddress);
-  try {
-    const decimals = (await collateral.decimals()).toString();
-    return decimals;
-  } catch (error) {
-    if (!decimalsArg) {
+  if (decimalsArg) {
+    console.log(`Using user input decimals: ${decimalsArg} for collateral ${collateralAddress}`);
+    return decimalsArg;
+  } else {
+    try {
+      const decimals = (await collateral.decimals()).toString();
+      console.log(`Using decimals returned by contract: ${decimals} for collateral ${collateralAddress}`);
+      return decimals;
+    } catch (error) {
       throw "Must provide --decimals if token has no decimals function.";
     }
-    return decimalsArg;
   }
 }
 
@@ -43,9 +46,6 @@ async function runExport() {
   const decimals = argv.decimals && _.castArray(argv.decimals);
 
   if (collaterals.length !== fees.length || (decimals && decimals.length !== collaterals.length)) {
-    console.log(collaterals.length);
-    console.log(fees.length);
-    console.log(decimals);
     throw "Must provide the same number of elements to --fee, --collateral, and --decimals (optional)";
   }
 
