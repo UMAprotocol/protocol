@@ -77,6 +77,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         finder = FinderInterface(_finderAddress);
     }
 
+    /**
+     * @notice Returns the current funding rate or the pending funding rate if its liveness has expired.
+     */
     function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
@@ -87,6 +90,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         }
     }
 
+    /**
+     * @notice Propose a new funding rate for an identifier. A side effect of this method is that it will
+     * overwrite the current funding rate with a pending funding rate if its liveness has expired. If this update
+     * occurs, then this method will also pay the proposer their reward for successfully updating the current rate.
+     * @dev This will revert if there is already a pending funding rate for the identifier.
+     * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
+     * receive back once their funding rate is published.
+     */
     function propose(bytes32 identifier, FixedPoint.Signed memory rate) external {
         // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
@@ -131,6 +142,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
     }
 
+    /**
+     * @notice Dispute a pending funding rate. This will delete the pending funding rate, meaning that a
+     * proposer can now proposer another rate with a fresh liveness.
+     * @dev This will revert if there is no pending funding rate for the identifier.
+     * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
+     * receive back if their dispute is successful.
+     */
     function dispute(bytes32 identifier) external {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
@@ -159,7 +177,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         delete fundingRateRecords[identifier].proposal;
     }
 
-    function withdrawDispute(bytes32 identifier, uint256 proposalTime) external {
+    /**
+     * @notice Settle a disputed funding rate. The winner of the dispute, either the disputer or the proposer,
+     * will receive a reward plus their final fee bond. This method will also overwrite the current funding rate
+     * with the resolved funding rate returned by the Oracle. Pending funding rates are unaffected by this method.
+     * @dev This will revert if there is no price available for the disputed funding rate.
+     */
+    function settleDispute(bytes32 identifier, uint256 proposalTime) external {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
 
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
@@ -225,14 +249,18 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
+    // Returns the pending Proposal struct for an identifier.
     function _getFundingRateRecord(bytes32 identifier) private view returns (FundingRateRecord storage) {
         return fundingRateRecords[identifier];
     }
 
+    // Returns the disputed Proposal struct for an identifier and proposal time. This returns empty if the dispute
+    // has already been resolved via `settleDispute`.
     function _getFundingRateDispute(bytes32 identifier, uint256 time) private view returns (FundingRateRecord storage) {
         return fundingRateDisputes[identifier][time];
     }
 
+    // Returns whether a proposal is a pending or expired proposal, or does not exist.
     function _getProposalState(Proposal storage proposal) private view returns (ProposalState) {
         uint256 time = proposal.time;
         if (time == 0) {

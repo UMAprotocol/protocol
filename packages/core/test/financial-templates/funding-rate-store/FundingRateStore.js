@@ -224,23 +224,23 @@ contract("FundingRateStore", function(accounts) {
       await fundingRateStore.propose(identifier, { rawValue: toWei("-0.01") }, { from: proposer });
 
       // Reverts if price has not resolved yet.
-      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer })));
+      assert(await didContractThrow(fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer })));
       await mockOracle.pushPrice(identifier, proposalTime, disputePrice.toString());
 
       // Reverts if identifier+time combo does not corresponding to a price requeust.
       assert(
         await didContractThrow(
-          fundingRateStore.withdrawDispute(toHex("WRONG-IDENTIFIER"), proposalTime, { from: disputer })
+          fundingRateStore.settleDispute(toHex("WRONG-IDENTIFIER"), proposalTime, { from: disputer })
         )
       );
-      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, 123, { from: disputer })));
+      assert(await didContractThrow(fundingRateStore.settleDispute(identifier, 123, { from: disputer })));
 
       const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
       const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
-      const settlementTxn = await fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer });
+      const settlementTxn = await fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer });
 
       // Reverts if dispute is already settled.
-      assert(await didContractThrow(fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer })));
+      assert(await didContractThrow(fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer })));
 
       // Publish event was emitted.
       truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
@@ -282,7 +282,7 @@ contract("FundingRateStore", function(accounts) {
 
       const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
       const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
-      const settlementTxn = await fundingRateStore.withdrawDispute(identifier, proposalTime, { from: disputer });
+      const settlementTxn = await fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer });
 
       // Publish event was emitted.
       truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
