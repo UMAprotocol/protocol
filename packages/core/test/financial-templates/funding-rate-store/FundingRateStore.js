@@ -128,6 +128,14 @@ contract("FundingRateStore", function(accounts) {
       await fundingRateStore.propose(identifier, { rawValue: toWei("-0.01") }, { from: proposer });
       const postBalance = await collateralCurrency.balanceOf(proposer);
       assert.equal(finalFeeAmount.toString(), toBN(preBalance).sub(toBN(postBalance)));
+
+      // Once proposal expires, proposer receives a final fee rebate.
+      await incrementTime(fundingRateStore, liveness);
+      await collateralCurrency.mint(rando, finalFeeAmount);
+      await collateralCurrency.increaseAllowance(fundingRateStore.address, finalFeeAmount, { from: rando });
+      await fundingRateStore.propose(identifier, { rawValue: toWei("0.01") }, { from: rando });
+      const postExpiryBalance = await collateralCurrency.balanceOf(proposer);
+      assert.equal(finalFeeAmount.toString(), toBN(postExpiryBalance).sub(toBN(postBalance)));
     });
 
     it("New proposal not allowed", async function() {

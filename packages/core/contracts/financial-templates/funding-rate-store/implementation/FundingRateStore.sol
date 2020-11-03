@@ -100,7 +100,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
             // Publish expired rate, reward proposer.
             fundingRateRecord.rate = fundingRateRecord.proposal.rate;
 
-            // TODO: Reward = proposal bond + final fee credit
+            // TODO: Reward = proposal bond
+            collateralCurrency.safeTransfer(
+                fundingRateRecord.proposal.proposer,
+                fundingRateRecord.proposal.finalFee.rawValue
+            );
+
             emit PublishedRate(
                 identifier,
                 fundingRateRecord.rate.rawValue,
