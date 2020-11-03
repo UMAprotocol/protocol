@@ -11,19 +11,20 @@ const Store = artifacts.require("Store");
 const ERC20 = artifacts.require("ERC20");
 
 const { parseUnits } = require("@ethersproject/units");
+const _ = require("lodash");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
 
-async function getDecimals() {
-  const collateral = await ERC20.at(argv.collateral);
+async function getDecimals(collateralAddress, decimalsArg) {
+  const collateral = await ERC20.at(collateralAddress);
   try {
     const decimals = (await collateral.decimals()).toString();
     return decimals;
   } catch (error) {
-    if (!argv.decimals) {
+    if (!decimalsArg) {
       throw "Must provide --decimals if token has no decimals function.";
     }
-    return argv.decimals;
+    return decimalsArg;
   }
 }
 
@@ -34,13 +35,24 @@ async function runExport() {
     throw "Must provide --fee and --collateral";
   }
 
-  const decimals = await getDecimals();
+  const collaterals = _.castArray(argv.collateral);
+  const fees = _.castArray(argv.fee);
+  const decimals = argv.decimals && _.castArray(argv.decimals);
 
-  const store = await Store.deployed();
-  assert.equal((await store.computeFinalFee(argv.collateral)).rawValue, parseUnits(argv.fee, decimals).toString());
+  const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
+    return { collateral, fee, numDecimalsArg };
+  });
 
-  const whitelist = await AddressWhitelist.deployed();
-  assert(await whitelist.isOnWhitelist(argv.collateral));
+  for (const { collateral, fee, numDecimalsArg } of argObjects) {
+    const decimal = await getDecimals(collateral, numDecimalsArg);
+
+    const store = await Store.deployed();
+    assert.equal((await store.computeFinalFee(collateral)).rawValue, parseUnits(fee, decimal).toString());
+
+    const whitelist = await AddressWhitelist.deployed();
+    assert(await whitelist.isOnWhitelist(collateral));
+  }
+
   console.log("Upgrade Verified!");
 }
 

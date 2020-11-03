@@ -30,10 +30,6 @@ async function getDecimals(collateralAddress, decimalsArg) {
   }
 }
 
-function arrayifyArg(input) {
-  return typeof input === "string" ? [input] : input;
-}
-
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
@@ -42,11 +38,14 @@ async function runExport() {
     throw "Must provide --fee and --collateral";
   }
 
-  const collaterals = arrayifyArg(argv.collateral);
-  const fees = arrayifyArg(argv.fee);
-  const decimals = arrayifyArg(argv.decimals);
+  const collaterals = _.castArray(argv.collateral);
+  const fees = _.castArray(argv.fee);
+  const decimals = argv.decimals && _.castArray(argv.decimals);
 
   if (collaterals.length !== fees.length || (decimals && decimals.length !== collaterals.length)) {
+    console.log(collaterals.length);
+    console.log(fees.length);
+    console.log(decimals);
     throw "Must provide the same number of elements to --fee, --collateral, and --decimals (optional)";
   }
 
@@ -88,8 +87,8 @@ async function runExport() {
 
       console.log(`
 
-      Collateral currency: ${args.collateral}
-      Final fee: ${args.fee}
+      Collateral currency: ${collateral}
+      Final fee: ${fee}
       
       `);
     }
