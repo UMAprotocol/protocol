@@ -3,6 +3,8 @@
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/collateral-umip/1_Propose.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 --collateral 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --fee 400 from core
+// Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
+// triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
@@ -10,6 +12,7 @@ const Governor = artifacts.require("Governor");
 const ERC20 = artifacts.require("ERC20");
 
 const { parseUnits } = require("@ethersproject/units");
+const { getDecimals } = require("./utils");
 
 const _ = require("lodash");
 
@@ -17,28 +20,12 @@ const argv = require("minimist")(process.argv.slice(), { string: ["collateral", 
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
-async function getDecimals(collateralAddress, decimalsArg) {
-  const collateral = await ERC20.at(collateralAddress);
-  if (decimalsArg) {
-    console.log(`Using user input decimals: ${decimalsArg} for collateral ${collateralAddress}`);
-    return decimalsArg;
-  } else {
-    try {
-      const decimals = (await collateral.decimals()).toString();
-      console.log(`Using decimals returned by contract: ${decimals} for collateral ${collateralAddress}`);
-      return decimals;
-    } catch (error) {
-      throw "Must provide --decimals if token has no decimals function.";
-    }
-  }
-}
-
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
 
   if (!argv.collateral || !argv.fee) {
-    throw "Must provide --fee and --collateral";
+    throw new Error("Must provide --fee and --collateral");
   }
 
   const collaterals = _.castArray(argv.collateral);
@@ -46,7 +33,7 @@ async function runExport() {
   const decimals = argv.decimals && _.castArray(argv.decimals);
 
   if (collaterals.length !== fees.length || (decimals && decimals.length !== collaterals.length)) {
-    throw "Must provide the same number of elements to --fee, --collateral, and --decimals (optional)";
+    throw new Error("Must provide the same number of elements to --fee, --collateral, and --decimals (optional)");
   }
 
   const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
@@ -54,7 +41,7 @@ async function runExport() {
   });
 
   const getTxns = async ({ collateral, fee, numDecimalsArg }) => {
-    const decimals = await getDecimals(collateral, numDecimalsArg);
+    const decimals = await getDecimals(collateral, numDecimalsArg, ERC20);
     console.log("Examining collateral", collateral);
     const convertedFeeAmount = parseUnits(fee, decimals).toString();
     console.log(`Fee in token's decimals: ${convertedFeeAmount}`);

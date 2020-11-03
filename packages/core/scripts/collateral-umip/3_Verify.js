@@ -12,24 +12,9 @@ const ERC20 = artifacts.require("ERC20");
 
 const { parseUnits } = require("@ethersproject/units");
 const _ = require("lodash");
+const { getDecimals } = require("./utils");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
-
-async function getDecimals(collateralAddress, decimalsArg) {
-  const collateral = await ERC20.at(collateralAddress);
-  if (decimalsArg) {
-    console.log(`Using user input decimals: ${decimalsArg} for collateral: ${collateralAddress}`);
-    return decimalsArg;
-  } else {
-    try {
-      const decimals = (await collateral.decimals()).toString();
-      console.log(`Using decimals returned by contract: ${decimals} for collateral ${collateralAddress}`);
-      return decimals;
-    } catch (error) {
-      throw "Must provide --decimals if token has no decimals function.";
-    }
-  }
-}
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");
@@ -47,7 +32,7 @@ async function runExport() {
   });
 
   for (const { collateral, fee, numDecimalsArg } of argObjects) {
-    const decimal = await getDecimals(collateral, numDecimalsArg);
+    const decimal = await getDecimals(collateral, numDecimalsArg, ERC20);
 
     const store = await Store.deployed();
     assert.equal((await store.computeFinalFee(collateral)).rawValue, parseUnits(fee, decimal).toString());
