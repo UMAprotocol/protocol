@@ -6,8 +6,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -173,16 +173,15 @@ contract("CreatePriceFeed.js", function(accounts) {
   it("Default Uniswap Config", async function() {
     // Given the collateral token is 0x1, the , it should always come first, meaning the config should always be inverted.
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
+      tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -216,16 +215,15 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Uniswap address not found", async function() {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -274,6 +272,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
   it("Create token price feed for Balancer", async function() {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
+
     const config = {
       type: "balancer",
       balancerAddress,
@@ -285,11 +285,9 @@ contract("CreatePriceFeed.js", function(accounts) {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
+      tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -308,6 +306,8 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Create token price feed for Uniswap", async function() {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
+
     const config = {
       type: "uniswap",
       uniswapAddress,
@@ -319,11 +319,9 @@ contract("CreatePriceFeed.js", function(accounts) {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
+      tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -342,15 +340,15 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Create token price feed defaults to Medianizer", async function() {
     const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
+
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralTokenAddress,
+      tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -464,16 +462,15 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Default reference price feed", async function() {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -500,16 +497,15 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Default reference price feed for invalid identifier", async function() {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("Invalid Identifier"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },

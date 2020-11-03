@@ -10,8 +10,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -68,6 +68,12 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           tokenConfig.collateralDecimals,
           { from: tokenSponsor }
         );
+        syntheticToken = await SyntheticToken.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
         await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
         await collateralToken.mint(liquidator, convert("100000"), { from: tokenSponsor });
         await collateralToken.mint(sponsor1, convert("100000"), { from: tokenSponsor });
@@ -94,11 +100,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           expirationTimestamp: expirationTime.toString(),
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
+          tokenAddress: syntheticToken.address,
           finderAddress: Finder.address,
-          tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
-          syntheticName: `Test ${identifier} Token`,
-          syntheticSymbol: identifier,
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -110,6 +114,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         };
 
         emp = await ExpiringMultiParty.new(constructorParams);
+        await syntheticToken.addMinter(emp.address);
+        await syntheticToken.addBurner(emp.address);
 
         // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
         dummyLogger = winston.createLogger({
