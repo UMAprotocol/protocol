@@ -4,6 +4,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { BigQueryPriceFeed } = require("./BigQueryPriceFeed");
 
 const Uniswap = require("@uma/core/build/contracts/Uniswap.json");
 const ExpiringMultiParty = require("@uma/core/build/contracts/ExpiringMultiParty.json");
@@ -124,6 +125,20 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.balancerTokenOut,
       config.lookback
     );
+  } else if (config.type === "bigquery") {
+    const requiredFields = [];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "bigQueryPriceFeed",
+      message: "Creating bigQueryPriceFeed",
+      config
+    });
+
+    return new BigQueryPriceFeed(logger, web3, getTime);
   }
 
   logger.error({
@@ -295,6 +310,11 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
     ]
+  },
+  "GASETH-1M": {
+    type: "bigquery",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60
   }
 };
 
