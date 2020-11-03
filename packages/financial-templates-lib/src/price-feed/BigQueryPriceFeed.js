@@ -43,17 +43,21 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       return undefined;
     }
 
+    // Using moment package to changeto UTC and create acceptable format for BQ
     const formattedCurrentTime = moment(time)
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
+    // 2592000000 is a month time interval
     let t2 = new Date(time - 2592000000);
     t2 = moment(t2)
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
+    // Create the query with the needed time interval
     const query = this.createQuery(t2, formattedCurrentTime);
 
+    // Submit async call to BigQuery
     let priceResponse;
     await this.runQuery(query)
       .then(res => {
@@ -77,12 +81,15 @@ class BigQueryPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
+    // Using current time minus 5 minutes as end-bound of query. This is because the BQ dataset lags ~5 minutes
+    // Using moment package to changeto UTC and create acceptable format for BQ
     let currentTime = new Date();
     currentTime = currentTime - 300000;
     const formattedCurrentTime = moment(currentTime)
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
+    // 2592000000 is a month time interval
     let t2 = new Date(currentTime - 2592000000);
     t2 = moment(t2)
       .utc()
@@ -107,8 +114,10 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       lastUpdateTimestamp: this.lastUpdateTime
     });
 
+    // Create the query with the needed time interval
     const query = this.createQuery(t2, formattedCurrentTime);
 
+    // Submit async call to BigQuery
     let priceResponse;
     await this.runQuery(query)
       .then(res => {
@@ -117,14 +126,14 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       })
       .catch(console.log);
 
-    // 3. Check responses.
+    // Check responses.
     if (!priceResponse) {
       throw new Error(`🚨Could not parse price result from bigquery: ${priceResponse}`);
     }
 
     const newPrice = this.convertDecimals(priceResponse);
 
-    // 5. Store results.
+    // Store results.
     this.currentPrice = newPrice;
     this.lastUpdateTime = currentTime;
   }
@@ -145,6 +154,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     );
   }
   createQuery(t2, formattedCurrentTime) {
+    // method to create GASETH calculation query with time arguments
     const query = `
         DECLARE halfway int64;
         DECLARE block_count int64;
