@@ -21,7 +21,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
     using SafeERC20 for IERC20;
 
     /****************************************
-     *      FEE PAYER DATA STRUCTURES       *
+     *        STORE DATA STRUCTURES         *
      ****************************************/
 
     // The collateral currency used to reward successful proposers.
