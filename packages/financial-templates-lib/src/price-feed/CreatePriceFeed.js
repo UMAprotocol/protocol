@@ -311,6 +311,7 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
     ]
   },
+  // Adding GASETH-1M identifier as price feed option
   "GASETH-1M": {
     type: "bigquery",
     lookback: 7200,
