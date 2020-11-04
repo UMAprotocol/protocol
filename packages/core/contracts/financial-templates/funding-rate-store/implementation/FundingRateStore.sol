@@ -12,10 +12,11 @@ import "../../../oracle/implementation/Constants.sol";
 
 import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
+import "../../../common/implementation/Lockable.sol";
 import "../../../common/implementation/FixedPoint.sol";
 
 
-contract FundingRateStore is FundingRateStoreInterface, Testable {
+contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
@@ -90,7 +91,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @param identifier Identifier to retrieve funding rate for.
      * @return funding rate.
      */
-    function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
+    function getFundingRateForIdentifier(bytes32 identifier)
+        external
+        override
+        view
+        nonReentrantView()
+        returns (FixedPoint.Signed memory)
+    {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
         if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
@@ -106,7 +113,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @param identifier Identifier to retrieve publish time for.
      * @return publish timestamp.
      */
-    function getLastPublishTimeForIdentifier(bytes32 identifier) external view returns (uint256) {
+    function getLastPublishTimeForIdentifier(bytes32 identifier) external view nonReentrantView() returns (uint256) {
         return _getLastPublishTimeForIdentifier(identifier);
     }
 
@@ -120,7 +127,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @param identifier Identifier to propose funding rate for.
      * @param rate Proposed rate.
      */
-    function propose(bytes32 identifier, FixedPoint.Signed memory rate) external {
+    function propose(bytes32 identifier, FixedPoint.Signed memory rate) external nonReentrant() {
         // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
@@ -174,7 +181,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * receive back if their dispute is successful.
      * @param identifier Identifier to dispute proposed funding rate for.
      */
-    function dispute(bytes32 identifier) external {
+    function dispute(bytes32 identifier) external nonReentrant() {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
 
@@ -210,7 +217,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @param identifier Identifier to settle disputed funding rate for.
      * @param proposalTime Proposal time at which the disputed funding rate was proposed.
      */
-    function settleDispute(bytes32 identifier, uint256 proposalTime) external {
+    function settleDispute(bytes32 identifier, uint256 proposalTime) external nonReentrant() {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
 
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
