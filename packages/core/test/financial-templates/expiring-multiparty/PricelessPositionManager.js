@@ -14,7 +14,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -35,7 +34,6 @@ contract("PricelessPositionManager", function(accounts) {
   let mockOracle;
   let financialContractsAdmin;
   let timer;
-  let tokenFactory;
   let finder;
   let store;
 
@@ -93,7 +91,6 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     store = await Store.deployed();
-    tokenFactory = await TokenFactory.deployed();
   });
 
   beforeEach(async function() {
@@ -102,6 +99,10 @@ contract("PricelessPositionManager", function(accounts) {
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
+
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
 
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     timer = await Timer.deployed();
@@ -129,17 +130,17 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+    // Give contract owner permissions.
+    await tokenCurrency.addMinter(pricelessPositionManager.address);
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
   });
 
   afterEach(async () => {
@@ -154,11 +155,9 @@ contract("PricelessPositionManager", function(accounts) {
           startTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           priceFeedIdentifier, // _priceFeedIdentifier
-          syntheticName, // _syntheticName
-          syntheticSymbol, // _syntheticSymbol
-          tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -174,11 +173,9 @@ contract("PricelessPositionManager", function(accounts) {
           expirationTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
           collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           web3.utils.utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
-          syntheticName, // _syntheticName
-          syntheticSymbol, // _syntheticSymbol
-          tokenFactory.address, // _tokenFactoryAddress
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -193,6 +190,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.expirationTimestamp(), expirationTimestamp);
     assert.equal(await pricelessPositionManager.withdrawalLiveness(), withdrawalLiveness);
     assert.equal(await pricelessPositionManager.collateralCurrency(), collateral.address);
+    assert.equal(await pricelessPositionManager.tokenCurrency(), tokenCurrency.address);
     assert.equal(await pricelessPositionManager.finder(), finder.address);
     assert.equal(hexToUtf8(await pricelessPositionManager.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
@@ -205,14 +203,12 @@ contract("PricelessPositionManager", function(accounts) {
     assert(
       await didContractThrow(
         PricelessPositionManager.new(
-          true, // _isTest (unchanged)
           expirationTimestamp, // _expirationTimestamp (unchanged)
           withdrawalLiveness, // _withdrawalLiveness (unchanged)
           collateral.address, // _collateralAddress (unchanged)
+          tokenCurrency.address, // _tokenAddress (unchanged)
           finder.address, // _finderAddress (unchanged)
           web3.utils.utf8ToHex("UNKNOWN"), // Some identifier that the whitelist tracker does not know
-          syntheticName, // _syntheticName (unchanged)
-          syntheticSymbol, // _syntheticSymbol (unchanged)
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
           timer.address, // _timerAddress (unchanged)
           beneficiary, // _excessTokenBeneficiary (unchanged)
@@ -224,6 +220,10 @@ contract("PricelessPositionManager", function(accounts) {
 
   it("Withdrawal/Transfer liveness overflow", async function() {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18, {
+      from: contractDeployer
+    });
+
     const largeLiveness = toBN(2)
       .pow(toBN(256))
       .subn(10)
@@ -232,16 +232,16 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp, // _expirationTimestamp
       largeLiveness.toString(), // _withdrawalLiveness
       collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
+    await tokenCurrency.addMinter(pricelessPositionManager.address);
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
@@ -350,6 +350,10 @@ contract("PricelessPositionManager", function(accounts) {
     const redeem = pricelessPositionManager.redeem;
     const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
     assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
+    // Check that redeem fails if missing Burner role.
+    await tokenCurrency.removeBurner(pricelessPositionManager.address);
+    assert(await didContractThrow(redeem({ rawValue: redeemTokens }, { from: sponsor })));
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
     let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
@@ -371,6 +375,19 @@ contract("PricelessPositionManager", function(accounts) {
     const createAdditionalCollateral = toWei("110");
     expectedSponsorTokens = expectedSponsorTokens.add(toBN(createAdditionalTokens));
     expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
+    // Check that create fails if missing Minter role.
+    await tokenCurrency.removeMinter(pricelessPositionManager.address);
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.create(
+          { rawValue: createAdditionalCollateral },
+          { rawValue: createAdditionalTokens },
+          { from: sponsor },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.addMinter(pricelessPositionManager.address);
     await collateral.approve(pricelessPositionManager.address, createAdditionalCollateral, { from: sponsor });
     await pricelessPositionManager.create(
       { rawValue: createAdditionalCollateral },
@@ -1588,6 +1605,10 @@ contract("PricelessPositionManager", function(accounts) {
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
+    // Check that settlement fails if missing Burner role.
+    await tokenCurrency.removeBurner(pricelessPositionManager.address);
+    assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: tokenHolder })));
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
     await pricelessPositionManager.settleExpired({ from: tokenHolder });
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED);
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
@@ -1722,25 +1743,32 @@ contract("PricelessPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
+    const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
+
     let customPricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
+      nonStandardToken.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
-      syntheticName, // _syntheticName
-      syntheticSymbol, // _syntheticSymbol
-      tokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
-    // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
-    const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
+    await tokenCurrency.addMinter(customPricelessPositionManager.address);
+    await tokenCurrency.addBurner(customPricelessPositionManager.address);
 
-    // however the collateral is now delimited by a different number of decimals. 150 * 1e6
+    // Token currency and collateral have same # of decimals.
+    assert.equal(await tokenCurrency.decimals(), 6);
+
+    // Create the initial custom positionManager position. 100 synthetics backed by 150 collat
+    const createTokens = toBN("100")
+      .muln(1e6)
+      .toString();
+    // The collateral is delimited by the same number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
       .toString();
@@ -1792,13 +1820,15 @@ contract("PricelessPositionManager", function(accounts) {
       expectedSponsorTokens.toString()
     );
 
-    // The key with non-standard ERC20 delimitation is how the oracle responds to requests.
+    // By matching collateral and synthetic precision, we can assume that oracle price requests will always resolve to 18 decimals.
     // The two cases that need to be tested are responding to dispute requests and settlement.
     // Dispute and liquidation is tested in `Liquidatable.js`. Here we test settlement.
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     // Sponsor now has 50 synthetics and 200 collateral. Note that synthetic tokens are still represented with 1e18 base.
-    const tokenHolderTokens = toWei("50");
+    const tokenHolderTokens = toBN("50")
+      .muln(1e6)
+      .toString();
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
       from: sponsor
     });
@@ -1812,8 +1842,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
-    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC.
-    const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
+    const redemptionPrice = toBN(toWei("1.2")); // 1.2*1e18
     await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPrice.toString());
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.

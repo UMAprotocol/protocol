@@ -11,8 +11,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -33,9 +33,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       const unreachableDeadline = MAX_UINT_VAL;
 
       let collateralToken;
+      let syntheticToken;
       let emp;
       let client;
-      let syntheticToken;
       let mockOracle;
       let identifierWhitelist;
       let store;
@@ -52,6 +52,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         identifier = `${tokenConfig.tokenName}TEST`;
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: sponsor1 }
+        );
+        syntheticToken = await SyntheticToken.new(
           tokenConfig.tokenName,
           tokenConfig.tokenName,
           tokenConfig.collateralDecimals,
@@ -78,11 +84,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           expirationTimestamp: "12345678900",
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
+          tokenAddress: syntheticToken.address,
           finderAddress: Finder.address,
-          tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
-          syntheticName: `Test ${identifier} Token`,
-          syntheticSymbol: identifier,
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -101,6 +105,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         });
 
         emp = await ExpiringMultiParty.new(constructorParams);
+        await syntheticToken.addMinter(emp.address);
+        await syntheticToken.addBurner(emp.address);
+
         client = new ExpiringMultiPartyClient(
           dummyLogger,
           ExpiringMultiParty.abi,
@@ -111,7 +118,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor1 });
         await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor2 });
 
-        syntheticToken = await Token.at(await emp.tokenCurrency());
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
       });
