@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../../oracle/interfaces/StoreInterface.sol";
 import "../../../oracle/interfaces/OracleInterface.sol";
@@ -15,7 +16,7 @@ import "../../../common/implementation/FixedPoint.sol";
 
 
 contract FundingRateStore is FundingRateStoreInterface, Testable {
-    using SafeMath for int256;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
@@ -40,6 +41,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
 
     struct FundingRateRecord {
         FixedPoint.Signed rate;
+        uint256 publishTime;
         Proposal proposal;
     }
 
@@ -62,7 +64,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         address indexed proposer,
         address indexed disputer
     );
-    event PublishedRate(bytes32 indexed identifier, int256 rate, uint256 proposalTime, address indexed proposer);
+    event PublishedRate(
+        bytes32 indexed identifier,
+        int256 rate,
+        uint256 proposalTime,
+        address indexed proposer,
+        uint256 publishTime
+    );
     event FinalFeesPaid(uint256 indexed amount);
 
     constructor(
@@ -91,6 +99,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
     }
 
     /**
+     * @notice Returns the timestamp at which the current funding rate was published.
+     * @dev The "current funding rate" is defined as that returned by `getFundingRateForIdentifier(id)`
+     */
+    function getLastPublishTimeForIdentifier(bytes32 identifier) external view returns (uint256) {
+        return _getLastPublishTimeForIdentifier(identifier);
+    }
+
+    /**
      * @notice Propose a new funding rate for an identifier. A side effect of this method is that it will
      * overwrite the current funding rate with a pending funding rate if its liveness has expired. If this update
      * occurs, then this method will also pay the proposer their reward for successfully updating the current rate.
@@ -102,6 +118,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
+        uint256 currentTime = getCurrentTime();
 
         // TODO: bond logic.
 
@@ -110,6 +127,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         if (proposalState == ProposalState.Expired) {
             // Publish expired rate, reward proposer.
             fundingRateRecord.rate = fundingRateRecord.proposal.rate;
+            fundingRateRecord.publishTime = currentTime;
 
             // TODO: Reward = proposal bond
             collateralCurrency.safeTransfer(
@@ -121,14 +139,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
                 identifier,
                 fundingRateRecord.rate.rawValue,
                 fundingRateRecord.proposal.time,
-                fundingRateRecord.proposal.proposer
+                fundingRateRecord.proposal.proposer,
+                currentTime
             );
         }
 
         // Compute final fee at time of proposal.
         FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees();
 
-        uint256 currentTime = getCurrentTime();
         fundingRateRecord.proposal = Proposal({
             rate: rate,
             time: currentTime,
@@ -215,9 +233,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
             );
         }
 
-        // Update current rate to settlement rate.
-        fundingRateRecords[identifier].rate = settlementRate;
-        emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer);
+        // Update current rate to settlement rate if there has not been a published funding rate since the dispute
+        // began.
+        if (_getLastPublishTimeForIdentifier(identifier) <= fundingRateDispute.proposal.time) {
+            fundingRateRecords[identifier].rate = settlementRate;
+            uint256 currentTime = getCurrentTime();
+            fundingRateRecords[identifier].publishTime = currentTime;
+            emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer, currentTime);
+        }
 
         // Delete dispute
         delete fundingRateDisputes[identifier][proposalTime];
@@ -269,6 +292,17 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
             return ProposalState.Pending;
         } else {
             return ProposalState.Expired;
+        }
+    }
+
+    function _getLastPublishTimeForIdentifier(bytes32 identifier) internal view returns (uint256) {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+
+        // If a pending funding rate has expired, then the timestamp at which it expired is the last publish time.
+        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
+            return fundingRateRecord.proposal.time + proposalLiveness;
+        } else {
+            return fundingRateRecord.publishTime;
         }
     }
 
