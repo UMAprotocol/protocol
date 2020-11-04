@@ -169,6 +169,19 @@ contract("FundingRateStore", function(accounts) {
       await collateralCurrency.increaseAllowance(fundingRateStore.address, toWei("100"), { from: disputer });
     });
 
+    it("Cannot propose for an (identifier+time) that is currently pending dispute", async function() {
+      // Expire the previous proposal.
+      await incrementTime(fundingRateStore, 1);
+
+      // Propose, dispute, and propose another funding rate all within the same block. On a production network
+      // these actions would have to be called atomically within a single smart contract transaction.
+      await fundingRateStore.propose(identifier, { rawValue: toWei("0.05") }, { from: proposer });
+      await fundingRateStore.dispute(identifier, { from: disputer });
+      assert(
+        await didContractThrow(fundingRateStore.propose(identifier, { rawValue: toWei("-0.05") }, { from: proposer }))
+      );
+    });
+
     it("Disputing unexpired proposal", async function() {
       // Can't dispute if proposal is not yet pending
       assert(await didContractThrow(fundingRateStore.dispute(toHex("other-proposal"), { from: disputer })));

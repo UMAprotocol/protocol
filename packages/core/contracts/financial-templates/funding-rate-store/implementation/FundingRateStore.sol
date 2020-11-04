@@ -137,8 +137,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
         require(proposalState != ProposalState.Pending, "Existing proposal still pending.");
 
+        // Update the current funding rate if a proposal's liveness has expired.
         if (proposalState == ProposalState.Expired) {
-            // Publish expired rate, reward proposer.
+            // Publish expired rate, and then reward proposer.
             fundingRateRecord.rate = fundingRateRecord.proposal.rate;
             fundingRateRecord.publishTime = currentTime;
 
@@ -156,6 +157,15 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
                 currentTime
             );
         }
+
+        // Make sure that there is no disputed proposal for the same identifier and proposal time. This prevents
+        // the proposer from potentially overwriting a proposal. Note that this would be a rare case in which the
+        // proposer [ (1) created a proposal, (2) disputed the proposal, and (3) created another proposal ] all within
+        // the same block. The proposer would lose their bond from the first proposal forever.
+        require(
+            _getFundingRateDispute(identifier, currentTime).proposal.proposer == address(0x0),
+            "Proposal pending dispute"
+        );
 
         // Compute final fee at time of proposal.
         FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees();
