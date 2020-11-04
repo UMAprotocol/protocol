@@ -2,13 +2,21 @@
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as: yarn truffle exec ./scripts/collateral-umip/1_Propose.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 from core
+// Then execute the script as: yarn truffle exec ./scripts/collateral-umip/1_Propose.js --network mainnet-fork --collateral 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 --fee 0.1 --collateral 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 --fee 400 from core
+// Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
+// triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 const Governor = artifacts.require("Governor");
+const ERC20 = artifacts.require("ERC20");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
+const { parseUnits } = require("@ethersproject/units");
+const { getDecimals } = require("./utils");
+
+const _ = require("lodash");
+
+const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "decimals"] });
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
@@ -17,43 +25,77 @@ async function runExport() {
   console.log("Connected to network id", await web3.eth.net.getId());
 
   if (!argv.collateral || !argv.fee) {
-    throw "Must provide --fee and --collateral";
+    throw new Error("Must provide --fee and --collateral");
   }
 
-  // The proposal will first add a final fee for the currency.
-  const store = await Store.deployed();
-  const addFinalFeeToStoreTx = store.contract.methods
-    .setFinalFee(argv.collateral, { rawValue: web3.utils.toWei(argv.fee) })
-    .encodeABI();
-  console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
+  const collaterals = _.castArray(argv.collateral);
+  const fees = _.castArray(argv.fee);
+  const decimals = argv.decimals && _.castArray(argv.decimals);
 
-  // The proposal will then add the currency to the whitelist.
-  const whitelist = await AddressWhitelist.deployed();
-  const addCollateralToWhitelistTx = whitelist.contract.methods.addToWhitelist(argv.collateral).encodeABI();
-  console.log("addCollateralToWhitelistTx", addCollateralToWhitelistTx);
+  if (collaterals.length !== fees.length || (decimals && decimals.length !== collaterals.length)) {
+    throw new Error("Must provide the same number of elements to --fee, --collateral, and --decimals (optional)");
+  }
 
-  // Send the proposal
-  const governor = await Governor.deployed();
-  await governor.propose(
-    [
-      {
-        to: store.address,
-        value: 0,
-        data: addFinalFeeToStoreTx
-      },
-      {
+  const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
+    return { collateral, fee, numDecimalsArg };
+  });
+
+  const getTxns = async ({ collateral, fee, numDecimalsArg }) => {
+    const decimals = await getDecimals(collateral, numDecimalsArg, ERC20);
+    console.log("Examining collateral", collateral);
+    const convertedFeeAmount = parseUnits(fee, decimals).toString();
+    console.log(`Fee in token's decimals: ${convertedFeeAmount}`);
+
+    const txns = [];
+
+    // The proposal will first add a final fee for the currency.
+    const store = await Store.deployed();
+    const addFinalFeeToStoreTx = store.contract.methods
+      .setFinalFee(collateral, { rawValue: convertedFeeAmount })
+      .encodeABI();
+    console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
+    txns.push({
+      to: store.address,
+      value: 0,
+      data: addFinalFeeToStoreTx
+    });
+
+    // The proposal will then add the currency to the whitelist if it isn't already there.
+    const whitelist = await AddressWhitelist.deployed();
+    if (!(await whitelist.isOnWhitelist(collateral))) {
+      console.log("Collateral", collateral, "is not on the whitelist. Adding it.");
+      const addCollateralToWhitelistTx = whitelist.contract.methods.addToWhitelist(collateral).encodeABI();
+      console.log("addCollateralToWhitelistTx", addCollateralToWhitelistTx);
+      txns.push({
         to: whitelist.address,
         value: 0,
         data: addCollateralToWhitelistTx
-      }
-    ],
-    { from: proposerWallet, gas: 2000000 }
-  );
+      });
+
+      console.log(`
+
+      Collateral currency: ${collateral}
+      Final fee: ${fee}
+      
+      `);
+    }
+
+    return txns;
+  };
+
+  let transactionList = [];
+  for (let argObject of argObjects) {
+    const transactionsToAdd = await getTxns(argObject);
+    transactionList = [...transactionList, ...transactionsToAdd];
+  }
+
+  // Send the proposal
+  const governor = await Governor.deployed();
+  await governor.propose(transactionList, { from: proposerWallet, gas: 2000000 });
 
   console.log(`
 
-Proposed collateral currency: ${argv.collateral}
-Proposed final fee: ${argv.fee}
+Done!
 
 `);
 }

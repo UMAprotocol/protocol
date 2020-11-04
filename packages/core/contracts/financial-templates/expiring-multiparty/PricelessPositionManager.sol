@@ -13,7 +13,7 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../common/TokenFactory.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 import "../common/FeePayer.sol";
 
 
@@ -142,14 +142,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Construct the PricelessPositionManager
+     * @dev Deployer of this contract should consider carefully which parties have ability to mint and burn
+     * the synthetic tokens referenced by `_tokenAddress`. This contract's security assumes that no external accounts
+     * can mint new tokens, which could be used to steal all of this contract's locked collateral.
+     * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
+     * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
+     * total supply is 0 prior to construction of this contract.
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
+     * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _syntheticName name for the token contract that will be deployed.
-     * @param _syntheticSymbol symbol for the token contract that will be deployed.
-     * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be
@@ -160,11 +164,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         uint256 _expirationTimestamp,
         uint256 _withdrawalLiveness,
         address _collateralAddress,
+        address _tokenAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
-        string memory _syntheticName,
-        string memory _syntheticSymbol,
-        address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
@@ -174,8 +176,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        TokenFactory tf = TokenFactory(_tokenFactoryAddress);
-        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
+        tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
@@ -408,6 +409,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
      * `collateralCurrency`.
+     * @dev This contract must have the Minter role for the `tokenCurrency`.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
      */
@@ -454,6 +456,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
      * `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -502,6 +505,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function settleExpired()
@@ -870,6 +874,17 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             return FixedPoint.fromUnscaledUint(0);
         } else {
             return collateral.div(numTokens);
+        }
+    }
+
+    // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
+    // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
+    // https://eips.ethereum.org/EIPS/eip-20#methods.
+    function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
+        try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
+            return _decimals;
+        } catch {
+            return 18;
         }
     }
 }

@@ -9,6 +9,7 @@
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "buidler-gas-reporter": "^0.1.4",
+    "@ethersproject/units": "^5.0.3",
     "@nomiclabs/buidler": "^1.3.8",
     "@nomiclabs/buidler-etherscan": "^1.3.3",
     "@nomiclabs/buidler-truffle5": "^1.3.4",
@@ -23,6 +24,7 @@
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
     "gmail-send": "^1.2.14",
+    "lodash": "^4.17.20",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
     "moment": "^2.24.0",

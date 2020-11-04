@@ -27,8 +27,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -110,15 +110,20 @@ contract("Liquidator.js", function(accounts) {
         const store = await Store.deployed();
         timer = await Timer.deployed();
 
+        // Create a new synthetic token
+        syntheticToken = await SyntheticToken.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals
+        );
+
         const constructorParams = {
           expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
+          tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: utf8ToHex(identifier),
-          syntheticName: `Test ${collateralToken} Token`,
-          syntheticSymbol: identifier,
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.2") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -131,6 +136,8 @@ contract("Liquidator.js", function(accounts) {
 
         // Deploy a new expiring multi party
         emp = await ExpiringMultiParty.new(constructorParams);
+        await syntheticToken.addMinter(emp.address);
+        await syntheticToken.addBurner(emp.address);
 
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor1 });
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor2 });

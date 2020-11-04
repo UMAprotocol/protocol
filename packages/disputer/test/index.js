@@ -9,7 +9,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("ExpandedERC20");
-const TokenFactory = artifacts.require("TokenFactory");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 const Store = artifacts.require("Store");
@@ -24,6 +24,7 @@ contract("index.js", function(accounts) {
 
   let emp;
   let collateralToken;
+  let syntheticToken;
   let uniswap;
   let identifierWhitelist;
 
@@ -60,15 +61,16 @@ contract("index.js", function(accounts) {
     timer = await Timer.deployed();
     finder = await Finder.deployed();
 
+    // Create a new synthetic token
+    syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: contractCreator });
+
     constructorParams = {
       expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100,
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"),
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -81,6 +83,8 @@ contract("index.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(emp.address);
+    await syntheticToken.addBurner(emp.address);
 
     uniswap = await UniswapMock.new();
 
@@ -109,6 +113,8 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(emp.address);
+    await syntheticToken.addBurner(emp.address);
 
     await Poll.run({
       logger: spyLogger,
@@ -169,11 +175,9 @@ contract("index.js", function(accounts) {
       constructorParams.expirationTimestamp,
       constructorParams.withdrawalLiveness,
       constructorParams.collateralAddress,
+      constructorParams.tokenAddress,
       constructorParams.finderAddress,
       utf8ToHex("UNKNOWN"),
-      constructorParams.syntheticName,
-      "UNKNOWN",
-      constructorParams.tokenFactoryAddress,
       constructorParams.minSponsorTokens,
       constructorParams.timerAddress,
       contractCreator
