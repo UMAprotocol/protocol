@@ -72,6 +72,19 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned disputerDisputeRewardPct;
     }
 
+    // This struct is used in the `withdrawLiquidation` method that disperses liquidation and dispute rewards.
+    // `payToX` stores the total collateral to withdraw from the contract to pay X. This value might differ
+    // from `paidToX` due to precision loss between accounting for the `rawCollateral` versus the
+    // fee-adjusted collateral. These variables are stored within a struct to avoid the stack too deep error.
+    struct RewardsData {
+        FixedPoint.Unsigned payToSponsor;
+        FixedPoint.Unsigned payToLiquidator;
+        FixedPoint.Unsigned payToDisputer;
+        FixedPoint.Unsigned paidToSponsor;
+        FixedPoint.Unsigned paidToLiquidator;
+        FixedPoint.Unsigned paidToDisputer;
+    }
+
     // Liquidations are unique by ID per sponsor
     mapping(address => LiquidationData[]) public liquidations;
 
@@ -409,8 +422,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Calculate rewards as a function of the TRV.
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
+        FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
         FixedPoint.Unsigned memory tokenRedemptionValue = _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding)
-            .mul(liquidation.settlementPrice)
+            .mul(settlementPrice)
             .mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
@@ -418,70 +432,63 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned memory disputeBondAmount = collateral.mul(disputeBondPct);
         FixedPoint.Unsigned memory finalFee = liquidation.finalFee.mul(feeAttenuation);
 
-        // Note: `payToX` stores the total collateral to withdraw from the contract to pay X. This value might differ
-        // from `paidToX` due to precision loss between accounting for the `rawCollateral` versus the
-        // fee-adjusted collateral. `paidToX` variables are declared later to guard against the stack too deep error.
-        FixedPoint.Unsigned memory payToSponsor;
-        FixedPoint.Unsigned memory payToLiquidator;
-        FixedPoint.Unsigned memory payToDisputer;
-
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
         // Based on the state, different parties of a liquidation receive different amounts.
+        RewardsData memory rewards;
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users should receive rewards:
 
             // Pay DISPUTER: disputer reward + dispute bond + returned final fee
-            payToDisputer = disputerDisputeReward.add(disputeBondAmount).add(finalFee);
+            rewards.payToDisputer = disputerDisputeReward.add(disputeBondAmount).add(finalFee);
 
             // Pay SPONSOR: remaining collateral (collateral - TRV) + sponsor reward
-            payToSponsor = sponsorDisputeReward.add(collateral.sub(tokenRedemptionValue));
+            rewards.payToSponsor = sponsorDisputeReward.add(collateral.sub(tokenRedemptionValue));
 
             // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
             // If TRV > Collateral, then subtract rewards from collateral
             // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
             // the constructor when these params are set.
-            payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
+            rewards.payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
 
             // In the case of a failed dispute only the liquidator can withdraw.
         } else if (liquidation.state == Status.DisputeFailed) {
             // Pay LIQUIDATOR: collateral + dispute bond + returned final fee
-            payToLiquidator = collateral.add(disputeBondAmount).add(finalFee);
+            rewards.payToLiquidator = collateral.add(disputeBondAmount).add(finalFee);
 
             // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
             // state as a dispute failed and the liquidator can withdraw.
         } else if (liquidation.state == Status.PreDispute) {
             // Pay LIQUIDATOR: collateral + returned final fee
-            payToLiquidator = collateral.add(finalFee);
+            rewards.payToLiquidator = collateral.add(finalFee);
         }
 
-        require((payToLiquidator.add(payToSponsor).add(payToDisputer)).isGreaterThan(0), "Nothing to withdraw");
+        require(
+            (rewards.payToLiquidator.add(rewards.payToSponsor).add(rewards.payToDisputer)).isGreaterThan(0),
+            "Nothing to withdraw"
+        );
 
-        // Scoping to get rid of a stack too deep error.
-        uint256 settlementPriceRaw = liquidation.settlementPrice.rawValue;
-        {
-            // Decrease the total collateral held in liquidatable by the amount to pay each party. The actual amounts
-            // withdrawn might differ if _removeCollateral causes precision loss.
-            FixedPoint.Unsigned memory paidToLiquidator = _removeCollateral(rawLiquidationCollateral, payToLiquidator);
-            FixedPoint.Unsigned memory paidToSponsor = _removeCollateral(rawLiquidationCollateral, payToSponsor);
-            FixedPoint.Unsigned memory paidToDisputer = _removeCollateral(rawLiquidationCollateral, payToDisputer);
+        // Decrease the total collateral held in liquidatable by the amount to pay each party. The actual amounts
+        // withdrawn might differ if _removeCollateral causes precision loss.
+        rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
+        rewards.paidToSponsor = _removeCollateral(rawLiquidationCollateral, rewards.payToSponsor);
+        rewards.paidToDisputer = _removeCollateral(rawLiquidationCollateral, rewards.payToDisputer);
 
-            emit LiquidationWithdrawn(
-                msg.sender,
-                paidToLiquidator.rawValue,
-                paidToDisputer.rawValue,
-                paidToSponsor.rawValue,
-                liquidation.state,
-                settlementPriceRaw
-            );
+        emit LiquidationWithdrawn(
+            msg.sender,
+            rewards.paidToLiquidator.rawValue,
+            rewards.paidToDisputer.rawValue,
+            rewards.paidToSponsor.rawValue,
+            liquidation.state,
+            settlementPrice.rawValue
+        );
 
-            // Transfer amount withdrawn from this contract to the caller.
-            collateralCurrency.safeTransfer(liquidation.liquidator, paidToLiquidator.rawValue);
-            collateralCurrency.safeTransfer(liquidation.sponsor, paidToSponsor.rawValue);
-            collateralCurrency.safeTransfer(liquidation.disputer, paidToDisputer.rawValue);
-        }
+        // Transfer amount withdrawn from this contract to the caller.
+        collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
+        collateralCurrency.safeTransfer(liquidation.sponsor, rewards.paidToSponsor.rawValue);
+        collateralCurrency.safeTransfer(liquidation.disputer, rewards.paidToDisputer.rawValue);
 
         // Free up space after collateral is withdrawn by removing the liquidation object from the array.
-        // delete liquidations[liquidation.sponsor][liquidationId];
+        delete liquidations[liquidation.sponsor][liquidationId];
     }
 
     /**
