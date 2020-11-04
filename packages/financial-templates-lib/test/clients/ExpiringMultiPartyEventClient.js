@@ -68,12 +68,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           tokenConfig.collateralDecimals,
           { from: tokenSponsor }
         );
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: tokenSponsor }
-        );
         await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
         await collateralToken.mint(liquidator, convert("100000"), { from: tokenSponsor });
         await collateralToken.mint(sponsor1, convert("100000"), { from: tokenSponsor });
@@ -95,6 +89,14 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       beforeEach(async function() {
         const currentTime = await mockOracle.getCurrentTime.call();
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
+
+        // Create a new synthetic token
+        syntheticToken = await SyntheticToken.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
 
         constructorParams = {
           expirationTimestamp: expirationTime.toString(),
