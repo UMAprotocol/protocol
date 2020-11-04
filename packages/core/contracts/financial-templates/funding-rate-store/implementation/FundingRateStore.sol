@@ -178,7 +178,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
 
-        require(proposalState == ProposalState.Pending, "Existing proposal not pending.");
+        require(proposalState == ProposalState.Pending, "Existing proposal not pending");
 
         // TODO: Bond logic.
 
