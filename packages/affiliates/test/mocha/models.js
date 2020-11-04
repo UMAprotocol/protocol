@@ -1,6 +1,7 @@
 const { assert } = require("chai");
 const { History, Balances, SharedAttributions, Prices } = require("../../libs/models");
 const Coingecko = require("../../libs/coingecko");
+const HistoricSynthPrices = require("../../libs/historicSynthPrices");
 const moment = require("moment");
 
 describe("SharedAttributions", function() {
@@ -71,7 +72,7 @@ describe("History", function() {
   });
 });
 
-describe("Prices", function() {
+describe("Contract Prices", function() {
   let prices, seed;
   // Sample data from known contract.
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
@@ -97,5 +98,18 @@ describe("Prices", function() {
     const result = prices.closest(time);
     assert.ok(result[0]);
     assert.ok(result[1]);
+  });
+});
+
+describe("Synthetic prices", function() {
+  let seed;
+  const empAddress = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
+  const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+  const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+  it("init", async function() {
+    this.timeout(100000);
+    seed = await HistoricSynthPrices().getHistoricSynthPrice(empAddress, startingTimestamp, endingTimestamp);
+
+    console.log("seed", seed);
   });
 });

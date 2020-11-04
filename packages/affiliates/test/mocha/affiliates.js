@@ -43,12 +43,27 @@ function Coingecko() {
   };
 }
 
+function HistoricSynthPrices() {
+  return {
+    chart(address) {
+      return require(`../datasets/${datasetName}/coingecko/${address}`);
+    }
+  };
+}
+
 describe("DeployerRewards", function() {
   let affiliates;
   before(function() {
     const queries = Queries();
     const coingecko = Coingecko();
-    affiliates = DeployerRewards({ queries, empAbi: empAbi.abi, empCreatorAbi: empCreatorAbi.abi, coingecko });
+    const historicSynthPrices = HistoricSynthPrices();
+    affiliates = DeployerRewards({
+      queries,
+      empAbi: empAbi.abi,
+      empCreatorAbi: empCreatorAbi.abi,
+      coingecko,
+      historicSynthPrices
+    });
   });
   it("getBalanceHistory", async function() {
     this.timeout(10000);
