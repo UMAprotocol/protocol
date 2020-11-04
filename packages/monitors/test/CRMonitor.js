@@ -61,11 +61,9 @@ contract("CRMonitor.js", function(accounts) {
       let monitorConfig;
       let crMonitor;
       let empProps;
-      let identifier;
       let convert;
 
       before(async function() {
-        identifier = `${tokenConfig.tokenName}TEST`;
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
@@ -212,7 +210,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, identifier)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
         assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
         assert.equal(lastSpyLogLevel(spy), "warn");
@@ -264,7 +262,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, identifier)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
 
         // Advance time after withdrawal liveness. Check that CR detected is the same
         // post withdrawal execution
@@ -281,7 +279,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, identifier)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
       });
       it("Cannot set invalid config", async function() {
         let errorThrown1;
