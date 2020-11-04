@@ -74,8 +74,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         TokenFactory tf = TokenFactory(tokenFactoryAddress);
 
-        // If the collateral token does not have a `decimals()` method,
-        // then a default precision of 18 will be applied to the newly created synthetic token.
+        // If the collateral token does not have a `decimals()` method, then a default precision of 18 will be
+        // applied to the newly created synthetic token.
         uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
         ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
         address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params, tokenCurrency));
