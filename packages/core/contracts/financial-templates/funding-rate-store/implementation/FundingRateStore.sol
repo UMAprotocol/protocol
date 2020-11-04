@@ -236,9 +236,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         // Update current rate to settlement rate if there has not been a published funding rate since the dispute
         // began.
         if (_getLastPublishTimeForIdentifier(identifier) <= fundingRateDispute.proposal.time) {
-            fundingRateRecords[identifier].rate = settlementRate;
+            FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
             uint256 currentTime = getCurrentTime();
-            fundingRateRecords[identifier].publishTime = currentTime;
+            fundingRateRecord.rate = settlementRate;
+            fundingRateRecord.publishTime = currentTime;
             emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer, currentTime);
         }
 
