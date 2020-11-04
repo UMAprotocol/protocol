@@ -52,9 +52,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Updates all constituent price feeds.
   async update() {
-    for (const priceFeed of this.priceFeeds) {
-      await priceFeed.update();
-    }
+    await Promise.all(this.priceFeeds.map(priceFeed => priceFeed.update()));
   }
 
   // Inputs are expected to be BNs.
