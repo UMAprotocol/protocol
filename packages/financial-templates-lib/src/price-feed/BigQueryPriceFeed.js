@@ -42,21 +42,22 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       return undefined;
     }
 
-    // Using moment package to changeto UTC and create acceptable format for BQ
+    // Using moment package to changeto UTC and create acceptable format for BQ.
     const formattedCurrentTime = moment(time)
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
     // 2592000000 is a month time interval
-    let t2 = new Date(time - 2592000000);
+    let t2 = new Date(time);
     t2 = moment(t2)
+      .subtract(30, "days")
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
-    // Create the query with the needed time interval
+    // Create the query with the needed time interval.
     const query = this.createQuery(t2, formattedCurrentTime);
 
-    // Submit async call to BigQuery
+    // Submit async call to BigQuery.
     let priceResponse;
     await this.runQuery(query)
       .then(res => {
@@ -80,17 +81,18 @@ class BigQueryPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-    // Using current time minus 5 minutes as end-bound of query. This is because the BQ dataset lags ~5 minutes
-    // Using moment package to changeto UTC and create acceptable format for BQ
-    let currentTime = new Date();
-    currentTime = currentTime - 300000;
+    // Using current time minus 5 minutes as end-bound of query. This is because the BQ dataset lags ~5 minutes.
+    // Using moment package to change to UTC and create acceptable format for BQ.
+    const currentTime = new Date();
     const formattedCurrentTime = moment(currentTime)
+      .subtract(5, "minutes")
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
-    // 2592000000 is a month time interval
-    let t2 = new Date(currentTime - 2592000000);
+    // Subtracting 30 days from current time to create the earlier time bound.
+    let t2 = new Date();
     t2 = moment(t2)
+      .subtract(30, "days")
       .utc()
       .format("YYYY-MM-DD HH:mm:ss");
 
@@ -113,10 +115,10 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       lastUpdateTimestamp: this.lastUpdateTime
     });
 
-    // Create the query with the needed time interval
+    // Create the query with the needed time interval.
     const query = this.createQuery(t2, formattedCurrentTime);
 
-    // Submit async call to BigQuery
+    // Submit async call to BigQuery.
     let priceResponse;
     await this.runQuery(query)
       .then(res => {
@@ -152,8 +154,8 @@ class BigQueryPriceFeed extends PriceFeedInterface {
         .toPromise(Promise)
     );
   }
+  // This is a helper method to create a GASETH BQ query with time arguments.
   createQuery(t2, formattedCurrentTime) {
-    // method to create GASETH calculation query with time arguments
     const query = `
         DECLARE halfway int64;
         DECLARE block_count int64;
