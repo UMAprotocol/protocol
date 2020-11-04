@@ -19,7 +19,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
@@ -97,17 +97,23 @@ contract("ContractMonitor.js", function(accounts) {
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
         const store = await Store.deployed();
 
+        // Create a new synthetic token
+        syntheticToken = await SyntheticToken.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
+
         constructorParams = {
           isTest: true,
           expirationTimestamp: expirationTime.toString(),
           withdrawalLiveness: "1",
           collateralAddress: collateralToken.address,
+          tokenAddress: syntheticToken.address,
           finderAddress: Finder.address,
-          tokenFactoryAddress: TokenFactory.address,
           timerAddress: Timer.address,
           priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
-          syntheticName: `Test ${collateralToken} Token`,
-          syntheticSymbol: identifier,
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -127,6 +133,8 @@ contract("ContractMonitor.js", function(accounts) {
         });
 
         emp = await ExpiringMultiParty.new(constructorParams);
+        await syntheticToken.addMinter(emp.address);
+        await syntheticToken.addBurner(emp.address);
         eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
         priceFeedMock = new PriceFeedMock();
 
