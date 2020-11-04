@@ -259,7 +259,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     }
     constructorParams.collateralAddress = collateralToken.address;
 
-    // Whitelist collateral currency
+    // Whitelist collateral currency.
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     // Create new derivative contract.
