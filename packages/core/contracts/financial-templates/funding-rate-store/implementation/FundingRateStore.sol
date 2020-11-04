@@ -87,6 +87,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
 
     /**
      * @notice Returns the current funding rate or the pending funding rate if its liveness has expired.
+     * @param identifier Identifier to retrieve funding rate for.
+     * @return funding rate.
      */
     function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
@@ -101,6 +103,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
     /**
      * @notice Returns the timestamp at which the current funding rate was published.
      * @dev The "current funding rate" is defined as that returned by `getFundingRateForIdentifier(id)`
+     * @param identifier Identifier to retrieve publish time for.
+     * @return publish timestamp.
      */
     function getLastPublishTimeForIdentifier(bytes32 identifier) external view returns (uint256) {
         return _getLastPublishTimeForIdentifier(identifier);
@@ -113,6 +117,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @dev This will revert if there is already a pending funding rate for the identifier.
      * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back once their funding rate is published.
+     * @param identifier Identifier to propose funding rate for.
+     * @param rate Proposed rate.
      */
     function propose(bytes32 identifier, FixedPoint.Signed memory rate) external {
         // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
@@ -166,6 +172,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * @dev This will revert if there is no pending funding rate for the identifier.
      * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back if their dispute is successful.
+     * @param identifier Identifier to dispute proposed funding rate for.
      */
     function dispute(bytes32 identifier) external {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
@@ -200,6 +207,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
      * will receive a reward plus their final fee bond. This method will also overwrite the current funding rate
      * with the resolved funding rate returned by the Oracle. Pending funding rates are unaffected by this method.
      * @dev This will revert if there is no price available for the disputed funding rate.
+     * @param identifier Identifier to settle disputed funding rate for.
+     * @param proposalTime Proposal time at which the disputed funding rate was proposed.
      */
     function settleDispute(bytes32 identifier, uint256 proposalTime) external {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
