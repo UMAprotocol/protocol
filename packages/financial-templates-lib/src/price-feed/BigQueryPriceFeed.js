@@ -6,10 +6,10 @@ const { parseFixed } = require("@ethersproject/bignumber");
 
 const client = new BigQuery();
 
-// An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
+// An implementation of PriceFeedInterface that uses BigQuery to retrieve prices.
 class BigQueryPriceFeed extends PriceFeedInterface {
   /**
-   * @notice Constructs the CryptoWatchPriceFeed.
+   * @notice Constructs the BigQueryPriceFeed.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
@@ -28,8 +28,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     this.toBN = this.web3.utils.toBN;
 
     this.convertDecimals = number => {
-      // Converts price result to wei
-      // returns price conversion to correct decimals as a big number
+      // Converts price result to wei and returns price conversion to correct decimals as a big number.
       return this.toBN(parseFixed(number.toString(), decimals).toString());
     };
   }
