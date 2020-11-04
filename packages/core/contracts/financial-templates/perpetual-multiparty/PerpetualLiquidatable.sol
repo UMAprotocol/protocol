@@ -469,9 +469,18 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Decrease the total collateral held in liquidatable by the amount to pay each party. The actual amounts
         // withdrawn might differ if _removeCollateral causes precision loss.
-        rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
-        rewards.paidToSponsor = _removeCollateral(rawLiquidationCollateral, rewards.payToSponsor);
-        rewards.paidToDisputer = _removeCollateral(rawLiquidationCollateral, rewards.payToDisputer);
+        if (rewards.payToLiquidator.isGreaterThan(0)) {
+            rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
+            collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
+        }
+        if (rewards.payToSponsor.isGreaterThan(0)) {
+            rewards.paidToSponsor = _removeCollateral(rawLiquidationCollateral, rewards.payToSponsor);
+            collateralCurrency.safeTransfer(liquidation.sponsor, rewards.paidToSponsor.rawValue);
+        }
+        if (rewards.payToDisputer.isGreaterThan(0)) {
+            rewards.paidToDisputer = _removeCollateral(rawLiquidationCollateral, rewards.payToDisputer);
+            collateralCurrency.safeTransfer(liquidation.disputer, rewards.paidToDisputer.rawValue);
+        }
 
         emit LiquidationWithdrawn(
             msg.sender,
@@ -482,13 +491,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             settlementPrice.rawValue
         );
 
-        // Transfer amount withdrawn from this contract to the caller.
-        collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
-        collateralCurrency.safeTransfer(liquidation.sponsor, rewards.paidToSponsor.rawValue);
-        collateralCurrency.safeTransfer(liquidation.disputer, rewards.paidToDisputer.rawValue);
-
         // Free up space after collateral is withdrawn by removing the liquidation object from the array.
-        delete liquidations[liquidation.sponsor][liquidationId];
+        delete liquidations[sponsor][liquidationId];
     }
 
     /**
