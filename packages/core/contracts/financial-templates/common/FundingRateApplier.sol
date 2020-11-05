@@ -39,6 +39,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
 
+    // TODO: This identifier can be moved into the PositionManager where the other identifier is declared.
     // Identifier in funding rate store to query for.
     bytes32 public fundingRateIdentifier;
 
@@ -104,7 +105,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
-        return _getFundingRateStore().getFundingRateForIdentifier(fundingRateIdentifier);
+        return _getFundingRateStore().getFundingRateForContract(address(this));
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,

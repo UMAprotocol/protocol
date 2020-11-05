@@ -110,7 +110,7 @@ abstract contract FundingRatePayer is FeePayer {
 
         if (fundingRateFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(fundingRateStore), fundingRateFee.rawValue);
-            fundingRateStore.payFundingRateFeesErc20(address(collateralCurrency), fundingRateFee);
+            fundingRateStore.payFundingRateFees(fundingRateFee);
         }
 
         if (latePenalty.isGreaterThan(0)) {

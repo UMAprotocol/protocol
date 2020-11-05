@@ -85,7 +85,7 @@ contract("FundingRateApplier", function() {
 
     // Set a positive funding rate of 1.01 in the store and apply it for a period
     // of 5 seconds. New funding rate should be (1 + 0.01 * 5) * 1 = 1.05
-    await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateApplier.address, await timer.getCurrentTime(), {
       rawValue: toWei("0.01")
     });
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
@@ -105,7 +105,7 @@ contract("FundingRateApplier", function() {
 
     // Set a negative funding rate of 0.98 in the store and apply it for a period
     // of 5 seconds. New funding rate should be (1 - 0.02 * 5) * 1.05 = 0.9 * 1.05 = 0.945
-    await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateApplier.address, await timer.getCurrentTime(), {
       rawValue: toWei("-0.02")
     });
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
@@ -125,7 +125,7 @@ contract("FundingRateApplier", function() {
 
     // Set a neutral funding rate in the store and verify that the multiplier
     // does not change.
-    await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(fundingRateApplier.address, await timer.getCurrentTime(), {
       rawValue: toWei("0")
     });
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());

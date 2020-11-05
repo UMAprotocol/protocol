@@ -10,21 +10,22 @@ import "../../../common/implementation/FixedPoint.sol";
  */
 interface FundingRateStoreInterface {
     /**
-     * @notice Pays funding rate fees in the margin currency, erc20Address, to the store.
-     * @dev To be used if the margin currency is an ERC20 token rather than ETH.
-     * @param erc20Address address of the ERC20 token used to pay the fee.
+     * @notice Pays funding rate fees in the margin currency of the calling contract to the store.
+     * @dev Intended to be called by a perpetual contract. This assumes that the caller has approved this contract
+     * to transfer `amount` of its collateral currency.
      * @param amount number of tokens to transfer. An approval for at least this amount must exist.
      */
-    function payFundingRateFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external;
+    function payFundingRateFees(FixedPoint.Unsigned calldata amount) external;
 
     /**
-     * @notice Gets the latest funding rate for `identifier`.
+     * @notice Gets the latest funding rate for a perpetual contract.
      * @dev This method should never revert.
-     * @param identifier uniquely identifier that the calling contracts wants to get a funding rate for.
-     * @return FixedPoint.Signed representing the funding rate for the given identifier. 0.01 would represent a funding
+     * @param perpetual perpetual contract whose funding rate identifier that the calling contracts wants to get
+     * a funding rate for.
+     * @return FixedPoint.Signed representing the funding rate for the given contract. 0.01 would represent a funding
      * rate of 1% per second. -0.01 would represent a negative funding rate of -1% per second.
      */
-    function getFundingRateForIdentifier(bytes32 identifier) external view returns (FixedPoint.Signed memory);
+    function getFundingRateForContract(address perpetual) external view returns (FixedPoint.Signed memory);
 
     /**
      * @notice Computes the funding rate fees that a contract should pay for a period.

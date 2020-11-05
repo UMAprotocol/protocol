@@ -452,7 +452,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // Set a positive funding rate of 0.005 in the store and apply it for a period of 10 seconds. New funding rate should
       // be 1 * (1 + 0.005 * 10) = 1.05)
-      await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
         rawValue: toWei("0.005")
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
@@ -880,7 +880,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
         // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
         // be 1 * (1 + 0.005 * 10) = 1.05)
-        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+        await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
           rawValue: toWei("0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
@@ -1016,7 +1016,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
         // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
         // be 1 * (1 - -0.005 * 10) = 0.95)
-        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+        await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
           rawValue: toWei("-0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
@@ -1086,7 +1086,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
         // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
         // be 1 * (1 - 0.005 * 10) = 1.05)
-        await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+        await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
           rawValue: toWei("0.005")
         });
         await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
@@ -1475,7 +1475,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
           // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
           // be 1 * (1 - -0.005 * 10) = 0.95)
-          await mockFundingRateStore.setFundingRate(fundingRateIdentifier, await timer.getCurrentTime(), {
+          await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
             rawValue: toWei("-0.005")
           });
           await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
