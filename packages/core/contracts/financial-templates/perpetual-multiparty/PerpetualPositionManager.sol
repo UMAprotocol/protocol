@@ -17,6 +17,8 @@ import "../common/FeePayer.sol";
 import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
+import "./PerpetualInterface.sol";
+
 
 /**
  * @title Financial contract with priceless position management.
@@ -24,7 +26,7 @@ import "../common/FundingRateApplier.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, AdministrateeInterface {
+contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, FundingRateApplier, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -620,6 +622,14 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, Admin
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
         return _getFundingRateAppliedTokenDebt(rawTokenDebt);
+    }
+
+    function getFundingRateIdentifier() external override returns (bytes32) {
+        return fundingRateIdentifier;
+    }
+
+    function getCollateralCurrency() external override returns (IERC20) {
+        return collateralCurrency;
     }
 
     /****************************************
