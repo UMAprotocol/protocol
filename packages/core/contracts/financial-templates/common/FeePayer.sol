@@ -58,6 +58,7 @@ abstract contract FeePayer is Testable, Lockable {
      ****************************************/
 
     // modifier that calls payRegularFees().
+    // TODO: Prettier doesn't allow modifiers to be virtual?
     // prettier-ignore
     modifier fees virtual {
         payRegularFees();
