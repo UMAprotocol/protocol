@@ -41,8 +41,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     struct FundingRateRecord {
-        FixedPoint.Signed rate;
-        uint256 publishTime;
+        FixedPoint.Signed rate; // Current funding rate.
+        uint256 proposeTime; // Time at which current funding rate was proposed.
         Proposal proposal;
     }
 
@@ -65,13 +65,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address indexed proposer,
         address indexed disputer
     );
-    event PublishedRate(
-        bytes32 indexed identifier,
-        int256 rate,
-        uint256 proposalTime,
-        address indexed proposer,
-        uint256 publishTime
-    );
+    event PublishedRate(bytes32 indexed identifier, int256 rate, uint256 proposalTime, address indexed proposer);
     event FinalFeesPaid(uint256 indexed amount);
 
     constructor(
@@ -108,13 +102,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Returns the timestamp at which the current funding rate was published.
+     * @notice Returns the timestamp at which the current funding rate was proposed.
      * @dev The "current funding rate" is defined as that returned by `getFundingRateForIdentifier(id)`
-     * @param identifier Identifier to retrieve publish time for.
-     * @return publish timestamp.
+     * @param identifier Identifier to retrieve propose time for.
+     * @return propose timestamp.
      */
-    function getLastPublishTimeForIdentifier(bytes32 identifier) external view nonReentrantView() returns (uint256) {
-        return _getLastPublishTimeForIdentifier(identifier);
+    function getProposeTimeForIdentifier(bytes32 identifier) external view nonReentrantView() returns (uint256) {
+        return _getLatestProposeTimeForIdentifier(identifier);
     }
 
     /**
@@ -141,7 +135,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         if (proposalState == ProposalState.Expired) {
             // Publish expired rate, and then reward proposer.
             fundingRateRecord.rate = fundingRateRecord.proposal.rate;
-            fundingRateRecord.publishTime = currentTime;
+            fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
 
             // TODO: Reward = proposal bond
             collateralCurrency.safeTransfer(
@@ -153,8 +147,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
                 identifier,
                 fundingRateRecord.rate.rawValue,
                 fundingRateRecord.proposal.time,
-                fundingRateRecord.proposal.proposer,
-                currentTime
+                fundingRateRecord.proposal.proposer
             );
         }
 
@@ -230,10 +223,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     function settleDispute(bytes32 identifier, uint256 proposalTime) external nonReentrant() {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
 
+        // This should be an invariant, remove after testing
+        require(proposalTime == fundingRateDispute.proposal.time, "mismatching propose times");
+
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
         // If the fundingRateDispute struct has been deleted, then this call will also fail because the proposal
         // time will be 0.
-        FixedPoint.Signed memory settlementRate = _getOraclePrice(identifier, fundingRateDispute.proposal.time);
+        FixedPoint.Signed memory settlementRate = _getOraclePrice(identifier, proposalTime);
 
         // Dispute was successful if settled rate is different from proposed rate.
         bool disputeSucceeded = !settlementRate.isEqual(fundingRateDispute.proposal.rate);
@@ -261,12 +257,11 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
         // Update current rate to settlement rate if there has not been a published funding rate since the dispute
         // began.
-        if (_getLastPublishTimeForIdentifier(identifier) <= fundingRateDispute.proposal.time) {
-            FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
-            uint256 currentTime = getCurrentTime();
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+        if (_getLatestProposeTimeForIdentifier(identifier) <= proposalTime) {
             fundingRateRecord.rate = settlementRate;
-            fundingRateRecord.publishTime = currentTime;
-            emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer, currentTime);
+            fundingRateRecord.proposeTime = proposalTime;
+            emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer);
         }
 
         // Delete dispute
@@ -322,14 +317,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         }
     }
 
-    function _getLastPublishTimeForIdentifier(bytes32 identifier) internal view returns (uint256) {
+    function _getLatestProposeTimeForIdentifier(bytes32 identifier) internal view returns (uint256) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
 
-        // If a pending funding rate has expired, then the timestamp at which it expired is the last publish time.
+        // If a pending funding rate has expired, then use the pending funding rate's proposal time.
         if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
-            return fundingRateRecord.proposal.time + proposalLiveness;
+            return fundingRateRecord.proposal.time;
         } else {
-            return fundingRateRecord.publishTime;
+            return fundingRateRecord.proposeTime;
         }
     }
 

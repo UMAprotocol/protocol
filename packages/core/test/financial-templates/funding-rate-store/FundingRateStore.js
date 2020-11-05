@@ -74,10 +74,10 @@ contract("FundingRateStore", function(accounts) {
     assert(await didContractThrow(FundingRateStore.new(0, collateralCurrency.address, finder.address, timer.address)));
   });
 
-  it("Initial Funding Rate and Publish Time of 0", async function() {
+  it("Initial Funding Rate and Propose Time of 0", async function() {
     const identifier = toHex("initial-rate");
     assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), "0");
-    assert.equal((await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(), "0");
+    assert.equal((await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(), "0");
   });
 
   describe("Unexpired Proposal", function() {
@@ -89,9 +89,9 @@ contract("FundingRateStore", function(accounts) {
       await incrementTime(fundingRateStore, liveness - 1);
     });
 
-    it("Initial rate and publish time persists", async function() {
+    it("Initial rate and propose time persists", async function() {
       assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), "0");
-      assert.equal((await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(), "0");
+      assert.equal((await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(), "0");
     });
 
     it("Event emitted", async function() {
@@ -253,7 +253,6 @@ contract("FundingRateStore", function(accounts) {
       const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
       const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
       const settlementTxn = await fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer });
-      const publishTime = await fundingRateStore.getCurrentTime();
 
       // Reverts if dispute is already settled.
       assert(await didContractThrow(fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer })));
@@ -264,16 +263,15 @@ contract("FundingRateStore", function(accounts) {
           toUtf8(ev.identifier) === toUtf8(identifier) &&
           ev.rate.toString() === toWei("0.01").toString() &&
           ev.proposalTime.toString() === proposalTime.toString() &&
-          ev.publishTime.toString() === publishTime.toString() &&
           ev.proposer === proposer // For a FAILED dispute, the proposer in this event is credited to the proposer
         );
       });
 
-      // Funding rate and publish time are updated.
+      // Funding rate and propose time are updated.
       assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.01"));
       assert.equal(
-        (await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(),
-        publishTime.toString()
+        (await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(),
+        proposalTime.toString()
       );
 
       // Disputed funding rate record is deleted.
@@ -304,7 +302,6 @@ contract("FundingRateStore", function(accounts) {
       const preBalanceDisputer = await collateralCurrency.balanceOf(disputer);
       const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
       const settlementTxn = await fundingRateStore.settleDispute(identifier, proposalTime, { from: disputer });
-      const publishTime = await fundingRateStore.getCurrentTime();
 
       // Publish event was emitted.
       truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
@@ -312,7 +309,6 @@ contract("FundingRateStore", function(accounts) {
           toUtf8(ev.identifier) === toUtf8(identifier) &&
           ev.rate.toString() === toWei("-0.01").toString() &&
           ev.proposalTime.toString() === proposalTime.toString() &&
-          ev.publishTime.toString() === publishTime.toString() &&
           ev.proposer === disputer // For a SUCCESSFUL dispute, the proposer in this event is credited to the disputer
         );
       });
@@ -323,8 +319,8 @@ contract("FundingRateStore", function(accounts) {
         toWei("-0.01")
       );
       assert.equal(
-        (await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(),
-        publishTime.toString()
+        (await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(),
+        proposalTime.toString()
       );
 
       // Disputer receives final fee rebate, proposer receives nothing.
@@ -343,11 +339,11 @@ contract("FundingRateStore", function(accounts) {
       await fundingRateStore.propose(identifier, { rawValue: toWei("0.02") }, { from: disputer });
       await incrementTime(fundingRateStore, liveness);
 
-      // The funding rate and publish time should be updated now.
+      // The funding rate and propose time should be updated now.
       assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.02"));
       assert.equal(
-        (await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(),
-        midDisputeProposeTime.add(toBN(liveness)).toString()
+        (await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(),
+        midDisputeProposeTime.toString()
       );
 
       // Now make a price available for the dispute.
@@ -362,11 +358,11 @@ contract("FundingRateStore", function(accounts) {
       // Publish event was NOT emitted.
       truffleAssert.eventNotEmitted(settlementTxn, "PublishedRate");
 
-      // Funding rate and publish time are linked to the proposal that expired in the middle of the dispute.
+      // Funding rate and proposal time are linked to the proposal that expired in the middle of the dispute.
       assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.02"));
       assert.equal(
-        (await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(),
-        midDisputeProposeTime.add(toBN(liveness)).toString()
+        (await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(),
+        midDisputeProposeTime.toString()
       );
 
       // Disputed funding rate record is deleted.
@@ -395,12 +391,9 @@ contract("FundingRateStore", function(accounts) {
       await incrementTime(fundingRateStore, liveness);
     });
 
-    it("New rate and publish time are retrieved", async function() {
+    it("New rate and propose time are retrieved", async function() {
       assert.equal((await fundingRateStore.getFundingRateForIdentifier(identifier)).rawValue.toString(), toWei("0.01"));
-      assert.equal(
-        (await fundingRateStore.getLastPublishTimeForIdentifier(identifier)).toString(),
-        proposeTime.add(toBN(liveness)).toString()
-      );
+      assert.equal((await fundingRateStore.getProposeTimeForIdentifier(identifier)).toString(), proposeTime.toString());
     });
 
     it("New proposal allowed", async function() {
