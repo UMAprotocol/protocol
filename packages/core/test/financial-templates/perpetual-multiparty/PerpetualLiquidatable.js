@@ -1180,6 +1180,15 @@ contract("PerpetualLiquidatable", function(accounts) {
         assert(await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.falseUuid, sponsor)));
       });
       it("Rewards are distributed", async () => {
+        // Check return value.
+        const rewardAmounts = await liquidationContract.withdrawLiquidation.call(
+          liquidationParams.liquidationId,
+          sponsor
+        );
+        assert.equal(rewardAmounts.paidToDisputer.toString(), "0");
+        assert.equal(rewardAmounts.paidToSponsor.toString(), "0");
+        assert.equal(rewardAmounts.paidToLiquidator.toString(), amountOfCollateral.add(finalFeeAmount).toString());
+
         const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
         assert.equal(
           (await collateralToken.balanceOf(liquidator)).toString(),
@@ -1261,17 +1270,25 @@ contract("PerpetualLiquidatable", function(accounts) {
           await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         });
         it("Rewards are transferred to sponsor, liquidator, and disputer", async () => {
-          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
           // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
           const expectedSponsorPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
-          assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedSponsorPayment.toString());
-
           // Expected Liquidator payment => TRV - dispute reward - sponsor reward
           const expectedLiquidatorPayment = settlementTRV.sub(disputerDisputeReward).sub(sponsorDisputeReward);
-          assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedLiquidatorPayment.toString());
-
           // Expected Disputer payment => disputer reward + dispute bond + final fee
           const expectedDisputerPayment = disputerDisputeReward.add(disputeBond).add(finalFeeAmount);
+
+          // Check return value.
+          const rewardAmounts = await liquidationContract.withdrawLiquidation.call(
+            liquidationParams.liquidationId,
+            sponsor
+          );
+          assert.equal(rewardAmounts.paidToDisputer.toString(), expectedDisputerPayment.toString());
+          assert.equal(rewardAmounts.paidToSponsor.toString(), expectedSponsorPayment.toString());
+          assert.equal(rewardAmounts.paidToLiquidator.toString(), expectedLiquidatorPayment.toString());
+
+          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
+          assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedSponsorPayment.toString());
+          assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedLiquidatorPayment.toString());
           assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedDisputerPayment.toString());
         });
         it("Withdraw still succeeds even if liquidation has expired", async () => {
@@ -1406,9 +1423,19 @@ contract("PerpetualLiquidatable", function(accounts) {
           await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         });
         it("Uses all collateral from liquidation to pay liquidator, and deletes liquidation", async () => {
-          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
           // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral + final fee refund to liquidator
           const expectedPayment = amountOfCollateral.add(disputeBond).add(finalFeeAmount);
+
+          // Check return value.
+          const rewardAmounts = await liquidationContract.withdrawLiquidation.call(
+            liquidationParams.liquidationId,
+            sponsor
+          );
+          assert.equal(rewardAmounts.paidToDisputer.toString(), "0");
+          assert.equal(rewardAmounts.paidToSponsor.toString(), "0");
+          assert.equal(rewardAmounts.paidToLiquidator.toString(), expectedPayment.toString());
+
+          await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
           assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
 
           // No collateral left in contract, deletes liquidation.
@@ -2032,6 +2059,9 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // The liquidator is owed (0.999999999999999999 * 28 = 27.9999...) which gets truncated to 27.
       // The contract should have 29 - 27 = 2 collateral remaining, and the liquidation should be deleted.
+      const rewardAmounts = await liquidationContract.withdrawLiquidation.call(0, sponsor);
+      assert.equal(rewardAmounts.paidToLiquidator.toString(), "27");
+
       await liquidationContract.withdrawLiquidation(0, sponsor);
       assert.equal((await collateralToken.balanceOf(liquidator)).toString(), "27");
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "2");

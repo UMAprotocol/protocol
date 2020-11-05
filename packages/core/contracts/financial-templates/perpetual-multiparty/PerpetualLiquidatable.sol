@@ -406,6 +406,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * This method will revert if rewards have already been dispersed.
      * @param liquidationId uniquely identifies the sponsor's liquidation.
      * @param sponsor address of the sponsor associated with the liquidation.
+     * @return data about rewards paid out.
      */
     function withdrawLiquidation(uint256 liquidationId, address sponsor)
         public
@@ -413,6 +414,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         fees()
         updateFundingRate()
         nonReentrant()
+        returns (RewardsData memory)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
@@ -434,6 +436,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
         // Based on the state, different parties of a liquidation receive different amounts.
+        // After assigning rewards based on the liquidation status, decrease the total collateral held in this contract
+        // by the amount to pay each party. The actual amounts withdrawn might differ if _removeCollateral causes
+        // precision loss.
         RewardsData memory rewards;
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users should receive rewards:
@@ -450,37 +455,43 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             // the constructor when these params are set.
             rewards.payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
 
+            // Transfer rewards and debit collateral
+            rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
+            rewards.paidToSponsor = _removeCollateral(rawLiquidationCollateral, rewards.payToSponsor);
+            rewards.paidToDisputer = _removeCollateral(rawLiquidationCollateral, rewards.payToDisputer);
+
+            collateralCurrency.safeTransfer(liquidation.disputer, rewards.paidToDisputer.rawValue);
+            collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
+            collateralCurrency.safeTransfer(liquidation.sponsor, rewards.paidToSponsor.rawValue);
+
             // In the case of a failed dispute only the liquidator can withdraw.
         } else if (liquidation.state == Status.DisputeFailed) {
             // Pay LIQUIDATOR: collateral + dispute bond + returned final fee
             rewards.payToLiquidator = collateral.add(disputeBondAmount).add(finalFee);
+
+            // Transfer rewards and debit collateral
+            rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
+
+            collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
 
             // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
             // state as a dispute failed and the liquidator can withdraw.
         } else if (liquidation.state == Status.PreDispute) {
             // Pay LIQUIDATOR: collateral + returned final fee
             rewards.payToLiquidator = collateral.add(finalFee);
-        }
 
-        require(
-            (rewards.payToLiquidator.add(rewards.payToSponsor).add(rewards.payToDisputer)).isGreaterThan(0),
-            "Nothing to withdraw"
-        );
-
-        // Decrease the total collateral held in liquidatable by the amount to pay each party. The actual amounts
-        // withdrawn might differ if _removeCollateral causes precision loss.
-        if (rewards.payToLiquidator.isGreaterThan(0)) {
+            // Transfer rewards and debit collateral
             rewards.paidToLiquidator = _removeCollateral(rawLiquidationCollateral, rewards.payToLiquidator);
+
             collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
         }
-        if (rewards.payToSponsor.isGreaterThan(0)) {
-            rewards.paidToSponsor = _removeCollateral(rawLiquidationCollateral, rewards.payToSponsor);
-            collateralCurrency.safeTransfer(liquidation.sponsor, rewards.paidToSponsor.rawValue);
-        }
-        if (rewards.payToDisputer.isGreaterThan(0)) {
-            rewards.paidToDisputer = _removeCollateral(rawLiquidationCollateral, rewards.payToDisputer);
-            collateralCurrency.safeTransfer(liquidation.disputer, rewards.paidToDisputer.rawValue);
-        }
+
+        // If the raw amounts of collateral to pay out are 0, which is possible if the liquidation is for 0 collateral,
+        // then revert because there are no rewards to pay.
+        require(
+            (rewards.payToLiquidator.add(rewards.payToSponsor).add(rewards.payToDisputer)).isGreaterThan(0),
+            "Rewards equal to 0"
+        );
 
         emit LiquidationWithdrawn(
             msg.sender,
@@ -493,6 +504,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Free up space after collateral is withdrawn by removing the liquidation object from the array.
         delete liquidations[sponsor][liquidationId];
+
+        return rewards;
     }
 
     /**
