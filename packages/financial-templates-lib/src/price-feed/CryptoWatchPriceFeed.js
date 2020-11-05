@@ -119,7 +119,15 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    return this.historicalPricePeriods;
+    if (!this.invertPrice) return this.historicalPricePeriods;
+    else
+      return this.historicalPricePeriods.map(historicalPrice => {
+        return {
+          ...historicalPrice,
+          openPrice: this._invertPriceSafely(historicalPrice.openPrice),
+          closePrice: this._invertPriceSafely(historicalPrice.closePrice)
+        };
+      });
   }
 
   getLastUpdateTime() {
@@ -179,14 +187,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // 3. Check responses.
     if (!priceResponse || !priceResponse.result || !priceResponse.result.price) {
-      // TODO: Slack transport might not be able to handle long messages such as the stringified `ohlcResponse`,
-      // this might cause communication errors with the Serverless hub.
       throw new Error(`🚨Could not parse price result from url ${priceUrl}: ${JSON.stringify(priceResponse)}`);
     }
 
     if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
-      // TODO: Slack transport might not be able to handle long messages such as the stringified `ohlcResponse`,
-      // this might cause communication errors with the Serverless hub.
       throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
     }
 

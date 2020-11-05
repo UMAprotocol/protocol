@@ -9,7 +9,8 @@ const params = require(`../datasets/${datasetName}`);
 const {
   empCreator,
   empContracts,
-  syntheticTokens,
+  collateralTokens,
+  collateralTokenDecimals,
   syntheticTokenDecimals,
   startingTimestamp,
   endingTimestamp
@@ -37,7 +38,7 @@ function Queries() {
 }
 function Coingecko() {
   return {
-    chart(address) {
+    getHistoricContractPrices(address) {
       return require(`../datasets/${datasetName}/coingecko/${address}`);
     }
   };
@@ -45,8 +46,8 @@ function Coingecko() {
 
 function HistoricSynthPrices() {
   return {
-    chart(address) {
-      return require(`../datasets/${datasetName}/coingecko/${address}`);
+    getHistoricSynthPrices(address) {
+      return require(`../datasets/${datasetName}/synth-prices/${address}`);
     }
   };
 }
@@ -83,7 +84,7 @@ describe("DeployerRewards", function() {
   });
   it("getPriceHistory", async function() {
     this.timeout(10000);
-    const [, address] = syntheticTokens;
+    const [, address] = collateralTokens;
     const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
@@ -112,12 +113,18 @@ describe("DeployerRewards", function() {
       endTime: endingTimestamp,
       empWhitelist: empContracts,
       empCreatorAddress: empCreator,
-      tokensToPrice: syntheticTokens,
-      tokenDecimals: syntheticTokenDecimals
+      collateralTokens: collateralTokens,
+      collateralTokenDecimals: collateralTokenDecimals,
+      syntheticTokenDecimals: syntheticTokenDecimals
     });
-    // WIP
 
-    assert.equal(Object.keys(result).length, 1); // there should only be 1 deployer
-    assert.equal(Number(Object.values(result)[0]), Number(devRewardsToDistribute)); // the total rewards distributed should equal the number specified
+    console.log("result", result);
+    assert.equal(Object.keys(result).length, 2); // There should be 2 deplorers for the 3 EMPs.
+    assert.equal(
+      Object.values(result).reduce((total, value) => {
+        return Number(total) + Number(value);
+      }, 0),
+      Number(devRewardsToDistribute)
+    ); // the total rewards distributed should equal the number specified
   });
 });

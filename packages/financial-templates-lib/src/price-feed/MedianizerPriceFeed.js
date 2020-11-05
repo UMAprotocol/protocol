@@ -54,7 +54,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       });
       processedMedianHistoricalPricePeriods[pricePointIndex] = [
         historicalPricePeriods[0][pricePointIndex].closeTime,
-        Number(this._computeMedian(periodPrices))
+        this._computeMedian(periodPrices).toString()
       ];
     }
     return processedMedianHistoricalPricePeriods;

@@ -79,8 +79,8 @@ describe("Contract Prices", function() {
   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
-    seed = await Coingecko().chart(token, "usd", startingTimestamp, endingTimestamp);
-    prices = Prices(seed.prices);
+    seed = await Coingecko().getHistoricContractPrices(token, "usd", startingTimestamp, endingTimestamp);
+    prices = Prices(seed);
     assert.ok(seed);
     assert.ok(prices);
   });
@@ -102,14 +102,30 @@ describe("Contract Prices", function() {
 });
 
 describe("Synthetic prices", function() {
-  let seed;
+  let prices, seed;
   const empAddress = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
     this.timeout(100000);
     seed = await HistoricSynthPrices().getHistoricSynthPrice(empAddress, startingTimestamp, endingTimestamp);
-
-    console.log("seed", seed);
+    prices = Prices(seed);
+    assert.ok(seed);
+    assert.ok(prices);
+  });
+  it("lookup", function() {
+    const time = moment()
+      .subtract(5, "days")
+      .valueOf();
+    const result = prices.lookup(time);
+    assert.ok(result[0] <= time);
+  });
+  it("closest", function() {
+    const time = moment()
+      .subtract(5, "days")
+      .valueOf();
+    const result = prices.closest(time);
+    assert.ok(result[0]);
+    assert.ok(result[1]);
   });
 });

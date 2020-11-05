@@ -296,6 +296,13 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
     ]
+  },
+  USDPERL: {
+    type: "medianizer",
+    lookback: 7200,
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }]
   }
 };
 

@@ -3,7 +3,7 @@ const lodash = require("lodash");
 
 // assumes sorted oldest to newest
 // always return price equal to or earlier than requested time
-// prices are input directly from coingecko api
+// prices are input directly from coingecko api / price feed.
 // [
 //   [ timestamp, price],
 //   [ timestamp, price],
