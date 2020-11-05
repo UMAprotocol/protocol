@@ -136,7 +136,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   async update() {
     const currentTime = this.getTime();
-    console.log("currentTime", currentTime);
 
     // Return early if the last call was too recent.
     if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
@@ -160,7 +159,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
     // timestamp (because the close of that OHLC may be relevant).
     const earliestHistoricalTimestamp = Math.floor((currentTime - this.lookback) / this.ohlcPeriod) * this.ohlcPeriod;
-    console.log("earliestHistoricalTimestamp", earliestHistoricalTimestamp);
 
     // 1. Construct URLs.
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
@@ -176,8 +174,6 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       `&periods=${this.ohlcPeriod}`,
       this.apiKey ? `&apikey=${this.apiKey}` : ""
     ].join("");
-
-    console.log("ohlcUrl", ohlcUrl);
 
     // 2. Send requests.
     const [ohlcResponse, priceResponse] = await Promise.all([
