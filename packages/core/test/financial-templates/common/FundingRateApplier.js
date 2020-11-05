@@ -17,8 +17,6 @@ contract("FundingRateApplier", function() {
   let mockFundingRateStore;
   let timer;
 
-  const fundingRateIdentifier = utf8ToHex("TEST_IDENTIFIER");
-
   beforeEach(async () => {
     fpFinder = await Finder.deployed();
     timer = await Timer.deployed();
@@ -27,13 +25,13 @@ contract("FundingRateApplier", function() {
   });
 
   it("Construction parameters set properly", async () => {
-    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
+    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, timer.address);
 
     assert.equal(await fundingRateApplier.cumulativeFundingRateMultiplier(), toWei("1"));
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
-    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
+    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, timer.address);
 
     // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
     // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
@@ -80,7 +78,7 @@ contract("FundingRateApplier", function() {
     assert.equal(test4[1].rawValue, toWei("0"));
   });
   it("Applying positive and negative effective funding rates sets state and emits events correctly", async () => {
-    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, fundingRateIdentifier, timer.address);
+    let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, timer.address);
     let startingTime = await timer.getCurrentTime();
 
     // Set a positive funding rate of 1.01 in the store and apply it for a period

@@ -39,10 +39,6 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
 
-    // TODO: This identifier can be moved into the PositionManager where the other identifier is declared.
-    // Identifier in funding rate store to query for.
-    bytes32 public fundingRateIdentifier;
-
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
     // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -77,11 +73,9 @@ abstract contract FundingRateApplier is Testable, Lockable {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
-     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      */
-    constructor(address _finderAddress, bytes32 _fundingRateIdentifier) public {
+    constructor(address _finderAddress) public {
         finder = FinderInterface(_finderAddress);
-        fundingRateIdentifier = _fundingRateIdentifier;
 
         lastUpdateTime = getCurrentTime();
 

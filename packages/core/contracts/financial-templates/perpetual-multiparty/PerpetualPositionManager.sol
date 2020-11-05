@@ -60,6 +60,9 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, Admin
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
 
+    // Identifier in funding rate store to query for.
+    bytes32 public fundingRateIdentifier;
+
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
 
@@ -140,6 +143,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, Admin
      * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
+     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
@@ -154,17 +158,14 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, Admin
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
-    )
-        public
-        FundingRatePayer(_collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateIdentifier)
-    {
+    ) public FundingRatePayer(_collateralAddress, _finderAddress, _timerAddress) FundingRateApplier(_finderAddress) {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
+        fundingRateIdentifier = _fundingRateIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
