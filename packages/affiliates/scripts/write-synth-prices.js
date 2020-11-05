@@ -1,4 +1,6 @@
-const HistoricSynthPrices = require("../libs/historicSynthPrices");
+const Web3 = require("web3");
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const HistoricSynthPrices = require("../libs/synthPrices");
 const fs = require("fs");
 const Path = require("path");
 const Promise = require("bluebird");
@@ -9,7 +11,7 @@ const { startingTimestamp, endingTimestamp } = params;
 const basePath = Path.join(__dirname, "../test/datasets");
 const subDir = Path.join(basePath, params.name, "synth-prices");
 
-const historicSynthPrices = HistoricSynthPrices();
+const historicSynthPrices = HistoricSynthPrices({ web3 });
 async function runTest() {
   await mkdirp(subDir);
   await Promise.each([...params.empContracts], async empAddress => {

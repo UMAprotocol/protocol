@@ -44,7 +44,7 @@ function Coingecko() {
   };
 }
 
-function HistoricSynthPrices() {
+function SynthPrices() {
   return {
     getHistoricSynthPrices(address) {
       return require(`../datasets/${datasetName}/synth-prices/${address}`);
@@ -57,13 +57,13 @@ describe("DeployerRewards", function() {
   before(function() {
     const queries = Queries();
     const coingecko = Coingecko();
-    const historicSynthPrices = HistoricSynthPrices();
+    const synthPrices = SynthPrices();
     affiliates = DeployerRewards({
       queries,
       empAbi: empAbi.abi,
       empCreatorAbi: empCreatorAbi.abi,
       coingecko,
-      historicSynthPrices
+      synthPrices
     });
   });
   it("getBalanceHistory", async function() {

@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const { History, Balances, SharedAttributions, Prices } = require("../../libs/models");
 const Coingecko = require("../../libs/coingecko");
-const HistoricSynthPrices = require("../../libs/historicSynthPrices");
+const SynthPrices = require("../../libs/synthPrices");
 const moment = require("moment");
 
 describe("SharedAttributions", function() {
@@ -108,7 +108,9 @@ describe("Synthetic prices", function() {
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
     this.timeout(100000);
-    seed = await HistoricSynthPrices().getHistoricSynthPrice(empAddress, startingTimestamp, endingTimestamp);
+    const Web3 = require("web3");
+    const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+    seed = await SynthPrices({ web3 }).getHistoricSynthPrices(empAddress, startingTimestamp, endingTimestamp);
     prices = Prices(seed);
     assert.ok(seed);
     assert.ok(prices);

@@ -3,11 +3,15 @@
 const moment = require("moment");
 
 // emps to look at
-const empWhitelist = ["0xaBBee9fC7a882499162323EEB7BF6614193312e3", "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56"];
+const empWhitelist = [
+  "0xaBBee9fC7a882499162323EEB7BF6614193312e3",
+  "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56",
+  "0x306B19502c833C1522Fbc36C9dd7531Eda35862B"
+];
 
 // start time and endtime in ms timestamp
-const startTime = moment("2020-9-20 23:00:00", "YYYY/MM/DD  HH:mm z").valueOf(); // utc timestamp
-const endTime = moment("2020-10-19 23:00:00", "YYYY/MM/DD HH:mm z").valueOf();
+const startTime = moment("2020-9-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
+const endTime = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
 // 10000 rewards to split across all emp creators
 const totalRewards = 10000n.toString();

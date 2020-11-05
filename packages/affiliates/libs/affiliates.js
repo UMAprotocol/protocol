@@ -10,11 +10,12 @@ const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
-const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, historicSynthPrices }) => {
-  assert(coingecko, "requires coingecko api");
+const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrices }) => {
   assert(queries, "requires queries class");
   assert(empCreatorAbi, "requires creator abi");
   assert(empAbi, "requires empAbi");
+  assert(coingecko, "requires coingecko api");
+  assert(synthPrices, "requires synthPrices api");
   async function getBalanceHistory(address, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
     const stream = await queries.streamLogsByContract(address, start, end);
@@ -51,7 +52,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, historicSy
 
   // Gets the value of synthetics in collateral currency.
   async function getSyntheticPriceHistory(address, start, end) {
-    const result = await historicSynthPrices.getHistoricSynthPrices(address, start, end);
+    const result = await synthPrices.getHistoricSynthPrices(address, start, end);
     return Prices(result);
   }
   async function getBlocks(start, end) {
