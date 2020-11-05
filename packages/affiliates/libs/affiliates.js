@@ -217,6 +217,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, historicSy
       getBalanceHistory,
       getAllBalanceHistories,
       getCollateralPriceHistory,
+      getSyntheticPriceHistory,
       getBlocks,
       getEmpDeployerHistory,
       calculateRewards,

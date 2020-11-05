@@ -82,10 +82,16 @@ describe("DeployerRewards", function() {
       assert.ok(history.history.length());
     });
   });
-  it("getPriceHistory", async function() {
+  it("getCollateralPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = collateralTokens;
-    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    const result = await affiliates.utils.getCollateralPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    assert.ok(result.prices.length);
+  });
+  it("getSyntheticPriceHistory", async function() {
+    this.timeout(10000);
+    const [, address] = empContracts;
+    const result = await affiliates.utils.getSyntheticPriceHistory(address, startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {
