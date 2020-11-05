@@ -1919,9 +1919,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       await syntheticToken.addMinter(USDCLiquidationContract.address);
       await syntheticToken.addBurner(USDCLiquidationContract.address);
 
-      // Get newly created synthetic token and set it as the global synthetic token.
-      syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
-
       // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop
       for (let i = 1; i < 4; i++) {
         await syntheticToken.approve(USDCLiquidationContract.address, toWei("100000"), {

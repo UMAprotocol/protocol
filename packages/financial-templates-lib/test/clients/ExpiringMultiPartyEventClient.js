@@ -10,8 +10,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -90,15 +90,21 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         const currentTime = await mockOracle.getCurrentTime.call();
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
 
+        // Create a new synthetic token
+        syntheticToken = await SyntheticToken.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenName,
+          tokenConfig.collateralDecimals,
+          { from: tokenSponsor }
+        );
+
         constructorParams = {
           expirationTimestamp: expirationTime.toString(),
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
+          tokenAddress: syntheticToken.address,
           finderAddress: Finder.address,
-          tokenFactoryAddress: TokenFactory.address,
           priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
-          syntheticName: `Test ${identifier} Token`,
-          syntheticSymbol: identifier,
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -110,6 +116,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         };
 
         emp = await ExpiringMultiParty.new(constructorParams);
+        await syntheticToken.addMinter(emp.address);
+        await syntheticToken.addBurner(emp.address);
 
         // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
         dummyLogger = winston.createLogger({

@@ -7,7 +7,7 @@ const Poll = require("../index.js");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
@@ -71,16 +71,17 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
+    // Create a new synthetic token
+    syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: contractCreator });
+
     // Deploy a new expiring multi party
     constructorParams = {
       expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100,
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"),
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -91,6 +92,8 @@ contract("index.js", function(accounts) {
       excessTokenBeneficiary: store.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(emp.address);
+    await syntheticToken.addBurner(emp.address);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -121,6 +124,8 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(emp.address);
+    await syntheticToken.addBurner(emp.address);
 
     await Poll.run({
       logger: spyLogger,

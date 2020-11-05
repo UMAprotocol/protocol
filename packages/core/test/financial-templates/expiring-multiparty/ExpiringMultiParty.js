@@ -6,31 +6,28 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiParty", function(accounts) {
-  let finder, timer, tokenFactory;
+  let finder, timer;
 
   beforeEach(async () => {
     timer = await Timer.deployed();
     finder = await Finder.deployed();
-    tokenFactory = await TokenFactory.deployed();
   });
 
   it("Can deploy", async function() {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
+    const syntheticToken = await Token.new("SYNTH", "SYNTH", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      tokenFactoryAddress: tokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
