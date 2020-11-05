@@ -51,7 +51,7 @@ async function App(config) {
       result.collateralTokens.push(collateralInfo.address);
       result.collateralTokenDecimals.push(collateralInfo.decimals);
 
-      const syntheticInfo = await emp.collateralInfo(address);
+      const syntheticInfo = await emp.tokenInfo(address);
       result.syntheticTokenDecimals.push(syntheticInfo.decimals);
       return result;
     },
