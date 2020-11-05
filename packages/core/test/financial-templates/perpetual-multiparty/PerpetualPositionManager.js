@@ -780,6 +780,8 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: fundingRateFee },
       { rawValue: "0" },
       7200,
+      collateral.address,
+      finder.address,
       timer.address,
       { from: contractDeployer }
     );
