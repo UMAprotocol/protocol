@@ -828,13 +828,4 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, Admin
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
     }
-
-    function _getFundingRateStore()
-        internal
-        override(FundingRatePayer, FundingRateApplier)
-        view
-        returns (FundingRateStoreInterface)
-    {
-        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
-    }
 }

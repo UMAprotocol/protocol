@@ -5,12 +5,15 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
+import "../../../common/implementation/Withdrawable.sol";
 
 
-contract FundingRateStore is FundingRateStoreInterface, Testable {
+contract FundingRateStore is FundingRateStoreInterface, Withdrawable, Testable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
+
+    enum Roles { Owner, Withdrawer }
 
     struct Proposal {
         FixedPoint.Signed rate;
@@ -39,8 +42,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable {
         uint256 _proposalLiveness,
         address _timerAddress
     ) public Testable(_timerAddress) {
+        // TODO: Should we make the Perpetual contract the withdrawer of this Store?
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Owner), msg.sender);
+
         require(_proposalLiveness > 0, "Proposal liveness is 0");
         proposalLiveness = _proposalLiveness;
+
+        // Continuous fees at or over 100% don't make sense.
+        require(_fixedFundingRateFeePerSecondPerPfc.isLessThan(1), "Fee must be < 100% per second.");
+        require(_weeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
 
         // TODO: Should we make these fee rates modifiable (by some admin) post deployment?
         fixedFundingRateFeePerSecondPerPfc = _fixedFundingRateFeePerSecondPerPfc;

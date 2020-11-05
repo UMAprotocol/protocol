@@ -99,7 +99,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         return rawTokenDebt.mul(cumulativeFundingRateMultiplier);
     }
 
-    function _getFundingRateStore() internal virtual view returns (FundingRateStoreInterface) {
+    function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
         return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 

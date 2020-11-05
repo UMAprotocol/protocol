@@ -12,6 +12,7 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const MockFundingRateStore = artifacts.require("MockFundingRateStore");
+const FundingRateStore = artifacts.require("FundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
@@ -770,7 +771,102 @@ contract("PerpetualPositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.repay({ rawValue: "1" }, { from: sponsor })));
   });
 
-  it("Basic fees", async function() {
+  it("Basic funding rate fees", async function() {
+    // Set funding rate fees to 1% per second.
+    const fundingRateFee = toWei("0.01");
+
+    // Create a real funding rate store & and add it to the finder.
+    let fundingRateStore = await FundingRateStore.new(
+      { rawValue: fundingRateFee },
+      { rawValue: "0" },
+      7200,
+      timer.address,
+      { from: contractDeployer }
+    );
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), fundingRateStore.address, {
+      from: contractDeployer
+    });
+
+    // Create an instance of the positionManager that uses this real funding rate store so that we can test
+    // the FundingRatePayer.
+    positionManager = await PerpetualPositionManager.new(
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      { from: contractDeployer }
+    );
+
+    // Give contract owner permissions.
+    await tokenCurrency.addMinter(positionManager.address);
+    await tokenCurrency.addBurner(positionManager.address);
+
+    // Create 2 positions.
+    await collateral.approve(positionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100000") }, { from: other });
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Move time in the contract forward by 1 second to capture a 1% fee.
+    const startTime = await positionManager.getCurrentTime();
+    await positionManager.setCurrentTime(startTime.addn(1));
+
+    // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
+    // Multiply by 2 because there are two active positions
+    const expectedStoreBalance = (await collateral.balanceOf(fundingRateStore.address)).add(toBN(toWei("0.02")));
+
+    // Pay the fees, check the return value, and then check the collateral and the store balance.
+    const payFundingRateFees = positionManager.payFundingRateFees;
+    const feesPaid = await payFundingRateFees.call();
+    assert.equal(feesPaid.toString(), toWei("0.02"));
+    const payFeesResult = await payFundingRateFees();
+    truffleAssert.eventEmitted(payFeesResult, "FundingRateFeesPaid", ev => {
+      return ev.fundingRateFee.toString() === toWei("0.02") && ev.lateFee.toString() === "0";
+    });
+    let collateralAmount = await positionManager.getCollateral(sponsor);
+    assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
+    assert.equal((await collateral.balanceOf(fundingRateStore.address)).toString(), expectedStoreBalance.toString());
+
+    // Calling `payFundingRateFees()` more than once in the same block does not emit a FundingRateFeesPaid event.
+    const feesPaidRepeat = await payFundingRateFees.call();
+    assert.equal(feesPaidRepeat.toString(), "0");
+    const payFeesRepeatResult = await payFundingRateFees();
+    truffleAssert.eventNotEmitted(payFeesRepeatResult, "FundingRateFeesPaid");
+
+    // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
+    // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
+    const pfc = await positionManager.pfc();
+    const feesOwed = (
+      await fundingRateStore.computeFundingRateFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
+    ).fundingRateFee;
+    assert(Number(pfc.toString()) < Number(feesOwed.toString()));
+    const farIntoTheFutureSeconds = 502;
+    await positionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
+    const payTooManyFeesResult = await positionManager.payFundingRateFees();
+    truffleAssert.eventEmitted(payTooManyFeesResult, "FundingRateFeesPaid", ev => {
+      // The remaining of the PfC of the contract should be paid out.
+      return ev.fundingRateFee.toString() === pfc.toString() && ev.lateFee.toString() === "0";
+    });
+    assert.equal((await positionManager.getCollateral(sponsor)).toString(), "0");
+
+    // Set the store fees back to 0 by pointing the finder back to the MockFundingRateStore
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), mockFundingRateStore.address, {
+      from: contractDeployer
+    });
+
+    // Fees are now 0, so check that no event is fired if the fees owed are 0.
+    await positionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1));
+    const payZeroFeesResult = await payFundingRateFees();
+    truffleAssert.eventNotEmitted(payZeroFeesResult, "FundingRateFeesPaid");
+  });
+  it("Basic oracle fees", async function() {
     // Set up position.
     await collateral.approve(positionManager.address, toWei("1000"), { from: other });
     await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });

@@ -48,7 +48,9 @@ abstract contract FundingRatePayer is FeePayer {
         address _collateralAddress,
         address _finderAddress,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {}
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+        lastPaymentTime = getCurrentTime();
+    }
 
     /****************************************
      *        FEE PAYMENT FUNCTIONS         *
@@ -64,7 +66,9 @@ abstract contract FundingRatePayer is FeePayer {
      * This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
     function payFundingRateFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
-        FundingRateStoreInterface fundingRateStore = _getFundingRateStore();
+        FundingRateStoreInterface fundingRateStore = FundingRateStoreInterface(
+            finder.getImplementationAddress("FundingRateStore")
+        );
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
@@ -111,13 +115,5 @@ abstract contract FundingRatePayer is FeePayer {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
         return totalPaid;
-    }
-
-    /****************************************
-     *         INTERNAL FUNCTIONS           *
-     ****************************************/
-
-    function _getFundingRateStore() internal virtual view returns (FundingRateStoreInterface) {
-        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 }
