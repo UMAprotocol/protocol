@@ -118,7 +118,6 @@ describe("DeployerRewards", function() {
       syntheticTokenDecimals: syntheticTokenDecimals
     });
 
-    console.log("result", result);
     assert.equal(Object.keys(result).length, 2); // There should be 2 deplorers for the 3 EMPs.
     assert.equal(
       Object.values(result).reduce((total, value) => {
