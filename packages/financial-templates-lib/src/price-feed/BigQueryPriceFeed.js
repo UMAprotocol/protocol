@@ -57,17 +57,13 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     // Create the query with the needed time interval.
     const query = this.createQuery(t2, formattedCurrentTime);
 
-    // Submit async call to BigQuery.
+    // Submit async call to BigQuery and check the response.
     let priceResponse;
-    await this.runQuery(query)
-      .then(res => {
-        console.log(res[0].gas_price);
-        priceResponse = res[0].gas_price;
-      })
-      .catch(console.log);
-
-    // Check response.
-    if (!priceResponse) {
+    try {
+      priceResponse = await this.runQuery(query);
+      priceResponse = priceResponse[0].gas_price;
+      console.log(priceResponse);
+    } catch (error) {
       throw new Error(`🚨Could not parse price result from bigquery: ${priceResponse}`);
     }
 
@@ -118,17 +114,13 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     // Create the query with the needed time interval.
     const query = this.createQuery(t2, formattedCurrentTime);
 
-    // Submit async call to BigQuery.
+    // Submit async call to BigQuery and check response.
     let priceResponse;
-    await this.runQuery(query)
-      .then(res => {
-        console.log(res[0].gas_price);
-        priceResponse = res[0].gas_price;
-      })
-      .catch(console.log);
-
-    // Check responses.
-    if (!priceResponse) {
+    try {
+      priceResponse = await this.runQuery(query);
+      priceResponse = priceResponse[0].gas_price;
+      console.log(priceResponse);
+    } catch (error) {
       throw new Error(`🚨Could not parse price result from bigquery: ${priceResponse}`);
     }
 
