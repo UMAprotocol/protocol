@@ -40,4 +40,23 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         }
         return fundingRates[identifier][fundingRates[identifier].length - 1].fundingRate;
     }
+
+    // Following methods are minimally implemented to adhere to interface.
+    function payFundingRateFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external override {
+        return;
+    }
+
+    function computeFundingRateFee(
+        uint256 startTime,
+        uint256 endTime,
+        FixedPoint.Unsigned calldata pfc
+    )
+        external
+        override
+        view
+        returns (FixedPoint.Unsigned memory fundingRateFee, FixedPoint.Unsigned memory latePenalty)
+    {
+        fundingRateFee = FixedPoint.fromUnscaledUint(0);
+        latePenalty = FixedPoint.fromUnscaledUint(0);
+    }
 }

@@ -14,6 +14,7 @@ import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
+import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
 
@@ -23,7 +24,7 @@ import "../common/FundingRateApplier.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FeePayer, FundingRateApplier, AdministrateeInterface {
+contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -155,7 +156,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         address _excessTokenBeneficiary
     )
         public
-        FeePayer(_collateralAddress, _finderAddress, _timerAddress)
+        FundingRatePayer(_collateralAddress, _finderAddress, _timerAddress)
         FundingRateApplier(_finderAddress, _fundingRateIdentifier)
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -826,5 +827,14 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         returns (FixedPoint.Unsigned memory ratio)
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
+    }
+
+    function _getFundingRateStore()
+        internal
+        override(FundingRatePayer, FundingRateApplier)
+        view
+        returns (FundingRateStoreInterface)
+    {
+        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 }
