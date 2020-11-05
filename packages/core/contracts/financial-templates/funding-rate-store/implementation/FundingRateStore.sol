@@ -223,9 +223,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     function settleDispute(bytes32 identifier, uint256 proposalTime) external nonReentrant() {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
 
-        // This should be an invariant, remove after testing
-        require(proposalTime == fundingRateDispute.proposal.time, "mismatching propose times");
-
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
         // If the fundingRateDispute struct has been deleted, then this call will also fail because the proposal
         // time will be 0.
