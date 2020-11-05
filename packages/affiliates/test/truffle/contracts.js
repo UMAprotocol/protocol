@@ -6,8 +6,8 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
@@ -22,6 +22,7 @@ contract("contracts", function(accounts) {
       const identifierWhitelist = await IdentifierWhitelist.deployed();
       await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
       collateralToken = await Token.new("WETH", "WETH", 18, { from: contractCreator });
+      token = await SyntheticToken.new("Test Token", identifier, 18);
       const finder = await Finder.deployed();
       const mockOracle = await MockOracle.new(finder.address, Timer.address, {
         from: contractCreator
@@ -34,11 +35,9 @@ contract("contracts", function(accounts) {
         expirationTimestamp: Date.now() + 1000 * 60 * 60 * 24 * 1000,
         withdrawalLiveness: "1000",
         collateralAddress: collateralToken.address,
+        tokenAddress: token.address,
         finderAddress: finder.address,
-        tokenFactoryAddress: TokenFactory.address,
         priceFeedIdentifier: utf8ToHex(identifier),
-        syntheticName: "Test Token",
-        syntheticSymbol: identifier,
         liquidationLiveness: "1000",
         collateralRequirement: { rawValue: toWei("1.2") },
         disputeBondPct: { rawValue: toWei("0.1") },
@@ -52,9 +51,11 @@ contract("contracts", function(accounts) {
       web3 = getWeb3();
       // Deploy a new expiring multi party
       empContract = await ExpiringMultiParty.new(empConfig);
+      await token.addMinter(empContract.address);
+      await token.addBurner(empContract.address);
       emp = Emp({ web3 });
       collateral = Erc20({ web3 });
-      token = Erc20({ web3, address: await empContract.tokenCurrency() });
+      token = Erc20({ web3 });
     });
     it("gets collateral address", async function() {
       const result = await emp.collateralCurrency(empContract.address);
