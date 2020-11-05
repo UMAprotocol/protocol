@@ -31,6 +31,7 @@ abstract contract FundingRatePayer is FeePayer {
      ****************************************/
 
     // modifier that calls continuous fee paying methods.
+    // prettier-ignore <-- Prettier doesn't allow modifiers to be overridable?
     modifier fees {
         payRegularFees();
         payFundingRateFees();
