@@ -3,6 +3,7 @@ const { History, Balances, SharedAttributions, Prices } = require("../../libs/mo
 const Coingecko = require("../../libs/coingecko");
 const SynthPrices = require("../../libs/synthPrices");
 const moment = require("moment");
+const { getWeb3 } = require("@uma/common");
 
 describe("SharedAttributions", function() {
   let attributions;
@@ -108,8 +109,7 @@ describe("Synthetic prices", function() {
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
     this.timeout(100000);
-    const Web3 = require("web3");
-    const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+    const web3 = getWeb3();
     seed = await SynthPrices({ web3 }).getHistoricSynthPrices(empAddress, startingTimestamp, endingTimestamp);
     prices = Prices(seed);
     assert.ok(seed);
