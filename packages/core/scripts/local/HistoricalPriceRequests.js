@@ -1,6 +1,7 @@
 // Usage: From protocol/, run `yarn truffle exec ./packages/core/scripts/local/HistoricalPriceRequests.js --network mainnet_mnemonic`
 const Voting = artifacts.require("Voting");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const Governor = artifacts.require("Governor");
 const { hexToUtf8 } = web3.utils;
 const { getTransactionReceipt } = web3.eth;
 
@@ -9,7 +10,9 @@ const { isAdminRequest } = require("@uma/common");
 async function run() {
   const votingLegacy = await Voting.at("0x9921810C710E7c3f7A7C6831e30929f19537a545");
   const voting = await Voting.deployed();
+  const governor = await Governor.deployed();
 
+  // There have been 2 DVM's deployed on Mainnet to receive price requests so we need to query events from both.
   let priceRequests = await voting.contract.getPastEvents("PriceRequestAdded", {
     fromBlock: 0,
     toBlock: "latest"
@@ -18,11 +21,48 @@ async function run() {
     fromBlock: 0,
     toBlock: "latest"
   });
-  priceRequests = priceRequests.concat(legacyPriceRequests);
+
+  // Make sure price requests have resolved.
+  let hasResolvedPromises = [];
+  const hasPrice = (votingContract, req) => {
+    return votingContract.hasPrice.call(req.returnValues.identifier, req.returnValues.time, { from: governor.address });
+  };
+  for (let i in priceRequests) {
+    const req = priceRequests[i];
+    hasResolvedPromises.push(
+      new Promise(resolve => {
+        hasPrice(voting, req).then(hasPrice => {
+          resolve({
+            hasPrice,
+            req
+          });
+        });
+      })
+    );
+  }
+  for (let i in legacyPriceRequests) {
+    const req = legacyPriceRequests[i];
+    hasResolvedPromises.push(
+      new Promise(resolve => {
+        hasPrice(votingLegacy, req).then(hasPrice => {
+          resolve({
+            hasPrice,
+            req
+          });
+        });
+      })
+    );
+  }
+  const resolvedReqs = (await Promise.all(hasResolvedPromises)).filter(req => {
+    return req.hasPrice;
+  });
+  console.log(
+    `There are currently ${hasResolvedPromises.length - resolvedReqs.length} unresolved non-admin price requests.`
+  );
 
   // Get all non admin votes.
-  const nonAdminReqs = priceRequests.filter(req => {
-    return !isAdminRequest(hexToUtf8(req.returnValues.identifier));
+  const nonAdminReqs = resolvedReqs.filter(req => {
+    return !isAdminRequest(hexToUtf8(req.req.returnValues.identifier));
   });
 
   // To determine if a price request was a non-expiry price request, we can check if a ContractExpired
@@ -32,8 +72,9 @@ async function run() {
     const promise = new Promise(resolve => {
       // To trigger a price request, some accounts called a financial contract that triggered a price request. So
       // we'll grab the contract that was called.
-      getTransactionReceipt(nonAdminReqs[i].transactionHash).then(txn => {
+      getTransactionReceipt(nonAdminReqs[i].req.transactionHash).then(txn => {
         const empAddress = txn.to;
+
         ExpiringMultiParty.at(empAddress).then(emp => {
           emp.contract
             .getPastEvents("ContractExpired", {
