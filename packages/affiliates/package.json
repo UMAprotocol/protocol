@@ -17,7 +17,7 @@
   },
   "scripts": {
     "test": "yarn test-mocha && yarn test-truffle",
-    "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
+    "test-mocha": "mocha test test/mocha/*.js --network mainnet_privatekey --exit",
     "test-truffle": "truffle test test/truffle/*.js --network=test"
   }
 }
