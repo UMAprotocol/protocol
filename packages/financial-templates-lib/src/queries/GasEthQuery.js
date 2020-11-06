@@ -1,5 +1,5 @@
 // This is a helper method to create a GASETH BQ query with time arguments.
-function createQuery(t2, formattedCurrentTime) {
+function createQuery(earlierTimeBound, laterTimeBound) {
   const query = `
         DECLARE halfway int64;
         DECLARE block_count int64;
@@ -7,7 +7,7 @@ function createQuery(t2, formattedCurrentTime) {
 
         -- Querying for the amount of blocks in the preset time range. This will allow block_count to be compared against a given minimum block amount.
         SET (block_count, max_block) = (SELECT AS STRUCT (MAX(number) - MIN(number)), MAX(number) FROM \`bigquery-public-data.crypto_ethereum.blocks\` 
-        WHERE timestamp BETWEEN TIMESTAMP('${t2}', 'UTC') AND TIMESTAMP('${formattedCurrentTime}', 'UTC'));
+        WHERE timestamp BETWEEN TIMESTAMP('${earlierTimeBound}', 'UTC') AND TIMESTAMP('${laterTimeBound}', 'UTC'));
 
         CREATE TEMP TABLE cum_gas (
         gas_price int64,
@@ -27,8 +27,8 @@ function createQuery(t2, formattedCurrentTime) {
             FROM
             \`bigquery-public-data.crypto_ethereum.transactions\`
             WHERE block_timestamp 
-            BETWEEN TIMESTAMP('${t2}', 'UTC')
-            AND TIMESTAMP('${formattedCurrentTime}', 'UTC')  
+            BETWEEN TIMESTAMP('${earlierTimeBound}', 'UTC')
+            AND TIMESTAMP('${laterTimeBound}', 'UTC')  
             GROUP BY
             gas_price));
         ELSE -- If a minimum threshold of blocks is not met, query for the minimum amount of blocks
