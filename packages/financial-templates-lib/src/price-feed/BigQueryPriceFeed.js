@@ -19,7 +19,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
    *      this number of seconds has passed, it will be a no-op.
    * @param {Number} decimals Number of decimals to use to convert price to wei.
    */
-  constructor(logger, web3, lookback, getTime, minTimeBetweenUpdates, decimals = 0) {
+  constructor(logger, web3, lookback, getTime, minTimeBetweenUpdates, decimals = 18) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -30,7 +30,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
 
     this.convertDecimals = number => {
       // Converts price result to wei and returns price conversion to correct decimals as a big number.
-      return this.toBN(parseFixed(number.toString(), decimals).toString());
+      return this.toBN(parseFixed(number.toString(), decimals - 18).toString());
     };
   }
 
