@@ -49,7 +49,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
       .utc()
       .format(this.dateConversionString);
 
-    // 2592000000 is a month time interval
+    // Subtracting 30 days from the current time to give the earlier time bound.
     let earlierTimeBound = new Date(time);
     earlierTimeBound = moment(earlierTimeBound)
       .subtract(30, "days")
