@@ -27,6 +27,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.toBN = this.web3.utils.toBN;
+    this.dateConversionString = "YYYY-MM-DD HH:mm:ss";
 
     this.convertDecimals = number => {
       // Converts price result to wei and returns price conversion to correct decimals as a big number.
@@ -44,19 +45,19 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     }
 
     // Using moment package to changeto UTC and create acceptable format for BQ.
-    const formattedCurrentTime = moment(time)
+    const laterHistoricTimeBound = moment(time)
       .utc()
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format(this.dateConversionString);
 
     // 2592000000 is a month time interval
-    let t2 = new Date(time);
-    t2 = moment(t2)
+    let earlierTimeBound = new Date(time);
+    earlierTimeBound = moment(earlierTimeBound)
       .subtract(30, "days")
       .utc()
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format(this.dateConversionString);
 
     // Create the query with the needed time interval.
-    const query = createQuery(t2, formattedCurrentTime);
+    const query = createQuery(earlierTimeBound, laterHistoricTimeBound);
 
     // Submit async call to BigQuery and check the response.
     let priceResponse;
@@ -84,14 +85,14 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     const formattedCurrentTime = moment(currentTime)
       .subtract(5, "minutes")
       .utc()
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format(this.dateConversionString);
 
     // Subtracting 30 days from current time to create the earlier time bound.
-    let t2 = new Date();
-    t2 = moment(t2)
+    let earlierTimeBound = new Date();
+    earlierTimeBound = moment(earlierTimeBound)
       .subtract(30, "days")
       .utc()
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format(this.dateConversionString);
 
     // Return early if the last call was too recent.
     if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
@@ -113,7 +114,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     });
 
     // Create the query with the needed time interval.
-    const query = createQuery(t2, formattedCurrentTime);
+    const query = createQuery(earlierTimeBound, formattedCurrentTime);
 
     // Submit async call to BigQuery and check response.
     let priceResponse;
