@@ -1457,15 +1457,8 @@ contract("PerpetualLiquidatable", function(accounts) {
     });
   });
   describe("Weird Edge cases", () => {
-    it("Liquidating 0 tokens always results in a successful Dispute", async () => {
-      // Liquidations for 0 tokens should be blocked but they are not. They will harmlessly always cause a successful dispute because
-      // the TRV and requiredCollateral calculations both equal 0. The liquidator and disputer will each pay final fee payments, and the dispute will always succeed.
-      // Withdrawing rewards sends a final fee payment back to the disputer. So in summary, a liquidator will be charged a final fee
-      // for sending a liquidation of 0 tokens. The downside is that this sends a useless price request and the liquidation will never be deleted
-      // since the Liquidator and Sponsor cannot withdraw 0 rewards.
-
-      // Set a final fee to see what assets get transferred in this useless liquidation.
-      await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
+    it("Liquidating 0 tokens is not allowed", async () => {
+      // Liquidations for 0 tokens should be blocked because the contract prevents 0 liquidated collateral.
 
       // Create position.
       await liquidationContract.create(
@@ -1481,54 +1474,18 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal((await syntheticToken.balanceOf(liquidator)).toString(), "0");
 
       // Request a 0 token liquidation.
-      const createLiquidationResult = await liquidationContract.createLiquidation(
-        sponsor,
-        { rawValue: "0" },
-        { rawValue: pricePerToken.toString() },
-        { rawValue: "0" },
-        unreachableDeadline,
-        { from: liquidator }
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: "0" },
+            { rawValue: pricePerToken.toString() },
+            { rawValue: "0" },
+            unreachableDeadline,
+            { from: liquidator }
+          )
+        )
       );
-
-      // Liquidator should have 0 balance remaining after paying the final fee bond.
-      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), "0");
-
-      // Liquidated collateral and tokens both equal 0.
-      const liquidationTime = await liquidationContract.getCurrentTime();
-      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
-        return (
-          ev.sponsor == sponsor &&
-          ev.liquidator == liquidator &&
-          ev.liquidationId == 0 &&
-          ev.tokensOutstanding == "0" &&
-          ev.lockedCollateral == "0" &&
-          ev.liquidatedCollateral == "0" &&
-          ev.liquidationTime == liquidationTime.toString()
-        );
-      });
-
-      // Disputer started with (dispute-bond + final-fee) amount of collateral.
-      assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.add(finalFeeAmount));
-
-      // Dispute the liquidation.
-      await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
-
-      // The disputer should only have paid the
-      // final fee since the dispute bond will be 0.
-      assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond);
-
-      // Here's the interesting part: even at an extremely low price (i.e. 0), where the required collateral is extremely low (i.e. 0),
-      // the dispute will always be successful. This is because the required collateral is (TRV * CR) = 0 because tokensOutstanding = 0.
-      // So regardless, the liquidated collateral will always be enough to cover the required collateral (even if the liquidated collateral is
-      // also 0 in this case).
-      await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, "0");
-
-      // Disputer reward is 0 since TRV = 0, so disputer gets back their final fee bond.
-      await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
-      assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.add(finalFeeAmount));
-
-      // There are 0 rewards to pay since collateral and TRV are 0, so this call will revert.
-      assert(await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor)));
     });
     it("Dispute rewards should not add to over 100% of TRV", async () => {
       // Deploy liquidation contract and set global params.

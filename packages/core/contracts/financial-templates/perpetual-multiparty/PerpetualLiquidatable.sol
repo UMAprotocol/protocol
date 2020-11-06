@@ -240,6 +240,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
+        require(tokensLiquidated.isGreaterThan(0), "Liquidating 0 tokens");
 
         // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
         // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
@@ -485,13 +486,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
             collateralCurrency.safeTransfer(liquidation.liquidator, rewards.paidToLiquidator.rawValue);
         }
-
-        // If the raw amounts of collateral to pay out are 0, which is possible if the liquidation is for 0 collateral,
-        // then revert because there are no rewards to pay.
-        require(
-            (rewards.payToLiquidator.add(rewards.payToSponsor).add(rewards.payToDisputer)).isGreaterThan(0),
-            "Rewards equal to 0"
-        );
 
         emit LiquidationWithdrawn(
             msg.sender,
