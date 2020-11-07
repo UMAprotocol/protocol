@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 import "./FeePayer.sol";
 
-
 /**
  * @title FundingRatePayer contract.
  * @notice Extends FeePayer by adding funding rate store payment functionality for any financial contract that needs
@@ -31,8 +30,6 @@ abstract contract FundingRatePayer is FeePayer {
      ****************************************/
 
     // modifier that calls continuous fee paying methods.
-    // TODO: Prettier doesn't allow modifiers to be overridable?
-    // prettier-ignore
     modifier fees override {
         payRegularFees();
         payFundingRateFees();

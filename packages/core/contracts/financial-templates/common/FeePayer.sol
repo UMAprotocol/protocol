@@ -12,7 +12,6 @@ import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-
 /**
  * @title FeePayer contract.
  * @notice Provides fee payment functionality for the ExpiringMultiParty contract.
@@ -58,8 +57,6 @@ abstract contract FeePayer is Testable, Lockable {
      ****************************************/
 
     // modifier that calls payRegularFees().
-    // TODO: Prettier doesn't allow modifiers to be virtual?
-    // prettier-ignore
     modifier fees virtual {
         payRegularFees();
         _;
@@ -191,7 +188,7 @@ abstract contract FeePayer is Testable, Lockable {
         store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
-    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
+    function _pfc() internal view virtual returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
