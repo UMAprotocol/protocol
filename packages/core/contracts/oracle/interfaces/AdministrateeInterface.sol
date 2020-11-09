@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 /**
  * @title Interface that all financial contracts expose to the admin.
  */

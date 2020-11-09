@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 /**
  * @title Interface for Uniswap v2.
  * @dev This only contains the methods/events that we use in our contracts or offchain infrastructure.

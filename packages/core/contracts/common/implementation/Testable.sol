@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 
 import "./Timer.sol";
 
-
 /**
  * @title Base class that provides time overrides, but only if being run in test mode.
  */

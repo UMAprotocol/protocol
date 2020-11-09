@@ -15,7 +15,6 @@ import "../../oracle/implementation/Constants.sol";
 
 import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 
-
 /**
  * @title FundingRateApplier contract.
  * @notice Provides funding rate payment functionality for the Perpetual contract.

@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 /**
  * @title Universal store of current contract time for testing environments.
  */

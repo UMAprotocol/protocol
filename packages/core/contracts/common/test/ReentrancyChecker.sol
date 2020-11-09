@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 // The Reentrancy Checker causes failures if it is successfully able to re-enter a contract.
 // How to use:
 // 1. Call setTransactionData with the transaction data you want the Reentrancy Checker to reenter the calling

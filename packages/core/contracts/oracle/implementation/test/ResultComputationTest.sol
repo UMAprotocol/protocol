@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "../ResultComputation.sol";
 import "../../../common/implementation/FixedPoint.sol";
 
-
 // Wraps the library ResultComputation for testing purposes.
 contract ResultComputationTest {
     using ResultComputation for ResultComputation.Data;

@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 import "../../interfaces/VotingInterface.sol";
 import "../VoteTiming.sol";
 
-
 // Wraps the library VoteTiming for testing purposes.
 contract VoteTimingTest {
     using VoteTiming for VoteTiming.Data;
