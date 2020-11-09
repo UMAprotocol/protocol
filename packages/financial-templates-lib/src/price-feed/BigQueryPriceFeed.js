@@ -5,8 +5,6 @@ const highland = require("highland");
 const { parseFixed } = require("@ethersproject/bignumber");
 const { createQuery } = require("../queries/GasEthQuery");
 
-const client = new BigQuery();
-
 // An implementation of PriceFeedInterface that uses BigQuery to retrieve prices.
 class BigQueryPriceFeed extends PriceFeedInterface {
   /**
@@ -28,11 +26,17 @@ class BigQueryPriceFeed extends PriceFeedInterface {
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.toBN = this.web3.utils.toBN;
     this.dateConversionString = "YYYY-MM-DD HH:mm:ss";
+    this.decimals = decimals;
+    this.client = new BigQuery();
 
-    this.convertDecimals = number => {
-      // Converts price result to wei and returns price conversion to correct decimals as a big number.
-      return this.toBN(parseFixed(number.toString(), decimals - 18).toString());
-    };
+    // this.convertDecimals = number => {
+    //   // Converts price result to wei and returns price conversion to correct decimals as a big number.
+    //   return this.toBN(parseFixed(number.toString(), decimals - 18).toString());
+    // };
+  }
+
+  convertDecimals(number) {
+    return this.toBN(parseFixed(number.toString(), this.decimals - 18).toString());
   }
 
   getCurrentPrice() {
@@ -134,7 +138,7 @@ class BigQueryPriceFeed extends PriceFeedInterface {
   }
   async runQuery(query) {
     // returns a node read stream
-    const stream = await client.createQueryStream({ query });
+    const stream = await this.client.createQueryStream({ query });
     // highland wraps a stream and adds utilities simlar to lodash
     // https://caolan.github.io/highland/
     return (
