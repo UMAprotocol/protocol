@@ -57,11 +57,11 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
      ****************************************/
 
     /**
-     * @notice Pays `amount` fees to the FundingRateStore contract and debits the raw collateral accordingly.
+     * @notice Sends `amount` fees to the FundingRateStore contract and debits the raw collateral accordingly.
      * @dev Callable only by the FundingRateStore.
      * @param amount Amount of fees to pay to FundingRateStore.
      */
-    function payFundingRateFees(FixedPoint.Unsigned memory amount)
+    function withdrawFundingRateFees(FixedPoint.Unsigned memory amount)
         external
         override
         nonReentrant()

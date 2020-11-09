@@ -26,7 +26,7 @@ contract MockPerpetual is PerpetualInterface {
         return collateralCurrency;
     }
 
-    function payFundingRateFees(FixedPoint.Unsigned memory amount) external override {
+    function withdrawFundingRateFees(FixedPoint.Unsigned memory amount) external override {
         return;
     }
 }

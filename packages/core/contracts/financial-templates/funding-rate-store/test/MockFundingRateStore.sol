@@ -42,6 +42,6 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
     }
 
     function chargeFundingRateFees(address perpetual, FixedPoint.Unsigned calldata amount) external {
-        PerpetualInterface(perpetual).payFundingRateFees(amount);
+        PerpetualInterface(perpetual).withdrawFundingRateFees(amount);
     }
 }

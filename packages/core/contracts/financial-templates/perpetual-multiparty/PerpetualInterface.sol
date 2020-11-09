@@ -8,7 +8,7 @@ import "../../common/implementation/FixedPoint.sol";
  * @notice External methods that the FundingRateStore needs access to.
  */
 interface PerpetualInterface {
-    function payFundingRateFees(FixedPoint.Unsigned memory amount) external;
+    function withdrawFundingRateFees(FixedPoint.Unsigned memory amount) external;
 
     function getFundingRateIdentifier() external view returns (bytes32);
 
