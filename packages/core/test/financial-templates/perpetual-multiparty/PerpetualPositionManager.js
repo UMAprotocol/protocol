@@ -795,8 +795,8 @@ contract("PerpetualPositionManager", function(accounts) {
       await didContractThrow(mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: "0" }))
     );
 
-    // `payFundingRateFees` only callable by FundingRateStore.
-    assert(await didContractThrow(positionManager.payFundingRateFees({ rawValue: toWei("0.02") })));
+    // `withdrawFundingRateFees` only callable by FundingRateStore.
+    assert(await didContractThrow(positionManager.withdrawFundingRateFees({ rawValue: toWei("0.02") })));
 
     // Cannot pay more fees than PfC
     assert(
@@ -805,7 +805,7 @@ contract("PerpetualPositionManager", function(accounts) {
       )
     );
 
-    // Calling `payFundingRates` from the store should transfer fees from the contract to the store.
+    // Calling `withdrawFundingRateFees` from the store should transfer fees from the contract to the store.
     await mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") });
     let collateralAmountSponsor = await positionManager.getCollateral(sponsor);
     assert.equal(collateralAmountSponsor.rawValue.toString(), toWei("0.99"));
@@ -816,7 +816,7 @@ contract("PerpetualPositionManager", function(accounts) {
       expectedStoreBalance.toString()
     );
 
-    // Temporarily make Finder think that an EOA is the "FundingRateStore" so that it can call `payFundingRateFees`
+    // Temporarily make Finder think that an EOA is the "FundingRateStore" so that it can call `withdrawFundingRateFees`
     // and test that event is emitted correctly.
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), other, {
       from: contractDeployer
