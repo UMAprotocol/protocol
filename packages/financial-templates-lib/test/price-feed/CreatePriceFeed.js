@@ -181,7 +181,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default config
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -223,7 +223,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default config
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -287,7 +287,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default config
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -321,7 +321,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default config
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -348,7 +348,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default configdefined as part of the default bot configs
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -470,7 +470,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Node this identifier needs to be part of the bot's default config
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
