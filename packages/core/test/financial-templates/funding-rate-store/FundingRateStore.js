@@ -58,13 +58,7 @@ contract("FundingRateStore", function(accounts) {
     store = await Store.deployed();
     finder = await Finder.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    fundingRateStore = await FundingRateStore.new(
-      { rawValue: "0" },
-      { rawValue: "0" },
-      liveness,
-      finder.address,
-      timer.address
-    );
+    fundingRateStore = await FundingRateStore.new(liveness, finder.address, timer.address);
 
     // Set up Oracle
     mockOracle = await MockOracle.new(finder.address, timer.address, {
@@ -80,11 +74,7 @@ contract("FundingRateStore", function(accounts) {
   });
 
   it("Liveness check", async function() {
-    assert(
-      await didContractThrow(
-        FundingRateStore.new({ rawValue: "0" }, { rawValue: "0" }, 0, finder.address, timer.address)
-      )
-    );
+    assert(await didContractThrow(FundingRateStore.new(0, finder.address, timer.address)));
   });
 
   it("Initial Funding Rate and Propose Time of 0", async function() {
