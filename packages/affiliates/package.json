@@ -19,6 +19,6 @@
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
     "test-truffle": "truffle test test/truffle/*.js --network=test",
-    "test-e2e": "mocha test/e2e/*.js"
+    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic"
   }
 }
