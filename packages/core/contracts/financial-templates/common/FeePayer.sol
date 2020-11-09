@@ -57,7 +57,7 @@ abstract contract FeePayer is Testable, Lockable {
      ****************************************/
 
     // modifier that calls payRegularFees().
-    modifier fees virtual {
+    modifier fees {
         payRegularFees();
         _;
     }

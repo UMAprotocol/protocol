@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../perpetual-multiparty/PerpetualInterface.sol";
 import "../../financial-templates/funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 
-
 /**
  * @notice External methods that the FundingRateStore needs access to.
  */
@@ -19,16 +18,15 @@ contract MockPerpetual is PerpetualInterface {
         collateralCurrency = IERC20(_collateralCurrency);
     }
 
-    function getFundingRateIdentifier() external override returns (bytes32) {
+    function getFundingRateIdentifier() external view override returns (bytes32) {
         return fundingRateIdentifier;
     }
 
-    function getCollateralCurrency() external override returns (IERC20) {
+    function getCollateralCurrency() external view override returns (IERC20) {
         return collateralCurrency;
     }
 
-    function payFees(address storeToPay, FixedPoint.Unsigned memory amount) external {
-        collateralCurrency.safeIncreaseAllowance(storeToPay, amount.rawValue);
-        FundingRateStoreInterface(storeToPay).payFundingRateFees(amount);
+    function payFundingRateFees(FixedPoint.Unsigned memory amount) external override {
+        return;
     }
 }

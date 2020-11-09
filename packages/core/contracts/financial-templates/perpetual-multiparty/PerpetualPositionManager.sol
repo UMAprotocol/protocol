@@ -17,16 +17,13 @@ import "../common/FeePayer.sol";
 import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
-import "./PerpetualInterface.sol";
-
-
 /**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, FundingRateApplier, AdministrateeInterface {
+contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier, AdministrateeInterface {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -61,9 +58,6 @@ contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, Fundi
 
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
-
-    // Identifier in funding rate store to query for.
-    bytes32 public fundingRateIdentifier;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
@@ -160,14 +154,17 @@ contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, Fundi
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
-    ) public FundingRatePayer(_collateralAddress, _finderAddress, _timerAddress) FundingRateApplier(_finderAddress) {
+    )
+        public
+        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
+        FundingRateApplier(_finderAddress)
+    {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
-        fundingRateIdentifier = _fundingRateIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
@@ -624,14 +621,6 @@ contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, Fundi
         return _getFundingRateAppliedTokenDebt(rawTokenDebt);
     }
 
-    function getFundingRateIdentifier() external override returns (bytes32) {
-        return fundingRateIdentifier;
-    }
-
-    function getCollateralCurrency() external override returns (IERC20) {
-        return collateralCurrency;
-    }
-
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -691,7 +680,7 @@ contract PerpetualPositionManager is PerpetualInterface, FundingRatePayer, Fundi
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
-    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
