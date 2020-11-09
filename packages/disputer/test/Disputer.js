@@ -31,8 +31,8 @@ const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 const configs = [
-  { tokenName: "UMA", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "wBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -72,12 +72,9 @@ contract("Disputer.js", function(accounts) {
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
         convert = Convert(tokenConfig.collateralDecimals);
-        collateralToken = await Token.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: contractCreator }
-        );
+        collateralToken = await Token.new(tokenConfig.tokenName, tokenConfig.symbol, tokenConfig.collateralDecimals, {
+          from: contractCreator
+        });
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });

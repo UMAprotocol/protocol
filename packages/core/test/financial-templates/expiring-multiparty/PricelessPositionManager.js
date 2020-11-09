@@ -40,12 +40,12 @@ contract("PricelessPositionManager", function(accounts) {
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
   const initialPositionCollateral = toBN(toWei("1"));
-  const syntheticName = "UMA test Token";
-  const syntheticSymbol = "UMATEST";
+  const syntheticName = "Test Synthetic Token";
+  const syntheticSymbol = "SYNTH";
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
   const expirationTimestamp = startTimestamp + 10000;
-  const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
+  const priceFeedIdentifier = web3.utils.utf8ToHex("TEST_IDENTIFIER");
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
@@ -95,7 +95,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await MarginToken.new("UMA", "UMA", 18, { from: collateralOwner });
+    collateral = await MarginToken.new("Wrapped Ether", "WETH", 18, { from: collateralOwner });
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });

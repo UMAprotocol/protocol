@@ -37,7 +37,7 @@ contract("BalanceMonitor.js", function(accounts) {
     // Create new tokens for every test to reset balances of all accounts
     collateralToken = await Token.new("Dai Stable coin", "DAI", 18, { from: tokenCreator });
     await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
-    syntheticToken = await Token.new("Test UMA Token", "ETHBTC", 18, { from: tokenCreator });
+    syntheticToken = await Token.new("Test Synthetic Token", "ETHBTC", 18, { from: tokenCreator });
     await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
@@ -78,7 +78,7 @@ contract("BalanceMonitor.js", function(accounts) {
     empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),
-      priceIdentifier: "ETH/BTC",
+      priceIdentifier: "TEST_IDENTIFIER",
       networkId: await web3.eth.net.getId()
     };
 
@@ -198,7 +198,7 @@ contract("BalanceMonitor.js", function(accounts) {
     empProps = {
       collateralCurrencySymbol: await collateralToken.symbol(),
       syntheticCurrencySymbol: await syntheticToken.symbol(),
-      priceIdentifier: "ETH/BTC",
+      priceIdentifier: "TEST_IDENTIFIER",
       networkId: await web3.eth.net.getId(),
       collateralCurrencyDecimals: await collateralToken.decimals(),
       syntheticCurrencyDecimals: await syntheticToken.decimals()

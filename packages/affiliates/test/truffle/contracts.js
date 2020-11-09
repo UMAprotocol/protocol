@@ -18,11 +18,11 @@ contract("contracts", function(accounts) {
     let emp, empContract, web3, collateralToken, timer, collateral, token;
     const contractCreator = accounts[4];
     before(async function() {
-      const identifier = "TESTTOKEN";
+      const identifier = "TEST_IDENTIFIER";
       const identifierWhitelist = await IdentifierWhitelist.deployed();
       await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
-      collateralToken = await Token.new("WETH", "WETH", 18, { from: contractCreator });
-      token = await SyntheticToken.new("Test Token", identifier, 18);
+      collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+      token = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18);
       const finder = await Finder.deployed();
       const mockOracle = await MockOracle.new(finder.address, Timer.address, {
         from: contractCreator

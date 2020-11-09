@@ -47,11 +47,11 @@ contract("index.js", function(accounts) {
   let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 
   before(async function() {
-    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
 
     store = await Store.deployed();
     timer = await Timer.deployed();
@@ -72,7 +72,7 @@ contract("index.js", function(accounts) {
     });
 
     // Create a new synthetic token
-    syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
 
     // Deploy a new expiring multi party
     constructorParams = {
@@ -81,7 +81,7 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: utf8ToHex("TEST_IDENTIFIER"),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -235,7 +235,7 @@ contract("index.js", function(accounts) {
     await collateralToken.mint(disputer, toWei("13"), { from: contractCreator });
     await collateralToken.approve(emp.address, toWei("13"), { from: disputer });
     await emp.dispute(0, sponsorOvercollateralized, { from: disputer });
-    await mockOracle.pushPrice(utf8ToHex("ETH/BTC"), liquidationTime, toWei("1"));
+    await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"));
 
     // Running the liquidator now should settle and withdraw rewards from the successful dispute,
     // and ignore undercollateralized positions.

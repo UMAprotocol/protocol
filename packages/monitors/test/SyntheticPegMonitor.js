@@ -34,7 +34,7 @@ contract("SyntheticPegMonitor", function() {
     empProps = {
       collateralCurrencySymbol: "DAI",
       syntheticCurrencySymbol: "ETHBTC",
-      priceIdentifier: "ETH/BTC",
+      priceIdentifier: "TEST_IDENTIFIER",
       networkId: await web3.eth.net.getId()
     };
 

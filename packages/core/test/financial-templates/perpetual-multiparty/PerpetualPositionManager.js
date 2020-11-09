@@ -47,7 +47,7 @@ contract("PerpetualPositionManager", function(accounts) {
   const syntheticSymbol = "TEST-SYNTH";
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
-  const priceFeedIdentifier = utf8ToHex("ETHUSD");
+  const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
   const fundingRateFeedIdentifier = utf8ToHex("ETHUSD-Funding-Rate"); // example identifier for funding rate.
   const minSponsorTokens = "5";
 
