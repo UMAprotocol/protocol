@@ -46,7 +46,7 @@ contract("FundingRateStore", function(accounts) {
 
   const liveness = 7200;
 
-  const defaultTEST_IDENTIFIER = toHex("TEST-IDENTIFIER");
+  const defaultTestIdentifier = toHex("TEST-IDENTIFIER");
 
   beforeEach(async () => {
     collateralCurrency = await ExpandedERC20.new("USDC", "USDC", 18);
@@ -67,7 +67,7 @@ contract("FundingRateStore", function(accounts) {
     });
 
     // Set up whitelist
-    await identifierWhitelist.addSupportedIdentifier(defaultTEST_IDENTIFIER);
+    await identifierWhitelist.addSupportedIdentifier(defaultTestIdentifier);
   });
 
   it("Liveness check", async function() {
@@ -81,7 +81,7 @@ contract("FundingRateStore", function(accounts) {
   });
 
   describe("Unexpired Proposal", function() {
-    const identifier = defaultTEST_IDENTIFIER;
+    const identifier = defaultTestIdentifier;
     let proposalTxn, proposalTime;
     beforeEach(async () => {
       proposalTime = await fundingRateStore.getCurrentTime();
@@ -148,7 +148,7 @@ contract("FundingRateStore", function(accounts) {
   });
 
   describe("Disputed Proposal", function() {
-    const identifier = defaultTEST_IDENTIFIER;
+    const identifier = defaultTestIdentifier;
     let proposalTime;
     const finalFeeAmount = toWei("1");
     beforeEach(async () => {
@@ -383,7 +383,7 @@ contract("FundingRateStore", function(accounts) {
   });
 
   describe("Expired Proposal", function() {
-    const identifier = defaultTEST_IDENTIFIER;
+    const identifier = defaultTestIdentifier;
     let proposeTime;
     beforeEach(async () => {
       proposeTime = toBN(await fundingRateStore.getCurrentTime());
