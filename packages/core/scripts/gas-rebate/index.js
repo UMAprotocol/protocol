@@ -152,7 +152,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
     const revealGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, revealData.txnTimestamp);
     let revealEthToPay = toBN(toWei(revealGasData.avgGwei, "gwei")).mul(toBN(revealGasUsed));
     let ethToPay = revealEthToPay;
-    const revealUmaData = getDataForTimestamp(priceData.dailyAvgSYNTHPrices, revealData.txnTimestamp);
+    const revealUmaData = getDataForTimestamp(priceData.dailyAvgUmaEthPrices, revealData.txnTimestamp);
     let revealUmaToPay = revealEthToPay.mul(SCALING_FACTOR).div(toBN(toWei(revealUmaData.avgPx)));
     umaToPay = revealUmaToPay;
 
@@ -165,7 +165,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
       commitGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, commitData.txnTimestamp);
       commitEthToPay = toBN(toWei(commitGasData.avgGwei, "gwei")).mul(toBN(commitGasUsed));
       ethToPay = ethToPay.add(commitEthToPay);
-      commitUmaData = getDataForTimestamp(priceData.dailyAvgSYNTHPrices, commitData.txnTimestamp);
+      commitUmaData = getDataForTimestamp(priceData.dailyAvgUmaEthPrices, commitData.txnTimestamp);
       commitUmaToPay = commitEthToPay.mul(SCALING_FACTOR).div(toBN(toWei(commitUmaData.avgPx)));
       umaToPay = umaToPay.add(commitUmaToPay);
     }
@@ -182,14 +182,14 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
       revealGasPrice: revealGasData.avgGwei,
       revealEthSpent: Number(fromWei(revealEthToPay)),
       revealUmaSpent: Number(fromWei(revealUmaToPay)),
-      revealSYNTHPrice: revealUmaData.avgPx,
+      revealUmaEthPrice: revealUmaData.avgPx,
       revealTxn,
       commitTimestamp: commitData ? commitData.txnTimestamp : "N/A",
       commitGasUsed,
       commitGasPrice: commitGasData ? commitGasData.avgGwei : "N/A",
       commitEthSpent: commitEthToPay ? Number(fromWei(commitEthToPay)) : "N/A",
       commitUmaSpent: commitUmaToPay ? Number(fromWei(commitUmaToPay)) : "N/A",
-      commitSYNTHPrice: commitUmaData ? commitUmaData.avgPx : "N/A",
+      commitUmaEthPrice: commitUmaData ? commitUmaData.avgPx : "N/A",
       commitTxn,
       ethToPay: Number(fromWei(ethToPay)),
       umaToPay: Number(fromWei(umaToPay))
@@ -271,7 +271,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
     const gasUsed = claimData.gasUsed;
     const transactionDayGasData = getDataForTimestamp(priceData.dailyAvgGasPrices, claimData.txnTimestamp);
     const ethToPay = toBN(toWei(transactionDayGasData.avgGwei, "gwei")).mul(toBN(gasUsed));
-    const transactionDayUmaData = getDataForTimestamp(priceData.dailyAvgSYNTHPrices, claimData.txnTimestamp);
+    const transactionDayUmaData = getDataForTimestamp(priceData.dailyAvgUmaEthPrices, claimData.txnTimestamp);
     const umaToPay = ethToPay.mul(SCALING_FACTOR).div(toBN(toWei(transactionDayUmaData.avgPx)));
     const claimTxn = claimData.hash;
 
@@ -284,7 +284,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
       gasUsed,
       gasPrice: transactionDayGasData.avgGwei,
       ethToPay: Number(fromWei(ethToPay)),
-      SYNTHPrice: transactionDayUmaData.avgPx,
+      umaEthPrice: transactionDayUmaData.avgPx,
       umaToPay: Number(fromWei(umaToPay)),
       claimTxn
     };
@@ -314,7 +314,7 @@ async function calculateRebate({
   revealOnly,
   claimOnly,
   dailyAvgGasPrices,
-  dailyAvgSYNTHPrices,
+  dailyAvgUmaEthPrices,
   debug = false
 }) {
   try {
@@ -347,11 +347,11 @@ async function calculateRebate({
 
     const priceData = {
       dailyAvgGasPrices,
-      dailyAvgSYNTHPrices
+      dailyAvgUmaEthPrices
     };
     const readablePriceData = {
       dailyAvgGasPrices,
-      dailyAvgSYNTHPrices
+      dailyAvgUmaEthPrices
     };
     if (!debug) {
       Object.keys(readablePriceData).forEach(k => {
@@ -525,21 +525,21 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
   }
 }
 
-async function getHistoricalSYNTHPrice(dailyPrices) {
+async function getHistoricalUmaEthPrice(dailyPrices) {
   let dailyUmaPrices = [];
 
   // Fetch UMA-ETH exchange rates for each day
-  let SYNTHPricePromises = [];
+  let umaEthPricePromises = [];
   for (let day of dailyPrices) {
-    SYNTHPricePromises.push(getUmaPriceAtTimestamp(day.timestamp));
+    umaEthPricePromises.push(getUmaPriceAtTimestamp(day.timestamp));
   }
-  const SYNTHPrices = await Promise.all(SYNTHPricePromises);
+  const umaEthPrices = await Promise.all(umaEthPricePromises);
 
   // Return UMA-ETH array that has same shape as daily price array
   for (let i = 0; i < dailyPrices.length; i++) {
     dailyUmaPrices.push({
       timestamp: dailyPrices[i].timestamp,
-      avgPx: SYNTHPrices[i].toString()
+      avgPx: umaEthPrices[i].toString()
     });
   }
 
@@ -580,7 +580,7 @@ async function Main(callback) {
     if (!dailyAvgGasPrices) {
       throw new Error("Missing price data");
     }
-    const dailyAvgSYNTHPrices = await getHistoricalSYNTHPrice(dailyAvgGasPrices);
+    const dailyAvgUmaEthPrices = await getHistoricalUmaEthPrice(dailyAvgGasPrices);
     console.log("- ✅ Success, running main script now");
 
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
@@ -591,7 +591,7 @@ async function Main(callback) {
       revealOnly: argv["reveal-only"],
       claimOnly: argv["claim-only"],
       dailyAvgGasPrices,
-      dailyAvgSYNTHPrices
+      dailyAvgUmaEthPrices
     });
   } catch (error) {
     console.error(error);
@@ -614,7 +614,7 @@ if (require.main === module) {
     .catch(nodeCallback);
 }
 
-Main.getHistoricalSYNTHPrice = getHistoricalSYNTHPrice;
+Main.getHistoricalUmaEthPrice = getHistoricalUmaEthPrice;
 Main.getHistoricalGasPrice = getHistoricalGasPrice;
 Main.calculateRebate = calculateRebate;
 Main.getDataForTimestamp = getDataForTimestamp;
