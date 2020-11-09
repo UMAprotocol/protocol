@@ -1,10 +1,13 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
+import "../common/TokenFactory.sol";
+import "../common/SyntheticToken.sol";
 import "./PerpetualPoolPartyLib.sol";
 
 
@@ -41,7 +44,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         address[] admins;
         address[] tokenSponsors;
     }
-    // - Address of TokenFactory to pass into newly constructed Perpetual contracts
+    // Address of TokenFactory to pass into newly constructed Perpetual contracts
     address public tokenFactoryAddress;
 
     event CreatedPerpetual(address indexed perpetualAddress, address indexed deployerAddress);
@@ -66,7 +69,20 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
      * @return address of the deployed contract.
      */
     function createPerpetual(Params memory params) public nonReentrant() returns (address) {
-        address derivative = PerpetualPoolPartyLib.deploy(_convertParams(params));
+        // Create a new synthetic token using the params.
+        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
+        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
+        TokenFactory tf = TokenFactory(tokenFactoryAddress);
+
+        // If the collateral token does not have a `decimals()` method,
+        // then a default precision of 18 will be applied to the newly created synthetic token.
+        ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
+        address derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
+
+        // Give permissions to new derivative contract and then hand over ownership.
+        tokenCurrency.addMinter(derivative);
+        tokenCurrency.addBurner(derivative);
+        tokenCurrency.resetOwner(derivative);
 
         _registerContract(new address[](0), address(derivative));
 
@@ -80,19 +96,16 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
      ****************************************/
 
     // Converts createPerpetual params to Perpetual constructor params.
-    function _convertParams(Params memory params)
+    function _convertParams(Params memory params, ExpandedIERC20 newTokenCurrency)
         private
         view
         returns (PerpetualPoolParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
         constructorParams.positionManagerParams.finderAddress = finderAddress;
-        constructorParams.positionManagerParams.tokenFactoryAddress = tokenFactoryAddress;
         constructorParams.positionManagerParams.timerAddress = timerAddress;
 
         // Enforce configuration constraints.
-        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
-        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
         require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
@@ -108,18 +121,17 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
         // Input from function call.
+        constructorParams.positionManagerParams.tokenAddress = address(newTokenCurrency);
         constructorParams.positionManagerParams.collateralAddress = params.collateralAddress;
         constructorParams.positionManagerParams.priceFeedIdentifier = params.priceFeedIdentifier;
-        constructorParams.positionManagerParams.syntheticName = params.syntheticName;
-        constructorParams.positionManagerParams.syntheticSymbol = params.syntheticSymbol;
-        constructorParams.positionManagerParams.minSponsorTokens = params.minSponsorTokens;
-        constructorParams.positionManagerParams.withdrawalLiveness = params.liquidationLiveness;
-        constructorParams.positionManagerParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
         constructorParams.liquidatableParams.collateralRequirement = params.collateralRequirement;
         constructorParams.liquidatableParams.disputeBondPct = params.disputeBondPct;
         constructorParams.liquidatableParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.liquidatableParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
-        constructorParams.liquidatableParams.liquidationLiveness = params.withdrawalLiveness;
+        constructorParams.positionManagerParams.minSponsorTokens = params.minSponsorTokens;
+        constructorParams.positionManagerParams.withdrawalLiveness = params.withdrawalLiveness;
+        constructorParams.liquidatableParams.liquidationLiveness = params.liquidationLiveness;
+        constructorParams.positionManagerParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
         constructorParams.roles.admins = params.admins;
         constructorParams.roles.tokenSponsors = params.tokenSponsors;
     }

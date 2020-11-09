@@ -14,7 +14,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../common/TokenFactory.sol";
 import "../common/FeePayerPoolParty.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -48,14 +47,18 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
-     * @notice Struct containing input parameters data for the constructor of the contract
+     * @notice Construct the PerpetualPositionManager.
+     * @dev Deployer of this contract should consider carefully which parties have ability to mint and burn
+     * the synthetic tokens referenced by `_tokenAddress`. This contract's security assumes that no external accounts
+     * can mint new tokens, which could be used to steal all of this contract's locked collateral.
+     * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
+     * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
+     * total supply is 0 prior to construction of this contract.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
-     * @param _feePayerData.finderAddress UMA protocol feePayerData.finder used to discover other protocol contracts.
+     * @param _tokenAddress ERC20 token used as synthetic token.
+     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _syntheticName name for the token contract that will be deployed.
-     * @param _syntheticSymbol symbol for the token contract that will be deployed.
-     * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
@@ -63,11 +66,9 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     struct PositionManagerParams {
         uint256 withdrawalLiveness;
         address collateralAddress;
+        address tokenAddress;
         address finderAddress;
         bytes32 priceFeedIdentifier;
-        string syntheticName;
-        string syntheticSymbol;
-        address tokenFactoryAddress;
         FixedPoint.Unsigned minSponsorTokens;
         address timerAddress;
         address excessTokenBeneficiary;
@@ -202,12 +203,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             }
         }
         positionManagerData.withdrawalLiveness = _positionManagerData.withdrawalLiveness;
-        TokenFactory tf = TokenFactory(_positionManagerData.tokenFactoryAddress);
-        positionManagerData.tokenCurrency = tf.createToken(
-            _positionManagerData.syntheticName,
-            _positionManagerData.syntheticSymbol,
-            18
-        );
+        positionManagerData.tokenCurrency = ExpandedIERC20(_positionManagerData.tokenAddress);
         positionManagerData.minSponsorTokens = _positionManagerData.minSponsorTokens;
         positionManagerData.priceIdentifier = _positionManagerData.priceFeedIdentifier;
         positionManagerData.excessTokenBeneficiary = _positionManagerData.excessTokenBeneficiary;
@@ -317,6 +313,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     /**
      * @notice Creates tokens by creating a new position or by augmenting an existing position. Pulls `collateralAmount
      * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Minter role for the `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
      * `feePayerData.collateralCurrency`.
@@ -340,6 +337,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
      * `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -367,6 +365,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `feePayerData.collateralCurrency`.
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function repay(FixedPoint.Unsigned memory numTokens)
@@ -387,6 +386,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `feePayerData.collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
      * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
      * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
