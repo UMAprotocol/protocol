@@ -63,16 +63,16 @@ module.exports = ({ client } = {}) => {
     }
   };
 
-  async function streamLogsByContract(...args) {
+  function streamLogsByContract(...args) {
     const query = queries.logsByContract(...args);
     return client.createQueryStream({ query });
   }
-  async function streamTransactionsByContract(...args) {
+  function streamTransactionsByContract(...args) {
     const query = queries.transactionsByContract(...args);
     return client.createQueryStream({ query });
   }
-  async function streamBlocks(...args) {
-    const query = queries.blocsk(...args);
+  function streamBlocks(...args) {
+    const query = queries.blocks(...args);
     return client.createQueryStream({ query });
   }
   async function getLogsByContract(...args) {

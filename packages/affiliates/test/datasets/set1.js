@@ -33,5 +33,7 @@ module.exports = {
   collateralTokenDecimals,
   syntheticTokenDecimals,
   startingTimestamp,
-  endingTimestamp
+  endingTimestamp,
+  start: startingTimestamp,
+  end: endingTimestamp
 };
