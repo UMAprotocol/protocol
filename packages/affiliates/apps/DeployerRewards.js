@@ -11,6 +11,7 @@ const { DeployerRewards } = require("../libs/affiliates");
 const { Emp } = require("../libs/contracts");
 const Queries = require("../libs/bigquery");
 const Coingecko = require("../libs/coingecko");
+const SynthPrices = require("../libs/synthPrices");
 const { getWeb3 } = require("@uma/common");
 
 // This is the main function which configures all data sources for the calculation.
@@ -31,35 +32,41 @@ async function App(config) {
   const client = new BigQuery();
   const queries = Queries({ client });
   const coingecko = Coingecko();
+  const synthPrices = SynthPrices({ web3 });
 
   const rewards = DeployerRewards({
     queries,
-    coingecko,
+    empCreatorAbi,
     empAbi,
-    empCreatorAbi
+    coingecko,
+    synthPrices
   });
 
   // get emp info
-  const { tokensToPrice, tokenDecimals } = await Promise.reduce(
+  const { collateralTokens, collateralTokenDecimals, syntheticTokenDecimals } = await Promise.reduce(
     empWhitelist,
     async (result, address) => {
       // switch this to tokenInfo if you want to base prices off tokens
-      const info = await emp.collateralInfo(address);
-      result.tokensToPrice.push(info.address);
-      result.tokenDecimals.push(info.decimals);
+      const collateralInfo = await emp.collateralInfo(address);
+      result.collateralTokens.push(collateralInfo.address);
+      result.collateralTokenDecimals.push(collateralInfo.decimals);
+
+      const syntheticInfo = await emp.tokenInfo(address);
+      result.syntheticTokenDecimals.push(syntheticInfo.decimals);
       return result;
     },
-    { tokensToPrice: [], tokenDecimals: [] }
+    { collateralTokens: [], collateralTokenDecimals: [], syntheticTokenDecimals: [] }
   );
 
   const result = await rewards.getRewards({
-    empWhitelist,
+    totalRewards,
     startTime,
     endTime,
+    empWhitelist,
     empCreatorAddress: empCreator,
-    tokensToPrice,
-    tokenDecimals,
-    totalRewards
+    collateralTokens,
+    collateralTokenDecimals,
+    syntheticTokenDecimals
   });
 
   return {

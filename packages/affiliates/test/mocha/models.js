@@ -1,7 +1,10 @@
 const { assert } = require("chai");
 const { History, Balances, SharedAttributions, Prices } = require("../../libs/models");
 const Coingecko = require("../../libs/coingecko");
+const SynthPrices = require("../../libs/synthPrices");
 const moment = require("moment");
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 
 describe("SharedAttributions", function() {
   let attributions;
@@ -71,15 +74,44 @@ describe("History", function() {
   });
 });
 
-describe("Prices", function() {
+describe("Contract Prices", function() {
   let prices, seed;
   // Sample data from known contract.
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
-    seed = await Coingecko().chart(token, "usd", startingTimestamp, endingTimestamp);
-    prices = Prices(seed.prices);
+    seed = await Coingecko().getHistoricContractPrices(token, "usd", startingTimestamp, endingTimestamp);
+    prices = Prices(seed);
+    assert.ok(seed);
+    assert.ok(prices);
+  });
+  it("lookup", function() {
+    const time = moment()
+      .subtract(5, "days")
+      .valueOf();
+    const result = prices.lookup(time);
+    assert.ok(result[0] <= time);
+  });
+  it("closest", function() {
+    const time = moment()
+      .subtract(5, "days")
+      .valueOf();
+    const result = prices.closest(time);
+    assert.ok(result[0]);
+    assert.ok(result[1]);
+  });
+});
+
+describe("Synthetic prices", function() {
+  let prices, seed;
+  const empAddress = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
+  const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+  const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+  it("init", async function() {
+    this.timeout(100000);
+    seed = await SynthPrices({ web3 }).getHistoricSynthPrices(empAddress, startingTimestamp, endingTimestamp);
+    prices = Prices(seed);
     assert.ok(seed);
     assert.ok(prices);
   });

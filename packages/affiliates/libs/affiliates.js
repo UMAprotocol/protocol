@@ -10,11 +10,12 @@ const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
-const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
-  assert(coingecko, "requires coingecko api");
+const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrices }) => {
   assert(queries, "requires queries class");
   assert(empCreatorAbi, "requires creator abi");
   assert(empAbi, "requires empAbi");
+  assert(coingecko, "requires coingecko api");
+  assert(synthPrices, "requires synthPrices api");
   async function getBalanceHistory(address, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
     const stream = await queries.streamLogsByContract(address, start, end);
@@ -43,9 +44,16 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
       []
     );
   }
-  async function getPriceHistory(address, currency = "usd", start, end) {
-    const result = await coingecko.chart(address, currency, start, end);
-    return Prices(result.prices);
+  // Gets the value of collateral currency in USD.
+  async function getCollateralPriceHistory(address, currency = "usd", start, end) {
+    const result = await coingecko.getHistoricContractPrices(address, currency, start, end);
+    return Prices(result);
+  }
+
+  // Gets the value of synthetics in collateral currency.
+  async function getSyntheticPriceHistory(address, start, end) {
+    const result = await synthPrices.getHistoricSynthPrices(address, start, end);
+    return Prices(result);
   }
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
@@ -68,9 +76,13 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     }, []);
   }
 
-  // TODO: update this function to use underlying contracts GCR and total token debt.
-  function calculateValue(tokens, closestPrice, decimals) {
-    return tokens.mul(toBN(toWei(closestPrice.toString()))).div(toBN(toWei(decimals.toString())));
+  // Calculates the value of x `tokens` in USD based on `collateralPrice` in USD, `syntheticPrice` in collateral considering
+  // the decimals of both the collateral and synthetic token.
+  function calculateValue(tokens, collateralPrice, syntheticPrice, collateralTokenDecimal, syntheticTokenDecimal) {
+    return tokens
+      .mul(toBN(syntheticPrice.toString()))
+      .mul(toBN(toWei(collateralPrice.toString())))
+      .div(toBN(toWei(collateralTokenDecimal.toString())).mul(toBN(toWei(syntheticTokenDecimal.toString()))));
   }
 
   // pure function to separate out queries from calculations
@@ -79,13 +91,17 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     empWhitelist = [],
     snapshotSteps = 1,
     totalRewards,
-    tokenPrices,
+    collateralTokenPrices,
+    collateralTokenDecimals,
+    syntheticTokenPrices,
+    syntheticTokenDecimals,
     blocks,
     balanceHistories,
-    empDeployers,
-    tokenDecimals
+    empDeployers
   }) {
-    assert(tokenPrices, "requires token prices");
+    assert(empWhitelist, "requires empWhitelist");
+    assert(collateralTokenPrices, "requires collateral token prices prices");
+    assert(syntheticTokenPrices, "requires synthetic token prices prices");
     assert(blocks, "requires blocks");
     assert(balanceHistories, "requires balanceHistories");
     assert(empDeployers, "requires empDeployers");
@@ -101,13 +117,21 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
           const { tokens } = balanceHistories.get(empAddress).history.lookup(block.number);
-          const decimals = tokenDecimals[empIndex];
-          assert(decimals, "requires token decimals lookup");
-          const [, closestPrice] = tokenPrices[empIndex].closest(timestamp);
+          const [, closestCollateralPrice] = collateralTokenPrices[empIndex].closest(timestamp);
+          const [, closestSyntheticPrice] = syntheticTokenPrices[empIndex].closest(timestamp);
           const totalTokens = Object.values(tokens).reduce((result, value) => {
             return result.add(toBN(value));
           }, toBN("0"));
-          result.push([empAddress, calculateValue(totalTokens, closestPrice, decimals)]);
+          result.push([
+            empAddress,
+            calculateValue(
+              totalTokens,
+              closestCollateralPrice,
+              closestSyntheticPrice,
+              collateralTokenDecimals[empIndex],
+              syntheticTokenDecimals[empIndex]
+            )
+          ]);
           return result;
         } catch (err) {
           // this error is ok, it means we have block history before the emp had any events. Locked value is 0 at this block.
@@ -149,18 +173,23 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
   }
 
   async function getRewards({
+    totalRewards,
     startTime,
     endTime,
-    tokensToPrice = [],
     empWhitelist = [],
     empCreatorAddress,
-    snapshotSteps = 1,
-    totalRewards,
-    tokenDecimals = []
+    collateralTokens = [],
+    collateralTokenDecimals = [],
+    syntheticTokenDecimals = [],
+    snapshotSteps = 1
   }) {
-    const tokenPrices = await Promise.map(
-      tokensToPrice,
-      async address => await getPriceHistory(address, "usd", startTime, endTime)
+    const collateralTokenPrices = await Promise.map(
+      collateralTokens,
+      async address => await getCollateralPriceHistory(address, "usd", startTime, endTime)
+    );
+    const syntheticTokenPrices = await Promise.map(
+      empWhitelist,
+      async address => await getSyntheticPriceHistory(address, startTime, endTime)
     );
     const blocks = await getBlocks(startTime, endTime);
     const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);
@@ -168,13 +197,14 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     return calculateRewards({
       startTime,
       endTime,
-      tokensToPrice,
       empWhitelist,
       empCreatorAddress,
       snapshotSteps,
       totalRewards,
-      tokenDecimals,
-      tokenPrices,
+      collateralTokenPrices,
+      collateralTokenDecimals,
+      syntheticTokenPrices,
+      syntheticTokenDecimals,
       blocks,
       balanceHistories,
       empDeployers
@@ -186,7 +216,8 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko }) => {
     utils: {
       getBalanceHistory,
       getAllBalanceHistories,
-      getPriceHistory,
+      getCollateralPriceHistory,
+      getSyntheticPriceHistory,
       getBlocks,
       getEmpDeployerHistory,
       calculateRewards,

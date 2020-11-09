@@ -15,7 +15,7 @@ const { toWei, utf8ToHex } = web3.utils;
 
 contract("contracts", function(accounts) {
   describe("emp contract", function() {
-    let emp, empContract, web3, collateralToken, timer, collateral, token;
+    let emp, empContract, web3, collateralToken, token, timer, collateral;
     const contractCreator = accounts[4];
     before(async function() {
       const identifier = "TESTTOKEN";

@@ -273,6 +273,22 @@
     "block_hash": "0x7e3f1fa5893b10eca94d9dc9d71b347360c21525acb52971b04305732f667d58"
   },
   {
+    "log_index": 252,
+    "transaction_hash": "0xcd4a431a73522a2abf88aaefc8c9e5369c5f672de63852cd0a59d6646b00d7e7",
+    "transaction_index": 118,
+    "address": "0xabbee9fc7a882499162323eeb7bf6614193312e3",
+    "data": "0x",
+    "topics": [
+      "0xf60993fa76f94c9e0a803526ee6e1314814ed4d2b0d223febf1436b36897fb37",
+      "0x00000000000000000000000090abcf1598ed3077861bcfb3b11efcd1d7277223"
+    ],
+    "block_timestamp": {
+      "value": "2020-09-23T23:48:57.000Z"
+    },
+    "block_number": 10921853,
+    "block_hash": "0xe45df3d695e48c61ff5a804aaf821c2da8970190dc15c4c894e36fd438f13724"
+  },
+  {
     "log_index": 253,
     "transaction_hash": "0xcd4a431a73522a2abf88aaefc8c9e5369c5f672de63852cd0a59d6646b00d7e7",
     "transaction_index": 118,
@@ -283,22 +299,6 @@
       "0x00000000000000000000000090abcf1598ed3077861bcfb3b11efcd1d7277223",
       "0x0000000000000000000000000000000000000000000000000000000005f82af0",
       "0x000000000000000000000000000000000000000000000118aceeee6ac557c000"
-    ],
-    "block_timestamp": {
-      "value": "2020-09-23T23:48:57.000Z"
-    },
-    "block_number": 10921853,
-    "block_hash": "0xe45df3d695e48c61ff5a804aaf821c2da8970190dc15c4c894e36fd438f13724"
-  },
-  {
-    "log_index": 252,
-    "transaction_hash": "0xcd4a431a73522a2abf88aaefc8c9e5369c5f672de63852cd0a59d6646b00d7e7",
-    "transaction_index": 118,
-    "address": "0xabbee9fc7a882499162323eeb7bf6614193312e3",
-    "data": "0x",
-    "topics": [
-      "0xf60993fa76f94c9e0a803526ee6e1314814ed4d2b0d223febf1436b36897fb37",
-      "0x00000000000000000000000090abcf1598ed3077861bcfb3b11efcd1d7277223"
     ],
     "block_timestamp": {
       "value": "2020-09-23T23:48:57.000Z"

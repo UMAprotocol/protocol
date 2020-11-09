@@ -9,7 +9,8 @@ const params = require(`../datasets/${datasetName}`);
 const {
   empCreator,
   empContracts,
-  syntheticTokens,
+  collateralTokens,
+  collateralTokenDecimals,
   syntheticTokenDecimals,
   startingTimestamp,
   endingTimestamp
@@ -37,8 +38,16 @@ function Queries() {
 }
 function Coingecko() {
   return {
-    chart(address) {
+    getHistoricContractPrices(address) {
       return require(`../datasets/${datasetName}/coingecko/${address}`);
+    }
+  };
+}
+
+function SynthPrices() {
+  return {
+    getHistoricSynthPrices(address) {
+      return require(`../datasets/${datasetName}/synth-prices/${address}`);
     }
   };
 }
@@ -48,7 +57,14 @@ describe("DeployerRewards", function() {
   before(function() {
     const queries = Queries();
     const coingecko = Coingecko();
-    affiliates = DeployerRewards({ queries, empAbi: empAbi.abi, empCreatorAbi: empCreatorAbi.abi, coingecko });
+    const synthPrices = SynthPrices();
+    affiliates = DeployerRewards({
+      queries,
+      empAbi: empAbi.abi,
+      empCreatorAbi: empCreatorAbi.abi,
+      coingecko,
+      synthPrices
+    });
   });
   it("getBalanceHistory", async function() {
     this.timeout(10000);
@@ -66,10 +82,16 @@ describe("DeployerRewards", function() {
       assert.ok(history.history.length());
     });
   });
-  it("getPriceHistory", async function() {
+  it("getCollateralPriceHistory", async function() {
     this.timeout(10000);
-    const [, address] = syntheticTokens;
-    const result = await affiliates.utils.getPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    const [, address] = collateralTokens;
+    const result = await affiliates.utils.getCollateralPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    assert.ok(result.prices.length);
+  });
+  it("getSyntheticPriceHistory", async function() {
+    this.timeout(10000);
+    const [, address] = empContracts;
+    const result = await affiliates.utils.getSyntheticPriceHistory(address, startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getBlocks", async function() {
@@ -97,12 +119,17 @@ describe("DeployerRewards", function() {
       endTime: endingTimestamp,
       empWhitelist: empContracts,
       empCreatorAddress: empCreator,
-      tokensToPrice: syntheticTokens,
-      tokenDecimals: syntheticTokenDecimals
+      collateralTokens: collateralTokens,
+      collateralTokenDecimals: collateralTokenDecimals,
+      syntheticTokenDecimals: syntheticTokenDecimals
     });
-    // WIP
 
-    assert.equal(Object.keys(result).length, 1); // there should only be 1 deployer
-    assert.equal(Number(Object.values(result)[0]), Number(devRewardsToDistribute)); // the total rewards distributed should equal the number specified
+    assert.equal(Object.keys(result).length, 2); // There should be 2 deplorers for the 3 EMPs.
+    assert.equal(
+      Object.values(result).reduce((total, value) => {
+        return Number(total) + Number(value);
+      }, 0),
+      Number(devRewardsToDistribute)
+    ); // the total rewards distributed should equal the number specified
   });
 });
