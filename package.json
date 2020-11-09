@@ -5,10 +5,10 @@
   "private": true,
   "scripts": {
     "bootstrap": "npx lerna bootstrap",
-    "lint": "npm run eslint && npm run prettier -- --check",
+    "lint": "npm run eslint && npm run prettier -- --list-different",
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
-    "prettier": "prettier './**/*.sol'",
+    "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
     "test": "lerna run --stream --concurrency=1 test",
     "test-fork": "lerna run --stream --concurrency=1 test-fork",
     "load-addresses": "yarn workspace @uma/core load-addresses",
