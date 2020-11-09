@@ -57,7 +57,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           tokenConfig.collateralDecimals,
           { from: sponsor1 }
         );
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", { from: sponsor1 });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: sponsor1 });
         await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
         await collateralToken.mint(sponsor1, convert("100000"), { from: sponsor1 });
         await collateralToken.mint(sponsor2, convert("100000"), { from: sponsor1 });
