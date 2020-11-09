@@ -26,10 +26,10 @@ contract("Gas Rebate: index.js", function() {
     });
   });
 
-  describe("getHistoricalSYNTHPrice", function() {
+  describe("getHistoricalUmaEthPrice", function() {
     it("Returns an array: {timestamp, avgPx}", async function() {
       const gasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
-      const umaPrices = await Main.getHistoricalSYNTHPrice(gasPrices);
+      const umaPrices = await Main.getHistoricalUmaEthPrice(gasPrices);
       assert.isTrue(umaPrices.length > 0);
       umaPrices.forEach(px => {
         assert.isTrue(px.timestamp >= 0, "timestamp is negative");
@@ -41,14 +41,14 @@ contract("Gas Rebate: index.js", function() {
   describe("calculateRebate", function() {
     beforeEach(async function() {
       this.dailyAvgGasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
-      this.dailyAvgSYNTHPrices = await Main.getHistoricalSYNTHPrice(this.dailyAvgGasPrices);
+      this.dailyAvgUmaEthPrices = await Main.getHistoricalUmaEthPrice(this.dailyAvgGasPrices);
     });
     it("Expect both reveal and claim rebates and outputs are reasonable", async function() {
       const result = await Main.calculateRebate({
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgSYNTHPrices: this.dailyAvgSYNTHPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
         debug: true
       });
@@ -123,7 +123,7 @@ contract("Gas Rebate: index.js", function() {
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgSYNTHPrices: this.dailyAvgSYNTHPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
         debug: true,
         revealOnly: true
@@ -140,7 +140,7 @@ contract("Gas Rebate: index.js", function() {
         rebateNumber: REBATE_LABEL,
         startBlock: TEST_START_BLOCK,
         endBlock: TEST_END_BLOCK,
-        dailyAvgSYNTHPrices: this.dailyAvgSYNTHPrices,
+        dailyAvgUmaEthPrices: this.dailyAvgUmaEthPrices,
         dailyAvgGasPrices: this.dailyAvgGasPrices,
         debug: true,
         claimOnly: true
