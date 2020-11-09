@@ -20,9 +20,6 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
     // Identifier in funding rate store to query for.
     bytes32 public fundingRateIdentifier;
 
-    // Tracks the last block time when the fees were paid.
-    uint256 private lastPaymentTime;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -53,7 +50,6 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         fundingRateIdentifier = _fundingRateIdentifier;
-        lastPaymentTime = getCurrentTime();
     }
 
     /****************************************
