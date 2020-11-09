@@ -35,9 +35,9 @@ contract("BalanceMonitor.js", function(accounts) {
 
   beforeEach(async function() {
     // Create new tokens for every test to reset balances of all accounts
-    collateralToken = await Token.new("Dai Stable coin", "DAI", 18, { from: tokenCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: tokenCreator });
     await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
-    syntheticToken = await Token.new("Test Synthetic Token", "ETHBTC", 18, { from: tokenCreator });
+    syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: tokenCreator });
     await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
@@ -123,7 +123,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isFalse(lastSpyLogIncludes(spy, "synthetic balance warning")); // Synthetic was not moved. should not emit
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,000.00")); // Correctly formatted number of actual collateral
-    assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "WETH")); // Message should include the collateral currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
 
     // Querying the balance again should emit a second message as the balance is still below the threshold.
@@ -158,7 +158,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
     assert.isTrue(lastSpyLogIncludes(spy, "100.00")); // Correctly formatted number of threshold Synthetic
     assert.isTrue(lastSpyLogIncludes(spy, "99.99")); // Correctly formatted number of Synthetic
-    assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Message should include the Synthetic currency symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Message should include the Synthetic currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
   });
 
@@ -311,7 +311,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // Correctly formatted number of actual collateral
-    assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "WETH")); // Message should include the collateral currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
 
     // Updating again should emit another message
@@ -338,7 +338,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,995.00")); // Correctly formatted number of actual collateral
-    assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "WETH")); // Message should include the collateral currency symbol
     assert.equal(lastSpyLogLevel(spy), "warn");
   });
   it("Cannot set invalid config", async function() {

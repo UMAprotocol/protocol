@@ -25,8 +25,8 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  { tokenName: "WETH", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -75,7 +75,7 @@ contract("ContractMonitor.js", function(accounts) {
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
-          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
           tokenConfig.collateralDecimals,
           { from: tokenSponsor }
         );
@@ -98,12 +98,7 @@ contract("ContractMonitor.js", function(accounts) {
         const store = await Store.deployed();
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: tokenSponsor }
-        );
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", { from: tokenSponsor });
 
         constructorParams = {
           isTest: true,

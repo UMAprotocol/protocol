@@ -99,11 +99,7 @@ contract("Disputer.js", function(accounts) {
         timer = await Timer.deployed();
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals
-        );
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", tokenConfig.collateralDecimals);
 
         const constructorParams = {
           expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,

@@ -32,8 +32,8 @@ contract("SyntheticPegMonitor", function() {
     invalidPriceFeedMock = new InvalidPriceFeedMock();
 
     empProps = {
-      collateralCurrencySymbol: "DAI",
-      syntheticCurrencySymbol: "ETHBTC",
+      collateralCurrencySymbol: "WETH",
+      syntheticCurrencySymbol: "SYNTH",
       priceIdentifier: "TEST_IDENTIFIER",
       networkId: await web3.eth.net.getId()
     };
