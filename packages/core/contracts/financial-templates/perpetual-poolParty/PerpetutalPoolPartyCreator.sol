@@ -1,13 +1,12 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/JarvisExpandedIERC20.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
-import "../common/TokenFactory.sol";
-import "../common/SyntheticToken.sol";
+import "../common/JarvisTokenFactory.sol";
 import "./PerpetualPoolPartyLib.sol";
 
 
@@ -72,17 +71,16 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
-        TokenFactory tf = TokenFactory(tokenFactoryAddress);
+        JarvisTokenFactory tf = JarvisTokenFactory(tokenFactoryAddress);
 
         // If the collateral token does not have a `decimals()` method,
         // then a default precision of 18 will be applied to the newly created synthetic token.
-        ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
+        JarvisExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
         address derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
 
         // Give permissions to new derivative contract and then hand over ownership.
-        tokenCurrency.addMinter(derivative);
-        tokenCurrency.addBurner(derivative);
-        tokenCurrency.resetOwner(derivative);
+        tokenCurrency.addAdminAndMinterAndBurner(derivative);
+        tokenCurrency.renounceAdmin();
 
         _registerContract(new address[](0), address(derivative));
 
@@ -96,7 +94,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
      ****************************************/
 
     // Converts createPerpetual params to Perpetual constructor params.
-    function _convertParams(Params memory params, ExpandedIERC20 newTokenCurrency)
+    function _convertParams(Params memory params, JarvisExpandedIERC20 newTokenCurrency)
         private
         view
         returns (PerpetualPoolParty.ConstructorParams memory constructorParams)
