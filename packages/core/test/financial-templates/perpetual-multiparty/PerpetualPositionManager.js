@@ -822,7 +822,7 @@ contract("PerpetualPositionManager", function(accounts) {
       from: contractDeployer
     });
     // Note: Purposefully using numbers that has no precision loss in the cumulative fee multiplier.
-    const txn = await positionManager.payFundingRateFees({ rawValue: toWei("0.0198") }, { from: other });
+    const txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("0.0198") }, { from: other });
     truffleAssert.eventEmitted(txn, "FundingRateFeesPaid", ev => {
       return ev.fundingRateFee.toString() === toWei("0.0198");
     });
