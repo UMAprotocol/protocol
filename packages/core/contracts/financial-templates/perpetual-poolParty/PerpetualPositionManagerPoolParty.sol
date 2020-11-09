@@ -448,6 +448,53 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
+     * @notice Add TokenSponsor to TOKEN_SPONSOR_ROLE
+     * @param sponsor address of the TokenSponsor.
+     */
+    function addTokenSponsor(address sponsor) external {
+        grantRole(TOKEN_SPONSOR_ROLE, sponsor);
+    }
+
+    /**
+     * @notice Add admin to DEFAULT_ADMIN_ROLE
+     * @param admin address of the TokenSponsor.
+     */
+    function addAdmin(address admin) external {
+        grantRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    /**
+     * @notice Add admin and TokenSponsor to DEFAULT_ADMIN_ROLE and TOKEN_SPONSOR_ROLE
+     * @param adminAndSponsor address of admin/TokenSponsor.
+     */
+    function addAdminAndTokenSponsor(address adminAndSponsor) external {
+        grantRole(DEFAULT_ADMIN_ROLE, adminAndSponsor);
+        grantRole(TOKEN_SPONSOR_ROLE, adminAndSponsor);
+    }
+
+    /**
+     * @notice TokenSponsor renounce to TOKEN_SPONSOR_ROLE
+     */
+    function renounceTokenSponsor() external {
+        renounceRole(TOKEN_SPONSOR_ROLE, msg.sender);
+    }
+
+    /**
+     * @notice Admin renounce to DEFAULT_ADMIN_ROLE
+     */
+    function renounceAdmin() external {
+        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    /**
+     * @notice Admin and TokenSponsor renounce to DEFAULT_ADMIN_ROLE and TOKEN_SPONSOR_ROLE
+     */
+    function renounceAdminAndTokenSponsor() external {
+        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        renounceRole(TOKEN_SPONSOR_ROLE, msg.sender);
+    }
+
+    /**
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
