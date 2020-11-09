@@ -161,7 +161,7 @@
         "avgGwei": "90.700178586"
       }
     ],
-    "dailyAvgSYNTHPrices": [
+    "dailyAvgUmaEthPrices": [
       {
         "timestamp": 1598572800,
         "avgPx": "0.017866339805623608"
