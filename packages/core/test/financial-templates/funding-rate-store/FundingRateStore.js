@@ -46,10 +46,10 @@ contract("FundingRateStore", function(accounts) {
 
   const liveness = 7200;
 
-  const defaultTestIdentifier = toHex("TEST-IDENTIFIER");
+  const defaultTestIdentifier = toHex("TEST_IDENTIFIER");
 
   beforeEach(async () => {
-    collateralCurrency = await ExpandedERC20.new("USDC", "USDC", 18);
+    collateralCurrency = await ExpandedERC20.new("Wrapped Ether", "WETH", 18);
     await collateralCurrency.addMember(1, contractDeployer);
     timer = await Timer.deployed();
     store = await Store.deployed();
