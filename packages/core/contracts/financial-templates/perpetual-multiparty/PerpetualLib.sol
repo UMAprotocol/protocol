@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "./Perpetual.sol";
 
-
 /**
  * @title Provides convenient Perpetual Multi Party contract utilities.
  * @dev Using this library to deploy Perpetuals allows calling contracts to avoid importing the full bytecode.

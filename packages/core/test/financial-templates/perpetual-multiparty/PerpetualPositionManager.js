@@ -770,7 +770,67 @@ contract("PerpetualPositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.repay({ rawValue: "1" }, { from: sponsor })));
   });
 
-  it("Basic fees", async function() {
+  it("Basic funding rate fees", async function() {
+    // Create 2 positions.
+    await collateral.approve(positionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+
+    // Cannot pay fees when PfC is 0.
+    assert(
+      await didContractThrow(
+        mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") })
+      )
+    );
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100000") }, { from: other });
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
+    // Multiply by 2 because there are two active positions
+    const expectedStoreBalance = (await collateral.balanceOf(mockFundingRateStore.address)).add(toBN(toWei("0.02")));
+
+    // Cannot pay 0 fees.
+    assert(
+      await didContractThrow(mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: "0" }))
+    );
+
+    // `withdrawFundingRateFees` only callable by FundingRateStore.
+    assert(await didContractThrow(positionManager.withdrawFundingRateFees({ rawValue: toWei("0.02") })));
+
+    // Cannot pay more fees than PfC
+    assert(
+      await didContractThrow(
+        mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("2.01") })
+      )
+    );
+
+    // Calling `withdrawFundingRateFees` from the store should transfer fees from the contract to the store.
+    await mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") });
+    let collateralAmountSponsor = await positionManager.getCollateral(sponsor);
+    assert.equal(collateralAmountSponsor.rawValue.toString(), toWei("0.99"));
+    let collateralAmountOther = await positionManager.getCollateral(other);
+    assert.equal(collateralAmountOther.rawValue.toString(), toWei("0.99"));
+    assert.equal(
+      (await collateral.balanceOf(mockFundingRateStore.address)).toString(),
+      expectedStoreBalance.toString()
+    );
+
+    // Temporarily make Finder think that an EOA is the "FundingRateStore" so that it can call `withdrawFundingRateFees`
+    // and test that event is emitted correctly.
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), other, {
+      from: contractDeployer
+    });
+    // Note: Purposefully using numbers that has no precision loss in the cumulative fee multiplier.
+    const txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("0.0198") }, { from: other });
+    truffleAssert.eventEmitted(txn, "FundingRateFeesPaid", ev => {
+      return ev.fundingRateFee.toString() === toWei("0.0198");
+    });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), other, {
+      from: contractDeployer
+    });
+  });
+  it("Basic oracle fees", async function() {
     // Set up position.
     await collateral.approve(positionManager.address, toWei("1000"), { from: other });
     await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
@@ -987,17 +1047,17 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
     assert.equal(
-      (await mockFundingRateStore.getFundingRateForIdentifier(fundingRateFeedIdentifier)).toString(),
+      (await mockFundingRateStore.getFundingRateForContract(positionManager.address)).toString(),
       toWei("0")
     );
 
     // Set a positive funding rate of 0.01 in the store and apply it for a period of 5 seconds. New funding rate should
     // be 1 * (1 + 0.01 * 5) = 1.05
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("0.01")
     });
     assert.equal(
-      (await mockFundingRateStore.getFundingRateForIdentifier(fundingRateFeedIdentifier)).toString(),
+      (await mockFundingRateStore.getFundingRateForContract(positionManager.address)).toString(),
       toWei("0.01")
     );
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
@@ -1013,7 +1073,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Set the funding rate to a negative funding rate of 0.98 in the store and apply it for 5 seconds. New funding rate
     // should be 1.05 * (1 - -0.02 * 5) = 0.945
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("-0.02")
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
@@ -1021,7 +1081,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
 
     // Setting the funding rate to zero (no payments made, synth trading at parity) should no change the cumulativeFundingRateMultiplier.
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("0")
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(withdrawalLiveness)).toString()); // Advance the time by the withdrawal liveness
@@ -1030,7 +1090,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
     // Check that the remaining functions update the funding rate accordingly. Use a new funding rate of 1.01.
     // Have already checked: a) create b) requestWithdrawal and c) withdrawPassedRequest
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("0.01")
     });
 
@@ -1101,7 +1161,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
 
     // Add a funding rate to the fundingRateStore. let's say a value of 0.05% per second.
-    await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+    await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("0.0005")
     });
 
@@ -1406,7 +1466,7 @@ contract("PerpetualPositionManager", function(accounts) {
     });
     it("Funding rate multiplier updates shows precision loss", async function() {
       // Set the funding rate multiplier to 0.000000000000000002 after 1 second.
-      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+      await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
         rawValue: toWei("0.000000000000000002")
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
@@ -1416,7 +1476,7 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.000000000000000002"));
 
       // Now set the funding rate to -0.000000000000000001 and advance by another second.
-      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+      await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
         rawValue: toWei("-0.000000000000000001")
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
@@ -1430,7 +1490,7 @@ contract("PerpetualPositionManager", function(accounts) {
     it("Funding-Rate-Adjusted sponsor debt shows precision loss", async function() {
       // Set the funding rate multiplier to 0.95 after 1 second.
       // After 1 second, the adjusted token debt will be 30 * 0.95 = 28.5 wei, which will be truncated to 28.
-      await mockFundingRateStore.setFundingRate(fundingRateFeedIdentifier, await timer.getCurrentTime(), {
+      await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
         rawValue: toWei("-0.05")
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());

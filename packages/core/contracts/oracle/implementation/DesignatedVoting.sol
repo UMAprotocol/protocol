@@ -7,7 +7,6 @@ import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "./Constants.sol";
 
-
 /**
  * @title Proxy to allow voting from another address.
  * @dev Allows a UMA token holder to designate another address to vote on their behalf.

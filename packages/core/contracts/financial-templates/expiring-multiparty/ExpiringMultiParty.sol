@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "./Liquidatable.sol";
 
-
 /**
  * @title Expiring Multi Party.
  * @notice Convenient wrapper for Liquidatable.

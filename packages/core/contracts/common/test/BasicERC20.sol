@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 /**
  * @title Implements only the required ERC20 methods. This contract is used
  * test how contracts handle ERC20 contracts that have not implemented `decimals()`
@@ -21,7 +20,7 @@ contract BasicERC20 is IERC20 {
         _totalSupply = _initialAmount;
     }
 
-    function totalSupply() public override view returns (uint256) {
+    function totalSupply() public view override returns (uint256) {
         return _totalSupply;
     }
 
@@ -49,7 +48,7 @@ contract BasicERC20 is IERC20 {
         return true;
     }
 
-    function balanceOf(address _owner) public override view returns (uint256 balance) {
+    function balanceOf(address _owner) public view override returns (uint256 balance) {
         return balances[_owner];
     }
 
@@ -59,7 +58,7 @@ contract BasicERC20 is IERC20 {
         return true;
     }
 
-    function allowance(address _owner, address _spender) public override view returns (uint256 remaining) {
+    function allowance(address _owner, address _spender) public view override returns (uint256 remaining) {
         return allowed[_owner][_spender];
     }
 }

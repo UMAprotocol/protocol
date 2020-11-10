@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "../Voting.sol";
 import "../../../common/implementation/FixedPoint.sol";
 
-
 // Test contract used to access internal variables in the Voting contract.
 contract VotingTest is Voting {
     constructor(

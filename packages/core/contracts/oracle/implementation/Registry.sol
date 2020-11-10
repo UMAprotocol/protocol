@@ -6,7 +6,6 @@ import "../interfaces/RegistryInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Registry for financial contracts and approved financial contract creators.
  * @dev Maintains a whitelist of financial contract creators that are allowed
@@ -154,7 +153,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @param contractAddress address of the financial contract.
      * @return bool indicates whether the contract is registered.
      */
-    function isContractRegistered(address contractAddress) external override view returns (bool) {
+    function isContractRegistered(address contractAddress) external view override returns (bool) {
         return contractMap[contractAddress].valid == Validity.Valid;
     }
 
@@ -163,7 +162,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @param party address of the party.
      * @return an array of the contracts the party is registered to.
      */
-    function getRegisteredContracts(address party) external override view returns (address[] memory) {
+    function getRegisteredContracts(address party) external view override returns (address[] memory) {
         return partyMap[party].contracts;
     }
 
@@ -171,7 +170,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @notice Returns all registered contracts.
      * @return all registered contract addresses within the system.
      */
-    function getAllRegisteredContracts() external override view returns (address[] memory) {
+    function getAllRegisteredContracts() external view override returns (address[] memory) {
         return registeredContracts;
     }
 
@@ -181,7 +180,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @param contractAddress address to check against the party.
      * @return bool indicating if the address is a party of the contract.
      */
-    function isPartyMemberOfContract(address party, address contractAddress) public override view returns (bool) {
+    function isPartyMemberOfContract(address party, address contractAddress) public view override returns (bool) {
         uint256 index = partyMap[party].contractIndex[contractAddress];
         return partyMap[party].contracts.length > index && partyMap[party].contracts[index] == contractAddress;
     }

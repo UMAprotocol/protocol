@@ -11,7 +11,6 @@ import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
 import "./PerpetualLib.sol";
 
-
 /**
  * @title Perpetual Contract creator.
  * @notice Factory contract to create and register new instances of perpetual contracts.

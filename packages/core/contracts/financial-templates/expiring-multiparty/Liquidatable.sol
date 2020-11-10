@@ -8,7 +8,6 @@ import "./PricelessPositionManager.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Liquidatable
  * @notice Adds logic to a position-managing contract that enables callers to liquidate an undercollateralized position.
@@ -545,7 +544,7 @@ contract Liquidatable is PricelessPositionManager {
         );
     }
 
-    function _pfc() internal override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view override returns (FixedPoint.Unsigned memory) {
         return super._pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 

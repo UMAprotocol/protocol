@@ -5,7 +5,6 @@ import "../../common/implementation/AddressWhitelist.sol";
 import "./Registry.sol";
 import "./Constants.sol";
 
-
 /**
  * @title Base contract for all financial contract creators
  */

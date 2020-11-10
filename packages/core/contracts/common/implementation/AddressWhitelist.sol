@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Lockable.sol";
 
-
 /**
  * @title A contract to track a whitelist of addresses.
  */

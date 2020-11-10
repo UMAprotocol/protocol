@@ -8,7 +8,7 @@ import "../../../common/implementation/FixedPoint.sol";
 import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-
+import "../../perpetual-multiparty/PerpetualInterface.sol";
 
 // A mock funding rate store used for testing.
 contract MockFundingRateStore is FundingRateStoreInterface, Testable {
@@ -21,23 +21,27 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         uint256 timestamp; // Time the verified funding rate became available.
     }
 
-    mapping(bytes32 => FundingRate[]) private fundingRates;
+    mapping(address => FundingRate[]) private fundingRates;
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
     // Sets the funding rate for a given identifier.
     function setFundingRate(
-        bytes32 identifier,
+        address perpetual,
         uint256 time,
         FixedPoint.Signed memory fundingRate
     ) external {
-        fundingRates[identifier].push(FundingRate(fundingRate, time));
+        fundingRates[perpetual].push(FundingRate(fundingRate, time));
     }
 
-    function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
-        if (fundingRates[identifier].length == 0) {
+    function getFundingRateForContract(address perpetual) external view override returns (FixedPoint.Signed memory) {
+        if (fundingRates[perpetual].length == 0) {
             return FixedPoint.fromUnscaledInt(0);
         }
-        return fundingRates[identifier][fundingRates[identifier].length - 1].fundingRate;
+        return fundingRates[perpetual][fundingRates[perpetual].length - 1].fundingRate;
+    }
+
+    function chargeFundingRateFees(address perpetual, FixedPoint.Unsigned calldata amount) external {
+        PerpetualInterface(perpetual).withdrawFundingRateFees(amount);
     }
 }

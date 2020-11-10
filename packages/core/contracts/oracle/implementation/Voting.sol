@@ -17,7 +17,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 
-
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -254,7 +253,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param time unix timestamp of for the price request.
      * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint256 time) external override view onlyRegisteredContract() returns (bool) {
+    function hasPrice(bytes32 identifier, uint256 time) external view override onlyRegisteredContract() returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time);
         return _hasPrice;
     }
@@ -268,8 +267,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      */
     function getPrice(bytes32 identifier, uint256 time)
         external
-        override
         view
+        override
         onlyRegisteredContract()
         returns (int256)
     {
@@ -563,7 +562,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external override view returns (PendingRequest[] memory) {
+    function getPendingRequests() external view override returns (PendingRequest[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -594,7 +593,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external override view returns (Phase) {
+    function getVotePhase() external view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -602,7 +601,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external override view returns (uint256) {
+    function getCurrentRoundId() external view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 

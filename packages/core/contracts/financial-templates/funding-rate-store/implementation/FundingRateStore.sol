@@ -10,11 +10,11 @@ import "../../../oracle/interfaces/OracleInterface.sol";
 import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 
+import "../../perpetual-multiparty/PerpetualInterface.sol";
 import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
 import "../../../common/implementation/Lockable.sol";
 import "../../../common/implementation/FixedPoint.sol";
-
 
 contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     using SafeMath for uint256;
@@ -25,9 +25,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /****************************************
      *        STORE DATA STRUCTURES         *
      ****************************************/
-
-    // The collateral currency used to reward successful proposers.
-    IERC20 public collateralCurrency;
 
     // Finder contract used to look up addresses for UMA system contracts.
     FinderInterface public finder;
@@ -48,51 +45,51 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     enum ProposalState { None, Pending, Expired }
 
-    mapping(bytes32 => FundingRateRecord) public fundingRateRecords;
-    mapping(bytes32 => mapping(uint256 => FundingRateRecord)) public fundingRateDisputes;
+    mapping(address => FundingRateRecord) public fundingRateRecords;
+    mapping(address => mapping(uint256 => FundingRateRecord)) public fundingRateDisputes;
 
     uint256 public proposalLiveness;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
 
-    event ProposedRate(bytes32 indexed identifier, int256 rate, uint256 proposalTime, address indexed proposer);
+    event ProposedRate(address indexed perpetual, int256 rate, uint256 proposalTime, address indexed proposer);
     event DisputedRate(
-        bytes32 indexed identifier,
+        address indexed perpetual,
         int256 rate,
         uint256 proposalTime,
         address indexed proposer,
         address indexed disputer
     );
-    event PublishedRate(bytes32 indexed identifier, int256 rate, uint256 proposalTime, address indexed proposer);
-    event FinalFeesPaid(uint256 indexed amount);
+    event PublishedRate(address indexed perpetual, int256 rate, uint256 proposalTime, address indexed proposer);
+    event FinalFeesPaid(address indexed collateralCurrency, uint256 indexed amount);
 
     constructor(
         uint256 _proposalLiveness,
-        address _collateralAddress,
         address _finderAddress,
         address _timerAddress
     ) public Testable(_timerAddress) {
         require(_proposalLiveness > 0, "Proposal liveness is 0");
         proposalLiveness = _proposalLiveness;
-        collateralCurrency = IERC20(_collateralAddress);
         finder = FinderInterface(_finderAddress);
     }
 
     /**
-     * @notice Returns the current funding rate or the pending funding rate if its liveness has expired.
-     * @param identifier Identifier to retrieve funding rate for.
-     * @return funding rate.
+     * @notice Gets the latest funding rate for a perpetual contract.
+     * @dev This method should never revert.
+     * @param perpetual perpetual contract whose funding rate identifier that the calling contracts wants to get
+     * a funding rate for.
+     * @return FixedPoint.Signed representing the funding rate for the given contract. 0.01 would represent a funding
+     * rate of 1% per second. -0.01 would represent a negative funding rate of -1% per second.
      */
-    function getFundingRateForIdentifier(bytes32 identifier)
+    function getFundingRateForContract(address perpetual)
         external
-        override
         view
+        override
         nonReentrantView()
         returns (FixedPoint.Signed memory)
     {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
 
         if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
             return fundingRateRecord.proposal.rate;
@@ -104,30 +101,31 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /**
      * @notice Returns the timestamp at which the current funding rate was proposed.
      * @dev The "current funding rate" is defined as that returned by `getFundingRateForIdentifier(id)`
-     * @param identifier Identifier to retrieve propose time for.
+     * @param perpetual Perpetual to retrieve propose time for.
      * @return propose timestamp.
      */
-    function getProposeTimeForIdentifier(bytes32 identifier) external view nonReentrantView() returns (uint256) {
-        return _getLatestProposeTimeForIdentifier(identifier);
+    function getProposeTimeForContract(address perpetual) external view nonReentrantView() returns (uint256) {
+        return _getLatestProposeTimeForContract(perpetual);
     }
 
     /**
-     * @notice Propose a new funding rate for an identifier. A side effect of this method is that it will
+     * @notice Propose a new funding rate for a perpetual. A side effect of this method is that it will
      * overwrite the current funding rate with a pending funding rate if its liveness has expired. If this update
      * occurs, then this method will also pay the proposer their reward for successfully updating the current rate.
-     * @dev This will revert if there is already a pending funding rate for the identifier.
+     * @dev This will revert if there is already a pending funding rate for the perpetual.
      * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back once their funding rate is published.
-     * @param identifier Identifier to propose funding rate for.
+     * @param perpetual Perpetual contract to propose funding rate for.
      * @param rate Proposed rate.
      */
-    function propose(bytes32 identifier, FixedPoint.Signed memory rate) external nonReentrant() {
-        // TODO: check the identifier whitelist to ensure the proposed identifier is approved by the DVM.
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+    function propose(address perpetual, FixedPoint.Signed memory rate) external nonReentrant() {
+        // TODO: check the identifier whitelist to ensure the proposed perpetual's identifier is approved by the DVM.
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
         uint256 currentTime = getCurrentTime();
 
         // TODO: bond logic.
+        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
 
         require(proposalState != ProposalState.Pending, "Existing proposal still pending.");
 
@@ -144,24 +142,24 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             );
 
             emit PublishedRate(
-                identifier,
+                perpetual,
                 fundingRateRecord.rate.rawValue,
                 fundingRateRecord.proposal.time,
                 fundingRateRecord.proposal.proposer
             );
         }
 
-        // Make sure that there is no disputed proposal for the same identifier and proposal time. This prevents
+        // Make sure that there is no disputed proposal for the same perpetual and proposal time. This prevents
         // the proposer from potentially overwriting a proposal. Note that this would be a rare case in which the
         // proposer [ (1) created a proposal, (2) disputed the proposal, and (3) created another proposal ] all within
         // the same block. The proposer would lose their bond from the first proposal forever.
         require(
-            _getFundingRateDispute(identifier, currentTime).proposal.proposer == address(0x0),
+            _getFundingRateDispute(perpetual, currentTime).proposal.proposer == address(0x0),
             "Proposal pending dispute"
         );
 
         // Compute final fee at time of proposal.
-        FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees();
+        FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees(collateralCurrency);
 
         fundingRateRecord.proposal = Proposal({
             rate: rate,
@@ -170,7 +168,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             finalFee: finalFeeBond,
             disputer: address(0x0)
         });
-        emit ProposedRate(identifier, rate.rawValue, currentTime, msg.sender);
+        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender);
 
         // Pull final fee bond from proposer.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
@@ -179,13 +177,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /**
      * @notice Dispute a pending funding rate. This will delete the pending funding rate, meaning that a
      * proposer can now proposer another rate with a fresh liveness.
-     * @dev This will revert if there is no pending funding rate for the identifier.
+     * @dev This will revert if there is no pending funding rate for the perpetual.
      * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back if their dispute is successful.
-     * @param identifier Identifier to dispute proposed funding rate for.
+     * @param perpetual Contract to dispute proposed funding rate for.
      */
-    function dispute(bytes32 identifier) external nonReentrant() {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+    function dispute(address perpetual) external nonReentrant() {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
 
         require(proposalState == ProposalState.Pending, "Existing proposal not pending");
@@ -193,13 +191,17 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // TODO: Bond logic.
 
         // Pull final fee bond from disputer and pay store.
-        _payFinalFees(msg.sender, fundingRateRecord.proposal.finalFee);
+        _payFinalFees(
+            IERC20(PerpetualInterface(perpetual).getCollateralCurrency()),
+            msg.sender,
+            fundingRateRecord.proposal.finalFee
+        );
 
         // Send price request
-        _requestOraclePrice(identifier, fundingRateRecord.proposal.time);
+        _requestOraclePrice(PerpetualInterface(perpetual).getFundingRateIdentifier(), fundingRateRecord.proposal.time);
 
         emit DisputedRate(
-            identifier,
+            perpetual,
             fundingRateRecord.proposal.rate.rawValue,
             fundingRateRecord.proposal.time,
             fundingRateRecord.proposal.proposer,
@@ -208,8 +210,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
         // Delete pending proposal and copy into dispute records.
         fundingRateRecord.proposal.disputer = msg.sender;
-        fundingRateDisputes[identifier][fundingRateRecord.proposal.time] = fundingRateRecord;
-        delete fundingRateRecords[identifier].proposal;
+        fundingRateDisputes[perpetual][fundingRateRecord.proposal.time] = fundingRateRecord;
+        delete fundingRateRecords[perpetual].proposal;
     }
 
     /**
@@ -217,16 +219,19 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      * will receive a reward plus their final fee bond. This method will also overwrite the current funding rate
      * with the resolved funding rate returned by the Oracle. Pending funding rates are unaffected by this method.
      * @dev This will revert if there is no price available for the disputed funding rate.
-     * @param identifier Identifier to settle disputed funding rate for.
+     * @param perpetual Contract to settle disputed funding rate for.
      * @param proposalTime Proposal time at which the disputed funding rate was proposed.
      */
-    function settleDispute(bytes32 identifier, uint256 proposalTime) external nonReentrant() {
-        FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(identifier, proposalTime);
+    function settleDispute(address perpetual, uint256 proposalTime) external nonReentrant() {
+        FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(perpetual, proposalTime);
 
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
         // If the fundingRateDispute struct has been deleted, then this call will also fail because the proposal
         // time will be 0.
-        FixedPoint.Signed memory settlementRate = _getOraclePrice(identifier, proposalTime);
+        FixedPoint.Signed memory settlementRate = _getOraclePrice(
+            PerpetualInterface(perpetual).getFundingRateIdentifier(),
+            proposalTime
+        );
 
         // Dispute was successful if settled rate is different from proposed rate.
         bool disputeSucceeded = !settlementRate.isEqual(fundingRateDispute.proposal.rate);
@@ -234,6 +239,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             ? fundingRateDispute.proposal.disputer
             : fundingRateDispute.proposal.proposer;
 
+        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
         if (disputeSucceeded) {
             // If dispute succeeds:
             // - pay disputer the dispute reward + final fee rebate
@@ -254,15 +260,15 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
         // Update current rate to settlement rate if there has not been a published funding rate since the dispute
         // began.
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
-        if (_getLatestProposeTimeForIdentifier(identifier) <= proposalTime) {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+        if (_getLatestProposeTimeForContract(perpetual) <= proposalTime) {
             fundingRateRecord.rate = settlementRate;
             fundingRateRecord.proposeTime = proposalTime;
-            emit PublishedRate(identifier, settlementRate.rawValue, proposalTime, proposer);
+            emit PublishedRate(perpetual, settlementRate.rawValue, proposalTime, proposer);
         }
 
         // Delete dispute
-        delete fundingRateDisputes[identifier][proposalTime];
+        delete fundingRateDisputes[perpetual][proposalTime];
     }
 
     /****************************************
@@ -277,29 +283,33 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee
     // charged for each price request.
-    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
+    function _payFinalFees(
+        IERC20 collateralCurrency,
+        address payer,
+        FixedPoint.Unsigned memory amount
+    ) internal {
         if (amount.isEqual(0)) {
             return;
         }
 
         collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
 
-        emit FinalFeesPaid(amount.rawValue);
+        emit FinalFeesPaid(address(collateralCurrency), amount.rawValue);
 
         StoreInterface store = _getStore();
         collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
         store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
-    // Returns the pending Proposal struct for an identifier.
-    function _getFundingRateRecord(bytes32 identifier) private view returns (FundingRateRecord storage) {
-        return fundingRateRecords[identifier];
+    // Returns the pending Proposal struct for a perpetual contract.
+    function _getFundingRateRecord(address perpetual) private view returns (FundingRateRecord storage) {
+        return fundingRateRecords[perpetual];
     }
 
-    // Returns the disputed Proposal struct for an identifier and proposal time. This returns empty if the dispute
+    // Returns the disputed Proposal struct for a perpetual and proposal time. This returns empty if the dispute
     // has already been resolved via `settleDispute`.
-    function _getFundingRateDispute(bytes32 identifier, uint256 time) private view returns (FundingRateRecord storage) {
-        return fundingRateDisputes[identifier][time];
+    function _getFundingRateDispute(address perpetual, uint256 time) private view returns (FundingRateRecord storage) {
+        return fundingRateDisputes[perpetual][time];
     }
 
     // Returns whether a proposal is a pending or expired proposal, or does not exist.
@@ -307,15 +317,15 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         uint256 time = proposal.time;
         if (time == 0) {
             return ProposalState.None;
-        } else if (getCurrentTime() < time + proposalLiveness) {
+        } else if (getCurrentTime() < time.add(proposalLiveness)) {
             return ProposalState.Pending;
         } else {
             return ProposalState.Expired;
         }
     }
 
-    function _getLatestProposeTimeForIdentifier(bytes32 identifier) internal view returns (uint256) {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(identifier);
+    function _getLatestProposeTimeForContract(address perpetual) internal view returns (uint256) {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
 
         // If a pending funding rate has expired, then use the pending funding rate's proposal time.
         if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
@@ -339,7 +349,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         return FixedPoint.Signed(oraclePrice);
     }
 
-    function _computeFinalFees() internal view returns (FixedPoint.Unsigned memory finalFees) {
+    function _computeFinalFees(IERC20 collateralCurrency) internal view returns (FixedPoint.Unsigned memory finalFees) {
         StoreInterface store = _getStore();
         return store.computeFinalFee(address(collateralCurrency));
     }

@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 /**
  * @title Stores common interface names used throughout the DVM by registration in the Finder.
  */
