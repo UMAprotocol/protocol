@@ -67,29 +67,15 @@ async function run() {
 
   // To determine if a price request was a non-expiry price request, we can check if a ContractExpired
   // event was emitted in the same block # as the PriceRequestAdded event.
-  let getEventsPromises = [];
-  for (let i in nonAdminReqs) {
-    const promise = new Promise(resolve => {
-      // To trigger a price request, some accounts called a financial contract that triggered a price request. So
-      // we'll grab the contract that was called.
-      getTransactionReceipt(nonAdminReqs[i].req.transactionHash).then(txn => {
-        const empAddress = txn.to;
-
-        ExpiringMultiParty.at(empAddress).then(emp => {
-          emp.contract
-            .getPastEvents("ContractExpired", {
-              fromBlock: txn.blockNumber,
-              toBlock: txn.blockNumber,
-              to: empAddress
-            })
-            .then(events => {
-              resolve(events);
-            });
-        });
-      });
+  const getEventsPromises = nonAdminReqs.map(async request => {
+    const receipt = await getTransactionReceipt(request.req.transactionHash);
+    const emp = await ExpiringMultiParty.at(receipt.to);
+    return await emp.contract.getPastEvents("ContractExpired", {
+      fromBlock: receipt.blockNumber,
+      toBlock: receipt.blockNumber,
+      to: emp.address
     });
-    getEventsPromises.push(promise);
-  }
+  });
 
   // If no ContractExpired events were emitted, then we can assume it was a dispute that triggered the price request.
   const nonExpiryReqs = (await Promise.all(getEventsPromises)).filter(req => {
