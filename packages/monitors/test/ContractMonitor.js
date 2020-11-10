@@ -98,7 +98,7 @@ contract("ContractMonitor.js", function(accounts) {
         const store = await Store.deployed();
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", { from: tokenSponsor });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: tokenSponsor });
 
         constructorParams = {
           isTest: true,
