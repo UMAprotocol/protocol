@@ -10,7 +10,7 @@ import "../common/FeePayerPoolPartyLib.sol";
 library PerpetualLiquidatablePoolPartyLib {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for ExpandedIERC20;
+    using SafeERC20 for JarvisExpandedIERC20;
     using FixedPoint for FixedPoint.Unsigned;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionData;
     using FeePayerPoolPartyLib for FixedPoint.Unsigned;

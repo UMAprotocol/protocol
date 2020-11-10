@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/JarvisExpandedIERC20.sol";
 import "./PerpetualPositionManagerPoolPartyLib.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
@@ -26,7 +26,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for ExpandedIERC20;
+    using SafeERC20 for JarvisExpandedIERC20;
     using PerpetualPositionManagerPoolPartyLib for PositionData;
     using PerpetualPositionManagerPoolPartyLib for PositionManagerData;
 
@@ -99,7 +99,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
 
     struct PositionManagerData {
         // Synthetic token created by this contract.
-        ExpandedIERC20 tokenCurrency;
+        JarvisExpandedIERC20 tokenCurrency;
         // Unique identifier for DVM price feed ticker.
         bytes32 priceIdentifier;
         // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
@@ -203,7 +203,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             }
         }
         positionManagerData.withdrawalLiveness = _positionManagerData.withdrawalLiveness;
-        positionManagerData.tokenCurrency = ExpandedIERC20(_positionManagerData.tokenAddress);
+        positionManagerData.tokenCurrency = JarvisExpandedIERC20(_positionManagerData.tokenAddress);
         positionManagerData.minSponsorTokens = _positionManagerData.minSponsorTokens;
         positionManagerData.priceIdentifier = _positionManagerData.priceFeedIdentifier;
         positionManagerData.excessTokenBeneficiary = _positionManagerData.excessTokenBeneficiary;
@@ -492,6 +492,66 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     function renounceAdminAndTokenSponsor() external {
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
         renounceRole(TOKEN_SPONSOR_ROLE, msg.sender);
+    }
+
+    /**
+     * @notice Add derivative as minter of synthetic token
+     * @param derivative address of the derivative
+     */
+    function addSyntheticTokenMinter(address derivative) external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.addMinter(derivative);
+    }
+
+    /**
+     * @notice Add derivative as burner of synthetic token
+     * @param derivative address of the derivative
+     */
+    function addSyntheticTokenBurner(address derivative) external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.addBurner(derivative);
+    }
+
+    /**
+     * @notice Add derivative as admin of synthetic token
+     * @param derivative address of the derivative
+     */
+    function addSyntheticTokenAdmin(address derivative) external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.addAdmin(derivative);
+    }
+
+    /**
+     * @notice Add derivative as admin, minter and burner of synthetic token
+     * @param derivative address of the derivative
+     */
+    function addSyntheticTokenAdminAndMinterAndBurner(address derivative) external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.addAdminAndMinterAndBurner(derivative);
+    }
+
+    /**
+     * @notice This contract renounce to be minter of synthetic token
+     */
+    function renounceSyntheticTokenMinter() external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.renounceMinter();
+    }
+
+    /**
+     * @notice This contract renounce to be burner of synthetic token
+     */
+    function renounceSyntheticTokenBurner() external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.renounceBurner();
+    }
+
+    /**
+     * @notice This contract renounce to be admin of synthetic token
+     */
+    function renounceSyntheticTokenAdmin() external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.renounceAdmin();
+    }
+
+    /**
+     * @notice This contract renounce to be admin, minter and burner of synthetic token
+     */
+    function renounceSyntheticTokenAdminAndMinterAndBurner() external onlyTokenSponsor() {
+        positionManagerData.tokenCurrency.renounceAdminAndMinterAndBurner();
     }
 
     /**
