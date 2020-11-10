@@ -315,6 +315,19 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         emit ChangedRewardRate(perpetual, rewardRate.rawValue);
     }
 
+    /**
+     * @notice Helpful method for proposers who want to calculate their potential rewards and useful for testing.
+     */
+    function calculateProposalRewardPct(
+        address perpetual,
+        uint256 startTime,
+        uint256 endTime,
+        FixedPoint.Signed memory proposedRate,
+        FixedPoint.Signed memory currentRate
+    ) external view returns (FixedPoint.Unsigned memory reward) {
+        return _calculateProposalRewardPct(perpetual, startTime, endTime, proposedRate, currentRate);
+    }
+
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
@@ -359,17 +372,17 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // First compute the reward for the time elapsed.
         reward = rewardRate.mul(timeDiff);
 
-        // Next scale the reward based on the absolute difference between the current and proposed rates.
-        FixedPoint.Unsigned memory absDiffFactor = (
-            currentRate.isGreaterThan(proposedRate)
-                ? FixedPoint.fromSigned(currentRate.sub(proposedRate))
-                : (
-                    currentRate.isLessThan(proposedRate)
-                        ? FixedPoint.fromSigned(proposedRate.sub(currentRate))
-                        : FixedPoint.fromUnscaledUint(0)
-                )
+        // Next scale the reward based on the absolute difference % between the current and proposed rates.
+        FixedPoint.Signed memory diff = (
+            currentRate.isGreaterThan(proposedRate) ? currentRate.sub(proposedRate) : proposedRate.sub(currentRate)
         );
-        reward = reward.mul(absDiffFactor.add(1));
+        FixedPoint.Signed memory diffPercent = (currentRate.isEqual(0) ? diff : diff.div(currentRate));
+        FixedPoint.Unsigned memory absDiffPercent = (
+            diffPercent.isLessThan(FixedPoint.fromUnscaledInt(0))
+                ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
+                : FixedPoint.fromSigned(diffPercent)
+        );
+        reward = reward.mul(absDiffPercent.add(1));
     }
 
     // Returns the pending Proposal struct for a perpetual contract.

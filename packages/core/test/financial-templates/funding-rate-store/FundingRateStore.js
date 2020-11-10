@@ -86,6 +86,147 @@ contract("FundingRateStore", function(accounts) {
     );
   });
 
+  describe("Setting reward rates", function() {
+    it("Only perpetual can change reward rate", async function() {
+      assert(
+        await didContractThrow(
+          fundingRateStore.setRewardRate(mockPerpetual, { rawValue: toWei("0.0001") }, { from: contractDeployer })
+        )
+      );
+    });
+    it("Reward state is changed and event is emitted", async function() {
+      const txn = await fundingRateStore.setRewardRate(
+        contractDeployer,
+        { rawValue: toWei("0.0001") },
+        { from: contractDeployer }
+      );
+      truffleAssert.eventEmitted(txn, "ChangedRewardRate", ev => {
+        return ev.perpetual === contractDeployer && ev.rewardRate.toString() === toWei("0.0001").toString();
+      });
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(contractDeployer)).rewardRatePerSecond.rawValue.toString(),
+        toWei("0.0001")
+      );
+    });
+  });
+
+  describe("Reward computation", function() {
+    beforeEach(async function() {
+      // Setting reward rate to 1%/second.
+      await fundingRateStore.setRewardRate(contractDeployer, { rawValue: toWei("0.01") }, { from: contractDeployer });
+    });
+    it("Holding rate delta constant, testing time elapsed factor", async function() {
+      let result;
+
+      // 3 seconds elapsed = 3% total reward.
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        3,
+        { rawValue: toWei("0") },
+        { rawValue: toWei("0") }
+      );
+      assert.equal(result.toString(), toWei("0.03"));
+
+      // 0 seconds elapsed = 0% total reward.
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        0,
+        { rawValue: toWei("0") },
+        { rawValue: toWei("0") }
+      );
+      assert.equal(result.toString(), "0");
+
+      // 978 seconds elapsed = 978% total reward.
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        978,
+        { rawValue: toWei("0") },
+        { rawValue: toWei("0") }
+      );
+      assert.equal(result.toString(), toWei("9.78"));
+    });
+    it("Holding time elapsed constant, testing rate delta factor", async function() {
+      let result;
+
+      // Current rate is 0, proposed rate is equal to rate change %
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("0.55") },
+        { rawValue: toWei("0") }
+      );
+      // Rate change = 0.55, reward % = 0.01 * (1 + 0.55) = 0.0155
+      assert.equal(result.toString(), toWei("0.0155"));
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("-2.33") },
+        { rawValue: toWei("0") }
+      );
+      // Rate change = 2.33, reward % = 0.01 * (1 + 2.33) = 0.0333
+      assert.equal(result.toString(), toWei("0.0333"));
+
+      // Current rate is non-0, proposed rate change is equal to % diff from current
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("1.25") },
+        { rawValue: toWei("1") }
+      );
+      // Rate change = 0.25, reward % = 0.01 * (1 + 0.25) = 0.0125
+      assert.equal(result.toString(), toWei("0.0125"));
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("0.75") },
+        { rawValue: toWei("-1") }
+      );
+      // Rate change = 1.75, reward % = 0.01 * (1 + 1.75) = 0.0275
+      assert.equal(result.toString(), toWei("0.0275"));
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("-1.25") },
+        { rawValue: toWei("1") }
+      );
+      // Rate change = 2.25, reward % = 0.01 * (1 + 2.25) = 0.0325
+      assert.equal(result.toString(), toWei("0.0325"));
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        1,
+        { rawValue: toWei("-0.75") },
+        { rawValue: toWei("-1") }
+      );
+      // Rate change = 0.25, reward % = 0.01 * (1 + 0.25) = 0.0125
+      assert.equal(result.toString(), toWei("0.0125"));
+    });
+    it("Tests changing all three factors", async function() {
+      let result;
+
+      // Current rate is 2.5%, elapsed time is 2 seconds, rate change % is 20%:
+      // (current-rate * elapsed-time * (1+rate-change)) =
+      // (0.025 * 2 * (1+0.2)) = 0.06
+      await fundingRateStore.setRewardRate(contractDeployer, { rawValue: toWei("0.025") }, { from: contractDeployer });
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        2,
+        { rawValue: toWei("-0.4") },
+        { rawValue: toWei("-0.5") }
+      );
+      assert.equal(result.toString(), toWei("0.06"));
+    });
+  });
+
   describe("Unexpired Proposal", function() {
     let proposalTxn, proposalTime;
     beforeEach(async () => {
