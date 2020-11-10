@@ -11,6 +11,7 @@ import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
+import "./FinancialContractInterface.sol";
 
 /**
  * @title FeePayer contract.
@@ -18,7 +19,7 @@ import "../../oracle/implementation/Constants.sol";
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
-abstract contract FeePayer is Testable, Lockable {
+abstract contract FeePayer is FinancialContractInterface, Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -152,7 +153,7 @@ abstract contract FeePayer is Testable, Lockable {
      * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
      * @return pfc value for equal to the current profit from corruption denominated in collateral currency.
      */
-    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function pfc() external view override nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _pfc();
     }
 

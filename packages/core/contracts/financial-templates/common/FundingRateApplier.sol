@@ -101,7 +101,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
+    function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
         return _getFundingRateStore().getFundingRateForContract(address(this));
     }
 

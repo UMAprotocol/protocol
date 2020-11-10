@@ -11,6 +11,7 @@ import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 
 import "../../perpetual-multiparty/PerpetualInterface.sol";
+import "../../common/FinancialContractInterface.sol";
 import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
 import "../../../common/implementation/Lockable.sol";
@@ -35,7 +36,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address proposer;
         FixedPoint.Unsigned finalFee;
         address disputer;
-        FixedPoint.Unsigned reward;
+        FixedPoint.Unsigned rewardRate;
     }
 
     struct FundingRateRecord {
@@ -51,6 +52,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     mapping(address => mapping(uint256 => FundingRateRecord)) public fundingRateDisputes;
 
     uint256 public proposalLiveness;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -59,25 +61,43 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     event ProposedRate(
         address indexed perpetual,
         int256 rate,
-        uint256 proposalTime,
+        uint256 indexed proposalTime,
         address indexed proposer,
-        uint256 reward
+        uint256 rewardPct
     );
     event DisputedRate(
         address indexed perpetual,
         int256 rate,
-        uint256 proposalTime,
+        uint256 indexed proposalTime,
         address indexed proposer,
-        address indexed disputer
+        address disputer
     );
     event PublishedRate(
         address indexed perpetual,
         int256 rate,
-        uint256 proposalTime,
+        uint256 indexed proposalTime,
         address indexed proposer,
+        uint256 rewardPct,
         uint256 reward
     );
+    event DisputedRateSettled(
+        address indexed perpetual,
+        uint256 indexed proposalTime,
+        address proposer,
+        address indexed disputer,
+        bool disputeSucceeded
+    );
     event FinalFeesPaid(address indexed collateralCurrency, uint256 indexed amount);
+
+    /****************************************
+     *                MODIFIERS             *
+     ****************************************/
+
+    // Pubishes any pending proposals whose liveness has passed, pays out rewards for such proposals
+    modifier publishAndWithdrawProposal(address perpetual) {
+        _publishRateAndWithdrawRewards(perpetual);
+        _;
+    }
 
     constructor(
         uint256 _proposalLiveness,
@@ -99,72 +119,47 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      */
     function getFundingRateForContract(address perpetual)
         external
-        view
         override
-        nonReentrantView()
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
         returns (FixedPoint.Signed memory)
     {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-
-        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
-            return fundingRateRecord.proposal.rate;
-        } else {
-            return fundingRateRecord.rate;
-        }
+        return fundingRateRecord.rate;
     }
 
     /**
      * @notice Returns the timestamp at which the current funding rate was proposed.
-     * @dev The "current funding rate" is defined as that returned by `getFundingRateForIdentifier(id)`
      * @param perpetual Perpetual to retrieve propose time for.
      * @return propose timestamp.
      */
-    function getProposeTimeForContract(address perpetual) external view nonReentrantView() returns (uint256) {
-        return _getLatestProposeTimeForContract(perpetual);
+    function getProposeTimeForContract(address perpetual)
+        external
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
+        returns (uint256)
+    {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+        return fundingRateRecord.proposeTime;
     }
 
     /**
-     * @notice Propose a new funding rate for a perpetual. A side effect of this method is that it will
-     * overwrite the current funding rate with a pending funding rate if its liveness has expired. If this update
-     * occurs, then this method will also pay the proposer their reward for successfully updating the current rate.
+     * @notice Propose a new funding rate for a perpetual.
      * @dev This will revert if there is already a pending funding rate for the perpetual.
-     * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
+     * @dev Caller must approve this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back once their funding rate is published.
      * @param perpetual Perpetual contract to propose funding rate for.
      * @param rate Proposed rate.
      */
-    function propose(address perpetual, FixedPoint.Signed memory rate) external nonReentrant() {
+    function propose(address perpetual, FixedPoint.Signed memory rate)
+        external
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
+    {
         // TODO: check the identifier whitelist to ensure the proposed perpetual's identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
+        require(_getProposalState(fundingRateRecord.proposal) != ProposalState.Pending, "Pending proposal exists");
         uint256 currentTime = getCurrentTime();
-
-        // TODO: bond logic.
-        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
-
-        require(proposalState != ProposalState.Pending, "Existing proposal still pending.");
-
-        // Update the current funding rate if a proposal's liveness has expired.
-        if (proposalState == ProposalState.Expired) {
-            // Publish expired rate, and then reward proposer.
-            fundingRateRecord.rate = fundingRateRecord.proposal.rate;
-            fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
-
-            // Determine how much to reward the proposer.
-            FixedPoint.Unsigned memory reward = fundingRateRecord.proposal.reward;
-            reward = reward.add(fundingRateRecord.proposal.finalFee);
-
-            // TODO: Reward = proposal bond
-            collateralCurrency.safeTransfer(fundingRateRecord.proposal.proposer, reward.rawValue);
-
-            emit PublishedRate(
-                perpetual,
-                fundingRateRecord.rate.rawValue,
-                fundingRateRecord.proposal.time,
-                fundingRateRecord.proposal.proposer,
-                reward.rawValue
-            );
-        }
 
         // Make sure that there is no disputed proposal for the same perpetual and proposal time. This prevents
         // the proposer from potentially overwriting a proposal. Note that this would be a rare case in which the
@@ -176,10 +171,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         );
 
         // Compute final fee at time of proposal.
+        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
         FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees(collateralCurrency);
 
-        // Calculate and store potential reward.
-        FixedPoint.Unsigned memory reward = _calculateProposalRewardPct(
+        // Calculate and store reward %. Note that because this saved data is a percent, the actual reward
+        // will vary at publish time depending on the `perpetual`'s PfC at that time.
+        FixedPoint.Unsigned memory rewardRate = _calculateProposalRewardPct(
             perpetual,
             fundingRateRecord.proposeTime,
             currentTime,
@@ -187,15 +184,18 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.rate
         );
 
+        // TODO: Compute and pull Proposal bond.
+
+        // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
             rate: rate,
             time: currentTime,
             proposer: msg.sender,
             finalFee: finalFeeBond,
             disputer: address(0x0),
-            reward: reward
+            rewardRate: rewardRate
         });
-        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender, reward.rawValue);
+        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender, rewardRate.rawValue);
 
         // Pull final fee bond from proposer.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
@@ -203,21 +203,17 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     /**
      * @notice Dispute a pending funding rate. This will delete the pending funding rate, meaning that a
-     * proposer can now proposer another rate with a fresh liveness.
+     * proposer can now propose another rate with a fresh liveness.
      * @dev This will revert if there is no pending funding rate for the perpetual.
      * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
      * receive back if their dispute is successful.
      * @param perpetual Contract to dispute proposed funding rate for.
      */
-    function dispute(address perpetual) external nonReentrant() {
+    function dispute(address perpetual) external nonReentrant() publishAndWithdrawProposal(perpetual) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        ProposalState proposalState = _getProposalState(fundingRateRecord.proposal);
+        require(_getProposalState(fundingRateRecord.proposal) == ProposalState.Pending, "No pending proposal");
 
-        require(proposalState == ProposalState.Pending, "Existing proposal not pending");
-
-        // TODO: Bond logic.
-
-        // Pull final fee bond from disputer and pay store.
+        // Pull final fee bond from disputer and pay DVM store.
         _payFinalFees(
             IERC20(PerpetualInterface(perpetual).getCollateralCurrency()),
             msg.sender,
@@ -243,13 +239,18 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     /**
      * @notice Settle a disputed funding rate. The winner of the dispute, either the disputer or the proposer,
-     * will receive a reward plus their final fee bond. This method will also overwrite the current funding rate
-     * with the resolved funding rate returned by the Oracle. Pending funding rates are unaffected by this method.
+     * will receive a reward (proposer's bond and proposer's reward, respectively) plus their bonds.
+     * This method will also overwrite the current funding rate with the resolved funding rate returned by the Oracle
+     * if there has not been a more recent published rate. Pending funding rates are unaffected by this method.
      * @dev This will revert if there is no price available for the disputed funding rate.
      * @param perpetual Contract to settle disputed funding rate for.
      * @param proposalTime Proposal time at which the disputed funding rate was proposed.
      */
-    function settleDispute(address perpetual, uint256 proposalTime) external nonReentrant() {
+    function settleDispute(address perpetual, uint256 proposalTime)
+        external
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
+    {
         FundingRateRecord storage fundingRateDispute = _getFundingRateDispute(perpetual, proposalTime);
 
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
@@ -265,11 +266,18 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address proposer = disputeSucceeded
             ? fundingRateDispute.proposal.disputer
             : fundingRateDispute.proposal.proposer;
+        emit DisputedRateSettled(
+            perpetual,
+            proposalTime,
+            fundingRateDispute.proposal.proposer,
+            fundingRateDispute.proposal.disputer,
+            disputeSucceeded
+        );
 
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
         if (disputeSucceeded) {
             // If dispute succeeds:
-            // - pay disputer the dispute reward + final fee rebate
+            // - pay disputer the proposal bond + final fee rebate
 
             collateralCurrency.safeTransfer(
                 fundingRateDispute.proposal.disputer,
@@ -277,27 +285,25 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             );
         } else {
             // If dispute fails:
-            // - pay proposer the proposal reward + final fee rebate
+            // - pay proposer the proposal bond + proposal reward + final fee rebate
 
-            collateralCurrency.safeTransfer(
-                fundingRateDispute.proposal.proposer,
-                fundingRateDispute.proposal.finalFee.rawValue
-            );
+            FixedPoint.Unsigned memory pfc = FinancialContractInterface(perpetual).pfc();
+            FixedPoint.Unsigned memory rewardRate = fundingRateDispute.proposal.rewardRate;
+            FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
+
+            FixedPoint.Unsigned memory payToProposer = fundingRateDispute.proposal.finalFee.add(reward);
+            PerpetualInterface(perpetual).withdrawFundingRateFees(reward);
+            collateralCurrency.safeTransfer(fundingRateDispute.proposal.proposer, payToProposer.rawValue);
         }
 
         // Update current rate to settlement rate if there has not been a published funding rate since the dispute
         // began.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        if (_getLatestProposeTimeForContract(perpetual) <= proposalTime) {
+        if (fundingRateRecord.proposeTime <= proposalTime) {
             fundingRateRecord.rate = settlementRate;
             fundingRateRecord.proposeTime = proposalTime;
-            emit PublishedRate(
-                perpetual,
-                settlementRate.rawValue,
-                proposalTime,
-                proposer,
-                fundingRateDispute.proposal.reward.rawValue
-            );
+            // Note: Set rewards to 0 since we published the DVM resolved funding rate.
+            emit PublishedRate(perpetual, settlementRate.rawValue, proposalTime, proposer, 0, 0);
         }
 
         // Delete dispute
@@ -305,13 +311,28 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Set the reward rate for a specific `perpetual` contract.
+     * @notice Publishes any expired pending proposals and pays out proposal rewards if neccessary.
+     * @param perpetual Contract to check proposed funding rates for.
+     */
+    function withdrawProposalRewards(address perpetual) external nonReentrant() publishAndWithdrawProposal(perpetual) {}
+
+    /**
+     * @notice Set the reward rate (per second) for a specific `perpetual` contract.
      * @dev Callable only by the Perpetual contract.
      */
-    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate) external override {
+    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate)
+        external
+        override
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
+    {
         require(msg.sender == perpetual, "Caller not perpetual");
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         fundingRateRecord.rewardRatePerSecond = rewardRate;
+
+        // Set last propose time to current time since rewards will start accruing from here on out.
+        fundingRateRecord.proposeTime = getCurrentTime();
+
         emit ChangedRewardRate(perpetual, rewardRate.rawValue);
     }
 
@@ -331,6 +352,44 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
+
+    function _publishRateAndWithdrawRewards(address perpetual) internal {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+
+        // Check if proposal liveness has expired
+        if (_getProposalState(fundingRateRecord.proposal) != ProposalState.Expired) {
+            return;
+        }
+
+        // Publish rate and proposal time.
+        fundingRateRecord.rate = fundingRateRecord.proposal.rate;
+        fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
+
+        // Calculate reward for proposer using saved reward rate and current perpetual PfC.
+        FixedPoint.Unsigned memory pfc = FinancialContractInterface(perpetual).pfc();
+        FixedPoint.Unsigned memory rewardRate = fundingRateRecord.proposal.rewardRate;
+        FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
+
+        // Pull reward payment from Perpetual, and transfer (payment + final fee bond) to proposer.
+        PerpetualInterface(perpetual).withdrawFundingRateFees(reward);
+        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
+        collateralCurrency.safeTransfer(
+            fundingRateRecord.proposal.proposer,
+            reward.add(fundingRateRecord.proposal.finalFee).rawValue
+        );
+
+        emit PublishedRate(
+            perpetual,
+            fundingRateRecord.proposal.rate.rawValue,
+            fundingRateRecord.proposal.time,
+            fundingRateRecord.proposal.proposer,
+            rewardRate.rawValue,
+            reward.rawValue
+        );
+
+        // Delete proposal now that it has been published.
+        delete fundingRateRecords[perpetual].proposal;
+    }
 
     // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(bytes32 identifier, uint256 requestedTime) internal {
@@ -382,6 +441,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
                 ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
                 : FixedPoint.fromSigned(diffPercent)
         );
+        // TODO: Should we set ceiling on this
         reward = reward.mul(absDiffPercent.add(1));
     }
 
@@ -405,17 +465,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             return ProposalState.Pending;
         } else {
             return ProposalState.Expired;
-        }
-    }
-
-    function _getLatestProposeTimeForContract(address perpetual) internal view returns (uint256) {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-
-        // If a pending funding rate has expired, then use the pending funding rate's proposal time.
-        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
-            return fundingRateRecord.proposal.time;
-        } else {
-            return fundingRateRecord.proposeTime;
         }
     }
 

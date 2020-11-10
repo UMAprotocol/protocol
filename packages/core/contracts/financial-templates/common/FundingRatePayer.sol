@@ -24,7 +24,7 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
      *                EVENTS                *
      ****************************************/
 
-    event FundingRateFeesPaid(uint256 indexed fundingRateFee);
+    event FundingRateFeesWithdrawn(uint256 indexed fundingRateFee);
 
     /****************************************
      *              MODIFIERS               *
@@ -58,7 +58,7 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
 
     /**
      * @notice Sends `amount` fees to the FundingRateStore contract and debits the raw collateral accordingly.
-     * @dev Callable only by the FundingRateStore.
+     * @dev Callable only by the FundingRateStore. This should never revert.
      * @param amount Amount of fees to pay to FundingRateStore.
      */
     function withdrawFundingRateFees(FixedPoint.Unsigned memory amount)
@@ -71,21 +71,25 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
             finder.getImplementationAddress("FundingRateStore")
         );
         FixedPoint.Unsigned memory collateralPool = _pfc();
+        FixedPoint.Unsigned memory amountToPay = amount;
 
-        // If contract has no PfC, then cannot pay any fees.
-        require(!collateralPool.isEqual(0), "PfC is 0");
-        // The fee must be non-zero.
-        require(!amount.isEqual(0), "Funding fee is 0");
-        // The fee must be < available collateral.
-        require(collateralPool.isGreaterThan(amount), "Funding fee is more than PfC");
+        // If contract has no PfC, then set fees to 0.
+        if (collateralPool.isEqual(0)) {
+            amountToPay = FixedPoint.fromUnscaledUint(0);
+        } else if (amount.isGreaterThan(collateralPool)) {
+            amountToPay = collateralPool;
+        }
 
-        // Adjust cumulative fee multiplier.
-        _adjustCumulativeFeeMultiplier(amount, collateralPool);
+        // If amount to pay is 0, then return.
+        if (!amountToPay.isEqual(0)) {
+            // Adjust cumulative fee multiplier.
+            _adjustCumulativeFeeMultiplier(amountToPay, collateralPool);
 
-        // Transfer collateral.
-        collateralCurrency.safeTransfer(address(fundingRateStore), amount.rawValue);
+            // Transfer collateral.
+            collateralCurrency.safeTransfer(address(fundingRateStore), amountToPay.rawValue);
 
-        emit FundingRateFeesPaid(amount.rawValue);
+            emit FundingRateFeesWithdrawn(amountToPay.rawValue);
+        }
     }
 
     function getFundingRateIdentifier() external view override returns (bytes32) {

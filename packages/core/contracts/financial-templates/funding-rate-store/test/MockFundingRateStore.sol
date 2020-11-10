@@ -35,7 +35,7 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         fundingRates[perpetual] = FundingRate(fundingRate, time, FixedPoint.fromUnscaledUint(0));
     }
 
-    function getFundingRateForContract(address perpetual) external view override returns (FixedPoint.Signed memory) {
+    function getFundingRateForContract(address perpetual) external override returns (FixedPoint.Signed memory) {
         return fundingRates[perpetual].fundingRate;
     }
 
