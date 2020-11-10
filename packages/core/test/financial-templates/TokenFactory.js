@@ -16,8 +16,8 @@ contract("TokenFactory", function(accounts) {
   let tokenFactory;
 
   const tokenDetails = {
-    name: "Test Synthetic Token",
-    symbol: "SYNTH",
+    name: "UMA Token",
+    symbol: "UMA",
     decimals: "18"
   };
 
