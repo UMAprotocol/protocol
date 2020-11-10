@@ -15,6 +15,7 @@ const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
+const FundingRateStore = artifacts.require("FundingRateStore");
 
 contract("PerpetualCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -25,6 +26,7 @@ contract("PerpetualCreator", function(accounts) {
   let registry;
   let collateralTokenWhitelist;
   let store;
+  let fundingRateStore;
 
   // Re-used variables
   let constructorParams;
@@ -33,6 +35,7 @@ contract("PerpetualCreator", function(accounts) {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
+    fundingRateStore = await FundingRateStore.deployed();
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
@@ -44,6 +47,7 @@ contract("PerpetualCreator", function(accounts) {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FUNDING"),
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -276,5 +280,20 @@ contract("PerpetualCreator", function(accounts) {
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(perpetualAddress));
+  });
+
+  it("Creation sets funding rate reward in Funding Rate Store", async function() {
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
+      from: contractCreator
+    });
+
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+
+    const rewardRate = (await fundingRateStore.fundingRateRecords(perpetualAddress)).rewardRatePerSecond;
+    assert.equal(rewardRate.toString(), toWei("0.0001"));
   });
 });

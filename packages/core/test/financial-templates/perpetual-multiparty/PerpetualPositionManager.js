@@ -48,6 +48,7 @@ contract("PerpetualPositionManager", function(accounts) {
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
   const priceFeedIdentifier = utf8ToHex("ETHUSD");
+  const fundingRateRewardRate = toWei("0.0001");
   const fundingRateFeedIdentifier = utf8ToHex("ETHUSD-Funding-Rate"); // example identifier for funding rate.
   const minSponsorTokens = "5";
 
@@ -143,6 +144,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -184,6 +186,7 @@ contract("PerpetualPositionManager", function(accounts) {
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+          { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -210,6 +213,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -1728,6 +1732,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary

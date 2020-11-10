@@ -28,6 +28,7 @@ contract("Perpetual", function(accounts) {
       finderAddress: finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FundingRate"),
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },

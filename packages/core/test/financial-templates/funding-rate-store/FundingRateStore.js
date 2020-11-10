@@ -77,9 +77,13 @@ contract("FundingRateStore", function(accounts) {
     assert(await didContractThrow(FundingRateStore.new(0, finder.address, timer.address)));
   });
 
-  it("Initial Funding Rate and Propose Time of 0", async function() {
+  it("Initial Funding Rate, Reward Rate, and Propose Time of 0", async function() {
     assert.equal((await fundingRateStore.getFundingRateForContract(mockPerpetual.address)).rawValue.toString(), "0");
-    assert.equal((await fundingRateStore.getFundingRateForContract(mockPerpetual.address)).toString(), "0");
+    assert.equal((await fundingRateStore.getProposeTimeForContract(mockPerpetual.address)).toString(), "0");
+    assert.equal(
+      (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).rewardRatePerSecond.rawValue.toString(),
+      "0"
+    );
   });
 
   describe("Unexpired Proposal", function() {

@@ -139,6 +139,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       finderAddress: finder.address,
       priceFeedIdentifier: priceFeedIdentifier,
       fundingRateIdentifier: fundingRateIdentifier,
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
