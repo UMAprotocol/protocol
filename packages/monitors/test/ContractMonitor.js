@@ -254,7 +254,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
         assert.isTrue(lastSpyLogIncludes(spy, "1.86")); // maximum price for liquidation to be disputable
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // should contain token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // should contain token symbol
 
         // Liquidate another position and ensure the Contract monitor emits the correct params
         const txObject2 = await emp.createLiquidation(
@@ -280,7 +280,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
         assert.isTrue(lastSpyLogIncludes(spy, "2.59")); // maximum price for liquidation to be disputable
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // should contain token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // should contain token symbol
       });
       it("Winston correctly emits dispute events", async function() {
         // Create liquidation to dispute.

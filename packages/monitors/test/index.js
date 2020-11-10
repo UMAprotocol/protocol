@@ -67,7 +67,7 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      priceFeedIdentifier: utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
