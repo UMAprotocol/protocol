@@ -133,6 +133,17 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
         .on("close", res);
     });
   }
+  function allLogs({ contract, select }, path) {
+    const fileName = Path.join(path, `logs_${contract}.txt`);
+    const writeStream = fs.createWriteStream(fileName);
+    const dataStream = queries.streamAllLogsByContract(contract, select);
+    return new Promise(res => {
+      Logs()
+        .serialize(dataStream)
+        .pipe(writeStream)
+        .on("close", res);
+    });
+  }
   function logs({ start, end, contract, select }, path) {
     const fileName = Path.join(path, `logs_${contract}.txt`);
     const writeStream = fs.createWriteStream(fileName);
@@ -183,8 +194,10 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     await Promise.all([
       ...collateralTokens.map(contract => saveCoingeckoPrices({ start, end, contract }, path)),
       ...empContracts.map(contract => saveSynthPrices({ start, end, contract }, path)),
-      ...empContracts.map(contract => logs({ start, end, contract }, path)),
-      logs({ start, end, contract: empCreator }, path),
+      // we need all events to recreate balances
+      ...empContracts.map(contract => allLogs({ contract }, path)),
+      // we need all events to get all emps deployed
+      allLogs({ contract: empCreator }, path),
       blocks({ start, end }, path),
       saveObject(config, "config", path)
     ]);
@@ -196,6 +209,7 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     utils: {
       blocks,
       logs,
+      allLogs,
       transactions,
       saveCoingeckoPrices,
       saveSynthPrices
@@ -257,6 +271,14 @@ function MockQueries(basePath) {
       .collect()
       .toPromise(Promise);
   }
+  function getAllLogsByContract(address) {
+    return streamLogsByContract(address)
+      .collect()
+      .toPromise(Promise);
+  }
+  function streamAllLogsByContract(address) {
+    return streamLogsByContract(address);
+  }
   function streamBlocks(start, end) {
     const path = Path.join(basePath, "blocks.csv");
     const readStream = fs.createReadStream(path);
@@ -274,7 +296,9 @@ function MockQueries(basePath) {
   }
   return {
     streamLogsByContract,
+    streamAllLogsByContract,
     getLogsByContract,
+    getAllLogsByContract,
     streamBlocks,
     getBlocks
   };

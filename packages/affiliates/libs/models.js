@@ -115,12 +115,15 @@ function Balances() {
     assert(!balances.has(addr), "Already has addr");
     return set(addr, "0");
   }
+  function has(addr) {
+    return balances.has(addr);
+  }
   function get(addr) {
     assert(balances.has(addr), "addr does not exist");
     return balances.get(addr);
   }
   function getOrCreate(addr) {
-    if (balances.has(addr)) return get(addr);
+    if (has(addr)) return get(addr);
     return create(addr);
   }
   function set(addr, balance) {
@@ -150,6 +153,7 @@ function Balances() {
   return {
     get,
     set,
+    has,
     create,
     getOrCreate,
     sub,

@@ -1,26 +1,27 @@
 const { BigQuery } = require("@google-cloud/bigquery");
 const Queries = require("../libs/bigquery");
-const moment = require("moment");
 const highland = require("highland");
 const { DecodeLog } = require("../libs/contracts");
-const { abi } = require("../../core/build/contracts/ExpiringMultiParty");
-const { EmpBalancesHistory } = require("../libs/processors");
+const { getAbi } = require("@uma/core");
+const { EmpBalancesHistory, EmpBalances } = require("../libs/processors");
 
-// uUSDwETH-DEC
-const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-const start = moment("2020-9-20", "YYYY-MM-DD").valueOf();
-const end = moment("2020-10-10", "YYYY-MM-DD").valueOf();
+const abi = getAbi("ExpiringMultiParty");
+// sanity check various contracts
+// const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
+// const empContract = "0xaBBee9fC7a882499162323EEB7BF6614193312e3"
+// const empContract =   "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56"
+const empContract = "0x306B19502c833C1522Fbc36C9dd7531Eda35862B";
 const client = new BigQuery();
 const queries = Queries({ client });
 
 async function runTest() {
   // query starting before emp launch
-  const stream = await queries.streamLogsByContract(empContract, start, end);
+  const stream = await queries.streamAllLogsByContract(empContract);
   const decode = DecodeLog(abi);
   const balancesHistory = EmpBalancesHistory();
+  const balances = EmpBalances();
 
   await highland(stream)
-    // .doto(console.log)
     .map(log => {
       try {
         return decode(log, { blockNumber: log.block_number, blockTimestamp: log.block_timestamp });
@@ -30,10 +31,10 @@ async function runTest() {
       }
     })
     .compact()
-
     .doto(log => {
       try {
-        balancesHistory.handleEvent(log.blockNumber, log);
+        balancesHistory.handleEvent(log.blockNumber);
+        balances.handleEvent(log);
       } catch (err) {
         console.log(err, log);
       }
