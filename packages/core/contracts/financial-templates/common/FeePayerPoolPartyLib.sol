@@ -72,7 +72,7 @@ library FeePayerPoolPartyLib {
 
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
-        feePayerData.cumulativeFeeMultiplier.adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
+        feePayerData.cumulativeFeeMultiplier._adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
 
         if (regularFee.isGreaterThan(0)) {
             feePayerData.collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -95,7 +95,7 @@ library FeePayerPoolPartyLib {
         FixedPoint.Unsigned memory collateralPool,
         address payer,
         FixedPoint.Unsigned memory amount
-    ) internal {
+    ) external {
         if (amount.isEqual(0)) {
             return;
         }
@@ -107,7 +107,7 @@ library FeePayerPoolPartyLib {
             // The final fee must be < available collateral or the fee will be larger than 100%.
             require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
 
-            feePayerData.cumulativeFeeMultiplier.adjustCumulativeFeeMultiplier(amount, collateralPool);
+            feePayerData.cumulativeFeeMultiplier._adjustCumulativeFeeMultiplier(amount, collateralPool);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -171,7 +171,7 @@ library FeePayerPoolPartyLib {
     }
 
     // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current available collateral.
-    function adjustCumulativeFeeMultiplier(
+    function _adjustCumulativeFeeMultiplier(
         FixedPoint.Unsigned storage cumulativeFeeMultiplier,
         FixedPoint.Unsigned memory amount,
         FixedPoint.Unsigned memory currentPfc

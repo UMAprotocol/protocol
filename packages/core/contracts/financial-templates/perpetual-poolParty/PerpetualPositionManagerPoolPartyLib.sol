@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/JarvisExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
@@ -20,6 +21,7 @@ library PerpetualPositionManagerPoolPartyLib {
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionData;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionManagerData;
     using PerpetualPositionManagerPoolPartyLib for FeePayerPoolParty.FeePayerData;
+    using PerpetualPositionManagerPoolPartyLib for FixedPoint.Unsigned;
     using FeePayerPoolPartyLib for FixedPoint.Unsigned;
 
     /****************************************
@@ -280,9 +282,8 @@ library PerpetualPositionManagerPoolPartyLib {
         FeePayerPoolParty.FeePayerData storage feePayerData
     ) external returns (FixedPoint.Unsigned memory amountWithdrawn) {
         if (positionManagerData.emergencyShutdownPrice.isEqual(FixedPoint.fromUnscaledUint(0))) {
-            positionManagerData.emergencyShutdownPrice = positionManagerData._getOracleEmergencyShutdownPrice(
-                feePayerData
-            );
+            FixedPoint.Unsigned memory oraclePrice = positionManagerData._getOracleEmergencyShutdownPrice(feePayerData);
+            positionManagerData.emergencyShutdownPrice = oraclePrice._decimalsScalingFactor(feePayerData);
         }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
@@ -411,6 +412,23 @@ library PerpetualPositionManagerPoolPartyLib {
 
         // Decrement the total outstanding tokens in the overall contract.
         globalPositionData.totalTokensOutstanding = globalPositionData.totalTokensOutstanding.sub(tokensToRemove);
+    }
+
+    //Call to the internal one (see _getOraclePrice)
+    function getOraclePrice(
+        PerpetualPositionManagerPoolParty.PositionManagerData storage positionManagerData,
+        uint256 requestedTime,
+        FeePayerPoolParty.FeePayerData storage feePayerData
+    ) external view returns (FixedPoint.Unsigned memory price) {
+        return _getOraclePrice(positionManagerData, requestedTime, feePayerData);
+    }
+
+    //Call to the internal one (see _decimalsScalingFactor)
+    function decimalsScalingFactor(
+        FixedPoint.Unsigned memory oraclePrice,
+        FeePayerPoolParty.FeePayerData storage feePayerData
+    ) external view returns (FixedPoint.Unsigned memory scaledPrice) {
+        return _decimalsScalingFactor(oraclePrice, feePayerData);
     }
 
     function _incrementCollateralBalances(
@@ -567,5 +585,14 @@ library PerpetualPositionManagerPoolPartyLib {
 
     function _getOracle(FeePayerPoolParty.FeePayerData storage feePayerData) internal view returns (OracleInterface) {
         return OracleInterface(feePayerData.finder.getImplementationAddress(OracleInterfaces.Oracle));
+    }
+
+    //Reduce orcale price according to the decimals of the collateral
+    function _decimalsScalingFactor(
+        FixedPoint.Unsigned memory oraclePrice,
+        FeePayerPoolParty.FeePayerData storage feePayerData
+    ) internal view returns (FixedPoint.Unsigned memory scaledPrice) {
+        uint8 collateralDecimalsNumber = IERC20Standard(address(feePayerData.collateralCurrency)).decimals();
+        scaledPrice = oraclePrice.div((10**(uint256(18)).sub(collateralDecimalsNumber)));
     }
 }

@@ -16,6 +16,7 @@ library PerpetualLiquidatablePoolPartyLib {
     using FeePayerPoolPartyLib for FixedPoint.Unsigned;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionManagerData;
     using PerpetualLiquidatablePoolPartyLib for PerpetualLiquidatablePoolParty.LiquidationData;
+    using PerpetualPositionManagerPoolPartyLib for FixedPoint.Unsigned;
 
     struct CreateLiquidationParams {
         FixedPoint.Unsigned minCollateralPerToken;
@@ -393,7 +394,7 @@ library PerpetualLiquidatablePoolPartyLib {
 
         // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
         // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
-        startCollateral = positionToLiquidate.rawCollateral._getFeeAdjustedCollateral(
+        startCollateral = positionToLiquidate.rawCollateral.getFeeAdjustedCollateral(
             feePayerData.cumulativeFeeMultiplier
         );
         startCollateralNetOfWithdrawal = FixedPoint.fromUnscaledUint(0);
@@ -484,7 +485,12 @@ library PerpetualLiquidatablePoolPartyLib {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        liquidation.settlementPrice = positionManagerData._getOraclePrice(liquidation.liquidationTime, feePayerData);
+        FixedPoint.Unsigned memory oraclePrice = positionManagerData.getOraclePrice(
+            liquidation.liquidationTime,
+            feePayerData
+        );
+
+        liquidation.settlementPrice = oraclePrice.decimalsScalingFactor(feePayerData);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
