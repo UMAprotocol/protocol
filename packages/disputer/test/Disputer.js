@@ -72,9 +72,14 @@ contract("Disputer.js", function(accounts) {
       before(async function() {
         identifier = `${tokenConfig.tokenName}TEST`;
         convert = Convert(tokenConfig.collateralDecimals);
-        collateralToken = await Token.new(tokenConfig.tokenName, tokenConfig.symbol, tokenConfig.collateralDecimals, {
-          from: contractCreator
-        });
+        collateralToken = await Token.new(
+          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
+          tokenConfig.collateralDecimals,
+          {
+            from: contractCreator
+          }
+        );
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });
