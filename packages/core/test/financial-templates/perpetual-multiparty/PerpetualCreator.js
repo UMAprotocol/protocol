@@ -283,6 +283,7 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("Creation sets funding rate reward in Funding Rate Store", async function() {
+    const deploymentTime = await fundingRateStore.getCurrentTime();
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
       from: contractCreator
     });
@@ -295,5 +296,9 @@ contract("PerpetualCreator", function(accounts) {
 
     const rewardRate = (await fundingRateStore.fundingRateRecords(perpetualAddress)).rewardRatePerSecond;
     assert.equal(rewardRate.toString(), toWei("0.0001"));
+
+    // Setting a reward rate should also instantiate the propose time.
+    const proposeTime = (await fundingRateStore.fundingRateRecords(perpetualAddress)).proposeTime;
+    assert.equal(proposeTime.toString(), deploymentTime.toString());
   });
 });

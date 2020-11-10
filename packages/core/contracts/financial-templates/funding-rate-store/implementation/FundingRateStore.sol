@@ -27,6 +27,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *        STORE DATA STRUCTURES         *
      ****************************************/
 
+    FixedPoint.Unsigned public proposalBondPct; // Percentage of 1, e.g. 0.0005 is 0.05%
+
     // Finder contract used to look up addresses for UMA system contracts.
     FinderInterface public finder;
 
@@ -35,6 +37,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         uint256 time;
         address proposer;
         FixedPoint.Unsigned finalFee;
+        FixedPoint.Unsigned proposalBond;
         address disputer;
         FixedPoint.Unsigned rewardRate;
     }
@@ -63,14 +66,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         int256 rate,
         uint256 indexed proposalTime,
         address indexed proposer,
-        uint256 rewardPct
+        uint256 rewardPct,
+        uint256 proposalBond
     );
     event DisputedRate(
         address indexed perpetual,
         int256 rate,
         uint256 indexed proposalTime,
         address indexed proposer,
-        address disputer
+        address disputer,
+        uint256 disputeBond
     );
     event PublishedRate(
         address indexed perpetual,
@@ -102,10 +107,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     constructor(
         uint256 _proposalLiveness,
         address _finderAddress,
-        address _timerAddress
+        address _timerAddress,
+        FixedPoint.Unsigned memory _proposalBondPct
     ) public Testable(_timerAddress) {
         require(_proposalLiveness > 0, "Proposal liveness is 0");
         proposalLiveness = _proposalLiveness;
+        proposalBondPct = _proposalBondPct;
         finder = FinderInterface(_finderAddress);
     }
 
@@ -146,7 +153,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /**
      * @notice Propose a new funding rate for a perpetual.
      * @dev This will revert if there is already a pending funding rate for the perpetual.
-     * @dev Caller must approve this contract to spend `finalFeeBond` amount of collateral, which they can
+     * @dev Caller must approve this contract to spend `finalFeeBond` + `proposalBond` amount of collateral, which they can
      * receive back once their funding rate is published.
      * @param perpetual Perpetual contract to propose funding rate for.
      * @param rate Proposed rate.
@@ -184,7 +191,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.rate
         );
 
-        // TODO: Compute and pull Proposal bond.
+        // Compute proposal bond.
+        FixedPoint.Unsigned memory proposalBond = proposalBondPct.mul(FinancialContractInterface(perpetual).pfc());
 
         // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
@@ -192,33 +200,40 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             time: currentTime,
             proposer: msg.sender,
             finalFee: finalFeeBond,
+            proposalBond: proposalBond,
             disputer: address(0x0),
             rewardRate: rewardRate
         });
-        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender, rewardRate.rawValue);
+        emit ProposedRate(
+            perpetual,
+            rate.rawValue,
+            currentTime,
+            msg.sender,
+            rewardRate.rawValue,
+            proposalBond.rawValue
+        );
 
-        // Pull final fee bond from proposer.
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
+        // Pull total bond from proposer.
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), proposalBond.add(finalFeeBond).rawValue);
     }
 
     /**
      * @notice Dispute a pending funding rate. This will delete the pending funding rate, meaning that a
      * proposer can now propose another rate with a fresh liveness.
      * @dev This will revert if there is no pending funding rate for the perpetual.
-     * @dev Caller must approve this this contract to spend `finalFeeBond` amount of collateral, which they can
-     * receive back if their dispute is successful.
+     * @dev Caller must approve this this contract to spend `finalFeeBond` + `proposalBond` amount of collateral,
+     * which they can receive back if their dispute is successful.
      * @param perpetual Contract to dispute proposed funding rate for.
      */
     function dispute(address perpetual) external nonReentrant() publishAndWithdrawProposal(perpetual) {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         require(_getProposalState(fundingRateRecord.proposal) == ProposalState.Pending, "No pending proposal");
 
-        // Pull final fee bond from disputer and pay DVM store.
-        _payFinalFees(
-            IERC20(PerpetualInterface(perpetual).getCollateralCurrency()),
-            msg.sender,
-            fundingRateRecord.proposal.finalFee
-        );
+        // Pull proposal bond from disputer and pay DVM store using final fee portion.
+        FixedPoint.Unsigned memory proposalBond = fundingRateRecord.proposal.proposalBond;
+        IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), proposalBond.rawValue);
+        _payFinalFees(collateralCurrency, msg.sender, fundingRateRecord.proposal.finalFee);
 
         // Send price request
         _requestOraclePrice(PerpetualInterface(perpetual).getFundingRateIdentifier(), fundingRateRecord.proposal.time);
@@ -228,7 +243,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.proposal.rate.rawValue,
             fundingRateRecord.proposal.time,
             fundingRateRecord.proposal.proposer,
-            msg.sender
+            msg.sender,
+            proposalBond.rawValue
         );
 
         // Delete pending proposal and copy into dispute records.
@@ -239,10 +255,11 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     /**
      * @notice Settle a disputed funding rate. The winner of the dispute, either the disputer or the proposer,
-     * will receive a reward (proposer's bond and proposer's reward, respectively) plus their bonds.
-     * This method will also overwrite the current funding rate with the resolved funding rate returned by the Oracle
-     * if there has not been a more recent published rate. Pending funding rates are unaffected by this method.
-     * @dev This will revert if there is no price available for the disputed funding rate.
+     * will receive a rebate for their bonds plus the losing party's bond. This method will also overwrite the
+     * current funding rate with the resolved funding rate returned by the Oracle if there has not been a more
+     * recent published rate. Pending funding rates are unaffected by this method.
+     * @dev This will revert if there is no price available for the disputed funding rate. This contract
+     * will pull money from a PerpetualContract ONLY IF the dispute in question fails.
      * @param perpetual Contract to settle disputed funding rate for.
      * @param proposalTime Proposal time at which the disputed funding rate was proposed.
      */
@@ -277,23 +294,30 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
         if (disputeSucceeded) {
             // If dispute succeeds:
-            // - pay disputer the proposal bond + final fee rebate
+            // - Disputer earns back their bonds: dispute bond + final fee bond
+            // - Disputer earns as reward: the proposal bond
+            FixedPoint.Unsigned memory disputerRebate = fundingRateDispute.proposal.proposalBond.add(
+                fundingRateDispute.proposal.finalFee
+            );
+            FixedPoint.Unsigned memory disputerReward = fundingRateDispute.proposal.proposalBond;
 
             collateralCurrency.safeTransfer(
                 fundingRateDispute.proposal.disputer,
-                fundingRateDispute.proposal.finalFee.rawValue
+                disputerReward.add(disputerRebate).rawValue
             );
         } else {
             // If dispute fails:
-            // - pay proposer the proposal bond + proposal reward + final fee rebate
+            // - Proposer earns back their bonds: proposal bond + final fee bond
+            // - Proposer earns as reward: the dispute bond
+            FixedPoint.Unsigned memory proposerRebate = fundingRateDispute.proposal.proposalBond.add(
+                fundingRateDispute.proposal.finalFee
+            );
+            FixedPoint.Unsigned memory proposerReward = fundingRateDispute.proposal.proposalBond;
 
-            FixedPoint.Unsigned memory pfc = FinancialContractInterface(perpetual).pfc();
-            FixedPoint.Unsigned memory rewardRate = fundingRateDispute.proposal.rewardRate;
-            FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
-
-            FixedPoint.Unsigned memory payToProposer = fundingRateDispute.proposal.finalFee.add(reward);
-            PerpetualInterface(perpetual).withdrawFundingRateFees(reward);
-            collateralCurrency.safeTransfer(fundingRateDispute.proposal.proposer, payToProposer.rawValue);
+            collateralCurrency.safeTransfer(
+                fundingRateDispute.proposal.proposer,
+                proposerReward.add(proposerRebate).rawValue
+            );
         }
 
         // Update current rate to settlement rate if there has not been a published funding rate since the dispute
