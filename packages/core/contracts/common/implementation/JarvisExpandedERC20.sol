@@ -9,7 +9,7 @@ import "../interfaces/JarvisExpandedIERC20.sol";
  * @title An ERC20 with permissioned burning and minting. The contract deployer will initially
  * be the owner who is capable of adding new roles.
  */
-contract JarvisExpandedERC20 is JarvisExpandedIERC20, ERC20, AccessControl {
+contract JarvisExpandedERC20 is ERC20, JarvisExpandedIERC20, AccessControl {
     /****************************************
      *  COSTANTS  *
      ****************************************/

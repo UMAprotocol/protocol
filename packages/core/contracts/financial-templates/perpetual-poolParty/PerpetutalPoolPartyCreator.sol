@@ -32,6 +32,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
+        address syntheticToken;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
@@ -72,15 +73,30 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         JarvisTokenFactory tf = JarvisTokenFactory(tokenFactoryAddress);
+        address derivative;
+        if (params.syntheticToken == address(0)) {
+            // If the collateral token does not have a `decimals()` method,
+            // then a default precision of 18 will be applied to the newly created synthetic token.
+            JarvisExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
+            derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
 
-        // If the collateral token does not have a `decimals()` method,
-        // then a default precision of 18 will be applied to the newly created synthetic token.
-        JarvisExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
-        address derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
-
-        // Give permissions to new derivative contract and then hand over ownership.
-        tokenCurrency.addAdminAndMinterAndBurner(derivative);
-        tokenCurrency.renounceAdmin();
+            // Give permissions to new derivative contract and then hand over ownership.
+            tokenCurrency.addAdminAndMinterAndBurner(derivative);
+            tokenCurrency.renounceAdmin();
+        } else {
+            JarvisExpandedIERC20 tokenCurrency = JarvisExpandedIERC20(params.syntheticToken);
+            require(
+                keccak256(abi.encodePacked(tokenCurrency.name())) == keccak256(abi.encodePacked(params.syntheticName)),
+                "Wrong synthetic token name"
+            );
+            require(
+                keccak256(abi.encodePacked(tokenCurrency.symbol())) ==
+                    keccak256(abi.encodePacked(params.syntheticSymbol)),
+                "Wrong synthetic token symbol"
+            );
+            require(tokenCurrency.decimals() == uint8(18), "Decimals of synthetic token must be 18");
+            derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
+        }
 
         _registerContract(new address[](0), address(derivative));
 
