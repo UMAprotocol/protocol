@@ -35,12 +35,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address proposer;
         FixedPoint.Unsigned finalFee;
         address disputer;
+        FixedPoint.Unsigned reward;
     }
 
     struct FundingRateRecord {
         FixedPoint.Signed rate; // Current funding rate.
         uint256 proposeTime; // Time at which current funding rate was proposed.
         Proposal proposal;
+        FixedPoint.Unsigned rewardRatePerSecond; // Percentage of 1 E.g., .1 is 10%.
     }
 
     enum ProposalState { None, Pending, Expired }
@@ -53,7 +55,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *                EVENTS                *
      ****************************************/
 
-    event ProposedRate(address indexed perpetual, int256 rate, uint256 proposalTime, address indexed proposer);
+    event ChangedRewardRate(address indexed perpetual, uint256 rewardRate);
+    event ProposedRate(
+        address indexed perpetual,
+        int256 rate,
+        uint256 proposalTime,
+        address indexed proposer,
+        uint256 reward
+    );
     event DisputedRate(
         address indexed perpetual,
         int256 rate,
@@ -61,7 +70,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address indexed proposer,
         address indexed disputer
     );
-    event PublishedRate(address indexed perpetual, int256 rate, uint256 proposalTime, address indexed proposer);
+    event PublishedRate(
+        address indexed perpetual,
+        int256 rate,
+        uint256 proposalTime,
+        address indexed proposer,
+        uint256 reward
+    );
     event FinalFeesPaid(address indexed collateralCurrency, uint256 indexed amount);
 
     constructor(
@@ -135,17 +150,19 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.rate = fundingRateRecord.proposal.rate;
             fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
 
+            // Determine how much to reward the proposer.
+            FixedPoint.Unsigned memory reward = fundingRateRecord.proposal.reward;
+            reward = reward.add(fundingRateRecord.proposal.finalFee);
+
             // TODO: Reward = proposal bond
-            collateralCurrency.safeTransfer(
-                fundingRateRecord.proposal.proposer,
-                fundingRateRecord.proposal.finalFee.rawValue
-            );
+            collateralCurrency.safeTransfer(fundingRateRecord.proposal.proposer, reward.rawValue);
 
             emit PublishedRate(
                 perpetual,
                 fundingRateRecord.rate.rawValue,
                 fundingRateRecord.proposal.time,
-                fundingRateRecord.proposal.proposer
+                fundingRateRecord.proposal.proposer,
+                reward.rawValue
             );
         }
 
@@ -161,14 +178,24 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // Compute final fee at time of proposal.
         FixedPoint.Unsigned memory finalFeeBond = _computeFinalFees(collateralCurrency);
 
+        // Calculate and store potential reward.
+        FixedPoint.Unsigned memory reward = _calculateProposalRewardPct(
+            perpetual,
+            fundingRateRecord.proposeTime,
+            currentTime,
+            rate,
+            fundingRateRecord.rate
+        );
+
         fundingRateRecord.proposal = Proposal({
             rate: rate,
             time: currentTime,
             proposer: msg.sender,
             finalFee: finalFeeBond,
-            disputer: address(0x0)
+            disputer: address(0x0),
+            reward: reward
         });
-        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender);
+        emit ProposedRate(perpetual, rate.rawValue, currentTime, msg.sender, reward.rawValue);
 
         // Pull final fee bond from proposer.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
@@ -264,11 +291,28 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         if (_getLatestProposeTimeForContract(perpetual) <= proposalTime) {
             fundingRateRecord.rate = settlementRate;
             fundingRateRecord.proposeTime = proposalTime;
-            emit PublishedRate(perpetual, settlementRate.rawValue, proposalTime, proposer);
+            emit PublishedRate(
+                perpetual,
+                settlementRate.rawValue,
+                proposalTime,
+                proposer,
+                fundingRateDispute.proposal.reward.rawValue
+            );
         }
 
         // Delete dispute
         delete fundingRateDisputes[perpetual][proposalTime];
+    }
+
+    /**
+     * @notice Set the reward rate for a specific `perpetual` contract.
+     * @dev Callable only by the Perpetual contract.
+     */
+    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate) external override {
+        require(msg.sender == perpetual, "Caller not perpetual");
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+        fundingRateRecord.rewardRatePerSecond = rewardRate;
+        emit ChangedRewardRate(perpetual, rewardRate.rawValue);
     }
 
     /****************************************
@@ -299,6 +343,33 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         StoreInterface store = _getStore();
         collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
         store.payOracleFeesErc20(address(collateralCurrency), amount);
+    }
+
+    function _calculateProposalRewardPct(
+        address perpetual,
+        uint256 startTime,
+        uint256 endTime,
+        FixedPoint.Signed memory proposedRate,
+        FixedPoint.Signed memory currentRate
+    ) private view returns (FixedPoint.Unsigned memory reward) {
+        uint256 timeDiff = endTime.sub(startTime);
+
+        FixedPoint.Unsigned memory rewardRate = _getFundingRateRecord(perpetual).rewardRatePerSecond;
+
+        // First compute the reward for the time elapsed.
+        reward = rewardRate.mul(timeDiff);
+
+        // Next scale the reward based on the absolute difference between the current and proposed rates.
+        FixedPoint.Unsigned memory absDiffFactor = (
+            currentRate.isGreaterThan(proposedRate)
+                ? FixedPoint.fromSigned(currentRate.sub(proposedRate))
+                : (
+                    currentRate.isLessThan(proposedRate)
+                        ? FixedPoint.fromSigned(proposedRate.sub(currentRate))
+                        : FixedPoint.fromUnscaledUint(0)
+                )
+        );
+        reward = reward.mul(absDiffFactor.add(1));
     }
 
     // Returns the pending Proposal struct for a perpetual contract.

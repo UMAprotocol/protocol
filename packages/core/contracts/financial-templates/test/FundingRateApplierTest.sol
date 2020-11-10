@@ -6,11 +6,11 @@ import "../common/FundingRateApplier.sol";
 
 // Implements FundingRateApplier internal methods to enable unit testing.
 contract FundingRateApplierTest is FundingRateApplier {
-    constructor(address _fpFinderAddress, address _timerAddress)
-        public
-        Testable(_timerAddress)
-        FundingRateApplier(_fpFinderAddress)
-    {}
+    constructor(
+        address _fpFinderAddress,
+        address _timerAddress,
+        FixedPoint.Unsigned memory _rewardRate
+    ) public Testable(_timerAddress) FundingRateApplier(_fpFinderAddress, _rewardRate) {}
 
     function applyFundingRate() public {
         _applyEffectiveFundingRate();
