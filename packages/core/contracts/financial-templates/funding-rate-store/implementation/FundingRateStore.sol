@@ -292,6 +292,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         );
 
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
+        // TOOD: Decide whether loser of dispute should lose entire bond or partial
         if (disputeSucceeded) {
             // If dispute succeeds:
             // - Disputer earns back their bonds: dispute bond + final fee bond
