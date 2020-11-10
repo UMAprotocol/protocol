@@ -124,7 +124,7 @@ function Balances() {
     return create(addr);
   }
   function set(addr, balance) {
-    assert(balance >= 0n, "balance must be >= 0: " + balance);
+    assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
     balances.set(addr, balance);
     return balance;
   }

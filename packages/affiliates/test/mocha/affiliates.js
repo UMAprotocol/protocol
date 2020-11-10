@@ -78,6 +78,8 @@ describe("DeployerRewards", function() {
   });
   it("calculateRewards", async function() {
     this.timeout(100000);
+    // small value to give floating math some wiggle room
+    const epsilon = 0.001;
 
     const startingTimestamp = moment("2020-10-01 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
     const endingTimestamp = moment("2020-10-08 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
@@ -93,12 +95,25 @@ describe("DeployerRewards", function() {
       syntheticTokenDecimals: syntheticTokenDecimals
     });
 
-    assert.equal(Object.keys(result).length, 2); // There should be 2 deplorers for the 3 EMPs.
-    assert.equal(
-      Object.values(result).reduce((total, value) => {
-        return Number(total) + Number(value);
-      }, 0),
-      Number(devRewardsToDistribute)
+    assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deplorers for the 3 EMPs.
+    assert.equal(Object.keys(result.empPayouts).length, 3); // There should be 3 emps
+
+    assert.isBelow(
+      // compare floats with an epsilon
+      Math.abs(
+        Object.values(result.deployerPayouts).reduce((total, value) => {
+          return Number(total) + Number(value);
+        }, 0) - Number(devRewardsToDistribute)
+      ),
+      epsilon
+    ); // the total rewards distributed should equal the number specified
+    assert.isBelow(
+      Math.abs(
+        Object.values(result.empPayouts).reduce((total, value) => {
+          return Number(total) + Number(value);
+        }, 0) - Number(devRewardsToDistribute)
+      ),
+      epsilon
     ); // the total rewards distributed should equal the number specified
   });
 });

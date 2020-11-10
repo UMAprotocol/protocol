@@ -22,4 +22,5 @@ async function Run(config) {
 const config = Config();
 Run(config)
   .then(console.log)
-  .catch(console.error);
+  .catch(console.error)
+  .finally(() => process.exit());
