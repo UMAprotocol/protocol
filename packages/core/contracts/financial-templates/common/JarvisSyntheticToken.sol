@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 import "../../common/implementation/JarvisExpandedERC20.sol";
 import "../../common/implementation/Lockable.sol";
