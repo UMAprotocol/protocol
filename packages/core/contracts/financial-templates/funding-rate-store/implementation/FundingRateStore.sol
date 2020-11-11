@@ -68,6 +68,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address indexed proposer,
         uint256 rewardPct,
         uint256 proposalBond
+        // TODO: Should we add final fee bond to this event?
     );
     event DisputedRate(
         address indexed perpetual,
@@ -76,6 +77,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         address indexed proposer,
         address disputer,
         uint256 disputeBond
+        // TODO: Should we add final fee bond to this event?
     );
     event PublishedRate(
         address indexed perpetual,
