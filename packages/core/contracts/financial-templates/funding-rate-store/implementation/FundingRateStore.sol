@@ -378,6 +378,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *         INTERNAL FUNCTIONS           *
      ****************************************/
 
+    // TODO: Do we need to add a reentrancy guard to this method because it makes external calls?
     function _publishRateAndWithdrawRewards(address perpetual) internal {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
 
@@ -396,6 +397,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
 
         // Pull reward payment from Perpetual, and transfer (payment + final fee bond) to proposer.
+        // TODO: Should we add a try-catch around these external calls incase the `perpetual.withdrawFundingRateFees`
+        // fails for whatever reason?
         PerpetualInterface(perpetual).withdrawFundingRateFees(reward);
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
         collateralCurrency.safeTransfer(
