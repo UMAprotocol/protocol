@@ -71,6 +71,7 @@ function getTruffleContract(contractName, web3, version = "latest") {
  * @notice Creates a new truffle contract instance using artifacts. This method will automatically be exported instead
  * of the above method in the case that this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract to be instantiated.
+ * @param {Object} [web3] web3 object, only used in the case that version != latest.
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
 function getTruffleContractTest(contractName, web3, version = "latest") {
@@ -83,6 +84,7 @@ function getTruffleContractTest(contractName, web3, version = "latest") {
  * @notice Gets the contract address. This method will automatically be exported instead of getAdress in the case that
  * this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract whose address is to be retrieved.
+ * @param {Integer} networkId  Network ID of the network where that contract is deployed.
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
 function getAddressTest(contractName, networkId, version = "latest") {
