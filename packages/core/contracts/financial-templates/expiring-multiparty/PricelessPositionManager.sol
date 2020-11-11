@@ -7,14 +7,15 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../../common/interfaces/IERC20Standard.sol";
 import "../common/FeePayer.sol";
+import "../common/FinancialProductLibrary.sol";
 
 
 /**
@@ -84,6 +85,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
+
+    FinancialProductLibrary public financialProductLibrary;
 
     /****************************************
      *                EVENTS                *
@@ -169,7 +172,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         bytes32 _priceIdentifier,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
-        address _excessTokenBeneficiary
+        address _excessTokenBeneficiary,
+        address _financialProductLibraryAddressAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -180,6 +184,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
+
+        // Initialize the financialProductLibrary at the provided address.
+        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddressAddress);
     }
 
     /****************************************
@@ -767,7 +774,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return FixedPoint.Unsigned(uint256(oraclePrice));
+        return transformPrice(oraclePrice);
+    }
+
+    function transformPrice(int256 price) public view returns (FixedPoint.Unsigned memory) {
+        if (address(financialProductLibrary) == address(0)) return FixedPoint.Unsigned(uint256(price));
+        try financialProductLibrary.transformPrice(price) returns (int256 transformedPrice) {
+            return FixedPoint.Unsigned(uint256(transformedPrice));
+        } catch {
+            return FixedPoint.Unsigned(uint256(price));
+        }
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.

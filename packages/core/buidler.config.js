@@ -17,7 +17,7 @@ const { getLongVersion } = require("@nomiclabs/buidler-etherscan/dist/solc/SolcV
 usePlugin("@nomiclabs/buidler-truffle5");
 usePlugin("solidity-coverage");
 usePlugin("@nomiclabs/buidler-etherscan");
-usePlugin("buidler-gas-reporter");
+// usePlugin("buidler-gas-reporter");
 
 // Solc version defined here so etherscan-verification has access to it
 const solcVersion = "0.6.12";
