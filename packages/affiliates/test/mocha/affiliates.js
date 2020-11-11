@@ -3,9 +3,11 @@ const moment = require("moment");
 const { assert } = require("chai");
 const empAbi = require("../../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../../core/build/contracts/ExpiringMultiPartyCreator");
-const highland = require("highland");
-const datasetName = "set1";
-const params = require(`../datasets/${datasetName}`);
+const { mocks } = require("../../libs/datasets");
+const Path = require("path");
+
+const datasetPath = Path.join(__dirname, "../datasets/set1");
+const params = require(Path.join(datasetPath, "/config.json"));
 const {
   empCreator,
   empContracts,
@@ -17,47 +19,14 @@ const {
 } = params;
 const devRewardsToDistribute = "50000";
 // mocks
-function Queries() {
-  return {
-    streamLogsByContract(address) {
-      return highland(require(`../datasets/${datasetName}/logs/${address}`));
-    },
-    getLogsByContract(address) {
-      return require(`../datasets/${datasetName}/logs/${address}`);
-    },
-    streamBlocks() {
-      return highland(require(`../datasets/${datasetName}/blocks`));
-    },
-    getBlocks(start, end) {
-      return require(`../datasets/${datasetName}/blocks`).filter(block => {
-        const blockTime = moment(block.timestamp.value).valueOf();
-        return blockTime >= start && blockTime <= end;
-      });
-    }
-  };
-}
-function Coingecko() {
-  return {
-    getHistoricContractPrices(address) {
-      return require(`../datasets/${datasetName}/coingecko/${address}`);
-    }
-  };
-}
-
-function SynthPrices() {
-  return {
-    getHistoricSynthPrices(address) {
-      return require(`../datasets/${datasetName}/synth-prices/${address}`);
-    }
-  };
-}
+const { Queries, Coingecko, SynthPrices } = mocks;
 
 describe("DeployerRewards", function() {
   let affiliates;
   before(function() {
-    const queries = Queries();
-    const coingecko = Coingecko();
-    const synthPrices = SynthPrices();
+    const queries = Queries(datasetPath);
+    const coingecko = Coingecko(datasetPath);
+    const synthPrices = SynthPrices(datasetPath);
     affiliates = DeployerRewards({
       queries,
       empAbi: empAbi.abi,
