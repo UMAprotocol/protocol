@@ -71,17 +71,11 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
             finder.getImplementationAddress("FundingRateStore")
         );
         FixedPoint.Unsigned memory collateralPool = _pfc();
-        FixedPoint.Unsigned memory amountToPay = amount;
 
-        // If contract has no PfC, then set fees to 0.
-        if (collateralPool.isEqual(0)) {
-            amountToPay = FixedPoint.fromUnscaledUint(0);
-        } else if (amount.isGreaterThan(collateralPool)) {
-            amountToPay = collateralPool;
-        }
+        // If amount to pay or collateral pool is 0, then return early.
+        if (!amount.isEqual(0) && !collateralPool.isEqual(0)) {
+            FixedPoint.Unsigned memory amountToPay = (amount.isGreaterThan(collateralPool) ? collateralPool : amount);
 
-        // If amount to pay is 0, then return.
-        if (!amountToPay.isEqual(0)) {
             // Adjust cumulative fee multiplier.
             _adjustCumulativeFeeMultiplier(amountToPay, collateralPool);
 
