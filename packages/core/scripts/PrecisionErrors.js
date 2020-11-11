@@ -60,11 +60,11 @@ async function createTestEnvironment() {
 
   // Initial constant values
   const syntheticName = "UMA test Token";
-  const syntheticSymbol = "TESTIDENTIFIER";
+  const syntheticSymbol = "SYNTH";
   const withdrawalLiveness = 0;
   const liquidationLiveness = 3600;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const priceTrackingIdentifier = utf8ToHex("TESTIDENTIFIER");
+  const priceTrackingIdentifier = utf8ToHex("TEST_IDENTIFIER");
   const collateralRequirement = toWei("1.5");
   const disputeBondPct = toWei("0.1");
   const sponsorDisputeRewardPct = toWei("0.1");
@@ -875,7 +875,7 @@ async function runExport() {
   // Expire the contract and pay any final fees
   await emp.expire();
   // Push a price
-  await mockOracle.pushPrice(utf8ToHex("TESTIDENTIFIER"), expirationTime, testConfig.settlementPrice.toString());
+  await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), expirationTime, testConfig.settlementPrice.toString());
 
   // Log results in a table.
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);

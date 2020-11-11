@@ -60,7 +60,7 @@ contract("IntegrationTest", function(accounts) {
   const unreachableDeadline = MAX_UINT_VAL;
 
   beforeEach(async () => {
-    collateralToken = await Token.new("WRAPED ETHER", "WETH", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -84,9 +84,9 @@ contract("IntegrationTest", function(accounts) {
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
       timerAddress: Timer.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TESTIDENTIFIER"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
       syntheticName: "Test Synthetic Token",
-      syntheticSymbol: "TESTIDENTIFIER",
+      syntheticSymbol: "SYNTH",
       liquidationLiveness: "3600",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },

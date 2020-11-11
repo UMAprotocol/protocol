@@ -30,7 +30,7 @@ contract("PerpetualCreator", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await Token.new("WRAPED ETHER", "WETH", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
 
@@ -43,9 +43,9 @@ contract("PerpetualCreator", function(accounts) {
     constructorParams = {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
-      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER-FUNDING"),
+      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER_FUNDING"),
       syntheticName: "Test Synthetic Token",
-      syntheticSymbol: "TEST_IDENTIFIER",
+      syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
@@ -209,7 +209,7 @@ contract("PerpetualCreator", function(accounts) {
 
   it("Constructs new synthetic currency properly", async function() {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
-    collateralToken = await Token.new("WRAPED ETHER", "WETH", 8, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 8, { from: contractCreator });
     constructorParams.collateralAddress = collateralToken.address;
 
     // Whitelist collateral currency
