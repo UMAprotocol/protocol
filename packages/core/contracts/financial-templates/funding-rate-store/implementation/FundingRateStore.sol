@@ -8,10 +8,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../../../oracle/interfaces/StoreInterface.sol";
 import "../../../oracle/interfaces/OracleInterface.sol";
 import "../../../oracle/interfaces/FinderInterface.sol";
+import "../../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 
 import "../../perpetual-multiparty/PerpetualInterface.sol";
-import "../../common/FinancialContractInterface.sol";
 import "../interfaces/FundingRateStoreInterface.sol";
 import "../../../common/implementation/Testable.sol";
 import "../../../common/implementation/Lockable.sol";
@@ -194,7 +194,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         );
 
         // Compute proposal bond.
-        FixedPoint.Unsigned memory proposalBond = proposalBondPct.mul(FinancialContractInterface(perpetual).pfc());
+        FixedPoint.Unsigned memory proposalBond = proposalBondPct.mul(AdministrateeInterface(perpetual).pfc());
 
         // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
@@ -394,7 +394,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
 
         // Calculate reward for proposer using saved reward rate and current perpetual PfC.
-        FixedPoint.Unsigned memory pfc = FinancialContractInterface(perpetual).pfc();
+        FixedPoint.Unsigned memory pfc = AdministrateeInterface(perpetual).pfc();
         FixedPoint.Unsigned memory rewardRate = fundingRateRecord.proposal.rewardRate;
         FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
 

@@ -4,12 +4,12 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../perpetual-multiparty/PerpetualInterface.sol";
 import "../../financial-templates/funding-rate-store/interfaces/FundingRateStoreInterface.sol";
-import "../common/FinancialContractInterface.sol";
+import "../../oracle/interfaces/AdministrateeInterface.sol";
 
 /**
  * @notice External methods that the FundingRateStore needs access to.
  */
-contract MockPerpetual is PerpetualInterface, FinancialContractInterface {
+contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
     using SafeERC20 for IERC20;
     IERC20 private collateralCurrency;
     bytes32 private fundingRateIdentifier;
@@ -38,5 +38,13 @@ contract MockPerpetual is PerpetualInterface, FinancialContractInterface {
 
     function pfc() external view override returns (FixedPoint.Unsigned memory) {
         return FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+    }
+
+    function remargin() external override {
+        return;
+    }
+
+    function emergencyShutdown() external override {
+        return;
     }
 }

@@ -10,8 +10,8 @@ import "../../common/implementation/Testable.sol";
 
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
-import "./FinancialContractInterface.sol";
 
 /**
  * @title FeePayer contract.
@@ -19,7 +19,7 @@ import "./FinancialContractInterface.sol";
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
-abstract contract FeePayer is FinancialContractInterface, Testable, Lockable {
+abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
