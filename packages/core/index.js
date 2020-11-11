@@ -3,12 +3,19 @@ const fs = require("fs");
 const path = require("path");
 const { getWeb3 } = require("@uma/common");
 
+function getDirectoryForVersion(version) {
+  const packageName = `@uma/core-${version.split(".").join("-")}`;
+  return path.dirname(require.resolve(`${packageName}/package.json`));
+}
+
 /**
  * @notice Gets the truffle artifact for an UMA contract.
  * @param {String} contractName Name of the UMA contract whose artifact object will be returned.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getArtifact(contractName) {
-  const filePath = path.join(__dirname, "build", "contracts", `${contractName}.json`);
+function getArtifact(contractName, version = "latest") {
+  const contractDirectory = version === "latest" ? __dirname : getDirectoryForVersion(version);
+  const filePath = path.join(contractDirectory, "build", "contracts", `${contractName}.json`);
   if (!fs.existsSync(filePath)) {
     throw new Error(`No contract artifact found at ${filePath}`);
   }
@@ -19,9 +26,10 @@ function getArtifact(contractName) {
 /**
  * @notice Gets the abi for an UMA contract.
  * @param {String} contractName Name of the UMA contract whose abi will be returned.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getAbi(contractName) {
-  const artifact = getArtifact(contractName);
+function getAbi(contractName, version = "latest") {
+  const artifact = getArtifact(contractName, version);
   return artifact.abi;
 }
 
@@ -29,9 +37,10 @@ function getAbi(contractName) {
  * @notice Gets the deployed address for an UMA contract.
  * @param {String} contractName Name of the UMA contract whose address will be returned.
  * @param {Integer} networkId Network ID of the network where that contract is deployed.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getAddress(contractName, networkId) {
-  const artifact = getArtifact(contractName);
+function getAddress(contractName, networkId, version = "latest") {
+  const artifact = getArtifact(contractName, version);
 
   if (!artifact.networks[networkId]) {
     return null;
@@ -46,12 +55,13 @@ function getAddress(contractName, networkId) {
  * If a web3 instance is not provided, this function will use getWeb3() to attempt to create one.
  * @param {String} contractName Name of the UMA contract to be instantiated.
  * @param {Object} [web3] Custom web3 instance whose provider should be injected into the truffle contract.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getTruffleContract(contractName, web3) {
+function getTruffleContract(contractName, web3, version = "latest") {
   // If there is no web3, use getWeb3() to retrieve one.
   const resolvedWeb3 = web3 || getWeb3();
 
-  const artifact = getArtifact(contractName);
+  const artifact = getArtifact(contractName, version);
   const Contract = truffleContract(artifact);
   Contract.setProvider(resolvedWeb3.currentProvider);
   return Contract;
@@ -61,18 +71,22 @@ function getTruffleContract(contractName, web3) {
  * @notice Creates a new truffle contract instance using artifacts. This method will automatically be exported instead
  * of the above method in the case that this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract to be instantiated.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getTruffleContractTest(contractName) {
-  return global.artifacts.require(contractName);
+function getTruffleContractTest(contractName, web3, version = "latest") {
+  return version === "latest"
+    ? global.artifacts.require(contractName)
+    : getTruffleContract(contractName, web3, version);
 }
 
 /**
  * @notice Gets the contract address. This method will automatically be exported instead of getAdress in the case that
  * this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract whose address is to be retrieved.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getAddressTest(contractName, networkId) {
-  const truffleContract = getTruffleContractTest(contractName);
+function getAddressTest(contractName, networkId, version = "latest") {
+  const truffleContract = getTruffleContractTest(contractName, version);
 
   if (truffleContract.networks[networkId]) {
     return truffleContract.networks[networkId].address;
@@ -93,9 +107,10 @@ function getAddressTest(contractName, networkId) {
  * @notice Gets the contract abi. This method will automatically be exported instead of getAbi() in the case that
  * this is being used in a truffle test context.
  * @param {String} contractName Name of the UMA contract whose abi is to be retrieved.
+ * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-function getAbiTest(contractName) {
-  const truffleContract = getTruffleContractTest(contractName);
+function getAbiTest(contractName, version = "latest") {
+  const truffleContract = getTruffleContractTest(contractName, undefined, version);
   return truffleContract.abi;
 }
 
