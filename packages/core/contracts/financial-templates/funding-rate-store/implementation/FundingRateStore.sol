@@ -67,8 +67,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         uint256 indexed proposalTime,
         address indexed proposer,
         uint256 rewardPct,
-        uint256 proposalBond
-        // TODO: Should we add final fee bond to this event?
+        uint256 proposalBond,
+        uint256 finalFeeBond
     );
     event DisputedRate(
         address indexed perpetual,
@@ -76,8 +76,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         uint256 indexed proposalTime,
         address indexed proposer,
         address disputer,
-        uint256 disputeBond
-        // TODO: Should we add final fee bond to this event?
+        uint256 disputeBond,
+        uint256 finalFeeBond
     );
     event PublishedRate(
         address indexed perpetual,
@@ -197,7 +197,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             currentTime,
             msg.sender,
             rewardRate.rawValue,
-            proposalBond.rawValue
+            proposalBond.rawValue,
+            finalFeeBond.rawValue
         );
 
         // Pull total bond from proposer.
@@ -231,7 +232,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.proposal.time,
             fundingRateRecord.proposal.proposer,
             msg.sender,
-            proposalBond.rawValue
+            proposalBond.rawValue,
+            fundingRateRecord.proposal.finalFee.rawValue
         );
 
         // Delete pending proposal and copy into dispute records.
@@ -365,8 +367,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *         INTERNAL FUNCTIONS           *
      ****************************************/
 
-    // TODO: Do we need to add a reentrancy guard to this method because it makes external calls?
-    function _publishRateAndWithdrawRewards(address perpetual) internal {
+    function _publishRateAndWithdrawRewards(address perpetual) internal nonReentrant() {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
 
         // Check if proposal liveness has expired

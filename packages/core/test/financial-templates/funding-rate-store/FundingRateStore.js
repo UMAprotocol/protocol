@@ -292,7 +292,8 @@ contract("FundingRateStore", function(accounts) {
           ev.proposalTime.toString() === proposalTime.toString() &&
           ev.proposer === proposer &&
           ev.rewardPct.toString() === toWei("0.0505") &&
-          ev.proposalBond.toString() === toWei("0.5")
+          ev.proposalBond.toString() === toWei("0.5") &&
+          ev.finalFeeBond.toString() === toWei("0.25")
         );
       });
 
@@ -358,7 +359,8 @@ contract("FundingRateStore", function(accounts) {
           ev.rate.toString() === toWei("0.01").toString() &&
           ev.proposalTime.toString() === proposalTime.toString() &&
           ev.disputer === disputer &&
-          ev.disputeBond.toString() === toWei("0.5")
+          ev.disputeBond.toString() === toWei("0.5") &&
+          ev.finalFeeBond.toString() === toWei("0.25")
         );
       });
       await mockOracle.pushPrice(defaultTestIdentifier, proposalTime, disputePrice.toString());
@@ -402,7 +404,8 @@ contract("FundingRateStore", function(accounts) {
           ev.rate.toString() === toWei("0.01").toString() &&
           ev.proposalTime.toString() === proposalTime.toString() &&
           ev.disputer === disputer &&
-          ev.disputeBond.toString() === toWei("0.5")
+          ev.disputeBond.toString() === toWei("0.5") &&
+          ev.finalFeeBond.toString() === toWei("0.25")
         );
       });
       await mockOracle.pushPrice(defaultTestIdentifier, proposalTime, disputePrice.toString());
@@ -457,7 +460,8 @@ contract("FundingRateStore", function(accounts) {
           ev.proposalTime.toString() === proposalTime.toString() &&
           ev.proposer === proposer &&
           ev.rewardPct.toString() === "0" &&
-          ev.proposalBond.toString() === "0"
+          ev.proposalBond.toString() === "0" &&
+          ev.finalFeeBond.toString() === "0"
         );
       });
     });
@@ -592,7 +596,8 @@ contract("FundingRateStore", function(accounts) {
           ev.proposalTime.toString() === proposalTime.toString() &&
           ev.disputeBond.toString() === "0" &&
           ev.proposer === proposer &&
-          ev.disputer === disputer
+          ev.disputer === disputer &&
+          ev.finalFeeBond.toString() === finalFeeAmount
         );
       });
 
