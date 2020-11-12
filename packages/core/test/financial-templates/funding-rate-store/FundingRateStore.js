@@ -80,8 +80,7 @@ contract("FundingRateStore", function(accounts) {
   it("Initial Funding Rate, Reward Rate, and Propose Time of 0", async function() {
     const getFundingRate = fundingRateStore.getFundingRateForContract;
     assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), "0");
-    const getProposalTime = fundingRateStore.getProposeTimeForContract;
-    assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), "0");
+    assert.equal((await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(), "0");
     assert.equal(
       (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).rewardRatePerSecond.rawValue.toString(),
       "0"
@@ -442,10 +441,12 @@ contract("FundingRateStore", function(accounts) {
     });
 
     it("Initial rate and propose time persists", async function() {
+      // Publish any pending expired proposals.
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+
       const getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), "0");
-      const getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), "0");
+      assert.equal((await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(), "0");
     });
 
     it("Event emitted", async function() {
@@ -652,8 +653,10 @@ contract("FundingRateStore", function(accounts) {
       // Funding rate and propose time are updated.
       const getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), toWei("0.01"));
-      const getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), proposalTime.toString());
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(),
+        proposalTime.toString()
+      );
 
       // Disputed funding rate record is deleted.
       const disputedProposal = await fundingRateStore.fundingRateDisputes(mockPerpetual.address, proposalTime);
@@ -712,8 +715,10 @@ contract("FundingRateStore", function(accounts) {
       // Funding rate and propose time are updated.
       const getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), toWei("-0.01"));
-      const getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), proposalTime.toString());
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(),
+        proposalTime.toString()
+      );
 
       // Disputer receives final fee rebate, proposer receives nothing.
       const postBalanceDisputer = await collateralCurrency.balanceOf(disputer);
@@ -739,8 +744,10 @@ contract("FundingRateStore", function(accounts) {
       // The funding rate and propose time should be updated now.
       let getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), toWei("0.02"));
-      let getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), midDisputeProposeTime.toString());
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(),
+        midDisputeProposeTime.toString()
+      );
 
       // Now make a price available for the dispute.
       await mockOracle.pushPrice(defaultTestIdentifier, proposalTime, disputePrice.toString());
@@ -759,8 +766,10 @@ contract("FundingRateStore", function(accounts) {
       // Funding rate and proposal time are linked to the proposal that expired in the middle of the dispute.
       getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), toWei("0.02"));
-      getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), midDisputeProposeTime.toString());
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(),
+        midDisputeProposeTime.toString()
+      );
 
       // Disputed funding rate record is deleted.
       const disputedProposal = await fundingRateStore.fundingRateDisputes(mockPerpetual.address, proposalTime);
@@ -788,10 +797,15 @@ contract("FundingRateStore", function(accounts) {
     });
 
     it("New rate and propose time are retrieved", async function() {
+      // Publish any pending expired proposals.
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+
       const getFundingRate = fundingRateStore.getFundingRateForContract;
       assert.equal((await getFundingRate.call(mockPerpetual.address)).rawValue.toString(), toWei("0.01"));
-      const getProposalTime = fundingRateStore.getProposeTimeForContract;
-      assert.equal((await getProposalTime.call(mockPerpetual.address)).toString(), proposeTime.toString());
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).proposeTime.toString(),
+        proposeTime.toString()
+      );
     });
 
     it("New proposal allowed", async function() {
@@ -833,19 +847,6 @@ contract("FundingRateStore", function(accounts) {
     });
     it("Publish event is emitted on next withdraw call", async function() {
       const txn = await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
-      truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
-        return (
-          ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("0.01").toString() &&
-            ev.proposalTime.toString() === proposeTime.toString() &&
-            ev.proposer === proposer,
-          ev.rewardPct.toString() === "0",
-          ev.reward.toString() === "0"
-        );
-      });
-    });
-    it("Publish event is emitted on next getProposeTime call", async function() {
-      const txn = await fundingRateStore.getProposeTimeForContract(mockPerpetual.address);
       truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&

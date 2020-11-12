@@ -138,21 +138,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Returns the timestamp at which the current funding rate was proposed.
-     * @param perpetual Perpetual to retrieve propose time for.
-     * @return propose timestamp.
-     */
-    function getProposeTimeForContract(address perpetual)
-        external
-        nonReentrant()
-        publishAndWithdrawProposal(perpetual)
-        returns (uint256)
-    {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        return fundingRateRecord.proposeTime;
-    }
-
-    /**
      * @notice Propose a new funding rate for a perpetual.
      * @dev This will revert if there is already a pending funding rate for the perpetual.
      * @dev Caller must approve this contract to spend `finalFeeBond` + `proposalBond` amount of collateral, which they can
