@@ -73,17 +73,19 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
         // If amount to pay or collateral pool is 0, then return early.
-        if (!amount.isEqual(0) && !collateralPool.isEqual(0)) {
-            FixedPoint.Unsigned memory amountToPay = (amount.isGreaterThan(collateralPool) ? collateralPool : amount);
-
-            // Adjust cumulative fee multiplier.
-            _adjustCumulativeFeeMultiplier(amountToPay, collateralPool);
-
-            // Transfer collateral.
-            collateralCurrency.safeTransfer(address(fundingRateStore), amountToPay.rawValue);
-
-            emit FundingRateFeesWithdrawn(amountToPay.rawValue);
+        if (amount.isEqual(0) || collateralPool.isEqual(0)) {
+            return;
         }
+
+        FixedPoint.Unsigned memory amountToPay = (amount.isGreaterThan(collateralPool) ? collateralPool : amount);
+
+        // Adjust cumulative fee multiplier.
+        _adjustCumulativeFeeMultiplier(amountToPay, collateralPool);
+
+        // Transfer collateral.
+        collateralCurrency.safeTransfer(address(fundingRateStore), amountToPay.rawValue);
+
+        emit FundingRateFeesWithdrawn(amountToPay.rawValue);
     }
 
     function getFundingRateIdentifier() external view override returns (bytes32) {
