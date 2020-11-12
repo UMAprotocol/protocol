@@ -17,6 +17,39 @@ import "../../../common/implementation/Testable.sol";
 import "../../../common/implementation/Lockable.sol";
 import "../../../common/implementation/FixedPoint.sol";
 
+/**
+ * @notice FundingRateStore always makes available the current funding rate for a given perpetual contract address.
+ * "Proposers" can update funding rates by proposing a new rate and waiting for a proposal liveness to expire. During
+ * the liveness period, "Disputers" can reject a proposed funding rate and raise a price request against the DVM.
+ * Cash flows as follows in the following actions:
+ *
+ * VARIABLES:
+ * - Final fee bond   : a constant value unique for each funding rate identifier and perpetual contract (we assume that
+ *                      every perpetual is 1-to-1 mapped to a funding rate identifier).
+ * - Proposal bond    : the product of the "proposalBondPct" state variable and a given perpetual's PfC at the time of
+ *                      proposal.
+ * - Dispute bond     : same as the proposal bond currently.
+ * - Proposal reward  : the product of a given perpetual's PfC and its "reward rate" at the time of
+ *                      proposal. The reward rate implies that the reward gets larger as time since the last proposal
+ *                      increases, and also includes a "difference factor" to give more weight to larger funding rate
+ *                      changes.
+ *
+ * ACTIONS:
+ * - Proposing a new funding rate:
+ *     - Proposer pays: (final fee bond) + (proposal bond)
+ *     - Store receives: (final fee bond) + (proposal bond)
+ * - Publishing a proposal after its liveness expires:
+ *     - Proposer receives: (final fee bond) + (proposal bond) + (proposal reward)
+ *     - Perpetual pays: (proposal reward)
+ *     - Store pays: (final fee bond) + (proposal bond)
+ * - Disputing a pending proposal:
+ *     - Disputer pays: (final fee bond) + (disputer bond)
+ *     - Store receives (disputer bond)
+ *     - DVM receives (final fee bond)
+ * - Settling a dispute after the DVM resolves its price request:
+ *     - Winner of dispute (disputer or proposer) receives: (proposal bond) + (disputer bond) + (final fee bond)
+ *     - Store pays: (proposal bond) + (disputer bond) + (final fee bond)
+ */
 contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
@@ -85,7 +118,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         uint256 indexed proposalTime,
         address indexed proposer,
         uint256 rewardPct,
-        uint256 reward
+        uint256 rewardPayment,
+        uint256 totalPayment
     );
     event DisputedRateSettled(
         address indexed perpetual,
@@ -95,6 +129,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         bool disputeSucceeded
     );
     event FinalFeesPaid(address indexed collateralCurrency, uint256 indexed amount);
+    event WithdrawErrorIgnored(address indexed perpetual, uint256 withdrawAmount);
 
     /****************************************
      *                MODIFIERS             *
@@ -316,8 +351,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         if (fundingRateRecord.proposeTime <= proposalTime) {
             fundingRateRecord.rate = settlementRate;
             fundingRateRecord.proposeTime = proposalTime;
-            // Note: Set rewards to 0 since we published the DVM resolved funding rate.
-            emit PublishedRate(perpetual, settlementRate.rawValue, proposalTime, proposer, 0, 0);
+            // Note: Set rewards to 0 since we published the DVM resolved funding rate and there is no proposer to pay.
+            emit PublishedRate(perpetual, settlementRate.rawValue, proposalTime, proposer, 0, 0, 0);
         }
 
         // Delete dispute
@@ -384,23 +419,32 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         FixedPoint.Unsigned memory rewardRate = fundingRateRecord.proposal.rewardRate;
         FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
 
-        // Pull reward payment from Perpetual, and transfer (payment + final fee bond) to proposer.
-        // TODO: Should we add a try-catch around these external calls incase the `perpetual.withdrawFundingRateFees`
-        // fails for whatever reason?
-        PerpetualInterface(perpetual).withdrawFundingRateFees(reward);
+        // Pull reward payment from Perpetual, and transfer (payment + final fee bond + proposal bond) to proposer.
+        // Note: Proposer always receives rebates for their bonds, but may not receive their proposer reward if the
+        // perpetual fails to send fees.
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
-        collateralCurrency.safeTransfer(
-            fundingRateRecord.proposal.proposer,
-            reward.add(fundingRateRecord.proposal.finalFee).rawValue
+        FixedPoint.Unsigned memory amountToPay = fundingRateRecord.proposal.finalFee.add(
+            fundingRateRecord.proposal.proposalBond
         );
+        try PerpetualInterface(perpetual).withdrawFundingRateFees(reward)  {
+            // Only transfer rewards if withdrawal from perpetual succeeded .
+            amountToPay = amountToPay.add(reward);
+        } catch {
+            // If the withdraw fails, then only rebate final fee and emit an alert. Because this method is called
+            // by every other external method in the contract, its important that this method does not revert.
+            emit WithdrawErrorIgnored(perpetual, reward.rawValue);
+            reward = FixedPoint.fromUnscaledUint(0);
+        }
 
+        collateralCurrency.safeTransfer(fundingRateRecord.proposal.proposer, amountToPay.rawValue);
         emit PublishedRate(
             perpetual,
             fundingRateRecord.proposal.rate.rawValue,
             fundingRateRecord.proposal.time,
             fundingRateRecord.proposal.proposer,
             rewardRate.rawValue,
-            reward.rawValue
+            reward.rawValue,
+            amountToPay.rawValue
         );
 
         // Delete proposal now that it has been published.

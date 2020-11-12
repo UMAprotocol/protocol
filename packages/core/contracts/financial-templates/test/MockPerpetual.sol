@@ -15,6 +15,10 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
     bytes32 private fundingRateIdentifier;
     FixedPoint.Unsigned private _pfc;
 
+    // Set this to true to make `withdrawFundingRateFees` revert. Useful for testing how a FundingRateStore
+    // reacts to failing `withdrawFundingRateFees` calls.
+    bool public revertWithdraw;
+
     constructor(bytes32 _fundingRateIdentifier, address _collateralCurrency) public {
         fundingRateIdentifier = _fundingRateIdentifier;
         collateralCurrency = IERC20(_collateralCurrency);
@@ -32,8 +36,16 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
         FundingRateStoreInterface(store).setRewardRate(address(this), rewardRate);
     }
 
+    function toggleRevertWithdraw() external {
+        revertWithdraw = !revertWithdraw;
+    }
+
     function withdrawFundingRateFees(FixedPoint.Unsigned memory amount) external override {
-        collateralCurrency.safeTransfer(msg.sender, amount.rawValue);
+        if (revertWithdraw) {
+            require(false, "set to always reverts");
+        } else {
+            collateralCurrency.safeTransfer(msg.sender, amount.rawValue);
+        }
     }
 
     function pfc() external view override returns (FixedPoint.Unsigned memory) {

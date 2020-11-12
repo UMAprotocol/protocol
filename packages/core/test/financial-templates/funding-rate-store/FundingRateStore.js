@@ -320,24 +320,26 @@ contract("FundingRateStore", function(accounts) {
       const postBalanceProposer = await collateralCurrency.balanceOf(proposer);
       const postBalancePerpetual = await collateralCurrency.balanceOf(mockPerpetual.address);
 
-      // Reward = 0.0505 * 1000 = 50.5 + final fee bond of 0.25
+      // Reward = 0.0505 * 1000 = 50.5
+      // Total payment = reward + final fee bond of 0.25 + proposal bond of 0.5 = 51.25
       truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("0.01").toString() &&
-            ev.proposalTime.toString() === proposalTime.toString() &&
-            ev.proposer === proposer,
-          ev.rewardPct.toString() === toWei("0.0505"),
-          ev.reward.toString() === toWei("50.5")
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposalTime.toString() &&
+          ev.proposer === proposer &&
+          ev.rewardPct.toString() === toWei("0.0505") &&
+          ev.rewardPayment.toString() === toWei("50.5") &&
+          ev.totalPayment.toString() === toWei("51.25")
         );
       });
 
-      // Proposer receives reward (50.5) + final fee bond (0.25)
-      assert.equal(postBalanceProposer.sub(preBalanceProposer).toString(), toWei("50.75"));
+      // Proposer receives reward (50.5) + final fee bond (0.25) + proposal bond (0.5)
+      assert.equal(postBalanceProposer.sub(preBalanceProposer).toString(), toWei("51.25"));
       // Perpetual pays reward (50.5)
       assert.equal(preBalancePerpetual.sub(postBalancePerpetual).toString(), toWei("50.5"));
-      // Store pays final fee rebate (0.25)
-      assert.equal(preBalanceStore.sub(postBalanceStore).toString(), toWei("0.25"));
+      // Store pays final fee rebate (0.25) + proposal rebate (0.5)
+      assert.equal(preBalanceStore.sub(postBalanceStore).toString(), toWei("0.75"));
     });
 
     it("Proposal is disputed, the dispute FAILS, proposer receives disputer's bond", async function() {
@@ -428,6 +430,88 @@ contract("FundingRateStore", function(accounts) {
       // Store and Perpetual balance does not change post propose-dispute process
       assert.equal(postBalanceStore.toString(), preBalanceStore.toString());
       assert.equal(postBalancePerpetual.toString(), preBalancePerpetual.toString());
+    });
+  });
+
+  describe("Withdrawing funding rate fees from Perpetual fails", function() {
+    let proposalTime;
+    // In these tests, we'll construct a mock perpetual that always reverts whenever withdrawFundingRateFees is called,
+    // and we want to test that the Funding Rate Store does not subsequently revert.
+    beforeEach(async () => {
+      // Set a nonzero final fee.
+      await store.setFinalFee(collateralCurrency.address, { rawValue: toWei("0.25") });
+
+      // Set mock perpetual so that `withdrawFundingRateFees` always reverts.
+      await mockPerpetual.toggleRevertWithdraw();
+      assert.equal(await mockPerpetual.revertWithdraw(), true);
+
+      // Set non-zero proposal bond and reward rates.
+      fundingRateStore = await FundingRateStore.new(liveness, finder.address, timer.address, {
+        rawValue: toWei("0.0005")
+      });
+      await mockPerpetual.setRewardRate({ rawValue: toWei("0.01") }, fundingRateStore.address);
+      assert.equal(
+        (await fundingRateStore.fundingRateRecords(mockPerpetual.address)).rewardRatePerSecond.rawValue.toString(),
+        toWei("0.01")
+      );
+
+      // Mint the MockPerpetual some collateral so that it has "PfC" from which to pay proposer rewards
+      await collateralCurrency.mint(mockPerpetual.address, toWei("1000"));
+      assert.equal((await mockPerpetual.pfc()).toString(), toWei("1000"));
+
+      // Mint collateral for proposal and final fee bond to proposer and disputer.
+      await collateralCurrency.mint(proposer, toWei("1000"));
+      await collateralCurrency.increaseAllowance(fundingRateStore.address, toWei("1000"), { from: proposer });
+      await collateralCurrency.mint(disputer, toWei("1000"));
+      await collateralCurrency.increaseAllowance(fundingRateStore.address, toWei("1000"), { from: disputer });
+
+      // Advance time 5 seconds into future, so reward % should be 5%, not including the rate-change effector.
+      await incrementTime(fundingRateStore, 5);
+
+      // Propose a funding rate
+      proposalTime = await fundingRateStore.getCurrentTime();
+      await fundingRateStore.propose(mockPerpetual.address, { rawValue: toWei("0.01") }, { from: proposer });
+      await incrementTime(fundingRateStore, liveness);
+    });
+    it("withdrawProposalRewards does not fail", async function() {
+      const preBalanceStore = await collateralCurrency.balanceOf(fundingRateStore.address);
+      const preBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      const preBalancePerpetual = await collateralCurrency.balanceOf(mockPerpetual.address);
+      const txn = await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+      const postBalanceStore = await collateralCurrency.balanceOf(fundingRateStore.address);
+      const postBalanceProposer = await collateralCurrency.balanceOf(proposer);
+      const postBalancePerpetual = await collateralCurrency.balanceOf(mockPerpetual.address);
+
+      // Reward rate is 0.0505, but reward amount is 0 because withdrawal failed.
+      // Final fee (0.25) and proposal bond (0.5) are still returned.
+      truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
+        return (
+          ev.perpetual === mockPerpetual.address &&
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposalTime.toString() &&
+          ev.proposer === proposer &&
+          ev.rewardPct.toString() === toWei("0.0505") &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === toWei("0.75")
+        );
+      });
+
+      // Proposer receives reward (0) + final fee bond (0.25) + proposal bond (0.5)
+      assert.equal(postBalanceProposer.sub(preBalanceProposer).toString(), toWei("0.75"));
+      // Perpetual pays 0
+      assert.equal(preBalancePerpetual.toString(), postBalancePerpetual.toString());
+      // Store pays final fee rebate (0.25) + proposal rebate (0.5)
+      assert.equal(preBalanceStore.sub(postBalanceStore).toString(), toWei("0.75"));
+
+      // WithdrawErrorIgnored event is emitted with a withdraw amount equal to the amount of fees that the Store
+      // attempted to pull from the Perpetual => 0.0505 * 1000 = 50.5
+      truffleAssert.eventEmitted(txn, "WithdrawErrorIgnored", ev => {
+        return ev.perpetual === mockPerpetual.address && ev.withdrawAmount.toString() === toWei("50.5").toString();
+      });
+
+      // Proposal is deleted
+      const pendingProposal = await fundingRateStore.fundingRateRecords(mockPerpetual.address);
+      isEmptyProposalStruct(pendingProposal.proposal);
     });
   });
 
@@ -645,13 +729,16 @@ contract("FundingRateStore", function(accounts) {
         );
       });
 
-      // Publish event was emitted.
+      // Publish event was emitted, but no proposal rewards are paid during the settleDispute transaction.
       truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
           ev.rate.toString() === toWei("0.01").toString() &&
           ev.proposalTime.toString() === proposalTime.toString() &&
-          ev.proposer === proposer // For a FAILED dispute, the proposer in this event is credited to the proposer
+          ev.proposer === proposer && // For a FAILED dispute, the proposer in this event is credited to the proposer
+          ev.rewardPct.toString() === "0" &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === "0"
         );
       });
 
@@ -705,15 +792,16 @@ contract("FundingRateStore", function(accounts) {
         );
       });
 
-      // Publish event was emitted because there was no proposal published since the dispute began.
+      // Publish event was emitted, but no proposal rewards are paid during the settleDispute transaction.
       truffleAssert.eventEmitted(settlementTxn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("-0.01").toString() &&
-            ev.proposalTime.toString() === proposalTime.toString() &&
-            ev.proposer === disputer, // For a SUCCESSFUL dispute, the proposer in this event is credited to the disputer
-          ev.rewardPct.toString() === "0",
-          ev.reward.toString() === "0"
+          ev.rate.toString() === toWei("-0.01").toString() &&
+          ev.proposalTime.toString() === proposalTime.toString() &&
+          ev.proposer === disputer && // For a SUCCESSFUL dispute, the proposer in this event is credited to the disputer
+          ev.rewardPct.toString() === "0" &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === "0"
         );
       });
 
@@ -828,11 +916,12 @@ contract("FundingRateStore", function(accounts) {
       truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("0.01").toString() &&
-            ev.proposalTime.toString() === proposeTime.toString() &&
-            ev.proposer === proposer,
-          ev.rewardPct.toString() === "0",
-          ev.reward.toString() === "0"
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposeTime.toString() &&
+          ev.proposer === proposer &&
+          ev.rewardPct.toString() === "0" &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === "0"
         );
       });
     });
@@ -842,11 +931,12 @@ contract("FundingRateStore", function(accounts) {
       truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("0.01").toString() &&
-            ev.proposalTime.toString() === proposeTime.toString() &&
-            ev.proposer === proposer,
-          ev.rewardPct.toString() === "0",
-          ev.reward.toString() === "0"
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposeTime.toString() &&
+          ev.proposer === proposer &&
+          ev.rewardPct.toString() === "0" &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === "0"
         );
       });
     });
@@ -855,11 +945,12 @@ contract("FundingRateStore", function(accounts) {
       truffleAssert.eventEmitted(txn, "PublishedRate", ev => {
         return (
           ev.perpetual === mockPerpetual.address &&
-            ev.rate.toString() === toWei("0.01").toString() &&
-            ev.proposalTime.toString() === proposeTime.toString() &&
-            ev.proposer === proposer,
-          ev.rewardPct.toString() === "0",
-          ev.reward.toString() === "0"
+          ev.rate.toString() === toWei("0.01").toString() &&
+          ev.proposalTime.toString() === proposeTime.toString() &&
+          ev.proposer === proposer &&
+          ev.rewardPct.toString() === "0" &&
+          ev.rewardPayment.toString() === "0" &&
+          ev.totalPayment.toString() === "0"
         );
       });
     });
