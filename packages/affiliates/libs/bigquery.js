@@ -25,7 +25,7 @@ module.exports = ({ client } = {}) => {
     // logs aka events by contract and time
     logsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
-      assert(start, "requires start");
+      assert(start >= 0, "requires start");
       start = moment(start).format("YYYY-MM-DD hh:mm:ss");
       end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       // require an array of values
@@ -44,7 +44,7 @@ module.exports = ({ client } = {}) => {
     // transactions by contract
     transactionsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
-      assert(start, "requires start");
+      assert(start >= 0, "requires start");
       start = moment(start).format("YYYY-MM-DD hh:mm:ss");
       end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       selection = lodash.castArray(selection);
@@ -61,7 +61,7 @@ module.exports = ({ client } = {}) => {
       `;
     },
     blocks(start, end, selection = ["*"]) {
-      assert(start, "requires start");
+      assert(start >= 0, "requires start");
       start = moment(start).format("YYYY-MM-DD hh:mm:ss");
       end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       selection = lodash.castArray(selection);

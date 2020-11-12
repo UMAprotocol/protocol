@@ -16,11 +16,11 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   assert(empAbi, "requires empAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
-  async function getBalanceHistory(address) {
+  async function getBalanceHistory(address, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
     // We need all logs from beginning of time. This could be optimized by deducing or supplying
     // the specific emp start time to narrow down the query.
-    const stream = await queries.streamAllLogsByContract(address);
+    const stream = await queries.streamLogsByContract(address, start, end);
     const decode = DecodeLog(empAbi);
     const balancesHistory = EmpBalancesHistory();
     await highland(stream)
@@ -219,7 +219,9 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       getBlocks(startTime, endTime),
       // these are block events, and they ignore start/end time as we need all events from start of each contract
       getEmpDeployerHistory(empCreatorAddress),
-      getAllBalanceHistories(empWhitelist)
+      // TODO: optimize this to get start time from the results of getEmpDeployerHistory. Will be different for
+      // each emp, so getAllBalanceHistories won't be able to be used.
+      getAllBalanceHistories(empWhitelist, 1, endTime)
     ]);
 
     return calculateRewards({
