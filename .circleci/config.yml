@@ -111,7 +111,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: yarn run test
+          command: export NODE_OPTIONS="--max-old-space-size=5120" && yarn run test
   coverage:
     docker:
       - image: circleci/node:12
