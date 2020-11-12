@@ -3,7 +3,17 @@ const fs = require("fs");
 const path = require("path");
 const { getWeb3 } = require("@uma/common");
 
+/**
+ * @notice Gets the directory for version of core specified by an input version string.
+ * @param {String} version Version string in the form of x.y.z.
+ */
 function getDirectoryForVersion(version) {
+  // Note: this establishes a convention where any previous core version that is pulled in here must be aliased in the
+  // package.json file as follows:
+  // "@uma/core-x-y-z": "npm:@uma/core@x.y.z"
+  // This forces yarn to pull the package @uma/core with version x.y.z into a local package name/folder with name
+  // @uma/core-x-y-z.
+  // To reiterate: any version passed in here must be listed in the package.json.
   const packageName = `@uma/core-${version.split(".").join("-")}`;
   return path.dirname(require.resolve(`${packageName}/package.json`));
 }
