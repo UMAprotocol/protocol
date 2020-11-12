@@ -188,6 +188,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // TODO: check the identifier whitelist to ensure the proposed perpetual's identifier is approved by the DVM.
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         require(_getProposalState(fundingRateRecord.proposal) != ProposalState.Pending, "Pending proposal exists");
+        require(!fundingRateRecord.rate.isEqual(rate), "Cannot propose same rate");
         uint256 currentTime = getCurrentTime();
 
         // Make sure that there is no disputed proposal for the same perpetual and proposal time. This prevents

@@ -902,6 +902,13 @@ contract("FundingRateStore", function(accounts) {
     });
 
     it("New proposal allowed", async function() {
+      // Cannot propose same rate as current rate.
+      assert(
+        await didContractThrow(
+          fundingRateStore.propose(mockPerpetual.address, { rawValue: toWei("0.01") }, { from: proposer })
+        )
+      );
+
       const txn = await fundingRateStore.propose(
         mockPerpetual.address,
         { rawValue: toWei("-0.01") },
