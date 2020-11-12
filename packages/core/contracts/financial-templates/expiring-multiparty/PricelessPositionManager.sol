@@ -15,7 +15,7 @@ import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
-import "../common/FinancialProductLibrary.sol";
+import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 
 /**
@@ -674,6 +674,22 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
+    /**
+     * @notice ccessor method to calculate a transformed price using the provided finanicalProductLibrary specified
+     * during contract deployment. If no library was provided then no modification to the price is done.
+     * @param price input price to be transformed.
+     * @return transformedPrice price with the transformation function applied to it.
+     */
+
+    function transformPrice(FixedPoint.Unsigned memory price) public view returns (FixedPoint.Unsigned memory) {
+        if (address(financialProductLibrary) == address(0)) return price;
+        try financialProductLibrary.transformPrice(price) returns (FixedPoint.Unsigned memory transformedPrice) {
+            return transformedPrice;
+        } catch {
+            return price;
+        }
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -774,16 +790,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return transformPrice(oraclePrice);
-    }
-
-    function transformPrice(int256 price) public view returns (FixedPoint.Unsigned memory) {
-        if (address(financialProductLibrary) == address(0)) return FixedPoint.Unsigned(uint256(price));
-        try financialProductLibrary.transformPrice(price) returns (int256 transformedPrice) {
-            return FixedPoint.Unsigned(uint256(transformedPrice));
-        } catch {
-            return FixedPoint.Unsigned(uint256(price));
-        }
+        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)));
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
