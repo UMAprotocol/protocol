@@ -367,7 +367,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *         INTERNAL FUNCTIONS           *
      ****************************************/
 
-    function _publishRateAndWithdrawRewards(address perpetual) internal nonReentrant() {
+    function _publishRateAndWithdrawRewards(address perpetual) internal {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
 
         // Check if proposal liveness has expired
