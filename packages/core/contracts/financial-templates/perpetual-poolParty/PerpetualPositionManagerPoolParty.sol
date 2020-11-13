@@ -615,10 +615,6 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             );
     }
 
-    function _getFinancialContractsAdminAddress() internal view returns (address) {
-        return feePayerData.finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
-    }
-
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
 
     // These internal functions are supposed to act identically to modifiers, but re-used modifiers
