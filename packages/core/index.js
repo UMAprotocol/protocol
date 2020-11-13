@@ -98,7 +98,7 @@ function getTruffleContractTest(contractName, web3, version = "latest") {
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
 function getAddressTest(contractName, networkId, version = "latest") {
-  const truffleContract = getTruffleContractTest(contractName, version);
+  const truffleContract = getTruffleContractTest(contractName, undefined, version);
 
   if (truffleContract.networks[networkId]) {
     return truffleContract.networks[networkId].address;
