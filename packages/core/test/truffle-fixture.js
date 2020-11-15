@@ -14,6 +14,8 @@ const deployTokenfactory = require("../migrations/14_deploy_tokenfactory.js");
 const deployExpiringMultiPartyCreator = require("../migrations/15_deploy_expiring_multi_party_creator.js");
 const deployLocalWeth = require("../migrations/16_deploy_local_weth.js");
 const deployPerpetualCreator = require("../migrations/17_deploy_perpetual_creator.js");
+const deployJarvisTokenFactory = require("../migrations/18_deploy_jarvis_token_factory");
+const deployPerpetualPoolPartyCreator = require("../migrations/19_deploy_pool_party_perpetual_creator");
 
 module.exports = async ({ network, web3 }) => {
   const accounts = await web3.eth.getAccounts();
@@ -34,4 +36,6 @@ module.exports = async ({ network, web3 }) => {
   await deployExpiringMultiPartyCreator(null, network.name, accounts);
   await deployLocalWeth(null, network.name, accounts);
   await deployPerpetualCreator(null, network.name, accounts);
+  await deployJarvisTokenFactory(null, network.name, accounts);
+  await deployPerpetualPoolPartyCreator(null, network.name, accounts);
 };
