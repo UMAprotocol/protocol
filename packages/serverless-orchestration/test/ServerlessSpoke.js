@@ -4,7 +4,7 @@ const { toWei, utf8ToHex } = web3.utils;
 const request = require("supertest");
 
 // Script to test
-const spoke = require("../ServerlessSpoke");
+const spoke = require("../src/ServerlessSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -14,16 +14,19 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const SyntheticToken = artifacts.require("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes } = require("@uma/financial-templates-lib");
+const { ZERO_ADDRESS } = require("@uma/common");
 
 contract("ServerlessSpoke.js", function(accounts) {
-  const contractCreator = accounts[0];
+  const contractDeployer = accounts[0];
 
   let collateralToken;
+  let syntheticToken;
   let emp;
   let uniswap;
   let defaultUniswapPricefeedConfig;
@@ -41,7 +44,10 @@ contract("ServerlessSpoke.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
+      from: contractDeployer
+    });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -66,8 +72,7 @@ contract("ServerlessSpoke.js", function(accounts) {
       finderAddress: (await Finder.deployed()).address,
       tokenFactoryAddress: (await TokenFactory.deployed()).address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
+      tokenAddress: syntheticToken.address,
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -75,7 +80,7 @@ contract("ServerlessSpoke.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: "0x0000000000000000000000000000000000000000"
+      excessTokenBeneficiary: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party
@@ -149,7 +154,6 @@ contract("ServerlessSpoke.js", function(accounts) {
     };
 
     const invalidPathResponse = await sendRequest(invalidPathBody);
-    console.log("invalidPathResponse", invalidPathResponse);
     assert.equal(invalidPathResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
     assert.isTrue(invalidPathResponse.res.text.includes("Command INVALID not found")); // Check the HTTP response.
