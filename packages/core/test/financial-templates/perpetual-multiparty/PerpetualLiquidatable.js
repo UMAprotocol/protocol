@@ -96,7 +96,7 @@ contract("PerpetualLiquidatable", function(accounts) {
     await timer.setCurrentTime(startTime);
 
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new("Wrapped Ether, "WETH", 18, { from: contractDeployer });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
       from: contractDeployer
     });
