@@ -81,6 +81,7 @@ describe("Contract Prices", function() {
   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
+    this.timeout(10000);
     seed = await Coingecko().getHistoricContractPrices(token, "usd", startingTimestamp, endingTimestamp);
     prices = Prices(seed);
     assert.ok(seed);

@@ -26,8 +26,8 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  { tokenName: "WETH", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -67,13 +67,7 @@ contract("CRMonitor.js", function(accounts) {
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: tokenSponsor }
-        );
-        collateralToken = await Token.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
           tokenConfig.collateralDecimals,
           { from: tokenSponsor }
         );
@@ -96,12 +90,7 @@ contract("CRMonitor.js", function(accounts) {
         const store = await Store.deployed();
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: tokenSponsor }
-        );
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: tokenSponsor });
 
         constructorParams = {
           isTest: true,
@@ -210,7 +199,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
         assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
         assert.equal(lastSpyLogLevel(spy), "warn");
@@ -262,7 +251,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
 
         // Advance time after withdrawal liveness. Check that CR detected is the same
         // post withdrawal execution
@@ -279,7 +268,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
       });
       it("Cannot set invalid config", async function() {
         let errorThrown1;

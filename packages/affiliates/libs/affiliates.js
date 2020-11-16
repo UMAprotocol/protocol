@@ -108,11 +108,14 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
 
     balanceHistories = new Map(balanceHistories);
     empDeployers = new Map(empDeployers);
+    let startBlock, endBlock;
 
     const rewardsPerBlock = toBN(toWei(totalRewards)).div(toBN(blocks.length));
     const payoutPerSnapshot = rewardsPerBlock.mul(toBN(snapshotSteps));
     const valuePerSnapshot = blocks.reduce((result, block, index) => {
       if (index % snapshotSteps !== 0) return result;
+      if (startBlock == null) startBlock = block;
+      endBlock = block;
       const { timestamp } = block;
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
@@ -144,32 +147,49 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     }, []);
 
     // Per snapshot calculate the associated amount that each deployer is entitled to.
-    let finalDeployerPayouts = valuePerSnapshot.reduce((result, valueByEmp) => {
-      const totalValueLocked = valueByEmp.reduce((result, [, value]) => {
-        return result.add(toBN(value));
-      }, toBN("0"));
-      valueByEmp.forEach(([emp, value]) => {
-        const deployer = empDeployers.get(emp);
-        const contribution =
-          totalValueLocked.toString() != "0"
-            ? toBN(value) // eslint-disable-line indent
-                .mul(toBN(toWei("1"))) // eslint-disable-line indent
-                .div(totalValueLocked) // eslint-disable-line indent
-            : toBN("0"); // eslint-disable-line indent
-        const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
-        if (result[deployer] == null) result[deployer] = toBN("0");
-        result[deployer] = result[deployer].add(rewards);
-      });
+    let finalPayouts = valuePerSnapshot.reduce(
+      ({ deployerPayouts, empPayouts }, valueByEmp) => {
+        const totalValueLocked = valueByEmp.reduce((result, [, value]) => {
+          return result.add(toBN(value));
+        }, toBN("0"));
+        valueByEmp.forEach(([emp, value]) => {
+          const deployer = empDeployers.get(emp);
+          const contribution =
+            totalValueLocked.toString() != "0"
+              ? toBN(value) // eslint-disable-line indent
+                  .mul(toBN(toWei("1"))) // eslint-disable-line indent
+                  .div(totalValueLocked) // eslint-disable-line indent
+              : toBN("0"); // eslint-disable-line indent
+          const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
 
-      return result;
-    }, {});
+          // calculate deployer rewards
+          if (deployerPayouts[deployer] == null) deployerPayouts[deployer] = toBN("0");
+          deployerPayouts[deployer] = deployerPayouts[deployer].add(rewards);
 
-    // Finally convert the final bignumber output to strings for export.
-    for (let contractDeployer of Object.keys(finalDeployerPayouts)) {
-      finalDeployerPayouts[contractDeployer] = fromWei(finalDeployerPayouts[contractDeployer]);
+          // calculate per emp rewards
+          if (empPayouts[emp] == null) empPayouts[emp] = toBN("0");
+          empPayouts[emp] = empPayouts[emp].add(rewards);
+        });
+
+        return { deployerPayouts, empPayouts };
+      },
+      { deployerPayouts: {}, empPayouts: {} }
+    );
+
+    // Finally convert the final bignumber output to strings for each deployer.
+    for (let address of Object.keys(finalPayouts.deployerPayouts)) {
+      finalPayouts.deployerPayouts[address] = fromWei(finalPayouts.deployerPayouts[address]);
+    }
+    // Finally convert the final bignumber output to strings for export for emp contracts.
+    for (let address of Object.keys(finalPayouts.empPayouts)) {
+      finalPayouts.empPayouts[address] = fromWei(finalPayouts.empPayouts[address]);
     }
 
-    return finalDeployerPayouts;
+    return {
+      startBlock,
+      endBlock,
+      ...finalPayouts
+    };
   }
 
   async function getRewards({

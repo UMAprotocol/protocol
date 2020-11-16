@@ -269,7 +269,7 @@ async function runExport() {
     expirationTimestamp: "1590969600", // one week contract
     collateralAddress: collateralToken.address,
     priceFeedIdentifier: web3.utils.utf8ToHex("ETHBTC"),
-    syntheticName: "Test UMA Token",
+    syntheticName: "Test Synthetic Token",
     syntheticSymbol: "ETHBTCSynth",
     collateralRequirement: { rawValue: web3.utils.toWei("1.5") },
     disputeBondPct: { rawValue: web3.utils.toWei("0.1") },

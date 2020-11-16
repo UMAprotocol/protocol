@@ -65,7 +65,7 @@ contract("ServerlessSpoke.js", function(accounts) {
       collateralAddress: collateralToken.address,
       finderAddress: (await Finder.deployed()).address,
       tokenFactoryAddress: (await TokenFactory.deployed()).address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       syntheticName: "ETH/BTC synthetic token",
       syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
