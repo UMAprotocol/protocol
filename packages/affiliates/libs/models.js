@@ -171,13 +171,14 @@ function History() {
   const history = [];
   // Used internally, but will insert a block into cache sorted by timestamp ascending
   function insert(data) {
-    assert(data.blockNumber, "requires blockNumber");
+    assert(data.blockNumber === 0 || data.blockNumber > 0, "requires blockNumber");
     const index = lodash.sortedIndexBy(history, data, "blockNumber");
     history.splice(index, 0, data);
     return data;
   }
   function lookup(blockNumber) {
     const index = lodash.sortedIndexBy(history, { blockNumber }, "blockNumber");
+    assert(history.length, "history is empty");
     if (history[index] && history[index].blockNumber === blockNumber) return history[index];
     const result = history[index - 1];
     assert(

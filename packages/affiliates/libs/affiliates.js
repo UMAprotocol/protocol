@@ -150,17 +150,17 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     empDeployers = new Map(empDeployers);
     let startBlock, endBlock;
 
-    const rewardsPerBlock = toBN(toWei(totalRewards)).div(toBN(blocks.length));
+    const rewardsPerBlock = toBN(toWei(totalRewards.toString())).div(toBN(blocks.length));
     const payoutPerSnapshot = rewardsPerBlock.mul(toBN(snapshotSteps));
     const valuePerSnapshot = blocks.reduce((result, block, index) => {
       if (index % snapshotSteps !== 0) return result;
       if (startBlock == null) startBlock = block;
       endBlock = block;
-      const { timestamp } = block;
+      const { timestamp, number } = block;
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
           const [syntheticTokenPrices, syntheticValueCalculation] = syntheticTokenPricesWithValueCalculation[empIndex];
-          const { tokens } = balanceHistories.get(empAddress).history.lookup(block.number);
+          const { tokens } = balanceHistories.get(empAddress).history.lookup(number);
           const [, closestCollateralPrice] = collateralTokenPrices[empIndex].closest(timestamp);
           const [, closestSyntheticPrice] = syntheticTokenPrices.closest(timestamp);
           const totalTokens = Object.values(tokens).reduce((result, value) => {
