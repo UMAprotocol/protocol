@@ -97,14 +97,14 @@ contract("Liquidatable", function(accounts) {
     await timer.setCurrentTime(startTime);
 
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
       from: contractDeployer
     });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    priceFeedIdentifier = web3.utils.utf8ToHex("ETHUSD");
+    priceFeedIdentifier = web3.utils.utf8ToHex("TEST_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
@@ -1337,7 +1337,7 @@ contract("Liquidatable", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+      syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
         from: contractDeployer
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
@@ -1748,7 +1748,7 @@ contract("Liquidatable", function(accounts) {
   describe("Precision loss is handled as expected", () => {
     beforeEach(async () => {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
-      syntheticToken = await SyntheticToken.new("Test UMA Token", "UMAETH", 18, {
+      syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
         from: contractDeployer
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;

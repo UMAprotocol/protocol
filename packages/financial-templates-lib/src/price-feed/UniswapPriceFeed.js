@@ -5,7 +5,7 @@ const { MAX_SAFE_JS_INT } = require("@uma/common");
 
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
-   * @notice Constructs new ExpiringMultiPartyClient.
+   * @notice Constructs new uniswap TWAP price feed object.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} uniswapAbi Uniswap Market Truffle ABI object to create a contract instance to query prices.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.

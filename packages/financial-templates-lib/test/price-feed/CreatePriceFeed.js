@@ -181,7 +181,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -214,8 +214,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
 
   it("Uniswap address not found", async function() {
-    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
-    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
@@ -223,7 +223,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -287,7 +287,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -321,7 +321,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -348,7 +348,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -461,8 +461,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
 
   it("Default reference price feed", async function() {
-    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
-    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
@@ -470,7 +470,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -496,8 +496,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
 
   it("Default reference price feed for invalid identifier", async function() {
-    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
-    const syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: accounts[0] });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),

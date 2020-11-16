@@ -1,6 +1,6 @@
 {
   "name": "@uma/affiliates",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
@@ -15,6 +15,11 @@
     "mocha": "^8.2.0",
     "tape": "^5.0.1"
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
+  },
+  "private": true,
   "scripts": {
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
