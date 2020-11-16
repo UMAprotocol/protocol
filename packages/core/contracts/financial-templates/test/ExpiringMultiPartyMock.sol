@@ -15,9 +15,9 @@ contract ExpiringMultiPartyMock {
     FinancialProductLibrary public financialProductLibrary;
     uint256 public expirationTimestamp;
 
-    constructor(address _financialProductLibraryAddressAddress, uint256 _expirationTimestamp) public {
+    constructor(address _financialProductLibraryAddress, uint256 _expirationTimestamp) public {
         expirationTimestamp = _expirationTimestamp;
-        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddressAddress);
+        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
 
     function transformPrice(FixedPoint.Unsigned memory price) public view returns (FixedPoint.Unsigned memory) {

@@ -175,7 +175,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary,
-        address _financialProductLibraryAddressAddress
+        address _financialProductLibraryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -188,7 +188,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         excessTokenBeneficiary = _excessTokenBeneficiary;
 
         // Initialize the financialProductLibrary at the provided address.
-        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddressAddress);
+        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
 
     /****************************************
