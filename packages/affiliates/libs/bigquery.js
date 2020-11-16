@@ -1,4 +1,3 @@
-const moment = require("moment");
 const assert = require("assert");
 const lodash = require("lodash");
 
@@ -26,8 +25,6 @@ module.exports = ({ client } = {}) => {
     logsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
       assert(start >= 0, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       // require an array of values
       selection = lodash.castArray(selection);
       return `
@@ -35,8 +32,8 @@ module.exports = ({ client } = {}) => {
         FROM
           bigquery-public-data.crypto_ethereum.logs
         WHERE
-          block_timestamp >= TIMESTAMP('${start}')
-          AND block_timestamp < TIMESTAMP('${end}')
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
           AND LOWER(address)=LOWER('${contract}')
         ORDER BY block_timestamp ASC;
       `;
@@ -45,8 +42,6 @@ module.exports = ({ client } = {}) => {
     transactionsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
       assert(start >= 0, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       selection = lodash.castArray(selection);
 
       return `
@@ -54,24 +49,22 @@ module.exports = ({ client } = {}) => {
         FROM
           bigquery-public-data.crypto_ethereum.transactions
         WHERE
-          block_timestamp >= TIMESTAMP('${start}')
-          AND block_timestamp < TIMESTAMP('${end}')
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
           AND LOWER(to_address)=LOWER('${contract}')
         ORDER BY block_timestamp ASC;
       `;
     },
     blocks(start, end, selection = ["*"]) {
       assert(start >= 0, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
       selection = lodash.castArray(selection);
       return `
         SELECT ${selection.join(", ")}
         FROM
           bigquery-public-data.crypto_ethereum.blocks
         WHERE
-          timestamp >= TIMESTAMP('${start}')
-          AND timestamp < TIMESTAMP('${end}')
+          timestamp >= TIMESTAMP_MILLIS(${start})
+          AND timestamp < TIMESTAMP_MILLIS(${end})
         ORDER BY timestamp ASC;
       `;
     }
