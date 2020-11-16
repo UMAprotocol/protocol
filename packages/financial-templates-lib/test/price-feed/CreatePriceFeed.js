@@ -24,6 +24,8 @@ const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFee
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
+const { ZERO_ADDRESS } = require("@uma/common");
+
 contract("CreatePriceFeed.js", function(accounts) {
   const { toChecksumAddress, randomHex } = web3.utils;
 
@@ -189,7 +191,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -231,7 +234,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -295,7 +299,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -329,7 +334,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -356,7 +362,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const emp = await ExpiringMultiParty.new(constructorParams);
@@ -478,7 +485,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     let emp = await ExpiringMultiParty.new(constructorParams);
@@ -513,7 +521,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();

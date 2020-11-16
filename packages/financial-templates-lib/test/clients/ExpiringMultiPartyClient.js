@@ -2,8 +2,7 @@ const { toWei } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
-const { interfaceName } = require("@uma/common");
-const { MAX_UINT_VAL } = require("@uma/common");
+const { interfaceName, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 
 const { ExpiringMultiPartyClient } = require("../../src/clients/ExpiringMultiPartyClient");
 
@@ -94,7 +93,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
           timerAddress: Timer.address,
-          excessTokenBeneficiary: store.address
+          excessTokenBeneficiary: store.address,
+          financialProductLibraryAddress: ZERO_ADDRESS
         };
 
         // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
