@@ -18,6 +18,7 @@ const Store = artifacts.require("Store");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
+const { ZERO_ADDRESS } = require("@uma/common");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -75,7 +76,8 @@ contract("index.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: Timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party

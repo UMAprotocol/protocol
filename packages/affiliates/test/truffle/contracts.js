@@ -1,4 +1,4 @@
-const { getWeb3, interfaceName } = require("@uma/common");
+const { getWeb3, interfaceName, ZERO_ADDRESS } = require("@uma/common");
 const { Emp, Erc20 } = require("../../libs/contracts");
 
 // Contracts and helpers
@@ -45,7 +45,8 @@ contract("contracts", function(accounts) {
         disputerDisputeRewardPct: { rawValue: toWei("0.1") },
         minSponsorTokens: { rawValue: toWei("5") },
         timerAddress: timer.address,
-        excessTokenBeneficiary: store.address
+        excessTokenBeneficiary: store.address,
+        financialProductLibraryAddress: ZERO_ADDRESS
       };
 
       web3 = getWeb3();
