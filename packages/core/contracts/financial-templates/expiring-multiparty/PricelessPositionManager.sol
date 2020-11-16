@@ -86,6 +86,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
 
+    // Instance of FinancialProductLibrary to provide custom price and collateral requirement transformations to extend
+    // the functionality of the EMP to support a wider range of financial products.
     FinancialProductLibrary public financialProductLibrary;
 
     /****************************************
