@@ -27,9 +27,11 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       .map(log => {
         return decode(log, {
           blockNumber: log.block_number,
-          blockTimestamp: moment(log.block_timestamp.value).valueOf()
+          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
+          ...log
         });
       })
+      .doto(console.log)
       .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
       .last()
       .toPromise(Promise);

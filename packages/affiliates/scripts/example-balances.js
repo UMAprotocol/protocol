@@ -4,13 +4,10 @@ const highland = require("highland");
 const { DecodeLog } = require("../libs/contracts");
 const { getAbi } = require("@uma/core");
 const { EmpBalancesHistory, EmpBalances } = require("../libs/processors");
+const { empContracts } = require("../test/datasets/set1");
 
 const abi = getAbi("ExpiringMultiParty");
-// sanity check various contracts
-// const empContract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-// const empContract = "0xaBBee9fC7a882499162323EEB7BF6614193312e3"
-// const empContract =   "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56"
-const empContract = "0x306B19502c833C1522Fbc36C9dd7531Eda35862B";
+const empContract = empContracts[2]; // pxUSD-OCT2020
 const client = new BigQuery();
 const queries = Queries({ client });
 
@@ -33,7 +30,7 @@ async function runTest() {
     .compact()
     .doto(log => {
       try {
-        balancesHistory.handleEvent(log.blockNumber);
+        balancesHistory.handleEvent(log.blockNumber, log);
         balances.handleEvent(log);
       } catch (err) {
         console.log(err, log);

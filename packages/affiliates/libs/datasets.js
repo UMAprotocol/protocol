@@ -279,7 +279,7 @@ function MockQueries(basePath) {
   function streamAllLogsByContract(address) {
     return streamLogsByContract(address);
   }
-  function streamBlocks(start, end) {
+  function streamBlocks(start = 0, end = Date.now()) {
     const path = Path.join(basePath, "blocks.csv");
     const readStream = fs.createReadStream(path);
     return Blocks()
@@ -289,7 +289,7 @@ function MockQueries(basePath) {
         return blockTime >= start && blockTime <= end;
       });
   }
-  function getBlocks(start, end) {
+  function getBlocks(start = 0, end = Date.now()) {
     return streamBlocks(start, end)
       .collect()
       .toPromise(Promise);

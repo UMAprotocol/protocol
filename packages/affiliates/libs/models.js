@@ -109,7 +109,8 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
   };
 }
 
-function Balances() {
+// Table of address balances. Option to allow negative balances.
+function Balances({ allowNegative = false } = {}) {
   const balances = new Map();
   function create(addr) {
     assert(!balances.has(addr), "Already has addr");
@@ -127,7 +128,9 @@ function Balances() {
     return create(addr);
   }
   function set(addr, balance) {
-    assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
+    if (!allowNegative) {
+      assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
+    }
     balances.set(addr, balance);
     return balance;
   }
