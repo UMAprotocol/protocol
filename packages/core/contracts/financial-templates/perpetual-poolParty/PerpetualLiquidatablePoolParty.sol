@@ -28,7 +28,6 @@ contract PerpetualLiquidatablePoolParty is PerpetualPositionManagerPoolParty {
     using FeePayerPoolPartyLib for FixedPoint.Unsigned;
     using PerpetualLiquidatablePoolPartyLib for PerpetualPositionManagerPoolParty.PositionData;
     using PerpetualLiquidatablePoolPartyLib for LiquidationData;
-    //using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionManagerData;
 
     /****************************************
      *     LIQUIDATION DATA STRUCTURES      *

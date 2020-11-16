@@ -588,6 +588,36 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             );
     }
 
+    /**
+     * @notice Accessor method for the list of member with admin role
+     * @return array of address with admin role
+     */
+
+    function getAdminMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(DEFAULT_ADMIN_ROLE);
+        address[] memory members = new address[](numberOfMembers);
+        for (uint256 j = 0; j < numberOfMembers; j++) {
+            address newMember = getRoleMember(DEFAULT_ADMIN_ROLE, j);
+            members[j] = newMember;
+        }
+        return members;
+    }
+
+    /**
+     * @notice Accessor method for the list of member with tokenSponsor role
+     * @return array of address with tokenSponsor role
+     */
+
+    function getTokenSponsorMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(TOKEN_SPONSOR_ROLE);
+        address[] memory members = new address[](numberOfMembers);
+        for (uint256 j = 0; j < numberOfMembers; j++) {
+            address newMember = getRoleMember(TOKEN_SPONSOR_ROLE, j);
+            members[j] = newMember;
+        }
+        return members;
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/

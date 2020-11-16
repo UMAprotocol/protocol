@@ -107,4 +107,49 @@ contract JarvisSyntheticToken is JarvisExpandedERC20, Lockable {
     function isBurner(address account) public view nonReentrantView() returns (bool) {
         return hasRole(BURNER_ROLE, account);
     }
+
+    /**
+     * @notice Accessor method for the list of member with admin role
+     * @return array of address with admin role
+     */
+
+    function getAdminMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(DEFAULT_ADMIN_ROLE);
+        address[] memory members = new address[](numberOfMembers);
+        for (uint256 j = 0; j < numberOfMembers; j++) {
+            address newMember = getRoleMember(DEFAULT_ADMIN_ROLE, j);
+            members[j] = newMember;
+        }
+        return members;
+    }
+
+    /**
+     * @notice Accessor method for the list of member with minter role
+     * @return array of address with minter role
+     */
+
+    function getMinterMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(MINTER_ROLE);
+        address[] memory members = new address[](numberOfMembers);
+        for (uint256 j = 0; j < numberOfMembers; j++) {
+            address newMember = getRoleMember(MINTER_ROLE, j);
+            members[j] = newMember;
+        }
+        return members;
+    }
+
+    /**
+     * @notice Accessor method for the list of member with burner role
+     * @return array of address with burner role
+     */
+
+    function getBurnerMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(BURNER_ROLE);
+        address[] memory members = new address[](numberOfMembers);
+        for (uint256 j = 0; j < numberOfMembers; j++) {
+            address newMember = getRoleMember(BURNER_ROLE, j);
+            members[j] = newMember;
+        }
+        return members;
+    }
 }
