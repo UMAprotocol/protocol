@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 
+// Implements a simple FinancialProductLibrary to test price and collateral requirement transoformations.
 contract FinancialProductLibraryTest is FinancialProductLibrary {
     FixedPoint.Unsigned public scalar;
 
