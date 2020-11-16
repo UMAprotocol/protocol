@@ -693,14 +693,23 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         await client.update();
 
         // Compare with expected processed event object
+        // On successful disputes:
+        // - liquidator gets (TRV - dispute rewards). TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
+        // - disputer gets (disputer dispute reward + final fee bond + dispute bond):
+        //    - disputer reward = 10% of TRV = 0.5, final fee = 0, dispute bond % = 10% of liquidated collateral = 1
+        // - sponsor gets (liquidated collateral - liquidated TRV + sponsor reward):
+        //     - sponsor reward = 10% of TRV = 0.5, excess collateral = 10 - 5 = 5
         assert.deepStrictEqual(
           [
             {
               transactionHash: txObject.tx,
               blockNumber: txObject.receipt.blockNumber,
               caller: liquidator,
-              withdrawalAmount: convert("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
-              liquidationStatus: "3" // Settlement price makes dispute successful
+              paidToLiquidator: convert("4"), // 5 - 0.5 - 0.5
+              paidToDisputer: convert("1.5"), // 1 + 0.5
+              paidToSponsor: convert("5.5"), //  5 + 0.5
+              liquidationStatus: "3", // Settlement price makes dispute successful
+              settlementPrice: disputePrice
             }
           ],
           client.getAllLiquidationWithdrawnEvents()
