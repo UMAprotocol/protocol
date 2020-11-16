@@ -22,6 +22,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     }
 
     // Create a simple price transformation that doubles the input number.
+    // TODO: add intergration to liquidatable for this method.
     function transformCollateralRequirement(FixedPoint.Unsigned memory collateralRequirement)
         public
         override
