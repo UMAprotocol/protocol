@@ -134,7 +134,8 @@ contract("Liquidatable", function(accounts) {
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
-      excessTokenBeneficiary: beneficiary
+      excessTokenBeneficiary: beneficiary,
+      financialProductLibraryAddress: zeroAddress
     };
 
     // Deploy liquidation contract and set global params

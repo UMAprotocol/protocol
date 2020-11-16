@@ -53,7 +53,8 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
