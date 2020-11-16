@@ -181,7 +181,8 @@ contract("index.js", function(accounts) {
       utf8ToHex("UNKNOWN"),
       constructorParams.minSponsorTokens,
       constructorParams.timerAddress,
-      contractCreator
+      contractCreator,
+      ZERO_ADDRESS
     );
 
     // We will also create a new spy logger, listening for debug events to validate the re-tries.
