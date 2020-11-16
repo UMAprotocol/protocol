@@ -109,22 +109,28 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
   };
 }
 
-function Balances() {
+// Table of address balances. Option to allow negative balances.
+function Balances({ allowNegative = false } = {}) {
   const balances = new Map();
   function create(addr) {
     assert(!balances.has(addr), "Already has addr");
     return set(addr, "0");
+  }
+  function has(addr) {
+    return balances.has(addr);
   }
   function get(addr) {
     assert(balances.has(addr), "addr does not exist");
     return balances.get(addr);
   }
   function getOrCreate(addr) {
-    if (balances.has(addr)) return get(addr);
+    if (has(addr)) return get(addr);
     return create(addr);
   }
   function set(addr, balance) {
-    assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
+    if (!allowNegative) {
+      assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
+    }
     balances.set(addr, balance);
     return balance;
   }
@@ -150,6 +156,7 @@ function Balances() {
   return {
     get,
     set,
+    has,
     create,
     getOrCreate,
     sub,

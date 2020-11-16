@@ -147,9 +147,23 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     ContractExpired(caller) {
       // nothing
     },
+    // looking at the emp code, i think anyone can call this even if they never had a position
+    // this means balances may not exist or may go below 0. we should just catch those errors and ignore
     SettleExpiredPosition(caller, collateralReturned, tokensBurned) {
-      collateral.sub(caller, collateralReturned.toString());
-      tokens.sub(caller, tokensBurned.toString());
+      if (collateral.has(caller)) {
+        try {
+          collateral.sub(caller, collateralReturned.toString());
+        } catch (err) {
+          // ignore balance below 0 error
+        }
+      }
+      if (tokens.has(caller)) {
+        try {
+          tokens.sub(caller, tokensBurned.toString());
+        } catch (err) {
+          // ignore balance below 0 error
+        }
+      }
     },
     LiquidationCreated(
       sponsor,
@@ -169,13 +183,20 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     LiquidationDisputed(caller, originalExpirationTimestamp, shutdownTimestamp) {
       // nothing
     },
+    FinalFeesPaid() {
+      // nothing
+    },
     // override defaults
     ...handlers
   };
 
   function handleEvent({ name, args = [] }) {
     assert(handlers[name], "No handler for event: " + name);
-    return handlers[name](...args);
+    try {
+      return handlers[name](...args);
+    } catch (err) {
+      throw new Error("Error in handler " + name + ": " + err.message);
+    }
   }
 
   function getCollateral() {

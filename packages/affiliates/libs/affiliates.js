@@ -18,6 +18,8 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   assert(synthPrices, "requires synthPrices api");
   async function getBalanceHistory(address, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
+    // We need all logs from beginning of time. This could be optimized by deducing or supplying
+    // the specific emp start time to narrow down the query.
     const stream = await queries.streamLogsByContract(address, start, end);
     const decode = DecodeLog(empAbi);
     const balancesHistory = EmpBalancesHistory();
@@ -25,9 +27,11 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       .map(log => {
         return decode(log, {
           blockNumber: log.block_number,
-          blockTimestamp: moment(log.block_timestamp.value).valueOf()
+          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
+          ...log
         });
       })
+      .doto(console.log)
       .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
       .last()
       .toPromise(Promise);
@@ -66,14 +70,19 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   }
 
   // returns array of tuples [emp address, deployer address]
-  async function getEmpDeployerHistory(address, start, end) {
-    // this query is relatively small
-    const logs = await queries.getLogsByContract(address, start, end);
+  async function getEmpDeployerHistory(address) {
+    // this query is relatively small but expensive, gets all logs from begginning of time
+    const logs = await queries.getAllLogsByContract(address);
     const decode = DecodeLog(empCreatorAbi);
-    return logs.map(decode).reduce((result, log) => {
-      result.push([log.args.expiringMultiPartyAddress, log.args.deployerAddress]);
-      return result;
-    }, []);
+    return logs
+      .map(log => decode(log, log))
+      .reduce((result, log) => {
+        result.push([
+          log.args.expiringMultiPartyAddress,
+          { deployer: log.args.deployerAddress, timestamp: log.block_timestamp, number: log.block_number }
+        ]);
+        return result;
+      }, []);
   }
 
   // Calculates the value of x `tokens` in USD based on `collateralPrice` in USD, `syntheticPrice` in collateral considering
@@ -153,7 +162,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           return result.add(toBN(value));
         }, toBN("0"));
         valueByEmp.forEach(([emp, value]) => {
-          const deployer = empDeployers.get(emp);
+          const { deployer } = empDeployers.get(emp);
           const contribution =
             totalValueLocked.toString() != "0"
               ? toBN(value) // eslint-disable-line indent
@@ -170,7 +179,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           if (empPayouts[emp] == null) empPayouts[emp] = toBN("0");
           empPayouts[emp] = empPayouts[emp].add(rewards);
         });
-
         return { deployerPayouts, empPayouts };
       },
       { deployerPayouts: {}, empPayouts: {} }
@@ -203,17 +211,21 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     syntheticTokenDecimals = [],
     snapshotSteps = 1
   }) {
-    const collateralTokenPrices = await Promise.map(
-      collateralTokens,
-      async address => await getCollateralPriceHistory(address, "usd", startTime, endTime)
-    );
-    const syntheticTokenPrices = await Promise.map(
-      empWhitelist,
-      async address => await getSyntheticPriceHistory(address, startTime, endTime)
-    );
-    const blocks = await getBlocks(startTime, endTime);
-    const balanceHistories = await getAllBalanceHistories(empWhitelist, startTime, endTime);
-    const empDeployers = await getEmpDeployerHistory(empCreatorAddress, startTime, endTime);
+    // query all required data ahead of calcuation
+    const [collateralTokenPrices, syntheticTokenPrices, blocks, empDeployers, balanceHistories] = await Promise.all([
+      Promise.map(
+        collateralTokens,
+        async address => await getCollateralPriceHistory(address, "usd", startTime, endTime)
+      ),
+      Promise.map(empWhitelist, async address => await getSyntheticPriceHistory(address, startTime, endTime)),
+      getBlocks(startTime, endTime),
+      // these are block events, and they ignore start/end time as we need all events from start of each contract
+      getEmpDeployerHistory(empCreatorAddress),
+      // TODO: optimize this to get start time from the results of getEmpDeployerHistory. Will be different for
+      // each emp, so getAllBalanceHistories won't be able to be used.
+      getAllBalanceHistories(empWhitelist, 1, endTime)
+    ]);
+
     return calculateRewards({
       startTime,
       endTime,
