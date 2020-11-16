@@ -17,8 +17,8 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  { tokenName: "UMA", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -53,16 +53,11 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
-          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
           tokenConfig.collateralDecimals,
           { from: sponsor1 }
         );
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: sponsor1 }
-        );
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: sponsor1 });
         await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
         await collateralToken.mint(sponsor1, convert("100000"), { from: sponsor1 });
         await collateralToken.mint(sponsor2, convert("100000"), { from: sponsor1 });
