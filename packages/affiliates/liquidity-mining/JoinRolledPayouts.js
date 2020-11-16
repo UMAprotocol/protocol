@@ -4,13 +4,13 @@
 // script adds additional meta data to the output file such as the roll num & array of pool addresses used in the roll.
 
 // This script can be run as follows to join the outputs from week5 LM and the rollNum 1 outputs for yusdeth
-// node ./packages/core/scripts/liquidity-mining/JoinRolledPayouts.js --week 5 --rollNum 1 --tokenName yusdeth
+// node ./liquidity-mining/JoinRolledPayouts.js --week 5 --rollNum 1 --tokenName yusdeth --network mainnet_mnemonic
 
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
 
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {

@@ -1,11 +1,10 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
-const poolAbi = require("../../build/contracts/ERC20.json");
+const { getAbi } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 const { _fetchBalancerPoolInfo, _calculatePayoutsBetweenBlocks } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
-
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
 
 const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
@@ -91,8 +90,8 @@ async function calculateSplitPoolBalancerLPProviders(
   const shareHolders2 = poolInfo2.shares.flatMap(a => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers pool2:", shareHolders2.length);
 
-  let bPool1 = new web3.eth.Contract(poolAbi.abi, pool1Address);
-  let bPool2 = new web3.eth.Contract(poolAbi.abi, pool2Address);
+  let bPool1 = new web3.eth.Contract(getAbi("ERC20"), pool1Address);
+  let bPool2 = new web3.eth.Contract(getAbi("ERC20"), pool2Address);
 
   console.log("🧮 Calculating shareholder payout for first period");
   const shareHolderPayout1 = await _calculatePayoutsBetweenBlocks(
