@@ -4,7 +4,7 @@
 // 1) Truffle test:
 //     - yarn truffle test ./packages/core/scripts/gas-rebate/test.js
 
-const Main = require("./index");
+const Main = require("../../../gas-rebate/VoterGasRebate");
 
 const { fromWei, toBN, toWei } = web3.utils;
 
