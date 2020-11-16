@@ -216,6 +216,7 @@ contract("PricelessPositionManager", function(accounts) {
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
           timer.address, // _timerAddress (unchanged)
           beneficiary, // _excessTokenBeneficiary (unchanged)
+          ZERO_ADDRESS, // _financialProductLibraryAddress (unchanged)
           { from: contractDeployer }
         )
       )
@@ -242,6 +243,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
+      ZERO_ADDRESS, // _financialProductLibraryAddress
       { from: contractDeployer }
     );
     await tokenCurrency.addMinter(pricelessPositionManager.address);
@@ -1927,6 +1929,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
+      ZERO_ADDRESS, // _financialProductLibraryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
