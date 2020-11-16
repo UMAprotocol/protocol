@@ -433,7 +433,7 @@ contract("Liquidator.js", function(accounts) {
         // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
         assert.equal(
           spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
-          PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.UNINITIALIZED]
+          PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_FAILED]
         );
         assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convert("1.3"));
 
@@ -496,7 +496,7 @@ contract("Liquidator.js", function(accounts) {
         );
         assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convert("1"));
 
-        // After the dispute is resolved, the liquidation should still exist but the liquidator should no longer be able to withdraw any rewards.
+        // After the dispute is resolved, the liquidator should no longer be able to withdraw any rewards.
         await liquidator.update();
         await liquidator.withdrawRewards();
         assert.equal(spy.callCount, 2);

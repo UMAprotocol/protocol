@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL, ZERO_ADDRESS, LiquidationStatesEnum, interfaceName } = require("@uma/common");
+const { MAX_UINT_VAL, interfaceName } = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -249,7 +249,7 @@ contract("index.js", function(accounts) {
       priceFeedConfig: defaultPriceFeedConfig
     });
 
-    // EMP client should still detect an undercollateralized position and one disputed liquidation with some unwithdrawn rewards.
+    // EMP client should still detect one undercollateralized position but the disputed liquidation should be deleted.
     await empClient.update();
     assert.deepStrictEqual(
       [
@@ -264,29 +264,16 @@ contract("index.js", function(accounts) {
       ],
       empClient.getUnderCollateralizedPositions(toWei("1"))
     );
-    assert.deepStrictEqual(
-      [
-        {
-          sponsor: sponsorOvercollateralized,
-          id: "0",
-          state: LiquidationStatesEnum.DISPUTE_SUCCEEDED,
-          numTokens: toWei("100"),
-          liquidatedCollateral: toWei("130"),
-          lockedCollateral: toWei("130"),
-          liquidationTime: liquidationTime.toString(),
-          liquidator: ZERO_ADDRESS,
-          disputer
-        }
-      ],
-      empClient.getDisputedLiquidations()
-    );
+    assert.deepStrictEqual([], empClient.getDisputedLiquidations());
 
     // 3 logs should be shown. First two are about the contract expiry, third one is for the withdrawn dispute rewards.
     assert.equal(spy.getCalls().length, 3);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
     assert.isTrue(spyLogIncludes(spy, 1, "expired"));
     assert.isTrue(spyLogIncludes(spy, 2, "Liquidation withdrawn"));
-    assert.equal(spy.getCall(-1).lastArg.amount, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
+    assert.equal(spy.getCall(-1).lastArg.paidToLiquidator, toWei("80")); // Liquidator gets 100 - 10 - 10 = 80
+    assert.equal(spy.getCall(-1).lastArg.paidToDisputer, toWei("23")); // Disputer gets 10 + 13
+    assert.equal(spy.getCall(-1).lastArg.paidToSponsor, toWei("40")); // Sponsor gets 130 - 100 + 10 = 40
   });
 
   it("Allowances are set", async function() {

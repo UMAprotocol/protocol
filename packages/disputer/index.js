@@ -19,7 +19,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -49,11 +49,10 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // Setup web3 accounts and network
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    // Setup web3 accounts.
+    const [accounts] = await Promise.all([web3.eth.getAccounts()]);
 
-    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
+    // Setup contract instances.
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
@@ -110,7 +109,6 @@ async function run({
     const disputer = new Disputer({
       logger,
       expiringMultiPartyClient: empClient,
-      votingContract: voting,
       gasEstimator,
       priceFeed,
       account: accounts[0],

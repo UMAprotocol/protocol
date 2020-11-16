@@ -14,7 +14,6 @@ class Liquidator {
    * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
-   * @param {Object} votingContract DVM to query price requests.
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -29,7 +28,6 @@ class Liquidator {
     logger,
     expiringMultiPartyClient,
     gasEstimator,
-    votingContract,
     syntheticToken,
     priceFeed,
     account,
@@ -48,7 +46,6 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
-    this.votingContract = votingContract;
     this.syntheticToken = syntheticToken;
 
     // Instance of the price feed to get the realtime token price.
@@ -445,14 +442,11 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToLiquidator: withdrawAmount.paidToLiquidator.rawValue.toString(),
+        paidToDisputer: withdrawAmount.paidToDisputer.rawValue.toString(),
+        paidToSponsor: withdrawAmount.paidToSponsor.rawValue.toString(),
         txnConfig
       });
-
-      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
-      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
-      // is callable.
-      let requestTimestamp = liquidation.liquidationTime;
 
       // Send the transaction or report failure.
       let receipt;
@@ -483,41 +477,26 @@ class Liquidator {
         continue;
       }
 
-      // Get resolved price request for dispute. This will fail if there is no price for the liquidation timestamp, which is possible if the
-      // liquidation expired without dispute.
-      let resolvedPrice;
-      if (requestTimestamp) {
-        try {
-          resolvedPrice = revertWrapper(
-            await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
-              from: this.empContract.options.address
-            })
-          );
-        } catch (error) {
-          // Ignore any errors as this indicates that there is nothing to do yet.
-        }
-      }
-
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        paidToLiquidator: receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator,
+        paidToDisputer: receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer,
+        paidToSponsor: receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor,
         liquidationStatus:
           PostWithdrawLiquidationRewardsStatusTranslations[
             receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ]
+          ],
+        resolvedPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice.toString()
       };
-
-      // If there is no price available for the withdrawable liquidation, likely that liquidation expired without dispute.
-      if (resolvedPrice) {
-        logResult.resolvedPrice = resolvedPrice.toString();
-      }
 
       this.logger.info({
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToLiquidator: withdrawAmount.paidToLiquidator.rawValue.toString(),
+        paidToDisputer: withdrawAmount.paidToDisputer.rawValue.toString(),
+        paidToSponsor: withdrawAmount.paidToSponsor.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });
