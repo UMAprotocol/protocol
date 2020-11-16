@@ -675,7 +675,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice ccessor method to calculate a transformed price using the provided finanicalProductLibrary specified
+     * @notice Accessor method to calculate a transformed price using the provided finanicalProductLibrary specified
      * during contract deployment. If no library was provided then no modification to the price is done.
      * @param price input price to be transformed.
      * @return transformedPrice price with the transformation function applied to it.

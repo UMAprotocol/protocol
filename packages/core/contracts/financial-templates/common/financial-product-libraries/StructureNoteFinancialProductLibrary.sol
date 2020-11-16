@@ -3,32 +3,60 @@ pragma experimental ABIEncoderV2;
 
 import "../../../common/implementation/Testable.sol";
 
-
-// TODO: refactor this to use an interface file of the ExpiringMultiParty.
-interface ExpiringMultiParty {
-    function expirationTimestamp() external view returns (uint256);
-}
-
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-contract StructuredNoteFinancialProductLibrary is Testable, FinancialProductLibrary, Ownable {
+interface ExpiringMultiParty {
+    function expirationTimestamp() external view returns (uint256);
+}
+
+
+/**
+ * @title Structured Note Financial Product Library
+ * @notice Adds custom price transformation logic to modify the behavour of the expiring multi party contract.  The
+ * contract holds say 1 WETH in collateral and pays out that 1 WETH if, at expiry, ETHUSD is below a set strike. If
+ * ETHUSD is above that strike, the contract pays out a given dollar amount of ETH.
+ * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH
+ * If ETHUSD < $400 at expiry, token is redeemed for 1 ETH.
+ * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determine by the DVM.
+ */
+contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testable, Ownable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
-    function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strike) public onlyOwner {
-        require(strike.isGreaterThan(0), "Cant set 0 strike");
+    /**
+     * @notice Enables the deployer of the library to set the strike price for an associated financial product.
+     * @param financialProduct address of the financial product.
+     * @param strikePrice the strike price for the structured note to be applied to the financial product.
+     * @dev Note: a) A strike price can not be 0. b) A strike price can only be set once to prevent the deployer from
+     * changing the strike after the fact. c)  financialProduct must exposes an expirationTimestamp method.
+     */
+    function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
+        public
+        onlyOwner
+    {
+        require(strikePrice.isGreaterThan(0), "Cant set 0 strike");
         require(financialProductStrikes[financialProduct].isEqual(0), "Strike already set");
-        financialProductStrikes[financialProduct] = strike;
+        require(ExpiringMultiParty(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
+        financialProductStrikes[financialProduct] = strikePrice;
     }
 
+    /**
+     * @notice Returns the strike price associated with a given financial product address.
+     * @param financialProduct address of the financial product.
+     * @return strikePrice for the associated financial product.
+     */
     function getStrikeForFinancialProduct(address financialProduct) public view returns (FixedPoint.Unsigned memory) {
         return financialProductStrikes[financialProduct];
     }
 
-    // Create a simple price transformation function that scales the input price by the scalar for testing.
+    /**
+     * @notice Returns a transformed price by applying the structured note payout structure.
+     * @param oraclePrice price from the oracle to be transformed.
+     * @return transformedPrice the input oracle price with the price transformation logic applied to it.
+     */
     function transformPrice(FixedPoint.Unsigned memory oraclePrice)
         public
         override
@@ -37,8 +65,8 @@ contract StructuredNoteFinancialProductLibrary is Testable, FinancialProductLibr
     {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
         require(strike.isGreaterThan(0), "Caller has no strike");
-        // If price request is made before expiry, return 1. This means that we can keep the contract 100% collateralized
-        // with 1 WETH pre-expiry, and that disputes pre-expiry are illogical (token is always backed by 1 WETH pre-expiry)
+        // If price request is made before expiry, return 1. Thus we can keep the contract 100% collateralized with 1
+        // WETH pre-expiry, and that disputes pre-expiry are illogical (token is always backed by 1 WETH pre-expiry).
         if (getCurrentTime() < ExpiringMultiParty(msg.sender).expirationTimestamp()) {
             return FixedPoint.fromUnscaledUint(1);
         }
