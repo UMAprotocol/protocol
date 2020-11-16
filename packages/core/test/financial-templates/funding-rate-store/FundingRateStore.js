@@ -91,7 +91,11 @@ contract("FundingRateStore", function(accounts) {
     it("Only perpetual can change reward rate", async function() {
       assert(
         await didContractThrow(
-          fundingRateStore.setRewardRate(mockPerpetual, { rawValue: toWei("0.0001") }, { from: contractDeployer })
+          fundingRateStore.setRewardRate(
+            mockPerpetual.address,
+            { rawValue: toWei("0.0001") },
+            { from: contractDeployer }
+          )
         )
       );
     });
