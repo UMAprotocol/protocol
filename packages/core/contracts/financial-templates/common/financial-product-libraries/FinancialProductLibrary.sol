@@ -3,9 +3,19 @@ pragma experimental ABIEncoderV2;
 import "../../../common/implementation/FixedPoint.sol";
 
 
+/**
+ * @title Financial product library contract
+ * @notice Provides price and collateral requirement transformation interfaces that can be overridden by custom
+ * Financial product library implementations.
+ */
 abstract contract FinancialProductLibrary {
     using FixedPoint for FixedPoint.Unsigned;
 
+    /**
+     * @notice Transforms a given oracle price using the financial product libraries transformation logic.
+     * @param oraclePrice input price to be transformed.
+     * @return transformedPrice input oraclePrice with the transformation function applied.
+     */
     function transformPrice(FixedPoint.Unsigned memory oraclePrice)
         public
         virtual
@@ -15,7 +25,12 @@ abstract contract FinancialProductLibrary {
         return oraclePrice;
     }
 
-    // TODO: intergrate this function into liquidatable.
+    /**
+     * @notice Transforms a given collateral requirement using the financial product libraries transformation logic.
+     * @param collateralRequirement input collateral requirement to be transformed.
+     * @return transformedCollateralRequirement input collateral requirement with the transformation function applied.
+     */
+    // TODO: integrate this function into liquidatable.
     function transformCollateralRequirement(FixedPoint.Unsigned memory collateralRequirement)
         public
         virtual
