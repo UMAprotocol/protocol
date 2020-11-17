@@ -7,7 +7,6 @@ import "./PerpetualPositionManagerPoolPartyLib.sol";
 import "./PerpetualLiquidatablePoolParty.sol";
 import "../common/FeePayerPoolPartyLib.sol";
 
-
 library PerpetualLiquidatablePoolPartyLib {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -32,6 +31,7 @@ library PerpetualLiquidatablePoolPartyLib {
     struct CreateLiquidationCollateral {
         FixedPoint.Unsigned startCollateral;
         FixedPoint.Unsigned startCollateralNetOfWithdrawal;
+        FixedPoint.Unsigned tokensLiquidated;
         FixedPoint.Unsigned finalFeeBond;
         address sponsor;
     }
@@ -108,7 +108,6 @@ library PerpetualLiquidatablePoolPartyLib {
             params,
             feePayerData
         );
-
         // Scoping to get rid of a stack too deep error.
         {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
@@ -129,18 +128,15 @@ library PerpetualLiquidatablePoolPartyLib {
             // Compute final fee at time of liquidation.
             returnValues.finalFeeBond = params.finalFee;
 
-            // These will be populated within the scope below.
-            FixedPoint.Unsigned memory lockedCollateral;
-            FixedPoint.Unsigned memory liquidatedCollateral;
-
             CreateLiquidationCollateral memory liquidationCollateral = CreateLiquidationCollateral(
                 startCollateral,
                 startCollateralNetOfWithdrawal,
+                returnValues.tokensLiquidated,
                 returnValues.finalFeeBond,
                 params.sponsor
             );
 
-            (lockedCollateral, liquidatedCollateral, returnValues.tokensLiquidated) = liquidateCollateral(
+            (returnValues.lockedCollateral, returnValues.liquidatedCollateral) = liquidateCollateral(
                 positionToLiquidate,
                 globalPositionData,
                 positionManagerData,
@@ -160,8 +156,8 @@ library PerpetualLiquidatablePoolPartyLib {
                     state: PerpetualLiquidatablePoolParty.Status.PreDispute,
                     liquidationTime: params.actualTime,
                     tokensOutstanding: returnValues.tokensLiquidated,
-                    lockedCollateral: lockedCollateral,
-                    liquidatedCollateral: liquidatedCollateral,
+                    lockedCollateral: returnValues.lockedCollateral,
+                    liquidatedCollateral: returnValues.liquidatedCollateral,
                     rawUnitCollateral: FixedPoint.fromUnscaledUint(1).convertToRawCollateral(
                         feePayerData.cumulativeFeeMultiplier
                     ),
@@ -191,7 +187,6 @@ library PerpetualLiquidatablePoolPartyLib {
                 );
             }
         }
-
         emit LiquidationCreated(
             params.sponsor,
             msg.sender,
@@ -412,17 +407,12 @@ library PerpetualLiquidatablePoolPartyLib {
         PerpetualLiquidatablePoolParty.LiquidatableData storage liquidatableData,
         FeePayerPoolParty.FeePayerData storage feePayerData,
         CreateLiquidationCollateral memory liquidationCollateralParams
-    )
-        internal
-        returns (
-            FixedPoint.Unsigned memory lockedCollateral,
-            FixedPoint.Unsigned memory liquidatedCollateral,
-            FixedPoint.Unsigned memory tokensLiquidated
-        )
-    {
+    ) internal returns (FixedPoint.Unsigned memory lockedCollateral, FixedPoint.Unsigned memory liquidatedCollateral) {
         // Scoping to get rid of a stack too deep error.
         {
-            FixedPoint.Unsigned memory ratio = tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
+            FixedPoint.Unsigned memory ratio = liquidationCollateralParams.tokensLiquidated.div(
+                positionToLiquidate.tokensOutstanding
+            );
 
             // The actual amount of collateral that gets moved to the liquidation.
             lockedCollateral = liquidationCollateralParams.startCollateral.mul(ratio);
@@ -440,7 +430,7 @@ library PerpetualLiquidatablePoolPartyLib {
             positionToLiquidate.reduceSponsorPosition(
                 globalPositionData,
                 positionManagerData,
-                tokensLiquidated,
+                liquidationCollateralParams.tokensLiquidated,
                 lockedCollateral,
                 withdrawalAmountToRemove,
                 feePayerData,

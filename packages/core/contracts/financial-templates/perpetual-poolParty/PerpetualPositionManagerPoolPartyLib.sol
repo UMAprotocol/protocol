@@ -13,7 +13,6 @@ import "../../oracle/implementation/Constants.sol";
 import "./PerpetualPositionManagerPoolParty.sol";
 import "../common/FeePayerPoolPartyLib.sol";
 
-
 library PerpetualPositionManagerPoolPartyLib {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
@@ -399,7 +398,7 @@ library PerpetualPositionManagerPoolPartyLib {
         }
 
         // Decrement the sponsor's collateral and global collateral amounts.
-        //  _decrementCollateralBalances(positionData, collateralToRemove);
+        positionData._decrementCollateralBalances(globalPositionData, collateralToRemove, feePayerData);
 
         // Ensure that the sponsor will meet the min position size after the reduction.
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
