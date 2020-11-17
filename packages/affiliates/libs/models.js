@@ -186,10 +186,21 @@ function History() {
     );
     return result;
   }
+  // get exact block number
+  function get(blockNumber) {
+    const result = history.find(x => x.blockNumber == blockNumber);
+    assert(result, "Not found in history: " + blockNumber);
+    return result;
+  }
+  function has(blockNumber) {
+    !!history.find(x => x.blockNumber == blockNumber);
+  }
   function length() {
     return history.length;
   }
   return {
+    get,
+    has,
     insert,
     lookup,
     history,

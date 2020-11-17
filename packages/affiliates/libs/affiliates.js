@@ -31,10 +31,12 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           ...log
         });
       })
-      .doto(console.log)
       .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
       .last()
       .toPromise(Promise);
+
+    // finalize makes sure the last snapshot is taken once all data has been handled
+    balancesHistory.finalize();
 
     return balancesHistory;
   }
@@ -155,6 +157,8 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       return result;
     }, []);
 
+    // lookup table from emp address -> deployer
+    const empToDeployer = {};
     // Per snapshot calculate the associated amount that each deployer is entitled to.
     let finalPayouts = valuePerSnapshot.reduce(
       ({ deployerPayouts, empPayouts }, valueByEmp) => {
@@ -170,6 +174,9 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
                   .div(totalValueLocked) // eslint-disable-line indent
               : toBN("0"); // eslint-disable-line indent
           const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
+
+          // save lookup table of emp to deployer
+          empToDeployer[emp] = deployer;
 
           // calculate deployer rewards
           if (deployerPayouts[deployer] == null) deployerPayouts[deployer] = toBN("0");
@@ -196,6 +203,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     return {
       startBlock,
       endBlock,
+      empToDeployer,
       ...finalPayouts
     };
   }
