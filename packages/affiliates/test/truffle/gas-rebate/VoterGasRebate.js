@@ -54,7 +54,6 @@ contract("Gas Rebate: index.js", function() {
       });
 
       const revealRebates = result.revealRebates;
-      console.log("revealRebates", revealRebates);
       const claimRebates = result.claimRebates;
 
       assert.isTrue(Object.keys(revealRebates.rebateReceipts).length > 0, "Test period should have reveals");
