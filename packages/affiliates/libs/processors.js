@@ -168,16 +168,8 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     // looking at the emp code, i think anyone can call this even if they never had a position
     // this means balances may not exist or may go below 0. we should just catch those errors and ignore
     SettleExpiredPosition(caller, collateralReturned, tokensBurned) {
-      try {
-        collateral.sub(caller, collateralReturned.toString());
-      } catch (err) {
-        // ignore balance below 0 error
-      }
-      try {
-        tokens.sub(caller, tokensBurned.toString());
-      } catch (err) {
-        // ignore balance below 0 error
-      }
+      collateral.sub(caller, collateralReturned.toString());
+      tokens.sub(caller, tokensBurned.toString());
     },
     LiquidationCreated(
       sponsor,

@@ -193,7 +193,7 @@ function History() {
     return result;
   }
   function has(blockNumber) {
-    !!history.find(x => x.blockNumber == blockNumber);
+    return !!history.find(x => x.blockNumber == blockNumber);
   }
   function length() {
     return history.length;
