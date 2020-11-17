@@ -40,9 +40,14 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
         revertWithdraw = !revertWithdraw;
     }
 
-    function withdrawFundingRateFees(FixedPoint.Unsigned memory amount) external override {
+    function withdrawFundingRateFees(FixedPoint.Unsigned memory amount)
+        external
+        override
+        returns (FixedPoint.Unsigned memory)
+    {
         require(!revertWithdraw, "set to always reverts");
         collateralCurrency.safeTransfer(msg.sender, amount.rawValue);
+        return amount;
     }
 
     function pfc() external view override returns (FixedPoint.Unsigned memory) {

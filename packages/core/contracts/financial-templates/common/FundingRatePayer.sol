@@ -58,23 +58,29 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
 
     /**
      * @notice Sends `amount` fees to the FundingRateStore contract and debits the raw collateral accordingly.
-     * @dev Callable only by the FundingRateStore. This should never revert.
+     * @dev Callable only by the FundingRateStore. This should never revert. Note that regular fees are withdrawn
+     * before any funding rate fees. This means that if the caller intended to withdraw funding rate fees as a %
+     * of this contract's PfC, then the effective % could be slightly less if any regular fees had not been withdrawn
+     * yet. The caller should be aware that the value of `pfc()` before this call could be slightly higher than the one
+     * during this call, prior to withdrawing any funding rate fees, due solely to regular fees.
      * @param amount Amount of fees to pay to FundingRateStore.
+     * @return actual amount of fees withdrawn, which can be less than `amount` if regular fees were assessed.
      */
     function withdrawFundingRateFees(FixedPoint.Unsigned memory amount)
         external
         override
-        nonReentrant()
         onlyFundingRateStore()
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory)
     {
         FundingRateStoreInterface fundingRateStore = FundingRateStoreInterface(
             finder.getImplementationAddress("FundingRateStore")
         );
         FixedPoint.Unsigned memory collateralPool = _pfc();
-
         // If amount to pay or collateral pool is 0, then return early.
         if (amount.isEqual(0) || collateralPool.isEqual(0)) {
-            return;
+            return FixedPoint.fromUnscaledUint(0);
         }
 
         FixedPoint.Unsigned memory amountToPay = (amount.isGreaterThan(collateralPool) ? collateralPool : amount);
@@ -86,6 +92,8 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
         collateralCurrency.safeTransfer(address(fundingRateStore), amountToPay.rawValue);
 
         emit FundingRateFeesWithdrawn(amountToPay.rawValue);
+
+        return amountToPay;
     }
 
     function getFundingRateIdentifier() external view override returns (bytes32) {

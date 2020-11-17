@@ -156,7 +156,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     /**
      * @notice Gets the latest funding rate for a perpetual contract.
-     * @dev This method should never revert.
+     * @dev This method should never revert. Moreover, because this method is designed to be called by the `perpetual`
+     * contract, it should never make a call back to the `perpetual` contract. Otherwise it will trigger the
+     * `perpetual`'s reentrancy guards and cause the external calls to revert.
      * @param perpetual perpetual contract whose funding rate identifier that the calling contracts wants to get
      * a funding rate for.
      * @return FixedPoint.Signed representing the funding rate for the given contract. 0.01 would represent a funding
@@ -164,13 +166,17 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      */
     function getFundingRateForContract(address perpetual)
         external
+        view
         override
-        nonReentrant()
-        publishAndWithdrawProposal(perpetual)
+        nonReentrantView()
         returns (FixedPoint.Signed memory)
     {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        return fundingRateRecord.rate;
+        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
+            return fundingRateRecord.proposal.rate;
+        } else {
+            return fundingRateRecord.rate;
+        }
     }
 
     /**
@@ -428,9 +434,11 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         FixedPoint.Unsigned memory amountToPay = fundingRateRecord.proposal.finalFee.add(
             fundingRateRecord.proposal.proposalBond
         );
-        try PerpetualInterface(perpetual).withdrawFundingRateFees(reward)  {
+        try PerpetualInterface(perpetual).withdrawFundingRateFees(reward) returns (
+            FixedPoint.Unsigned memory rewardWithdrawn
+        ) {
             // Only transfer rewards if withdrawal from perpetual succeeded.
-            amountToPay = amountToPay.add(reward);
+            amountToPay = amountToPay.add(rewardWithdrawn);
         } catch {
             // If the withdraw fails, then only rebate final fee and emit an alert. Because this method is called
             // by every other external method in the contract, its important that this method does not revert.

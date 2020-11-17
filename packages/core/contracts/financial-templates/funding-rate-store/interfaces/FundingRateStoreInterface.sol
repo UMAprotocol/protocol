@@ -17,7 +17,7 @@ interface FundingRateStoreInterface {
      * @return FixedPoint.Signed representing the funding rate for the given contract. 0.01 would represent a funding
      * rate of 1% per second. -0.01 would represent a negative funding rate of -1% per second.
      */
-    function getFundingRateForContract(address perpetual) external returns (FixedPoint.Signed memory);
+    function getFundingRateForContract(address perpetual) external view returns (FixedPoint.Signed memory);
 
     /**
      * @notice Set the reward rate for a specific `perpetual` contract.
