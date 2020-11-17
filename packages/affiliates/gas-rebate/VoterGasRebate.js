@@ -486,7 +486,7 @@ async function getUmaPriceAtTimestamp(timestamp) {
     return ethExchangeRate;
   } catch (err) {
     console.error("Failed to fetch UMA historical price from Coingecko, falling back to default");
-    return 10;
+    return 0.1;
   }
 }
 

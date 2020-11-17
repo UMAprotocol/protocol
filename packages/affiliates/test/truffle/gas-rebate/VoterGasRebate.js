@@ -9,10 +9,10 @@ const Main = require("../../../gas-rebate/VoterGasRebate");
 const { fromWei, toBN, toWei } = web3.utils;
 
 contract("Gas Rebate: index.js", function() {
-  // Aug 29 2020, beginning of Admin 10 Vote
-  const TEST_START_BLOCK = 10752294;
-  // September 2 2020, 1 full day after reveal period ends for Admin 10, so it contains some claim-rewards events
-  const TEST_END_BLOCK = 10778455;
+  // Oct-13-2020, early in the Commit period for Admin 16 vote
+  const TEST_START_BLOCK = 11045000;
+  // Oct-16-2020, 1 full day after reveal period ends for Admin 16, so it contains some claim-rewards events
+  const TEST_END_BLOCK = 11070000;
   const REBATE_LABEL = 9999;
 
   describe("getHistoricalGasPrice", function() {
@@ -54,6 +54,7 @@ contract("Gas Rebate: index.js", function() {
       });
 
       const revealRebates = result.revealRebates;
+      console.log("revealRebates", revealRebates);
       const claimRebates = result.claimRebates;
 
       assert.isTrue(Object.keys(revealRebates.rebateReceipts).length > 0, "Test period should have reveals");
