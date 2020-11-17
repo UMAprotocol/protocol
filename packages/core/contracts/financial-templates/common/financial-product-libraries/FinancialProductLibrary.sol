@@ -27,12 +27,12 @@ abstract contract FinancialProductLibrary {
 
     /**
      * @notice Transforms a given collateral requirement using the financial product libraries transformation logic.
+     * @param oraclePrice input price returned by DVM used to transform the collateral requirement.
      * @param collateralRequirement input collateral requirement to be transformed.
      * @return transformedCollateralRequirement input collateral requirement with the transformation function applied.
      */
-    // TODO: integrate this function into liquidatable.
     function transformCollateralRequirement(
-        FixedPoint.Unsigned memory price,
+        FixedPoint.Unsigned memory oraclePrice,
         FixedPoint.Unsigned memory collateralRequirement
     ) public virtual view returns (FixedPoint.Unsigned memory) {
         return collateralRequirement;

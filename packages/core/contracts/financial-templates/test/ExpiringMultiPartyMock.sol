@@ -11,8 +11,15 @@ contract ExpiringMultiPartyMock {
     FinancialProductLibrary public financialProductLibrary;
     uint256 public expirationTimestamp;
 
-    constructor(address _financialProductLibraryAddress, uint256 _expirationTimestamp) public {
+    FixedPoint.Unsigned public collateralRequirement;
+
+    constructor(
+        address _financialProductLibraryAddress,
+        uint256 _expirationTimestamp,
+        FixedPoint.Unsigned memory _collateralRequirement
+    ) public {
         expirationTimestamp = _expirationTimestamp;
+        collateralRequirement = _collateralRequirement;
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
 
@@ -22,6 +29,21 @@ contract ExpiringMultiPartyMock {
             return transformedPrice;
         } catch {
             return price;
+        }
+    }
+
+    function transformCollateralRequirement(FixedPoint.Unsigned memory price)
+        public
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (address(financialProductLibrary) == address(0)) return collateralRequirement;
+        try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
+            FixedPoint.Unsigned memory transformedCollateralRequirement
+        ) {
+            return transformedCollateralRequirement;
+        } catch {
+            return collateralRequirement;
         }
     }
 }

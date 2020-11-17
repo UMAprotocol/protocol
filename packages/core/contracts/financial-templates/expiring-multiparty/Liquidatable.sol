@@ -506,6 +506,13 @@ contract Liquidatable is PricelessPositionManager {
         return liquidations[sponsor];
     }
 
+    /**
+     * @notice Accessor method to calculate a transformed collateral requirement using the finanical product library
+      specified during contract deployment. If no library was provided then no modification to the collateral requirement is done.
+     * @param price input price used as an input to transform the collateral requirement.
+     * @return transformedCollateralRequirement collateral requirement with transformation applied to it.
+     * @dev This method should never revert.
+     */
     function transformCollateralRequirement(FixedPoint.Unsigned memory price)
         public
         view
