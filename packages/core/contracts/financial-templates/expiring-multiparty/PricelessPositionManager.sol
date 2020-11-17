@@ -681,6 +681,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * during contract deployment. If no library was provided then no modification to the price is done.
      * @param price input price to be transformed.
      * @return transformedPrice price with the transformation function applied to it.
+     * @dev This method should never revert.
      */
 
     function transformPrice(FixedPoint.Unsigned memory price) public view returns (FixedPoint.Unsigned memory) {
