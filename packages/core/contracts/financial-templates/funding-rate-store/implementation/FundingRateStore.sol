@@ -429,7 +429,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             fundingRateRecord.proposal.proposalBond
         );
         try PerpetualInterface(perpetual).withdrawFundingRateFees(reward)  {
-            // Only transfer rewards if withdrawal from perpetual succeeded .
+            // Only transfer rewards if withdrawal from perpetual succeeded.
             amountToPay = amountToPay.add(reward);
         } catch {
             // If the withdraw fails, then only rebate final fee and emit an alert. Because this method is called
