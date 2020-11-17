@@ -218,8 +218,10 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal((await positionManager.pfc()).toString(), toWei("1"));
 
       // Check that funding rate proposal is set to the default
-      const getFundingRate = fundingRateStore.getFundingRateForContract;
-      assert.equal((await getFundingRate.call(positionManager.address)).rawValue.toString(), "0");
+      assert.equal(
+        (await fundingRateStore.getFundingRateForContract(positionManager.address)).rawValue.toString(),
+        "0"
+      );
 
       // Advance time such that funding rate proposal has expired.
       await incrementTime(fundingRateStore, 4);
@@ -964,7 +966,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // Request to withdraw 2, but only (2 - 0.02 - 0.0198) = 1.9602 collateral remaining in contract.
     const preBalanceOther = await collateral.balanceOf(other);
     returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: toWei("2") }, { from: other });
-    assert.equal(returnVal.toString(), toWei("0.019602"));
+    assert.equal(returnVal.toString(), toWei("1.9602"));
     txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("2") }, { from: other });
     const postBalanceOther = await collateral.balanceOf(other);
     truffleAssert.eventEmitted(txn, "FundingRateFeesWithdrawn", ev => {
@@ -1201,15 +1203,20 @@ contract("PerpetualPositionManager", function(accounts) {
     // Initially cumulativeFundingRateMultiplier is set to 1e18
     assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
-    const getFundingRate = mockFundingRateStore.getFundingRateForContract;
-    assert.equal((await getFundingRate.call(positionManager.address)).toString(), toWei("0"));
+    assert.equal(
+      (await mockFundingRateStore.getFundingRateForContract(positionManager.address)).toString(),
+      toWei("0")
+    );
 
     // Set a positive funding rate of 0.01 in the store and apply it for a period of 5 seconds. New funding rate should
     // be 1 * (1 + 0.01 * 5) = 1.05
     await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
       rawValue: toWei("0.01")
     });
-    assert.equal((await getFundingRate.call(positionManager.address)).toString(), toWei("0.01"));
+    assert.equal(
+      (await mockFundingRateStore.getFundingRateForContract(positionManager.address)).toString(),
+      toWei("0.01")
+    );
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
 
     // Call a function on the emp, such as creating a position, should apply the funding rate.
