@@ -142,7 +142,8 @@ contract("index.js", function(accounts) {
       utf8ToHex("UNKNOWN"),
       constructorParams.minSponsorTokens,
       constructorParams.timerAddress,
-      contractCreator
+      constructorParams.excessTokenBeneficiary,
+      constructorParams.excessTokenBeneficiary
     );
 
     // Create a spy logger to catch all log messages to validate re-try attempts.
