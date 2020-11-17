@@ -31,12 +31,10 @@ abstract contract FinancialProductLibrary {
      * @return transformedCollateralRequirement input collateral requirement with the transformation function applied.
      */
     // TODO: integrate this function into liquidatable.
-    function transformCollateralRequirement(FixedPoint.Unsigned memory collateralRequirement)
-        public
-        virtual
-        view
-        returns (FixedPoint.Unsigned memory)
-    {
+    function transformCollateralRequirement(
+        FixedPoint.Unsigned memory price,
+        FixedPoint.Unsigned memory collateralRequirement
+    ) public virtual view returns (FixedPoint.Unsigned memory) {
         return collateralRequirement;
     }
 }
