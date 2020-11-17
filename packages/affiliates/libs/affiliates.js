@@ -90,10 +90,14 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   // Calculates the value of x `tokens` in USD based on `collateralPrice` in USD, `syntheticPrice` in collateral considering
   // the decimals of both the collateral and synthetic token.
   function calculateValue(tokens, collateralPrice, syntheticPrice, collateralTokenDecimal, syntheticTokenDecimal) {
-    return tokens
+    return toBN(tokens.toString())
       .mul(toBN(syntheticPrice.toString()))
       .mul(toBN(toWei(collateralPrice.toString())))
-      .div(toBN(toWei(collateralTokenDecimal.toString())).mul(toBN(toWei(syntheticTokenDecimal.toString()))));
+      .div(
+        toBN("10")
+          .pow(toBN(syntheticTokenDecimal.toString()))
+          .mul(toBN(toWei("1")))
+      );
   }
 
   // pure function to separate out queries from calculations
@@ -136,22 +140,19 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           const totalTokens = Object.values(tokens).reduce((result, value) => {
             return result.add(toBN(value));
           }, toBN("0"));
-          result.push([
-            empAddress,
-            calculateValue(
-              totalTokens,
-              closestCollateralPrice,
-              closestSyntheticPrice,
-              collateralTokenDecimals[empIndex],
-              syntheticTokenDecimals[empIndex]
-            )
-          ]);
-          return result;
+          const value = calculateValue(
+            totalTokens,
+            closestCollateralPrice,
+            closestSyntheticPrice,
+            collateralTokenDecimals[empIndex],
+            syntheticTokenDecimals[empIndex]
+          );
+          result.push([empAddress, value]);
         } catch (err) {
           // this error is ok, it means we have block history before the emp had any events. Locked value is 0 at this block.
-          result.push([empAddress, 0]);
-          return result;
+          result.push([empAddress, "0"]);
         }
+        return result;
       }, []);
       result.push(valueByEmp);
       return result;

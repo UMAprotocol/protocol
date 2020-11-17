@@ -186,7 +186,7 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     const { empCreator, empContracts, collateralTokens, start, end } = config;
     assert(empCreator, "requires empCreator address");
     assert(empContracts, "requires empContracts array");
-    assert(collateralTokens, "requires syntheticTokens");
+    assert(collateralTokens, "requires collateralTokens");
     assert(start, "requires start time");
     assert(end, "requires end time");
     const path = Path.join(basePath, name);
@@ -286,7 +286,7 @@ function MockQueries(basePath) {
       .deserialize(readStream)
       .filter(block => {
         const blockTime = moment(block.timestamp.value).valueOf();
-        return blockTime >= start && blockTime <= end;
+        return blockTime >= start && blockTime < end;
       });
   }
   function getBlocks(start = 0, end = Date.now()) {
