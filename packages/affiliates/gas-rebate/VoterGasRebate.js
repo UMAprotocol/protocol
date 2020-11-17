@@ -7,7 +7,7 @@
  * This script therefore relies on accurate (1) average gas price data over the specified period (i.e. in gwei), (2) average
  * ETH price data over the period, and (3) average UMA price data over the period. It also needs the current UMA-ETH price.
  *
- * Run: (from repo root) `node ./packages/core/scripts/gas-rebate/index.js  --start 1598572800 --end 1599055419`
+ * Run: (from repo root) `node ./packages/core/scripts/gas-rebate/VoterGasRebate.js  --start 1598572800 --end 1599055419` --network mainnet_mnemonic
  *
  * Config options (can be specified as CLI flags):
  * - start: {Number, optional} start timestamp to query Reveal and Claim events from, described in Unix time in seconds.
@@ -31,16 +31,16 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
+
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/core");
-
+const { getWeb3 } = require("@uma/common");
 /** *****************************************
  *
  * SETUP
  *
  *******************************************/
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const web3 = getWeb3();
 const { toBN, toWei, fromWei, toChecksumAddress } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
