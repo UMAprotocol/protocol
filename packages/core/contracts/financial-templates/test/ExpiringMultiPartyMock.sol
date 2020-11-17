@@ -2,11 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
-
-
-interface FinancialProductLibrary {
-    function transformPrice(FixedPoint.Unsigned memory) external view returns (FixedPoint.Unsigned memory);
-}
+import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 
 contract ExpiringMultiPartyMock {
