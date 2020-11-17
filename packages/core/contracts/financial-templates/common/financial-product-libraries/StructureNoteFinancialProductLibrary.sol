@@ -30,8 +30,9 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testa
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param strikePrice the strike price for the structured note to be applied to the financial product.
-     * @dev Note: a) A strike price can not be 0. b) A strike price can only be set once to prevent the deployer from
-     * changing the strike after the fact. c)  financialProduct must exposes an expirationTimestamp method.
+     * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price can not be 0.
+     * b) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
+     * c)  financialProduct must exposes an expirationTimestamp method.
      */
     function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
         public
