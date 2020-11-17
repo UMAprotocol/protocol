@@ -179,7 +179,8 @@ contract("FundingRateStore", function(accounts) {
         { rawValue: toWei("0") }
       );
       // Rate change = 2.33, reward % = 0.01 * (1 + 2.33) = 0.0333
-      assert.equal(result.toString(), toWei("0.0333"));
+      // However, max rate delta factor is 300%, so: reward % = 0.01 * (3) = 0.03
+      assert.equal(result.toString(), toWei("0.03"));
 
       // Current rate is non-0, proposed rate change is equal to % diff from current
       result = await fundingRateStore.calculateProposalRewardPct(
@@ -208,7 +209,8 @@ contract("FundingRateStore", function(accounts) {
         { rawValue: toWei("1") }
       );
       // Rate change = 2.25, reward % = 0.01 * (1 + 2.25) = 0.0325
-      assert.equal(result.toString(), toWei("0.0325"));
+      // However, max rate delta factor is 300%, so: reward % = 0.01 * (3) = 0.03
+      assert.equal(result.toString(), toWei("0.03"));
       result = await fundingRateStore.calculateProposalRewardPct(
         contractDeployer,
         0,

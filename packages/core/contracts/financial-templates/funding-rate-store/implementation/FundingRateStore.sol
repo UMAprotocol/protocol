@@ -494,17 +494,22 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         reward = rewardRate.mul(timeDiff);
 
         // Next scale the reward based on the absolute difference % between the current and proposed rates.
-        FixedPoint.Signed memory diff = (
-            currentRate.isGreaterThan(proposedRate) ? currentRate.sub(proposedRate) : proposedRate.sub(currentRate)
+        // Formula:
+        //    - reward = reward * (1 + (proposedRate - currentRate) / currentRate)
+        // Or, if currentRate = 0:
+        //    - reward = reward * (1 + (proposedRate - currentRate))
+        FixedPoint.Signed memory diffPercent = (
+            currentRate.isEqual(0) ? currentRate.sub(proposedRate) : currentRate.sub(proposedRate).div(currentRate)
         );
-        FixedPoint.Signed memory diffPercent = (currentRate.isEqual(0) ? diff : diff.div(currentRate));
         FixedPoint.Unsigned memory absDiffPercent = (
             diffPercent.isLessThan(FixedPoint.fromUnscaledInt(0))
                 ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
                 : FixedPoint.fromSigned(diffPercent)
         );
-        // TODO: Should we set ceiling on this
-        reward = reward.mul(absDiffPercent.add(1));
+        // Set an arbitrary 200% ceiling on the value of `absDiffPercent` so this factor at most triples the reward:
+        // - if (absDiffPercent > 2) then reward = reward * 3
+        // - else reward = reward * (1 + absDiffPercent)
+        reward = reward.mul(absDiffPercent.isGreaterThan(2) ? FixedPoint.fromUnscaledUint(3) : absDiffPercent.add(1));
     }
 
     // Returns the pending Proposal struct for a perpetual contract.
