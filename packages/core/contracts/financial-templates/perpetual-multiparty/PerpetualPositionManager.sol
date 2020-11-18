@@ -75,6 +75,9 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     // Expiry price pulled from the DVM in the case of an emergency shutdown.
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
+
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
 

@@ -1068,7 +1068,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Test that regular fees accrue after an emergency shutdown is triggered.
-    await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
+    const shutdown = await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
+    truffleAssert.eventNotEmitted(shutdown, "EmergencyShutdown");
 
     // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
