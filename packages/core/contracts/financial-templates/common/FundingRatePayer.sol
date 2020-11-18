@@ -24,7 +24,7 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
      *                EVENTS                *
      ****************************************/
 
-    event FundingRateFeesPaid(uint256 indexed fundingRateFee);
+    event FundingRateFeesWithdrawn(uint256 indexed fundingRateFee);
 
     /****************************************
      *              MODIFIERS               *
@@ -58,34 +58,42 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
 
     /**
      * @notice Sends `amount` fees to the FundingRateStore contract and debits the raw collateral accordingly.
-     * @dev Callable only by the FundingRateStore.
+     * @dev Callable only by the FundingRateStore. This should never revert. Note that regular fees are withdrawn
+     * before any funding rate fees. This means that if the caller intended to withdraw funding rate fees as a %
+     * of this contract's PfC, then the effective % could be slightly less if any regular fees had not been withdrawn
+     * yet. The caller should be aware that the value of `pfc()` before this call could be slightly higher than the one
+     * during this call, prior to withdrawing any funding rate fees, due solely to regular fees.
      * @param amount Amount of fees to pay to FundingRateStore.
+     * @return actual amount of fees withdrawn, which can be less than `amount` if regular fees were assessed.
      */
     function withdrawFundingRateFees(FixedPoint.Unsigned memory amount)
         external
         override
-        nonReentrant()
         onlyFundingRateStore()
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory)
     {
         FundingRateStoreInterface fundingRateStore = FundingRateStoreInterface(
             finder.getImplementationAddress("FundingRateStore")
         );
         FixedPoint.Unsigned memory collateralPool = _pfc();
+        // If amount to pay or collateral pool is 0, then return early.
+        if (amount.isEqual(0) || collateralPool.isEqual(0)) {
+            return FixedPoint.fromUnscaledUint(0);
+        }
 
-        // If contract has no PfC, then cannot pay any fees.
-        require(!collateralPool.isEqual(0), "PfC is 0");
-        // The fee must be non-zero.
-        require(!amount.isEqual(0), "Funding fee is 0");
-        // The fee must be < available collateral.
-        require(collateralPool.isGreaterThan(amount), "Funding fee is more than PfC");
+        FixedPoint.Unsigned memory amountToPay = (amount.isGreaterThan(collateralPool) ? collateralPool : amount);
 
         // Adjust cumulative fee multiplier.
-        _adjustCumulativeFeeMultiplier(amount, collateralPool);
+        _adjustCumulativeFeeMultiplier(amountToPay, collateralPool);
 
         // Transfer collateral.
-        collateralCurrency.safeTransfer(address(fundingRateStore), amount.rawValue);
+        collateralCurrency.safeTransfer(address(fundingRateStore), amountToPay.rawValue);
 
-        emit FundingRateFeesPaid(amount.rawValue);
+        emit FundingRateFeesWithdrawn(amountToPay.rawValue);
+
+        return amountToPay;
     }
 
     function getFundingRateIdentifier() external view override returns (bytes32) {

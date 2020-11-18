@@ -107,7 +107,7 @@ contract("PerpetualLiquidatable", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
-    fundingRateIdentifier = web3.utils.utf8ToHex("ETHUSD-Funding-Rate");
+    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDNG_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier, {
       from: contractDeployer
     });
@@ -139,6 +139,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       finderAddress: finder.address,
       priceFeedIdentifier: priceFeedIdentifier,
       fundingRateIdentifier: fundingRateIdentifier,
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
