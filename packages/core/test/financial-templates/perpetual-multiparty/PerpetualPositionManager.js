@@ -246,6 +246,11 @@ contract("PerpetualPositionManager", function(accounts) {
       // `_publishRateAndWithdrawRewards()`. The downside of enforcing this non-reentrant behavior is that
       // interacting with the Perpetual contract CANNOT disperse funding rate store rewards.
 
+      // Check that the current funding rate multiplier can be read, even if the contract state variable
+      // `cumulativeFundingRateMultiplier` is not modified via `applyFundingRate()`. More details below
+      // on the expected funding rate multiplier is computed.
+      assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("3"));
+
       // Attempt to update the perpetual contract's funding rate. This will call the FundingRateStore's
       // `getFundingRateForContract()` method, which should NOT call back to the Perpetual contract otherwise
       // the Perpetual's reentrancy guard will revert.
@@ -262,7 +267,7 @@ contract("PerpetualPositionManager", function(accounts) {
       // when the sponsor created their position, then the period funding rate should be 50% * 4 = 200%
       // which results in a new funding rate multiplier of 1 * (1+2) = 3. (This is a bit intuitive, but imagine
       // if the period funding rate was 50%, then the new multiplier would be 1 * (1+0.5) = 1.5)
-      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("3"));
+      assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("3"));
 
       // Check that calling `getFundingRateForContract` reflects the newly expired proposal, but this does not actually
       // disperse any funding rate rewards.
@@ -1060,8 +1065,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Test that regular fees accrue after an emergency shutdown is triggered.
-    const shutdown = await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
-    truffleAssert.eventNotEmitted(shutdown, "EmergencyShutdown");
+    await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
 
     // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
@@ -1223,7 +1227,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Funding rate is correctly updated on all contract function calls", async function() {
     // Initially cumulativeFundingRateMultiplier is set to 1e18
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1"));
 
     assert.equal(
       (await mockFundingRateStore.getFundingRateForContract(positionManager.address)).toString(),
@@ -1248,7 +1252,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: other });
     await positionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
 
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
 
     // Set the funding rate to a negative funding rate of 0.98 in the store and apply it for 5 seconds. New funding rate
     // should be 1.05 * (1 - -0.02 * 5) = 0.945
@@ -1257,7 +1261,7 @@ contract("PerpetualPositionManager", function(accounts) {
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(5)).toString()); // Advance the time by 5 seconds
     await positionManager.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor }); // Requesting withdraw should also update funding multipler
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
 
     // Setting the funding rate to zero (no payments made, synth trading at parity) should no change the cumulativeFundingRateMultiplier.
     await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
@@ -1265,7 +1269,7 @@ contract("PerpetualPositionManager", function(accounts) {
     });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(withdrawalLiveness)).toString()); // Advance the time by the withdrawal liveness
     await positionManager.withdrawPassedRequest({ from: sponsor }); // call another function on the contract.
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.945"));
 
     // Check that the remaining functions update the funding rate accordingly. Use a new funding rate of 1.01.
     // Have already checked: a) create b) requestWithdrawal and c) withdrawPassedRequest
@@ -1276,46 +1280,49 @@ contract("PerpetualPositionManager", function(accounts) {
     // depositTo
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95445")); // 0.945 * (1 + (1.01 - 1) * 1) = 0.95445
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.95445")); // 0.945 * (1 + (1.01 - 1) * 1) = 0.95445
 
     // deposit
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.deposit({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.9639945")); // 0.95445 * (1 + (1.01 - 1) * 1) = 0.9639945
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.9639945")); // 0.95445 * (1 + (1.01 - 1) * 1) = 0.9639945
 
     // withdraw. To do a "fast" withdraw need to have the position above the GCR.
     await positionManager.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }, { from: other }); // position above GCR
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.withdraw({ rawValue: toWei("1") }, { from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.973634445")); // 0.9639945 * (1 + (1.0001 - 1) * 1) = 0.973634445
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.973634445")); // 0.9639945 * (1 + (1.0001 - 1) * 1) = 0.973634445
 
     // cancelWithdrawal
     await positionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: other });
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.cancelWithdrawal({ from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.98337078945")); // 0.973634445 * (1 + (1.0001 - 1) * 1) = 0.98337078945
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.98337078945")); // 0.973634445 * (1 + (1.0001 - 1) * 1) = 0.98337078945
 
     // redeem
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.redeem({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.9932044973445")); // 0.98337078945 * (1 + (1.0001 - 1) * 1) = 0.9932044973445
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.9932044973445")); // 0.98337078945 * (1 + (1.0001 - 1) * 1) = 0.9932044973445
 
     // repay
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.repay({ rawValue: toWei("1") }, { from: sponsor });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.003136542317945")); // 0.9932044973445 * (1 + (1.0001 - 1) * 1) = 1.003136542317945
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1.003136542317945")); // 0.9932044973445 * (1 + (1.0001 - 1) * 1) = 1.003136542317945
 
     // can directly call applyFundingRate
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await positionManager.applyFundingRate({ from: other });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.01316790774112445")); // 1.003136542317945 * (1 + (1.0001 - 1) * 1) = 1.01316790774112445
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1.01316790774112445")); // 1.003136542317945 * (1 + (1.0001 - 1) * 1) = 1.01316790774112445
 
     // emergencyShutdown
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     const shutdownTimestamp = Number(await positionManager.getCurrentTime());
     await positionManager.setCurrentTime(shutdownTimestamp);
     await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.023299586818535694")); // 1.01316790774112445 * (1 + (1.0001 - 1) * 1) = 1.023299586818535694(5) truncated
+    assert.equal(
+      (await positionManager.getCumulativeFundingRateMultiplier()).toString(),
+      toWei("1.023299586818535694")
+    ); // 1.01316790774112445 * (1 + (1.0001 - 1) * 1) = 1.023299586818535694(5) truncated
 
     // As the contract is now emergency shutdown directly calling applyFundingRate should revert. Note that all previously
     // called functions will revert (such as create, redeem ect).
@@ -1325,7 +1332,10 @@ contract("PerpetualPositionManager", function(accounts) {
     await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(1)).toString());
     await mockOracle.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"));
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.023299586818535694")); // same as previous assert
+    assert.equal(
+      (await positionManager.getCumulativeFundingRateMultiplier()).toString(),
+      toWei("1.023299586818535694")
+    ); // same as previous assert
   });
 
   it("cumulativeFundingRateMultiplier is correctly applied to emergency shutdown settlement price", async function() {
@@ -1352,7 +1362,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
 
     // Cumulative funding rate multiplier should have been updated accordingly.
-    assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.5")); // 1 * (1 + (1.0005 - 1000) * 1) = 1.5
+    assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1.5")); // 1 * (1 + (1.0005 - 1000) * 1) = 1.5
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
@@ -1652,7 +1662,10 @@ contract("PerpetualPositionManager", function(accounts) {
 
       // Apply the funding rate and check that the multiplier is set correctly.
       await positionManager.applyFundingRate();
-      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1.000000000000000002"));
+      assert.equal(
+        (await positionManager.getCumulativeFundingRateMultiplier()).toString(),
+        toWei("1.000000000000000002")
+      );
 
       // Now set the funding rate to -0.000000000000000001 and advance by another second.
       await mockFundingRateStore.setFundingRate(positionManager.address, await timer.getCurrentTime(), {
@@ -1664,7 +1677,7 @@ contract("PerpetualPositionManager", function(accounts) {
       // 1.000000000000000002 * 0.999999999999999999 = 1.000000000000000000999999999999999998
       // This result gets truncated after the first 18 decimals and floored to 1.000000000000000000
       await positionManager.applyFundingRate();
-      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
+      assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("1"));
     });
     it("Funding-Rate-Adjusted sponsor debt shows precision loss", async function() {
       // Set the funding rate multiplier to 0.95 after 1 second.
@@ -1676,7 +1689,7 @@ contract("PerpetualPositionManager", function(accounts) {
 
       // Apply the funding rate and check that the multiplier is set correctly.
       await positionManager.applyFundingRate();
-      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+      assert.equal((await positionManager.getCumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
 
       // Query adjusted debt.
       const rawDebt = (await positionManager.positions(sponsor)).tokensOutstanding;
