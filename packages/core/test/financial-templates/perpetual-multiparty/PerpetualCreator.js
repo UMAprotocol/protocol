@@ -296,11 +296,11 @@ contract("PerpetualCreator", function(accounts) {
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
 
-    const rewardRate = await fundingRateStore.getRewardRateForContract(perpetualAddress);
+    const rewardRate = (await fundingRateStore.fundingRateRecords(perpetualAddress)).rewardRatePerSecond;
     assert.equal(rewardRate.toString(), toWei("0.0001"));
 
     // Setting a reward rate should also instantiate the propose time.
-    const proposeTime = await fundingRateStore.getProposalTimeForContract(perpetualAddress);
+    const proposeTime = (await fundingRateStore.fundingRateRecords(perpetualAddress)).proposeTime;
     assert.equal(proposeTime.toString(), deploymentTime.toString());
   });
 });
