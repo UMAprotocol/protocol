@@ -14,9 +14,10 @@ abstract contract FinancialProductLibrary {
     /**
      * @notice Transforms a given oracle price using the financial product libraries transformation logic.
      * @param oraclePrice input price to be transformed.
+     * @param requestTime timestamp the oraclePrice was requested at.
      * @return transformedPrice input oraclePrice with the transformation function applied.
      */
-    function transformPrice(FixedPoint.Unsigned memory oraclePrice)
+    function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
         virtual
         view

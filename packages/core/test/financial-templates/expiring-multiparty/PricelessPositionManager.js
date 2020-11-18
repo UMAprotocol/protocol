@@ -946,7 +946,7 @@ contract("PricelessPositionManager", function(accounts) {
     const financialProductLibraryTest = await FinancialProductLibraryTest.new({ rawValue: toWei("2") });
 
     assert.equal((await financialProductLibraryTest.scalar()).toString(), toWei("2"));
-    assert.equal((await financialProductLibraryTest.transformPrice({ rawValue: "5" })).toString(), "10"); // should scale prices by scalar. 5 * 2 = 10
+    assert.equal((await financialProductLibraryTest.transformPrice({ rawValue: "5" }, "0")).toString(), "10"); // should scale prices by scalar. 5 * 2 = 10. Note the time(second param) does not matter in this test library
 
     pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
@@ -963,7 +963,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // Transform price function in pricelessPositionManager correctly scales input prices
-    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" })).toString(), "10");
+    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "10");
 
     // Give contract owner permissions.
     await tokenCurrency.addMinter(pricelessPositionManager.address);
