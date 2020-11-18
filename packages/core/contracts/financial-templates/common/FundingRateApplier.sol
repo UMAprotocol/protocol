@@ -39,6 +39,9 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
 
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
+
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
     // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -46,7 +49,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // The cumulativeFundingRateMultiplier should start at 1.
     // If a 1% funding payment is paid to sponsors, the multiplier should update to 1.01.
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
-    FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
+    FixedPoint.Unsigned private cumulativeFundingRateMultiplier;
 
     /****************************************
      *                EVENTS                *
@@ -87,6 +90,36 @@ abstract contract FundingRateApplier is Testable, Lockable {
         _getFundingRateStore().setRewardRate(address(this), _fundingRateRewardRate);
     }
 
+    /**
+     * @notice Returns the cumulative funding rate multiplier that would be used on any contract interaction
+     * calling `_getFundingRateAppliedTokenDebt()`. This does not actually update the multiplier, but is a helper
+     * method for monitoring bots and sponsors to use to get the current multiplier.
+     * @dev Calling this method is equivalent to calling `_applyEffectiveFundingRate()` followed by
+     * `cumulativeFundingRateMultiplier()`. Note that an emergency shutdown freezes the funding rate multiplier,
+     * meaning that the caller should instead use the value of `cumulativeFundingRateMultiplier`, which is the final
+     * update for the funding rate multiplier before it is shutdown.
+     * @return newCumulativeFundingRateMultiplier The current funding rate multiplier.
+     */
+    function getCumulativeFundingRateMultiplier()
+        public
+        view
+        returns (FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier)
+    {
+        // If contract is emergency shutdown, return latest multiplier from shutdown time.
+        if (emergencyShutdownTimestamp != 0) {
+            newCumulativeFundingRateMultiplier = cumulativeFundingRateMultiplier;
+        } else {
+            uint256 currentTime = getCurrentTime();
+            uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
+
+            (newCumulativeFundingRateMultiplier, ) = _calculateEffectiveFundingRate(
+                paymentPeriod,
+                _getLatestFundingRate(),
+                cumulativeFundingRateMultiplier
+            );
+        }
+    }
+
     // Returns a token amount scaled by the current funding rate multiplier.
     // Note: if the contract has paid fees since it was deployed, the raw
     // value should be larger than the returned value.
@@ -112,6 +145,11 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
+        // If contract is emergency shutdown, then the funding rate multiplier should no longer change.
+        if (emergencyShutdownTimestamp != 0) {
+            return;
+        }
+
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
