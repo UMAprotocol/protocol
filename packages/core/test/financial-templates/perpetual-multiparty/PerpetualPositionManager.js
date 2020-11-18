@@ -1,6 +1,7 @@
 // Libraries and helpers
-const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { didContractThrow } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
+const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 
 // Contracts to test
@@ -18,7 +19,6 @@ const SyntheticToken = artifacts.require("SyntheticToken");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 const FundingRateStore = artifacts.require("FundingRateStore");
-const Registry = artifacts.require("Registry");
 
 contract("PerpetualPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN, utf8ToHex } = web3.utils;
@@ -40,7 +40,6 @@ contract("PerpetualPositionManager", function(accounts) {
   let finder;
   let mockFundingRateStore;
   let store;
-  let registry;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -213,18 +212,6 @@ contract("PerpetualPositionManager", function(accounts) {
       await identifierWhitelist.addSupportedIdentifier(fundingRateFeedIdentifier);
       await fundingRateStore.propose(positionManager.address, { rawValue: toWei("0.5") }, { from: contractDeployer });
       proposerBalancePrePublish = await collateral.balanceOf(contractDeployer);
-
-      // Grant contract deployer Owner and Creator roles in Registry so it can query funding rates and give query
-      // privileges to other addresesses, like the perpetual contract.
-      registry = await Registry.deployed();
-      await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractDeployer);
-      await registry.registerContract([], positionManager.address);
-      try {
-        await registry.registerContract([], contractDeployer);
-      } catch (err) {
-        // Can only register a contract once, expected error here on duplicate `registerContract` calls for the
-        // `contractDeployer`.
-      }
 
       // Create position to give contract PfC = 1.
       await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
