@@ -10,6 +10,8 @@ import "../../../oracle/interfaces/StoreInterface.sol";
 import "../../../oracle/interfaces/OracleInterface.sol";
 import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../../oracle/interfaces/AdministrateeInterface.sol";
+import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../../oracle/interfaces/RegistryInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 
 import "../../perpetual-multiparty/PerpetualInterface.sol";
@@ -85,8 +87,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     enum ProposalState { None, Pending, Expired }
 
-    mapping(address => FundingRateRecord) public fundingRateRecords;
-    mapping(address => mapping(uint256 => FundingRateRecord)) public fundingRateDisputes;
+    mapping(address => FundingRateRecord) private fundingRateRecords;
+    // TODO: Is there any reason to make `fundingRateDisputes` public? Could users use the dispute struct
+    // to get funding rate data "for free"? If not, then I see no harm in making it public.
+    mapping(address => mapping(uint256 => FundingRateRecord)) private fundingRateDisputes;
 
     uint256 public proposalLiveness;
 
@@ -136,9 +140,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *                MODIFIERS             *
      ****************************************/
 
-    // Pubishes any pending proposals whose liveness has passed, pays out rewards for such proposals
+    // Pubishes any pending proposals whose liveness has passed, pays out rewards for such proposals.
     modifier publishAndWithdrawProposal(address perpetual) {
         _publishRateAndWithdrawRewards(perpetual);
+        _;
+    }
+
+    // Function callable only by contracts registered with the DVM.
+    modifier onlyRegisteredContract() {
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
+        require(registry.isContractRegistered(msg.sender), "Caller must be registered");
         _;
     }
 
@@ -168,6 +179,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         external
         view
         override
+        onlyRegisteredContract()
         nonReentrantView()
         returns (FixedPoint.Signed memory)
     {
@@ -177,6 +189,41 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         } else {
             return fundingRateRecord.rate;
         }
+    }
+
+    /**
+     * @notice Gets the latest proposal time for a perpetual contract's funding rate.
+     * @dev This method is designed to be helpful for proposers in projecting their rewards.
+     * @param perpetual perpetual contract whose proposal time the caller is querying.
+     * @return the proposal time of the current funding rate record or a pending proposal that has expired.
+     */
+    function getProposalTimeForContract(address perpetual) external view nonReentrantView() returns (uint256) {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
+            return fundingRateRecord.proposal.time;
+        } else {
+            return fundingRateRecord.proposeTime;
+        }
+    }
+
+    /**
+     * @notice Gets the reward rate per second for a perpetual contract.
+     * @dev This method is designed to be helpful for proposers in projecting their rewards. To get the reward
+     * rate for a specific funding rate proposal, you need to scale this method's return value, which is the
+     * perpetual contract's "base reward rate", by the time elapsed since the last proposal and the magnitude
+     * of change between the proposed and current funding rate.
+     * @param perpetual perpetual contract whose base reward rate the caller is querying.
+     * @return FixedPoint.Unsigned representing the base reward rate for the given contract. 0.01 would represent a
+     * reward rate of 1% per second.
+     */
+    function getRewardRateForContract(address perpetual)
+        external
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory)
+    {
+        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
+        return fundingRateRecord.rewardRatePerSecond;
     }
 
     /**
@@ -192,7 +239,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         nonReentrant()
         publishAndWithdrawProposal(perpetual)
     {
-        // TODO: check the identifier whitelist to ensure the proposed perpetual's identifier is approved by the DVM.
+        // Ensure that the perpetual's funding rate identifier is whitelisted with the DVM, otherwise disputes on this
+        // proposal would not be possible.
+        require(
+            _getIdentifierWhitelist().isIdentifierSupported(PerpetualInterface(perpetual).getFundingRateIdentifier()),
+            "Unsupported funding identifier"
+        );
+
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
         require(_getProposalState(fundingRateRecord.proposal) != ProposalState.Pending, "Pending proposal exists");
         require(!fundingRateRecord.rate.isEqual(rate), "Cannot propose same rate");
@@ -324,7 +377,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         );
 
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
-        // TOOD: Decide whether loser of dispute should lose entire bond or partial
+        // TODO: Decide whether loser of dispute should lose entire bond or partial
         if (disputeSucceeded) {
             // If dispute succeeds:
             // - Disputer earns back their bonds: dispute bond + final fee bond
@@ -514,7 +567,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
                 ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
                 : FixedPoint.fromSigned(diffPercent)
         );
-        // Set an arbitrary 200% ceiling on the value of `absDiffPercent` so this factor at most triples the reward:
+        // TODO: Set an arbitrary 200% ceiling on the value of `absDiffPercent` so this factor at most triples the reward:
         // - if (absDiffPercent > 2) then reward = reward * 3
         // - else reward = reward * (1 + absDiffPercent)
         reward = reward.mul(absDiffPercent.isGreaterThan(2) ? FixedPoint.fromUnscaledUint(3) : absDiffPercent.add(1));
@@ -568,5 +621,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+    }
+
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
