@@ -209,6 +209,7 @@ contract("PerpetualPositionManager", function(accounts) {
       // Propose a new funding rate. No need to set any allowances since final fee and proposal bond are 0.
       // Using a Rate difference of +50% from default 0% means that the 0.01% reward rate will be scaled by
       // 1.5 => 0.01% * 1.5 = 0.015%
+      await identifierWhitelist.addSupportedIdentifier(fundingRateFeedIdentifier);
       await fundingRateStore.propose(positionManager.address, { rawValue: toWei("0.5") }, { from: contractDeployer });
       proposerBalancePrePublish = await collateral.balanceOf(contractDeployer);
 
