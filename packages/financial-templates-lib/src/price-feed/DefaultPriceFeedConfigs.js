@@ -61,6 +61,13 @@ const defaultConfigs = {
     invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }]
+  },
+  "kGASETH-TWAP-1Mx1M": {
+    // Kovan Gaseth
+    type: "uniswap",
+    uniswapAddress: "0x0f20793bF444E2318d6a39fCb4792a8985C0ab6e",
+    twapLength: 7200,
+    lookback: 7200
   }
 };
 
