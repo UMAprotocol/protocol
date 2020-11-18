@@ -962,6 +962,10 @@ contract("PerpetualPositionManager", function(accounts) {
       return ev.fundingRateFee.toString() === toWei("0.0198");
     });
 
+    // If asked to withdraw 0, returns 0.
+    returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: "0" }, { from: other });
+    assert.equal(returnVal.toString(), "0");
+
     // If asked to withdraw more fees than PfC, then just pays out PfC. Sponsor balances get drained to 0.
     // Request to withdraw 2, but only (2 - 0.02 - 0.0198) = 1.9602 collateral remaining in contract.
     const preBalanceOther = await collateral.balanceOf(other);
@@ -981,6 +985,10 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal(collateralAmountSponsor.rawValue.toString(), "0");
     collateralAmountOther = await positionManager.getCollateral(other);
     assert.equal(collateralAmountOther.rawValue.toString(), "0");
+
+    // When PfC is 0, returns 0.
+    returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: toWei("0.1") }, { from: other });
+    assert.equal(returnVal.toString(), "0");
 
     // Reset Finder pointer.
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), mockFundingRateStore.address, {
