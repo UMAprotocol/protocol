@@ -70,12 +70,14 @@ function EmpBalancesHistory() {
   // stores snapshots we can lookup by block
   const history = History();
   let lastBlockNumber;
+  let lastBlockTimestamp;
 
   // takes a snapshot of balances if the next event falls on a new block
   function handleEvent(blockNumber, event) {
     assert(blockNumber, "requires blockNumber");
     if (lastBlockNumber == null) {
       lastBlockNumber = blockNumber;
+      lastBlockTimestamp = event.blockTimestamp;
     } else if (lastBlockNumber < blockNumber) {
       history.insert({
         blockNumber: lastBlockNumber,
@@ -84,11 +86,24 @@ function EmpBalancesHistory() {
         collateral: balances.collateral.snapshot()
       });
       lastBlockNumber = blockNumber;
+      lastBlockTimestamp = event.blockTimestamp;
     }
     balances.handleEvent(event);
   }
 
+  // function to snapshot the final balance
+  function finalize() {
+    if (history.has(lastBlockNumber)) return;
+    history.insert({
+      blockNumber: lastBlockNumber,
+      blockTimestamp: lastBlockTimestamp,
+      tokens: balances.tokens.snapshot(),
+      collateral: balances.collateral.snapshot()
+    });
+  }
+
   return {
+    finalize,
     balances,
     history,
     handleEvent
@@ -96,8 +111,11 @@ function EmpBalancesHistory() {
 }
 
 function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
-  collateral = collateral || Balances();
-  tokens = tokens || Balances();
+  // we need to allow negative balances on emps which have expired. Settlement may cause a sponsor or a non
+  // sponsor if they settle with tokens they bought from third party causing them to burn more than they minted.
+  // If not enabled expired emps may calculate larger totals overall than in actuality.
+  collateral = collateral || Balances({ allowNegative: true });
+  tokens = tokens || Balances({ allowNegative: true });
 
   handlers = {
     RequestTransferPosition(oldSponsor) {
@@ -150,20 +168,8 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     // looking at the emp code, i think anyone can call this even if they never had a position
     // this means balances may not exist or may go below 0. we should just catch those errors and ignore
     SettleExpiredPosition(caller, collateralReturned, tokensBurned) {
-      if (collateral.has(caller)) {
-        try {
-          collateral.sub(caller, collateralReturned.toString());
-        } catch (err) {
-          // ignore balance below 0 error
-        }
-      }
-      if (tokens.has(caller)) {
-        try {
-          tokens.sub(caller, tokensBurned.toString());
-        } catch (err) {
-          // ignore balance below 0 error
-        }
-      }
+      collateral.sub(caller, collateralReturned.toString());
+      tokens.sub(caller, tokensBurned.toString());
     },
     LiquidationCreated(
       sponsor,
