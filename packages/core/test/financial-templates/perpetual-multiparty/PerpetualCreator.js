@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, toBN } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -296,11 +296,10 @@ contract("PerpetualCreator", function(accounts) {
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
 
-    const rewardRate = (await fundingRateStore.fundingRateRecords(perpetualAddress)).rewardRatePerSecond;
+    // Can get the reward rate by calculating the projected reward for a 0% change to the funding rate
+    // after 1 second.
+    await fundingRateStore.setCurrentTime(deploymentTime.add(toBN(1)).toString());
+    const rewardRate = await fundingRateStore.getRewardRateForContract(perpetualAddress, { rawValue: "0" });
     assert.equal(rewardRate.toString(), toWei("0.0001"));
-
-    // Setting a reward rate should also instantiate the propose time.
-    const proposeTime = (await fundingRateStore.fundingRateRecords(perpetualAddress)).proposeTime;
-    assert.equal(proposeTime.toString(), deploymentTime.toString());
   });
 });
