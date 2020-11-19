@@ -37,7 +37,7 @@ contract("PerpetualPoolParty", function(accounts) {
 
     const roles = {
       admins: [accounts[1]],
-      tokenSponsors: [accounts[1]]
+      pools: [accounts[1]]
     };
 
     const liquidatableParams = {

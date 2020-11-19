@@ -54,7 +54,7 @@ contract("PerpetualCreator", function(accounts) {
       withdrawalLiveness: 7200,
       excessTokenBeneficiary: store.address,
       admins: [accounts[1]],
-      tokenSponsors: [accounts[1]]
+      pools: [accounts[1]]
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -216,7 +216,7 @@ contract("PerpetualCreator", function(accounts) {
     );
     // Roles should be the same value as set in the constructor params.
     assert.equal((await perpetualPoolParty.getAdminMembers.call())[0], constructorParams.admins[0]);
-    assert.equal((await perpetualPoolParty.getTokenSponsorMembers.call())[0], constructorParams.tokenSponsors[0]);
+    assert.equal((await perpetualPoolParty.getPoolMembers.call())[0], constructorParams.pools[0]);
     // Cumulative multipliers are set to default.
     assert.equal((await perpetualPoolParty.feePayerData.call()).cumulativeFeeMultiplier.toString(), toWei("1"));
 

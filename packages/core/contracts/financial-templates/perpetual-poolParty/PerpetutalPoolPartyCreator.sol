@@ -10,7 +10,6 @@ import "../../common/implementation/Lockable.sol";
 import "../common/JarvisTokenFactory.sol";
 import "./PerpetualPoolPartyLib.sol";
 
-
 /**
  * @title Perpetual Contract creator.
  * @notice Factory contract to create and register new instances of perpetual contracts.
@@ -43,7 +42,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         uint256 liquidationLiveness;
         address excessTokenBeneficiary;
         address[] admins;
-        address[] tokenSponsors;
+        address[] pools;
     }
     // Address of TokenFactory to pass into newly constructed Perpetual contracts
     address public tokenFactoryAddress;
@@ -148,6 +147,6 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.liquidatableParams.liquidationLiveness = params.liquidationLiveness;
         constructorParams.positionManagerParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
         constructorParams.roles.admins = params.admins;
-        constructorParams.roles.tokenSponsors = params.tokenSponsors;
+        constructorParams.roles.pools = params.pools;
     }
 }

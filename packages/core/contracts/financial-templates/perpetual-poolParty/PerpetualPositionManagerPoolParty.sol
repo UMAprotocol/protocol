@@ -35,7 +35,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      *  COSTANTS  *
      ****************************************/
 
-    bytes32 public constant TOKEN_SPONSOR_ROLE = keccak256("Token Sponsor");
+    bytes32 public constant POOL_ROLE = keccak256("Pool");
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
@@ -44,7 +44,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     //Describe role structure
     struct Roles {
         address[] admins;
-        address[] tokenSponsors;
+        address[] pools;
     }
 
     /**
@@ -149,8 +149,8 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyTokenSponsor() {
-        require(hasRole(TOKEN_SPONSOR_ROLE, msg.sender), "Sender must be the token sponsor");
+    modifier onlyPool() {
+        require(hasRole(POOL_ROLE, msg.sender), "Sender must be a pool");
         _;
     }
 
@@ -194,13 +194,13 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             "Unsupported price identifier"
         );
         _setRoleAdmin(DEFAULT_ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(TOKEN_SPONSOR_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(POOL_ROLE, DEFAULT_ADMIN_ROLE);
         for (uint256 j = 0; j < _roles.admins.length; j++) {
             _setupRole(DEFAULT_ADMIN_ROLE, _roles.admins[j]);
         }
-        if (_roles.tokenSponsors.length > 0) {
-            for (uint256 j = 0; j < _roles.tokenSponsors.length; j++) {
-                _setupRole(TOKEN_SPONSOR_ROLE, _roles.tokenSponsors[j]);
+        if (_roles.pools.length > 0) {
+            for (uint256 j = 0; j < _roles.pools.length; j++) {
+                _setupRole(POOL_ROLE, _roles.pools[j]);
             }
         }
         positionManagerData.withdrawalLiveness = _positionManagerData.withdrawalLiveness;
@@ -223,7 +223,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function depositTo(address sponsor, FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         noPendingWithdrawal(sponsor)
         fees()
@@ -254,7 +254,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
@@ -273,7 +273,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
@@ -292,7 +292,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function withdrawPassedRequest()
         external
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         fees()
         nonReentrant()
@@ -306,7 +306,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external onlyTokenSponsor() notEmergencyShutdown() nonReentrant() {
+    function cancelWithdrawal() external onlyPool() notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         positionData.cancelWithdrawal();
     }
@@ -323,7 +323,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         fees()
         nonReentrant()
@@ -344,7 +344,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function redeem(FixedPoint.Unsigned memory numTokens)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
@@ -371,7 +371,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function repay(FixedPoint.Unsigned memory numTokens)
         public
-        onlyTokenSponsor()
+        onlyPool()
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
@@ -394,7 +394,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      */
     function settleEmergencyShutdown()
         external
-        onlyTokenSponsor()
+        onlyPool()
         isEmergencyShutdown()
         fees()
         nonReentrant()
@@ -414,7 +414,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override onlyTokenSponsor() notEmergencyShutdown() nonReentrant() {
+    function emergencyShutdown() external override onlyPool() notEmergencyShutdown() nonReentrant() {
         positionManagerData.emergencyShutdownTimestamp = getCurrentTime();
         positionManagerData.requestOraclePrice(positionManagerData.emergencyShutdownTimestamp, feePayerData);
         emit EmergencyShutdown(msg.sender, positionManagerData.emergencyShutdownTimestamp);
@@ -449,35 +449,35 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
-     * @notice Add TokenSponsor to TOKEN_SPONSOR_ROLE
-     * @param sponsor address of the TokenSponsor.
+     * @notice Add TokenSponsor to POOL_ROLE
+     * @param pool address of the TokenSponsor pool.
      */
-    function addTokenSponsor(address sponsor) external {
-        grantRole(TOKEN_SPONSOR_ROLE, sponsor);
+    function addPool(address pool) external {
+        grantRole(POOL_ROLE, pool);
     }
 
     /**
      * @notice Add admin to DEFAULT_ADMIN_ROLE
-     * @param admin address of the TokenSponsor.
+     * @param admin address of the Admin.
      */
     function addAdmin(address admin) external {
         grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /**
-     * @notice Add admin and TokenSponsor to DEFAULT_ADMIN_ROLE and TOKEN_SPONSOR_ROLE
-     * @param adminAndSponsor address of admin/TokenSponsor.
+     * @notice Add admin and pool to DEFAULT_ADMIN_ROLE and POOL_ROLE
+     * @param adminAndPool address of admin/pool.
      */
-    function addAdminAndTokenSponsor(address adminAndSponsor) external {
-        grantRole(DEFAULT_ADMIN_ROLE, adminAndSponsor);
-        grantRole(TOKEN_SPONSOR_ROLE, adminAndSponsor);
+    function addAdminAndPool(address adminAndPool) external {
+        grantRole(DEFAULT_ADMIN_ROLE, adminAndPool);
+        grantRole(POOL_ROLE, adminAndPool);
     }
 
     /**
-     * @notice TokenSponsor renounce to TOKEN_SPONSOR_ROLE
+     * @notice TokenSponsor pool renounce to POOL_ROLE
      */
-    function renounceTokenSponsor() external {
-        renounceRole(TOKEN_SPONSOR_ROLE, msg.sender);
+    function renouncePool() external {
+        renounceRole(POOL_ROLE, msg.sender);
     }
 
     /**
@@ -488,18 +488,18 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
-     * @notice Admin and TokenSponsor renounce to DEFAULT_ADMIN_ROLE and TOKEN_SPONSOR_ROLE
+     * @notice Admin and TokenSponsor pool renounce to DEFAULT_ADMIN_ROLE and POOL_ROLE
      */
-    function renounceAdminAndTokenSponsor() external {
+    function renounceAdminAndPool() external {
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        renounceRole(TOKEN_SPONSOR_ROLE, msg.sender);
+        renounceRole(POOL_ROLE, msg.sender);
     }
 
     /**
      * @notice Add derivative as minter of synthetic token
      * @param derivative address of the derivative
      */
-    function addSyntheticTokenMinter(address derivative) external onlyTokenSponsor() {
+    function addSyntheticTokenMinter(address derivative) external onlyPool() {
         positionManagerData.tokenCurrency.addMinter(derivative);
     }
 
@@ -507,7 +507,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @notice Add derivative as burner of synthetic token
      * @param derivative address of the derivative
      */
-    function addSyntheticTokenBurner(address derivative) external onlyTokenSponsor() {
+    function addSyntheticTokenBurner(address derivative) external onlyPool() {
         positionManagerData.tokenCurrency.addBurner(derivative);
     }
 
@@ -515,7 +515,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @notice Add derivative as admin of synthetic token
      * @param derivative address of the derivative
      */
-    function addSyntheticTokenAdmin(address derivative) external onlyTokenSponsor() {
+    function addSyntheticTokenAdmin(address derivative) external onlyPool() {
         positionManagerData.tokenCurrency.addAdmin(derivative);
     }
 
@@ -523,35 +523,35 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * @notice Add derivative as admin, minter and burner of synthetic token
      * @param derivative address of the derivative
      */
-    function addSyntheticTokenAdminAndMinterAndBurner(address derivative) external onlyTokenSponsor() {
+    function addSyntheticTokenAdminAndMinterAndBurner(address derivative) external onlyPool() {
         positionManagerData.tokenCurrency.addAdminAndMinterAndBurner(derivative);
     }
 
     /**
      * @notice This contract renounce to be minter of synthetic token
      */
-    function renounceSyntheticTokenMinter() external onlyTokenSponsor() {
+    function renounceSyntheticTokenMinter() external onlyPool() {
         positionManagerData.tokenCurrency.renounceMinter();
     }
 
     /**
      * @notice This contract renounce to be burner of synthetic token
      */
-    function renounceSyntheticTokenBurner() external onlyTokenSponsor() {
+    function renounceSyntheticTokenBurner() external onlyPool() {
         positionManagerData.tokenCurrency.renounceBurner();
     }
 
     /**
      * @notice This contract renounce to be admin of synthetic token
      */
-    function renounceSyntheticTokenAdmin() external onlyTokenSponsor() {
+    function renounceSyntheticTokenAdmin() external onlyPool() {
         positionManagerData.tokenCurrency.renounceAdmin();
     }
 
     /**
      * @notice This contract renounce to be admin, minter and burner of synthetic token
      */
-    function renounceSyntheticTokenAdminAndMinterAndBurner() external onlyTokenSponsor() {
+    function renounceSyntheticTokenAdminAndMinterAndBurner() external onlyPool() {
         positionManagerData.tokenCurrency.renounceAdminAndMinterAndBurner();
     }
 
@@ -604,15 +604,15 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
-     * @notice Accessor method for the list of member with tokenSponsor role
-     * @return array of address with tokenSponsor role
+     * @notice Accessor method for the list of member with pool role
+     * @return array of address with pool role
      */
 
-    function getTokenSponsorMembers() external view returns (address[] memory) {
-        uint256 numberOfMembers = getRoleMemberCount(TOKEN_SPONSOR_ROLE);
+    function getPoolMembers() external view returns (address[] memory) {
+        uint256 numberOfMembers = getRoleMemberCount(POOL_ROLE);
         address[] memory members = new address[](numberOfMembers);
         for (uint256 j = 0; j < numberOfMembers; j++) {
-            address newMember = getRoleMember(TOKEN_SPONSOR_ROLE, j);
+            address newMember = getRoleMember(POOL_ROLE, j);
             members[j] = newMember;
         }
         return members;
