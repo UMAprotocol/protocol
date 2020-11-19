@@ -128,7 +128,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         view
         returns (FixedPoint.Unsigned memory tokenDebt)
     {
-        return rawTokenDebt.mul(cumulativeFundingRateMultiplier);
+        return rawTokenDebt.mul(getCumulativeFundingRateMultiplier());
     }
 
     function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
