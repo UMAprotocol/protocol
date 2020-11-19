@@ -204,7 +204,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      * @return rewardRate Representing the reward % for a given contract if they were to propose a funding rate
      * now.
      */
-    function getRewardForContract(address perpetual, FixedPoint.Signed memory rate)
+    function getRewardRateForContract(address perpetual, FixedPoint.Signed memory rate)
         external
         view
         nonReentrantView()

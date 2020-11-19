@@ -86,7 +86,7 @@ contract("FundingRateStore", function(accounts) {
     assert.equal((await fundingRateStore.getFundingRateForContract(mockPerpetual.address)).rawValue.toString(), "0");
     // Projected reward for any funding rate proposal should be 0 because the reward rate is 0
     assert.equal(
-      (await fundingRateStore.getRewardForContract(mockPerpetual.address, { rawValue: toWei("1") })).toString(),
+      (await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("1") })).toString(),
       "0"
     );
   });
@@ -99,7 +99,7 @@ contract("FundingRateStore", function(accounts) {
     assert(await didContractThrow(fundingRateStore.getFundingRateForContract(mockPerpetual.address)));
 
     // Can still read estimated rewards for perpetual.
-    await fundingRateStore.getRewardForContract(mockPerpetual.address, { rawValue: toWei("1") });
+    await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("1") });
 
     // Reset finder's Registry pointer.
     await finder.changeImplementationAddress(toHex(interfaceName.Registry), registry.address);
@@ -141,7 +141,7 @@ contract("FundingRateStore", function(accounts) {
       // Estimated reward for no change to the funding rate and 1 second elapsed is equal to the reward.
       await incrementTime(fundingRateStore, 1);
       assert.equal(
-        (await fundingRateStore.getRewardForContract(contractDeployer, { rawValue: toWei("0") })).toString(),
+        (await fundingRateStore.getRewardRateForContract(contractDeployer, { rawValue: toWei("0") })).toString(),
         toWei("0.0001")
       );
     });
@@ -310,7 +310,7 @@ contract("FundingRateStore", function(accounts) {
 
       // Projected reward calculation is correct.
       assert.equal(
-        await fundingRateStore.getRewardForContract(mockPerpetual.address, { rawValue: toWei("0.01") }),
+        await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("0.01") }),
         toWei("0.0505")
       );
 

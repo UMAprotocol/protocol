@@ -299,7 +299,7 @@ contract("PerpetualCreator", function(accounts) {
     // Can get the reward rate by calculating the projected reward for a 0% change to the funding rate
     // after 1 second.
     await fundingRateStore.setCurrentTime(deploymentTime.add(1).toString());
-    const rewardRate = await fundingRateStore.getRewardForContract(perpetualAddress, { rawValue: "0" });
+    const rewardRate = await fundingRateStore.getRewardRateForContract(perpetualAddress, { rawValue: "0" });
     assert.equal(rewardRate.toString(), toWei("0.0001"));
   });
 });
