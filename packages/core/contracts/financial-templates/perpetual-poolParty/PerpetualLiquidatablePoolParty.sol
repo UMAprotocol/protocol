@@ -11,7 +11,6 @@ import "../../common/implementation/FixedPoint.sol";
 import "./PerpetualPositionManagerPoolPartyLib.sol";
 import "./PerpetualLiquidatablePoolPartyLib.sol";
 
-
 /**
  * @title PerpetualLiquidatable
  * @notice Adds logic to a position-managing contract that enables callers to liquidate an undercollateralized position.
@@ -332,25 +331,11 @@ contract PerpetualLiquidatablePoolParty is PerpetualPositionManagerPoolParty {
         delete liquidations[sponsor][liquidationId];
     }
 
-    /**
-     * @notice Gets all liquidation information for a given sponsor address.
-     * @param sponsor address of the position sponsor.
-     * @return liquidationData array of all liquidation information for the given sponsor address.
-     */
-    function getLiquidations(address sponsor)
-        external
-        view
-        nonReentrantView()
-        returns (LiquidationData[] memory liquidationData)
-    {
-        return liquidations[sponsor];
-    }
-
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function _pfc() internal override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view override returns (FixedPoint.Unsigned memory) {
         return
             super._pfc().add(
                 liquidatableData.rawLiquidationCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier)
