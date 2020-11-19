@@ -192,38 +192,33 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Gets the latest proposal time for a perpetual contract's funding rate.
-     * @dev This method is designed to be helpful for proposers in projecting their rewards.
-     * @param perpetual perpetual contract whose proposal time the caller is querying.
-     * @return the proposal time of the current funding rate record or a pending proposal that has expired.
+     * @notice Gets the projected reward % for a successful proposer of a funding rate for a given perpetual contract.
+     * @dev This method is designed to be helpful for proposers in projecting their rewards. The reward % is a function
+     * of the perpetual contract's base reward % per second, the time elapsed since the last proposal, and the
+     * magnitude of change between the proposed and current funding rates. Note that unless the caller calls this
+     * method and proposes a funding rate in the same block, then the projected reward will be slightly underestimated.
+     * Note also that the actual reward is dependent on the perpetual's `PfC` at publish time and this method's
+     * reward %.
+     * @param perpetual Perpetual contract whose reward the caller is querying.
+     * @param rate Proposed rate.
+     * @return rewardRate Representing the reward % for a given contract if they were to propose a funding rate
+     * now.
      */
-    function getProposalTimeForContract(address perpetual) external view nonReentrantView() returns (uint256) {
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        if (_getProposalState(fundingRateRecord.proposal) == ProposalState.Expired) {
-            return fundingRateRecord.proposal.time;
-        } else {
-            return fundingRateRecord.proposeTime;
-        }
-    }
-
-    /**
-     * @notice Gets the reward rate per second for a perpetual contract.
-     * @dev This method is designed to be helpful for proposers in projecting their rewards. To get the reward
-     * rate for a specific funding rate proposal, you need to scale this method's return value, which is the
-     * perpetual contract's "base reward rate", by the time elapsed since the last proposal and the magnitude
-     * of change between the proposed and current funding rate.
-     * @param perpetual perpetual contract whose base reward rate the caller is querying.
-     * @return FixedPoint.Unsigned representing the base reward rate for the given contract. 0.01 would represent a
-     * reward rate of 1% per second.
-     */
-    function getRewardRateForContract(address perpetual)
+    function getRewardForContract(address perpetual, FixedPoint.Signed memory rate)
         external
         view
         nonReentrantView()
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory rewardRate)
     {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        return fundingRateRecord.rewardRatePerSecond;
+
+        rewardRate = _calculateProposalRewardPct(
+            perpetual,
+            fundingRateRecord.proposeTime,
+            getCurrentTime(),
+            rate,
+            fundingRateRecord.rate
+        );
     }
 
     /**
