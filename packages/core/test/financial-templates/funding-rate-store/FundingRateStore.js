@@ -84,7 +84,8 @@ contract("FundingRateStore", function(accounts) {
 
   it("Initial Funding Rate, Reward Rate 0", async function() {
     assert.equal((await fundingRateStore.getFundingRateForContract(mockPerpetual.address)).rawValue.toString(), "0");
-    // Projected reward for any funding rate proposal should be 0 because the reward rate is 0
+    // Projected reward for any funding rate proposal after any time elapsed should be 0 because the reward rate is 0.
+    await incrementTime(fundingRateStore, 100);
     assert.equal(
       (await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("1") })).toString(),
       "0"
