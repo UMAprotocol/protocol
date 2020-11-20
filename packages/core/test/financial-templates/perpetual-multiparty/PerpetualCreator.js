@@ -299,9 +299,9 @@ contract("PerpetualCreator", function(accounts) {
     });
 
     let recordParams = (await fundingRateStore.recordParams(perpetualAddress)).current;
-    assert.equal(recordParams.paramUpdateLiveness, 86400)
-    assert.equal(recordParams.rewardRatePerSecond, toWei("0.0001"))
-    assert.equal(recordParams.proposerBondPct, toWei("0.04"))
+    assert.equal(recordParams.paramUpdateLiveness, 86400);
+    assert.equal(recordParams.rewardRatePerSecond, toWei("0.0001"));
+    assert.equal(recordParams.proposerBondPct, toWei("0.04"));
 
     // Can get the reward rate by calculating the projected reward for a 0% change to the funding rate
     // after 1 second.

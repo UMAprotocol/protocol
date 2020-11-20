@@ -26,8 +26,8 @@ contract("FundingRateApplier", function() {
 
   it("Construction parameters set properly", async () => {
     let fundingRateApplier = await FundingRateApplier.new(
-      fpFinder.address, 
-      timer.address, 
+      fpFinder.address,
+      timer.address,
       0,
       { rawValue: "0" },
       { rawValue: "0" }
@@ -38,8 +38,8 @@ contract("FundingRateApplier", function() {
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
     let fundingRateApplier = await FundingRateApplier.new(
-      fpFinder.address, 
-      timer.address, 
+      fpFinder.address,
+      timer.address,
       0,
       { rawValue: "0" },
       { rawValue: "0" }
@@ -91,8 +91,8 @@ contract("FundingRateApplier", function() {
   });
   it("Applying positive and negative effective funding rates sets state and emits events correctly", async () => {
     let fundingRateApplier = await FundingRateApplier.new(
-      fpFinder.address, 
-      timer.address, 
+      fpFinder.address,
+      timer.address,
       0,
       { rawValue: "0" },
       { rawValue: "0" }

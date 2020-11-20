@@ -192,7 +192,7 @@ contract("PerpetualPositionManager", function(accounts) {
         priceFeedIdentifier, // _priceFeedIdentifier
         fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
         0, // _fundingRateParamUpdateLiveness
-        { rawValue: "0" }, // _fundingRateProposerBondPct 
+        { rawValue: "0" }, // _fundingRateProposerBondPct
         // Note: proposer bond does not have any effect on PM functionality so we'll set to 0
         { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
         { rawValue: minSponsorTokens }, // _minSponsorTokens
@@ -343,7 +343,7 @@ contract("PerpetualPositionManager", function(accounts) {
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
           0, // _fundingRateParamUpdateLiveness
-          { rawValue: "0" }, // _fundingRateProposerBondPct  
+          { rawValue: "0" }, // _fundingRateProposerBondPct
           { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
@@ -372,7 +372,7 @@ contract("PerpetualPositionManager", function(accounts) {
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       0, // _fundingRateParamUpdateLiveness
-      { rawValue: "0" }, // _fundingRateProposerBondPct 
+      { rawValue: "0" }, // _fundingRateProposerBondPct
       { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
@@ -1914,7 +1914,7 @@ contract("PerpetualPositionManager", function(accounts) {
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       0, // _fundingRateParamUpdateLiveness
-      { rawValue: "0" }, // _fundingRateProposerBondPct 
+      { rawValue: "0" }, // _fundingRateProposerBondPct
       { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
