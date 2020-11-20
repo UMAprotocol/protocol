@@ -34,7 +34,9 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
 
     // This method is useful for testing FRS.initializeRecordParams() which can only be called by the perpetual for which
     // the end user ultimately wants to set params for.
-    function initializeRecordParams(FundingRateStoreInterface.RecordParams memory initialRecordParams, address store) external {
+    function initializeRecordParams(FundingRateStoreInterface.RecordParams memory initialRecordParams, address store)
+        external
+    {
         FundingRateStoreInterface(store).initializeRecordParams(address(this), initialRecordParams);
     }
 

@@ -161,11 +161,14 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     )
         public
         FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, FundingRateStoreInterface.RecordParams({
-            paramUpdateLiveness: _fundingRateParamUpdateLiveness,
-            rewardRatePerSecond: _fundingRateRewardRate,
-            proposerBondPct: _fundingRateProposerBond
-        }))
+        FundingRateApplier(
+            _finderAddress,
+            FundingRateStoreInterface.RecordParams({
+                paramUpdateLiveness: _fundingRateParamUpdateLiveness,
+                rewardRatePerSecond: _fundingRateRewardRate,
+                proposerBondPct: _fundingRateProposerBond
+            })
+        )
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
