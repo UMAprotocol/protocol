@@ -80,7 +80,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
      */
     constructor(address _finderAddress, FixedPoint.Unsigned memory _fundingRateRewardRate) public {
         finder = FinderInterface(_finderAddress);
-
+        emergencyShutdownTimestamp = 0;
         lastUpdateTime = getCurrentTime();
 
         // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
