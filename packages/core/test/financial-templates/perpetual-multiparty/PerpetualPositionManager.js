@@ -146,6 +146,8 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      0, // _fundingRateParamUpdateLiveness
+      { rawValue: "0" }, // _fundingRateProposerBondPct
       { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
@@ -175,10 +177,7 @@ contract("PerpetualPositionManager", function(accounts) {
       fundingRateStore = await FundingRateStore.new(
         4, // Proposal liveness of 4 seconds
         finder.address,
-        timer.address,
-        {
-          rawValue: "0" // Proposal bond should not affect how the Perpetual contract works so we leave this at 0.
-        }
+        timer.address
       );
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), fundingRateStore.address, {
         from: contractDeployer
@@ -192,6 +191,9 @@ contract("PerpetualPositionManager", function(accounts) {
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
         fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+        0, // _fundingRateParamUpdateLiveness
+        { rawValue: "0" }, // _fundingRateProposerBondPct 
+        // Note: proposer bond does not have any effect on PM functionality so we'll set to 0
         { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
         { rawValue: minSponsorTokens }, // _minSponsorTokens
         timer.address, // _timerAddress
@@ -340,6 +342,8 @@ contract("PerpetualPositionManager", function(accounts) {
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+          0, // _fundingRateParamUpdateLiveness
+          { rawValue: "0" }, // _fundingRateProposerBondPct  
           { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
@@ -367,6 +371,8 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      0, // _fundingRateParamUpdateLiveness
+      { rawValue: "0" }, // _fundingRateProposerBondPct 
       { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
@@ -1907,6 +1913,8 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      0, // _fundingRateParamUpdateLiveness
+      { rawValue: "0" }, // _fundingRateProposerBondPct 
       { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress

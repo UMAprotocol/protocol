@@ -63,6 +63,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
+        uint256 fundingRateParamUpdateLiveness;
+        FixedPoint.Unsigned fundingRateProposerBond;
         FixedPoint.Unsigned fundingRateRewardRate;
         FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
@@ -177,6 +179,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
+            params.fundingRateParamUpdateLiveness,
+            params.fundingRateProposerBond,
             params.fundingRateRewardRate,
             params.minSponsorTokens,
             params.timerAddress,

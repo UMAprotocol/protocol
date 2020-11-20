@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../../oracle/interfaces/StoreInterface.sol";
 import "../../../oracle/interfaces/OracleInterface.sol";
@@ -53,7 +54,7 @@ import "../../../common/implementation/FixedPoint.sol";
  *     - Winner of dispute (disputer or proposer) receives: (proposal bond) + (disputer bond) + (final fee bond)
  *     - Store pays: (proposal bond) + (disputer bond) + (final fee bond)
  */
-contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
+contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Ownable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
@@ -62,8 +63,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /****************************************
      *        STORE DATA STRUCTURES         *
      ****************************************/
-
-    FixedPoint.Unsigned public proposalBondPct; // Percentage of 1, e.g. 0.0005 is 0.05%
 
     // Finder contract used to look up addresses for UMA system contracts.
     FinderInterface public finder;
@@ -79,14 +78,28 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     }
 
     struct FundingRateRecord {
-        FixedPoint.Signed rate; // Current funding rate.
-        uint256 proposeTime; // Time at which current funding rate was proposed.
+        // Current funding rate.
+        FixedPoint.Signed rate; 
+        // Time at which current funding rate was proposed.
+        uint256 proposeTime; 
         Proposal proposal;
-        FixedPoint.Unsigned rewardRatePerSecond; // Percentage of 1 E.g., .1 is 10%.
+        // // Upgradeable params specific to this record.
+        // RecordParams recordParams;
+        // RecordParams pendingRecordParams;
+        // uint256 recordParamsPassedTimestamp;
     }
+
+    struct RecordParamsForContract {
+        // Upgradeable params specific to this record.
+        RecordParams current;
+        RecordParams pending;
+        uint256 pendingPassedTimestamp;
+    }
+
 
     enum ProposalState { None, Pending, Expired }
 
+    mapping(address => RecordParamsForContract) public recordParams;
     mapping(address => FundingRateRecord) private fundingRateRecords;
     // TODO: Is there any reason to make `fundingRateDisputes` public? Could users use the dispute struct
     // to get funding rate data "for free"? If not, then I see no harm in making it public.
@@ -98,7 +111,19 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *                EVENTS                *
      ****************************************/
 
-    event ChangedRewardRate(address indexed perpetual, uint256 rewardRate);
+    event ProposedNewRecordParams(
+        address indexed perpetual, 
+        uint256 rewardRate, 
+        uint256 proposerBond, 
+        uint256 paramUpdateLiveness,
+        uint256 proposalPassedTimestamp
+    );
+    event ChangedRecordParams(
+        address indexed perpetual, 
+        uint256 rewardRate, 
+        uint256 proposerBond, 
+        uint256 paramUpdateLiveness
+    );
     event ProposedRate(
         address indexed perpetual,
         int256 rate,
@@ -140,8 +165,11 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      *                MODIFIERS             *
      ****************************************/
 
-    // Pubishes any pending proposals whose liveness has passed, pays out rewards for such proposals.
     modifier publishAndWithdrawProposal(address perpetual) {
+        // Update record params if possible.
+        _updateRecordParams(perpetual);
+
+        // Pubishes any pending proposals whose liveness has passed, pays out rewards for such proposals.
         _publishRateAndWithdrawRewards(perpetual);
         _;
     }
@@ -156,12 +184,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     constructor(
         uint256 _proposalLiveness,
         address _finderAddress,
-        address _timerAddress,
-        FixedPoint.Unsigned memory _proposalBondPct
+        address _timerAddress
     ) public Testable(_timerAddress) {
         require(_proposalLiveness > 0, "Proposal liveness is 0");
         proposalLiveness = _proposalLiveness;
-        proposalBondPct = _proposalBondPct;
         finder = FinderInterface(_finderAddress);
     }
 
@@ -270,7 +296,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         );
 
         // Compute proposal bond.
-        FixedPoint.Unsigned memory proposalBond = proposalBondPct.mul(AdministrateeInterface(perpetual).pfc());
+        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        FixedPoint.Unsigned memory proposalBond = recordParam.current.proposerBondPct.mul(AdministrateeInterface(perpetual).pfc());
 
         // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
@@ -422,23 +449,54 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     function withdrawProposalRewards(address perpetual) external nonReentrant() publishAndWithdrawProposal(perpetual) {}
 
     /**
-     * @notice Set the reward rate (per second) for a specific `perpetual` contract.
-     * @dev Callable only by the Perpetual contract.
+     * @notice Set new parameters for a specific `perpetual` contract. New params go into effect
+     * after a liveness period passes.
+     * @dev Callable only by owner. Calling this while there is already a pending RecordParams struct
+     * will overwrite it.
      */
-    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate)
+    function setRecordParams(address perpetual, RecordParams memory newRecordParams)
+        external
+        onlyOwner()
+        nonReentrant()
+        publishAndWithdrawProposal(perpetual)
+    {
+        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        recordParam.pending = newRecordParams;
+        uint256 livenessPassedTimestamp = getCurrentTime() + recordParam.current.paramUpdateLiveness;
+        recordParam.pendingPassedTimestamp = livenessPassedTimestamp;
+
+        emit ProposedNewRecordParams(
+            perpetual, 
+            newRecordParams.rewardRatePerSecond.rawValue, 
+            newRecordParams.proposerBondPct.rawValue,
+            newRecordParams.paramUpdateLiveness,
+            livenessPassedTimestamp);
+    }
+
+    /**
+     * @notice This method should be called by the `perpetual` upon instantiation to set up its record params
+     * once without having to pass a liveness period.
+     * @dev Callable only by `perpetual`.
+     */
+    function initializeRecordParams(address perpetual, RecordParams memory newRecordParams) 
         external
         override
         nonReentrant()
         publishAndWithdrawProposal(perpetual)
     {
         require(msg.sender == perpetual, "Caller not perpetual");
-        FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
-        fundingRateRecord.rewardRatePerSecond = rewardRate;
+        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        recordParam.current = newRecordParams;
 
         // Set last propose time to current time since rewards will start accruing from here on out.
-        fundingRateRecord.proposeTime = getCurrentTime();
+        _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
 
-        emit ChangedRewardRate(perpetual, rewardRate.rawValue);
+        emit ChangedRecordParams(
+            perpetual,
+            newRecordParams.rewardRatePerSecond.rawValue,
+            newRecordParams.proposerBondPct.rawValue,
+            newRecordParams.paramUpdateLiveness
+        );
     }
 
     /**
@@ -457,6 +515,31 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
+
+    function _updateRecordParams(address perpetual) internal {
+        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+
+        // If liveness has passed, publish new reward rate.
+        if (
+            _pendingRewardProposalPassed(perpetual)
+        ) {
+            recordParam.current = recordParam.pending;
+
+            // Reset reward rate proposal state.
+            delete recordParam.pending;
+            recordParam.pendingPassedTimestamp = 0;
+
+            // Set last propose time to current time since rewards will start accruing from here on out.
+            _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
+
+            emit ChangedRecordParams(
+                perpetual,
+                recordParam.current.rewardRatePerSecond.rawValue,
+                recordParam.current.proposerBondPct.rawValue,
+                recordParam.current.paramUpdateLiveness
+            );
+        }
+    }
 
     function _publishRateAndWithdrawRewards(address perpetual) internal {
         FundingRateRecord storage fundingRateRecord = _getFundingRateRecord(perpetual);
@@ -544,7 +627,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     ) private view returns (FixedPoint.Unsigned memory reward) {
         uint256 timeDiff = endTime.sub(startTime);
 
-        FixedPoint.Unsigned memory rewardRate = _getFundingRateRecord(perpetual).rewardRatePerSecond;
+        // If pending reward rate has expired, use the pending reward rate.
+        FixedPoint.Unsigned memory rewardRate = (
+            _pendingRewardProposalPassed(perpetual) ?
+            _getRecordParams(perpetual).pending.rewardRatePerSecond :
+            _getRecordParams(perpetual).current.rewardRatePerSecond
+        );
 
         // First compute the reward for the time elapsed.
         reward = rewardRate.mul(timeDiff);
@@ -571,6 +659,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
     // Returns the pending Proposal struct for a perpetual contract.
     function _getFundingRateRecord(address perpetual) private view returns (FundingRateRecord storage) {
         return fundingRateRecords[perpetual];
+    }
+
+    function _getRecordParams(address perpetual) private view returns (RecordParamsForContract storage) {
+        return recordParams[perpetual];
     }
 
     // Returns the disputed Proposal struct for a perpetual and proposal time. This returns empty if the dispute
@@ -620,5 +712,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _pendingRewardProposalPassed(address perpetual) internal view returns (bool) {
+        return (
+            _getRecordParams(perpetual).pendingPassedTimestamp != 0 &&
+            _getRecordParams(perpetual).pendingPassedTimestamp <= getCurrentTime()
+        );
     }
 }

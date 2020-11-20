@@ -10,8 +10,14 @@ contract FundingRateApplierTest is FundingRateApplier {
     constructor(
         address _fpFinderAddress,
         address _timerAddress,
+        uint256 _paramsUpdateLiveness,
+        FixedPoint.Unsigned memory _proposerBond,
         FixedPoint.Unsigned memory _rewardRate
-    ) public Testable(_timerAddress) FundingRateApplier(_fpFinderAddress, _rewardRate) {}
+    ) public Testable(_timerAddress) FundingRateApplier(_fpFinderAddress, FundingRateStoreInterface.RecordParams({
+            paramUpdateLiveness: _paramsUpdateLiveness,
+            rewardRatePerSecond: _rewardRate,
+            proposerBondPct: _proposerBond
+    })) {}
 
     function applyFundingRate() public {
         _applyEffectiveFundingRate();
