@@ -79,14 +79,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
 
     struct FundingRateRecord {
         // Current funding rate.
-        FixedPoint.Signed rate; 
+        FixedPoint.Signed rate;
         // Time at which current funding rate was proposed.
-        uint256 proposeTime; 
+        uint256 proposeTime;
         Proposal proposal;
-        // // Upgradeable params specific to this record.
-        // RecordParams recordParams;
-        // RecordParams pendingRecordParams;
-        // uint256 recordParamsPassedTimestamp;
     }
 
     struct RecordParamsForContract {
@@ -95,7 +91,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         RecordParams pending;
         uint256 pendingPassedTimestamp;
     }
-
 
     enum ProposalState { None, Pending, Expired }
 
@@ -112,16 +107,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
      ****************************************/
 
     event ProposedNewRecordParams(
-        address indexed perpetual, 
-        uint256 rewardRate, 
-        uint256 proposerBond, 
+        address indexed perpetual,
+        uint256 rewardRate,
+        uint256 proposerBond,
         uint256 paramUpdateLiveness,
         uint256 proposalPassedTimestamp
     );
     event ChangedRecordParams(
-        address indexed perpetual, 
-        uint256 rewardRate, 
-        uint256 proposerBond, 
+        address indexed perpetual,
+        uint256 rewardRate,
+        uint256 proposerBond,
         uint256 paramUpdateLiveness
     );
     event ProposedRate(
@@ -297,7 +292,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
 
         // Compute proposal bond.
         RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
-        FixedPoint.Unsigned memory proposalBond = recordParam.current.proposerBondPct.mul(AdministrateeInterface(perpetual).pfc());
+        FixedPoint.Unsigned memory proposalBond = recordParam.current.proposerBondPct.mul(
+            AdministrateeInterface(perpetual).pfc()
+        );
 
         // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
@@ -466,11 +463,12 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         recordParam.pendingPassedTimestamp = livenessPassedTimestamp;
 
         emit ProposedNewRecordParams(
-            perpetual, 
-            newRecordParams.rewardRatePerSecond.rawValue, 
+            perpetual,
+            newRecordParams.rewardRatePerSecond.rawValue,
             newRecordParams.proposerBondPct.rawValue,
             newRecordParams.paramUpdateLiveness,
-            livenessPassedTimestamp);
+            livenessPassedTimestamp
+        );
     }
 
     /**
@@ -478,7 +476,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
      * once without having to pass a liveness period.
      * @dev Callable only by `perpetual`.
      */
-    function initializeRecordParams(address perpetual, RecordParams memory newRecordParams) 
+    function initializeRecordParams(address perpetual, RecordParams memory newRecordParams)
         external
         override
         nonReentrant()
@@ -520,9 +518,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
 
         // If liveness has passed, publish new reward rate.
-        if (
-            _pendingRewardProposalPassed(perpetual)
-        ) {
+        if (_pendingRewardProposalPassed(perpetual)) {
             recordParam.current = recordParam.pending;
 
             // Reset reward rate proposal state.
@@ -629,9 +625,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
 
         // If pending reward rate has expired, use the pending reward rate.
         FixedPoint.Unsigned memory rewardRate = (
-            _pendingRewardProposalPassed(perpetual) ?
-            _getRecordParams(perpetual).pending.rewardRatePerSecond :
-            _getRecordParams(perpetual).current.rewardRatePerSecond
+            _pendingRewardProposalPassed(perpetual)
+                ? _getRecordParams(perpetual).pending.rewardRatePerSecond
+                : _getRecordParams(perpetual).current.rewardRatePerSecond
         );
 
         // First compute the reward for the time elapsed.
@@ -715,9 +711,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
     }
 
     function _pendingRewardProposalPassed(address perpetual) internal view returns (bool) {
-        return (
-            _getRecordParams(perpetual).pendingPassedTimestamp != 0 &&
-            _getRecordParams(perpetual).pendingPassedTimestamp <= getCurrentTime()
-        );
+        return (_getRecordParams(perpetual).pendingPassedTimestamp != 0 &&
+            _getRecordParams(perpetual).pendingPassedTimestamp <= getCurrentTime());
     }
 }
