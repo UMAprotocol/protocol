@@ -33,6 +33,24 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
+    // Define the contract's constructor parameters as a struct to enable more variables to be specified.
+    // This is required to enable more params, over and above Solidity's limits.
+    struct PMConstructorParams {
+        // Params for PricelessPositionManager only.
+        uint256 withdrawalLiveness;
+        address collateralAddress;
+        address tokenAddress;
+        address finderAddress;
+        address timerAddress;
+        address excessTokenBeneficiary;
+        bytes32 priceFeedIdentifier;
+        bytes32 fundingRateIdentifier;
+        uint256 fundingRateParamUpdateLiveness;
+        FixedPoint.Unsigned fundingRateProposerBond;
+        FixedPoint.Unsigned fundingRateRewardRate;
+        FixedPoint.Unsigned minSponsorTokens;
+    }
+
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
@@ -134,49 +152,35 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
      * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
      * total supply is 0 prior to construction of this contract.
-     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
-     * @param _collateralAddress ERC20 token used as collateral for all positions.
-     * @param _tokenAddress ERC20 token used as synthetic token.
-     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
-     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
-     * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
-     * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
+     * @param params struct to define input parameters for construction of PositionManager.
      */
-    constructor(
-        uint256 _withdrawalLiveness,
-        address _collateralAddress,
-        address _tokenAddress,
-        address _finderAddress,
-        bytes32 _priceIdentifier,
-        bytes32 _fundingRateIdentifier,
-        uint256 _fundingRateParamUpdateLiveness,
-        FixedPoint.Unsigned memory _fundingRateProposerBond,
-        FixedPoint.Unsigned memory _fundingRateRewardRate,
-        FixedPoint.Unsigned memory _minSponsorTokens,
-        address _timerAddress,
-        address _excessTokenBeneficiary
-    )
+    constructor(PMConstructorParams memory params)
         public
-        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
+        FundingRatePayer(
+            params.fundingRateIdentifier,
+            params.collateralAddress,
+            params.finderAddress,
+            params.timerAddress
+        )
         FundingRateApplier(
-            _finderAddress,
+            params.finderAddress,
             FundingRateStoreInterface.RecordParams({
-                paramUpdateLiveness: _fundingRateParamUpdateLiveness,
-                rewardRatePerSecond: _fundingRateRewardRate,
-                proposerBondPct: _fundingRateProposerBond
+                paramUpdateLiveness: params.fundingRateParamUpdateLiveness,
+                rewardRatePerSecond: params.fundingRateRewardRate,
+                proposerBondPct: params.fundingRateProposerBond
             })
         )
     {
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
+        require(
+            _getIdentifierWhitelist().isIdentifierSupported(params.priceFeedIdentifier),
+            "Unsupported price identifier"
+        );
 
-        withdrawalLiveness = _withdrawalLiveness;
-        tokenCurrency = ExpandedIERC20(_tokenAddress);
-        minSponsorTokens = _minSponsorTokens;
-        priceIdentifier = _priceIdentifier;
-        excessTokenBeneficiary = _excessTokenBeneficiary;
+        withdrawalLiveness = params.withdrawalLiveness;
+        tokenCurrency = ExpandedIERC20(params.tokenAddress);
+        minSponsorTokens = params.minSponsorTokens;
+        priceIdentifier = params.priceFeedIdentifier;
+        excessTokenBeneficiary = params.excessTokenBeneficiary;
     }
 
     /****************************************

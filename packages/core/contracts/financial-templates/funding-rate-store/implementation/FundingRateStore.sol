@@ -291,7 +291,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         );
 
         // Compute proposal bond.
-        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        RecordParamsForContract storage recordParam = recordParams[perpetual];
         FixedPoint.Unsigned memory proposalBond = recordParam.current.proposerBondPct.mul(
             AdministrateeInterface(perpetual).pfc()
         );
@@ -457,7 +457,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         nonReentrant()
         publishAndWithdrawProposal(perpetual)
     {
-        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        RecordParamsForContract storage recordParam = recordParams[perpetual];
         recordParam.pending = newRecordParams;
         uint256 livenessPassedTimestamp = getCurrentTime() + recordParam.current.paramUpdateLiveness;
         recordParam.pendingPassedTimestamp = livenessPassedTimestamp;
@@ -483,7 +483,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         publishAndWithdrawProposal(perpetual)
     {
         require(msg.sender == perpetual, "Caller not perpetual");
-        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        RecordParamsForContract storage recordParam = recordParams[perpetual];
         recordParam.current = newRecordParams;
 
         // Set last propose time to current time since rewards will start accruing from here on out.
@@ -515,7 +515,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
      ****************************************/
 
     function _updateRecordParams(address perpetual) internal {
-        RecordParamsForContract storage recordParam = _getRecordParams(perpetual);
+        RecordParamsForContract storage recordParam = recordParams[perpetual];
 
         // If liveness has passed, publish new reward rate.
         if (_pendingRewardProposalPassed(perpetual)) {
@@ -626,8 +626,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         // If pending reward rate has expired, use the pending reward rate.
         FixedPoint.Unsigned memory rewardRate = (
             _pendingRewardProposalPassed(perpetual)
-                ? _getRecordParams(perpetual).pending.rewardRatePerSecond
-                : _getRecordParams(perpetual).current.rewardRatePerSecond
+                ? recordParams[perpetual].pending.rewardRatePerSecond
+                : recordParams[perpetual].current.rewardRatePerSecond
         );
 
         // First compute the reward for the time elapsed.
@@ -711,7 +711,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
     }
 
     function _pendingRewardProposalPassed(address perpetual) internal view returns (bool) {
-        return (_getRecordParams(perpetual).pendingPassedTimestamp != 0 &&
-            _getRecordParams(perpetual).pendingPassedTimestamp <= getCurrentTime());
+        return (recordParams[perpetual].pendingPassedTimestamp != 0 &&
+            recordParams[perpetual].pendingPassedTimestamp <= getCurrentTime());
     }
 }

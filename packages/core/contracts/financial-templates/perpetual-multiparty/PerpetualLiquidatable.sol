@@ -173,18 +173,20 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     constructor(ConstructorParams memory params)
         public
         PerpetualPositionManager(
-            params.withdrawalLiveness,
-            params.collateralAddress,
-            params.tokenAddress,
-            params.finderAddress,
-            params.priceFeedIdentifier,
-            params.fundingRateIdentifier,
-            params.fundingRateParamUpdateLiveness,
-            params.fundingRateProposerBond,
-            params.fundingRateRewardRate,
-            params.minSponsorTokens,
-            params.timerAddress,
-            params.excessTokenBeneficiary
+            PMConstructorParams({
+                withdrawalLiveness: params.withdrawalLiveness,
+                collateralAddress: params.collateralAddress,
+                tokenAddress: params.tokenAddress,
+                finderAddress: params.finderAddress,
+                priceFeedIdentifier: params.priceFeedIdentifier,
+                fundingRateIdentifier: params.fundingRateIdentifier,
+                fundingRateParamUpdateLiveness: params.fundingRateParamUpdateLiveness,
+                fundingRateProposerBond: params.fundingRateProposerBond,
+                fundingRateRewardRate: params.fundingRateRewardRate,
+                minSponsorTokens: params.minSponsorTokens,
+                timerAddress: params.timerAddress,
+                excessTokenBeneficiary: params.excessTokenBeneficiary
+            })
         )
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
