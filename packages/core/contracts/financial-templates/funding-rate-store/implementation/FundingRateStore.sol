@@ -170,6 +170,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
      ****************************************/
 
     modifier publishAndWithdrawProposal(address perpetual) {
+        // We want to set `proposeTime` for each `perpetual` to a non-zero value as soon as possible because
+        // having proposeTime = 0 when `_publishRateAndWithdrawRewards()` is called will compute a reward % that
+        // is too large. The only way to set `proposeTime` is for someone to propose a funding rate and then
+        // call `publishRate`, however, the reward % is calculated at propose time--when `propose()` is called.
+        // Therefore, we need to make sure that if the rewardRate > 0, that last proposeTime != 0, so we will try
+        // initialize it now and guarantee that the reward calculation does not use a proposeTime = 0.
+        if (_getFundingRateRecord(perpetual).proposeTime == 0) {
+            _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
+        }
+
         // Update record params if possible.
         _updateRecordParams(perpetual);
 
@@ -507,14 +517,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
             // Reset reward rate proposal state.
             delete recordParam.pending;
             recordParam.pendingPassedTimestamp = 0;
-
-            // If propose time is 0, then that means no proposal has been published yet and that the reward rate
-            // was previously set to 0. Since the reward rate might now be non-0, set the last propose time to
-            // current time since rewards might start accruing from here on out. In other words, we don't want the
-            // proposeTime to ever be 0, otherwise rewards will be greatly over calculated.
-            if (_getFundingRateRecord(perpetual).proposeTime == 0) {
-                _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
-            }
 
             emit ChangedRecordParams(
                 perpetual,
