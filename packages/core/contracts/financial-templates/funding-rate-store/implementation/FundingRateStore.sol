@@ -508,8 +508,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
             delete recordParam.pending;
             recordParam.pendingPassedTimestamp = 0;
 
-            // Set last propose time to current time since rewards will start accruing from here on out.
-            _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
+            // If propose time is 0, then that means no proposal has been published yet and that the reward rate
+            // was previously set to 0. Since the reward rate might now be non-0, set the last propose time to
+            // current time since rewards might start accruing from here on out. In other words, we don't want the
+            // proposeTime to ever be 0, otherwise rewards will be greatly over calculated.
+            if (_getFundingRateRecord(perpetual).proposeTime == 0) {
+                _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
+            }
 
             emit ChangedRecordParams(
                 perpetual,

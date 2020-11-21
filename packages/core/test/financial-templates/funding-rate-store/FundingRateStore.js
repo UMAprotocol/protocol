@@ -235,6 +235,45 @@ contract("FundingRateStore", function(accounts) {
       assert.equal(recordParams.pending.proposerBondPct.rawValue.toString(), "0");
       assert.equal(recordParams.pendingPassedTimestamp.toString(), "0");
     });
+    it("Propose time is reset to current time the first time that parameters are changed", async function() {
+      // Set reward rate
+      await fundingRateStore.setRecordParams(
+        mockPerpetual.address,
+        {
+          paramUpdateLiveness: 0,
+          rewardRatePerSecond: { rawValue: toWei("0.01") },
+          proposerBondPct: { rawValue: toWei("0") }
+        },
+        { from: contractDeployer }
+      );
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+
+      // Move time forward by 5 seconds. Reward % should be 1% * 5 = 5%.
+      await incrementTime(fundingRateStore, 5);
+      assert.equal(
+        (await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("0") })).toString(),
+        toWei("0.05")
+      );
+
+      // Change reward rate
+      await fundingRateStore.setRecordParams(
+        mockPerpetual.address,
+        {
+          paramUpdateLiveness: 0,
+          rewardRatePerSecond: { rawValue: toWei("0.02") },
+          proposerBondPct: { rawValue: toWei("0") }
+        },
+        { from: contractDeployer }
+      );
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+
+      // Show that reward calc uses new reward rate BUT still maintains the previous "proposeTime" set 5 seconds ago.
+      // Reward % should be 2% * 5 = 10%.
+      assert.equal(
+        (await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("0") })).toString(),
+        toWei("0.1")
+      );
+    });
   });
   describe("Reward computation", function() {
     beforeEach(async function() {
