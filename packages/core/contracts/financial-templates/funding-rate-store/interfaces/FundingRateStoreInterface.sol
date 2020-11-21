@@ -9,15 +9,6 @@ import "../../../common/implementation/FixedPoint.sol";
  * @dev Interface used by financial contracts to interact with a storage contract which sets and gets funding rates.
  */
 interface FundingRateStoreInterface {
-    struct RecordParams {
-        // Liveness period for an update to value in RecordParams to become official.
-        uint256 paramUpdateLiveness;
-        // Reward rate paid to successful proposers. Percentage of 1 E.g., .1 is 10%.
-        FixedPoint.Unsigned rewardRatePerSecond;
-        // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%
-        FixedPoint.Unsigned proposerBondPct;
-    }
-
     /**
      * @notice Gets the latest funding rate for a perpetual contract.
      * @dev This method should never revert.
