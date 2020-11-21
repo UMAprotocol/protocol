@@ -192,6 +192,8 @@ contract("PerpetualPositionManager", function(accounts) {
         proposerBondPct: { rawValue: toWei("0") }
       };
       await fundingRateStore.setRecordParams(positionManager.address, newParams, { from: contractDeployer });
+      // Its important that we save the `rewardRate`, via any contract call, before we increment time,
+      // otherwise the reward will not tick as time increases.
       await fundingRateStore.withdrawProposalRewards(positionManager.address);
 
       // Give contract owner permissions.
