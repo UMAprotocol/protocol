@@ -118,7 +118,7 @@ contract("FundingRateStore", function(accounts) {
 
   describe("Record parameters", function() {
     it("Initializing", async function() {
-      // Record params are set to expected default values.
+      // To start, record params are set to expected default values.
       let recordParams = await fundingRateStore.recordParams(mockPerpetual.address);
       assert.equal(recordParams.current.paramUpdateLiveness.toString(), "0");
       assert.equal(recordParams.current.rewardRatePerSecond.rawValue.toString(), "0");
@@ -133,28 +133,22 @@ contract("FundingRateStore", function(accounts) {
         rewardRatePerSecond: { rawValue: toWei("0.01") },
         proposerBondPct: { rawValue: toWei("0.02") }
       };
-      // Only perpetual can set its own params.
-      assert(
-        await didContractThrow(
-          fundingRateStore.initializeRecordParams(mockPerpetual.address, newParams, {
-            from: contractDeployer
-          })
-        )
+      // Liveness is 0, meaning that the new params should be "live" after we interact with it.
+      // We can see this by calling `getRewardForContract()`.
+      await fundingRateStore.setRecordParams(mockPerpetual.address, newParams, { from: contractDeployer });
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
+      // New reward rate is live: 1% * 1 second * 0% increase = 0.01
+      let rewardResult = await fundingRateStore.calculateProposalRewardPct(
+        mockPerpetual.address,
+        0,
+        1,
+        { rawValue: toWei("0.1") }, // New rate, 0% increase
+        { rawValue: toWei("0.1") } // Old rate
       );
+      assert.equal(rewardResult.toString(), toWei("0.01"));
 
-      // No liveness needed to set new params.
-      const txn = await fundingRateStore.initializeRecordParams(contractDeployer, newParams, {
-        from: contractDeployer
-      });
-      truffleAssert.eventEmitted(txn, "ChangedRecordParams", ev => {
-        return (
-          ev.perpetual === contractDeployer &&
-          ev.rewardRate.toString() === toWei("0.01") &&
-          ev.proposerBond.toString() === toWei("0.02") &&
-          ev.paramUpdateLiveness.toString() === "2"
-        );
-      });
-      recordParams = await fundingRateStore.recordParams(contractDeployer);
+      // Force update state.
+      recordParams = await fundingRateStore.recordParams(mockPerpetual.address);
       assert.equal(recordParams.current.paramUpdateLiveness.toString(), "2");
       assert.equal(recordParams.current.rewardRatePerSecond.rawValue.toString(), toWei("0.01"));
       assert.equal(recordParams.current.proposerBondPct.rawValue.toString(), toWei("0.02"));
@@ -164,8 +158,8 @@ contract("FundingRateStore", function(accounts) {
       assert.equal(recordParams.pendingPassedTimestamp.toString(), "0");
     });
     it("Updating after liveness", async function() {
-      // Make liveness to publish new record params non 0
-      await fundingRateStore.initializeRecordParams(
+      // Make liveness non-0 to demonstrate liveness period.
+      await fundingRateStore.setRecordParams(
         contractDeployer,
         {
           paramUpdateLiveness: 10,
@@ -176,6 +170,7 @@ contract("FundingRateStore", function(accounts) {
           from: contractDeployer
         }
       );
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
 
       // Only owner can propose new params
       const newParams = {
@@ -244,7 +239,7 @@ contract("FundingRateStore", function(accounts) {
   describe("Reward computation", function() {
     beforeEach(async function() {
       // Setting reward rate to 1%/second.
-      await fundingRateStore.initializeRecordParams(
+      await fundingRateStore.setRecordParams(
         contractDeployer,
         {
           paramUpdateLiveness: 0,
@@ -255,6 +250,7 @@ contract("FundingRateStore", function(accounts) {
           from: contractDeployer
         }
       );
+      await fundingRateStore.withdrawProposalRewards(contractDeployer);
     });
     it("Holding rate delta constant, testing time elapsed factor", async function() {
       let result;
@@ -358,9 +354,6 @@ contract("FundingRateStore", function(accounts) {
       // Current rate is 2.5%, elapsed time is 2 seconds, rate change % is 20%:
       // (current-rate * elapsed-time * (1+rate-change)) =
       // (0.025 * 2 * (1+0.2)) = 0.06
-
-      // Test that if you propose record params and the proposal passes liveness, you don't have to
-      // actually update the `recordParams.current` state to have the reward param update take place.
       await fundingRateStore.setRecordParams(
         contractDeployer,
         {
@@ -372,7 +365,7 @@ contract("FundingRateStore", function(accounts) {
           from: contractDeployer
         }
       );
-      // await fundingRateStore.setRewardRate(contractDeployer, { rawValue: toWei("0.025") }, { from: contractDeployer });
+      await fundingRateStore.withdrawProposalRewards(contractDeployer);
       result = await fundingRateStore.calculateProposalRewardPct(
         contractDeployer,
         0,
@@ -392,19 +385,18 @@ contract("FundingRateStore", function(accounts) {
 
       // Set non-zero proposal bond and reward rates.
       fundingRateStore = await FundingRateStore.new(liveness, finder.address, timer.address);
-      // await fundingRateStore.setRecordParams(mockPerpetual.address, {
-      //   paramUpdateLiveness: 0,
-      //   rewardRatePerSecond: { rawValue: toWei("0.01") },
-      //   proposerBondPct: { rawValue: toWei("0.0005") }
-      // })
-      await mockPerpetual.initializeRecordParams(
+      await fundingRateStore.setRecordParams(
+        mockPerpetual.address,
         {
           paramUpdateLiveness: 0,
           rewardRatePerSecond: { rawValue: toWei("0.01") },
           proposerBondPct: { rawValue: toWei("0.0005") }
         },
-        fundingRateStore.address
+        {
+          from: contractDeployer
+        }
       );
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
 
       // Mint the MockPerpetual some collateral so that it has "PfC" from which to pay proposer rewards
       await collateralCurrency.mint(mockPerpetual.address, startingPfC);
@@ -428,13 +420,16 @@ contract("FundingRateStore", function(accounts) {
         { rawValue: toWei("0.01") },
         { from: proposer }
       );
+
       const postBalance = await collateralCurrency.balanceOf(proposer);
       // Proposal bond is (0.0005 * 1000) and final fee is 0.25.
       assert.equal(preBalance.sub(postBalance).toString(), toWei("0.75"));
 
       // Projected reward calculation is correct.
       assert.equal(
-        await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("0.01") }),
+        (
+          await fundingRateStore.getRewardRateForContract(mockPerpetual.address, { rawValue: toWei("0.01") })
+        ).toString(),
         toWei("0.0505")
       );
 
@@ -594,14 +589,18 @@ contract("FundingRateStore", function(accounts) {
 
       // Set non-zero proposal bond and reward rates.
       fundingRateStore = await FundingRateStore.new(liveness, finder.address, timer.address);
-      await mockPerpetual.initializeRecordParams(
+      await fundingRateStore.setRecordParams(
+        mockPerpetual.address,
         {
           paramUpdateLiveness: 100,
           rewardRatePerSecond: { rawValue: toWei("0.01") },
           proposerBondPct: { rawValue: toWei("0.0005") }
         },
-        fundingRateStore.address
+        {
+          from: contractDeployer
+        }
       );
+      await fundingRateStore.withdrawProposalRewards(mockPerpetual.address);
 
       // Mint the MockPerpetual some collateral so that it has "PfC" from which to pay proposer rewards
       await collateralCurrency.mint(mockPerpetual.address, toWei("1000"));

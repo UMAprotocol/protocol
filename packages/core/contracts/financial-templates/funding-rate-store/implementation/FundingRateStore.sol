@@ -472,32 +472,6 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
     }
 
     /**
-     * @notice This method should be called by the `perpetual` upon instantiation to set up its record params
-     * once without having to pass a liveness period.
-     * @dev Callable only by `perpetual`.
-     */
-    function initializeRecordParams(address perpetual, RecordParams memory newRecordParams)
-        external
-        override
-        nonReentrant()
-        publishAndWithdrawProposal(perpetual)
-    {
-        require(msg.sender == perpetual, "Caller not perpetual");
-        RecordParamsForContract storage recordParam = recordParams[perpetual];
-        recordParam.current = newRecordParams;
-
-        // Set last propose time to current time since rewards will start accruing from here on out.
-        _getFundingRateRecord(perpetual).proposeTime = getCurrentTime();
-
-        emit ChangedRecordParams(
-            perpetual,
-            newRecordParams.rewardRatePerSecond.rawValue,
-            newRecordParams.proposerBondPct.rawValue,
-            newRecordParams.paramUpdateLiveness
-        );
-    }
-
-    /**
      * @notice Helpful method for proposers who want to calculate their potential rewards and useful for testing.
      */
     function calculateProposalRewardPct(
@@ -623,14 +597,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
     ) private view returns (FixedPoint.Unsigned memory reward) {
         uint256 timeDiff = endTime.sub(startTime);
 
-        // If pending reward rate has expired, use the pending reward rate.
-        FixedPoint.Unsigned memory rewardRate = (
-            _pendingRewardProposalPassed(perpetual)
-                ? recordParams[perpetual].pending.rewardRatePerSecond
-                : recordParams[perpetual].current.rewardRatePerSecond
-        );
-
         // First compute the reward for the time elapsed.
+        FixedPoint.Unsigned memory rewardRate = recordParams[perpetual].current.rewardRatePerSecond;
         reward = rewardRate.mul(timeDiff);
 
         // Next scale the reward based on the absolute difference % between the current and proposed rates.

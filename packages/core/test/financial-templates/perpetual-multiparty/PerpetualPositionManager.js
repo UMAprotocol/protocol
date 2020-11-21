@@ -53,6 +53,7 @@ contract("PerpetualPositionManager", function(accounts) {
   const fundingRateRewardRate = toWei("0.0001");
   const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
   const minSponsorTokens = "5";
+  let constructorParams;
 
   // Conveniently asserts expected collateral and token balances, assuming that
   // there is only one synthetic token holder, the sponsor. Also assumes no
@@ -139,21 +140,18 @@ contract("PerpetualPositionManager", function(accounts) {
     });
 
     // Create the instance of the positionManager to test against.
-    positionManager = await PerpetualPositionManager.new(
-      withdrawalLiveness, // _withdrawalLiveness
-      collateral.address, // _collateralAddress
-      tokenCurrency.address, // _tokenAddress
-      finder.address, // _finderAddress
-      priceFeedIdentifier, // _priceFeedIdentifier
-      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      0, // _fundingRateParamUpdateLiveness
-      { rawValue: "0" }, // _fundingRateProposerBondPct
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
-      { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
-      beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
-    );
+    constructorParams = {
+      withdrawalLiveness: withdrawalLiveness,
+      collateralAddress: collateral.address,
+      tokenAddress: tokenCurrency.address,
+      finderAddress: finder.address,
+      priceFeedIdentifier: priceFeedIdentifier,
+      fundingRateIdentifier: fundingRateFeedIdentifier,
+      minSponsorTokens: { rawValue: minSponsorTokens },
+      timerAddress: timer.address,
+      excessTokenBeneficiary: beneficiary
+    };
+    positionManager = await PerpetualPositionManager.new(constructorParams);
 
     // Give contract owner permissions.
     await tokenCurrency.addMinter(positionManager.address);
@@ -179,27 +177,22 @@ contract("PerpetualPositionManager", function(accounts) {
         finder.address,
         timer.address
       );
+
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), fundingRateStore.address, {
         from: contractDeployer
       });
 
       // Deploy a new position manager so that it sets a funding rate fee % with the newly registered FundingRateStore
-      positionManager = await PerpetualPositionManager.new(
-        withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
-        tokenCurrency.address, // _tokenAddress
-        finder.address, // _finderAddress
-        priceFeedIdentifier, // _priceFeedIdentifier
-        fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-        0, // _fundingRateParamUpdateLiveness
-        { rawValue: "0" }, // _fundingRateProposerBondPct
-        // Note: proposer bond does not have any effect on PM functionality so we'll set to 0
-        { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
-        { rawValue: minSponsorTokens }, // _minSponsorTokens
-        timer.address, // _timerAddress
-        beneficiary, // _excessTokenBeneficiary
-        { from: contractDeployer }
-      );
+      positionManager = await PerpetualPositionManager.new(constructorParams);
+
+      // Set reward rate for new perpetual.
+      const newParams = {
+        paramUpdateLiveness: 0,
+        rewardRatePerSecond: { rawValue: fundingRateRewardRate },
+        proposerBondPct: { rawValue: toWei("0") }
+      };
+      await fundingRateStore.setRecordParams(positionManager.address, newParams, { from: contractDeployer });
+      await fundingRateStore.withdrawProposalRewards(positionManager.address);
 
       // Give contract owner permissions.
       await tokenCurrency.addMinter(positionManager.address);
@@ -333,25 +326,11 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Valid constructor params", async function() {
     // Pricefeed identifier must be whitelisted.
-    assert(
-      await didContractThrow(
-        PerpetualPositionManager.new(
-          withdrawalLiveness, // _withdrawalLiveness
-          collateral.address, // _collateralAddress
-          tokenCurrency.address, // _tokenAddress
-          finder.address, // _finderAddress
-          utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
-          fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-          0, // _fundingRateParamUpdateLiveness
-          { rawValue: "0" }, // _fundingRateProposerBondPct
-          { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
-          { rawValue: minSponsorTokens }, // _minSponsorTokens
-          timer.address, // _timerAddress
-          beneficiary, // _excessTokenBeneficiary
-          { from: contractDeployer }
-        )
-      )
-    );
+    constructorParams = {
+      ...constructorParams,
+      priceFeedIdentifier: utf8ToHex("UNREGISTERED")
+    };
+    assert(await didContractThrow(PerpetualPositionManager.new(constructorParams)));
   });
 
   it("Withdrawal liveness overflow", async function() {
@@ -364,21 +343,12 @@ contract("PerpetualPositionManager", function(accounts) {
       .pow(toBN(256))
       .subn(10)
       .toString();
-    positionManager = await PerpetualPositionManager.new(
-      largeLiveness.toString(), // _withdrawalLiveness
-      collateral.address, // _collateralAddress
-      tokenCurrency.address, // _tokenAddress
-      finder.address, // _finderAddress
-      priceFeedIdentifier, // _priceFeedIdentifier
-      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      0, // _fundingRateParamUpdateLiveness
-      { rawValue: "0" }, // _fundingRateProposerBondPct
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
-      { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
-      beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
-    );
+    constructorParams = {
+      ...constructorParams,
+      tokenAddress: tokenCurrency.address,
+      withdrawalLiveness: largeLiveness
+    };
+    positionManager = await PerpetualPositionManager.new(constructorParams);
     await tokenCurrency.addMinter(positionManager.address);
     await tokenCurrency.addBurner(positionManager.address);
 
@@ -1905,22 +1875,12 @@ contract("PerpetualPositionManager", function(accounts) {
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
     const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
-
-    let custompositionManager = await PerpetualPositionManager.new(
-      withdrawalLiveness, // _withdrawalLiveness
-      USDCToken.address, // _collateralAddress
-      nonStandardToken.address, // _tokenAddress
-      finder.address, // _finderAddress
-      priceFeedIdentifier, // _priceFeedIdentifier
-      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      0, // _fundingRateParamUpdateLiveness
-      { rawValue: "0" }, // _fundingRateProposerBondPct
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
-      { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
-      beneficiary, // _excessTokenBeneficiary
-      { from: contractDeployer }
-    );
+    constructorParams = {
+      ...constructorParams,
+      tokenAddress: nonStandardToken.address,
+      collateralAddress: USDCToken.address
+    };
+    let custompositionManager = await PerpetualPositionManager.new(constructorParams);
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
     await tokenCurrency.addMinter(custompositionManager.address);
     await tokenCurrency.addBurner(custompositionManager.address);

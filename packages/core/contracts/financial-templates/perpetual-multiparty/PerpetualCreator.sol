@@ -33,9 +33,6 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         address collateralAddress;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
-        uint256 fundingRateParamUpdateLiveness;
-        FixedPoint.Unsigned fundingRateProposerBond;
-        FixedPoint.Unsigned fundingRateRewardRate;
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned collateralRequirement;
@@ -129,9 +126,6 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.fundingRateIdentifier = params.fundingRateIdentifier;
         constructorParams.collateralRequirement = params.collateralRequirement;
-        constructorParams.fundingRateParamUpdateLiveness = params.fundingRateParamUpdateLiveness;
-        constructorParams.fundingRateProposerBond = params.fundingRateProposerBond;
-        constructorParams.fundingRateRewardRate = params.fundingRateRewardRate;
         constructorParams.disputeBondPct = params.disputeBondPct;
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;

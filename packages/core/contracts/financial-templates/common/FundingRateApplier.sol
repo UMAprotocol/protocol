@@ -73,18 +73,14 @@ abstract contract FundingRateApplier is Testable, Lockable {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
-     * @param _recordParams FundingRateStore initial settings for this contract.
      */
-    constructor(address _finderAddress, FundingRateStoreInterface.RecordParams memory _recordParams) public {
+    constructor(address _finderAddress) public {
         finder = FinderInterface(_finderAddress);
 
         lastUpdateTime = getCurrentTime();
 
         // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
         cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
-
-        // Set funding rate reward rate for this contract.
-        _getFundingRateStore().initializeRecordParams(address(this), _recordParams);
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.

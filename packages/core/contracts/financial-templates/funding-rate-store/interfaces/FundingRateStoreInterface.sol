@@ -27,10 +27,4 @@ interface FundingRateStoreInterface {
      * rate of 1% per second. -0.01 would represent a negative funding rate of -1% per second.
      */
     function getFundingRateForContract(address perpetual) external view returns (FixedPoint.Signed memory);
-
-    /**
-     * @notice Initialize the record params for a specific `perpetual` contract.
-     * @dev Callable only by the Perpetual contract.
-     */
-    function initializeRecordParams(address perpetual, RecordParams memory rewardRate) external;
 }

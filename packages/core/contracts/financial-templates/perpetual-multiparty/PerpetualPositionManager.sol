@@ -45,9 +45,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
-        uint256 fundingRateParamUpdateLiveness;
-        FixedPoint.Unsigned fundingRateProposerBond;
-        FixedPoint.Unsigned fundingRateRewardRate;
         FixedPoint.Unsigned minSponsorTokens;
     }
 
@@ -162,14 +159,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
             params.finderAddress,
             params.timerAddress
         )
-        FundingRateApplier(
-            params.finderAddress,
-            FundingRateStoreInterface.RecordParams({
-                paramUpdateLiveness: params.fundingRateParamUpdateLiveness,
-                rewardRatePerSecond: params.fundingRateRewardRate,
-                proposerBondPct: params.fundingRateProposerBond
-            })
-        )
+        FundingRateApplier(params.finderAddress)
     {
         require(
             _getIdentifierWhitelist().isIdentifierSupported(params.priceFeedIdentifier),

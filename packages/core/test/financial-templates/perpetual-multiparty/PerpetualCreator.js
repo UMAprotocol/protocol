@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -15,7 +15,6 @@ const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
-const FundingRateStore = artifacts.require("FundingRateStore");
 
 contract("PerpetualCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -26,7 +25,6 @@ contract("PerpetualCreator", function(accounts) {
   let registry;
   let collateralTokenWhitelist;
   let store;
-  let fundingRateStore;
 
   // Re-used variables
   let constructorParams;
@@ -35,7 +33,6 @@ contract("PerpetualCreator", function(accounts) {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
-    fundingRateStore = await FundingRateStore.deployed();
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
@@ -47,9 +44,6 @@ contract("PerpetualCreator", function(accounts) {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
       fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
-      fundingRateParamUpdateLiveness: 86400,
-      fundingRateProposerBond: { rawValue: toWei("0.04") },
-      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -284,29 +278,5 @@ contract("PerpetualCreator", function(accounts) {
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(perpetualAddress));
-  });
-
-  it("Creation initializes funding rate params in Funding Rate Store", async function() {
-    const deploymentTime = await fundingRateStore.getCurrentTime();
-    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
-      from: contractCreator
-    });
-
-    let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
-      perpetualAddress = ev.perpetualAddress;
-      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
-    });
-
-    let recordParams = (await fundingRateStore.recordParams(perpetualAddress)).current;
-    assert.equal(recordParams.paramUpdateLiveness, 86400);
-    assert.equal(recordParams.rewardRatePerSecond, toWei("0.0001"));
-    assert.equal(recordParams.proposerBondPct, toWei("0.04"));
-
-    // Can get the reward rate by calculating the projected reward for a 0% change to the funding rate
-    // after 1 second.
-    await fundingRateStore.setCurrentTime(deploymentTime.add(toBN(1)).toString());
-    const rewardRate = await fundingRateStore.getRewardRateForContract(perpetualAddress, { rawValue: "0" });
-    assert.equal(rewardRate.toString(), toWei("0.0001"));
   });
 });
