@@ -180,11 +180,11 @@ library PerpetualLiquidatablePoolPartyLib {
             FixedPoint.Unsigned memory griefingThreshold = positionManagerData.minSponsorTokens;
             if (
                 positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // The position is undergoing a slow withdrawal.
-                positionToLiquidate.withdrawalRequestPassTimestamp <= params.actualTime && // The slow withdrawal has not yet expired.
+                positionToLiquidate.withdrawalRequestPassTimestamp > params.actualTime && // The slow withdrawal has not yet expired.
                 returnValues.tokensLiquidated.isGreaterThanOrEqual(griefingThreshold) // The liquidated token count is above a "griefing threshold".
             ) {
                 positionToLiquidate.withdrawalRequestPassTimestamp = params.actualTime.add(
-                    liquidatableData.liquidationLiveness
+                    positionManagerData.withdrawalLiveness
                 );
             }
         }

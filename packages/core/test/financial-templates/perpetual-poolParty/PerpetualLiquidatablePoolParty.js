@@ -17,7 +17,6 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 const FeePayerPoolPartyLib = artifacts.require("FeePayerPoolPartyLib");
 const PerpetualPositionManagerPoolPartyLib = artifacts.require("PerpetualPositionManagerPoolPartyLib");
@@ -77,8 +76,10 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
   let mockOracle;
   let finder;
   let store;
-  let financialContractsAdmin;
   let timer;
+
+  // Constructor
+  let constructorParams;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -622,23 +623,23 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
       );
     });
 
-    /* it("Multiple partial liquidations re-set liveness timer on withdrawal requests", async () => {
+    it("Multiple partial liquidations re-set liveness timer on withdrawal requests", async () => {
       // Request a withdrawal.
       const withdrawalAmount = amountOfSynthetic.divn(5);
       await liquidationContract.requestWithdrawal({ rawValue: withdrawalAmount.toString() }, { from: sponsor });
 
-      const startingTime = await liquidationContract.getCurrentTime.call();
+      const startingTime = await liquidationContract.getCurrentTime();
       let expectedTimestamp = toBN(startingTime)
         .add(withdrawalLiveness)
         .toString();
-      console.log('starting time  ' + startingTime.toString());
+
       assert.equal(
         expectedTimestamp,
-        (await liquidationContract.positions.call(sponsor)).withdrawalRequestPassTimestamp.toString()
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Advance time by half of the liveness duration.
-      await liquidationContract.setCurrentTime(startingTime.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(startingTime.add(withdrawalLiveness.divn(2)).toString());
 
       await liquidationContract.createLiquidation(
         sponsor,
@@ -648,18 +649,17 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
         unreachableDeadline,
         { from: liquidator }
       );
-      
+
       // After the liquidation the liveness timer on the withdrawl request should be re-set to the current time +
       // the liquidation liveness. This opens the position up to having a subsequent liquidation, if need be.
       const liquidation1Time = await liquidationContract.getCurrentTime();
-      console.log('Liquidation time:' + liquidation1Time.toString());
       assert.equal(
-        liquidation1Time.add(liquidationLiveness).toString(),
-        (await liquidationContract.positions.call(sponsor)).withdrawalRequestPassTimestamp.toString()
+        liquidation1Time.add(withdrawalLiveness).toString(),
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Create a subsequent liquidation partial and check that it also advances the withdrawal request timer
-      await liquidationContract.setCurrentTime(liquidation1Time.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation1Time.add(withdrawalLiveness.divn(2)).toString());
 
       await liquidationContract.createLiquidation(
         sponsor,
@@ -671,18 +671,16 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
       );
 
       // Again, verify this is offset correctly.
-      const liquidation2Time = await liquidationContract.getCurrentTime.call();
-      console.log('LIquidation 2 time:' + liquidation2Time.toString());
-
-      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(liquidationLiveness).toString();
+      const liquidation2Time = await liquidationContract.getCurrentTime();
+      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(withdrawalLiveness).toString();
       assert.equal(
         expectedWithdrawalRequestPassTimestamp,
-        (await liquidationContract.positions.call(sponsor)).withdrawalRequestPassTimestamp.toString()
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Submitting a liquidation less than the minimum sponsor size should not advance the timer. Start by advancing
       // time by half of the liquidation liveness.
-      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation2Time.add(withdrawalLiveness.divn(2)).toString());
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -697,11 +695,11 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
 
       assert.equal(
         expectedWithdrawalRequestPassTimestamp,
-        (await liquidationContract.positions.call(sponsor)).withdrawalRequestPassTimestamp.toString()
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Advance timer again to place time after liquidation liveness.
-      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness).toString());
+      await liquidationContract.setCurrentTime(liquidation2Time.add(withdrawalLiveness).toString());
 
       // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration).
       await liquidationContract.createLiquidation(
@@ -716,9 +714,9 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
       // Check that the time has not advanced.
       assert.equal(
         expectedWithdrawalRequestPassTimestamp,
-        (await liquidationContract.positions.call(sponsor)).withdrawalRequestPassTimestamp.toString()
+        (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
-    });*/
+    });
   });
 
   describe("Full liquidation has been created", () => {
@@ -954,7 +952,7 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
     describe("Settle Dispute: there is a pending dispute", () => {
       beforeEach(async () => {
         // Mint final fee amount to disputer
-        //await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+        // await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
 
         // Dispute the created liquidation
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
