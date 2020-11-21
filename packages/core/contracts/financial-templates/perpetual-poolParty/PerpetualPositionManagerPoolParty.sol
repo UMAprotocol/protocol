@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/interfaces/JarvisExpandedIERC20.sol";
+import "../../common/interfaces/MintableBurnableIERC20.sol";
 import "./PerpetualPositionManagerPoolPartyLib.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
@@ -27,7 +27,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for JarvisExpandedIERC20;
+    using SafeERC20 for MintableBurnableIERC20;
     using PerpetualPositionManagerPoolPartyLib for PositionData;
     using PerpetualPositionManagerPoolPartyLib for PositionManagerData;
 
@@ -100,7 +100,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
 
     struct PositionManagerData {
         // Synthetic token created by this contract.
-        JarvisExpandedIERC20 tokenCurrency;
+        MintableBurnableIERC20 tokenCurrency;
         // Unique identifier for DVM price feed ticker.
         bytes32 priceIdentifier;
         // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
@@ -204,7 +204,7 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             }
         }
         positionManagerData.withdrawalLiveness = _positionManagerData.withdrawalLiveness;
-        positionManagerData.tokenCurrency = JarvisExpandedIERC20(_positionManagerData.tokenAddress);
+        positionManagerData.tokenCurrency = MintableBurnableIERC20(_positionManagerData.tokenAddress);
         positionManagerData.minSponsorTokens = _positionManagerData.minSponsorTokens;
         positionManagerData.priceIdentifier = _positionManagerData.priceFeedIdentifier;
         positionManagerData.excessTokenBeneficiary = _positionManagerData.excessTokenBeneficiary;

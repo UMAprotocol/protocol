@@ -3,11 +3,10 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-
 /**
  * @title ERC20 interface that includes burn and mint methods.
  */
-abstract contract JarvisExpandedIERC20 is ERC20 {
+abstract contract MintableBurnableIERC20 is ERC20 {
     /**
      * @notice Burns a specific amount of the caller's tokens.
      * @dev Only burns the caller's tokens, so it is safe to leave this method permissionless.

@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/interfaces/JarvisExpandedIERC20.sol";
+import "../../common/interfaces/MintableBurnableIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 import "./PerpetualPositionManagerPoolParty.sol";
@@ -17,7 +17,7 @@ library PerpetualPositionManagerPoolPartyLib {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for JarvisExpandedIERC20;
+    using SafeERC20 for MintableBurnableIERC20;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionData;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionManagerData;
     using PerpetualPositionManagerPoolPartyLib for FeePayerPoolParty.FeePayerData;

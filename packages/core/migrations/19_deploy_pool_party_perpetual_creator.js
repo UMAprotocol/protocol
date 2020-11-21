@@ -1,6 +1,6 @@
 const Finder = artifacts.require("Finder");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const JarvisTokenFactory = artifacts.require("JarvisTokenFactory");
+const MintableBurnableTokenFactory = artifacts.require("MintableBurnableTokenFactory");
 const FeePayerPoolPartyLib = artifacts.require("FeePayerPoolPartyLib");
 const PerpetualPositionManagerPoolPartyLib = artifacts.require("PerpetualPositionManagerPoolPartyLib");
 const PerpetualLiquidatablePoolPartyLib = artifacts.require("PerpetualLiquidatablePoolPartyLib");
@@ -43,7 +43,7 @@ module.exports = async function(deployer, network, accounts) {
   const timerAddress = controllableTiming
     ? (await Timer.deployed()).address
     : "0x0000000000000000000000000000000000000000";
-  const jarvisTokenFactory = await JarvisTokenFactory.deployed();
+  const mintableBurnableTokenFactory = await MintableBurnableTokenFactory.deployed();
   const registry = await Registry.deployed();
 
   // Deploy PoolPartPerpLibraries and link to PoolPartyPerpCreator.
@@ -137,7 +137,7 @@ module.exports = async function(deployer, network, accounts) {
     network,
     PerpetualPoolPartyCreator,
     finder.address,
-    jarvisTokenFactory.address,
+    mintableBurnableTokenFactory.address,
     timerAddress,
     { from: keys.deployer }
   );

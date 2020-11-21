@@ -6,11 +6,12 @@ import "../../common/implementation/FixedPoint.sol";
 import "./PerpetualPositionManagerPoolPartyLib.sol";
 import "./PerpetualLiquidatablePoolParty.sol";
 import "../common/FeePayerPoolPartyLib.sol";
+import "../../common/interfaces/MintableBurnableIERC20.sol";
 
 library PerpetualLiquidatablePoolPartyLib {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for JarvisExpandedIERC20;
+    using SafeERC20 for MintableBurnableIERC20;
     using FixedPoint for FixedPoint.Unsigned;
     using PerpetualPositionManagerPoolPartyLib for PerpetualPositionManagerPoolParty.PositionData;
     using FeePayerPoolPartyLib for FixedPoint.Unsigned;

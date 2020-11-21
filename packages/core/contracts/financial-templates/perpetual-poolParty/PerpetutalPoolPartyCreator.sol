@@ -2,12 +2,12 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/interfaces/JarvisExpandedIERC20.sol";
+import "../../common/interfaces/MintableBurnableIERC20.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
-import "../common/JarvisTokenFactory.sol";
+import "../common/MintableBurnableTokenFactory.sol";
 import "./PerpetualPoolPartyLib.sol";
 
 /**
@@ -72,19 +72,19 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
-        JarvisTokenFactory tf = JarvisTokenFactory(tokenFactoryAddress);
+        MintableBurnableTokenFactory tf = MintableBurnableTokenFactory(tokenFactoryAddress);
         address derivative;
         if (params.syntheticToken == address(0)) {
             // If the collateral token does not have a `decimals()` method,
             // then a default precision of 18 will be applied to the newly created synthetic token.
-            JarvisExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
+            MintableBurnableIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, 18);
             derivative = PerpetualPoolPartyLib.deploy(_convertParams(params, tokenCurrency));
 
             // Give permissions to new derivative contract and then hand over ownership.
             tokenCurrency.addAdminAndMinterAndBurner(derivative);
             tokenCurrency.renounceAdmin();
         } else {
-            JarvisExpandedIERC20 tokenCurrency = JarvisExpandedIERC20(params.syntheticToken);
+            MintableBurnableIERC20 tokenCurrency = MintableBurnableIERC20(params.syntheticToken);
             require(
                 keccak256(abi.encodePacked(tokenCurrency.name())) == keccak256(abi.encodePacked(params.syntheticName)),
                 "Wrong synthetic token name"
@@ -110,7 +110,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
      ****************************************/
 
     // Converts createPerpetual params to Perpetual constructor params.
-    function _convertParams(Params memory params, JarvisExpandedIERC20 newTokenCurrency)
+    function _convertParams(Params memory params, MintableBurnableIERC20 newTokenCurrency)
         private
         view
         returns (PerpetualPoolParty.ConstructorParams memory constructorParams)

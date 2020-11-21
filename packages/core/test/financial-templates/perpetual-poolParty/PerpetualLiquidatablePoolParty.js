@@ -5,8 +5,8 @@ const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
-const Token = artifacts.require("JarvisExpandedERC20");
-const SyntheticToken = artifacts.require("JarvisSyntheticToken");
+const Token = artifacts.require("MintableBurnableERC20");
+const SyntheticToken = artifacts.require("MintableBurnableSyntheticToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Contracts to unit test

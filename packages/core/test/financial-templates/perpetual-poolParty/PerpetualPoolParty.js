@@ -6,7 +6,7 @@ const PerpetualPoolParty = artifacts.require("PerpetualPoolParty");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("SyntheticToken");
+const Token = artifacts.require("MintableBurnableSyntheticToken");
 const Timer = artifacts.require("Timer");
 const FeePayerPoolPartyLib = artifacts.require("FeePayerPoolPartyLib");
 const PerpetualPositionManagerPoolPartyLib = artifacts.require("PerpetualPositionManagerPoolPartyLib");

@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
-import "./JarvisSyntheticToken.sol";
-import "../../common/interfaces/JarvisExpandedIERC20.sol";
+import "./MintableBurnableSyntheticToken.sol";
+import "../../common/interfaces/MintableBurnableIERC20.sol";
 import "../../common/implementation/Lockable.sol";
-
 
 /**
  * @title Factory for creating new mintable and burnable tokens.
  */
 
-contract JarvisTokenFactory is Lockable {
+contract MintableBurnableTokenFactory is Lockable {
     /**
      * @notice Create a new token and return it to the caller.
      * @dev The caller will become the only minter and burner and the new owner capable of assigning the roles.
@@ -23,10 +22,14 @@ contract JarvisTokenFactory is Lockable {
         string calldata tokenName,
         string calldata tokenSymbol,
         uint8 tokenDecimals
-    ) external nonReentrant() returns (JarvisExpandedIERC20 newToken) {
-        JarvisSyntheticToken mintableToken = new JarvisSyntheticToken(tokenName, tokenSymbol, tokenDecimals);
+    ) external nonReentrant() returns (MintableBurnableIERC20 newToken) {
+        MintableBurnableSyntheticToken mintableToken = new MintableBurnableSyntheticToken(
+            tokenName,
+            tokenSymbol,
+            tokenDecimals
+        );
         mintableToken.addAdmin(msg.sender);
         mintableToken.renounceAdmin();
-        newToken = JarvisExpandedIERC20(address(mintableToken));
+        newToken = MintableBurnableIERC20(address(mintableToken));
     }
 }

@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
-import "../../common/implementation/JarvisExpandedERC20.sol";
+import "../../common/implementation/MintableBurnableERC20.sol";
 import "../../common/implementation/Lockable.sol";
-
 
 /**
  * @title Burnable and mintable ERC20.
  * @dev The contract deployer will initially be the only minter, burner and owner capable of adding new roles.
  */
 
-contract JarvisSyntheticToken is JarvisExpandedERC20, Lockable {
+contract MintableBurnableSyntheticToken is MintableBurnableERC20, Lockable {
     /**
      * @notice Constructs the SyntheticToken.
      * @param tokenName The name which describes the new token.
@@ -20,7 +19,7 @@ contract JarvisSyntheticToken is JarvisExpandedERC20, Lockable {
         string memory tokenName,
         string memory tokenSymbol,
         uint8 tokenDecimals
-    ) public JarvisExpandedERC20(tokenName, tokenSymbol, tokenDecimals) nonReentrant() {}
+    ) public MintableBurnableERC20(tokenName, tokenSymbol, tokenDecimals) nonReentrant() {}
 
     /**
      * @notice Add Minter role to account.

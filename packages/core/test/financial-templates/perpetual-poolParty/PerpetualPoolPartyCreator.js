@@ -6,9 +6,9 @@ const truffleAssert = require("truffle-assertions");
 const PerpetualPoolPartyCreator = artifacts.require("PerpetualPoolPartyCreator");
 
 // Helper Contracts
-const Token = artifacts.require("JarvisExpandedERC20");
-const JarvisSyntheticToken = artifacts.require("JarvisSyntheticToken");
-const JarvisTokenFactory = artifacts.require("JarvisTokenFactory");
+const Token = artifacts.require("MintableBurnableERC20");
+const MintableBurnableSyntheticToken = artifacts.require("MintableBurnableSyntheticToken");
+const MintableBurnableTokenFactory = artifacts.require("MintableBurnableTokenFactory");
 const Registry = artifacts.require("Registry");
 const PerpetualPoolParty = artifacts.require("PerpetualPoolParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -63,9 +63,9 @@ contract("PerpetualCreator", function(accounts) {
     });
   });
 
-  it("JarvisTokenFactory address should be set on construction", async function() {
-    const jarvisTokenFactory = await JarvisTokenFactory.deployed();
-    assert.equal(await perpetualPoolPartyCreator.tokenFactoryAddress(), jarvisTokenFactory.address);
+  it("MintableBurnableTokenFactory address should be set on construction", async function() {
+    const mintableBurnableTokenFactory = await MintableBurnableTokenFactory.deployed();
+    assert.equal(await perpetualPoolPartyCreator.tokenFactoryAddress(), mintableBurnableTokenFactory.address);
   });
 
   it("Cannot have empty synthetic token symbol", async function() {
@@ -246,7 +246,7 @@ contract("PerpetualCreator", function(accounts) {
     const tokenCurrency = await Token.at((await perpetualPoolParty.positionManagerData.call()).tokenCurrency);
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await JarvisSyntheticToken.at(tokenCurrency.address);
+    const tokenContract = await MintableBurnableSyntheticToken.at(tokenCurrency.address);
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.equal((await tokenContract.getAdminMembers.call())[0], perpetualAddress);
@@ -267,7 +267,7 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("If an existing syntethic token is passed as input to the new derivative, it can not have a name different from the input name", async function() {
-    const tokenContract = await JarvisSyntheticToken.new("New Test UMA Token", "UMATEST", 18, {
+    const tokenContract = await MintableBurnableSyntheticToken.new("New Test UMA Token", "UMATEST", 18, {
       from: contractCreator
     });
     constructorParams.syntheticToken = tokenContract.address;
@@ -281,7 +281,7 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("If an existing syntethic token is passed as input to the new derivative, it can not have a symbol different from the input symbol", async function() {
-    const tokenContract = await JarvisSyntheticToken.new("Test UMA Token", "New UMATEST", 18, {
+    const tokenContract = await MintableBurnableSyntheticToken.new("Test UMA Token", "New UMATEST", 18, {
       from: contractCreator
     });
     constructorParams.syntheticToken = tokenContract.address;
@@ -295,7 +295,9 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("If an existing syntethic token is passed as input, can not have a number of decimals different from 18", async function() {
-    const tokenContract = await JarvisSyntheticToken.new("Test UMA Token", "UMATEST", 8, { from: contractCreator });
+    const tokenContract = await MintableBurnableSyntheticToken.new("Test UMA Token", "UMATEST", 8, {
+      from: contractCreator
+    });
     constructorParams.syntheticToken = tokenContract.address;
     assert(
       await didContractThrow(
@@ -307,7 +309,9 @@ contract("PerpetualCreator", function(accounts) {
   });
 
   it("If an existing syntethic token is passed as input, Can create new instances of PerpetualPoolParty", async function() {
-    const tokenContract = await JarvisSyntheticToken.new("Test UMA Token", "UMATEST", 18, { from: contractCreator });
+    const tokenContract = await MintableBurnableSyntheticToken.new("Test UMA Token", "UMATEST", 18, {
+      from: contractCreator
+    });
     constructorParams.syntheticToken = tokenContract.address;
     let createdAddressResult = await perpetualPoolPartyCreator.createPerpetual(constructorParams, {
       from: contractCreator
