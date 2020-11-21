@@ -199,7 +199,8 @@ contract("PerpetualPositionManager", function(accounts) {
       await tokenCurrency.addBurner(positionManager.address);
 
       // Funding rate reward for this contract is 0.01%.
-      // Advance time 1 second into future, so base reward % should be 0.01%.
+      // Advance time 1 second into future (from start of last published recordParams),
+      // so base reward % should be 0.01%.
       await incrementTime(fundingRateStore, 1);
 
       // Propose a new funding rate. No need to set any allowances since final fee and proposal bond are 0.

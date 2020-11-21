@@ -351,9 +351,6 @@ contract("FundingRateStore", function(accounts) {
     it("Tests changing all three factors", async function() {
       let result;
 
-      // Current rate is 2.5%, elapsed time is 2 seconds, rate change % is 20%:
-      // (current-rate * elapsed-time * (1+rate-change)) =
-      // (0.025 * 2 * (1+0.2)) = 0.06
       await fundingRateStore.setRecordParams(
         contractDeployer,
         {
@@ -365,7 +362,21 @@ contract("FundingRateStore", function(accounts) {
           from: contractDeployer
         }
       );
+      // Reward rates have no effect before state change. Existing rate is 1%:
+      // (current-rate * elapsed-time * (1+rate-change)) =
+      // (0.01 * 2 * (1+0.2)) = 0.06
+      result = await fundingRateStore.calculateProposalRewardPct(
+        contractDeployer,
+        0,
+        2,
+        { rawValue: toWei("-0.4") },
+        { rawValue: toWei("-0.5") }
+      );
+      assert.equal(result.toString(), toWei("0.024"));
       await fundingRateStore.withdrawProposalRewards(contractDeployer);
+      // Current rate is 2.5%, elapsed time is 2 seconds, rate change % is 20%:
+      // (current-rate * elapsed-time * (1+rate-change)) =
+      // (0.025 * 2 * (1+0.2)) = 0.06
       result = await fundingRateStore.calculateProposalRewardPct(
         contractDeployer,
         0,
