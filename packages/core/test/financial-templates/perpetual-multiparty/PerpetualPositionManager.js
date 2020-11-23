@@ -53,7 +53,6 @@ contract("PerpetualPositionManager", function(accounts) {
   const fundingRateRewardRate = toWei("0.0001");
   const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
   const minSponsorTokens = "5";
-  let constructorParams;
 
   // Conveniently asserts expected collateral and token balances, assuming that
   // there is only one synthetic token holder, the sponsor. Also assumes no
@@ -140,18 +139,18 @@ contract("PerpetualPositionManager", function(accounts) {
     });
 
     // Create the instance of the positionManager to test against.
-    constructorParams = {
-      withdrawalLiveness: withdrawalLiveness,
-      collateralAddress: collateral.address,
-      tokenAddress: tokenCurrency.address,
-      finderAddress: finder.address,
-      priceFeedIdentifier: priceFeedIdentifier,
-      fundingRateIdentifier: fundingRateFeedIdentifier,
-      minSponsorTokens: { rawValue: minSponsorTokens },
-      timerAddress: timer.address,
-      excessTokenBeneficiary: beneficiary
-    };
-    positionManager = await PerpetualPositionManager.new(constructorParams);
+    positionManager = await PerpetualPositionManager.new(
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      { from: contractDeployer }
+    );
 
     // Give contract owner permissions.
     await tokenCurrency.addMinter(positionManager.address);
@@ -183,7 +182,18 @@ contract("PerpetualPositionManager", function(accounts) {
       });
 
       // Deploy a new position manager so that it sets a funding rate fee % with the newly registered FundingRateStore
-      positionManager = await PerpetualPositionManager.new(constructorParams);
+      positionManager = await PerpetualPositionManager.new(
+        withdrawalLiveness, // _withdrawalLiveness
+        collateral.address, // _collateralAddress
+        tokenCurrency.address, // _tokenAddress
+        finder.address, // _finderAddress
+        priceFeedIdentifier, // _priceFeedIdentifier
+        fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+        { rawValue: minSponsorTokens }, // _minSponsorTokens
+        timer.address, // _timerAddress
+        beneficiary, // _excessTokenBeneficiary
+        { from: contractDeployer }
+      );
 
       // Set reward rate for new perpetual.
       const newParams = {
@@ -329,11 +339,22 @@ contract("PerpetualPositionManager", function(accounts) {
 
   it("Valid constructor params", async function() {
     // Pricefeed identifier must be whitelisted.
-    constructorParams = {
-      ...constructorParams,
-      priceFeedIdentifier: utf8ToHex("UNREGISTERED")
-    };
-    assert(await didContractThrow(PerpetualPositionManager.new(constructorParams)));
+    assert(
+      await didContractThrow(
+        PerpetualPositionManager.new(
+          withdrawalLiveness, // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          tokenCurrency.address, // _tokenAddress
+          finder.address, // _finderAddress
+          utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
+          fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          timer.address, // _timerAddress
+          beneficiary, // _excessTokenBeneficiary
+          { from: contractDeployer }
+        )
+      )
+    );
   });
 
   it("Withdrawal liveness overflow", async function() {
@@ -346,12 +367,18 @@ contract("PerpetualPositionManager", function(accounts) {
       .pow(toBN(256))
       .subn(10)
       .toString();
-    constructorParams = {
-      ...constructorParams,
-      tokenAddress: tokenCurrency.address,
-      withdrawalLiveness: largeLiveness
-    };
-    positionManager = await PerpetualPositionManager.new(constructorParams);
+    positionManager = await PerpetualPositionManager.new(
+      largeLiveness.toString(), // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      { from: contractDeployer }
+    );
     await tokenCurrency.addMinter(positionManager.address);
     await tokenCurrency.addBurner(positionManager.address);
 
@@ -1878,12 +1905,18 @@ contract("PerpetualPositionManager", function(accounts) {
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
     const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
-    constructorParams = {
-      ...constructorParams,
-      tokenAddress: nonStandardToken.address,
-      collateralAddress: USDCToken.address
-    };
-    let custompositionManager = await PerpetualPositionManager.new(constructorParams);
+    let custompositionManager = await PerpetualPositionManager.new(
+      withdrawalLiveness, // _withdrawalLiveness
+      USDCToken.address, // _collateralAddress
+      nonStandardToken.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      { from: contractDeployer }
+    );
     tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency());
     await tokenCurrency.addMinter(custompositionManager.address);
     await tokenCurrency.addBurner(custompositionManager.address);

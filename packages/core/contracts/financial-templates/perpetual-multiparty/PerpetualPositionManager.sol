@@ -33,21 +33,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
-    // Define the contract's constructor parameters as a struct to enable more variables to be specified.
-    // This is required to enable more params, over and above Solidity's limits.
-    struct PMConstructorParams {
-        // Params for PricelessPositionManager only.
-        uint256 withdrawalLiveness;
-        address collateralAddress;
-        address tokenAddress;
-        address finderAddress;
-        address timerAddress;
-        address excessTokenBeneficiary;
-        bytes32 priceFeedIdentifier;
-        bytes32 fundingRateIdentifier;
-        FixedPoint.Unsigned minSponsorTokens;
-    }
-
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
@@ -149,28 +134,38 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * We recommend to only use synthetic token contracts whose sole Owner role (the role capable of adding & removing roles)
      * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
      * total supply is 0 prior to construction of this contract.
-     * @param params struct to define input parameters for construction of PositionManager.
+     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
+     * @param _collateralAddress ERC20 token used as collateral for all positions.
+     * @param _tokenAddress ERC20 token used as synthetic token.
+     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
+     * @param _priceIdentifier registered in the DVM for the synthetic.
+     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
+     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
+     * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
      */
-    constructor(PMConstructorParams memory params)
+    constructor(
+        uint256 _withdrawalLiveness,
+        address _collateralAddress,
+        address _tokenAddress,
+        address _finderAddress,
+        bytes32 _priceIdentifier,
+        bytes32 _fundingRateIdentifier,
+        FixedPoint.Unsigned memory _minSponsorTokens,
+        address _timerAddress,
+        address _excessTokenBeneficiary
+    )
         public
-        FundingRatePayer(
-            params.fundingRateIdentifier,
-            params.collateralAddress,
-            params.finderAddress,
-            params.timerAddress
-        )
-        FundingRateApplier(params.finderAddress)
+        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
+        FundingRateApplier(_finderAddress)
     {
-        require(
-            _getIdentifierWhitelist().isIdentifierSupported(params.priceFeedIdentifier),
-            "Unsupported price identifier"
-        );
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
-        withdrawalLiveness = params.withdrawalLiveness;
-        tokenCurrency = ExpandedIERC20(params.tokenAddress);
-        minSponsorTokens = params.minSponsorTokens;
-        priceIdentifier = params.priceFeedIdentifier;
-        excessTokenBeneficiary = params.excessTokenBeneficiary;
+        withdrawalLiveness = _withdrawalLiveness;
+        tokenCurrency = ExpandedIERC20(_tokenAddress);
+        minSponsorTokens = _minSponsorTokens;
+        priceIdentifier = _priceIdentifier;
+        excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
     /****************************************
@@ -398,9 +393,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
-            _getFeeAdjustedCollateral(positionData.rawCollateral)
-        );
+        FixedPoint.Unsigned memory collateralRedeemed =
+            fractionRedeemed.mul(_getFeeAdjustedCollateral(positionData.rawCollateral));
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -484,9 +478,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(
-            emergencyShutdownPrice
-        );
+        FixedPoint.Unsigned memory totalRedeemableCollateral =
+            _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(emergencyShutdownPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
@@ -494,19 +487,15 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
             // the funding rate applied to the outstanding token debt.
 
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
-                positionData
-                    .tokensOutstanding
-            )
-                .mul(emergencyShutdownPrice);
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral =
+                _getFundingRateAppliedTokenDebt(positionData.tokensOutstanding).mul(emergencyShutdownPrice);
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
-                positionCollateral
-            )
-                ? positionCollateral.sub(tokenDebtValueInCollateral)
-                : FixedPoint.Unsigned(0);
+            FixedPoint.Unsigned memory positionRedeemableCollateral =
+                tokenDebtValueInCollateral.isLessThan(positionCollateral)
+                    ? positionCollateral.sub(tokenDebtValueInCollateral)
+                    : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
@@ -518,10 +507,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout = FixedPoint.min(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalRedeemableCollateral
-        );
+        FixedPoint.Unsigned memory payout =
+            FixedPoint.min(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalRedeemableCollateral);
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
@@ -821,10 +808,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         view
         returns (bool)
     {
-        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalTokensOutstanding
-        );
+        FixedPoint.Unsigned memory global =
+            _getCollateralizationRatio(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalTokensOutstanding);
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
     }
