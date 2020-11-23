@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -78,7 +78,8 @@ contract("index.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party
@@ -180,7 +181,8 @@ contract("index.js", function(accounts) {
       utf8ToHex("UNKNOWN"),
       constructorParams.minSponsorTokens,
       constructorParams.timerAddress,
-      contractCreator
+      contractCreator,
+      ZERO_ADDRESS
     );
 
     // We will also create a new spy logger, listening for debug events to validate the re-tries.
