@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -14,7 +15,6 @@ import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
-
 
 /**
  * @title FundingRateApplier contract.
@@ -38,9 +38,6 @@ abstract contract FundingRateApplier is Testable, Lockable {
 
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
-
-    // Identifier in funding rate store to query for.
-    bytes32 public fundingRateIdentifier;
 
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
@@ -76,16 +73,18 @@ abstract contract FundingRateApplier is Testable, Lockable {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
-     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
+     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore.
      */
-    constructor(address _finderAddress, bytes32 _fundingRateIdentifier) public {
+    constructor(address _finderAddress, FixedPoint.Unsigned memory _fundingRateRewardRate) public {
         finder = FinderInterface(_finderAddress);
-        fundingRateIdentifier = _fundingRateIdentifier;
 
         lastUpdateTime = getCurrentTime();
 
         // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
         cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
+
+        // Set funding rate reward rate for this contract.
+        _getFundingRateStore().setRewardRate(address(this), _fundingRateRewardRate);
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
@@ -104,7 +103,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
-        return _getFundingRateStore().getFundingRateForIdentifier(fundingRateIdentifier);
+        return _getFundingRateStore().getFundingRateForContract(address(this));
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,

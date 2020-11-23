@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../../interfaces/VotingInterface.sol";
 import "../VoteTiming.sol";
-
 
 // Wraps the library VoteTiming for testing purposes.
 contract VoteTimingTest {

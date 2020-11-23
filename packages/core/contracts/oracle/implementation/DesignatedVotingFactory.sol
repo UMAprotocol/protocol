@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/Withdrawable.sol";
 import "./DesignatedVoting.sol";
-
 
 /**
  * @title Factory to deploy new instances of DesignatedVoting and look up previously deployed instances.

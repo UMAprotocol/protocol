@@ -18,16 +18,17 @@ contract("Perpetual", function(accounts) {
   });
 
   it("Can deploy", async function() {
-    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
-    const syntheticToken = await Token.new("SYNTH", "SYNTH", 18, { from: accounts[0] });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
+    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
 
     const constructorParams = {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
-      fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FundingRate"),
+      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },

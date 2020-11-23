@@ -10,15 +10,15 @@ const assert = require("assert");
  * extended. Optional unless whaleDefenseFundWei is enabled.
  * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
  * of time after this time has passed
- * @property {number} config.liquidationLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
- * liveness duration, set by emp contract.
+ * @property {number} config.withdrawLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
+ * withdraw liveness duration, set by emp contract.
  * @property {number} config.minSponsorSize - Emp minimum sponsor position size in tokens.
  * Example:
  * {
  *   whaleDefenseFundWei: '10000000000000000000',
  *   defenseActivationPercent: 80,
  *   liquidationDeadline: 300,
- *   liquidationLiveness: 10000,
+ *   withdrawLiveness: 10000,
  *   minSponsorSize: '5000000000000000000'
  * }
  * @param {object} deps - Library dependencies
@@ -46,9 +46,10 @@ module.exports = (
     liquidationMinPrice = "0",
     // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
     liquidationDeadline = 300,
-    // the minimum amount of tokens to liquidate with resetting timer
-    liquidationLiveness,
-    // emp contracts min sponsor size, specified in tokens
+    // the amount of time with which to reset the slow withdraw timer
+    withdrawLiveness,
+    // emp contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
+    // resetting timer
     minSponsorSize
   } = {},
   // These could probably be pulled in from web3, but the pattern is here to add
@@ -70,7 +71,7 @@ module.exports = (
       defenseActivationPercent >= 0 && defenseActivationPercent <= 100,
       "Requires defenseActivationPercent to bet set between 0 and 100"
     );
-  whaleDefenseFundWei && assert(liquidationLiveness > 0, "requires liquidationLiveness");
+  whaleDefenseFundWei && assert(withdrawLiveness > 0, "requires withdrawLiveness");
 
   // Function which packs the arguments for a liquidation.
   // returns parameters for empContract.methods.createLiquidation
@@ -199,7 +200,7 @@ module.exports = (
   // Should we try to delay this withdrawal. Update this logic to change conditions to run delay strategy.
   function shouldLiquidateMinimum({ position, syntheticTokenBalance, currentBlockTime }) {
     assert(defenseActivationPercent >= 0, "requires defenseActivationPercent");
-    assert(liquidationLiveness > 0, "requires liquidationLiveness");
+    assert(withdrawLiveness > 0, "requires withdrawLiveness");
     syntheticTokenBalance = toBN(syntheticTokenBalance);
     const empMinSponsorSize = toBN(minSponsorSize);
     currentBlockTime = Number(currentBlockTime);
@@ -221,7 +222,7 @@ module.exports = (
       return false;
     // liveness timer on withdraw has not passed time
     if (
-      withdrawProgressPercent(liquidationLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) <
+      withdrawProgressPercent(withdrawLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) <
       parseFloat(defenseActivationPercent)
     )
       return false;

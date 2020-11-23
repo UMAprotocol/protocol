@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "./ExpiringMultiParty.sol";
-
 
 /**
  * @title Provides convenient Expiring Multi Party contract utilities.

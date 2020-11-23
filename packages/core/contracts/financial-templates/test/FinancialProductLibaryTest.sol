@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
-
 // Implements a simple FinancialProductLibrary to test price and collateral requirement transoformations.
 contract FinancialProductLibraryTest is FinancialProductLibrary {
     FixedPoint.Unsigned public scalar;
@@ -14,8 +13,8 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     // Create a simple price transformation function that scales the input price by the scalar for testing.
     function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
-        override
         view
+        override
         returns (FixedPoint.Unsigned memory)
     {
         return oraclePrice.mul(scalar);
@@ -25,7 +24,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory price,
         FixedPoint.Unsigned memory collateralRequirement
-    ) public override view returns (FixedPoint.Unsigned memory) {
+    ) public view override returns (FixedPoint.Unsigned memory) {
         return collateralRequirement.mul(scalar);
     }
 }

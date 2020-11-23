@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../implementation/Withdrawable.sol";
-
 
 // WithdrawableTest is derived from the abstract contract Withdrawable for testing purposes.
 contract WithdrawableTest is Withdrawable {

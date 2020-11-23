@@ -1,5 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
-
 
 /**
  * @title Universal store of current contract time for testing environments.

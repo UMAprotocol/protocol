@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/implementation/Lockable.sol";
-
 
 /**
  * @title Factory for creating new mintable and burnable tokens.

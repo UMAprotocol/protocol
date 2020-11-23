@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/FinderInterface.sol";
-
 
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces.
@@ -33,7 +33,7 @@ contract Finder is FinderInterface, Ownable {
      * @param interfaceName queried interface.
      * @return implementationAddress address of the defined interface.
      */
-    function getImplementationAddress(bytes32 interfaceName) external override view returns (address) {
+    function getImplementationAddress(bytes32 interfaceName) external view override returns (address) {
         address implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "Implementation not found");
         return implementationAddress;

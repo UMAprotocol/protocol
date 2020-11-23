@@ -15,6 +15,10 @@ contract("FinancialContractsAdmin", function(accounts) {
     mockAdministratee = await MockAdministratee.new();
   });
 
+  it("pfc", async function() {
+    // AdministrateeInterfaces must implement pfc().
+    assert.equal((await mockAdministratee.pfc()).toString(), "0");
+  });
   it("Remargin", async function() {
     assert.equal(await mockAdministratee.timesRemargined(), "0");
 

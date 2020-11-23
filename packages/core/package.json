@@ -4,7 +4,8 @@
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@truffle/contract": "^4.2.20",
-    "@uma/common": "^1.0.1"
+    "@uma/common": "^1.0.1",
+    "@uma/core-1-1-0": "npm:@uma/core@1.1.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",

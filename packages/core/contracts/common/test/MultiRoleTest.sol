@@ -2,10 +2,10 @@
   MultiRoleTest contract.
 */
 
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../implementation/MultiRole.sol";
-
 
 // The purpose of this contract is to make the MultiRole creation methods externally callable for testing purposes.
 contract MultiRoleTest is MultiRole {

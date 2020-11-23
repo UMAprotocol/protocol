@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../interfaces/FinderInterface.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "./Registry.sol";
 import "./Constants.sol";
-
 
 /**
  * @title Base contract for all financial contract creators

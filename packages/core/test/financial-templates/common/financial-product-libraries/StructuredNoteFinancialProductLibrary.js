@@ -3,15 +3,16 @@ const { assert } = require("chai");
 
 // Tested Contract
 const StructuredNoteFinancialProductLibrary = artifacts.require("StructuredNoteFinancialProductLibrary");
+
 // Helper contracts
-const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
 const Timer = artifacts.require("Timer");
+const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
 
 const { toWei, toBN } = web3.utils;
 const strikePrice = toBN(toWei("400"));
 const collateralizationRatio = toWei("1.2");
 
-contract("StructuredNoteFinancialProductLibrary", () => {
+contract("StructuredNoteFinancialProductLibrary", function() {
   let structuredNoteFPL;
   let expiringMultiParty;
   let timer;
@@ -22,19 +23,24 @@ contract("StructuredNoteFinancialProductLibrary", () => {
 
     expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
     structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
-    expiringMultiParty = await ExpiringMultiPartyMock.new(structuredNoteFPL.address, expirationTime, timer.address);
+    expiringMultiParty = await ExpiringMultiPartyMock.new(
+      structuredNoteFPL.address,
+      expirationTime,
+      { rawValue: collateralizationRatio.toString() },
+      timer.address
+    );
 
     await structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
       rawValue: strikePrice.toString()
     });
   });
-  describe("Price transformation", () => {
-    it("Strike correctly set", async () => {
-      assert.equal(
-        (await structuredNoteFPL.getStrikeForFinancialProduct(expiringMultiParty.address)).toString(),
-        strikePrice.toString()
-      );
-    });
+  it("Strike correctly set", async () => {
+    assert.equal(
+      (await structuredNoteFPL.getStrikeForFinancialProduct(expiringMultiParty.address)).toString(),
+      strikePrice.toString()
+    );
+  });
+  describe("price transformation", () => {
     it("Can not re-set the strike for a given financial product", async () => {
       assert(
         await didContractThrow(
@@ -84,11 +90,9 @@ contract("StructuredNoteFinancialProductLibrary", () => {
         toWei("1")
       );
     });
+
     it("Library returns correctly transformed price after expiration", async () => {
       await timer.setCurrentTime(expirationTime + 1);
-
-      // If the oracle price is less than the strike price then the library should return 1.
-      assert.equal((await expiringMultiParty.transformPrice({ rawValue: toWei("350") })).toString(), toWei("1"));
 
       // If the oracle price is less than the strike price then the library should return 1.
       assert.equal(
@@ -114,7 +118,6 @@ contract("StructuredNoteFinancialProductLibrary", () => {
       );
     });
   });
-
   describe("Collateralization ratio transformation", () => {
     it("Library returns correctly transformed collateralization ratio", async () => {
       // Create a fictitious CR for the financial product. Based on the oracle price this required CR should be scalled accordingly.

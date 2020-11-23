@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -10,12 +11,11 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
+import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
-
 
 /**
  * @title Financial contract with priceless position management.
@@ -23,7 +23,7 @@ import "../common/FundingRateApplier.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FeePayer, FundingRateApplier, AdministrateeInterface {
+contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -139,6 +139,8 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
+     * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
+     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
@@ -150,13 +152,14 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
+        FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
     )
         public
-        FeePayer(_collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateIdentifier)
+        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
+        FundingRateApplier(_finderAddress, _fundingRateRewardRate)
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -585,6 +588,9 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
+     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
+     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
+     * logic to this method to account for any such pending fees.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
@@ -679,7 +685,7 @@ contract PerpetualPositionManager is FeePayer, FundingRateApplier, Administratee
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
-    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
@@ -8,7 +9,7 @@ import "../../../common/implementation/FixedPoint.sol";
 import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../../oracle/implementation/Constants.sol";
 import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-
+import "../../perpetual-multiparty/PerpetualInterface.sol";
 
 // A mock funding rate store used for testing.
 contract MockFundingRateStore is FundingRateStoreInterface, Testable {
@@ -19,25 +20,31 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         // e.g. fundingRate = 0.01 means 1% of token amount charged per second.
         FixedPoint.Signed fundingRate;
         uint256 timestamp; // Time the verified funding rate became available.
+        FixedPoint.Unsigned rewardRate;
     }
 
-    mapping(bytes32 => FundingRate[]) private fundingRates;
+    mapping(address => FundingRate) private fundingRates;
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
     // Sets the funding rate for a given identifier.
     function setFundingRate(
-        bytes32 identifier,
+        address perpetual,
         uint256 time,
         FixedPoint.Signed memory fundingRate
     ) external {
-        fundingRates[identifier].push(FundingRate(fundingRate, time));
+        fundingRates[perpetual] = FundingRate(fundingRate, time, FixedPoint.fromUnscaledUint(0));
     }
 
-    function getFundingRateForIdentifier(bytes32 identifier) external override view returns (FixedPoint.Signed memory) {
-        if (fundingRates[identifier].length == 0) {
-            return FixedPoint.fromUnscaledInt(0);
-        }
-        return fundingRates[identifier][fundingRates[identifier].length - 1].fundingRate;
+    function getFundingRateForContract(address perpetual) external view override returns (FixedPoint.Signed memory) {
+        return fundingRates[perpetual].fundingRate;
+    }
+
+    function chargeFundingRateFees(address perpetual, FixedPoint.Unsigned calldata amount) external {
+        PerpetualInterface(perpetual).withdrawFundingRateFees(amount);
+    }
+
+    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate) external override {
+        fundingRates[perpetual].rewardRate = rewardRate;
     }
 }

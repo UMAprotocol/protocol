@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
@@ -5,7 +6,6 @@ pragma experimental ABIEncoderV2;
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "./VotingToken.sol";
-
 
 /**
  * @title Migration contract for VotingTokens.

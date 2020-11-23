@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../oracle/implementation/Finder.sol";
 import "../oracle/implementation/Constants.sol";
 import "../oracle/implementation/Voting.sol";
-
 
 /**
  * @title A contract to track a whitelist of addresses.

@@ -72,6 +72,12 @@ describe("History", function() {
     assert.equal(result.balance, 1);
     assert.equal(result.blockNumber, 1);
   });
+  it("has", function() {
+    let result = history.has(1);
+    assert(result);
+    result = history.has(2);
+    assert.notOk(result);
+  });
 });
 
 describe("Contract Prices", function() {
@@ -81,6 +87,7 @@ describe("Contract Prices", function() {
   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
   it("init", async function() {
+    this.timeout(10000);
     seed = await Coingecko().getHistoricContractPrices(token, "usd", startingTimestamp, endingTimestamp);
     prices = Prices(seed);
     assert.ok(seed);

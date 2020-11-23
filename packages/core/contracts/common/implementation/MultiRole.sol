@@ -1,5 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
-
 
 library Exclusive {
     struct RoleMembership {
@@ -23,7 +23,6 @@ library Exclusive {
         resetMember(roleMembership, initialMember);
     }
 }
-
 
 library Shared {
     struct RoleMembership {
@@ -49,7 +48,6 @@ library Shared {
         }
     }
 }
-
 
 /**
  * @title Base class to manage permissions for the derived class.

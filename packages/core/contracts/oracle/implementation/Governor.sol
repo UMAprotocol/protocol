@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -11,7 +12,6 @@ import "./Constants.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-
 
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.

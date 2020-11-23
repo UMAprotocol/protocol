@@ -37,4 +37,17 @@ describe("index.js", function() {
     // Bad contract name.
     assert.throws(() => getTruffleContract("Nonsense"));
   });
+
+  it("Legacy Contract Abis", function() {
+    // Note: the "PositionManager" specifically existed in version 1.1.0.
+    assert.isNotNull(getAbi("PositionManager", "1.1.0"));
+    assert.isNotNull(getTruffleContract("PositionManager", undefined, "1.1.0"));
+
+    // PerpetualPositionManager exists in the current version, but not in 1.1.0.
+    assert.throws(() => getTruffleContract("PerpetualPositionManager", undefined, "1.1.0"));
+    assert.throws(() => getAbi("PerpetualPositionManager", "1.1.0"));
+
+    // Voting address should be available, as usual in this version.
+    assert.isNotNull(getAddress("Voting", 1, "1.1.0"));
+  });
 });

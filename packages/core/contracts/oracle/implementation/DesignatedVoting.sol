@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -6,7 +7,6 @@ import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "./Constants.sol";
-
 
 /**
  * @title Proxy to allow voting from another address.

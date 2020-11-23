@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../interfaces/Balancer.sol";
-
 
 /**
  * @title Balancer Mock
@@ -12,9 +12,9 @@ contract BalancerMock is Balancer {
     // these params arent used in the mock, but this is to maintain compatibility with balancer API
     function getSpotPriceSansFee(address tokenIn, address tokenOut)
         external
+        view
         virtual
         override
-        view
         returns (uint256 spotPrice)
     {
         return price;

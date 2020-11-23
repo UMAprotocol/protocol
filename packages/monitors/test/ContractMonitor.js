@@ -25,8 +25,8 @@ const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
 const configs = [
-  { tokenName: "WETH", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -75,7 +75,7 @@ contract("ContractMonitor.js", function(accounts) {
         convert = Convert(tokenConfig.collateralDecimals);
         collateralToken = await Token.new(
           tokenConfig.tokenName,
-          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
           tokenConfig.collateralDecimals,
           { from: tokenSponsor }
         );
@@ -98,12 +98,7 @@ contract("ContractMonitor.js", function(accounts) {
         const store = await Store.deployed();
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenName,
-          tokenConfig.collateralDecimals,
-          { from: tokenSponsor }
-        );
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: tokenSponsor });
 
         constructorParams = {
           isTest: true,
@@ -260,7 +255,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
         assert.isTrue(lastSpyLogIncludes(spy, "1.86")); // maximum price for liquidation to be disputable
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // should contain token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // should contain token symbol
 
         // Liquidate another position and ensure the Contract monitor emits the correct params
         const txObject2 = await emp.createLiquidation(
@@ -286,7 +281,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // cr requirement %
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // estimated price at liquidation time
         assert.isTrue(lastSpyLogIncludes(spy, "2.59")); // maximum price for liquidation to be disputable
-        assert.isTrue(lastSpyLogIncludes(spy, tokenConfig.tokenName)); // should contain token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // should contain token symbol
       });
       it("Winston correctly emits dispute events", async function() {
         // Create liquidation to dispute.

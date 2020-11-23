@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../implementation/Testable.sol";
-
 
 // TestableTest is derived from the abstract contract Testable for testing purposes.
 contract TestableTest is Testable {

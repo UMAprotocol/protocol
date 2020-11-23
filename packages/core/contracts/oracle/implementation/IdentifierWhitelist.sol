@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
 
 /**
  * @title Stores a whitelist of supported identifiers that the oracle can provide prices for.
@@ -58,7 +58,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @param identifier unique UTF-8 representation for the feed being queried. Eg: BTC/USD.
      * @return bool if the identifier is supported (or not).
      */
-    function isIdentifierSupported(bytes32 identifier) external override view returns (bool) {
+    function isIdentifierSupported(bytes32 identifier) external view override returns (bool) {
         return supportedIdentifiers[identifier];
     }
 }

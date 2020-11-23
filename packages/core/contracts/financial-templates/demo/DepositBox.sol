@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -11,9 +12,7 @@ import "../../common/implementation/FixedPoint.sol";
 
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
-import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
-
 
 /**
  * @title Token Deposit Box
@@ -39,7 +38,7 @@ import "../../oracle/implementation/ContractCreator.sol";
  * - DVM resolves the exchange rate at: 1 wETH is worth 200 USD.
  * - DepositBox transfers 0.5 wETH to user.
  */
-contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
+contract DepositBox is FeePayer, ContractCreator {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -375,7 +374,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
     // `_pfc()` is inherited from FeePayer and must be implemented to return the available pool of collateral from
     // which fees can be charged. For this contract, the available fee pool is simply all of the collateral locked up in the
     // contract.
-    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalDepositBoxCollateral);
     }
 }

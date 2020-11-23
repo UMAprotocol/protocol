@@ -1,8 +1,8 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 import "../interfaces/AdministrateeInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
 
 /**
  * @title Admin for financial contracts in the UMA system.

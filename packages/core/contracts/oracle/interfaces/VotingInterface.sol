@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
-
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
@@ -103,19 +103,19 @@ abstract contract VotingInterface {
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external virtual view returns (PendingRequest[] memory);
+    function getPendingRequests() external view virtual returns (PendingRequest[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external virtual view returns (Phase);
+    function getVotePhase() external view virtual returns (Phase);
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external virtual view returns (uint256);
+    function getCurrentRoundId() external view virtual returns (uint256);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
