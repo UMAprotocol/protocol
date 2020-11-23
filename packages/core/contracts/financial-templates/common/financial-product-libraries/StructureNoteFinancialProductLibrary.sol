@@ -21,7 +21,7 @@ interface ExpiringContractInterface {
 contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
 
-    constructor(address _timerAddress) public {}
+    constructor() public {}
 
     /**
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.

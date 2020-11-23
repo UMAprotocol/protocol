@@ -21,7 +21,7 @@ contract("StructuredNoteFinancialProductLibrary", function() {
     timer = await Timer.deployed();
 
     expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
-    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new(timer.address);
+    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
     expiringMultiParty = await ExpiringMultiPartyMock.new(structuredNoteFPL.address, expirationTime, timer.address);
 
     await structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
