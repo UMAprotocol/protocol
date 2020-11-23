@@ -21,7 +21,8 @@
     "supertest": "^4.0.2",
     "truffle": "^5.1.16",
     "truffle-assertions": "^0.9.2",
-    "web3": "1.2.7"
+    "web3": "1.2.7",
+    "@uma/core": "^1.1.0"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
