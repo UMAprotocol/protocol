@@ -155,9 +155,8 @@ abstract contract FundingRateApplier is Testable, Lockable {
         FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
 
         // Max with 0 to ensure the multiplier isn't negative, then cast to an Unsigned.
-        FixedPoint.Unsigned memory unsignedPeriodMultiplier = FixedPoint.fromSigned(
-            FixedPoint.max(signedPeriodMultiplier, FixedPoint.fromUnscaledInt(0))
-        );
+        FixedPoint.Unsigned memory unsignedPeriodMultiplier =
+            FixedPoint.fromSigned(FixedPoint.max(signedPeriodMultiplier, FixedPoint.fromUnscaledInt(0)));
 
         // Multiply the existing cumulative funding rate multiplier by the computed period multiplier to get the new
         // cumulative funding rate multiplier.
