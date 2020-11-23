@@ -1,5 +1,4 @@
 const { DeployerRewards } = require("../../libs/affiliates");
-const moment = require("moment");
 const { assert } = require("chai");
 const empAbi = require("../../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../../core/build/contracts/ExpiringMultiPartyCreator");
@@ -76,13 +75,28 @@ describe("DeployerRewards", function() {
     const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
     assert(result.length);
   });
+  it("calculateValue", async function() {
+    // these are all stable coins so they should roughly be around 1 dollar
+    // epsilon is high because variations could be nearly a dollar in any direction
+    const epsilon = 10n ** 17n;
+    const target = 10n ** 18n;
+    // btc example
+    let result = affiliates.utils.calculateValue(target, "15437.012543625458", "65019421301142", 8, 18).toString();
+    let diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+    // eth example
+    result = affiliates.utils.calculateValue(target, "452.1007409061987", "2201527860335072", 18, 18).toString();
+    diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+    // perlin example
+    result = affiliates.utils.calculateValue(target, "0.021647425848012932", "45829514207149404216", 18, 18).toString();
+    diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+  });
   it("calculateRewards", async function() {
-    this.timeout(100000);
+    this.timeout(1000000);
     // small value to give floating math some wiggle room
     const epsilon = 0.001;
-
-    const startingTimestamp = moment("2020-10-01 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
-    const endingTimestamp = moment("2020-10-08 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
     const result = await affiliates.getRewards({
       totalRewards: devRewardsToDistribute,
@@ -96,7 +110,7 @@ describe("DeployerRewards", function() {
     });
 
     assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deplorers for the 3 EMPs.
-    assert.equal(Object.keys(result.empPayouts).length, 3); // There should be 3 emps
+    assert.equal(Object.keys(result.empPayouts).length, empContracts.length); // There should be 3 emps
 
     assert.isBelow(
       // compare floats with an epsilon
