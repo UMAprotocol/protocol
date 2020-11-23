@@ -1,7 +1,7 @@
 // Libraries and helpers
 const { PositionStatesEnum, didContractThrow } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
-const { interfaceName } = require("@uma/common");
+const { interfaceName, ZERO_ADDRESS } = require("@uma/common");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -15,6 +15,7 @@ const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const FinancialProductLibraryTest = artifacts.require("FinancialProductLibraryTest");
 const Timer = artifacts.require("Timer");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -120,7 +121,9 @@ contract("PricelessPositionManager", function(accounts) {
       from: contractDeployer
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
+      from: contractDeployer
+    });
 
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
@@ -136,6 +139,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
+      ZERO_ADDRESS, // _financialProductLibraryAddress
       { from: contractDeployer }
     );
     // Give contract owner permissions.
@@ -212,6 +216,7 @@ contract("PricelessPositionManager", function(accounts) {
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
           timer.address, // _timerAddress (unchanged)
           beneficiary, // _excessTokenBeneficiary (unchanged)
+          ZERO_ADDRESS, // _financialProductLibraryAddress (unchanged)
           { from: contractDeployer }
         )
       )
@@ -238,6 +243,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
+      ZERO_ADDRESS, // _financialProductLibraryAddress
       { from: contractDeployer }
     );
     await tokenCurrency.addMinter(pricelessPositionManager.address);
@@ -934,6 +940,174 @@ contract("PricelessPositionManager", function(accounts) {
     await expectNoExcessCollateralToTrim();
   });
 
+  it("Custom price transformation with a financial product library", async function() {
+    // Create a sample FinancialProductLibraryTest that simply doubles the settlement price. This test shows that the
+    // oracle price can be overriden with the transformPrice from the library.
+    const financialProductLibraryTest = await FinancialProductLibraryTest.new({ rawValue: toWei("2") });
+
+    assert.equal((await financialProductLibraryTest.scalar()).toString(), toWei("2"));
+    assert.equal((await financialProductLibraryTest.transformPrice({ rawValue: "5" }, "0")).toString(), "10"); // should scale prices by scalar. 5 * 2 = 10. Note the time(second param) does not matter in this test library
+
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      financialProductLibraryTest.address, // _financialProductLibraryAddress
+      { from: contractDeployer }
+    );
+
+    // Transform price function in pricelessPositionManager correctly scales input prices
+    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "10");
+
+    // Give contract owner permissions.
+    await tokenCurrency.addMinter(pricelessPositionManager.address);
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
+
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    await pricelessPositionManager.expire({ from: other });
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for
+    // the price feed. However, the scaler value of 0.6 was chosen in the financial product library. This means that the
+    // EMP will scale the price reported by the DVM by 2, resulting in 0.6 bing intepreted as 1.2 by the settlement
+    // logic. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
+    const redemptionPrice = 0.6;
+    const redemptionPriceWei = toWei(redemptionPrice.toString());
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
+
+    // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
+    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
+    const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
+
+    // Approve the tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, { from: tokenHolder });
+    let settleExpiredResult = await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED);
+    const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+
+    // No excess collateral post settlement.
+    await expectNoExcessCollateralToTrim();
+
+    // The token holder should gain the value of their synthetic tokens in underlying.
+    // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
+    // When redeeming 50 tokens at a price of 1.2 we expect to receive 60 collateral tokens (50 * 0.6 * 2)
+    const expectedTokenHolderFinalCollateral = toWei("60");
+    assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+
+    // The token holder should have no synthetic positions left after settlement.
+    assert.equal(tokenHolderFinalSynthetic, 0);
+
+    // Check the event returned the correct values
+    truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
+      return (
+        ev.caller == tokenHolder &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.tokensBurned == tokenHolderInitialSynthetic.toString()
+      );
+    });
+
+    // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
+    // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
+    // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
+    // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 0.6 * 2 = 90
+    const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
+    const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // Approve tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
+      from: sponsor
+    });
+
+    // The token Sponsor should gain the value of their synthetics in underlying
+    // + their excess collateral from the over collateralization in their position
+    // Excess collateral = 150 - 100 * 0.6 * 2 = 30
+    const expectedSponsorCollateralUnderlying = toBN(toWei("30"));
+    // Value of remaining synthetic tokens = 50 * 0.6 * 2 = 60
+    const expectedSponsorCollateralSynthetic = toBN(toWei("60"));
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
+      expectedSponsorCollateralSynthetic
+    );
+
+    // Redeem and settleExpired should give the same result as just settleExpired.
+    const settleExpired = pricelessPositionManager.settleExpired;
+
+    // Get the amount as if we only settleExpired.
+    const settleExpiredOnlyAmount = await settleExpired.call({
+      from: sponsor
+    });
+
+    // Partially redeem and partially settleExpired.
+    const partialRedemptionAmount = await pricelessPositionManager.redeem.call(
+      { rawValue: toWei("1") },
+      { from: sponsor }
+    );
+    await pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor });
+    const partialSettleExpiredAmount = await settleExpired.call({
+      from: sponsor
+    });
+    settleExpiredResult = await settleExpired({ from: sponsor });
+
+    // Compare the two paths' results.
+    assert.equal(
+      settleExpiredOnlyAmount.toString(),
+      toBN(partialRedemptionAmount.toString())
+        .add(toBN(partialSettleExpiredAmount.toString()))
+        .toString()
+    );
+
+    // Compare the amount to the expected return value.
+    assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
+
+    // Check balances.
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
+    assert.equal(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
+      expectedTotalSponsorCollateralReturned
+    );
+
+    // Check events.
+    truffleAssert.eventEmitted(settleExpiredResult, "EndedSponsorPosition", ev => {
+      return ev.sponsor == sponsor;
+    });
+
+    // The token Sponsor should have no synthetic positions left after settlement.
+    assert.equal(sponsorFinalSynthetic, 0);
+
+    // Last check is that after redemption the position in the positions mapping has been removed.
+    const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
+    assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
+    assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
+    assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+    // No excess collateral after all have settled.
+    await expectNoExcessCollateralToTrim();
+  });
+
   it("Non sponsor can't deposit, redeem, withdraw, or transfer", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
@@ -1077,7 +1251,7 @@ contract("PricelessPositionManager", function(accounts) {
     const feesOwed = (
       await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
     ).regularFee;
-    assert(Number(pfc.toString()) < Number(feesOwed.toString()));
+    assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
     await pricelessPositionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
     const payTooManyFeesResult = await pricelessPositionManager.payRegularFees();
@@ -1251,7 +1425,7 @@ contract("PricelessPositionManager", function(accounts) {
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
       let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await pricelessPositionManager.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()
@@ -1755,6 +1929,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
+      ZERO_ADDRESS, // _financialProductLibraryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
