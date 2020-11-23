@@ -1,7 +1,6 @@
 // Libraries and helpers
-const { didContractThrow } = require("@uma/common");
+const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
-const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 
 // Contracts to test
@@ -18,6 +17,8 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
+const FundingRateStore = artifacts.require("FundingRateStore");
+const Registry = artifacts.require("Registry");
 
 contract("PerpetualPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN, utf8ToHex } = web3.utils;
@@ -39,16 +40,18 @@ contract("PerpetualPositionManager", function(accounts) {
   let finder;
   let mockFundingRateStore;
   let store;
+  let registry;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
   const initialPositionCollateral = toBN(toWei("1"));
-  const syntheticName = "TEST-SYNTH";
-  const syntheticSymbol = "TEST-SYNTH";
+  const syntheticName = "Test Synthetic Token";
+  const syntheticSymbol = "SYNTH";
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
-  const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
-  const fundingRateFeedIdentifier = utf8ToHex("ETHUSD-Funding-Rate"); // example identifier for funding rate.
+  const priceFeedIdentifier = utf8ToHex("TEST_IDENTIIFER");
+  const fundingRateRewardRate = toWei("0.0001");
+  const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
@@ -143,6 +146,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -156,6 +160,158 @@ contract("PerpetualPositionManager", function(accounts) {
 
   afterEach(async () => {
     await expectNoExcessCollateralToTrim();
+  });
+
+  describe("Integration tests with FundingRateStore", function() {
+    async function incrementTime(contract, amount) {
+      const currentTime = await contract.getCurrentTime();
+      await contract.setCurrentTime(Number(currentTime) + amount);
+    }
+
+    let proposerBalancePrePublish;
+    let fundingRateStore;
+    beforeEach(async function() {
+      // Deploy real funding rate store & have Finder point to it.
+      fundingRateStore = await FundingRateStore.new(
+        4, // Proposal liveness of 4 seconds
+        finder.address,
+        timer.address,
+        {
+          rawValue: "0" // Proposal bond should not affect how the Perpetual contract works so we leave this at 0.
+        }
+      );
+      await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), fundingRateStore.address, {
+        from: contractDeployer
+      });
+
+      // Deploy a new position manager so that it sets a funding rate fee % with the newly registered FundingRateStore
+      positionManager = await PerpetualPositionManager.new(
+        withdrawalLiveness, // _withdrawalLiveness
+        collateral.address, // _collateralAddress
+        tokenCurrency.address, // _tokenAddress
+        finder.address, // _finderAddress
+        priceFeedIdentifier, // _priceFeedIdentifier
+        fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+        { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
+        { rawValue: minSponsorTokens }, // _minSponsorTokens
+        timer.address, // _timerAddress
+        beneficiary, // _excessTokenBeneficiary
+        { from: contractDeployer }
+      );
+
+      // Give contract owner permissions.
+      await tokenCurrency.addMinter(positionManager.address);
+      await tokenCurrency.addBurner(positionManager.address);
+
+      // Funding rate reward for this contract is 0.01%.
+      // Advance time 1 second into future, so base reward % should be 0.01%.
+      await incrementTime(fundingRateStore, 1);
+
+      // Propose a new funding rate. No need to set any allowances since final fee and proposal bond are 0.
+      // Using a Rate difference of +50% from default 0% means that the 0.01% reward rate will be scaled by
+      // 1.5 => 0.01% * 1.5 = 0.015%
+      await identifierWhitelist.addSupportedIdentifier(fundingRateFeedIdentifier);
+      await fundingRateStore.propose(positionManager.address, { rawValue: toWei("0.5") }, { from: contractDeployer });
+      proposerBalancePrePublish = await collateral.balanceOf(contractDeployer);
+
+      // Grant contract deployer Owner and Creator roles in Registry so it can query funding rates and give query
+      // privileges to other addresesses, like the perpetual contract.
+      registry = await Registry.deployed();
+      await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractDeployer);
+      await registry.registerContract([], positionManager.address);
+      try {
+        await registry.registerContract([], contractDeployer);
+      } catch (err) {
+        // Can only register a contract once, expected error here on duplicate `registerContract` calls for the
+        // `contractDeployer`.
+      }
+
+      // Create position to give contract PfC = 1.
+      await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+      await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+      assert.equal((await positionManager.pfc()).toString(), toWei("1"));
+
+      // Check that funding rate proposal is set to the default
+      assert.equal(
+        (await fundingRateStore.getFundingRateForContract(positionManager.address)).rawValue.toString(),
+        "0"
+      );
+
+      // Advance time such that funding rate proposal has expired.
+      await incrementTime(fundingRateStore, 4);
+    });
+    it("Perpetual contract should be able to query funding rate store after a proposal has expired without the funding rate store re-entering the perpetual", async function() {
+      // This test checks that `getFundingRateForContract()` does not unintentionally re-enter the Perpetual contract,
+      // which would happen if `getFundingRateForContract()` also called its internal method
+      // `_publishRateAndWithdrawRewards()`. The downside of enforcing this non-reentrant behavior is that
+      // interacting with the Perpetual contract CANNOT disperse funding rate store rewards.
+
+      // Attempt to update the perpetual contract's funding rate. This will call the FundingRateStore's
+      // `getFundingRateForContract()` method, which should NOT call back to the Perpetual contract otherwise
+      // the Perpetual's reentrancy guard will revert.
+      await positionManager.applyFundingRate();
+
+      // Check that no PublishedRate event was emitted in the store.
+      let storeEvents = await fundingRateStore.getPastEvents("PublishedRate", {
+        filter: { proposer: contractDeployer }
+      });
+      assert.isEmpty(storeEvents);
+
+      // All that `applyFundingRate()` does is modify the cumulative funding rate multiplier.
+      // If the funding rate is 0.5 (50%) per second, and the last "payment time" was 4 seconds ago
+      // when the sponsor created their position, then the period funding rate should be 50% * 4 = 200%
+      // which results in a new funding rate multiplier of 1 * (1+2) = 3. (This is a bit intuitive, but imagine
+      // if the period funding rate was 50%, then the new multiplier would be 1 * (1+0.5) = 1.5)
+      assert.equal((await positionManager.cumulativeFundingRateMultiplier()).toString(), toWei("3"));
+
+      // Check that calling `getFundingRateForContract` reflects the newly expired proposal, but this does not actually
+      // disperse any funding rate rewards.
+      assert.equal(
+        (await fundingRateStore.getFundingRateForContract(positionManager.address)).rawValue.toString(),
+        toWei("0.5")
+      );
+
+      // No proposal rewards were paid to proposer by store.
+      let proposerBalancePostPublish = await collateral.balanceOf(contractDeployer);
+      assert.equal(proposerBalancePostPublish.sub(proposerBalancePrePublish).toString(), "0");
+      assert.equal((await positionManager.pfc()).toString(), toWei("1"));
+
+      // The only way to disperse rewards is to call the FundingRateStore directly. Check that the new rate was
+      // published and rewards were dispersed. Also check to make sure that any charged regular fees do not
+      // interfere.
+      await fundingRateStore.withdrawProposalRewards(positionManager.address);
+      // Recall that the proposer's reward should be 0.015% * 1 = 0.00015
+      storeEvents = await fundingRateStore.getPastEvents("PublishedRate", { filter: { proposer: contractDeployer } });
+      assert.equal(storeEvents[0].returnValues.totalPayment.toString(), toWei("0.00015"));
+
+      // The new PfC should be 1 - 0.00015 = 0.99985
+      // Note that the regular fee and funding rate fee adjustments to the contract's PfC are strategically chosen
+      // so that the cumulativeFeeMultiplier is adjusted without precision loss.
+      assert.equal((await positionManager.pfc()).toString(), toWei("0.99985"));
+
+      // Proposal rewards were paid to proposer by store.
+      proposerBalancePostPublish = await collateral.balanceOf(contractDeployer);
+      assert.equal(proposerBalancePostPublish.sub(proposerBalancePrePublish).toString(), toWei("0.00015"));
+    });
+    it("If regular fees remove all PfC, then proposer receives no reward", async function() {
+      // The total time elapsed to publish the proposal is 5 seconds, so let's set the regular fee to 20%/second.
+      // This will charge a 100% regular fee tax on the contract's PfC. This will prevent the funding rate store from
+      // withdrawing any collateral from the perpetual contract, but it should not revert.
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.2") });
+
+      // Calling `withdrawProposalRewards()` calls the perpetual contract's `withdrawFundingRateFees()` method,
+      // which first calls its own `payRegularFees()` method, before withdrawing any collateral. This means that
+      // there will be no pfc() from which to withdraw any collateral.
+      await fundingRateStore.withdrawProposalRewards(positionManager.address);
+      assert.equal((await positionManager.pfc()).toString(), "0");
+
+      // See that the reward % does not reflect the actual reward sent
+      let storeEvents = await fundingRateStore.getPastEvents("PublishedRate", {
+        filter: { proposer: contractDeployer }
+      });
+      assert.equal(storeEvents[0].returnValues.totalPayment.toString(), "0");
+      assert.equal(storeEvents[0].returnValues.rewardPct.toString(), toWei("0.00015"));
+    });
   });
 
   it("Correct deployment and variable assignment", async function() {
@@ -184,6 +340,7 @@ contract("PerpetualPositionManager", function(accounts) {
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+          { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -210,6 +367,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -775,12 +933,9 @@ contract("PerpetualPositionManager", function(accounts) {
     await collateral.approve(positionManager.address, toWei("1000"), { from: other });
     await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
 
-    // Cannot pay fees when PfC is 0.
-    assert(
-      await didContractThrow(
-        mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") })
-      )
-    );
+    // Does nothing when PfC is 0.
+    let txn = await mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") });
+    truffleAssert.eventNotEmitted(txn, "FundingRateFeesWithdrawn");
 
     // Set up another position that is less collateralized so sponsor can withdraw freely.
     await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100000") }, { from: other });
@@ -790,20 +945,12 @@ contract("PerpetualPositionManager", function(accounts) {
     // Multiply by 2 because there are two active positions
     const expectedStoreBalance = (await collateral.balanceOf(mockFundingRateStore.address)).add(toBN(toWei("0.02")));
 
-    // Cannot pay 0 fees.
-    assert(
-      await didContractThrow(mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: "0" }))
-    );
+    // Does nothing when requested to withdraw 0 fees.
+    txn = await mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: "0" });
+    truffleAssert.eventNotEmitted(txn, "FundingRateFeesWithdrawn");
 
     // `withdrawFundingRateFees` only callable by FundingRateStore.
     assert(await didContractThrow(positionManager.withdrawFundingRateFees({ rawValue: toWei("0.02") })));
-
-    // Cannot pay more fees than PfC
-    assert(
-      await didContractThrow(
-        mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("2.01") })
-      )
-    );
 
     // Calling `withdrawFundingRateFees` from the store should transfer fees from the contract to the store.
     await mockFundingRateStore.chargeFundingRateFees(positionManager.address, { rawValue: toWei("0.02") });
@@ -822,11 +969,43 @@ contract("PerpetualPositionManager", function(accounts) {
       from: contractDeployer
     });
     // Note: Purposefully using numbers that has no precision loss in the cumulative fee multiplier.
-    const txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("0.0198") }, { from: other });
-    truffleAssert.eventEmitted(txn, "FundingRateFeesPaid", ev => {
+    let returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: toWei("0.0198") }, { from: other });
+    assert.equal(returnVal.toString(), toWei("0.0198"));
+    txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("0.0198") }, { from: other });
+    truffleAssert.eventEmitted(txn, "FundingRateFeesWithdrawn", ev => {
       return ev.fundingRateFee.toString() === toWei("0.0198");
     });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), other, {
+
+    // If asked to withdraw 0, returns 0.
+    returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: "0" }, { from: other });
+    assert.equal(returnVal.toString(), "0");
+
+    // If asked to withdraw more fees than PfC, then just pays out PfC. Sponsor balances get drained to 0.
+    // Request to withdraw 2, but only (2 - 0.02 - 0.0198) = 1.9602 collateral remaining in contract.
+    const preBalanceOther = await collateral.balanceOf(other);
+    returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: toWei("2") }, { from: other });
+    assert.equal(returnVal.toString(), toWei("1.9602"));
+    txn = await positionManager.withdrawFundingRateFees({ rawValue: toWei("2") }, { from: other });
+    const postBalanceOther = await collateral.balanceOf(other);
+    truffleAssert.eventEmitted(txn, "FundingRateFeesWithdrawn", ev => {
+      return ev.fundingRateFee.toString() === toWei("1.9602");
+    });
+    assert.equal(postBalanceOther.sub(preBalanceOther).toString(), toWei("1.9602"));
+    assert.equal(
+      (await collateral.balanceOf(positionManager.address)).toString(),
+      "0" // Perp should have 0 collateral remaining
+    );
+    collateralAmountSponsor = await positionManager.getCollateral(sponsor);
+    assert.equal(collateralAmountSponsor.rawValue.toString(), "0");
+    collateralAmountOther = await positionManager.getCollateral(other);
+    assert.equal(collateralAmountOther.rawValue.toString(), "0");
+
+    // When PfC is 0, returns 0.
+    returnVal = await positionManager.withdrawFundingRateFees.call({ rawValue: toWei("0.1") }, { from: other });
+    assert.equal(returnVal.toString(), "0");
+
+    // Reset Finder pointer.
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), mockFundingRateStore.address, {
       from: contractDeployer
     });
   });
@@ -890,7 +1069,7 @@ contract("PerpetualPositionManager", function(accounts) {
     const feesOwed = (
       await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
     ).regularFee;
-    assert(Number(pfc.toString()) < Number(feesOwed.toString()));
+    assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
     await positionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
     const payTooManyFeesResult = await positionManager.payRegularFees();
@@ -1293,7 +1472,7 @@ contract("PerpetualPositionManager", function(accounts) {
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
       let collateralAmount = await positionManager.getCollateral(sponsor);
-      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await positionManager.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()
@@ -1728,6 +1907,7 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
+      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
