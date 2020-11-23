@@ -15,8 +15,8 @@ contract ExpiringMultiPartyMock is Testable {
     constructor(
         address _financialProductLibraryAddress,
         uint256 _expirationTimestamp,
-        address timerAddress
-    ) public Testable(timerAddress) {
+        address _timerAddress
+    ) public Testable(_timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
