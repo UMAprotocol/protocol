@@ -21,10 +21,8 @@ contract("StructuredNoteFinancialProductLibrary", () => {
     timer = await Timer.deployed();
 
     expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
-    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new(timer.address);
-    expiringMultiParty = await ExpiringMultiPartyMock.new(structuredNoteFPL.address, expirationTime, {
-      rawValue: collateralizationRatio
-    });
+    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
+    expiringMultiParty = await ExpiringMultiPartyMock.new(structuredNoteFPL.address, expirationTime, timer.address);
 
     await structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
       rawValue: strikePrice.toString()
@@ -54,33 +52,69 @@ contract("StructuredNoteFinancialProductLibrary", () => {
           })
         )
       );
+      assert(
+        await didContractThrow(
+          structuredNoteFPL.setFinancialProductStrike(timer.address, {
+            rawValue: strikePrice.toString()
+          })
+        )
+      );
     });
     it("Library returns 1 price if before expiration", async () => {
       // Calling the transformation function through the emp mock.
-      assert.equal((await expiringMultiParty.transformPrice({ rawValue: toWei("350") })).toString(), toWei("1"));
+      assert.equal(
+        (
+          await expiringMultiParty.transformPrice(
+            { rawValue: toWei("350") },
+            (await expiringMultiParty.getCurrentTime()).toString()
+          )
+        ).toString(),
+        toWei("1")
+      );
 
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice.call({ rawValue: toWei("350") }, { from: expiringMultiParty.address })
+          await expiringMultiParty.transformPrice.call(
+            { rawValue: toWei("350") },
+            (await expiringMultiParty.getCurrentTime()).toString(),
+            { from: expiringMultiParty.address }
+          )
         ).toString(),
         toWei("1")
       );
     });
-
     it("Library returns correctly transformed price after expiration", async () => {
       await timer.setCurrentTime(expirationTime + 1);
 
       // If the oracle price is less than the strike price then the library should return 1.
       assert.equal((await expiringMultiParty.transformPrice({ rawValue: toWei("350") })).toString(), toWei("1"));
 
+      // If the oracle price is less than the strike price then the library should return 1.
+      assert.equal(
+        (
+          await expiringMultiParty.transformPrice(
+            { rawValue: toWei("350") },
+            (await expiringMultiParty.getCurrentTime()).toString()
+          )
+        ).toString(),
+        toWei("1")
+      );
+
       // Else, if the oracle price is more than strike then the library should return the strike/oracle price. For a oracle
       // price of 500 each token is redeemable for 400/500 = 0.8 WETH.
-      assert.equal((await expiringMultiParty.transformPrice({ rawValue: toWei("500") })).toString(), toWei("0.8"));
-      // For a price of 1000 each token is redeemable for 400/1000 = 0.4 WETH.
-      assert.equal((await expiringMultiParty.transformPrice({ rawValue: toWei("1000") })).toString(), toWei("0.4"));
+      assert.equal(
+        (
+          await expiringMultiParty.transformPrice(
+            { rawValue: toWei("500") },
+            (await expiringMultiParty.getCurrentTime()).toString()
+          )
+        ).toString(),
+        toWei("0.8")
+      );
     });
   });
+
   describe("Collateralization ratio transformation", () => {
     it("Library returns correctly transformed collateralization ratio", async () => {
       // Create a fictitious CR for the financial product. Based on the oracle price this required CR should be scalled accordingly.

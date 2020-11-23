@@ -1,13 +1,10 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
-
-import "../../../common/implementation/Testable.sol";
-
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-interface ExpiringMultiParty {
+interface ExpiringContractInterface {
     function expirationTimestamp() external view returns (uint256);
 }
 
@@ -21,10 +18,10 @@ interface ExpiringMultiParty {
  * If ETHUSD < $400 at expiry, token is redeemed for 1 ETH.
  * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determine by the DVM.
  */
-contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testable, Ownable {
+contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
 
-    constructor(address _timerAddress) public Testable(_timerAddress) {}
+    constructor() public {}
 
     /**
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.
@@ -40,7 +37,7 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testa
     {
         require(strikePrice.isGreaterThan(0), "Cant set 0 strike");
         require(financialProductStrikes[financialProduct].isEqual(0), "Strike already set");
-        require(ExpiringMultiParty(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
+        require(ExpiringContractInterface(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
         financialProductStrikes[financialProduct] = strikePrice;
     }
 
@@ -56,9 +53,10 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testa
     /**
      * @notice Returns a transformed price by applying the structured note payout structure.
      * @param oraclePrice price from the oracle to be transformed.
+     * @param requestTime timestamp the oraclePrice was requested at.
      * @return transformedPrice the input oracle price with the price transformation logic applied to it.
      */
-    function transformPrice(FixedPoint.Unsigned memory oraclePrice)
+    function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
         override
         view
@@ -66,15 +64,15 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testa
     {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
         require(strike.isGreaterThan(0), "Caller has no strike");
-        // If price request is made before expiry, return 1. Thus we can keep the contract 100% collateralized with 1
-        // WETH pre-expiry, and that disputes pre-expiry are illogical (token is always backed by 1 WETH pre-expiry).
-        if (getCurrentTime() < ExpiringMultiParty(msg.sender).expirationTimestamp()) {
+        // If price request is made before expiry, return 1. Thus we can keep the contract 100% collateralized with
+        // each token backed 1:1 by collateral currency.
+        if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
             return FixedPoint.fromUnscaledUint(1);
         }
         if (oraclePrice.isLessThan(strike)) {
             return FixedPoint.fromUnscaledUint(1);
         } else {
-            // Token expires to be worth strike $ worth of WETH.
+            // Token expires to be worth strike $ worth of collateral.
             // eg if ETHUSD is $500 and strike is $400, token is redeemable for 400/500 = 0.8 WETH.
             return strike.div(oraclePrice);
         }

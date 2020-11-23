@@ -12,7 +12,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     }
 
     // Create a simple price transformation function that scales the input price by the scalar for testing.
-    function transformPrice(FixedPoint.Unsigned memory oraclePrice)
+    function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
         override
         view

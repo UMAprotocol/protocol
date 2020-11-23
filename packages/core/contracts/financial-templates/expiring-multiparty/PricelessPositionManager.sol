@@ -684,9 +684,15 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev This method should never revert.
      */
 
-    function transformPrice(FixedPoint.Unsigned memory price) public view returns (FixedPoint.Unsigned memory) {
+    function transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
+        public
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
         if (address(financialProductLibrary) == address(0)) return price;
-        try financialProductLibrary.transformPrice(price) returns (FixedPoint.Unsigned memory transformedPrice) {
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
+            FixedPoint.Unsigned memory transformedPrice
+        ) {
             return transformedPrice;
         } catch {
             return price;
@@ -793,7 +799,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)));
+        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
