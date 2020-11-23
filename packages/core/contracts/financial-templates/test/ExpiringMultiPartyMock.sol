@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/implementation/Testable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
@@ -16,7 +15,7 @@ contract ExpiringMultiPartyMock is Testable {
         address _financialProductLibraryAddress,
         uint256 _expirationTimestamp,
         address timerAddress
-    ) public Testable(timerAddress) {
+    ) public {
         expirationTimestamp = _expirationTimestamp;
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
