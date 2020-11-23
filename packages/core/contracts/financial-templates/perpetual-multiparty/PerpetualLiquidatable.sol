@@ -328,10 +328,10 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned memory griefingThreshold = minSponsorTokens;
         if (
             positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // The position is undergoing a slow withdrawal.
-            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // The slow withdrawal has not yet expired.
+            positionToLiquidate.withdrawalRequestPassTimestamp > getCurrentTime() && // The slow withdrawal has not yet expired.
             tokensLiquidated.isGreaterThanOrEqual(griefingThreshold) // The liquidated token count is above a "griefing threshold".
         ) {
-            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
+            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
         }
 
         emit LiquidationCreated(
