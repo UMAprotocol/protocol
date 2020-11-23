@@ -1,8 +1,5 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
-
-import "../../../common/implementation/Testable.sol";
-
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -21,10 +18,10 @@ interface ExpiringContractInterface {
  * If ETHUSD < $400 at expiry, token is redeemed for 1 ETH.
  * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determine by the DVM.
  */
-contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Testable, Ownable {
+contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
 
-    constructor(address _timerAddress) public Testable(_timerAddress) {}
+    constructor(address _timerAddress) public {}
 
     /**
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.

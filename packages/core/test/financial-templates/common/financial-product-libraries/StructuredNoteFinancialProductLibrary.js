@@ -51,6 +51,13 @@ contract("StructuredNoteFinancialProductLibrary", function() {
         })
       )
     );
+    assert(
+      await didContractThrow(
+        structuredNoteFPL.setFinancialProductStrike(timer.address, {
+          rawValue: strikePrice.toString()
+        })
+      )
+    );
   });
   it("Library returns 1 price if before expiration", async () => {
     // Calling the transformation function through the emp mock.

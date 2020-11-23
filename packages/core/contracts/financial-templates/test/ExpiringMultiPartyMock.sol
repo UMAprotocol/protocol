@@ -27,7 +27,7 @@ contract ExpiringMultiPartyMock is Testable {
         returns (FixedPoint.Unsigned memory)
     {
         if (address(financialProductLibrary) == address(0)) return price;
-        try financialProductLibrary.transformPrice(price, getCurrentTime()) returns (
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
             FixedPoint.Unsigned memory transformedPrice
         ) {
             return transformedPrice;
