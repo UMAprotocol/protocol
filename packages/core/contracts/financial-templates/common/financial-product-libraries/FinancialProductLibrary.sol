@@ -2,7 +2,6 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "../../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Financial product library contract
  * @notice Provides price and collateral requirement transformation interfaces that can be overridden by custom
@@ -19,8 +18,8 @@ abstract contract FinancialProductLibrary {
      */
     function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
-        virtual
         view
+        virtual
         returns (FixedPoint.Unsigned memory)
     {
         return oraclePrice;
@@ -35,7 +34,7 @@ abstract contract FinancialProductLibrary {
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory oraclePrice,
         FixedPoint.Unsigned memory collateralRequirement
-    ) public virtual view returns (FixedPoint.Unsigned memory) {
+    ) public view virtual returns (FixedPoint.Unsigned memory) {
         return collateralRequirement;
     }
 }
