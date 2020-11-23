@@ -172,7 +172,7 @@ contract("Liquidator.js", function(accounts) {
           crRatio: await emp.collateralRequirement(),
           priceIdentifier: await emp.priceIdentifier(),
           minSponsorSize: await emp.minSponsorTokens(),
-          liquidationLiveness: await emp.liquidationLiveness()
+          withdrawLiveness: await emp.withdrawalLiveness()
         };
 
         liquidator = new Liquidator({
@@ -1058,8 +1058,8 @@ contract("Liquidator.js", function(accounts) {
 
           // Advance the timer to the liquidation expiry.
           const liquidationTime = liquidationObject.liquidationTime;
-          const liquidationLiveness = 1000;
-          await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+          const withdrawLiveness = 1000;
+          await emp.setCurrentTime(Number(liquidationTime) + withdrawLiveness);
 
           // Now that the liquidation has expired, the liquidator can withdraw rewards.
           const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -1137,7 +1137,7 @@ contract("Liquidator.js", function(accounts) {
             // will extend even if withdraw progress is 80% complete
             defenseActivationPercent: 80
           };
-          const liquidationLiveness = empProps.liquidationLiveness.toNumber();
+          const withdrawLiveness = empProps.withdrawLiveness.toNumber();
           const liquidator = new Liquidator({
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
@@ -1176,10 +1176,8 @@ contract("Liquidator.js", function(accounts) {
           // 120 - 10 / 2 (half tokens liquidated)
           assert.equal(sponsor2Liquidation.liquidatedCollateral, convert("55"));
 
-          // advance time to 50% of liquidation. This should not trigger extension until 80%
-          let nextTime = Math.ceil(
-            Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.5
-          );
+          // advance time to 50% of withdraw. This should not trigger extension until 80%
+          let nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5);
 
           await emp.setCurrentTime(nextTime);
           // running again, should have no change
@@ -1191,7 +1189,7 @@ contract("Liquidator.js", function(accounts) {
           // no new liquidations
           assert.equal(sponsor2Liquidations.length, 1);
 
-          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.2);
+          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.2);
 
           await emp.setCurrentTime(nextTime);
           // running again, should have another liquidation
@@ -1206,12 +1204,12 @@ contract("Liquidator.js", function(accounts) {
           // show position has been extended
           assert.equal(
             sponsor2Positions.withdrawalRequestPassTimestamp.toNumber(),
-            Number(sponsor2Liquidations[0].liquidationTime) + Number(liquidationLiveness)
+            Number(sponsor2Liquidations[1].liquidationTime) + Number(withdrawLiveness)
           );
 
           // another extension
           // advance time to 80% of liquidation
-          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - liquidationLiveness * 0.2);
+          nextTime = Math.ceil(Number(sponsor2Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.2);
           await emp.setCurrentTime(nextTime);
           // running again, should have another liquidation
           await liquidator.update();

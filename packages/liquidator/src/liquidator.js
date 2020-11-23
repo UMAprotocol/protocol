@@ -61,7 +61,6 @@ class Liquidator {
     this.empMinSponsorSize = empProps.minSponsorSize;
 
     this.empIdentifier = empProps.priceIdentifier;
-    this.empLiquidationLiveness = empProps.liquidationLiveness;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;

@@ -1077,7 +1077,7 @@ contract("PricelessPositionManager", function(accounts) {
     const feesOwed = (
       await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
     ).regularFee;
-    assert(Number(pfc.toString()) < Number(feesOwed.toString()));
+    assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
     await pricelessPositionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
     const payTooManyFeesResult = await pricelessPositionManager.payRegularFees();
@@ -1251,7 +1251,7 @@ contract("PricelessPositionManager", function(accounts) {
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
       let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await pricelessPositionManager.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()

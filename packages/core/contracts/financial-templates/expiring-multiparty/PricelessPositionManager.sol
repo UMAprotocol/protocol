@@ -11,7 +11,6 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../../common/interfaces/IERC20Standard.sol";
@@ -23,7 +22,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PricelessPositionManager is FeePayer, AdministrateeInterface {
+contract PricelessPositionManager is FeePayer {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -641,6 +640,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
+     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
+     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
+     * logic to this method to account for any such pending fees.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */

@@ -72,6 +72,12 @@ describe("History", function() {
     assert.equal(result.balance, 1);
     assert.equal(result.blockNumber, 1);
   });
+  it("has", function() {
+    let result = history.has(1);
+    assert(result);
+    result = history.has(2);
+    assert.notOk(result);
+  });
 });
 
 describe("Contract Prices", function() {
