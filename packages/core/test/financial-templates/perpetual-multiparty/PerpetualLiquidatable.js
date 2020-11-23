@@ -467,7 +467,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         { from: liquidator }
       );
 
-      assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
     });
     it("Increments ID after creation", async () => {
       // Create first liquidation
@@ -890,7 +890,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         // Disputing a liquidation should update the funding rate multiplier
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
 
-        assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
       });
       it("Throw if liquidation has already been disputed", async () => {
         // Mint final fee amount to disputer
@@ -1035,7 +1035,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
         // Test that withdrawLiquidation updated the multiplier.
-        assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
 
         truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
@@ -1093,7 +1093,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         );
 
         // Test that withdrawLiquidation updated the multiplier.
-        assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
 
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
         // if the liquidator calls `withdrawLiquidation()` on a failed dispute, it will first `_settle` the contract
@@ -1405,7 +1405,7 @@ contract("PerpetualLiquidatable", function(accounts) {
           assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
 
           // Test that withdrawLiquidation updated the multiplier for the time expired.
-          assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+          assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
 
           // All collateral should have been removed from the contract.
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
@@ -1688,7 +1688,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Shuts down the position manager.
       await financialContractsAdmin.callEmergencyShutdown(liquidationContract.address);
 
-      assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
     it("Can dispute the liquidation", async () => {
       // Advance time to make sure that funding rate multiplier is not updated.
@@ -1702,7 +1702,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
 
       // Funding rate multiplier is NOT updated on `dispute()` following a shutdown.
-      assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
     it("Can withdraw liquidation rewards", async () => {
       // Dispute fails, liquidator withdraws, liquidation is deleted
@@ -1721,7 +1721,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
 
       // Funding rate multiplier is NOT updated on `withdrawLiquidation()` following a shutdown.
-      assert.equal((await liquidationContract.getCumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
   });
   describe("Non-standard ERC20 delimitation", () => {

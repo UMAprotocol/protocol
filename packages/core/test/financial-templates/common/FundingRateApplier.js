@@ -27,7 +27,7 @@ contract("FundingRateApplier", function() {
   it("Construction parameters set properly", async () => {
     let fundingRateApplier = await FundingRateApplier.new(fpFinder.address, timer.address, { rawValue: "0" });
 
-    assert.equal(await fundingRateApplier.getCumulativeFundingRateMultiplier(), toWei("1"));
+    assert.equal(await fundingRateApplier.cumulativeFundingRateMultiplier(), toWei("1"));
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
@@ -89,12 +89,9 @@ contract("FundingRateApplier", function() {
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
     startingTime = await timer.getCurrentTime();
 
-    // `getCumulativeFundingRateMultiplier()` should reflect funding rate before actually updating the contract state.
-    assert.equal((await fundingRateApplier.getCumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
-
     // Update and check event
     const applyPositiveRate = await fundingRateApplier.applyFundingRate();
-    let newFundingRateMultiplier = await fundingRateApplier.getCumulativeFundingRateMultiplier();
+    let newFundingRateMultiplier = await fundingRateApplier.cumulativeFundingRateMultiplier();
     assert.equal(newFundingRateMultiplier, toWei("1.05"));
     truffleAssert.eventEmitted(applyPositiveRate, "NewFundingRate", ev => {
       return (
@@ -114,7 +111,7 @@ contract("FundingRateApplier", function() {
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
     startingTime = await timer.getCurrentTime();
     const applyNegativeRate = await fundingRateApplier.applyFundingRate();
-    newFundingRateMultiplier = await fundingRateApplier.getCumulativeFundingRateMultiplier();
+    newFundingRateMultiplier = await fundingRateApplier.cumulativeFundingRateMultiplier();
     assert.equal(newFundingRateMultiplier, toWei("0.945"));
     truffleAssert.eventEmitted(applyNegativeRate, "NewFundingRate", ev => {
       return (
@@ -133,9 +130,8 @@ contract("FundingRateApplier", function() {
     });
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
     startingTime = await timer.getCurrentTime();
-
     const applyDefaultRate = await fundingRateApplier.applyFundingRate();
-    newFundingRateMultiplier = await fundingRateApplier.getCumulativeFundingRateMultiplier();
+    newFundingRateMultiplier = await fundingRateApplier.cumulativeFundingRateMultiplier();
     assert.equal(newFundingRateMultiplier, toWei("0.945"));
     truffleAssert.eventEmitted(applyDefaultRate, "NewFundingRate", ev => {
       return (
