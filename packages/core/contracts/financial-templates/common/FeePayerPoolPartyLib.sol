@@ -143,9 +143,8 @@ library FeePayerPoolPartyLib {
         FixedPoint.Unsigned memory cumulativeFeeMultiplier
     ) external returns (FixedPoint.Unsigned memory removedCollateral) {
         FixedPoint.Unsigned memory initialBalance = rawCollateral._getFeeAdjustedCollateral(cumulativeFeeMultiplier);
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToRemove._convertToRawCollateral(
-            cumulativeFeeMultiplier
-        );
+        FixedPoint.Unsigned memory adjustedCollateral =
+            collateralToRemove._convertToRawCollateral(cumulativeFeeMultiplier);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
         removedCollateral = initialBalance.sub(rawCollateral._getFeeAdjustedCollateral(cumulativeFeeMultiplier));
     }
@@ -163,9 +162,8 @@ library FeePayerPoolPartyLib {
         FixedPoint.Unsigned memory cumulativeFeeMultiplier
     ) external returns (FixedPoint.Unsigned memory addedCollateral) {
         FixedPoint.Unsigned memory initialBalance = rawCollateral._getFeeAdjustedCollateral(cumulativeFeeMultiplier);
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToAdd._convertToRawCollateral(
-            cumulativeFeeMultiplier
-        );
+        FixedPoint.Unsigned memory adjustedCollateral =
+            collateralToAdd._convertToRawCollateral(cumulativeFeeMultiplier);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
         addedCollateral = rawCollateral._getFeeAdjustedCollateral(cumulativeFeeMultiplier).sub(initialBalance);
     }

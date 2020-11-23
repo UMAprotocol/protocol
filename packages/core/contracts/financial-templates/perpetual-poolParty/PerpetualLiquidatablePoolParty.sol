@@ -239,16 +239,16 @@ contract PerpetualLiquidatablePoolParty is PerpetualPositionManagerPoolParty {
 
         uint256 actualTime = getCurrentTime();
 
-        PerpetualLiquidatablePoolPartyLib.CreateLiquidationParams memory params = PerpetualLiquidatablePoolPartyLib
-            .CreateLiquidationParams(
-            minCollateralPerToken,
-            maxCollateralPerToken,
-            maxTokensToLiquidate,
-            actualTime,
-            deadline,
-            finalFee,
-            sponsor
-        );
+        PerpetualLiquidatablePoolPartyLib.CreateLiquidationParams memory params =
+            PerpetualLiquidatablePoolPartyLib.CreateLiquidationParams(
+                minCollateralPerToken,
+                maxCollateralPerToken,
+                maxTokensToLiquidate,
+                actualTime,
+                deadline,
+                finalFee,
+                sponsor
+            );
 
         PerpetualLiquidatablePoolPartyLib.CreateLiquidationReturnParams memory returnValues;
 
@@ -311,13 +311,14 @@ contract PerpetualLiquidatablePoolParty is PerpetualPositionManagerPoolParty {
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
-        RewardsData memory rewardsData = liquidation.withdrawLiquidation(
-            liquidatableData,
-            positionManagerData,
-            feePayerData,
-            liquidationId,
-            sponsor
-        );
+        RewardsData memory rewardsData =
+            liquidation.withdrawLiquidation(
+                liquidatableData,
+                positionManagerData,
+                feePayerData,
+                liquidationId,
+                sponsor
+            );
 
         return rewardsData;
     }

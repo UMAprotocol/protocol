@@ -23,11 +23,8 @@ contract MintableBurnableTokenFactory is Lockable {
         string calldata tokenSymbol,
         uint8 tokenDecimals
     ) external nonReentrant() returns (MintableBurnableIERC20 newToken) {
-        MintableBurnableSyntheticToken mintableToken = new MintableBurnableSyntheticToken(
-            tokenName,
-            tokenSymbol,
-            tokenDecimals
-        );
+        MintableBurnableSyntheticToken mintableToken =
+            new MintableBurnableSyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addAdmin(msg.sender);
         mintableToken.renounceAdmin();
         newToken = MintableBurnableIERC20(address(mintableToken));

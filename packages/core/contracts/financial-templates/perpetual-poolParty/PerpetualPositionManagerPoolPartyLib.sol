@@ -214,9 +214,10 @@ library PerpetualPositionManagerPoolPartyLib {
         require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
-            positionData.rawCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier)
-        );
+        FixedPoint.Unsigned memory collateralRedeemed =
+            fractionRedeemed.mul(
+                positionData.rawCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier)
+            );
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -287,13 +288,11 @@ library PerpetualPositionManagerPoolPartyLib {
         }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
-        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(
-            positionManagerData.tokenCurrency.balanceOf(msg.sender)
-        );
+        FixedPoint.Unsigned memory tokensToRedeem =
+            FixedPoint.Unsigned(positionManagerData.tokenCurrency.balanceOf(msg.sender));
 
-        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(
-            positionManagerData.emergencyShutdownPrice
-        );
+        FixedPoint.Unsigned memory totalRedeemableCollateral =
+            tokensToRedeem.mul(positionManagerData.emergencyShutdownPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
 
@@ -303,19 +302,16 @@ library PerpetualPositionManagerPoolPartyLib {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
             // the funding rate applied to the outstanding token debt.
 
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(
-                positionManagerData.emergencyShutdownPrice
-            );
-            FixedPoint.Unsigned memory positionCollateral = positionData.rawCollateral.getFeeAdjustedCollateral(
-                feePayerData.cumulativeFeeMultiplier
-            );
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral =
+                positionData.tokensOutstanding.mul(positionManagerData.emergencyShutdownPrice);
+            FixedPoint.Unsigned memory positionCollateral =
+                positionData.rawCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
-                positionCollateral
-            )
-                ? positionCollateral.sub(tokenDebtValueInCollateral)
-                : FixedPoint.Unsigned(0);
+            FixedPoint.Unsigned memory positionRedeemableCollateral =
+                tokenDebtValueInCollateral.isLessThan(positionCollateral)
+                    ? positionCollateral.sub(tokenDebtValueInCollateral)
+                    : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
@@ -326,12 +322,13 @@ library PerpetualPositionManagerPoolPartyLib {
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout = FixedPoint.min(
-            globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
-                feePayerData.cumulativeFeeMultiplier
-            ),
-            totalRedeemableCollateral
-        );
+        FixedPoint.Unsigned memory payout =
+            FixedPoint.min(
+                globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
+                    feePayerData.cumulativeFeeMultiplier
+                ),
+                totalRedeemableCollateral
+            );
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = globalPositionData.rawTotalPositionCollateral.removeCollateral(
@@ -500,12 +497,13 @@ library PerpetualPositionManagerPoolPartyLib {
         FixedPoint.Unsigned memory numTokens,
         FeePayerPoolParty.FeePayerData storage feePayerData
     ) internal view returns (bool) {
-        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
-            globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
-                feePayerData.cumulativeFeeMultiplier
-            ),
-            globalPositionData.totalTokensOutstanding
-        );
+        FixedPoint.Unsigned memory global =
+            _getCollateralizationRatio(
+                globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
+                    feePayerData.cumulativeFeeMultiplier
+                ),
+                globalPositionData.totalTokensOutstanding
+            );
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
     }
@@ -531,9 +529,10 @@ library PerpetualPositionManagerPoolPartyLib {
         FeePayerPoolParty.FeePayerData storage feePayerData,
         address sponsor
     ) internal returns (FixedPoint.Unsigned memory) {
-        FixedPoint.Unsigned memory startingGlobalCollateral = globalPositionData
-            .rawTotalPositionCollateral
-            .getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier);
+        FixedPoint.Unsigned memory startingGlobalCollateral =
+            globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
+                feePayerData.cumulativeFeeMultiplier
+            );
 
         // Remove the collateral and outstanding from the overall total position.
         globalPositionData.rawTotalPositionCollateral = globalPositionData.rawTotalPositionCollateral.sub(

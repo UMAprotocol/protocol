@@ -129,13 +129,14 @@ library PerpetualLiquidatablePoolPartyLib {
             // Compute final fee at time of liquidation.
             returnValues.finalFeeBond = params.finalFee;
 
-            CreateLiquidationCollateral memory liquidationCollateral = CreateLiquidationCollateral(
-                startCollateral,
-                startCollateralNetOfWithdrawal,
-                returnValues.tokensLiquidated,
-                returnValues.finalFeeBond,
-                params.sponsor
-            );
+            CreateLiquidationCollateral memory liquidationCollateral =
+                CreateLiquidationCollateral(
+                    startCollateral,
+                    startCollateralNetOfWithdrawal,
+                    returnValues.tokensLiquidated,
+                    returnValues.finalFeeBond,
+                    params.sponsor
+                );
 
             (returnValues.lockedCollateral, returnValues.liquidatedCollateral) = liquidateCollateral(
                 positionToLiquidate,
@@ -215,10 +216,10 @@ library PerpetualLiquidatablePoolPartyLib {
         address sponsor
     ) external returns (FixedPoint.Unsigned memory totalPaid) {
         // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
-        FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation
-            .lockedCollateral
-            .mul(liquidatableData.disputeBondPct)
-            .mul(disputedLiquidation.rawUnitCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier));
+        FixedPoint.Unsigned memory disputeBondAmount =
+            disputedLiquidation.lockedCollateral.mul(liquidatableData.disputeBondPct).mul(
+                disputedLiquidation.rawUnitCollateral.getFeeAdjustedCollateral(feePayerData.cumulativeFeeMultiplier)
+            );
         liquidatableData.rawLiquidationCollateral.addCollateral(
             disputeBondAmount,
             feePayerData.cumulativeFeeMultiplier
@@ -411,9 +412,8 @@ library PerpetualLiquidatablePoolPartyLib {
     ) internal returns (FixedPoint.Unsigned memory lockedCollateral, FixedPoint.Unsigned memory liquidatedCollateral) {
         // Scoping to get rid of a stack too deep error.
         {
-            FixedPoint.Unsigned memory ratio = liquidationCollateralParams.tokensLiquidated.div(
-                positionToLiquidate.tokensOutstanding
-            );
+            FixedPoint.Unsigned memory ratio =
+                liquidationCollateralParams.tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
 
             // The actual amount of collateral that gets moved to the liquidation.
             lockedCollateral = liquidationCollateralParams.startCollateral.mul(ratio);
@@ -424,9 +424,8 @@ library PerpetualLiquidatablePoolPartyLib {
 
             // Part of the withdrawal request is also removed. Ideally:
             // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
-            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
-                ratio
-            );
+            FixedPoint.Unsigned memory withdrawalAmountToRemove =
+                positionToLiquidate.withdrawalRequestAmount.mul(ratio);
 
             positionToLiquidate.reduceSponsorPosition(
                 globalPositionData,
@@ -477,22 +476,18 @@ library PerpetualLiquidatablePoolPartyLib {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        FixedPoint.Unsigned memory oraclePrice = positionManagerData.getOraclePrice(
-            liquidation.liquidationTime,
-            feePayerData
-        );
+        FixedPoint.Unsigned memory oraclePrice =
+            positionManagerData.getOraclePrice(liquidation.liquidationTime, feePayerData);
 
         liquidation.settlementPrice = oraclePrice.decimalsScalingFactor(feePayerData);
 
         // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
-            liquidation.settlementPrice
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue =
+            liquidation.tokensOutstanding.mul(liquidation.settlementPrice);
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(
-            liquidatableData.collateralRequirement
-        );
+        FixedPoint.Unsigned memory requiredCollateral =
+            tokenRedemptionValue.mul(liquidatableData.collateralRequirement);
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
