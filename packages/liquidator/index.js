@@ -18,7 +18,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -53,10 +53,11 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // Load unlocked web3 accounts.
-    const [accounts] = await Promise.all([web3.eth.getAccounts()]);
+    // Load unlocked web3 accounts and get the networkId.
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
-    // Setup contract instances.
+    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Returns whether the EMP has expired yet
@@ -136,7 +137,7 @@ async function run({
       liquidatorOverridePrice
     });
 
-    // Load unlocked web3 accounts, and set up price feed.
+    // Load unlocked web3 accounts, get the networkId and set up price feed.
     const [priceFeed] = await Promise.all([
       createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, customPricefeedConfig)
     ]);
@@ -165,6 +166,7 @@ async function run({
       logger,
       expiringMultiPartyClient: empClient,
       gasEstimator,
+      votingContract: voting,
       syntheticToken,
       priceFeed,
       account: accounts[0],

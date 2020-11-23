@@ -9,6 +9,7 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} votingContract DVM to query price requests.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -16,7 +17,16 @@ class Disputer {
    *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor({ logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, empProps, config }) {
+  constructor({
+    logger,
+    expiringMultiPartyClient,
+    votingContract,
+    gasEstimator,
+    priceFeed,
+    account,
+    empProps,
+    config
+  }) {
     this.logger = logger;
     this.account = account;
 
@@ -32,6 +42,7 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
+    this.votingContract = votingContract;
 
     this.empIdentifier = empProps.priceIdentifier;
 
@@ -253,11 +264,14 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        paidToLiquidator: withdrawAmount.paidToLiquidator.rawValue.toString(),
-        paidToDisputer: withdrawAmount.paidToDisputer.rawValue.toString(),
-        paidToSponsor: withdrawAmount.paidToSponsor.rawValue.toString(),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig
       });
+
+      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
+      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
+      // is callable.
+      const requestTimestamp = liquidation.liquidationTime;
 
       // Send the transaction or report failure.
       let receipt;
@@ -272,26 +286,28 @@ class Disputer {
         continue;
       }
 
+      // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
+      // to be callable.
+      let resolvedPrice = await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
+        from: this.empContract.options.address
+      });
+
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        paidToLiquidator: receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator,
-        paidToDisputer: receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer,
-        paidToSponsor: receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor,
+        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
         liquidationStatus:
           PostWithdrawLiquidationRewardsStatusTranslations[
             receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
           ],
-        resolvedPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice.toString()
+        resolvedPrice: resolvedPrice.toString()
       };
 
       this.logger.info({
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        paidToLiquidator: withdrawAmount.paidToLiquidator.rawValue.toString(),
-        paidToDisputer: withdrawAmount.paidToDisputer.rawValue.toString(),
-        paidToSponsor: withdrawAmount.paidToSponsor.rawValue.toString(),
+        amount: withdrawAmount.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });

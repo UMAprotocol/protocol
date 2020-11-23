@@ -66,6 +66,7 @@ contract("Disputer.js", function(accounts) {
       let empClient;
       let disputer;
 
+      const zeroAddress = "0x0000000000000000000000000000000000000000";
       const unreachableDeadline = MAX_UINT_VAL;
 
       before(async function() {
@@ -301,20 +302,8 @@ contract("Disputer.js", function(accounts) {
         await disputer.withdrawRewards();
         assert.equal(spy.callCount, 2); // One additional info level event for the successful withdrawal.
 
-        // Liquidation data should have been deleted.
-        assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
-
-        // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
-        assert.equal(
-          spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
-          PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
-        );
-        assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convert("1"));
-
-        // After the dispute is resolved, the liquidation should no longer exist and there should be no disputes to withdraw rewards from.
-        await disputer.update();
-        await disputer.withdrawRewards();
-        assert.equal(spy.callCount, 2);
+        // sponsor1's dispute should be successful (valid withdrawal)
+        assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
       });
 
       it("Withdraw from successful disputes", async function() {
@@ -362,13 +351,18 @@ contract("Disputer.js", function(accounts) {
         // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
         const liquidationTime = await emp.getCurrentTime();
         await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convert("1.3"));
+
         await disputer.update();
         await disputer.withdrawRewards();
-        assert.equal(spy.callCount, 4); // Two additional info level events for the successful withdrawal.
+        assert.equal(spy.callCount, 3); // One additional info level event for the successful withdrawal.
 
-        // Both dispute's rewards should have been distributed and both liquidation structs should be deleted.
-        assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
-        assert.deepStrictEqual((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+        // sponsor1's dispute was unsuccessful, so the disputeBot should not have called the withdraw method.
+        assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+        assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+
+        // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
+        assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
+        assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
 
         // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
         assert.equal(
@@ -377,10 +371,10 @@ contract("Disputer.js", function(accounts) {
         );
         assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convert("1.3"));
 
-        // After the dispute is resolved, the liquidations should no longer exist and there should be no disputes to withdraw rewards from.
+        // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
         await disputer.update();
         await disputer.withdrawRewards();
-        assert.equal(spy.callCount, 4);
+        assert.equal(spy.callCount, 3);
       });
 
       it("Too little collateral", async function() {
