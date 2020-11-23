@@ -20,9 +20,10 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         // e.g. fundingRate = 0.01 means 1% of token amount charged per second.
         FixedPoint.Signed fundingRate;
         uint256 timestamp; // Time the verified funding rate became available.
+        FixedPoint.Unsigned rewardRate;
     }
 
-    mapping(address => FundingRate[]) private fundingRates;
+    mapping(address => FundingRate) private fundingRates;
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
@@ -32,17 +33,18 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         uint256 time,
         FixedPoint.Signed memory fundingRate
     ) external {
-        fundingRates[perpetual].push(FundingRate(fundingRate, time));
+        fundingRates[perpetual] = FundingRate(fundingRate, time, FixedPoint.fromUnscaledUint(0));
     }
 
     function getFundingRateForContract(address perpetual) external view override returns (FixedPoint.Signed memory) {
-        if (fundingRates[perpetual].length == 0) {
-            return FixedPoint.fromUnscaledInt(0);
-        }
-        return fundingRates[perpetual][fundingRates[perpetual].length - 1].fundingRate;
+        return fundingRates[perpetual].fundingRate;
     }
 
     function chargeFundingRateFees(address perpetual, FixedPoint.Unsigned calldata amount) external {
         PerpetualInterface(perpetual).withdrawFundingRateFees(amount);
+    }
+
+    function setRewardRate(address perpetual, FixedPoint.Unsigned memory rewardRate) external override {
+        fundingRates[perpetual].rewardRate = rewardRate;
     }
 }

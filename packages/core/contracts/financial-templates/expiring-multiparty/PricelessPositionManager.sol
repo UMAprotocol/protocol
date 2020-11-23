@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../../common/interfaces/IERC20Standard.sol";
 import "../common/FeePayer.sol";
+import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 /**
  * @title Financial contract with priceless position management.
@@ -23,7 +23,7 @@ import "../common/FeePayer.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PricelessPositionManager is FeePayer, AdministrateeInterface {
+contract PricelessPositionManager is FeePayer {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -84,6 +84,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
+
+    // Instance of FinancialProductLibrary to provide custom price and collateral requirement transformations to extend
+    // the functionality of the EMP to support a wider range of financial products.
+    FinancialProductLibrary public financialProductLibrary;
 
     /****************************************
      *                EVENTS                *
@@ -169,7 +173,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         bytes32 _priceIdentifier,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
-        address _excessTokenBeneficiary
+        address _excessTokenBeneficiary,
+        address _financialProductLibraryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -180,6 +185,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
+
+        // Initialize the financialProductLibrary at the provided address.
+        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
 
     /****************************************
@@ -641,6 +649,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
+     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
+     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
+     * logic to this method to account for any such pending fees.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
@@ -665,6 +676,29 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+    }
+
+    /**
+     * @notice Accessor method to calculate a transformed price using the provided finanicalProductLibrary specified
+     * during contract deployment. If no library was provided then no modification to the price is done.
+     * @param price input price to be transformed.
+     * @return transformedPrice price with the transformation function applied to it.
+     * @dev This method should never revert.
+     */
+
+    function transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
+        public
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (address(financialProductLibrary) == address(0)) return price;
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
+            FixedPoint.Unsigned memory transformedPrice
+        ) {
+            return transformedPrice;
+        } catch {
+            return price;
+        }
     }
 
     /****************************************
@@ -767,7 +801,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return FixedPoint.Unsigned(uint256(oraclePrice));
+        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.

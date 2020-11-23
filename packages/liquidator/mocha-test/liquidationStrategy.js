@@ -18,8 +18,7 @@ describe("LiquidatorStrategy", () => {
       {
         whaleDefenseFundWei: 1000,
         defenseActivationPercent: 50,
-        withdrawalLiveness: 1000,
-        liquidationLiveness: 1000,
+        withdrawLiveness: 1000,
         minSponsorSize: 10
       },
       { toBN, BN }
@@ -76,8 +75,7 @@ describe("LiquidatorStrategy", () => {
       minSponsorSize: 10,
       whaleDefenseFundWei: "10",
       defenseActivationPercent: 50,
-      withdrawalLiveness: 1000,
-      liquidationLiveness: 1000
+      withdrawLiveness: 1000
     };
     let strat = Strategy(config, { toBN, BN });
     let result = strat.utils.calculateTokensToLiquidate({
@@ -91,9 +89,7 @@ describe("LiquidatorStrategy", () => {
     strat = Strategy(
       {
         ...config,
-        whaleDefenseFundWei: "95",
-        defenseActivationPercent: 50,
-        withdrawalLiveness: 1000
+        whaleDefenseFundWei: "95"
       },
       { toBN, BN }
     );
@@ -109,9 +105,7 @@ describe("LiquidatorStrategy", () => {
     strat = Strategy(
       {
         ...config,
-        whaleDefenseFundWei: "60",
-        defenseActivationPercent: 50,
-        withdrawalLiveness: 1000
+        whaleDefenseFundWei: "60"
       },
       { toBN, BN }
     );
@@ -137,8 +131,6 @@ describe("LiquidatorStrategy", () => {
       {
         ...config,
         whaleDefenseFundWei: "95",
-        defenseActivationPercent: 50,
-        withdrawalLiveness: 1000,
         minSponsorSize: 900
       },
       { toBN, BN }
@@ -156,8 +148,6 @@ describe("LiquidatorStrategy", () => {
       {
         ...config,
         whaleDefenseFundWei: "95",
-        defenseActivationPercent: 50,
-        withdrawalLiveness: 1000,
         minSponsorSize: 100
       },
       { toBN, BN }
@@ -193,7 +183,7 @@ describe("LiquidatorStrategy", () => {
     const config = {
       defenseActivationPercent: 50,
       minSponsorSize: "10",
-      liquidationLiveness: 1000
+      withdrawLiveness: 1000
     };
     let strat = Strategy(config, { toBN, BN });
     const position = {
@@ -233,7 +223,7 @@ describe("LiquidatorStrategy", () => {
     const config = {
       whaleDefenseFundWei: "100",
       defenseActivationPercent: 50,
-      liquidationLiveness: 1000,
+      withdrawLiveness: 1000,
       minSponsorSize: 10
     };
     let strat = Strategy(config, { toBN, BN }, (...args) => events.emit("log", ...args));

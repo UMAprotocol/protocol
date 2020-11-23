@@ -107,7 +107,7 @@ contract("PerpetualLiquidatable", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
-    fundingRateIdentifier = web3.utils.utf8ToHex("ETHUSD-Funding-Rate");
+    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDNG_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier, {
       from: contractDeployer
     });
@@ -139,6 +139,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       finderAddress: finder.address,
       priceFeedIdentifier: priceFeedIdentifier,
       fundingRateIdentifier: fundingRateIdentifier,
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
@@ -626,16 +627,16 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       const startingTime = await liquidationContract.getCurrentTime();
       let expectedTimestamp = toBN(startingTime)
-        .add(liquidationLiveness)
+        .add(withdrawalLiveness)
         .toString();
 
-      assert(
+      assert.equal(
         expectedTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Advance time by half of the liveness duration.
-      await liquidationContract.setCurrentTime(startingTime.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(startingTime.add(withdrawalLiveness.divn(2)).toString());
 
       await liquidationContract.createLiquidation(
         sponsor,
@@ -649,13 +650,13 @@ contract("PerpetualLiquidatable", function(accounts) {
       // After the liquidation the liveness timer on the withdrawl request should be re-set to the current time +
       // the liquidation liveness. This opens the position up to having a subsequent liquidation, if need be.
       const liquidation1Time = await liquidationContract.getCurrentTime();
-      assert(
-        liquidation1Time.add(liquidationLiveness).toString(),
+      assert.equal(
+        liquidation1Time.add(withdrawalLiveness).toString(),
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Create a subsequent liquidation partial and check that it also advances the withdrawal request timer
-      await liquidationContract.setCurrentTime(liquidation1Time.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation1Time.add(withdrawalLiveness.divn(2)).toString());
 
       await liquidationContract.createLiquidation(
         sponsor,
@@ -668,15 +669,15 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // Again, verify this is offset correctly.
       const liquidation2Time = await liquidationContract.getCurrentTime();
-      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(liquidationLiveness).toString();
-      assert(
+      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(withdrawalLiveness).toString();
+      assert.equal(
         expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Submitting a liquidation less than the minimum sponsor size should not advance the timer. Start by advancing
       // time by half of the liquidation liveness.
-      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness.divn(2)).toString());
+      await liquidationContract.setCurrentTime(liquidation2Time.add(withdrawalLiveness.divn(2)).toString());
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -689,13 +690,13 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Check that the timer has not re-set. expectedWithdrawalRequestPassTimestamp was set after the previous
       // liquidation (before incrementing the time).
 
-      assert(
+      assert.equal(
         expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
 
       // Advance timer again to place time after liquidation liveness.
-      await liquidationContract.setCurrentTime(liquidation2Time.add(liquidationLiveness).toString());
+      await liquidationContract.setCurrentTime(liquidation2Time.add(withdrawalLiveness).toString());
 
       // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration).
       await liquidationContract.createLiquidation(
@@ -708,7 +709,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       );
 
       // Check that the time has not advanced.
-      assert(
+      assert.equal(
         expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.positions(sponsor)).withdrawalRequestPassTimestamp.toString()
       );
@@ -1959,7 +1960,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
       let collateralAmount = await liquidationContract.getCollateral(sponsor);
-      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await liquidationContract.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()

@@ -1,8 +1,7 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { interfaceName, parseFixed } = require("@uma/common");
-const { MAX_UINT_VAL } = require("@uma/common");
+const { interfaceName, parseFixed, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 
 const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMultiPartyEventClient");
 
@@ -109,7 +108,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
           timerAddress: timer.address,
-          excessTokenBeneficiary: store.address
+          excessTokenBeneficiary: store.address,
+          financialProductLibraryAddress: ZERO_ADDRESS
         };
 
         emp = await ExpiringMultiParty.new(constructorParams);

@@ -87,7 +87,7 @@ async function run({
       collateralTokenAddress,
       syntheticTokenAddress,
       isExpired,
-      liquidationLiveness
+      withdrawLiveness
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
       emp.methods.priceIdentifier().call(),
@@ -95,7 +95,7 @@ async function run({
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
       checkIsExpiredPromise(),
-      emp.methods.liquidationLiveness().call()
+      emp.methods.withdrawalLiveness().call()
     ]);
 
     // Initial EMP expiry status
@@ -113,7 +113,7 @@ async function run({
       crRatio: collateralRequirement,
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens,
-      liquidationLiveness
+      withdrawLiveness
     };
 
     // Price feed must use same # of decimals as collateral currency.

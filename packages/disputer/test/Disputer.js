@@ -3,7 +3,7 @@ const {
   LiquidationStatesEnum,
   MAX_UINT_VAL
 } = require("@uma/common");
-const { interfaceName } = require("@uma/common");
+const { interfaceName, ZERO_ADDRESS } = require("@uma/common");
 const winston = require("winston");
 const sinon = require("sinon");
 const { parseFixed } = require("@ethersproject/bignumber");
@@ -119,7 +119,8 @@ contract("Disputer.js", function(accounts) {
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
           timerAddress: timer.address,
-          excessTokenBeneficiary: store.address
+          excessTokenBeneficiary: store.address,
+          financialProductLibraryAddress: ZERO_ADDRESS
         };
 
         const identifierWhitelist = await IdentifierWhitelist.deployed();

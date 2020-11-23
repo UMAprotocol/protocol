@@ -62,6 +62,7 @@ contract Liquidatable is PricelessPositionManager {
         address finderAddress;
         address timerAddress;
         address excessTokenBeneficiary;
+        address financialProductLibraryAddress;
         bytes32 priceFeedIdentifier;
         FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
@@ -178,7 +179,8 @@ contract Liquidatable is PricelessPositionManager {
             params.priceFeedIdentifier,
             params.minSponsorTokens,
             params.timerAddress,
-            params.excessTokenBeneficiary
+            params.excessTokenBeneficiary,
+            params.financialProductLibraryAddress
         )
         nonReentrant()
     {
@@ -326,10 +328,10 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory griefingThreshold = minSponsorTokens;
         if (
             positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // The position is undergoing a slow withdrawal.
-            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // The slow withdrawal has not yet expired.
+            positionToLiquidate.withdrawalRequestPassTimestamp > getCurrentTime() && // The slow withdrawal has not yet expired.
             tokensLiquidated.isGreaterThanOrEqual(griefingThreshold) // The liquidated token count is above a "griefing threshold".
         ) {
-            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
+            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
         }
 
         emit LiquidationCreated(
