@@ -282,10 +282,7 @@ class ExpiringMultiPartyEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         caller: event.returnValues.caller,
-        paidToLiquidator: event.returnValues.paidToLiquidator,
-        paidToDisputer: event.returnValues.paidToDisputer,
-        paidToSponsor: event.returnValues.paidToSponsor,
-        settlementPrice: event.returnValues.settlementPrice,
+        withdrawalAmount: event.returnValues.withdrawalAmount,
         liquidationStatus: event.returnValues.liquidationStatus
       });
     }
