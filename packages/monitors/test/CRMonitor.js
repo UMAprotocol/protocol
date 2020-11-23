@@ -1,7 +1,7 @@
 const { toWei, hexToUtf8 } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { interfaceName, parseFixed } = require("@uma/common");
+const { interfaceName, parseFixed, ZERO_ADDRESS } = require("@uma/common");
 
 // Script to test
 const { CRMonitor } = require("../src/CRMonitor");
@@ -107,7 +107,8 @@ contract("CRMonitor.js", function(accounts) {
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
-          excessTokenBeneficiary: store.address
+          excessTokenBeneficiary: store.address,
+          financialProductLibraryAddress: ZERO_ADDRESS
         };
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston

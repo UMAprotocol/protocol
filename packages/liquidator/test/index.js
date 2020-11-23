@@ -89,7 +89,8 @@ contract("index.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
     emp = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(emp.address);
