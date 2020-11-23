@@ -5,7 +5,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 
-contract ExpiringMultiPartyMock is Testable {
+contract ExpiringMultiPartyMock {
     using FixedPoint for FixedPoint.Unsigned;
 
     FinancialProductLibrary public financialProductLibrary;
