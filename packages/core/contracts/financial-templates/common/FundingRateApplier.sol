@@ -15,6 +15,7 @@ import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
+import "../funding-rate-store/implementation/OptimisticOracle.sol";
 
 /**
  * @title FundingRateApplier contract.
@@ -47,6 +48,15 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // If a 1% funding payment is paid to sponsors, the multiplier should update to 1.01.
     // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
     FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
+
+    FixedPoint.Signed fundingRate;
+    uint256 fundingRateUpdateTime;
+    uint256 fundingRateProposalTime;
+
+    FixedPoint.Unsigned public rewardRate;
+
+    // Identifier in funding rate store to query for.
+    bytes32 public fundingRateIdentifier;
 
     /****************************************
      *                EVENTS                *
@@ -85,6 +95,14 @@ abstract contract FundingRateApplier is Testable, Lockable {
 
         // Set funding rate reward rate for this contract.
         _getFundingRateStore().setRewardRate(address(this), _fundingRateRewardRate);
+        rewardRate = _fundingRateRewardRate;
+    }
+
+    function proposeNewRate(FixedPoint.Signed memory rate) external updateFundingRate() {
+        require(fundingRateProposalTime == 0, "Proposal in progress");
+        if (fundingRateProposalTime == 0) {
+            // Compute fees and request.
+        }
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
@@ -102,7 +120,18 @@ abstract contract FundingRateApplier is Testable, Lockable {
         return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
     }
 
-    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
+    function _getOptimisticOracle() internal view returns (OptimisticOracle) {
+        return OptimisticOracle(finder.getImplementationAddress("OptimisticOracle"));
+    }
+
+    function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
+        if (fundingRateProposalTime != 0) {
+            // Attempt to update the funding rate.
+            try _getOptimisticOracle().getPrice(fundingRateIdentifier, fundingRateProposalTime) returns (int256 price) {
+                fundingRate = FixedPoint.Signed(price);
+                fundingRateProposalTime = 0;
+            } catch {}
+        }
         return _getFundingRateStore().getFundingRateForContract(address(this));
     }
 
