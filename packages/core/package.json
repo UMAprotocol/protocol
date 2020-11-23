@@ -1,15 +1,14 @@
 {
   "name": "@uma/core",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@truffle/contract": "^4.2.20",
-    "@uma/common": "^1.0.1",
+    "@uma/common": "^1.1.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
-    "buidler-gas-reporter": "^0.1.4",
     "@ethersproject/units": "^5.0.3",
     "@nomiclabs/buidler": "^1.3.8",
     "@nomiclabs/buidler-etherscan": "^1.3.3",
@@ -17,8 +16,9 @@
     "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/contracts": "3.0.0",
     "@sendgrid/mail": "^6.4.0",
-    "@uma/financial-templates-lib": "^1.1.0",
+    "@uma/financial-templates-lib": "^1.2.0",
     "bip39": "^3.0.2",
+    "buidler-gas-reporter": "^0.1.4",
     "chai": "^4.2.0",
     "cli-progress": "^3.8.2",
     "coveralls": "^3.1.0",
@@ -51,7 +51,8 @@
   "files": [
     "/contracts/**/*.sol",
     "/build/contracts/*.json",
-    "/migrations/*.js"
+    "/migrations/*.js",
+    "/config/*.json"
   ],
   "scripts": {
     "test": "yarn mocha-test && yarn buidler-test",
