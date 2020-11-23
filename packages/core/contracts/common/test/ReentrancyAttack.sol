@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
-
 // Tests reentrancy guards defined in Lockable.sol.
 // Copied from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.0.1/contracts/mocks/ReentrancyAttack.sol.
 contract ReentrancyAttack {

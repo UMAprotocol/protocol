@@ -11,7 +11,6 @@ import "../../../oracle/implementation/Constants.sol";
 import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../perpetual-multiparty/PerpetualInterface.sol";
 
-
 // A mock funding rate store used for testing.
 contract MockFundingRateStore is FundingRateStoreInterface, Testable {
     using FixedPoint for FixedPoint.Unsigned;
@@ -37,7 +36,7 @@ contract MockFundingRateStore is FundingRateStoreInterface, Testable {
         fundingRates[perpetual] = FundingRate(fundingRate, time, FixedPoint.fromUnscaledUint(0));
     }
 
-    function getFundingRateForContract(address perpetual) external override view returns (FixedPoint.Signed memory) {
+    function getFundingRateForContract(address perpetual) external view override returns (FixedPoint.Signed memory) {
         return fundingRates[perpetual].fundingRate;
     }
 

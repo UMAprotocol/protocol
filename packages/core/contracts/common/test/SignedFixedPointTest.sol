@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 
 import "../implementation/FixedPoint.sol";
 
-
 // Wraps the FixedPoint library for testing purposes.
 contract SignedFixedPointTest {
     using FixedPoint for FixedPoint.Signed;

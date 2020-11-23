@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./MultiRole.sol";
 
-
 /**
  * @title Base contract that allows a specific role to withdraw any ETH and/or ERC20 tokens that the contract holds.
  */

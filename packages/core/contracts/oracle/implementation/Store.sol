@@ -11,7 +11,6 @@ import "../../common/implementation/Withdrawable.sol";
 import "../../common/implementation/Testable.sol";
 import "../interfaces/StoreInterface.sol";
 
-
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
@@ -63,7 +62,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @notice Pays Oracle fees in ETH to the store.
      * @dev To be used by contracts whose margin currency is ETH.
      */
-    function payOracleFees() external override payable {
+    function payOracleFees() external payable override {
         require(msg.value > 0, "Value sent can't be zero");
     }
 
@@ -105,7 +104,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         uint256 startTime,
         uint256 endTime,
         FixedPoint.Unsigned calldata pfc
-    ) external override view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
+    ) external view override returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
@@ -130,7 +129,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due denominated in units of `currency`.
      */
-    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
+    function computeFinalFee(address currency) external view override returns (FixedPoint.Unsigned memory) {
         return finalFees[currency];
     }
 

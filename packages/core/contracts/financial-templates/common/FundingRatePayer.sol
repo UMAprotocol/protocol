@@ -5,7 +5,6 @@ import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 import "./FeePayer.sol";
 import "../perpetual-multiparty/PerpetualInterface.sol";
 
-
 /**
  * @title FundingRatePayer contract.
  * @notice Extends FeePayer by adding funding rate store payment functionality for any financial contract that needs
@@ -97,11 +96,11 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
         return amountToPay;
     }
 
-    function getFundingRateIdentifier() external override view returns (bytes32) {
+    function getFundingRateIdentifier() external view override returns (bytes32) {
         return fundingRateIdentifier;
     }
 
-    function getCollateralCurrency() external override view returns (IERC20) {
+    function getCollateralCurrency() external view override returns (IERC20) {
         return collateralCurrency;
     }
 

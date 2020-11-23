@@ -12,7 +12,6 @@ import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
 import "./ExpiringMultiPartyLib.sol";
 
-
 /**
  * @title Expiring Multi Party Contract creator.
  * @notice Factory contract to create and register new instances of expiring multiparty contracts.

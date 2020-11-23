@@ -5,7 +5,6 @@ import "../interfaces/OneSplit.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 /**
  * @title OneSplit Mock that allows manual price injection.
  */
@@ -31,7 +30,7 @@ contract OneSplitMock is OneSplit {
         uint256 amount,
         uint256 parts,
         uint256 flags // See constants in IOneSplit.sol
-    ) public override view returns (uint256 returnAmount, uint256[] memory distribution) {
+    ) public view override returns (uint256 returnAmount, uint256[] memory distribution) {
         returnAmount = prices[keccak256(abi.encodePacked(fromToken, destToken))] * amount;
 
         return (returnAmount, distribution);
@@ -44,7 +43,7 @@ contract OneSplitMock is OneSplit {
         uint256 minReturn,
         uint256[] memory distribution,
         uint256 flags
-    ) public override payable returns (uint256 returnAmount) {
+    ) public payable override returns (uint256 returnAmount) {
         uint256 amountReturn = prices[keccak256(abi.encodePacked(fromToken, destToken))] * amount;
 
         require(amountReturn >= minReturn, "Min Amount not reached");

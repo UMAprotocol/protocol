@@ -17,7 +17,6 @@ import "../common/FeePayer.sol";
 import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
-
 /**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
@@ -686,7 +685,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
-    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 

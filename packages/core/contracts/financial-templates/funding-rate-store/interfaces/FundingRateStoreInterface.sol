@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Funding Rate Store interface.
  * @dev Interface used by financial contracts to interact with a storage contract which sets and gets funding rates.

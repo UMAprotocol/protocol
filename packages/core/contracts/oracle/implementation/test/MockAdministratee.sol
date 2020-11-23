@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../interfaces/AdministrateeInterface.sol";
 
-
 // A mock implementation of AdministrateeInterface, taking the place of a financial contract.
 contract MockAdministratee is AdministrateeInterface {
     uint256 public timesRemargined;
@@ -18,7 +17,7 @@ contract MockAdministratee is AdministrateeInterface {
         timesEmergencyShutdown++;
     }
 
-    function pfc() external override view returns (FixedPoint.Unsigned memory) {
+    function pfc() external view override returns (FixedPoint.Unsigned memory) {
         return FixedPoint.fromUnscaledUint(0);
     }
 }

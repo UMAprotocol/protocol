@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @notice External methods that the FundingRateStore needs access to.
  */

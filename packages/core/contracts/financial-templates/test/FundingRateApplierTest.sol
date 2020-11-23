@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "../common/FundingRateApplier.sol";
 
-
 // Implements FundingRateApplier internal methods to enable unit testing.
 contract FundingRateApplierTest is FundingRateApplier {
     constructor(

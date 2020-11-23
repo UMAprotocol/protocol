@@ -20,7 +20,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
-
 // Copied from the verified code from Etherscan:
 // https://etherscan.io/address/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2#code
 // And then updated for Solidity version 0.6. Specific changes:

@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "./PerpetualLiquidatable.sol";
 
-
 /**
  * @title Perpetual Multiparty Contract.
  * @notice Convenient wrapper for Liquidatable.

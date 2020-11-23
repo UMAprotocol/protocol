@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Interface that all financial contracts expose to the admin.
  */

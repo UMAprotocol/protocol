@@ -4,7 +4,6 @@ pragma solidity ^0.6.0;
 import "../../common/implementation/ExpandedERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Snapshot.sol";
 
-
 /**
  * @title Ownership of this token allows a voter to respond to price requests.
  * @dev Supports snapshotting and allows the Oracle to mint new tokens as rewards.

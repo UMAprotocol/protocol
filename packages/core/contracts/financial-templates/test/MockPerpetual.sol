@@ -6,7 +6,6 @@ import "../perpetual-multiparty/PerpetualInterface.sol";
 import "../../financial-templates/funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 
-
 /**
  * @notice External methods that the FundingRateStore needs access to.
  */
@@ -25,11 +24,11 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
         collateralCurrency = IERC20(_collateralCurrency);
     }
 
-    function getFundingRateIdentifier() external override view returns (bytes32) {
+    function getFundingRateIdentifier() external view override returns (bytes32) {
         return fundingRateIdentifier;
     }
 
-    function getCollateralCurrency() external override view returns (IERC20) {
+    function getCollateralCurrency() external view override returns (IERC20) {
         return collateralCurrency;
     }
 
@@ -51,7 +50,7 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
         return amount;
     }
 
-    function pfc() external override view returns (FixedPoint.Unsigned memory) {
+    function pfc() external view override returns (FixedPoint.Unsigned memory) {
         return FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
     }
 

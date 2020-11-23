@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 
 import "../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Computes vote results.
  * @dev The result is the mode of the added votes. Otherwise, the vote is unresolved.

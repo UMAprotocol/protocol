@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 
 import "../Governor.sol";
 
-
 // GovernorTest exposes internal methods in the Governor for testing.
 contract GovernorTest is Governor {
     constructor(address _timerAddress) public Governor(address(0), 0, _timerAddress) {}

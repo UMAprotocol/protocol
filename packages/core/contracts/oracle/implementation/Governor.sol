@@ -13,7 +13,6 @@ import "./Constants.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */

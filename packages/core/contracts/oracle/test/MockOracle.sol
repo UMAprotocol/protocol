@@ -9,7 +9,6 @@ import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../implementation/Constants.sol";
 
-
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
     // Represents an available price. Have to keep a separate bool to allow for price=0.
@@ -83,14 +82,14 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Checks whether a price has been resolved.
-    function hasPrice(bytes32 identifier, uint256 time) external override view returns (bool) {
+    function hasPrice(bytes32 identifier, uint256 time) external view override returns (bool) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
-    function getPrice(bytes32 identifier, uint256 time) external override view returns (int256) {
+    function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);

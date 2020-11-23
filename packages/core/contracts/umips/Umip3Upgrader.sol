@@ -5,7 +5,6 @@ import "../oracle/implementation/Finder.sol";
 import "../oracle/implementation/Constants.sol";
 import "../oracle/implementation/Voting.sol";
 
-
 /**
  * @title A contract to track a whitelist of addresses.
  */

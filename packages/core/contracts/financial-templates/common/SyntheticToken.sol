@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 import "../../common/implementation/ExpandedERC20.sol";
 import "../../common/implementation/Lockable.sol";
 
-
 /**
  * @title Burnable and mintable ERC20.
  * @dev The contract deployer will initially be the only minter, burner and owner capable of adding new roles.

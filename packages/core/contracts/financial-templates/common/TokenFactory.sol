@@ -5,7 +5,6 @@ import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/implementation/Lockable.sol";
 
-
 /**
  * @title Factory for creating new mintable and burnable tokens.
  */

@@ -3,7 +3,6 @@ pragma solidity ^0.6.0;
 
 import "../interfaces/Uniswap.sol";
 
-
 /**
  * @title Uniswap v2 Mock that allows manual price injection.
  */

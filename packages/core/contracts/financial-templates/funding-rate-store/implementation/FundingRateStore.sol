@@ -20,7 +20,6 @@ import "../../../common/implementation/Testable.sol";
 import "../../../common/implementation/Lockable.sol";
 import "../../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @notice FundingRateStore always makes available the current funding rate for a given perpetual contract address.
  * "Proposers" can update funding rates by proposing a new rate and waiting for a proposal liveness to expire. During
@@ -178,8 +177,8 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
      */
     function getFundingRateForContract(address perpetual)
         external
-        override
         view
+        override
         onlyRegisteredContract()
         nonReentrantView()
         returns (FixedPoint.Signed memory)

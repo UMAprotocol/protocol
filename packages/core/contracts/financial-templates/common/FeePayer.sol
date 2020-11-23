@@ -14,7 +14,6 @@ import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-
 /**
  * @title FeePayer contract.
  * @notice Provides fee payment functionality for the ExpiringMultiParty contract.
@@ -155,7 +154,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
      * @return pfc value for equal to the current profit from corruption denominated in collateral currency.
      */
-    function pfc() external override view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function pfc() external view override nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _pfc();
     }
 
@@ -191,7 +190,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
-    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
+    function _pfc() internal view virtual returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));

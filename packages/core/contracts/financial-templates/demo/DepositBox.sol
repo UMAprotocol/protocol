@@ -14,7 +14,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 
-
 /**
  * @title Token Deposit Box
  * @notice This is a minimal example of a financial template that depends on price requests from the DVM.
@@ -375,7 +374,7 @@ contract DepositBox is FeePayer, ContractCreator {
     // `_pfc()` is inherited from FeePayer and must be implemented to return the available pool of collateral from
     // which fees can be charged. For this contract, the available fee pool is simply all of the collateral locked up in the
     // contract.
-    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalDepositBoxCollateral);
     }
 }
