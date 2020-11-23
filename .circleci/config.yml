@@ -107,8 +107,6 @@ jobs:
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
     steps:
-      - restore_cache:
-          key: protocol-completed-build-9999999999
       - run:
           name: Run tests
           command: yarn run test
