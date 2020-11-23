@@ -226,9 +226,8 @@ contract DepositBox is FeePayer, ContractCreator {
         // Calculate denomated amount of collateral based on resolved exchange rate.
         // Example 1: User wants to withdraw $100 of ETH, exchange rate is $200/ETH, therefore user to receive 0.5 ETH.
         // Example 2: User wants to withdraw $250 of ETH, exchange rate is $200/ETH, therefore user to receive 1.25 ETH.
-        FixedPoint.Unsigned memory denominatedAmountToWithdraw = depositBoxData.withdrawalRequestAmount.div(
-            exchangeRate
-        );
+        FixedPoint.Unsigned memory denominatedAmountToWithdraw =
+            depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
         if (denominatedAmountToWithdraw.isGreaterThan(_getFeeAdjustedCollateral(depositBoxData.rawCollateral))) {
