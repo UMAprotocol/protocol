@@ -71,7 +71,8 @@ async function App(config) {
 
   return {
     config,
-    result
+    // result will contain deployer rewards as well as per emp rewards
+    ...result
   };
 }
 
@@ -79,4 +80,6 @@ const config = Config();
 
 App(config)
   .then(console.log)
-  .catch(console.error);
+  .catch(console.error)
+  // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
+  .finally(() => process.exit());

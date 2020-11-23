@@ -1,4 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import "../../interfaces/AdministrateeInterface.sol";
 
@@ -14,5 +16,9 @@ contract MockAdministratee is AdministrateeInterface {
 
     function emergencyShutdown() external override {
         timesEmergencyShutdown++;
+    }
+
+    function pfc() external override view returns (FixedPoint.Unsigned memory) {
+        return FixedPoint.fromUnscaledUint(0);
     }
 }

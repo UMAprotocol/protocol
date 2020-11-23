@@ -41,12 +41,12 @@ contract("PricelessPositionManager", function(accounts) {
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
   const initialPositionCollateral = toBN(toWei("1"));
-  const syntheticName = "UMA test Token";
-  const syntheticSymbol = "UMATEST";
+  const syntheticName = "Test Synthetic Token";
+  const syntheticSymbol = "SYNTH";
   const withdrawalLiveness = 1000;
   const startTimestamp = Math.floor(Date.now() / 1000);
   const expirationTimestamp = startTimestamp + 10000;
-  const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
+  const priceFeedIdentifier = web3.utils.utf8ToHex("TEST_IDENTIFIER");
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
@@ -95,8 +95,8 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   beforeEach(async function() {
-    // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await MarginToken.new("UMA", "UMA", 18, { from: collateralOwner });
+    // Represents WETH or some other token that the sponsor and contracts don't control.
+    collateral = await MarginToken.new("Wrapped Ether", "WETH", 18, { from: collateralOwner });
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
@@ -789,7 +789,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   it("Settlement post expiry", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
-    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
@@ -829,7 +829,7 @@ contract("PricelessPositionManager", function(accounts) {
     await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
-    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
+    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is WETH).
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
@@ -1251,7 +1251,7 @@ contract("PricelessPositionManager", function(accounts) {
     const feesOwed = (
       await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
     ).regularFee;
-    assert(Number(pfc.toString()) < Number(feesOwed.toString()));
+    assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
     await pricelessPositionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
     const payTooManyFeesResult = await pricelessPositionManager.payRegularFees();
@@ -1314,7 +1314,7 @@ contract("PricelessPositionManager", function(accounts) {
     await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
-    // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is Dai).
+    // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is WETH).
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
@@ -1425,7 +1425,7 @@ contract("PricelessPositionManager", function(accounts) {
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
       let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await pricelessPositionManager.cumulativeFeeMultiplier()).toString(),
         toWei("0.966666666666666666").toString()
@@ -1620,7 +1620,7 @@ contract("PricelessPositionManager", function(accounts) {
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
 
     // Create one position with 200 synthetic tokens to mint with 300 tokens of collateral. For this test say the
-    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
     const numTokens = toWei("200");
     const amountCollateral = toWei("300");
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
@@ -1722,7 +1722,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   it("Emergency shutdown: lifecycle", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
-    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
@@ -1770,7 +1770,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
-    // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is Dai).
+    // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is WETH).
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
@@ -2021,7 +2021,7 @@ contract("PricelessPositionManager", function(accounts) {
     await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPrice.toString());
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
-    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
+    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is WETH).
     const tokenHolderInitialCollateral = await USDCToken.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);

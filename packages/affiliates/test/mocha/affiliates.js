@@ -1,11 +1,12 @@
 const { DeployerRewards } = require("../../libs/affiliates");
-const moment = require("moment");
 const { assert } = require("chai");
 const empAbi = require("../../../core/build/contracts/ExpiringMultiParty");
 const empCreatorAbi = require("../../../core/build/contracts/ExpiringMultiPartyCreator");
-const highland = require("highland");
-const datasetName = "set1";
-const params = require(`../datasets/${datasetName}`);
+const { mocks } = require("../../libs/datasets");
+const Path = require("path");
+
+const datasetPath = Path.join(__dirname, "../datasets/set1");
+const params = require(Path.join(datasetPath, "/config.json"));
 const {
   empCreator,
   empContracts,
@@ -17,47 +18,14 @@ const {
 } = params;
 const devRewardsToDistribute = "50000";
 // mocks
-function Queries() {
-  return {
-    streamLogsByContract(address) {
-      return highland(require(`../datasets/${datasetName}/logs/${address}`));
-    },
-    getLogsByContract(address) {
-      return require(`../datasets/${datasetName}/logs/${address}`);
-    },
-    streamBlocks() {
-      return highland(require(`../datasets/${datasetName}/blocks`));
-    },
-    getBlocks(start, end) {
-      return require(`../datasets/${datasetName}/blocks`).filter(block => {
-        const blockTime = moment(block.timestamp.value).valueOf();
-        return blockTime >= start && blockTime <= end;
-      });
-    }
-  };
-}
-function Coingecko() {
-  return {
-    getHistoricContractPrices(address) {
-      return require(`../datasets/${datasetName}/coingecko/${address}`);
-    }
-  };
-}
-
-function SynthPrices() {
-  return {
-    getHistoricSynthPrices(address) {
-      return require(`../datasets/${datasetName}/synth-prices/${address}`);
-    }
-  };
-}
+const { Queries, Coingecko, SynthPrices } = mocks;
 
 describe("DeployerRewards", function() {
   let affiliates;
   before(function() {
-    const queries = Queries();
-    const coingecko = Coingecko();
-    const synthPrices = SynthPrices();
+    const queries = Queries(datasetPath);
+    const coingecko = Coingecko(datasetPath);
+    const synthPrices = SynthPrices(datasetPath);
     affiliates = DeployerRewards({
       queries,
       empAbi: empAbi.abi,
@@ -107,11 +75,28 @@ describe("DeployerRewards", function() {
     const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
     assert(result.length);
   });
+  it("calculateValue", async function() {
+    // these are all stable coins so they should roughly be around 1 dollar
+    // epsilon is high because variations could be nearly a dollar in any direction
+    const epsilon = 10n ** 17n;
+    const target = 10n ** 18n;
+    // btc example
+    let result = affiliates.utils.calculateValue(target, "15437.012543625458", "65019421301142", 8, 18).toString();
+    let diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+    // eth example
+    result = affiliates.utils.calculateValue(target, "452.1007409061987", "2201527860335072", 18, 18).toString();
+    diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+    // perlin example
+    result = affiliates.utils.calculateValue(target, "0.021647425848012932", "45829514207149404216", 18, 18).toString();
+    diff = BigInt(result) - target;
+    assert(diff > 0 ? diff : -diff < epsilon);
+  });
   it("calculateRewards", async function() {
-    this.timeout(100000);
-
-    const startingTimestamp = moment("2020-10-01 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf(); // utc timestamp
-    const endingTimestamp = moment("2020-10-08 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
+    this.timeout(1000000);
+    // small value to give floating math some wiggle room
+    const epsilon = 0.001;
 
     const result = await affiliates.getRewards({
       totalRewards: devRewardsToDistribute,
@@ -124,12 +109,25 @@ describe("DeployerRewards", function() {
       syntheticTokenDecimals: syntheticTokenDecimals
     });
 
-    assert.equal(Object.keys(result).length, 2); // There should be 2 deplorers for the 3 EMPs.
-    assert.equal(
-      Object.values(result).reduce((total, value) => {
-        return Number(total) + Number(value);
-      }, 0),
-      Number(devRewardsToDistribute)
+    assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deplorers for the 3 EMPs.
+    assert.equal(Object.keys(result.empPayouts).length, empContracts.length); // There should be 3 emps
+
+    assert.isBelow(
+      // compare floats with an epsilon
+      Math.abs(
+        Object.values(result.deployerPayouts).reduce((total, value) => {
+          return Number(total) + Number(value);
+        }, 0) - Number(devRewardsToDistribute)
+      ),
+      epsilon
+    ); // the total rewards distributed should equal the number specified
+    assert.isBelow(
+      Math.abs(
+        Object.values(result.empPayouts).reduce((total, value) => {
+          return Number(total) + Number(value);
+        }, 0) - Number(devRewardsToDistribute)
+      ),
+      epsilon
     ); // the total rewards distributed should equal the number specified
   });
 });

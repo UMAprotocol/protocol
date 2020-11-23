@@ -42,11 +42,11 @@ contract("index.js", function(accounts) {
   let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 
   before(async function() {
-    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
   });
 
   beforeEach(async function() {
@@ -62,7 +62,7 @@ contract("index.js", function(accounts) {
     finder = await Finder.deployed();
 
     // Create a new synthetic token
-    syntheticToken = await SyntheticToken.new("UMA", "UMA", 18, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
 
     constructorParams = {
       expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100,
@@ -70,7 +70,7 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: utf8ToHex("TEST_IDENTIFIER"),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },

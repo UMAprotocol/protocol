@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, toBN } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -15,6 +15,7 @@ const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
+const FundingRateStore = artifacts.require("FundingRateStore");
 
 contract("PerpetualCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -25,14 +26,16 @@ contract("PerpetualCreator", function(accounts) {
   let registry;
   let collateralTokenWhitelist;
   let store;
+  let fundingRateStore;
 
   // Re-used variables
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
+    fundingRateStore = await FundingRateStore.deployed();
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
@@ -42,10 +45,11 @@ contract("PerpetualCreator", function(accounts) {
 
     constructorParams = {
       collateralAddress: collateralToken.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
-      fundingRateIdentifier: web3.utils.utf8ToHex("UMATEST-FUNDING"),
-      syntheticName: "Test UMA Token",
-      syntheticSymbol: "UMATEST",
+      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
+      fundingRateRewardRate: { rawValue: toWei("0.0001") },
+      syntheticName: "Test Synthetic Token",
+      syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
@@ -93,7 +97,9 @@ contract("PerpetualCreator", function(accounts) {
 
   it("Collateral token must be whitelisted", async function() {
     // Change only the collateral token address
-    constructorParams.collateralAddress = await Token.new("UMA", "UMA", 18, { from: contractCreator }).address;
+    constructorParams.collateralAddress = await Token.new("Test Synthetic Token", "SYNTH", 18, {
+      from: contractCreator
+    }).address;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, {
@@ -207,7 +213,7 @@ contract("PerpetualCreator", function(accounts) {
 
   it("Constructs new synthetic currency properly", async function() {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
-    collateralToken = await Token.new("UMA", "UMA", 8, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 8, { from: contractCreator });
     constructorParams.collateralAddress = collateralToken.address;
 
     // Whitelist collateral currency
@@ -276,5 +282,24 @@ contract("PerpetualCreator", function(accounts) {
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(perpetualAddress));
+  });
+
+  it("Creation sets funding rate reward in Funding Rate Store", async function() {
+    const deploymentTime = await fundingRateStore.getCurrentTime();
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, {
+      from: contractCreator
+    });
+
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+
+    // Can get the reward rate by calculating the projected reward for a 0% change to the funding rate
+    // after 1 second.
+    await fundingRateStore.setCurrentTime(deploymentTime.add(toBN(1)).toString());
+    const rewardRate = await fundingRateStore.getRewardRateForContract(perpetualAddress, { rawValue: "0" });
+    assert.equal(rewardRate.toString(), toWei("0.0001"));
   });
 });

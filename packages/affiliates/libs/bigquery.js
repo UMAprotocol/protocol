@@ -1,4 +1,3 @@
-const moment = require("moment");
 const assert = require("assert");
 const lodash = require("lodash");
 
@@ -8,12 +7,24 @@ module.exports = ({ client } = {}) => {
 
   // types of queries we are interested in
   const queries = {
-    // logs aka events by contract
+    // this is an expensive call (50gb at time of writing), but is necessary to get all logs without knowing
+    // the deployment time of a contract.
+    allLogsByContract(contract, selection = ["*"]) {
+      assert(contract, "requires contract");
+      selection = lodash.castArray(selection);
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.logs
+        WHERE
+          LOWER(address)=LOWER('${contract}')
+        ORDER BY block_timestamp ASC;
+      `;
+    },
+    // logs aka events by contract and time
     logsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
-      assert(start, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
+      assert(start >= 0, "requires start");
       // require an array of values
       selection = lodash.castArray(selection);
       return `
@@ -21,8 +32,8 @@ module.exports = ({ client } = {}) => {
         FROM
           bigquery-public-data.crypto_ethereum.logs
         WHERE
-          block_timestamp >= TIMESTAMP('${start}')
-          AND block_timestamp < TIMESTAMP('${end}')
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
           AND LOWER(address)=LOWER('${contract}')
         ORDER BY block_timestamp ASC;
       `;
@@ -30,9 +41,7 @@ module.exports = ({ client } = {}) => {
     // transactions by contract
     transactionsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
-      assert(start, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
+      assert(start >= 0, "requires start");
       selection = lodash.castArray(selection);
 
       return `
@@ -40,29 +49,31 @@ module.exports = ({ client } = {}) => {
         FROM
           bigquery-public-data.crypto_ethereum.transactions
         WHERE
-          block_timestamp >= TIMESTAMP('${start}')
-          AND block_timestamp < TIMESTAMP('${end}')
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
           AND LOWER(to_address)=LOWER('${contract}')
         ORDER BY block_timestamp ASC;
       `;
     },
     blocks(start, end, selection = ["*"]) {
-      assert(start, "requires start");
-      start = moment(start).format("YYYY-MM-DD hh:mm:ss");
-      end = moment(end).format("YYYY-MM-DD hh:mm:ss");
+      assert(start >= 0, "requires start");
       selection = lodash.castArray(selection);
       return `
         SELECT ${selection.join(", ")}
         FROM
           bigquery-public-data.crypto_ethereum.blocks
         WHERE
-          timestamp >= TIMESTAMP('${start}')
-          AND timestamp < TIMESTAMP('${end}')
+          timestamp >= TIMESTAMP_MILLIS(${start})
+          AND timestamp < TIMESTAMP_MILLIS(${end})
         ORDER BY timestamp ASC;
       `;
     }
   };
 
+  function streamAllLogsByContract(...args) {
+    const query = queries.allLogsByContract(...args);
+    return client.createQueryStream({ query });
+  }
   function streamLogsByContract(...args) {
     const query = queries.logsByContract(...args);
     return client.createQueryStream({ query });
@@ -74,6 +85,12 @@ module.exports = ({ client } = {}) => {
   function streamBlocks(...args) {
     const query = queries.blocks(...args);
     return client.createQueryStream({ query });
+  }
+  async function getAllLogsByContract(...args) {
+    const query = queries.allLogsByContract(...args);
+    const [job] = await client.createQueryJob({ query });
+    const [rows] = await job.getQueryResults();
+    return rows;
   }
   async function getLogsByContract(...args) {
     const query = queries.logsByContract(...args);
@@ -96,9 +113,11 @@ module.exports = ({ client } = {}) => {
   return {
     // main api, use streams or "get" to return data as array
     streamLogsByContract,
+    streamAllLogsByContract,
     streamTransactionsByContract,
     streamBlocks,
     getLogsByContract,
+    getAllLogsByContract,
     getTransactionsByContract,
     getBlocks,
     // exposed for testing or as utilities

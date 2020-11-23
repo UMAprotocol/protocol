@@ -10,8 +10,8 @@ const { TokenBalanceClient } = require("../../src/clients/TokenBalanceClient");
 const Token = artifacts.require("ExpandedERC20");
 
 const configs = [
-  { tokenName: "UMA", collateralDecimals: 18 },
-  { tokenName: "BTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -39,12 +39,12 @@ contract("TokenBalanceClient.js", function(accounts) {
         // The TokenBalance Client is independent of the EMP and simply needs two tokens to monitor.
         collateralToken = await Token.new(
           tokenConfig.tokenName,
-          tokenConfig.tokenName,
+          tokenConfig.tokenSymbol,
           tokenConfig.collateralDecimals,
           { from: tokenCreator }
         );
         await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
-        syntheticToken = await Token.new(tokenConfig.tokenName, tokenConfig.tokenName, 18, { from: tokenCreator });
+        syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: tokenCreator });
         await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
       });
 

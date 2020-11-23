@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
@@ -63,6 +64,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
+        FixedPoint.Unsigned fundingRateRewardRate;
         FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
         uint256 liquidationLiveness;
@@ -176,6 +178,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
+            params.fundingRateRewardRate,
             params.minSponsorTokens,
             params.timerAddress,
             params.excessTokenBeneficiary
@@ -326,10 +329,10 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned memory griefingThreshold = minSponsorTokens;
         if (
             positionToLiquidate.withdrawalRequestPassTimestamp > 0 && // The position is undergoing a slow withdrawal.
-            positionToLiquidate.withdrawalRequestPassTimestamp <= getCurrentTime() && // The slow withdrawal has not yet expired.
+            positionToLiquidate.withdrawalRequestPassTimestamp > getCurrentTime() && // The slow withdrawal has not yet expired.
             tokensLiquidated.isGreaterThanOrEqual(griefingThreshold) // The liquidated token count is above a "griefing threshold".
         ) {
-            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(liquidationLiveness);
+            positionToLiquidate.withdrawalRequestPassTimestamp = getCurrentTime().add(withdrawalLiveness);
         }
 
         emit LiquidationCreated(

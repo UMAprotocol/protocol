@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
@@ -9,9 +10,9 @@ import "../common/FundingRateApplier.sol";
 contract FundingRateApplierTest is FundingRateApplier {
     constructor(
         address _fpFinderAddress,
-        bytes32 _fundingRateIdentifier,
-        address _timerAddress
-    ) public Testable(_timerAddress) FundingRateApplier(_fpFinderAddress, _fundingRateIdentifier) {}
+        address _timerAddress,
+        FixedPoint.Unsigned memory _rewardRate
+    ) public Testable(_timerAddress) FundingRateApplier(_fpFinderAddress, _rewardRate) {}
 
     function applyFundingRate() public {
         _applyEffectiveFundingRate();
