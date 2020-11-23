@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v12-dependency-cache-{{ checksum "yarn.lock" }}
-            - v12-dependency-cache-
+            - v1999999999
+            - v1999999999
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npx lerna bootstrap -- --frozen-lockfile
       - save_cache:
-          key: v12-dependency-cache-{{ checksum "yarn.lock" }}
+          key: v1999999999
           paths:
             - node_modules
       - save_cache:
