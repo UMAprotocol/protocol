@@ -943,7 +943,10 @@ contract("PricelessPositionManager", function(accounts) {
   it("Custom price transformation with a financial product library", async function() {
     // Create a sample FinancialProductLibraryTest that simply doubles the settlement price. This test shows that the
     // oracle price can be overriden with the transformPrice from the library.
-    const financialProductLibraryTest = await FinancialProductLibraryTest.new({ rawValue: toWei("2") });
+    const financialProductLibraryTest = await FinancialProductLibraryTest.new(
+      { rawValue: toWei("2") }, // _priceTransformationScalar. Set to 2 to adjust the oracle price.
+      { rawValue: toWei("1") } // _collateralRequirementTransformationScalar. Set to 1 to not scale the contract CR.
+    );
 
     assert.equal((await financialProductLibraryTest.scalar()).toString(), toWei("2"));
     assert.equal((await financialProductLibraryTest.transformPrice({ rawValue: "5" }, "0")).toString(), "10"); // should scale prices by scalar. 5 * 2 = 10. Note the time(second param) does not matter in this test library

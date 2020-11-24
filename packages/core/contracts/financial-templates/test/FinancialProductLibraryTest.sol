@@ -4,10 +4,15 @@ import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 // Implements a simple FinancialProductLibrary to test price and collateral requirement transoformations.
 contract FinancialProductLibraryTest is FinancialProductLibrary {
-    FixedPoint.Unsigned public scalar;
+    FixedPoint.Unsigned public priceTransformationScalar;
+    FixedPoint.Unsigned public collateralRequirementTransformationScalar;
 
-    constructor(FixedPoint.Unsigned memory _scalar) public {
-        scalar = _scalar;
+    constructor(
+        FixedPoint.Unsigned memory _priceTransformationScalar,
+        FixedPoint.Unsigned memory _collateralRequirementTransformationScalar
+    ) public {
+        priceTransformationScalar = _priceTransformationScalar;
+        collateralRequirementTransformationScalar = _collateralRequirementTransformationScalar;
     }
 
     // Create a simple price transformation function that scales the input price by the scalar for testing.
@@ -17,14 +22,14 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         override
         returns (FixedPoint.Unsigned memory)
     {
-        return oraclePrice.mul(scalar);
+        return oraclePrice.mul(priceTransformationScalar);
     }
 
-    // Create a simple price transformation that doubles the input number.
+    // Create a simple price transformCollateralRequirement that doubles the input collateralRequirement.
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory price,
         FixedPoint.Unsigned memory collateralRequirement
     ) public view override returns (FixedPoint.Unsigned memory) {
-        return collateralRequirement.mul(scalar);
+        return collateralRequirement.mul(collateralRequirementTransformationScalar);
     }
 }
