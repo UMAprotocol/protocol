@@ -6,7 +6,7 @@
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",
     "@uma/common": "^1.1.0",
-    "@uma/core": "^1.2.0",
+    "@uma/core": "npm:@uma/core@1.2.0",
     "@uma/financial-templates-lib": "^1.2.0",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",

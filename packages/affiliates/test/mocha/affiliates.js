@@ -1,10 +1,11 @@
 const { DeployerRewards } = require("../../libs/affiliates");
 const { assert } = require("chai");
-const empAbi = require("../../../core/build/contracts/ExpiringMultiParty");
-const empCreatorAbi = require("../../../core/build/contracts/ExpiringMultiPartyCreator");
+const { getAbi } = require("@uma/core");
 const { mocks } = require("../../libs/datasets");
 const Path = require("path");
 
+const empAbi = getAbi("ExpiringMultiParty");
+const empCreatorAbi = getAbi("ExpiringMultiPartyCreator");
 const datasetPath = Path.join(__dirname, "../datasets/set1");
 const params = require(Path.join(datasetPath, "/config.json"));
 const {
@@ -28,8 +29,8 @@ describe("DeployerRewards", function() {
     const synthPrices = SynthPrices(datasetPath);
     affiliates = DeployerRewards({
       queries,
-      empAbi: empAbi.abi,
-      empCreatorAbi: empCreatorAbi.abi,
+      empAbi,
+      empCreatorAbi,
       coingecko,
       synthPrices
     });
