@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -37,6 +37,6 @@
     "node-metamask": "github:UMAprotocol/node-metamask",
     "require-context": "^1.1.0",
     "truffle-deploy-registry": "^0.5.1",
-    "web3": "1.2.7"
+    "web3": "1.2.11"
   }
 }

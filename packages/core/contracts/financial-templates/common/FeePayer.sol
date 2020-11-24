@@ -110,11 +110,8 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             return totalPaid;
         }
 
-        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
-            lastPaymentTime,
-            time,
-            collateralPool
-        );
+        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) =
+            store.computeRegularFee(lastPaymentTime, time, collateralPool);
         lastPaymentTime = time;
 
         totalPaid = regularFee.add(latePenalty);

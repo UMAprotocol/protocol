@@ -5,7 +5,8 @@ const {
   parseFixed,
   interfaceName,
   LiquidationStatesEnum,
-  PostWithdrawLiquidationRewardsStatusTranslations
+  PostWithdrawLiquidationRewardsStatusTranslations,
+  ZERO_ADDRESS
 } = require("@uma/common");
 
 // Script to test
@@ -127,7 +128,8 @@ contract("Liquidator.js", function(accounts) {
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("5") },
           timerAddress: timer.address,
-          excessTokenBeneficiary: store.address
+          excessTokenBeneficiary: store.address,
+          financialProductLibraryAddress: ZERO_ADDRESS
         };
 
         // Deploy a new expiring multi party

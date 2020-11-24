@@ -3940,10 +3940,17 @@
   resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.6.2.tgz#49707fc4e06649d39d6b25bdab2e9093d372ce50"
   integrity sha512-kUVUvrqttndeprLoXjI5arWHeiP3uh4XODAKbG+ZaWHCVQeelxCbnXBeWxZ2BPHdXgH0xR9dU1b916JhDhbgAA==
 
-"@solidity-parser/parser@^0.8.0", "@solidity-parser/parser@^0.8.1":
+"@solidity-parser/parser@^0.8.0":
   version "0.8.1"
   resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.8.1.tgz#1b606578af86b9ad10755409804a6ba83f9ce8a4"
   integrity sha512-DF7H6T8I4lo2IZOE2NZwt3631T8j1gjpQLjmvY2xBNK50c4ltslR4XPKwT6RkeSd4+xCAK0GHC/k7sbRDBE4Yw==
+
+"@solidity-parser/parser@^0.9.1":
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.9.1.tgz#c63aaca2a07f2994d85b43afdbf90b454b62e16e"
+  integrity sha512-ewNo+ZEQX8mFUOlTK6+0IYvM++6+iEeRBIBg4Mh8ghgRX72bkXJh6AWLWe/SG5+3WPdDL84MSsAlrvWFsGRdFw==
+  dependencies:
+    antlr4 "^4.8.0"
 
 "@svgr/babel-plugin-add-jsx-attribute@^4.2.0":
   version "4.2.0"
@@ -4651,6 +4658,15 @@
     "@truffle/contract" "^4.2.20"
     "@uma/common" "^1.0.1"
 
+"@uma/core@npm:@uma/core@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.0.tgz#7fce04924d28194090eecdf4087786f7bb56a755"
+  integrity sha512-Etg5ZTDknuGnbgx9U3rZWLCW6aR3INwF/rx5qldtll8WBmWFyGiHTexHrP1fDECXRQ6dn4gzeK4FeDgWhiGvsA==
+  dependencies:
+    "@truffle/contract" "^4.2.20"
+    "@uma/common" "^1.1.0"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+
 "@umaprotocol/react-plugin@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@umaprotocol/react-plugin/-/react-plugin-1.5.5.tgz#c378fe8534c9df9a0ec02e16250fd59891cbb37f"
@@ -5264,6 +5280,11 @@ ansistyles@~0.1.3:
   version "0.1.3"
   resolved "https://registry.yarnpkg.com/ansistyles/-/ansistyles-0.1.3.tgz#5de60415bda071bb37127854c864f41b23254539"
   integrity sha1-XeYEFb2gcbs3EnhUyGT0GyMlRTk=
+
+antlr4@^4.8.0:
+  version "4.8.0"
+  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.8.0.tgz#f938ec171be7fc2855cd3a533e87647185b32b6a"
+  integrity sha512-en/MxQ4OkPgGJQ3wD/muzj1uDnFSzdFIhc2+c6bHZokWkuBb6RRvFjpWhPxWLbgQvaEzldJZ0GSQpfSAaE3hqg==
 
 any-promise@1.3.0, any-promise@^1.0.0, any-promise@^1.3.0:
   version "1.3.0"
@@ -9825,13 +9846,6 @@ espree@^7.3.0:
     acorn-jsx "^5.2.0"
     eslint-visitor-keys "^1.3.0"
 
-esprima-extract-comments@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/esprima-extract-comments/-/esprima-extract-comments-1.1.0.tgz#0dacab567a5900240de6d344cf18c33617becbc9"
-  integrity sha512-sBQUnvJwpeE9QnPrxh7dpI/dp67erYG4WXEAreAMoelPRpMR7NWb4YtwRPn9b+H1uLQKl/qS8WYmyaljTpjIsw==
-  dependencies:
-    esprima "^4.0.0"
-
 esprima@2.7.x, esprima@^2.7.1:
   version "2.7.3"
   resolved "https://registry.yarnpkg.com/esprima/-/esprima-2.7.3.tgz#96e3b70d5779f6ad49cd032673d1c312767ba581"
@@ -10718,14 +10732,6 @@ extglob@^2.0.4:
     regex-not "^1.0.0"
     snapdragon "^0.8.1"
     to-regex "^3.0.1"
-
-extract-comments@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/extract-comments/-/extract-comments-1.1.0.tgz#b90bca033a056bd69b8ba1c6b6b120fc2ee95c18"
-  integrity sha512-dzbZV2AdSSVW/4E7Ti5hZdHWbA+Z80RJsJhr5uiL10oyjl/gy7/o+HI1HwK4/WSZhlq4SNKU3oUzXlM13Qx02Q==
-  dependencies:
-    esprima-extract-comments "^1.1.0"
-    parse-code-context "^1.0.0"
 
 extsprintf@1.3.0:
   version "1.3.0"
@@ -17571,11 +17577,6 @@ parse-cache-control@^1.0.1:
   resolved "https://registry.yarnpkg.com/parse-cache-control/-/parse-cache-control-1.0.1.tgz#8eeab3e54fa56920fe16ba38f77fa21aacc2d74e"
   integrity sha1-juqz5U+laSD+Fro493+iGqzC104=
 
-parse-code-context@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/parse-code-context/-/parse-code-context-1.0.0.tgz#718c295c593d0d19a37f898473268cc75e98de1e"
-  integrity sha512-OZQaqKaQnR21iqhlnPfVisFjBWjhnMl5J9MgbP8xC+EwoVqbXrq78lp+9Zb3ahmLzrIX5Us/qbvBnaS3hkH6OA==
-
 parse-github-repo-url@^1.3.0:
   version "1.4.1"
   resolved "https://registry.yarnpkg.com/parse-github-repo-url/-/parse-github-repo-url-1.4.1.tgz#9e7d8bb252a6cb6ba42595060b7bf6df3dbc1f50"
@@ -18589,18 +18590,18 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier-plugin-solidity@^1.0.0-alpha.59:
-  version "1.0.0-alpha.59"
-  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-alpha.59.tgz#b0cf82fb068537d152d0bc417588d08e952a56c6"
-  integrity sha512-6cE0SWaiYCBoJY4clCfsbWlEEOU4K42Ny6Tg4Jwprgts/q+AVfYnPQ5coRs7zIjYzc4RVspifYPeh+oAg8RpLw==
+prettier-plugin-solidity@^1.0.0-beta.1:
+  version "1.0.0-beta.1"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-beta.1.tgz#4efff3ea4ba449e5c88f4ada6aca889c676547a6"
+  integrity sha512-kfPkR+UscT/Cw+2O8RSh6gCnIY4qsJJtuE4xZpIq42EyNyTLBabDwjH1QocXHwmlgL6QffydDge76ERlyJRaAA==
   dependencies:
-    "@solidity-parser/parser" "^0.8.1"
+    "@solidity-parser/parser" "^0.9.1"
     dir-to-object "^2.0.0"
     emoji-regex "^9.0.0"
     escape-string-regexp "^4.0.0"
-    extract-comments "^1.1.0"
     prettier "^2.0.5"
     semver "^7.3.2"
+    solidity-comments-extractor "^0.0.4"
     string-width "^4.2.0"
 
 prettier@1.19.1:
@@ -20740,6 +20741,11 @@ solc@^0.6.7:
     require-from-string "^2.0.0"
     semver "^5.5.0"
     tmp "0.0.33"
+
+solidity-comments-extractor@^0.0.4:
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/solidity-comments-extractor/-/solidity-comments-extractor-0.0.4.tgz#ce420aef23641ffd0131c7d80ba85b6e1e42147e"
+  integrity sha512-58glBODwXIKMaQ7rfcJOrWtFQMMOK28tJ0/LcB5Xhu7WtAxk4UX2fpgKPuaL41XjMp/y0gAa1MTLqk018wuSzA==
 
 solidity-coverage@^0.7.2:
   version "0.7.9"
@@ -23907,7 +23913,7 @@ web3-utils@1.2.7:
     underscore "1.9.1"
     utf8 "3.0.0"
 
-web3@*, web3@^1.0.0-beta.34, web3@^1.2.4:
+web3@*, web3@1.2.11, web3@^1.0.0-beta.34, web3@^1.2.4:
   version "1.2.11"
   resolved "https://registry.yarnpkg.com/web3/-/web3-1.2.11.tgz#50f458b2e8b11aa37302071c170ed61cff332975"
   integrity sha512-mjQ8HeU41G6hgOYm1pmeH0mRAeNKJGnJEUzDMoerkpw7QUQT4exVREgF1MYPvL/z6vAshOXei25LE/t/Bxl8yQ==

@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../../common/interfaces/IERC20Standard.sol";
 import "../common/FeePayer.sol";
+import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 /**
  * @title Financial contract with priceless position management.
@@ -83,6 +84,10 @@ contract PricelessPositionManager is FeePayer {
 
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
+
+    // Instance of FinancialProductLibrary to provide custom price and collateral requirement transformations to extend
+    // the functionality of the EMP to support a wider range of financial products.
+    FinancialProductLibrary public financialProductLibrary;
 
     /****************************************
      *                EVENTS                *
@@ -168,7 +173,8 @@ contract PricelessPositionManager is FeePayer {
         bytes32 _priceIdentifier,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
-        address _excessTokenBeneficiary
+        address _excessTokenBeneficiary,
+        address _financialProductLibraryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
@@ -179,6 +185,9 @@ contract PricelessPositionManager is FeePayer {
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
         excessTokenBeneficiary = _excessTokenBeneficiary;
+
+        // Initialize the financialProductLibrary at the provided address.
+        financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
     }
 
     /****************************************
@@ -470,9 +479,8 @@ contract PricelessPositionManager is FeePayer {
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
-            _getFeeAdjustedCollateral(positionData.rawCollateral)
-        );
+        FixedPoint.Unsigned memory collateralRedeemed =
+            fractionRedeemed.mul(_getFeeAdjustedCollateral(positionData.rawCollateral));
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -535,11 +543,10 @@ contract PricelessPositionManager is FeePayer {
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
-                positionCollateral
-            )
-                ? positionCollateral.sub(tokenDebtValueInCollateral)
-                : FixedPoint.Unsigned(0);
+            FixedPoint.Unsigned memory positionRedeemableCollateral =
+                tokenDebtValueInCollateral.isLessThan(positionCollateral)
+                    ? positionCollateral.sub(tokenDebtValueInCollateral)
+                    : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
@@ -551,10 +558,8 @@ contract PricelessPositionManager is FeePayer {
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout = FixedPoint.min(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalRedeemableCollateral
-        );
+        FixedPoint.Unsigned memory payout =
+            FixedPoint.min(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalRedeemableCollateral);
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
@@ -669,6 +674,29 @@ contract PricelessPositionManager is FeePayer {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
+    /**
+     * @notice Accessor method to calculate a transformed price using the provided finanicalProductLibrary specified
+     * during contract deployment. If no library was provided then no modification to the price is done.
+     * @param price input price to be transformed.
+     * @return transformedPrice price with the transformation function applied to it.
+     * @dev This method should never revert.
+     */
+
+    function transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
+        public
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (address(financialProductLibrary) == address(0)) return price;
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
+            FixedPoint.Unsigned memory transformedPrice
+        ) {
+            return transformedPrice;
+        } catch {
+            return price;
+        }
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -769,7 +797,7 @@ contract PricelessPositionManager is FeePayer {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return FixedPoint.Unsigned(uint256(oraclePrice));
+        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
@@ -859,10 +887,8 @@ contract PricelessPositionManager is FeePayer {
         view
         returns (bool)
     {
-        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalTokensOutstanding
-        );
+        FixedPoint.Unsigned memory global =
+            _getCollateralizationRatio(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalTokensOutstanding);
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
     }
