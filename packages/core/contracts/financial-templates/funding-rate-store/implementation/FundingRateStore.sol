@@ -95,7 +95,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         uint256 paramUpdateLiveness;
         // Reward rate paid to successful proposers. Percentage of 1 E.g., .1 is 10%.
         FixedPoint.Unsigned rewardRatePerSecond;
-        // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%
+        // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%.
         FixedPoint.Unsigned proposerBondPct;
     }
 
