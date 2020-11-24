@@ -3,11 +3,9 @@ pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-
 interface ExpiringContractInterface {
     function expirationTimestamp() external view returns (uint256);
 }
-
 
 /**
  * @title Structured Note Financial Product Library
@@ -58,8 +56,8 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
      */
     function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
-        override
         view
+        override
         returns (FixedPoint.Unsigned memory)
     {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
@@ -88,7 +86,7 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory oraclePrice,
         FixedPoint.Unsigned memory collateralRequirement
-    ) public override view returns (FixedPoint.Unsigned memory) {
+    ) public view override returns (FixedPoint.Unsigned memory) {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
         require(strike.isGreaterThan(0), "Caller has no strike");
         // If the price is less than the strike than the original collateral requirement is used.

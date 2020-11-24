@@ -551,9 +551,8 @@ contract Liquidatable is PricelessPositionManager {
         // The required collateral is the value of the tokens in underlying * required collateral ratio. The Transform
         // Collateral requirement method applies a from the financial Product library to change the scaled the collateral
         // requirement based on the settlement price. If no library was specified when deploying the emp then this makes no change.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(
-            transformCollateralRequirement(liquidation.settlementPrice)
-        );
+        FixedPoint.Unsigned memory requiredCollateral =
+            tokenRedemptionValue.mul(transformCollateralRequirement(liquidation.settlementPrice));
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
