@@ -2,7 +2,7 @@
   "week": 17,
   "fromBlock": 11271761,
   "toBlock": 11317321,
-  "poolAddress": "0xcce41676a4624f4a1e33a787a59d6bf96e5067bd",
+  "poolAddress": "0xcce41676a4624f4a1e33a787a59d6bf96e5067bc",
   "blocksPerSnapshot": 256,
   "umaPerWeek": 14690,
   "shareHolderPayout": {
