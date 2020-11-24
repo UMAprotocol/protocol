@@ -5,7 +5,7 @@
   "dependencies": {
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^1.1.0",
-    "@uma/core-1-1-0": "npm:@uma/core@1.1.0"
+    "@uma/core-1-2-0": "^1.2.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",

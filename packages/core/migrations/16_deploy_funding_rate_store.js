@@ -4,40 +4,34 @@ const FundingRateStore = artifacts.require("FundingRateStore");
 const { interfaceName, getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
-  try {
-    const keys = getKeysForNetwork(network, accounts);
-    const controllableTiming = enableControllableTiming(network);
+  const keys = getKeysForNetwork(network, accounts);
+  const controllableTiming = enableControllableTiming(network);
 
-    // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
-    const timerAddress = controllableTiming
-      ? (await Timer.deployed()).address
-      : "0x0000000000000000000000000000000000000000";
+  // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
+  const timerAddress = controllableTiming
+    ? (await Timer.deployed()).address
+    : "0x0000000000000000000000000000000000000000";
 
-    const finder = await Finder.deployed();
+  const finder = await Finder.deployed();
 
-    // Deploy Store.
-    const proposalLiveness = 7200; // 2 hours.
-    const { contract: fundingRateStore } = await deploy(
-      deployer,
-      network,
-      FundingRateStore,
-      proposalLiveness,
-      finder.address,
-      timerAddress,
-      { from: keys.deployer }
-    );
+  // Deploy Store.
+  const proposalLiveness = 7200; // 2 hours.
+  const { contract: fundingRateStore } = await deploy(
+    deployer,
+    network,
+    FundingRateStore,
+    proposalLiveness,
+    finder.address,
+    timerAddress,
+    { from: keys.deployer }
+  );
 
-    // Point Finder to newly deployed contract.
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.FundingRateStore),
-      fundingRateStore.address,
-      {
-        from: keys.deployer
-      }
-    );
-  } catch (err) {
-    console.log(
-      "TODO: Remove this, need to catch errors here because /affiliates is using an outdated FundingRatestore interface with diff # of constructor params, causing this deployment to fail"
-    );
-  }
+  // Point Finder to newly deployed contract.
+  await finder.changeImplementationAddress(
+    web3.utils.utf8ToHex(interfaceName.FundingRateStore),
+    fundingRateStore.address,
+    {
+      from: keys.deployer
+    }
+  );
 };
