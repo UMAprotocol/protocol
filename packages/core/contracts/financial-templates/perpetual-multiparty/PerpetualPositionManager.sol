@@ -75,9 +75,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     // Expiry price pulled from the DVM in the case of an emergency shutdown.
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
-    // Timestamp used in case of emergency shutdown.
-    uint256 public emergencyShutdownTimestamp;
-
     // The excessTokenBeneficiary of any excess tokens added to the contract.
     address public excessTokenBeneficiary;
 
@@ -395,9 +392,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
-            _getFeeAdjustedCollateral(positionData.rawCollateral)
-        );
+        FixedPoint.Unsigned memory collateralRedeemed =
+            fractionRedeemed.mul(_getFeeAdjustedCollateral(positionData.rawCollateral));
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -481,9 +477,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(
-            emergencyShutdownPrice
-        );
+        FixedPoint.Unsigned memory totalRedeemableCollateral =
+            _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(emergencyShutdownPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
@@ -491,19 +486,15 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying with
             // the funding rate applied to the outstanding token debt.
 
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = _getFundingRateAppliedTokenDebt(
-                positionData
-                    .tokensOutstanding
-            )
-                .mul(emergencyShutdownPrice);
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral =
+                _getFundingRateAppliedTokenDebt(positionData.tokensOutstanding).mul(emergencyShutdownPrice);
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
-                positionCollateral
-            )
-                ? positionCollateral.sub(tokenDebtValueInCollateral)
-                : FixedPoint.Unsigned(0);
+            FixedPoint.Unsigned memory positionRedeemableCollateral =
+                tokenDebtValueInCollateral.isLessThan(positionCollateral)
+                    ? positionCollateral.sub(tokenDebtValueInCollateral)
+                    : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
@@ -515,10 +506,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout = FixedPoint.min(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalRedeemableCollateral
-        );
+        FixedPoint.Unsigned memory payout =
+            FixedPoint.min(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalRedeemableCollateral);
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
@@ -818,10 +807,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         view
         returns (bool)
     {
-        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
-            totalTokensOutstanding
-        );
+        FixedPoint.Unsigned memory global =
+            _getCollateralizationRatio(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalTokensOutstanding);
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
     }
