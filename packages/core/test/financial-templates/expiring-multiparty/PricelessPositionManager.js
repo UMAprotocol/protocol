@@ -948,7 +948,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: toWei("1") } // _collateralRequirementTransformationScalar. Set to 1 to not scale the contract CR.
     );
 
-    assert.equal((await financialProductLibraryTest.scalar()).toString(), toWei("2"));
+    assert.equal((await financialProductLibraryTest.priceTransformationScalar()).toString(), toWei("2"));
     assert.equal((await financialProductLibraryTest.transformPrice({ rawValue: "5" }, "0")).toString(), "10"); // should scale prices by scalar. 5 * 2 = 10. Note the time(second param) does not matter in this test library
 
     pricelessPositionManager = await PricelessPositionManager.new(
