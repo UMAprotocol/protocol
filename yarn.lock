@@ -4658,6 +4658,15 @@
     "@truffle/contract" "^4.2.20"
     "@uma/common" "^1.0.1"
 
+"@uma/core@npm:@uma/core@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.0.tgz#7fce04924d28194090eecdf4087786f7bb56a755"
+  integrity sha512-Etg5ZTDknuGnbgx9U3rZWLCW6aR3INwF/rx5qldtll8WBmWFyGiHTexHrP1fDECXRQ6dn4gzeK4FeDgWhiGvsA==
+  dependencies:
+    "@truffle/contract" "^4.2.20"
+    "@uma/common" "^1.1.0"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+
 "@umaprotocol/react-plugin@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@umaprotocol/react-plugin/-/react-plugin-1.5.5.tgz#c378fe8534c9df9a0ec02e16250fd59891cbb37f"
@@ -23904,7 +23913,7 @@ web3-utils@1.2.7:
     underscore "1.9.1"
     utf8 "3.0.0"
 
-web3@*, web3@^1.0.0-beta.34, web3@^1.2.4:
+web3@*, web3@1.2.11, web3@^1.0.0-beta.34, web3@^1.2.4:
   version "1.2.11"
   resolved "https://registry.yarnpkg.com/web3/-/web3-1.2.11.tgz#50f458b2e8b11aa37302071c170ed61cff332975"
   integrity sha512-mjQ8HeU41G6hgOYm1pmeH0mRAeNKJGnJEUzDMoerkpw7QUQT4exVREgF1MYPvL/z6vAshOXei25LE/t/Bxl8yQ==
