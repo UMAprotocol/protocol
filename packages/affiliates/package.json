@@ -8,6 +8,7 @@
     "@uma/common": "^1.0.1",
     "@uma/core": "^1.1.0",
     "@uma/financial-templates-lib": "^1.1.0",
+    "cli-progress": "^3.8.2",
     "ethers": "^5.0.17",
     "highland": "^2.13.5",
     "lodash": "^4.17.20",
@@ -15,7 +16,6 @@
     "moment": "^2.29.1"
   },
   "devDependencies": {
-    "cli-progress": "^3.8.2",
     "mocha": "^8.2.0",
     "tape": "^5.0.1"
   },
