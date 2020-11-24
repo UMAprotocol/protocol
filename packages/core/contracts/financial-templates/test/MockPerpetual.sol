@@ -32,10 +32,6 @@ contract MockPerpetual is PerpetualInterface, AdministrateeInterface {
         return collateralCurrency;
     }
 
-    function setRewardRate(FixedPoint.Unsigned memory rewardRate, address store) external {
-        FundingRateStoreInterface(store).setRewardRate(address(this), rewardRate);
-    }
-
     function toggleRevertWithdraw() external {
         revertWithdraw = !revertWithdraw;
     }
