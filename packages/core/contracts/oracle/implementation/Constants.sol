@@ -11,4 +11,5 @@ library OracleInterfaces {
     bytes32 public constant FinancialContractsAdmin = "FinancialContractsAdmin";
     bytes32 public constant Registry = "Registry";
     bytes32 public constant CollateralWhitelist = "CollateralWhitelist";
+    bytes32 public constant OptimisticOracle = "OptimisticOracle";
 }

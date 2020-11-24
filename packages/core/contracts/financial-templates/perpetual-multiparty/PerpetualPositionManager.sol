@@ -78,9 +78,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     // Timestamp used in case of emergency shutdown.
     uint256 public emergencyShutdownTimestamp;
 
-    // The excessTokenBeneficiary of any excess tokens added to the contract.
-    address public excessTokenBeneficiary;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -143,7 +140,6 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
-     * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
      */
     constructor(
         uint256 _withdrawalLiveness,
@@ -154,8 +150,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         bytes32 _fundingRateIdentifier,
         FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
-        address _timerAddress,
-        address _excessTokenBeneficiary
+        address _timerAddress
     )
         public
         FundingRateApplier(
@@ -172,7 +167,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
-        excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
     /****************************************

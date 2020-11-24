@@ -60,7 +60,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         address tokenAddress;
         address finderAddress;
         address timerAddress;
-        address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         FixedPoint.Unsigned fundingRateRewardRate;
@@ -179,8 +178,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.fundingRateIdentifier,
             params.fundingRateRewardRate,
             params.minSponsorTokens,
-            params.timerAddress,
-            params.excessTokenBeneficiary
+            params.timerAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
