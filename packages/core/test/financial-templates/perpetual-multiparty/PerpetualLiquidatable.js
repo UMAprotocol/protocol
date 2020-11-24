@@ -1501,7 +1501,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Mint final fee amount to disputer.
       await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
 
-      // Dispute the created liquidation
+      // Dispute the created liquidation.
       await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
 
       // Let's test using a price of 1.3, because this would price would have caused the dispute to fail
