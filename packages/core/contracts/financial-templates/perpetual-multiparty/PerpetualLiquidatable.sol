@@ -252,13 +252,11 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             startCollateralNetOfWithdrawal = startCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
         }
 
-        // Scoping to get rid of a stack too deep error. In this block, we use the funding-rate adjusted value
-        // of token debt to check that the desired liquidation price is valid.
+        // Scoping to get rid of a stack too deep error.
         {
-            FixedPoint.Unsigned memory startTokens =
-                _getFundingRateAppliedTokenDebt(positionToLiquidate.tokensOutstanding);
+            FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-            // The Position's funding-rate adjusted collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
+            // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
             // maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
             require(
                 maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
@@ -278,9 +276,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned memory lockedCollateral;
         FixedPoint.Unsigned memory liquidatedCollateral;
 
-        // Scoping to get rid of a stack too deep error. The amount of tokens to remove from the position
-        // are not funding-rate adjusted because the multiplier only affects their redemption value, not their
-        // notional.
+        // Scoping to get rid of a stack too deep error.
         {
             FixedPoint.Unsigned memory ratio = tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
 
@@ -311,7 +307,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
                 liquidator: msg.sender,
                 state: Status.PreDispute,
                 liquidationTime: getCurrentTime(),
-                tokensOutstanding: _getFundingRateAppliedTokenDebt(tokensLiquidated),
+                tokensOutstanding: tokensLiquidated,
                 lockedCollateral: lockedCollateral,
                 liquidatedCollateral: liquidatedCollateral,
                 rawUnitCollateral: _convertToRawCollateral(FixedPoint.fromUnscaledUint(1)),
@@ -341,7 +337,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             sponsor,
             msg.sender,
             liquidationId,
-            _getFundingRateAppliedTokenDebt(tokensLiquidated).rawValue,
+            tokensLiquidated.rawValue,
             lockedCollateral.rawValue,
             liquidatedCollateral.rawValue,
             getCurrentTime()
@@ -430,12 +426,10 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Calculate rewards as a function of the TRV.
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
-        // TODO: Do we also need to apply some sort of funding rate adjustment to account for multiplier changes
-        // since liquidation time?
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
         FixedPoint.Unsigned memory tokenRedemptionValue =
-            liquidation.tokensOutstanding.mul(settlementPrice).mul(feeAttenuation);
+            _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding).mul(settlementPrice).mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
@@ -543,7 +537,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue =
-            liquidation.tokensOutstanding.mul(liquidation.settlementPrice);
+            _getFundingRateAppliedTokenDebt(liquidation.tokensOutstanding).mul(liquidation.settlementPrice);
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
         FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
