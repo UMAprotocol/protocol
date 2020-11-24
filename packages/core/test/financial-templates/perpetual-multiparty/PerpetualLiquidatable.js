@@ -1658,6 +1658,14 @@ contract("PerpetualLiquidatable", function(accounts) {
     let liquidationTime;
 
     beforeEach(async () => {
+      // Set a funding rate to test whether methods callable post-shutdown update the funding rate multiplier.
+      // Move time forward 1 second so we have non-default funding rate multiplier to test against.
+      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
+        rawValue: toWei("0.005")
+      });
+      let currentTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.setCurrentTime(currentTime.addn(1));
+
       // Create a new position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1679,24 +1687,41 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // Shuts down the position manager.
       await financialContractsAdmin.callEmergencyShutdown(liquidationContract.address);
+
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
     it("Can dispute the liquidation", async () => {
+      // Advance time to make sure that funding rate multiplier is not updated.
+      let currentTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.setCurrentTime(currentTime.addn(1));
+
       await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
       const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
       assert.equal(liquidation.state.toString(), LiquidationStatesEnum.PENDING_DISPUTE);
       assert.equal(liquidation.disputer, disputer);
       assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
+
+      // Funding rate multiplier is NOT updated on `dispute()` following a shutdown.
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
     it("Can withdraw liquidation rewards", async () => {
       // Dispute fails, liquidator withdraws, liquidation is deleted
       await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
       const disputePrice = toWei("1.3");
       await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+
+      // Advance time to make sure that funding rate multiplier is not updated.
+      let currentTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.setCurrentTime(currentTime.addn(1));
+
       await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
       // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
       const expectedPayment = amountOfCollateral.add(disputeBond);
       assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+
+      // Funding rate multiplier is NOT updated on `withdrawLiquidation()` following a shutdown.
+      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
     });
   });
   describe("Non-standard ERC20 delimitation", () => {

@@ -39,6 +39,9 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Last time the `cumulativeFundingRateMultiplier` was updated.
     uint256 public lastUpdateTime;
 
+    // Timestamp used in case of emergency shutdown.
+    uint256 public emergencyShutdownTimestamp;
+
     // Tracks the cumulative funding payments that have been paid to the sponsors.
     // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
     // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -77,7 +80,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
      */
     constructor(address _finderAddress, FixedPoint.Unsigned memory _fundingRateRewardRate) public {
         finder = FinderInterface(_finderAddress);
-
+        emergencyShutdownTimestamp = 0;
         lastUpdateTime = getCurrentTime();
 
         // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
@@ -112,6 +115,11 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
+        // If contract is emergency shutdown, then the funding rate multiplier should no longer change.
+        if (emergencyShutdownTimestamp != 0) {
+            return;
+        }
+
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
 
