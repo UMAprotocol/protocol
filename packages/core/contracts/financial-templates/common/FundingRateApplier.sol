@@ -14,15 +14,16 @@ import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../funding-rate-store/interfaces/FundingRateStoreInterface.sol";
 import "../funding-rate-store/implementation/OptimisticOracle.sol";
+
+import "./FeePayer.sol";
 
 /**
  * @title FundingRateApplier contract.
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-abstract contract FundingRateApplier is Testable, Lockable {
+abstract contract FundingRateApplier is FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
@@ -32,31 +33,30 @@ abstract contract FundingRateApplier is Testable, Lockable {
      * FUNDING RATE APPLIER DATA STRUCTURES *
      ****************************************/
 
-    // Locally stores the finder.
-    // This is private because it is expected that another contract, like the FeePayer, will publicly expose the finder
-    // address.
-    FinderInterface private finder;
+    struct FundingRate {
+        // Current funding rate value.
+        FixedPoint.Signed rate;
+        // Identifier to retrieve the funding rate.
+        bytes32 identifier;
+        // Per second reward paid to get funding rate proposers.
+        FixedPoint.Unsigned rewardRate;
+        // Tracks the cumulative funding payments that have been paid to the sponsors.
+        // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
+        // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
+        // For example:
+        // The cumulativeFundingRateMultiplier should start at 1.
+        // If a 1% funding payment is paid to sponsors, the multiplier should update to 1.01.
+        // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
+        FixedPoint.Unsigned cumulativeMultiplier;
+        // Most recent time that the funding rate was updated.
+        uint256 updateTime;
+        // The time for the active (if it exists) funding rate proposal. 0 otherwise.
+        uint256 proposalTime;
+        // Most recent time that the funding rate was applied and changed the cumulative multiplier.
+        uint256 applicationTime;
+    }
 
-    // Last time the `cumulativeFundingRateMultiplier` was updated.
-    uint256 public lastUpdateTime;
-
-    // Tracks the cumulative funding payments that have been paid to the sponsors.
-    // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
-    // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
-    // For example:
-    // The cumulativeFundingRateMultiplier should start at 1.
-    // If a 1% funding payment is paid to sponsors, the multiplier should update to 1.01.
-    // If another 1% fee is charged, the multiplier should be 1.01^2 (1.0201).
-    FixedPoint.Unsigned public cumulativeFundingRateMultiplier;
-
-    FixedPoint.Signed fundingRate;
-    uint256 fundingRateUpdateTime;
-    uint256 fundingRateProposalTime;
-
-    FixedPoint.Unsigned public rewardRate;
-
-    // Identifier in funding rate store to query for.
-    bytes32 public fundingRateIdentifier;
+    FundingRate public fundingRate;
 
     /****************************************
      *                EVENTS                *
@@ -64,8 +64,8 @@ abstract contract FundingRateApplier is Testable, Lockable {
 
     event NewFundingRate(
         uint256 indexed newMultiplier,
-        uint256 lastUpdateTime,
-        uint256 updateTime,
+        uint256 lastApplicationTime,
+        uint256 applicationTime,
         uint256 indexed paymentPeriod,
         int256 indexed latestFundingRate,
         int256 periodRate
@@ -85,24 +85,56 @@ abstract contract FundingRateApplier is Testable, Lockable {
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _fundingRateRewardRate Reward rate to pay FundingRateStore.
      */
-    constructor(address _finderAddress, FixedPoint.Unsigned memory _fundingRateRewardRate) public {
-        finder = FinderInterface(_finderAddress);
+    constructor(
+        FixedPoint.Unsigned memory _fundingRateRewardRate,
+        bytes32 _fundingRateIdentifier,
+        address _collateralAddress,
+        address _finderAddress,
+        address _timerAddress
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+        fundingRate.updateTime = getCurrentTime();
 
-        lastUpdateTime = getCurrentTime();
+        // Seed the cumulative multiplier as 1, from which it will be scaled as funding rates are applied over time.
+        fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
 
-        // Seed the initial funding rate in the cumulativeFundingRateMultiplier 1.
-        cumulativeFundingRateMultiplier = FixedPoint.fromUnscaledUint(1);
-
-        // Set funding rate reward rate for this contract.
-        _getFundingRateStore().setRewardRate(address(this), _fundingRateRewardRate);
-        rewardRate = _fundingRateRewardRate;
+        fundingRate.rewardRate = _fundingRateRewardRate;
+        fundingRate.identifier = _fundingRateIdentifier;
     }
 
-    function proposeNewRate(FixedPoint.Signed memory rate) external updateFundingRate() {
-        require(fundingRateProposalTime == 0, "Proposal in progress");
-        if (fundingRateProposalTime == 0) {
-            // Compute fees and request.
-        }
+    function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
+        external
+        nonReentrant()
+        updateFundingRate()
+    {
+        require(fundingRate.proposalTime == 0, "Proposal in progress");
+
+        // Timestamp must be after the last funding rate update time, within the last 30 minutes, and it cannot be more than 90 seconds ahead of the block timestamp.
+        uint256 currentTime = getCurrentTime();
+        uint256 updateTime = fundingRate.updateTime;
+        require(
+            timestamp > updateTime && timestamp > currentTime.sub(30 minutes) && timestamp < currentTime.add(90),
+            "Invalid proposal time"
+        );
+
+        OptimisticOracle optimisticOracle = _getOptimisticOracle();
+
+        // Compute reward.
+        FixedPoint.Unsigned memory reward = _pfc().mul(fundingRate.rewardRate).mul(timestamp.sub(updateTime));
+
+        // Approve optmistic oracle to pull reward.
+        collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), reward.rawValue);
+
+        // Set up optmistic oracle.
+        bytes32 identifier = fundingRate.identifier;
+        uint256 bondToPay = optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, reward.rawValue);
+        optimisticOracle.setRefundOnDispute(identifier, timestamp);
+
+        // TODO: set custom bond amount?
+
+        // Pull bond from caller and send to optimistic oracle.
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), bondToPay);
+        collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), bondToPay);
+        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
@@ -113,11 +145,7 @@ abstract contract FundingRateApplier is Testable, Lockable {
         view
         returns (FixedPoint.Unsigned memory tokenDebt)
     {
-        return rawTokenDebt.mul(cumulativeFundingRateMultiplier);
-    }
-
-    function _getFundingRateStore() internal view returns (FundingRateStoreInterface) {
-        return FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
+        return rawTokenDebt.mul(fundingRate.cumulativeMultiplier);
     }
 
     function _getOptimisticOracle() internal view returns (OptimisticOracle) {
@@ -125,14 +153,25 @@ abstract contract FundingRateApplier is Testable, Lockable {
     }
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
-        if (fundingRateProposalTime != 0) {
+        if (fundingRate.proposalTime != 0) {
             // Attempt to update the funding rate.
-            try _getOptimisticOracle().getPrice(fundingRateIdentifier, fundingRateProposalTime) returns (int256 price) {
-                fundingRate = FixedPoint.Signed(price);
-                fundingRateProposalTime = 0;
-            } catch {}
+            OptimisticOracle optimisticOracle = _getOptimisticOracle();
+            OptimisticOracle.State state =
+                optimisticOracle.getState(address(this), fundingRate.identifier, fundingRate.proposalTime);
+
+            if (state == OptimisticOracle.State.Disputed) {
+                // If disputed, gulp the refund and reset the proposal so new proposals can come in.
+                fundingRate.proposalTime = 0;
+                _gulp();
+            } else if (state == OptimisticOracle.State.Resolved || state == OptimisticOracle.State.Expired) {
+                // If resolved, pull in a new price.
+                fundingRate.rate = FixedPoint.Signed(
+                    optimisticOracle.getPrice(fundingRate.identifier, fundingRate.proposalTime)
+                );
+                fundingRate.proposalTime = 0;
+            }
         }
-        return _getFundingRateStore().getFundingRateForContract(address(this));
+        return fundingRate.rate;
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
@@ -142,27 +181,27 @@ abstract contract FundingRateApplier is Testable, Lockable {
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
         uint256 currentTime = getCurrentTime();
-        uint256 paymentPeriod = currentTime.sub(lastUpdateTime);
+        uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 
         FixedPoint.Signed memory _latestFundingRatePerSecond = _getLatestFundingRate();
 
         FixedPoint.Signed memory periodRate;
-        (cumulativeFundingRateMultiplier, periodRate) = _calculateEffectiveFundingRate(
+        (fundingRate.cumulativeMultiplier, periodRate) = _calculateEffectiveFundingRate(
             paymentPeriod,
             _getLatestFundingRate(),
-            cumulativeFundingRateMultiplier
+            fundingRate.cumulativeMultiplier
         );
 
         emit NewFundingRate(
-            cumulativeFundingRateMultiplier.rawValue,
-            lastUpdateTime,
+            fundingRate.cumulativeMultiplier.rawValue,
+            fundingRate.applicationTime,
             currentTime,
             paymentPeriod,
             _latestFundingRatePerSecond.rawValue,
             periodRate.rawValue
         );
 
-        lastUpdateTime = currentTime;
+        fundingRate.applicationTime = currentTime;
     }
 
     function _calculateEffectiveFundingRate(

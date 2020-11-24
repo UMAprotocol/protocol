@@ -106,9 +106,9 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         IERC20 currency,
         uint256 reward
-    ) external nonReentrant() {
-        bytes32 id = getId(msg.sender, identifier, timestamp);
-        require(_getState(msg.sender, identifier, timestamp) == State.Invalid, "requestPrice: Invalid");
+    ) external nonReentrant() returns (uint256 totalBond) {
+        bytes32 id = _getId(msg.sender, identifier, timestamp);
+        require(getState(msg.sender, identifier, timestamp) == State.Invalid, "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
@@ -132,21 +132,24 @@ contract OptimisticOracle is Testable, Lockable {
         }
 
         emit RequestPrice(msg.sender, identifier, timestamp);
+
+        return finalFee.mul(2);
     }
 
     function setBond(
         bytes32 identifier,
         uint256 timestamp,
         uint256 bond
-    ) external nonReentrant() {
+    ) external nonReentrant() returns (uint256 totalBond) {
         Request storage request = _getRequest(msg.sender, identifier, timestamp);
-        require(_getState(msg.sender, identifier, timestamp) == State.Requested, "setBond: Requested");
+        require(getState(msg.sender, identifier, timestamp) == State.Requested, "setBond: Requested");
         request.bond = bond;
+        return bond.add(request.finalFee);
     }
 
     function setRefundOnDispute(bytes32 identifier, uint256 timestamp) external nonReentrant() {
         Request storage request = _getRequest(msg.sender, identifier, timestamp);
-        require(_getState(msg.sender, identifier, timestamp) == State.Requested, "setRefundOnDispute: Requested");
+        require(getState(msg.sender, identifier, timestamp) == State.Requested, "setRefundOnDispute: Requested");
         request.refundOnDispute = true;
     }
 
@@ -157,7 +160,7 @@ contract OptimisticOracle is Testable, Lockable {
     ) external nonReentrant() {
         Request storage request = _getRequest(msg.sender, identifier, timestamp);
         _validateLiveness(customLiveness);
-        require(_getState(msg.sender, identifier, timestamp) == State.Requested, "setCustomLiveness: Requested");
+        require(getState(msg.sender, identifier, timestamp) == State.Requested, "setCustomLiveness: Requested");
         request.customLiveness = customLiveness;
     }
 
@@ -169,7 +172,7 @@ contract OptimisticOracle is Testable, Lockable {
         int256 proposedPrice
     ) public nonReentrant() {
         Request storage request = _getRequest(requester, identifier, timestamp);
-        require(_getState(requester, identifier, timestamp) == State.Requested, "proposePriceFor: Requested");
+        require(getState(requester, identifier, timestamp) == State.Requested, "proposePriceFor: Requested");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
         // If a custom liveness has been set
@@ -182,7 +185,7 @@ contract OptimisticOracle is Testable, Lockable {
         emit ProposePrice(requester, proposer, identifier, timestamp, proposedPrice);
 
         // Callback.
-        try FundingRateRequester(requester).priceProposed(identifier, timestamp)  {} catch {}
+        try FundingRateRequester(requester).priceProposed(identifier, timestamp) {} catch {}
     }
 
     function proposePrice(
@@ -202,7 +205,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp
     ) public nonReentrant() {
         Request storage request = _getRequest(requester, identifier, timestamp);
-        require(_getState(requester, identifier, timestamp) == State.Proposed, "disputePriceFor: Proposed");
+        require(getState(requester, identifier, timestamp) == State.Proposed, "disputePriceFor: Proposed");
         request.disputer = disputer;
         request.currency.safeTransferFrom(msg.sender, address(this), request.bond.add(request.finalFee));
         _getOracle().requestPrice(identifier, timestamp);
@@ -221,7 +224,7 @@ contract OptimisticOracle is Testable, Lockable {
         emit DisputePrice(requester, request.proposer, disputer, identifier, timestamp);
 
         // Callback.
-        try FundingRateRequester(requester).priceDisputed(identifier, timestamp, refund)  {} catch {}
+        try FundingRateRequester(requester).priceDisputed(identifier, timestamp, refund) {} catch {}
     }
 
     function disputePrice(
@@ -234,7 +237,7 @@ contract OptimisticOracle is Testable, Lockable {
     }
 
     function getPrice(bytes32 identifier, uint256 timestamp) external nonReentrant() returns (int256) {
-        if (_getState(msg.sender, identifier, timestamp) != State.Settled) {
+        if (getState(msg.sender, identifier, timestamp) != State.Settled) {
             _settle(msg.sender, identifier, timestamp);
         }
 
@@ -249,11 +252,11 @@ contract OptimisticOracle is Testable, Lockable {
         _settle(requester, identifier, timestamp);
     }
 
-    function getId(
+    function _getId(
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) public pure returns (bytes32) {
+    ) private pure returns (bytes32) {
         return keccak256(abi.encodePacked(requester, identifier, timestamp));
     }
 
@@ -263,7 +266,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp
     ) private {
         Request storage request = _getRequest(requester, identifier, timestamp);
-        State state = _getState(requester, identifier, timestamp);
+        State state = getState(requester, identifier, timestamp);
 
         // Set it to settled so this function can never be entered again.
         request.settled = true;
@@ -286,7 +289,15 @@ contract OptimisticOracle is Testable, Lockable {
         emit Settle(requester, request.proposer, request.disputer, identifier, timestamp, request.resolvedPrice);
 
         // Callback.
-        try FundingRateRequester(requester).priceSettled(identifier, timestamp, request.resolvedPrice)  {} catch {}
+        try FundingRateRequester(requester).priceSettled(identifier, timestamp, request.resolvedPrice) {} catch {}
+    }
+
+    function getRequest(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp
+    ) public view returns (Request memory) {
+        return _getRequest(requester, identifier, timestamp);
     }
 
     function _getRequest(
@@ -294,14 +305,14 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp
     ) private view returns (Request storage) {
-        return requests[getId(requester, identifier, timestamp)];
+        return requests[_getId(requester, identifier, timestamp)];
     }
 
-    function _getState(
+    function getState(
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) private view returns (State) {
+    ) public view returns (State) {
         Request storage request = _getRequest(requester, identifier, timestamp);
 
         if (address(request.currency) == address(0)) {

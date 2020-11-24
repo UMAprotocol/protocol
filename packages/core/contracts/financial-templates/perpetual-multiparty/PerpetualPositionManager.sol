@@ -23,7 +23,7 @@ import "../common/FundingRateApplier.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
+contract PerpetualPositionManager is FundingRateApplier {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -158,8 +158,13 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         address _excessTokenBeneficiary
     )
         public
-        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateRewardRate)
+        FundingRateApplier(
+            _fundingRateRewardRate,
+            _fundingRateIdentifier,
+            _collateralAddress,
+            _finderAddress,
+            _timerAddress
+        )
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -528,7 +533,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
-    function applyFundingRate() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function applyFundingRate() external notEmergencyShutdown() nonReentrant() updateFundingRate() {
         return;
     }
 
@@ -538,7 +543,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function emergencyShutdown() external override notEmergencyShutdown() nonReentrant() updateFundingRate() {
         require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
         emergencyShutdownTimestamp = getCurrentTime();
@@ -555,25 +560,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      */
     function remargin() external override {
         return;
-    }
-
-    /**
-     * @notice Drains any excess balance of the provided ERC20 token to a pre-selected beneficiary.
-     * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
-     * @param token address of the ERC20 token whose excess balance should be drained.
-     */
-    function trimExcess(IERC20 token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
-
-        if (address(token) == address(collateralCurrency)) {
-            // If it is the collateral currency, send only the amount that the contract is not tracking.
-            // Note: this could be due to rounding error or balance-changing tokens, like aTokens.
-            amount = balance.sub(_pfc());
-        } else {
-            // If it's not the collateral currency, send the entire balance.
-            amount = balance;
-        }
-        token.safeTransfer(excessTokenBeneficiary, amount.rawValue);
     }
 
     /**
