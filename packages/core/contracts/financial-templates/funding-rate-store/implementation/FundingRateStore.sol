@@ -323,8 +323,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
 
         // Compute proposal bond.
         RecordParamsForContract storage recordParam = recordParams[perpetual];
-        FixedPoint.Unsigned memory proposalBond =
-            recordParam.current.proposerBondPct.mul(AdministrateeInterface(perpetual).pfc());
+        FixedPoint.Unsigned memory proposalBond = recordParam.current.proposerBondPct.mul(_getPfc(perpetual));
 
         // Enqueue proposal.
         fundingRateRecord.proposal = Proposal({
@@ -546,7 +545,7 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
         fundingRateRecord.proposeTime = fundingRateRecord.proposal.time;
 
         // Calculate reward for proposer using saved reward rate and current perpetual PfC.
-        FixedPoint.Unsigned memory pfc = AdministrateeInterface(perpetual).pfc();
+        FixedPoint.Unsigned memory pfc = _getPfc(perpetual);
         FixedPoint.Unsigned memory rewardRate = fundingRateRecord.proposal.rewardRate;
         FixedPoint.Unsigned memory reward = rewardRate.mul(pfc);
 
@@ -697,6 +696,10 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable, Owna
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _getPfc(address perpetual) internal view returns (FixedPoint.Unsigned memory) {
+        return AdministrateeInterface(perpetual).pfc();
     }
 
     function _pendingRewardProposalPassed(address perpetual) internal view returns (bool) {
