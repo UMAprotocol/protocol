@@ -88,6 +88,8 @@ contract("FundingRateApplier", function() {
     });
     await timer.setCurrentTime(startingTime.add(toBN(5)).toString());
     startingTime = await timer.getCurrentTime();
+
+    // Update and check event
     const applyPositiveRate = await fundingRateApplier.applyFundingRate();
     let newFundingRateMultiplier = await fundingRateApplier.cumulativeFundingRateMultiplier();
     assert.equal(newFundingRateMultiplier, toWei("1.05"));
