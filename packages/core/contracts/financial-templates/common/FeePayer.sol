@@ -258,4 +258,8 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
         cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
+
+    function _gulpExtraFunds() internal {
+        FixedPoint.Unsigned memory currentPfc = _pfc();
+    }
 }
