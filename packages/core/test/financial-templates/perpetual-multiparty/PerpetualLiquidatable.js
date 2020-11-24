@@ -1570,7 +1570,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Reset final fee to 0 post liquidation.
       await store.setFinalFee(collateralToken.address, { rawValue: "0" });
 
-      // Mint final fee amount to disputer
+      // Mint final fee amount to disputer.
       await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
 
       // Dispute the created liquidation
