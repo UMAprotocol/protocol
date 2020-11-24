@@ -696,9 +696,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory price) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        int256 oraclePrice = _getOracle().getPrice(priceIdentifier, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
