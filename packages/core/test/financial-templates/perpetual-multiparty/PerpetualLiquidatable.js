@@ -1443,7 +1443,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Set final fee before initiating the liquidation.
       await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
 
-      // Transfer synthetic tokens to a liquidator
+      // Transfer synthetic tokens to a liquidator.
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
       // Mint a single collateral token for the liquidator.
