@@ -1355,10 +1355,6 @@ contract("PerpetualLiquidatable", function(accounts) {
           });
           await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
-          // const adjustedDisputerReward = disputerDisputeReward.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
-          // const adjustedSponsorReward = disputerDisputeReward.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
-          // const adjustedTRV = settlementTRV.mul(toBN(toWei("0.95"))).div(toBN(toWei("1")));
-
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
           // Expected Disputer payment => disputer reward + dispute bond + final fee
