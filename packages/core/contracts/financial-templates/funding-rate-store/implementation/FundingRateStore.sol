@@ -261,14 +261,13 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
 
         // Calculate and store reward %. Note that because this saved data is a percent, the actual reward
         // will vary at publish time depending on the `perpetual`'s PfC at that time.
-        FixedPoint.Unsigned memory rewardRate =
-            _calculateProposalRewardPct(
-                perpetual,
-                fundingRateRecord.proposeTime,
-                currentTime,
-                rate,
-                fundingRateRecord.rate
-            );
+        FixedPoint.Unsigned memory rewardRate = _calculateProposalRewardPct(
+            perpetual,
+            fundingRateRecord.proposeTime,
+            currentTime,
+            rate,
+            fundingRateRecord.rate
+        );
 
         // Compute proposal bond.
         FixedPoint.Unsigned memory proposalBond = proposalBondPct.mul(AdministrateeInterface(perpetual).pfc());
@@ -354,13 +353,16 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // Get the returned funding rate from the oracle. If this has not yet resolved will revert.
         // If the fundingRateDispute struct has been deleted, then this call will also fail because the proposal
         // time will be 0.
-        FixedPoint.Signed memory settlementRate =
-            _getOraclePrice(PerpetualInterface(perpetual).getFundingRateIdentifier(), proposalTime);
+        FixedPoint.Signed memory settlementRate = _getOraclePrice(
+            PerpetualInterface(perpetual).getFundingRateIdentifier(),
+            proposalTime
+        );
 
         // Dispute was successful if settled rate is different from proposed rate.
         bool disputeSucceeded = !settlementRate.isEqual(fundingRateDispute.proposal.rate);
-        address proposer =
-            disputeSucceeded ? fundingRateDispute.proposal.disputer : fundingRateDispute.proposal.proposer;
+        address proposer = disputeSucceeded
+            ? fundingRateDispute.proposal.disputer
+            : fundingRateDispute.proposal.proposer;
         emit DisputedRateSettled(
             perpetual,
             proposalTime,
@@ -375,8 +377,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             // If dispute succeeds:
             // - Disputer earns back their bonds: dispute bond + final fee bond
             // - Disputer earns as reward: the proposal bond
-            FixedPoint.Unsigned memory disputerRebate =
-                fundingRateDispute.proposal.proposalBond.add(fundingRateDispute.proposal.finalFee);
+            FixedPoint.Unsigned memory disputerRebate = fundingRateDispute.proposal.proposalBond.add(
+                fundingRateDispute.proposal.finalFee
+            );
             FixedPoint.Unsigned memory disputerReward = fundingRateDispute.proposal.proposalBond;
 
             collateralCurrency.safeTransfer(
@@ -387,8 +390,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
             // If dispute fails:
             // - Proposer earns back their bonds: proposal bond + final fee bond
             // - Proposer earns as reward: the dispute bond
-            FixedPoint.Unsigned memory proposerRebate =
-                fundingRateDispute.proposal.proposalBond.add(fundingRateDispute.proposal.finalFee);
+            FixedPoint.Unsigned memory proposerRebate = fundingRateDispute.proposal.proposalBond.add(
+                fundingRateDispute.proposal.finalFee
+            );
             FixedPoint.Unsigned memory proposerReward = fundingRateDispute.proposal.proposalBond;
 
             collateralCurrency.safeTransfer(
@@ -475,8 +479,9 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         // Note: Proposer always receives rebates for their bonds, but may not receive their proposer reward if the
         // perpetual fails to send fees.
         IERC20 collateralCurrency = IERC20(PerpetualInterface(perpetual).getCollateralCurrency());
-        FixedPoint.Unsigned memory amountToPay =
-            fundingRateRecord.proposal.finalFee.add(fundingRateRecord.proposal.proposalBond);
+        FixedPoint.Unsigned memory amountToPay = fundingRateRecord.proposal.finalFee.add(
+            fundingRateRecord.proposal.proposalBond
+        );
         try PerpetualInterface(perpetual).withdrawFundingRateFees(reward) returns (
             FixedPoint.Unsigned memory rewardWithdrawn
         ) {
@@ -549,14 +554,14 @@ contract FundingRateStore is FundingRateStoreInterface, Testable, Lockable {
         //    - reward = reward * (1 + (proposedRate - currentRate) / currentRate)
         // Or, if currentRate = 0:
         //    - reward = reward * (1 + (proposedRate - currentRate))
-        FixedPoint.Signed memory diffPercent =
-            (currentRate.isEqual(0) ? currentRate.sub(proposedRate) : currentRate.sub(proposedRate).div(currentRate));
-        FixedPoint.Unsigned memory absDiffPercent =
-            (
-                diffPercent.isLessThan(FixedPoint.fromUnscaledInt(0))
-                    ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
-                    : FixedPoint.fromSigned(diffPercent)
-            );
+        FixedPoint.Signed memory diffPercent = (
+            currentRate.isEqual(0) ? currentRate.sub(proposedRate) : currentRate.sub(proposedRate).div(currentRate)
+        );
+        FixedPoint.Unsigned memory absDiffPercent = (
+            diffPercent.isLessThan(FixedPoint.fromUnscaledInt(0))
+                ? FixedPoint.fromSigned(diffPercent.mul(FixedPoint.fromUnscaledInt(-1)))
+                : FixedPoint.fromSigned(diffPercent)
+        );
         // TODO: Set an arbitrary 200% ceiling on the value of `absDiffPercent` so this factor at most triples the reward:
         // - if (absDiffPercent > 2) then reward = reward * 3
         // - else reward = reward * (1 + absDiffPercent)

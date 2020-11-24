@@ -74,8 +74,9 @@ abstract contract FundingRatePayer is FeePayer, PerpetualInterface {
         nonReentrant()
         returns (FixedPoint.Unsigned memory)
     {
-        FundingRateStoreInterface fundingRateStore =
-            FundingRateStoreInterface(finder.getImplementationAddress("FundingRateStore"));
+        FundingRateStoreInterface fundingRateStore = FundingRateStoreInterface(
+            finder.getImplementationAddress("FundingRateStore")
+        );
         FixedPoint.Unsigned memory collateralPool = _pfc();
         // If amount to pay or collateral pool is 0, then return early.
         if (amount.isEqual(0) || collateralPool.isEqual(0)) {

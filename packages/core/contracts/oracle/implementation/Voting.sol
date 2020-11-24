@@ -494,12 +494,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
         Round storage round = rounds[roundId];
         bool isExpired = blockTime > round.rewardsExpirationTime;
-        FixedPoint.Unsigned memory snapshotBalance =
-            FixedPoint.Unsigned(votingToken.balanceOfAt(voterAddress, round.snapshotId));
+        FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
+            votingToken.balanceOfAt(voterAddress, round.snapshotId)
+        );
 
         // Compute the total amount of reward that will be issued for each of the votes in the round.
-        FixedPoint.Unsigned memory snapshotTotalSupply =
-            FixedPoint.Unsigned(votingToken.totalSupplyAt(round.snapshotId));
+        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(
+            votingToken.totalSupplyAt(round.snapshotId)
+        );
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
@@ -524,10 +526,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed
                 // and was correct, so they are eligible for a reward.
                 // Compute the reward and add to the cumulative reward.
-                FixedPoint.Unsigned memory reward =
-                    snapshotBalance.mul(totalRewardPerVote).div(
-                        voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
-                    );
+                FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(
+                    voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
+                );
                 totalRewardToIssue = totalRewardToIssue.add(reward);
 
                 // Emit reward retrieval for this vote.
@@ -669,8 +670,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             return (false, 0, "Current voting round not ended");
         } else if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (, int256 resolvedPrice) =
-                voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (, int256 resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(priceRequest.lastVotingRound)
+            );
             return (true, resolvedPrice, "");
         } else if (requestStatus == RequestStatus.Future) {
             return (false, 0, "Price is still to be voted on");
@@ -711,8 +713,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         if (priceRequest.index == UINT_MAX) {
             return;
         }
-        (bool isResolved, int256 resolvedPrice) =
-            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+        (bool isResolved, int256 resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            _computeGat(priceRequest.lastVotingRound)
+        );
         require(isResolved, "Can't resolve unresolved request");
 
         // Delete the resolved price request from pendingPriceRequests.
@@ -750,8 +753,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             return RequestStatus.NotRequested;
         } else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            (bool isResolved, ) =
-                voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+            (bool isResolved, ) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(priceRequest.lastVotingRound)
+            );
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) {
             return RequestStatus.Active;
