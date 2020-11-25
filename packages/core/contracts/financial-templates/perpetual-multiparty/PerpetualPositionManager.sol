@@ -332,6 +332,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
         notEmergencyShutdown()
+        noPendingWithdrawal(msg.sender)
         fees()
         updateFundingRate()
         nonReentrant()
@@ -347,7 +348,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
             "Insufficient collateral"
         );
 
-        require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
             emit NewSponsor(msg.sender);

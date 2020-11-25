@@ -424,6 +424,7 @@ contract PricelessPositionManager is FeePayer {
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
         onlyPreExpiration()
+        noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
     {
@@ -438,7 +439,6 @@ contract PricelessPositionManager is FeePayer {
             "Insufficient collateral"
         );
 
-        require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
             emit NewSponsor(msg.sender);
