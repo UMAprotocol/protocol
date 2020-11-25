@@ -61,6 +61,8 @@ abstract contract FundingRateApplier is FeePayer {
 
     FundingRate public fundingRate;
 
+    uint256 emergencyShutdownTimestamp;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -86,7 +88,6 @@ abstract contract FundingRateApplier is FeePayer {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
-     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore.
      */
     constructor(
         FixedPoint.Unsigned memory _fundingRateBondPercentage,
@@ -100,6 +101,7 @@ abstract contract FundingRateApplier is FeePayer {
 
         // Seed the cumulative multiplier as 1, from which it will be scaled as funding rates are applied over time.
         fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
+        emergencyShutdownTimestamp = 0;
 
         fundingRate.rewardRate = _fundingRateRewardRate;
         fundingRate.identifier = _fundingRateIdentifier;
@@ -211,6 +213,11 @@ abstract contract FundingRateApplier is FeePayer {
     // Note: 1 is set as the neutral rate because there are no negative numbers in FixedPoint, so we decide to treat
     // values < 1 as "negative".
     function _applyEffectiveFundingRate() internal {
+        // If contract is emergency shutdown, then the funding rate multiplier should no longer change.
+        if (emergencyShutdownTimestamp != 0) {
+            return;
+        }
+
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 

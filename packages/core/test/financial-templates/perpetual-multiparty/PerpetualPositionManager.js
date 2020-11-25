@@ -146,7 +146,6 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -175,11 +174,9 @@ contract("PerpetualPositionManager", function(accounts) {
       fundingRateStore = await FundingRateStore.new(
         4, // Proposal liveness of 4 seconds
         finder.address,
-        timer.address,
-        {
-          rawValue: "0" // Proposal bond should not affect how the Perpetual contract works so we leave this at 0.
-        }
+        timer.address
       );
+
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.FundingRateStore), fundingRateStore.address, {
         from: contractDeployer
       });
@@ -192,19 +189,30 @@ contract("PerpetualPositionManager", function(accounts) {
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
         fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-        { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
         { rawValue: minSponsorTokens }, // _minSponsorTokens
         timer.address, // _timerAddress
         beneficiary, // _excessTokenBeneficiary
         { from: contractDeployer }
       );
 
+      // Set reward rate for new perpetual.
+      const newParams = {
+        paramUpdateLiveness: 0,
+        rewardRatePerSecond: { rawValue: fundingRateRewardRate },
+        proposerBondPct: { rawValue: toWei("0") }
+      };
+      await fundingRateStore.setRecordParams(positionManager.address, newParams, { from: contractDeployer });
+      // Its important that we save the `rewardRate`, via any contract call, before we increment time,
+      // otherwise the reward will not tick as time increases.
+      await fundingRateStore.withdrawProposalRewards(positionManager.address);
+
       // Give contract owner permissions.
       await tokenCurrency.addMinter(positionManager.address);
       await tokenCurrency.addBurner(positionManager.address);
 
       // Funding rate reward for this contract is 0.01%.
-      // Advance time 1 second into future, so base reward % should be 0.01%.
+      // Advance time 1 second into future (from start of last published recordParams),
+      // so base reward % should be 0.01%.
       await incrementTime(fundingRateStore, 1);
 
       // Propose a new funding rate. No need to set any allowances since final fee and proposal bond are 0.
@@ -340,7 +348,6 @@ contract("PerpetualPositionManager", function(accounts) {
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-          { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           timer.address, // _timerAddress
           beneficiary, // _excessTokenBeneficiary
@@ -367,7 +374,6 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary
@@ -1060,8 +1066,7 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Test that regular fees accrue after an emergency shutdown is triggered.
-    const shutdown = await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
-    truffleAssert.eventNotEmitted(shutdown, "EmergencyShutdown");
+    await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
 
     // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
@@ -1899,7 +1904,6 @@ contract("PerpetualPositionManager", function(accounts) {
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
     const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
-
     let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
@@ -1907,7 +1911,6 @@ contract("PerpetualPositionManager", function(accounts) {
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
-      { rawValue: fundingRateRewardRate }, // _fundingRateRewardRate
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       timer.address, // _timerAddress
       beneficiary, // _excessTokenBeneficiary

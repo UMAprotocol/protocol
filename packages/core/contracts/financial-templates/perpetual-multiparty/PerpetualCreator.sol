@@ -126,7 +126,6 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.fundingRateIdentifier = params.fundingRateIdentifier;
         constructorParams.collateralRequirement = params.collateralRequirement;
-        constructorParams.fundingRateRewardRate = params.fundingRateRewardRate;
         constructorParams.disputeBondPct = params.disputeBondPct;
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;

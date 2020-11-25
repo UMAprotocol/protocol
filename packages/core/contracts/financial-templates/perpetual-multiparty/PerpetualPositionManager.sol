@@ -75,9 +75,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     // Expiry price pulled from the DVM in the case of an emergency shutdown.
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
-    // Timestamp used in case of emergency shutdown.
-    uint256 public emergencyShutdownTimestamp;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -137,7 +134,6 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      */
