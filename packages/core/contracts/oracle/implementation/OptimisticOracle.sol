@@ -156,8 +156,8 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         uint256 customLiveness
     ) external nonReentrant() {
-        _validateLiveness(customLiveness);
         require(getState(msg.sender, identifier, timestamp) == State.Requested, "setCustomLiveness: Requested");
+        _validateLiveness(customLiveness);
         _getRequest(msg.sender, identifier, timestamp).customLiveness = customLiveness;
     }
 
