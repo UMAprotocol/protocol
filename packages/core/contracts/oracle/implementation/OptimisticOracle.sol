@@ -92,9 +92,9 @@ contract OptimisticOracle is Testable, Lockable {
     uint256 public defaultLiveness;
 
     constructor(
+        uint256 _liveness,
         address _finderAddress,
-        address _timerAddress,
-        uint256 _liveness
+        address _timerAddress
     ) public Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         _validateLiveness(_liveness);
@@ -263,19 +263,20 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp
     ) private {
+        State state = getState(requester, identifier, timestamp);
+
         // Set it to settled so this function can never be entered again.
         Request storage request = _getRequest(requester, identifier, timestamp);
         request.settled = true;
 
-        State state = getState(requester, identifier, timestamp);
         if (state == State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
             request.resolvedPrice = request.proposedPrice;
             request.currency.safeTransfer(request.proposer, request.bond.add(request.finalFee).add(request.reward));
         } else if (state == State.Resolved) {
-            // In the Resolved
+            // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(identifier, timestamp);
-            bool disputeSuccess = request.resolvedPrice == request.proposedPrice;
+            bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 payout = request.bond.mul(2).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
         } else {

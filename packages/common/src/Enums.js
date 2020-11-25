@@ -43,11 +43,22 @@ const PriceRequestStatusEnum = {
   FUTURE: "3"
 };
 
+const OptimisticOracleRequestStatesEnum = {
+  INVALID: "0",
+  REQUESTED: "1",
+  PROPOSED: "2",
+  EXPIRED: "3",
+  DISPUTED: "4",
+  RESOLVED: "5",
+  SETTLED: "6"
+};
+
 module.exports = {
   RegistryRolesEnum,
   VotePhasesEnum,
   LiquidationStatesEnum,
   PostWithdrawLiquidationRewardsStatusTranslations,
   PositionStatesEnum,
-  PriceRequestStatusEnum
+  PriceRequestStatusEnum,
+  OptimisticOracleRequestStatesEnum
 };
