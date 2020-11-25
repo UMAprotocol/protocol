@@ -146,7 +146,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigSettings memory config) internal pure {
         // Make sure updateLiveness is not too long, otherwise contract can might not be able to fix itself
-        // before a vulnerability drains its collateral.
+        // before a vulnerability drains its collateral. e.g. 604800 = 7 days.
         require(config.updateLiveness <= 604800, "Invalid paramUpdateLiveness");
     }
 }
