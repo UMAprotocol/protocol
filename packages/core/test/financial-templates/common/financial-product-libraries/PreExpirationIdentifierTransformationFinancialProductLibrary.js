@@ -1,4 +1,4 @@
-const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
+const { didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
