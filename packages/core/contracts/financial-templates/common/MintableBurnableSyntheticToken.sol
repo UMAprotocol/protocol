@@ -23,20 +23,20 @@ contract MintableBurnableSyntheticToken is MintableBurnableERC20, Lockable {
 
     /**
      * @notice Add Minter role to account.
-     * @dev The caller must have the Owner role.
+     * @dev The caller must have the Admin role.
      * @param account The address to which the Minter role is added.
      */
-    function addMinter(address account) external override nonReentrant() {
-        grantRole(MINTER_ROLE, account);
+    function addMinter(address account) public override nonReentrant() {
+        super.addMinter(account);
     }
 
     /**
      * @notice Add Burner role to account.
-     * @dev The caller must have the Owner role.
+     * @dev The caller must have the Admin role.
      * @param account The address to which the Burner role is added.
      */
-    function addBurner(address account) external override nonReentrant() {
-        grantRole(BURNER_ROLE, account);
+    function addBurner(address account) public override nonReentrant() {
+        super.addBurner(account);
     }
 
     /**
@@ -44,29 +44,8 @@ contract MintableBurnableSyntheticToken is MintableBurnableERC20, Lockable {
      * @dev The caller must have the Admin role.
      * @param account The address to which the Admin role is added.
      */
-    function addAdmin(address account) external override nonReentrant() {
-        grantRole(DEFAULT_ADMIN_ROLE, account);
-    }
-
-    /**
-     * @notice Minter renounce to MINTER_ROLE
-     */
-    function renounceMinter() external override nonReentrant() {
-        renounceRole(MINTER_ROLE, msg.sender);
-    }
-
-    /**
-     * @notice Minter renounce to BURNER_ROLE
-     */
-    function renounceBurner() external override nonReentrant() {
-        renounceRole(BURNER_ROLE, msg.sender);
-    }
-
-    /**
-     * @notice Admin renounce to DEFAULT_ADMIN_ROLE
-     */
-    function renounceAdmin() external override nonReentrant() {
-        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    function addAdmin(address account) public override nonReentrant() {
+        super.addAdmin(account);
     }
 
     /**
@@ -74,19 +53,36 @@ contract MintableBurnableSyntheticToken is MintableBurnableERC20, Lockable {
      * @dev The caller must have the Admin role.
      * @param account The address to which the Admin, Minter and Burner roles are added.
      */
-    function addAdminAndMinterAndBurner(address account) external override nonReentrant() {
-        grantRole(DEFAULT_ADMIN_ROLE, account);
-        grantRole(MINTER_ROLE, account);
-        grantRole(BURNER_ROLE, account);
+    function addAdminAndMinterAndBurner(address account) public override nonReentrant() {
+        super.addAdminAndMinterAndBurner(account);
+    }
+
+    /**
+     * @notice Minter renounce to MINTER_ROLE
+     */
+    function renounceMinter() public override nonReentrant() {
+        super.renounceMinter();
+    }
+
+    /**
+     * @notice Minter renounce to BURNER_ROLE
+     */
+    function renounceBurner() public override nonReentrant() {
+        super.renounceBurner();
+    }
+
+    /**
+     * @notice Admin renounce to DEFAULT_ADMIN_ROLE
+     */
+    function renounceAdmin() public override nonReentrant() {
+        super.renounceAdmin();
     }
 
     /**
      * @notice Admin, Minter and Burner renounce to DEFAULT_ADMIN_ROLE, MINTER_ROLE and BURNER_ROLE
      */
-    function renounceAdminAndMinterAndBurner() external override nonReentrant() {
-        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        renounceRole(MINTER_ROLE, msg.sender);
-        renounceRole(BURNER_ROLE, msg.sender);
+    function renounceAdminAndMinterAndBurner() public override nonReentrant() {
+        super.renounceAdminAndMinterAndBurner();
     }
 
     /**

@@ -71,19 +71,19 @@ contract MintableBurnableERC20 is ERC20, MintableBurnableIERC20, AccessControl {
 
     /**
      * @notice Add Minter role to account.
-     * @dev The caller must have the Owner role.
+     * @dev The caller must have the admin role.
      * @param account The address to which the Minter role is added.
      */
-    function addMinter(address account) external virtual override {
+    function addMinter(address account) public virtual override {
         grantRole(MINTER_ROLE, account);
     }
 
     /**
      * @notice Add Burner role to account.
-     * @dev The caller must have the Owner role.
+     * @dev The caller must have the Admin role.
      * @param account The address to which the Burner role is added.
      */
-    function addBurner(address account) external virtual override {
+    function addBurner(address account) public virtual override {
         grantRole(BURNER_ROLE, account);
     }
 
@@ -92,7 +92,7 @@ contract MintableBurnableERC20 is ERC20, MintableBurnableIERC20, AccessControl {
      * @dev The caller must have the Admin role.
      * @param account The address to which the Admin role is added.
      */
-    function addAdmin(address account) external virtual override {
+    function addAdmin(address account) public virtual override {
         grantRole(DEFAULT_ADMIN_ROLE, account);
     }
 
@@ -101,7 +101,7 @@ contract MintableBurnableERC20 is ERC20, MintableBurnableIERC20, AccessControl {
      * @dev The caller must have the Admin role.
      * @param account The address to which the Admin, Minter and Burner roles are added.
      */
-    function addAdminAndMinterAndBurner(address account) external virtual override {
+    function addAdminAndMinterAndBurner(address account) public virtual override {
         grantRole(DEFAULT_ADMIN_ROLE, account);
         grantRole(MINTER_ROLE, account);
         grantRole(BURNER_ROLE, account);
@@ -110,28 +110,28 @@ contract MintableBurnableERC20 is ERC20, MintableBurnableIERC20, AccessControl {
     /**
      * @notice Minter renounce to MINTER_ROLE
      */
-    function renounceMinter() external virtual override {
+    function renounceMinter() public virtual override {
         renounceRole(MINTER_ROLE, msg.sender);
     }
 
     /**
      * @notice Minter renounce to BURNER_ROLE
      */
-    function renounceBurner() external virtual override {
+    function renounceBurner() public virtual override {
         renounceRole(BURNER_ROLE, msg.sender);
     }
 
     /**
      * @notice Admin renounce to DEFAULT_ADMIN_ROLE
      */
-    function renounceAdmin() external virtual override {
+    function renounceAdmin() public virtual override {
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
      * @notice Admin, Minter and Burner renounce to DEFAULT_ADMIN_ROLE, MINTER_ROLE and BURNER_ROLE
      */
-    function renounceAdminAndMinterAndBurner() external virtual override {
+    function renounceAdminAndMinterAndBurner() public virtual override {
         renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
         renounceRole(MINTER_ROLE, msg.sender);
         renounceRole(BURNER_ROLE, msg.sender);
