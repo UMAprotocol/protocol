@@ -58,12 +58,18 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      *                MODIFIERS             *
      ****************************************/
 
+    // Update config settings if possible.
     modifier updateConfig() {
-        // Update config settings if possible.
         _updateConfig();
         _;
     }
 
+    /**
+     * @notice Propose new configuration settings. New settings go into effect
+     * after a liveness period passes.
+     * @param _initialConfig Configuration settings to initialize `currentConfig` with.
+     * @param _timerAddress Address of testable Timer contract.
+     */
     constructor(ConfigSettings memory _initialConfig, address _timerAddress) public Testable(_timerAddress) {
         _validateConfig(_initialConfig);
         currentConfig = _initialConfig;
@@ -84,13 +90,11 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     /**
      * @notice Propose new configuration settings. New settings go into effect
      * after a liveness period passes.
+     * @param newConfig Configuration settings to publish after `currentConfig.updateLiveness` passes from now.
      * @dev Callable only by owner. Calling this while there is already a pending proposal
      * will overwrite the pending proposal.
      */
     function proposeNewConfig(ConfigSettings memory newConfig) external onlyOwner() nonReentrant() updateConfig() {
-        // Alternatively, we can revert if there is already a pending proposal.
-        // require(pendingPassedTimestamp == 0, "Pending proposal exists");
-
         _validateConfig(newConfig);
 
         // Warning: This overwrites a pending proposal!
