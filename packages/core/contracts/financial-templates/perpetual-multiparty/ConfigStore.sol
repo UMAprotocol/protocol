@@ -148,5 +148,10 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // Make sure updateLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral. e.g. 604800 = 7 days.
         require(config.updateLiveness <= 604800, "Invalid paramUpdateLiveness");
+
+        // Make reward rate and proposal bond percentage are less than 100% of PfC. 100% reward rate would
+        // take the entire perpetual's PfC after one successful proposal.
+        require(config.proposerBondPct.isLessThan(1), "Invalid proposerBondPct");
+        require(config.rewardRatePerSecond.isLessThan(1), "Invalid rewardRatePerSecond");
     }
 }

@@ -76,9 +76,24 @@ contract("ConfigStore", function(accounts) {
     });
 
     it("Invalid default values revert on construction", async function() {
+      // Invalid timelock
       let invalidConfig = {
         ...testConfig,
         updateLiveness: 604800 + 1
+      };
+      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
+
+      // Invalid reward rate
+      invalidConfig = {
+        ...testConfig,
+        rewardRatePerSecond: { rawValue: toWei("1.01") }
+      };
+      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
+
+      // Invalid proposal bond
+      invalidConfig = {
+        ...testConfig,
+        proposerBondPct: { rawValue: toWei("1.01") }
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
     });
