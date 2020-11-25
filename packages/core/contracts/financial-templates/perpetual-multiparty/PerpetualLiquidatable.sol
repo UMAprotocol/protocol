@@ -62,6 +62,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         address timerAddress;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
+        FixedPoint.Unsigned fundingRateBondPercentage;
         FixedPoint.Unsigned fundingRateRewardRate;
         FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
@@ -176,6 +177,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
+            params.fundingRateBondPercentage,
             params.fundingRateRewardRate,
             params.minSponsorTokens,
             params.timerAddress
@@ -225,8 +227,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         fees()
         notEmergencyShutdown()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (
             uint256 liquidationId,
             FixedPoint.Unsigned memory tokensLiquidated,
@@ -363,8 +365,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
@@ -413,8 +415,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (RewardsData memory)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);

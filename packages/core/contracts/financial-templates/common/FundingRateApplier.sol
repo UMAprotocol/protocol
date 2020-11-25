@@ -40,6 +40,8 @@ abstract contract FundingRateApplier is FeePayer {
         bytes32 identifier;
         // Per second reward paid to get funding rate proposers.
         FixedPoint.Unsigned rewardRate;
+        // Bond percentage.
+        FixedPoint.Unsigned bondPercentage;
         // Tracks the cumulative funding payments that have been paid to the sponsors.
         // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
         // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -52,7 +54,6 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 updateTime;
         // Most recent time that the funding rate was applied and changed the cumulative multiplier.
         uint256 applicationTime;
-
         // The time for the active (if it exists) funding rate proposal. 0 otherwise.
         uint256 proposalTime;
     }
@@ -87,6 +88,7 @@ abstract contract FundingRateApplier is FeePayer {
      * @param _fundingRateRewardRate Reward rate to pay FundingRateStore.
      */
     constructor(
+        FixedPoint.Unsigned memory _fundingRateBondPercentage,
         FixedPoint.Unsigned memory _fundingRateRewardRate,
         bytes32 _fundingRateIdentifier,
         address _collateralAddress,
@@ -100,6 +102,7 @@ abstract contract FundingRateApplier is FeePayer {
 
         fundingRate.rewardRate = _fundingRateRewardRate;
         fundingRate.identifier = _fundingRateIdentifier;
+        fundingRate.bondPercentage = _fundingRateBondPercentage;
     }
 
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
@@ -121,9 +124,9 @@ abstract contract FundingRateApplier is FeePayer {
 
         // Set up optmistic oracle.
         bytes32 identifier = fundingRate.identifier;
-        uint256 totalBond = optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
-
-        // TODO: set custom bond amount?
+        optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
+        uint256 totalBond =
+            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(fundingRate.bondPercentage).rawValue);
 
         // Pull bond from caller and send to optimistic oracle.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), totalBond);
@@ -146,51 +149,58 @@ abstract contract FundingRateApplier is FeePayer {
         return OptimisticOracle(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
-    function priceSettled(
-        bytes32 identifier,
-        uint256 timestamp,
-        int256 price
-    ) external nonReentrant() {
-        OptimisticOracle optimisticOracle = _getOptimisticOracle();
-        require(msg.sender == address(optimisticOracle) && identifier == fundingRate.identifier && timestamp != fundingRate.proposalTime && timestamp > fundingRate.updateTime, "Ignored Settlement");
-        fundingRate.updateTime = timestamp;
-        fundingRate.
-    }
+    // function priceSettled(
+    //     bytes32 identifier,
+    //     uint256 timestamp,
+    //     int256 price
+    // ) external nonReentrant() {
+    //     // Check to be sure this is a valid request that is NOT the currently proposed one.
+    //     require(msg.sender == address(_getOptimisticOracle()) && identifier == fundingRate.identifier && timestamp != fundingRate.proposalTime && timestamp > fundingRate.updateTime, "Irrelevant settlement");
+
+    //     // Set the update time and the rate. This doesn't affect any currently proposed request.
+    //     fundingRate.updateTime = timestamp;
+    //     fundingRate.rate = FixedPoint.Signed(price);
+    // }
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
-        if (fundingRate.proposalTime != 0) {
+        uint256 timestamp = fundingRate.proposalTime;
+        if (timestamp != 0) {
             // Attempt to update the funding rate.
             OptimisticOracle optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
-            uint256 timestamp = fundingRate.proposalTime;
-            uint256 timestamp 
 
-            OptimisticOracle.Request memory request = optimisticOracle.getRequest(address(this), identifier, timestamp);
-            try optimisticOracle.settle(address(this), identifier, timestamp) returns (int256 price) {
-                
-                if (timestamp >= fundingRate.updateTime) {
+            // Try to get the price from the optimistic oracle.
+            try optimisticOracle.getPrice(identifier, timestamp) returns (int256 price) {
+                // If successful, figure out the type of request.
+                OptimisticOracle.Request memory request =
+                    optimisticOracle.getRequest(address(this), identifier, timestamp);
+                uint256 lastUpdateTime = fundingRate.updateTime;
+
+                // If the request is more recent than the last update then we should update the funding rate.
+                if (timestamp >= lastUpdateTime) {
+                    // Update funding rates
                     fundingRate.rate = FixedPoint.Signed(price);
-                    
+                    fundingRate.updateTime = timestamp;
+
+                    // If there was no dispute, send a reward.
                     if (request.disputer == address(0)) {
-                        FixedPoint.Unsigned memory reward = _pfc().mul(fundingRate.rewardRate).mul(timestamp.sub(updateTime));
+                        FixedPoint.Unsigned memory reward =
+                            _pfc().mul(fundingRate.rewardRate).mul(timestamp.sub(lastUpdateTime));
+                        _adjustCumulativeFeeMultiplier(reward, _pfc());
+                        collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                     }
                 }
-            } catch {}
+
+                // Set proposal time to 0 since this proposal has now been resolved.
+                fundingRate.proposalTime = 0;
+            } catch {
+                // Stop tracking if in dispute to allow other proposals to come in.
+                if (optimisticOracle.getRequest(address(this), identifier, timestamp).disputer != address(0)) {
+                    fundingRate.proposalTime = 0;
+                }
+            }
         }
         return fundingRate.rate;
-    }
-
-    function _priceSettled(identifier, timestamp, price) internal {
-        
-    }
-
-    function _receivedNewPrice(OptimisticOracle.Request memory request, uint256 timestamp, int256 price) internal {
-        if (timestamp >= fundingRate.updateTime) {
-            if (timestamp)
-
-            fundingRate.rate = FixedPoint.Signed(price);
-            fundingRate.updateTime = timestamp;
-        }
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,

@@ -148,12 +148,14 @@ contract PerpetualPositionManager is FundingRateApplier {
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
+        FixedPoint.Unsigned memory _fundingRateBondPercentage,
         FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
     )
         public
         FundingRateApplier(
+            _fundingRateBondPercentage,
             _fundingRateRewardRate,
             _fundingRateIdentifier,
             _collateralAddress,
@@ -185,8 +187,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         PositionData storage positionData = _getPositionData(sponsor);
@@ -223,8 +225,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -252,8 +254,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         public
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
@@ -280,8 +282,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         external
         notEmergencyShutdown()
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -313,7 +315,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() updateFundingRate() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
@@ -337,8 +339,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         public
         notEmergencyShutdown()
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
     {
         PositionData storage positionData = positions[msg.sender];
 
@@ -386,8 +388,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
-        updateFundingRate()
         nonReentrant()
+        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -428,30 +430,8 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
-    function repay(FixedPoint.Unsigned memory numTokens)
-        public
-        notEmergencyShutdown()
-        noPendingWithdrawal(msg.sender)
-        fees()
-        updateFundingRate()
-        nonReentrant()
-    {
-        PositionData storage positionData = _getPositionData(msg.sender);
-        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
-
-        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
-        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
-        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
-        positionData.tokensOutstanding = newTokenCount;
-
-        // Update the totalTokensOutstanding after redemption.
-        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
-
-        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
-
-        // Transfer the tokens back from the sponsor and burn them.
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
-        tokenCurrency.burn(numTokens.rawValue);
+    function repay(FixedPoint.Unsigned memory numTokens) public {
+        deposit(redeem(numTokens));
     }
 
     /**

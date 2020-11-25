@@ -34,6 +34,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         FixedPoint.Unsigned fundingRateRewardRate;
+        FixedPoint.Unsigned fundingRateBondPercentage;
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned collateralRequirement;
@@ -132,6 +133,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
+        constructorParams.fundingRateBondPercentage = params.fundingRateBondPercentage;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
