@@ -14,7 +14,8 @@ import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../funding-rate-store/implementation/OptimisticOracle.sol";
+// TODO: point this at an interface instead.
+import "../../oracle/implementation/OptimisticOracle.sol";
 
 import "./FeePayer.sol";
 
@@ -112,7 +113,8 @@ abstract contract FundingRateApplier is FeePayer {
     {
         require(fundingRate.proposalTime == 0, "Proposal in progress");
 
-        // Timestamp must be after the last funding rate update time, within the last 30 minutes, and it cannot be more than 90 seconds ahead of the block timestamp.
+        // Timestamp must be after the last funding rate update time, within the last 30 minutes, and it cannot be more
+        // than 90 seconds ahead of the block timestamp.
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
         require(
