@@ -2116,6 +2116,28 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidationData[0].state.toString(), LiquidationStatesEnum.UNINITIALIZED);
       });
     });
+    describe("Can correctly handel reverting library call", () => {
+      beforeEach(async () => {
+        await financialProductLibraryTest.setShouldRevert(true);
+      });
+      it("Test Library reverts correctly", async () => {
+        assert.isTrue(await financialProductLibraryTest.shouldRevert());
+        assert(
+          await didContractThrow(
+            financialProductLibraryTest.transformCollateralRequirement(
+              { rawValue: toWei("10") },
+              { rawValue: collateralRequirement.toString() }
+            )
+          )
+        );
+      });
+      it("Liquidatable correctly applies no transformation to revetting library call", async () => {
+        assert.equal(
+          (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+          collateralRequirement.toString()
+        );
+      });
+    });
   });
 
   describe("Precision loss is handled as expected", () => {

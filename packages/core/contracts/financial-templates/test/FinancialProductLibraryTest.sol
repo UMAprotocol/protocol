@@ -6,6 +6,7 @@ import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 contract FinancialProductLibraryTest is FinancialProductLibrary {
     FixedPoint.Unsigned public priceTransformationScalar;
     FixedPoint.Unsigned public collateralRequirementTransformationScalar;
+    bool public shouldRevert;
 
     constructor(
         FixedPoint.Unsigned memory _priceTransformationScalar,
@@ -15,6 +16,11 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         collateralRequirementTransformationScalar = _collateralRequirementTransformationScalar;
     }
 
+    // Set the mocked methods to revert to test failed library computation.
+    function setShouldRevert(bool _shouldRevert) public {
+        shouldRevert = _shouldRevert;
+    }
+
     // Create a simple price transformation function that scales the input price by the scalar for testing.
     function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
         public
@@ -22,6 +28,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         override
         returns (FixedPoint.Unsigned memory)
     {
+        require(!shouldRevert, "set to always reverts");
         return oraclePrice.mul(priceTransformationScalar);
     }
 
@@ -30,6 +37,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         FixedPoint.Unsigned memory price,
         FixedPoint.Unsigned memory collateralRequirement
     ) public view override returns (FixedPoint.Unsigned memory) {
+        require(!shouldRevert, "set to always reverts");
         return collateralRequirement.mul(collateralRequirementTransformationScalar);
     }
 }

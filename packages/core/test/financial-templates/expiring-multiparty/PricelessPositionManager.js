@@ -1111,6 +1111,37 @@ contract("PricelessPositionManager", function(accounts) {
     await expectNoExcessCollateralToTrim();
   });
 
+  it("Correctly handles reverting price transformation function from financial product library", async function() {
+    // Create a sample FinancialProductLibraryTest that simply doubles the settlement price. However, we will set
+    // the libary to revert on calls to test the PricelessPositionManager correctly deals with a "broken" library.
+    const financialProductLibraryTest = await FinancialProductLibraryTest.new(
+      { rawValue: toWei("2") }, // _priceTransformationScalar. Set to 2 to adjust the oracle price.
+      { rawValue: toWei("1") } // _collateralRequirementTransformationScalar. Set to 1 to not scale the contract CR.
+    );
+
+    await financialProductLibraryTest.setShouldRevert(true);
+
+    // calling the library directly should revert
+    assert(await didContractThrow(financialProductLibraryTest.transformPrice({ rawValue: "5" }, "0")));
+
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      financialProductLibraryTest.address, // _financialProductLibraryAddress
+      { from: contractDeployer }
+    );
+
+    // Transform price function in pricelessPositionManager should apply NO transformation as library is reverting.
+    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "5");
+  });
+
   it("Non sponsor can't deposit, redeem, withdraw, or transfer", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
