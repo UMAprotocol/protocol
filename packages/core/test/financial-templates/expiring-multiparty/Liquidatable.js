@@ -1989,7 +1989,8 @@ contract("Liquidatable", function(accounts) {
       // Deploy the financial product library.
       financialProductLibraryTest = await FinancialProductLibraryTest.new(
         { rawValue: toWei("1") }, // _priceTransformationScalar. Set to 1 to not adjust the oracle price.
-        { rawValue: toWei("2") } // _collateralRequirementTransformationScalar. Set to 2 to scale the contract CR by 2.
+        { rawValue: toWei("2") }, // _collateralRequirementTransformationScalar. Set to 2 to scale the contract CR by 2.
+        priceFeedIdentifier // _transformedPriceIdentifier. Set to the original priceFeedIdentifier to apply no transformation.
       );
 
       // Create a custom liquidatable object, containing the financialProductLibraryAddress.

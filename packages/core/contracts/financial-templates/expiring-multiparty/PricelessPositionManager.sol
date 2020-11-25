@@ -675,9 +675,10 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @notice Accessor method to calculate a transformed price using the provided finanicalProductLibrary specified
-     * during contract deployment. If no library was provided then no modification to the price is done.
+     * @notice Accessor method to compute a transformed price using the finanicalProductLibrary specified at contract
+     * deployment. If no library was provided then no modification to the price is done.
      * @param price input price to be transformed.
+     * @param requestTime timestamp the oraclePrice was requested at.
      * @return transformedPrice price with the transformation function applied to it.
      * @dev This method should never revert.
      */
@@ -694,6 +695,24 @@ contract PricelessPositionManager is FeePayer {
             return transformedPrice;
         } catch {
             return price;
+        }
+    }
+
+    /**
+     * @notice Accessor method to compute a transformed price identifier using the finanicalProductLibrary specified
+     * at contract deployment. If no library was provided then no modification to the identifier is done.
+     * @param requestTime timestamp the identifier is to be used at.
+     * @return transformedPrice price with the transformation function applied to it.
+     * @dev This method should never revert.
+     */
+    function transformPriceIdentifier(uint256 requestTime) public view returns (bytes32) {
+        if (address(financialProductLibrary) == address(0)) return priceIdentifier;
+        try financialProductLibrary.transformPriceIdentifier(priceIdentifier, requestTime) returns (
+            bytes32 transformedIdentifier
+        ) {
+            return transformedIdentifier;
+        } catch {
+            return priceIdentifier;
         }
     }
 
@@ -780,18 +799,18 @@ contract PricelessPositionManager is FeePayer {
         return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
-    // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
+    // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
         OracleInterface oracle = _getOracle();
-        oracle.requestPrice(priceIdentifier, requestedTime);
+        oracle.requestPrice(transformPriceIdentifier(requestedTime), requestedTime);
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        require(oracle.hasPrice(transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(transformPriceIdentifier(requestedTime), requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
