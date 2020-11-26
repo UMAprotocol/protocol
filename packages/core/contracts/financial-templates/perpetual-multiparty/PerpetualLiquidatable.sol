@@ -223,10 +223,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         uint256 deadline
     )
         external
-        fees()
         notEmergencyShutdown()
+        fees()
         nonReentrant()
-        updateFundingRate()
         returns (
             uint256 liquidationId,
             FixedPoint.Unsigned memory tokensLiquidated,
@@ -365,7 +364,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         disputable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        updateFundingRate()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
@@ -415,7 +413,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         withdrawable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        updateFundingRate()
         returns (RewardsData memory)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);

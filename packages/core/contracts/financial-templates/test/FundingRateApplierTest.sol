@@ -24,10 +24,6 @@ contract FundingRateApplierTest is FundingRateApplier {
         )
     {}
 
-    function applyFundingRate() public {
-        _applyEffectiveFundingRate();
-    }
-
     function calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
         FixedPoint.Signed memory fundingRatePerSecond,

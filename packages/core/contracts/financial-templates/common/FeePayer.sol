@@ -59,7 +59,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      ****************************************/
 
     // modifier that calls payRegularFees().
-    modifier fees {
+    modifier fees virtual {
         payRegularFees();
         _;
     }

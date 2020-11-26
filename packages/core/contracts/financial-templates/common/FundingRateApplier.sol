@@ -79,10 +79,8 @@ abstract contract FundingRateApplier is FeePayer {
      *              MODIFIERS               *
      ****************************************/
 
-    // WARNING: this modifier is _not_ protected by a re-entrancy guard. It should always be placed after nonReentrant()
-    // in the list of modifiers.
-    modifier updateFundingRate {
-        _applyEffectiveFundingRate();
+    modifier fees override {
+        applyFundingRate();
         _;
     }
 
@@ -109,10 +107,13 @@ abstract contract FundingRateApplier is FeePayer {
         configStore = ConfigStoreInterface(_configStoreAddress);
     }
 
+    function applyFundingRate() public fees() nonReentrant() {
+        _applyEffectiveFundingRate();
+    }
+
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
         external
         nonReentrant()
-        updateFundingRate()
         returns (FixedPoint.Unsigned memory totalBond)
     {
         require(fundingRate.proposalTime == 0, "Proposal in progress");

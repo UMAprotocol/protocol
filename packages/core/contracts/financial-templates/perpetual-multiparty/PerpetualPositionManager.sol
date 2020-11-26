@@ -182,7 +182,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         noPendingWithdrawal(sponsor)
         fees()
         nonReentrant()
-        updateFundingRate()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         PositionData storage positionData = _getPositionData(sponsor);
@@ -220,7 +219,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -249,7 +247,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
-        updateFundingRate()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
@@ -277,7 +274,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         fees()
         nonReentrant()
-        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -309,7 +305,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() updateFundingRate() {
+    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
@@ -334,7 +330,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         notEmergencyShutdown()
         fees()
         nonReentrant()
-        updateFundingRate()
     {
         PositionData storage positionData = positions[msg.sender];
 
@@ -383,7 +378,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        updateFundingRate()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -501,17 +495,13 @@ contract PerpetualPositionManager is FundingRateApplier {
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
-    function applyFundingRate() external notEmergencyShutdown() nonReentrant() updateFundingRate() {
-        return;
-    }
-
     /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override notEmergencyShutdown() nonReentrant() updateFundingRate() {
+    function emergencyShutdown() external override notEmergencyShutdown() fees() nonReentrant() {
         require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
         emergencyShutdownTimestamp = getCurrentTime();
