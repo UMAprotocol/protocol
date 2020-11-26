@@ -27,8 +27,8 @@ contract("ConfigStore", function(accounts) {
 
   let testConfig = {
     updateLiveness: 100,
-    rewardRatePerSecond: { rawValue: toWei("0.0001") },
-    proposerBondPct: { rawValue: toWei("0.04") }
+    rewardRatePerSecond: { rawValue: toWei("0.000001") },
+    proposerBondPct: { rawValue: toWei("0.0001") }
   };
   let defaultConfig = {
     updateLiveness: "0",
@@ -70,8 +70,8 @@ contract("ConfigStore", function(accounts) {
       configStore = await ConfigStore.new(testConfig, timer.address);
       let config = await configStore.getCurrentConfig();
       assert.equal(config.updateLiveness.toString(), "100");
-      assert.equal(config.rewardRatePerSecond.rawValue.toString(), toWei("0.0001"));
-      assert.equal(config.proposerBondPct.rawValue.toString(), toWei("0.04"));
+      assert.equal(config.rewardRatePerSecond.rawValue.toString(), toWei("0.000001"));
+      assert.equal(config.proposerBondPct.rawValue.toString(), toWei("0.0001"));
       await storeHasNoPendingConfig(configStore);
     });
 
@@ -86,14 +86,14 @@ contract("ConfigStore", function(accounts) {
       // Invalid reward rate
       invalidConfig = {
         ...testConfig,
-        rewardRatePerSecond: { rawValue: toWei("1.01") }
+        rewardRatePerSecond: { rawValue: toWei("0.00000331") }
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
 
       // Invalid proposal bond
       invalidConfig = {
         ...testConfig,
-        proposerBondPct: { rawValue: toWei("1.01") }
+        proposerBondPct: { rawValue: toWei("0.00041") }
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
     });
@@ -111,8 +111,8 @@ contract("ConfigStore", function(accounts) {
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.0001") &&
-          ev.proposerBond.toString() === toWei("0.04") &&
+          ev.rewardRate.toString() === toWei("0.000001") &&
+          ev.proposerBond.toString() === toWei("0.0001") &&
           ev.updateLiveness.toString() === "100" &&
           ev.proposalPassedTimestamp.toString() === proposeTime.toString()
         );
@@ -131,8 +131,8 @@ contract("ConfigStore", function(accounts) {
       proposeTxn = await configStore.proposeNewConfig(test2Config);
       truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
         return (
-          ev.rewardRate.toString() === toWei("0.0001") &&
-          ev.proposerBond.toString() === toWei("0.04") &&
+          ev.rewardRate.toString() === toWei("0.000001") &&
+          ev.proposerBond.toString() === toWei("0.0001") &&
           ev.updateLiveness.toString() === "100"
         );
       });
@@ -140,8 +140,8 @@ contract("ConfigStore", function(accounts) {
         // New passed timestamp should take newly updated liveness into account.
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.0001") &&
-          ev.proposerBond.toString() === toWei("0.04") &&
+          ev.rewardRate.toString() === toWei("0.000001") &&
+          ev.proposerBond.toString() === toWei("0.0001") &&
           ev.updateLiveness.toString() === "200" &&
           ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(100)).toString()
         );
@@ -193,8 +193,8 @@ contract("ConfigStore", function(accounts) {
         // New passed timestamp should take newly updated liveness into account.
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.0001") &&
-          ev.proposerBond.toString() === toWei("0.04") &&
+          ev.rewardRate.toString() === toWei("0.000001") &&
+          ev.proposerBond.toString() === toWei("0.0001") &&
           ev.updateLiveness.toString() === "200" &&
           ev.proposalPassedTimestamp.toString() === overwriteProposalTime.add(toBN(100)).toString()
         );
@@ -224,8 +224,8 @@ contract("ConfigStore", function(accounts) {
       proposeTxn = await configStore.publishPendingConfig();
       truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
         return (
-          ev.rewardRate.toString() === toWei("0.0001") &&
-          ev.proposerBond.toString() === toWei("0.04") &&
+          ev.rewardRate.toString() === toWei("0.000001") &&
+          ev.proposerBond.toString() === toWei("0.0001") &&
           ev.updateLiveness.toString() === "200"
         );
       });

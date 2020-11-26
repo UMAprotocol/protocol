@@ -149,9 +149,17 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // before a vulnerability drains its collateral. e.g. 604800 = 7 days.
         require(config.updateLiveness <= 604800, "Invalid paramUpdateLiveness");
 
-        // Make reward rate and proposal bond percentage are less than 100% of PfC. 100% reward rate would
-        // take the entire perpetual's PfC after one successful proposal.
-        require(config.proposerBondPct.isLessThan(1), "Invalid proposerBondPct");
-        require(config.rewardRatePerSecond.isLessThan(1), "Invalid rewardRatePerSecond");
+        // Upper limits for the reward and bond rates are estimated based on offline discussions,
+        // and it is expected that these hard-coded limits can change in future deployments.
+        // For a discussion thread, go [here](https://github.com/UMAprotocol/protocol/pull/2223#discussion_r530692149).
+
+        // Proposer bond of 0.04% is based on a maximum expected funding rate error of 200%/year.
+        FixedPoint.Unsigned memory maxProposerBond = FixedPoint.fromUnscaledUint(4).div(10000);
+        require(config.proposerBondPct.isLessThan(maxProposerBond), "Invalid proposerBondPct");
+
+        // Reward rate should be less than 100% a year => 100% / 360 days / 24 hours / 60 mins / 60 secs
+        // = 0.0000033
+        FixedPoint.Unsigned memory maxRewardRatePerSecond = FixedPoint.fromUnscaledUint(33).div(10000000);
+        require(config.rewardRatePerSecond.isLessThan(maxRewardRatePerSecond), "Invalid rewardRatePerSecond");
     }
 }
