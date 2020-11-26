@@ -26,12 +26,12 @@ contract("ConfigStore", function(accounts) {
   let rando = accounts[1];
 
   let testConfig = {
-    timelockLiveness: 100,
+    timelockLiveness: 86401, // 1 day + 1 second
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
     proposerBondPct: { rawValue: toWei("0.0001") }
   };
   let defaultConfig = {
-    timelockLiveness: "0",
+    timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: "0" },
     proposerBondPct: { rawValue: "0" }
   };
@@ -57,7 +57,6 @@ contract("ConfigStore", function(accounts) {
   }
 
   async function storeHasNoPendingConfig(_store) {
-    await pendingConfigMatchesInput(_store, defaultConfig);
     assert.equal((await _store.pendingPassedTimestamp()).toString(), "0");
   }
 
@@ -69,17 +68,16 @@ contract("ConfigStore", function(accounts) {
     it("Default values get set", async function() {
       configStore = await ConfigStore.new(testConfig, timer.address);
       let config = await configStore.getCurrentConfig();
-      assert.equal(config.timelockLiveness.toString(), "100");
-      assert.equal(config.rewardRatePerSecond.rawValue.toString(), toWei("0.000001"));
-      assert.equal(config.proposerBondPct.rawValue.toString(), toWei("0.0001"));
+      assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
+      assert.equal(config.rewardRatePerSecond.rawValue.toString(), testConfig.rewardRatePerSecond.rawValue);
+      assert.equal(config.proposerBondPct.rawValue.toString(), testConfig.proposerBondPct.rawValue);
       await storeHasNoPendingConfig(configStore);
     });
-
     it("Invalid default values revert on construction", async function() {
       // Invalid timelock
       let invalidConfig = {
         ...testConfig,
-        timelockLiveness: 604800 + 1
+        timelockLiveness: 0
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
 
@@ -99,122 +97,110 @@ contract("ConfigStore", function(accounts) {
     });
   });
   describe("Proposing a new configuration", function() {
-    it("Liveness is 0, instant update", async function() {
+    it("Basic propose and publish test", async function() {
+      // Propose a config and advance to timelock expiry.
       configStore = await ConfigStore.new(defaultConfig, timer.address);
 
       // Can only propose from owner account
       assert(await didContractThrow(configStore.proposeNewConfig(testConfig, { from: rando })));
 
-      // Liveness is 0, meaning that `getCurrentConfig()` should return the pending proposal
+      // Propose a config and check events
+      let proposeTime = await configStore.getCurrentTime();
+      let proposeTxn = await configStore.proposeNewConfig(testConfig);
+      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
+        return (
+          ev.proposer === owner &&
+          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
+          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+        );
+      });
+      await incrementTime(configStore, defaultConfig.timelockLiveness);
+
+      // Pending config can be published with propose(). In the next test we'll test that publishPendingConfig
+      // also updates pending configs.
+      proposeTxn = await configStore.proposeNewConfig(testConfig);
+      truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
+        return (
+          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
+          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString()
+        );
+      });
+
+      // Current config is updated
+      await currentConfigMatchesInput(configStore, testConfig);
+    });
+    it("Proposals overwriting pending proposals", async function() {
+      configStore = await ConfigStore.new(defaultConfig, timer.address);
+
+      // Propose new config.
       const proposeTime = await configStore.getCurrentTime();
       let proposeTxn = await configStore.proposeNewConfig(testConfig);
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.000001") &&
-          ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.timelockLiveness.toString() === "100" &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.toString()
-        );
-      });
-      await currentConfigMatchesInput(configStore, testConfig);
-
-      // Pending config is updated, liveness passed timestamp is same as current time.
-      await pendingConfigMatchesInput(configStore, testConfig);
-      assert.equal((await configStore.pendingPassedTimestamp()).toString(), proposeTime.toString());
-
-      // Next propose transaction publishes the new config.
-      let test2Config = {
-        ...testConfig,
-        timelockLiveness: 200
-      };
-      proposeTxn = await configStore.proposeNewConfig(test2Config);
-      truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
-        return (
-          ev.rewardRate.toString() === toWei("0.000001") &&
-          ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.timelockLiveness.toString() === "100"
-        );
-      });
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
-        // New passed timestamp should take newly updated liveness into account.
-        return (
-          ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.000001") &&
-          ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.timelockLiveness.toString() === "200" &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(100)).toString()
-        );
-      });
-      await currentConfigMatchesInput(configStore, testConfig);
-
-      // Pending config and passed timestamp is updated.
-      await pendingConfigMatchesInput(configStore, test2Config);
-      assert.equal((await configStore.pendingPassedTimestamp()).toString(), proposeTime.add(toBN(100)).toString());
-    });
-    it("Liveness is > 0, update occurs after liveness period", async function() {
-      configStore = await ConfigStore.new(testConfig, timer.address);
-
-      // Propose new config.
-      const proposeTime = await configStore.getCurrentTime();
-      let proposeTxn = await configStore.proposeNewConfig(defaultConfig);
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
-        return (
-          ev.proposer === owner &&
-          ev.rewardRate.toString() === "0" &&
-          ev.proposerBond.toString() === "0" &&
-          ev.timelockLiveness.toString() === "0" &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(100)).toString()
+          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
+          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
         );
       });
 
       // Current config doesn't change.
-      await currentConfigMatchesInput(configStore, testConfig);
+      await currentConfigMatchesInput(configStore, defaultConfig);
 
       // Pending config and liveness timestamp is updated.
-      await pendingConfigMatchesInput(configStore, defaultConfig);
-      assert.equal((await configStore.pendingPassedTimestamp()).toString(), proposeTime.add(toBN(100)).toString());
+      await pendingConfigMatchesInput(configStore, testConfig);
+      assert.equal(
+        (await configStore.pendingPassedTimestamp()).toString(),
+        proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+      );
 
       // Advancing time before the liveness is up doesn't change state.
-      await incrementTime(configStore, 99);
+      await incrementTime(configStore, defaultConfig.timelockLiveness - 1);
       await configStore.publishPendingConfig();
-      await currentConfigMatchesInput(configStore, testConfig);
-      await pendingConfigMatchesInput(configStore, defaultConfig);
-      assert.equal((await configStore.pendingPassedTimestamp()).toString(), proposeTime.add(toBN(100)).toString());
+      await currentConfigMatchesInput(configStore, defaultConfig);
+      await pendingConfigMatchesInput(configStore, testConfig);
+      assert.equal(
+        (await configStore.pendingPassedTimestamp()).toString(),
+        proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+      );
 
       // Proposing a new config overwrites the pending proposal.
       let test2Config = {
         ...testConfig,
-        timelockLiveness: 200
+        timelockLiveness: 86402
       };
       const overwriteProposalTime = await configStore.getCurrentTime();
       proposeTxn = await configStore.proposeNewConfig(test2Config);
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
-        // New passed timestamp should take newly updated liveness into account.
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === toWei("0.000001") &&
-          ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.timelockLiveness.toString() === "200" &&
-          ev.proposalPassedTimestamp.toString() === overwriteProposalTime.add(toBN(100)).toString()
+          ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
+          ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
+          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
+          ev.proposalPassedTimestamp.toString() ===
+            overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString()
         );
       });
-      await currentConfigMatchesInput(configStore, testConfig);
+      await currentConfigMatchesInput(configStore, defaultConfig);
       await pendingConfigMatchesInput(configStore, test2Config);
       assert.equal(
         (await configStore.pendingPassedTimestamp()).toString(),
-        overwriteProposalTime.add(toBN(100)).toString()
+        overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString()
       );
 
       // Advancing time after the original-proposal's liveness but before the overwrite-proposal's liveness
       // doesn't change state.
-      await incrementTime(configStore, 99);
+      await incrementTime(configStore, defaultConfig.timelockLiveness - 1);
       await configStore.publishPendingConfig();
-      await currentConfigMatchesInput(configStore, testConfig);
+      await currentConfigMatchesInput(configStore, defaultConfig);
       await pendingConfigMatchesInput(configStore, test2Config);
       assert.equal(
         (await configStore.pendingPassedTimestamp()).toString(),
-        overwriteProposalTime.add(toBN(100)).toString()
+        overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString()
       );
 
       // Finally, advancing past liveness allows pending config to be returned as current config,
@@ -224,11 +210,12 @@ contract("ConfigStore", function(accounts) {
       proposeTxn = await configStore.publishPendingConfig();
       truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
         return (
-          ev.rewardRate.toString() === toWei("0.000001") &&
-          ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.timelockLiveness.toString() === "200"
+          ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
+          ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
+          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString()
         );
       });
+      await storeHasNoPendingConfig(configStore);
     });
   });
 });

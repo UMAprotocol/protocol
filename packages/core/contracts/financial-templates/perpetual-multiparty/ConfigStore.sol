@@ -146,8 +146,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigSettings memory config) internal pure {
         // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
-        // before a vulnerability drains its collateral. e.g. 604800 = 7 days.
-        require(config.timelockLiveness <= 7 days, "Invalid timelockLiveness");
+        // before a vulnerability drains its collateral.
+        require(config.timelockLiveness <= 7 days && config.timelockLiveness >= 1 days, "Invalid timelockLiveness");
 
         // Upper limits for the reward and bond rates are estimated based on offline discussions,
         // and it is expected that these hard-coded limits can change in future deployments.

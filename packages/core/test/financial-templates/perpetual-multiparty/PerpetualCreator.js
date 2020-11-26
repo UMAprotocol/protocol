@@ -30,9 +30,9 @@ contract("PerpetualCreator", function(accounts) {
   // Re-used variables
   let constructorParams;
   let testConfig = {
-    updateLiveness: 100,
-    rewardRatePerSecond: { rawValue: toWei("0.0001") },
-    proposerBondPct: { rawValue: toWei("0.04") }
+    timelockLiveness: 100,
+    rewardRatePerSecond: { rawValue: toWei("0.000001") },
+    proposerBondPct: { rawValue: toWei("0.0001") }
   };
 
   beforeEach(async () => {
