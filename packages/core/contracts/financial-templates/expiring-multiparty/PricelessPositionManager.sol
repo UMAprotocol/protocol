@@ -689,7 +689,7 @@ contract PricelessPositionManager is FeePayer {
         view
         returns (FixedPoint.Unsigned memory)
     {
-        if (address(financialProductLibrary).isContract() == false) return price;
+        if (!address(financialProductLibrary).isContract()) return price;
         try financialProductLibrary.transformPrice(price, requestTime) returns (
             FixedPoint.Unsigned memory transformedPrice
         ) {

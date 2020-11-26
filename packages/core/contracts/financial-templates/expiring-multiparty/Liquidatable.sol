@@ -518,7 +518,7 @@ contract Liquidatable is PricelessPositionManager {
         view
         returns (FixedPoint.Unsigned memory)
     {
-        if (address(financialProductLibrary).isContract() == false) return collateralRequirement;
+        if (!address(financialProductLibrary).isContract()) return collateralRequirement;
         try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
             FixedPoint.Unsigned memory transformedCollateralRequirement
         ) {
