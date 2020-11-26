@@ -44,7 +44,9 @@ contract FundingRateApplierTest is FundingRateApplier {
     }
 
     // Required overrides.
-    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory currentPfc) {}
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory currentPfc) {
+        return FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+    }
 
     function emergencyShutdown() external override {}
 

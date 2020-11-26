@@ -112,6 +112,7 @@ abstract contract FundingRateApplier is FeePayer {
         external
         nonReentrant()
         updateFundingRate()
+        returns (FixedPoint.Unsigned memory totalBond)
     {
         require(fundingRate.proposalTime == 0, "Proposal in progress");
 
@@ -120,22 +121,28 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
         require(
-            timestamp > updateTime && timestamp > currentTime.sub(30 minutes) && timestamp <= currentTime.add(90),
+            timestamp > updateTime && timestamp >= currentTime.sub(30 minutes) && timestamp <= currentTime.add(90),
             "Invalid proposal time"
         );
+
+        // Set the proposal time in order to allow this contract to track this request.
+        fundingRate.proposalTime = timestamp;
 
         OptimisticOracle optimisticOracle = _getOptimisticOracle();
 
         // Set up optmistic oracle.
         bytes32 identifier = fundingRate.identifier;
         optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
-        uint256 totalBond =
-            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(fundingRate.bondPercentage).rawValue);
+        totalBond = FixedPoint.Unsigned(
+            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(fundingRate.bondPercentage).rawValue)
+        );
 
         // Pull bond from caller and send to optimistic oracle.
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), totalBond);
-        collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), totalBond);
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
+        if (totalBond.isGreaterThan(0)) {
+            collateralCurrency.safeTransferFrom(msg.sender, address(this), totalBond.rawValue);
+            collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), totalBond.rawValue);
+            optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
+        }
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.

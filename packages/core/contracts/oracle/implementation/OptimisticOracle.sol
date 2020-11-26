@@ -176,7 +176,11 @@ contract OptimisticOracle is Testable, Lockable {
         request.expirationTime = getCurrentTime().add(
             request.customLiveness != 0 ? request.customLiveness : defaultLiveness
         );
-        request.currency.safeTransferFrom(msg.sender, address(this), request.bond.add(request.finalFee));
+
+        uint256 totalBond = request.bond.add(request.finalFee);
+        if (totalBond > 0) {
+            request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        }
 
         // Event.
         emit ProposePrice(requester, proposer, identifier, timestamp, proposedPrice);
@@ -204,11 +208,20 @@ contract OptimisticOracle is Testable, Lockable {
         require(getState(requester, identifier, timestamp) == State.Proposed, "disputePriceFor: Proposed");
         Request storage request = _getRequest(requester, identifier, timestamp);
         request.disputer = disputer;
-        request.currency.safeTransferFrom(msg.sender, address(this), request.bond.add(request.finalFee));
-        _getOracle().requestPrice(identifier, timestamp);
+
+        uint256 finalFee = request.finalFee;
+        uint256 totalBond = request.bond.add(finalFee);
+        if (totalBond > 0) {
+            request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        }
+
         StoreInterface store = _getStore();
-        request.currency.safeIncreaseAllowance(address(store), request.finalFee);
-        _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(request.finalFee));
+        if (finalFee > 0) {
+            request.currency.safeIncreaseAllowance(address(store), finalFee);
+            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(finalFee));
+        }
+
+        _getOracle().requestPrice(identifier, timestamp);
 
         // Compute refund.
         uint256 refund = 0;
