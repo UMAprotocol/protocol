@@ -126,7 +126,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
             _deletePendingConfig();
 
-            emit ChangedNewConfigSettings(
+            emit ChangedConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
                 currentConfig.proposerBondPct.rawValue,
                 currentConfig.timelockLiveness

@@ -121,7 +121,7 @@ contract("ConfigStore", function(accounts) {
       // Pending config can be published with propose(). In the next test we'll test that publishPendingConfig
       // also updates pending configs.
       proposeTxn = await configStore.proposeNewConfig(testConfig);
-      truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
         return (
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
@@ -208,7 +208,7 @@ contract("ConfigStore", function(accounts) {
       await incrementTime(configStore, 1);
       await currentConfigMatchesInput(configStore, test2Config);
       proposeTxn = await configStore.publishPendingConfig();
-      truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
         return (
           ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
