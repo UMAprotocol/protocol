@@ -54,18 +54,17 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
-        // Params for PricelessPositionManager only.
+        // Params for PerpetualPositionManager only.
         uint256 withdrawalLiveness;
+        address configStoreAddress;
         address collateralAddress;
         address tokenAddress;
         address finderAddress;
         address timerAddress;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
-        FixedPoint.Unsigned fundingRateBondPercentage;
-        FixedPoint.Unsigned fundingRateRewardRate;
         FixedPoint.Unsigned minSponsorTokens;
-        // Params specifically for Liquidatable.
+        // Params specifically for PerpetualLiquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
@@ -177,9 +176,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
-            params.fundingRateBondPercentage,
-            params.fundingRateRewardRate,
             params.minSponsorTokens,
+            params.configStoreAddress,
             params.timerAddress
         )
     {

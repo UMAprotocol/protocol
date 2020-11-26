@@ -144,18 +144,16 @@ contract PerpetualPositionManager is FundingRateApplier {
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
-        FixedPoint.Unsigned memory _fundingRateBondPercentage,
-        FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
+        address _configStoreAddress,
         address _timerAddress
     )
         public
         FundingRateApplier(
-            _fundingRateBondPercentage,
-            _fundingRateRewardRate,
             _fundingRateIdentifier,
             _collateralAddress,
             _finderAddress,
+            _configStoreAddress,
             _timerAddress
         )
     {

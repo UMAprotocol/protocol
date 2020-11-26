@@ -16,6 +16,7 @@ import "../../oracle/implementation/Constants.sol";
 
 // TODO: point this at an interface instead.
 import "../../oracle/implementation/OptimisticOracle.sol";
+import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
 import "./FeePayer.sol";
 
@@ -39,10 +40,6 @@ abstract contract FundingRateApplier is FeePayer {
         FixedPoint.Signed rate;
         // Identifier to retrieve the funding rate.
         bytes32 identifier;
-        // Per second reward paid to get funding rate proposers.
-        FixedPoint.Unsigned rewardRate;
-        // Bond percentage.
-        FixedPoint.Unsigned bondPercentage;
         // Tracks the cumulative funding payments that have been paid to the sponsors.
         // The multiplier starts at 1, and is updated by computing cumulativeFundingRateMultiplier * (1 + effectivePayment).
         // Put another way, the cumulativeFeeMultiplier is (1 + effectivePayment1) * (1 + effectivePayment2) ...
@@ -62,6 +59,8 @@ abstract contract FundingRateApplier is FeePayer {
     FundingRate public fundingRate;
 
     uint256 public emergencyShutdownTimestamp;
+
+    ConfigStoreInterface public configStore;
 
     /****************************************
      *                EVENTS                *
@@ -92,10 +91,9 @@ abstract contract FundingRateApplier is FeePayer {
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      */
     constructor(
-        FixedPoint.Unsigned memory _fundingRateBondPercentage,
-        FixedPoint.Unsigned memory _fundingRateRewardRate,
         bytes32 _fundingRateIdentifier,
         address _collateralAddress,
+        address _configStoreAddress,
         address _finderAddress,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
@@ -107,9 +105,8 @@ abstract contract FundingRateApplier is FeePayer {
         fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
         emergencyShutdownTimestamp = 0;
 
-        fundingRate.rewardRate = _fundingRateRewardRate;
         fundingRate.identifier = _fundingRateIdentifier;
-        fundingRate.bondPercentage = _fundingRateBondPercentage;
+        configStore = ConfigStoreInterface(_configStoreAddress);
     }
 
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
@@ -138,7 +135,7 @@ abstract contract FundingRateApplier is FeePayer {
         bytes32 identifier = fundingRate.identifier;
         optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
-            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(fundingRate.bondPercentage).rawValue)
+            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(_getConfig().proposerBondPct).rawValue)
         );
 
         // Pull bond from caller and send to optimistic oracle.
@@ -177,6 +174,10 @@ abstract contract FundingRateApplier is FeePayer {
     //     fundingRate.rate = FixedPoint.Signed(price);
     // }
 
+    function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
+        return configStore.getCurrentConfig();
+    }
+
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
         uint256 timestamp = fundingRate.proposalTime;
         if (timestamp != 0) {
@@ -200,7 +201,7 @@ abstract contract FundingRateApplier is FeePayer {
                     // If there was no dispute, send a reward.
                     if (request.disputer == address(0)) {
                         FixedPoint.Unsigned memory reward =
-                            _pfc().mul(fundingRate.rewardRate).mul(timestamp.sub(lastUpdateTime));
+                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(timestamp.sub(lastUpdateTime));
                         _adjustCumulativeFeeMultiplier(reward, _pfc());
                         collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                     }
