@@ -104,6 +104,15 @@ contract MintableBurnableSyntheticToken is MintableBurnableERC20, Lockable {
     }
 
     /**
+     * @notice Checks if a given account holds the Admin role.
+     * @param account The address which is checked for the Admin role.
+     * @return bool True if the provided account is a Admin.
+     */
+    function isAdmin(address account) public view nonReentrantView() returns (bool) {
+        return hasRole(DEFAULT_ADMIN_ROLE, account);
+    }
+
+    /**
      * @notice Accessor method for the list of member with admin role
      * @return array of address with admin role
      */
