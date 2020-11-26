@@ -26,19 +26,19 @@ contract("ConfigStore", function(accounts) {
   let rando = accounts[1];
 
   let testConfig = {
-    updateLiveness: 100,
+    timelockLiveness: 100,
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
     proposerBondPct: { rawValue: toWei("0.0001") }
   };
   let defaultConfig = {
-    updateLiveness: "0",
+    timelockLiveness: "0",
     rewardRatePerSecond: { rawValue: "0" },
     proposerBondPct: { rawValue: "0" }
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
     let currentConfig = await _store.getCurrentConfig();
-    assert.equal(currentConfig.updateLiveness.toString(), _inputConfig.updateLiveness.toString());
+    assert.equal(currentConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       currentConfig.rewardRatePerSecond.rawValue.toString(),
       _inputConfig.rewardRatePerSecond.rawValue.toString()
@@ -48,7 +48,7 @@ contract("ConfigStore", function(accounts) {
 
   async function pendingConfigMatchesInput(_store, _inputConfig) {
     let pendingConfig = await _store.pendingConfig();
-    assert.equal(pendingConfig.updateLiveness.toString(), _inputConfig.updateLiveness.toString());
+    assert.equal(pendingConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       pendingConfig.rewardRatePerSecond.rawValue.toString(),
       _inputConfig.rewardRatePerSecond.rawValue.toString()
@@ -69,7 +69,7 @@ contract("ConfigStore", function(accounts) {
     it("Default values get set", async function() {
       configStore = await ConfigStore.new(testConfig, timer.address);
       let config = await configStore.getCurrentConfig();
-      assert.equal(config.updateLiveness.toString(), "100");
+      assert.equal(config.timelockLiveness.toString(), "100");
       assert.equal(config.rewardRatePerSecond.rawValue.toString(), toWei("0.000001"));
       assert.equal(config.proposerBondPct.rawValue.toString(), toWei("0.0001"));
       await storeHasNoPendingConfig(configStore);
@@ -79,7 +79,7 @@ contract("ConfigStore", function(accounts) {
       // Invalid timelock
       let invalidConfig = {
         ...testConfig,
-        updateLiveness: 604800 + 1
+        timelockLiveness: 604800 + 1
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
 
@@ -113,7 +113,7 @@ contract("ConfigStore", function(accounts) {
           ev.proposer === owner &&
           ev.rewardRate.toString() === toWei("0.000001") &&
           ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.updateLiveness.toString() === "100" &&
+          ev.timelockLiveness.toString() === "100" &&
           ev.proposalPassedTimestamp.toString() === proposeTime.toString()
         );
       });
@@ -126,14 +126,14 @@ contract("ConfigStore", function(accounts) {
       // Next propose transaction publishes the new config.
       let test2Config = {
         ...testConfig,
-        updateLiveness: 200
+        timelockLiveness: 200
       };
       proposeTxn = await configStore.proposeNewConfig(test2Config);
       truffleAssert.eventEmitted(proposeTxn, "ChangedNewConfigSettings", ev => {
         return (
           ev.rewardRate.toString() === toWei("0.000001") &&
           ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.updateLiveness.toString() === "100"
+          ev.timelockLiveness.toString() === "100"
         );
       });
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
@@ -142,7 +142,7 @@ contract("ConfigStore", function(accounts) {
           ev.proposer === owner &&
           ev.rewardRate.toString() === toWei("0.000001") &&
           ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.updateLiveness.toString() === "200" &&
+          ev.timelockLiveness.toString() === "200" &&
           ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(100)).toString()
         );
       });
@@ -163,7 +163,7 @@ contract("ConfigStore", function(accounts) {
           ev.proposer === owner &&
           ev.rewardRate.toString() === "0" &&
           ev.proposerBond.toString() === "0" &&
-          ev.updateLiveness.toString() === "0" &&
+          ev.timelockLiveness.toString() === "0" &&
           ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(100)).toString()
         );
       });
@@ -185,7 +185,7 @@ contract("ConfigStore", function(accounts) {
       // Proposing a new config overwrites the pending proposal.
       let test2Config = {
         ...testConfig,
-        updateLiveness: 200
+        timelockLiveness: 200
       };
       const overwriteProposalTime = await configStore.getCurrentTime();
       proposeTxn = await configStore.proposeNewConfig(test2Config);
@@ -195,7 +195,7 @@ contract("ConfigStore", function(accounts) {
           ev.proposer === owner &&
           ev.rewardRate.toString() === toWei("0.000001") &&
           ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.updateLiveness.toString() === "200" &&
+          ev.timelockLiveness.toString() === "200" &&
           ev.proposalPassedTimestamp.toString() === overwriteProposalTime.add(toBN(100)).toString()
         );
       });
@@ -226,7 +226,7 @@ contract("ConfigStore", function(accounts) {
         return (
           ev.rewardRate.toString() === toWei("0.000001") &&
           ev.proposerBond.toString() === toWei("0.0001") &&
-          ev.updateLiveness.toString() === "200"
+          ev.timelockLiveness.toString() === "200"
         );
       });
     });

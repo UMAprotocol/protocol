@@ -26,7 +26,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     // All of the configuration settings available for querying by a perpetual.
     struct ConfigSettings {
         // Liveness period (in seconds) for an update to currentConfig to become official.
-        uint256 updateLiveness;
+        uint256 timelockLiveness;
         // Reward rate paid to successful proposers. Percentage of 1 E.g., .1 is 10%.
         FixedPoint.Unsigned rewardRatePerSecond;
         // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%.
@@ -49,10 +49,10 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         address indexed proposer,
         uint256 rewardRate,
         uint256 proposerBond,
-        uint256 updateLiveness,
+        uint256 timelockLiveness,
         uint256 proposalPassedTimestamp
     );
-    event ChangedNewConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 updateLiveness);
+    event ChangedNewConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
 
     /****************************************
      *                MODIFIERS             *
@@ -90,7 +90,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     /**
      * @notice Propose new configuration settings. New settings go into effect
      * after a liveness period passes.
-     * @param newConfig Configuration settings to publish after `currentConfig.updateLiveness` passes from now.
+     * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from now.
      * @dev Callable only by owner. Calling this while there is already a pending proposal
      * will overwrite the pending proposal.
      */
@@ -101,13 +101,13 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         pendingConfig = newConfig;
 
         // Use current config's liveness period to timelock this proposal.
-        pendingPassedTimestamp = getCurrentTime() + currentConfig.updateLiveness;
+        pendingPassedTimestamp = getCurrentTime() + currentConfig.timelockLiveness;
 
         emit ProposedNewConfigSettings(
             msg.sender,
             newConfig.rewardRatePerSecond.rawValue,
             newConfig.proposerBondPct.rawValue,
-            newConfig.updateLiveness,
+            newConfig.timelockLiveness,
             pendingPassedTimestamp
         );
     }
@@ -129,7 +129,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             emit ChangedNewConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
                 currentConfig.proposerBondPct.rawValue,
-                currentConfig.updateLiveness
+                currentConfig.timelockLiveness
             );
         }
     }
@@ -145,9 +145,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigSettings memory config) internal pure {
-        // Make sure updateLiveness is not too long, otherwise contract can might not be able to fix itself
+        // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral. e.g. 604800 = 7 days.
-        require(config.updateLiveness <= 604800, "Invalid paramUpdateLiveness");
+        require(config.timelockLiveness <= 604800, "Invalid timelockLiveness");
 
         // Upper limits for the reward and bond rates are estimated based on offline discussions,
         // and it is expected that these hard-coded limits can change in future deployments.
