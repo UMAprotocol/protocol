@@ -198,10 +198,8 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
         for (uint256 j = 0; j < _roles.admins.length; j++) {
             _setupRole(DEFAULT_ADMIN_ROLE, _roles.admins[j]);
         }
-        if (_roles.pools.length > 0) {
-            for (uint256 j = 0; j < _roles.pools.length; j++) {
-                _setupRole(POOL_ROLE, _roles.pools[j]);
-            }
+        for (uint256 j = 0; j < _roles.pools.length; j++) {
+            _setupRole(POOL_ROLE, _roles.pools[j]);
         }
         positionManagerData.withdrawalLiveness = _positionManagerData.withdrawalLiveness;
         positionManagerData.tokenCurrency = MintableBurnableIERC20(_positionManagerData.tokenAddress);
