@@ -154,12 +154,12 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // For a discussion thread, go [here](https://github.com/UMAprotocol/protocol/pull/2223#discussion_r530692149).
 
         // Proposer bond of 0.04% is based on a maximum expected funding rate error of 200%/year.
-        FixedPoint.Unsigned memory maxProposerBond = FixedPoint.fromUnscaledUint(4).div(10000);
+        FixedPoint.Unsigned memory maxProposerBond = FixedPoint.fromUnscaledUint(4).div(1e4);
         require(config.proposerBondPct.isLessThan(maxProposerBond), "Invalid proposerBondPct");
 
         // Reward rate should be less than 100% a year => 100% / 360 days / 24 hours / 60 mins / 60 secs
         // = 0.0000033
-        FixedPoint.Unsigned memory maxRewardRatePerSecond = FixedPoint.fromUnscaledUint(33).div(10000000);
+        FixedPoint.Unsigned memory maxRewardRatePerSecond = FixedPoint.fromUnscaledUint(33).div(1e7);
         require(config.rewardRatePerSecond.isLessThan(maxRewardRatePerSecond), "Invalid rewardRatePerSecond");
     }
 }
