@@ -136,8 +136,7 @@ abstract contract FeePayerPoolParty is AdministrateeInterface, Testable, Lockabl
     // the contract, pulls in `amount` of collateral currency.
     function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         StoreInterface store = _getStore();
-        FixedPoint.Unsigned memory collateralPool = _pfc();
-        feePayerData.payFinalFees(store, collateralPool, payer, amount);
+        feePayerData.payFinalFees(store, payer, amount);
     }
 
     function _pfc() internal view virtual returns (FixedPoint.Unsigned memory);

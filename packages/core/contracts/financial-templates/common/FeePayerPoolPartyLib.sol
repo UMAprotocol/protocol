@@ -92,7 +92,6 @@ library FeePayerPoolPartyLib {
     function payFinalFees(
         FeePayerPoolParty.FeePayerData storage feePayerData,
         StoreInterface store,
-        FixedPoint.Unsigned memory collateralPool,
         address payer,
         FixedPoint.Unsigned memory amount
     ) external {
@@ -100,15 +99,8 @@ library FeePayerPoolPartyLib {
             return;
         }
 
-        if (payer != address(this)) {
-            // If the payer is not the contract pull the collateral from the payer.
-            feePayerData.collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
-        } else {
-            // The final fee must be < available collateral or the fee will be larger than 100%.
-            require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
-
-            feePayerData.cumulativeFeeMultiplier._adjustCumulativeFeeMultiplier(amount, collateralPool);
-        }
+        // Pull the collateral from the payer.
+        feePayerData.collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
 
         emit FinalFeesPaid(amount.rawValue);
 
