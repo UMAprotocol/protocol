@@ -30,7 +30,7 @@ contract("PerpetualCreator", function(accounts) {
   // Re-used variables
   let constructorParams;
   let testConfig = {
-    timelockLiveness: 100,
+    timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
     proposerBondPct: { rawValue: toWei("0.0001") }
   };
