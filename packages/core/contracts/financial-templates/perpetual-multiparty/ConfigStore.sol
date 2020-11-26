@@ -101,7 +101,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         pendingConfig = newConfig;
 
         // Use current config's liveness period to timelock this proposal.
-        pendingPassedTimestamp = getCurrentTime() + currentConfig.timelockLiveness;
+        pendingPassedTimestamp = getCurrentTime().add(currentConfig.timelockLiveness);
 
         emit ProposedNewConfigSettings(
             msg.sender,
