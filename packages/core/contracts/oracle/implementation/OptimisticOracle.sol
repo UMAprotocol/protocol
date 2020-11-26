@@ -37,7 +37,14 @@ contract OptimisticOracle is Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    event RequestPrice(address indexed requester, bytes32 identifier, uint256 timestamp);
+    event RequestPrice(
+        address indexed requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        address currency,
+        uint256 reward,
+        uint256 finalFee
+    );
     event ProposePrice(
         address indexed requester,
         address indexed proposer,
@@ -58,7 +65,8 @@ contract OptimisticOracle is Testable, Lockable {
         address indexed disputer,
         bytes32 identifier,
         uint256 timestamp,
-        int256 price
+        int256 price,
+        uint256 payout
     );
 
     enum State {
@@ -130,7 +138,7 @@ contract OptimisticOracle is Testable, Lockable {
             currency.safeTransferFrom(msg.sender, address(this), reward);
         }
 
-        emit RequestPrice(msg.sender, identifier, timestamp);
+        emit RequestPrice(msg.sender, identifier, timestamp, address(currency), reward, finalFee);
 
         return finalFee.mul(2);
     }
@@ -167,7 +175,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         int256 proposedPrice
-    ) public nonReentrant() {
+    ) public nonReentrant() returns (uint256 totalBond) {
         require(getState(requester, identifier, timestamp) == State.Requested, "proposePriceFor: Requested");
         Request storage request = _getRequest(requester, identifier, timestamp);
         request.proposer = proposer;
@@ -177,7 +185,7 @@ contract OptimisticOracle is Testable, Lockable {
             request.customLiveness != 0 ? request.customLiveness : defaultLiveness
         );
 
-        uint256 totalBond = request.bond.add(request.finalFee);
+        totalBond = request.bond.add(request.finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
@@ -194,9 +202,9 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         int256 proposedPrice
-    ) external {
+    ) external returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
-        proposePriceFor(msg.sender, requester, identifier, timestamp, proposedPrice);
+        return proposePriceFor(msg.sender, requester, identifier, timestamp, proposedPrice);
     }
 
     function disputePriceFor(
@@ -204,13 +212,13 @@ contract OptimisticOracle is Testable, Lockable {
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) public nonReentrant() {
+    ) public nonReentrant() returns (uint256 totalBond) {
         require(getState(requester, identifier, timestamp) == State.Proposed, "disputePriceFor: Proposed");
         Request storage request = _getRequest(requester, identifier, timestamp);
         request.disputer = disputer;
 
         uint256 finalFee = request.finalFee;
-        uint256 totalBond = request.bond.add(finalFee);
+        totalBond = request.bond.add(finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
@@ -242,9 +250,9 @@ contract OptimisticOracle is Testable, Lockable {
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) external {
+    ) external returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
-        disputePriceFor(msg.sender, requester, identifier, timestamp);
+        return disputePriceFor(msg.sender, requester, identifier, timestamp);
     }
 
     function getPrice(bytes32 identifier, uint256 timestamp) external nonReentrant() returns (int256) {
@@ -259,8 +267,8 @@ contract OptimisticOracle is Testable, Lockable {
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) external nonReentrant() {
-        _settle(requester, identifier, timestamp);
+    ) external nonReentrant() returns (uint256 payout) {
+        return _settle(requester, identifier, timestamp);
     }
 
     function _getId(
@@ -275,7 +283,7 @@ contract OptimisticOracle is Testable, Lockable {
         address requester,
         bytes32 identifier,
         uint256 timestamp
-    ) private {
+    ) private returns (uint256 payout) {
         State state = getState(requester, identifier, timestamp);
 
         // Set it to settled so this function can never be entered again.
@@ -285,19 +293,28 @@ contract OptimisticOracle is Testable, Lockable {
         if (state == State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
             request.resolvedPrice = request.proposedPrice;
-            request.currency.safeTransfer(request.proposer, request.bond.add(request.finalFee).add(request.reward));
+            payout = request.bond.add(request.finalFee).add(request.reward);
+            request.currency.safeTransfer(request.proposer, payout);
         } else if (state == State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(identifier, timestamp);
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
-            uint256 payout = request.bond.mul(2).add(request.finalFee).add(request.reward);
+            payout = request.bond.mul(2).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
         } else {
             revert("_settle: not settleable");
         }
 
         // Event.
-        emit Settle(requester, request.proposer, request.disputer, identifier, timestamp, request.resolvedPrice);
+        emit Settle(
+            requester,
+            request.proposer,
+            request.disputer,
+            identifier,
+            timestamp,
+            request.resolvedPrice,
+            payout
+        );
 
         // Callback.
         try OptimisticRequester(requester).priceSettled(identifier, timestamp, request.resolvedPrice) {} catch {}

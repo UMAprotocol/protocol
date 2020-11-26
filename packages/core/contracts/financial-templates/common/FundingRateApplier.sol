@@ -61,13 +61,13 @@ abstract contract FundingRateApplier is FeePayer {
 
     FundingRate public fundingRate;
 
-    uint256 emergencyShutdownTimestamp;
+    uint256 public emergencyShutdownTimestamp;
 
     /****************************************
      *                EVENTS                *
      ****************************************/
 
-    event NewFundingRate(
+    event NewFundingRateMultiplier(
         uint256 indexed newMultiplier,
         uint256 lastApplicationTime,
         uint256 applicationTime,
@@ -80,6 +80,8 @@ abstract contract FundingRateApplier is FeePayer {
      *              MODIFIERS               *
      ****************************************/
 
+    // WARNING: this modifier is _not_ protected by a re-entrancy guard. It should always be placed after nonReentrant()
+    // in the list of modifiers.
     modifier updateFundingRate {
         _applyEffectiveFundingRate();
         _;

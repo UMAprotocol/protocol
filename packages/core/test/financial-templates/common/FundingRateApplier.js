@@ -238,7 +238,7 @@ contract("FundingRateApplier", function(accounts) {
       let receipt = await fundingRateApplier.applyFundingRate();
 
       // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRate", ev => {
+      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
         return (
           ev.newMultiplier == toWei("1.001") &&
           ev.lastApplicationTime == (currentTime - delay).toString() &&
@@ -257,7 +257,7 @@ contract("FundingRateApplier", function(accounts) {
       receipt = await fundingRateApplier.applyFundingRate();
 
       // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRate", ev => {
+      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
         return (
           ev.newMultiplier == toWei("1.002001") &&
           ev.lastApplicationTime == (currentTime - delay).toString() &&
@@ -281,7 +281,7 @@ contract("FundingRateApplier", function(accounts) {
       receipt = await fundingRateApplier.applyFundingRate();
 
       // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRate", ev => {
+      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
         return (
           ev.newMultiplier == toWei("1.000998999") &&
           ev.lastApplicationTime == (currentTime - delay).toString() &&
