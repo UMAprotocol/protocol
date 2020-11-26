@@ -132,7 +132,7 @@ abstract contract FundingRateApplier is FeePayer {
 
         OptimisticOracle optimisticOracle = _getOptimisticOracle();
 
-        // Set up optmistic oracle.
+        // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
         optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
