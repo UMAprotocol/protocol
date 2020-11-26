@@ -13,6 +13,7 @@ const Timer = artifacts.require("Timer");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("ExpandedERC20");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const ConfigStore = artifacts.require("ConfigStore");
 
 const { toWei, utf8ToHex } = web3.utils;
 
@@ -27,11 +28,12 @@ contract("FundingRateApplier", function(accounts) {
   let optimisticOracle;
   let collateral;
   let fundingRateApplier;
+  let config;
 
   // Params
   const liveness = 7200;
   const rewardRate = toWei("0.000001"); // 1 percent every 10_000 seconds.
-  const bondPercentage = toWei("0.01"); // 1 percent.
+  const bondPercentage = toWei("0.0001"); // .01 percent.
   const identifier = utf8ToHex("Test Identifier");
   const initialUserBalance = toWei("100");
   const defaultProposal = toWei("0.0000001"); // 1 percent every 100_000 seconds.
@@ -74,13 +76,22 @@ contract("FundingRateApplier", function(accounts) {
     await collateral.mint(disputer, initialUserBalance);
     await collateralWhitelist.addToWhitelist(collateral.address);
 
+    // Set up config contract.
+    config = await ConfigStore.new(
+      {
+        timelockLiveness: 86400, // 1 day
+        rewardRatePerSecond: { rawValue: rewardRate },
+        proposerBondPct: { rawValue: bondPercentage }
+      },
+      timer.address
+    );
+
     // Set up the funding rate applier.
     fundingRateApplier = await FundingRateApplier.new(
-      { rawValue: bondPercentage },
-      { rawValue: rewardRate },
       identifier,
       collateral.address,
       finder.address,
+      config.address,
       timer.address
     );
 
@@ -208,12 +219,12 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Pays rewards", async () => {
-      // Owner should have already paid 1 percent of pfc (1 token) to the funding rate store.
-      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99"));
+      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store.
+      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
 
       // Funding rate store does not escrow, the optimistic oracle does.
       assert.equal((await collateral.balanceOf(fundingRateApplier.address)).toString(), initialUserBalance);
-      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("1"));
+      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("0.01"));
 
       // Move time forward to expire the proposal.
       currentTime += delay;
@@ -224,7 +235,8 @@ contract("FundingRateApplier", function(accounts) {
 
       // Owner should have their bond back and have received:
       // - a reward of 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc -- 1 token.
-      // - their bond back -- 1 token.
+      // - their bond back -- 0.01 token.
+      // Net 1 token more than their initial balance.
       assert.equal((await collateral.balanceOf(owner)).toString(), toWei("101"));
       assert.equal((await collateral.balanceOf(fundingRateApplier.address)).toString(), toWei("99"));
     });
@@ -309,12 +321,12 @@ contract("FundingRateApplier", function(accounts) {
 
     it("Doesn't pay rewards after resolution", async () => {
       const proposalTime = currentTime;
-      // Both participants should have paid out 1 token (1% of pfc).
-      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99"));
-      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99"));
+      // Both participants should have paid out 0.01 token (0.01% of pfc).
+      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
+      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
 
       // The optimistic oracle should be escrowing that money.
-      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("2"));
+      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("0.02"));
 
       // Move time forward to where the proposal would have expired (if not disputed).
       currentTime += delay;
@@ -324,8 +336,8 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.applyFundingRate();
 
       // No rewards should be paid yet since the proposal is yet to be resolved.
-      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99"));
-      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99"));
+      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
+      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
 
       // Resolve the dispute.
       await mockOracle.pushPrice(identifier, proposalTime, defaultProposal);
@@ -338,8 +350,8 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await fundingRateApplier.fundingRate()).proposalTime, "0");
 
       // No net reward is paid out.
-      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("101"));
-      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99"));
+      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("100.01"));
+      assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
       assert.equal((await collateral.balanceOf(fundingRateApplier.address)).toString(), toWei("100"));
     });
 

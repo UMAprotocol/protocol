@@ -96,8 +96,8 @@ abstract contract FundingRateApplier is FeePayer {
     constructor(
         bytes32 _fundingRateIdentifier,
         address _collateralAddress,
-        address _configStoreAddress,
         address _finderAddress,
+        address _configStoreAddress,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         uint256 currentTime = getCurrentTime();
@@ -118,6 +118,7 @@ abstract contract FundingRateApplier is FeePayer {
 
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
         external
+        fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory totalBond)
     {
