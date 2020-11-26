@@ -241,7 +241,7 @@ abstract contract FundingRateApplier is FeePayer {
             fundingRate.cumulativeMultiplier
         );
 
-        emit NewFundingRate(
+        emit NewFundingRateMultiplier(
             fundingRate.cumulativeMultiplier.rawValue,
             fundingRate.applicationTime,
             currentTime,
