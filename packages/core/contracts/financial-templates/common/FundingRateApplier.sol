@@ -97,7 +97,9 @@ abstract contract FundingRateApplier is FeePayer {
         address _finderAddress,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
-        fundingRate.updateTime = getCurrentTime();
+        uint256 currentTime = getCurrentTime();
+        fundingRate.updateTime = currentTime;
+        fundingRate.applicationTime = currentTime;
 
         // Seed the cumulative multiplier as 1, from which it will be scaled as funding rates are applied over time.
         fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
