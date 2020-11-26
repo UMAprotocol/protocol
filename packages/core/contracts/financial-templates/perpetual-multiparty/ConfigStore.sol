@@ -52,7 +52,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 timelockLiveness,
         uint256 proposalPassedTimestamp
     );
-    event ChangedNewConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
+    event ChangedConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
 
     /****************************************
      *                MODIFIERS             *
