@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -17,6 +18,7 @@ import "../../oracle/implementation/Constants.sol";
 import "../common/FeePayer.sol";
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
+
 /**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
@@ -28,6 +30,7 @@ contract PricelessPositionManager is FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
+    using Address for address;
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
@@ -479,8 +482,9 @@ contract PricelessPositionManager is FeePayer {
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed =
-            fractionRedeemed.mul(_getFeeAdjustedCollateral(positionData.rawCollateral));
+        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
+            _getFeeAdjustedCollateral(positionData.rawCollateral)
+        );
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -543,10 +547,11 @@ contract PricelessPositionManager is FeePayer {
             FixedPoint.Unsigned memory positionCollateral = _getFeeAdjustedCollateral(positionData.rawCollateral);
 
             // If the debt is greater than the remaining collateral, they cannot redeem anything.
-            FixedPoint.Unsigned memory positionRedeemableCollateral =
-                tokenDebtValueInCollateral.isLessThan(positionCollateral)
-                    ? positionCollateral.sub(tokenDebtValueInCollateral)
-                    : FixedPoint.Unsigned(0);
+            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
+                positionCollateral
+            )
+                ? positionCollateral.sub(tokenDebtValueInCollateral)
+                : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
@@ -558,8 +563,10 @@ contract PricelessPositionManager is FeePayer {
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
         // the caller will get as much collateral as the contract can pay out.
-        FixedPoint.Unsigned memory payout =
-            FixedPoint.min(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalRedeemableCollateral);
+        FixedPoint.Unsigned memory payout = FixedPoint.min(
+            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
+            totalRedeemableCollateral
+        );
 
         // Decrement total contract collateral and outstanding debt.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
@@ -687,7 +694,7 @@ contract PricelessPositionManager is FeePayer {
         view
         returns (FixedPoint.Unsigned memory)
     {
-        if (address(financialProductLibrary) == address(0)) return price;
+        if (address(financialProductLibrary).isContract() == false) return price;
         try financialProductLibrary.transformPrice(price, requestTime) returns (
             FixedPoint.Unsigned memory transformedPrice
         ) {
@@ -755,7 +762,7 @@ contract PricelessPositionManager is FeePayer {
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
-    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
@@ -887,8 +894,10 @@ contract PricelessPositionManager is FeePayer {
         view
         returns (bool)
     {
-        FixedPoint.Unsigned memory global =
-            _getCollateralizationRatio(_getFeeAdjustedCollateral(rawTotalPositionCollateral), totalTokensOutstanding);
+        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
+            _getFeeAdjustedCollateral(rawTotalPositionCollateral),
+            totalTokensOutstanding
+        );
         FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
         return !global.isGreaterThan(thisChange);
     }

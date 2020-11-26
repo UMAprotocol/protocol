@@ -1142,6 +1142,50 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "5");
   });
 
+  it("Correctly handles invalid financial product library", async function() {
+    // Set the financial product library to a contract that is NOT a valid financial contract library, such as the
+    // mock oracle.
+
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      mockOracle.address, // _financialProductLibraryAddress
+      { from: contractDeployer }
+    );
+
+    // Transform price function in pricelessPositionManager should apply NO transformation as library is reverting.
+    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "5");
+  });
+
+  it("Correctly handles EOA financial product library", async function() {
+    // Set the financial product library to a contract that is NOT a valid financial contract library, such as the
+    // mock oracle.
+
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      tokenCurrency.address, // _tokenAddress
+      finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      timer.address, // _timerAddress
+      beneficiary, // _excessTokenBeneficiary
+      other, // _financialProductLibraryAddress
+      { from: contractDeployer }
+    );
+
+    // Transform price function in pricelessPositionManager should apply NO transformation as library is reverting.
+    assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "5");
+  });
+
   it("Non sponsor can't deposit, redeem, withdraw, or transfer", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });

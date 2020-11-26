@@ -2137,6 +2137,34 @@ contract("Liquidatable", function(accounts) {
           collateralRequirement.toString()
         );
       });
+      it("Invalid financial contract library object is handled correctly", async () => {
+        // Create a custom liquidatable object, containing the financialProductLibraryAddress but set it to a contract
+        // that is not a valid financial product library.
+        let brokenFclLiquidatableParameters = liquidatableParameters;
+        brokenFclLiquidatableParameters.financialProductLibraryAddress = mockOracle.address; // set to something that is not at all a financial contract library to test
+        fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
+          from: contractDeployer
+        });
+
+        assert.equal(
+          (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+          collateralRequirement.toString()
+        );
+      });
+      it("EOA financial contract library object is handled correctly", async () => {
+        // Create a custom liquidatable object, containing the financialProductLibraryAddress to an EOA.
+        // that is not a valid financial product library.
+        let brokenFclLiquidatableParameters = liquidatableParameters;
+        brokenFclLiquidatableParameters.financialProductLibraryAddress = rando; // set to EOA.
+        fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
+          from: contractDeployer
+        });
+
+        assert.equal(
+          (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+          collateralRequirement.toString()
+        );
+      });
     });
   });
 
