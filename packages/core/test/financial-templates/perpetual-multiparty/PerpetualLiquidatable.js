@@ -1458,27 +1458,14 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
-      // Creating the liquidation with an incorrect max-collateral-per-token ratio will revert,
-      // and the liquidator must take into account the sponsor's funding-rate adjusted debt, which
-      // should increase this ratio since token debt value has decreased.
-      assert(
-        await didContractThrow(
-          liquidationContract.createLiquidation(
-            sponsor,
-            { rawValue: "0" },
-            { rawValue: pricePerToken.toString() },
-            { rawValue: amountOfSynthetic.toString() },
-            unreachableDeadline,
-            { from: liquidator }
-          )
-        )
-      );
-      // Create a Liquidation with the correct funding-rate adjusted token-collateral ratio.
+      // Create a Liquidation with the correct funding-rate adjusted token-collateral ratio. The "pricePerToken"
+      // variable name is a bit misleading here, it simply should be the ratio of collateral to token units, which is
+      // 1.5 in this case.
       liquidationTime = await liquidationContract.getCurrentTime();
       liquidationResult = await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
-        { rawValue: toWei("1.58") }, // 150 collateral / 95 adjusted debt = ~1.58
+        { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         unreachableDeadline,
         { from: liquidator }
@@ -1529,28 +1516,14 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
       await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
 
-      // Create a Liquidation with the correct funding-rate adjusted max-collateral-per-token ratio. Since the debt
-      // outstanding has increased, this ratio actually has decreased so it would still succeed using a ratio
-      // of 1.5, but we'll lower it to demonstrate the point that the allowed ratio has decreased. This would
-      // revert if the multiplier was snapshotted at 1. There should be a revert if we set the min ratio > 1.43 but
-      // < 1.5, which would not revert if the multiplier was snapshotted at 1.
-      assert(
-        await didContractThrow(
-          liquidationContract.createLiquidation(
-            sponsor,
-            { rawValue: toWei("1.45") },
-            { rawValue: pricePerToken.toString() },
-            { rawValue: amountOfSynthetic.toString() },
-            unreachableDeadline,
-            { from: liquidator }
-          )
-        )
-      );
+      // Create a Liquidation with the correct funding-rate adjusted token-collateral ratio. The "pricePerToken"
+      // variable name is a bit misleading here, it simply should be the ratio of collateral to token units, which is
+      // 1.5 in this case.
       liquidationTime = await liquidationContract.getCurrentTime();
       liquidationResult = await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: "0" },
-        { rawValue: toWei("1.43") }, // 150 collateral / 105 adjusted debt = ~1.43
+        { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         unreachableDeadline,
         { from: liquidator }
