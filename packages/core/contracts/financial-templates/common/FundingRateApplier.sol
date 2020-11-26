@@ -84,6 +84,11 @@ abstract contract FundingRateApplier is FeePayer {
         _;
     }
 
+    modifier regularFees {
+        payRegularFees();
+        _;
+    }
+
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
@@ -107,7 +112,7 @@ abstract contract FundingRateApplier is FeePayer {
         configStore = ConfigStoreInterface(_configStoreAddress);
     }
 
-    function applyFundingRate() public fees() nonReentrant() {
+    function applyFundingRate() public regularFees() nonReentrant() {
         _applyEffectiveFundingRate();
     }
 
