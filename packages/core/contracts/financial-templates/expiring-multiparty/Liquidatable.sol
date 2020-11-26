@@ -10,7 +10,6 @@ import "./PricelessPositionManager.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 
-
 /**
  * @title Liquidatable
  * @notice Adds logic to a position-managing contract that enables callers to liquidate an undercollateralized position.
@@ -276,9 +275,8 @@ contract Liquidatable is PricelessPositionManager {
 
             // Part of the withdrawal request is also removed. Ideally:
             // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
-            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
-                ratio
-            );
+            FixedPoint.Unsigned memory withdrawalAmountToRemove =
+                positionToLiquidate.withdrawalRequestAmount.mul(ratio);
             _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
         }
 
@@ -359,9 +357,10 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
 
         // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
-        FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
-            _getFeeAdjustedCollateral(disputedLiquidation.rawUnitCollateral)
-        );
+        FixedPoint.Unsigned memory disputeBondAmount =
+            disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
+                _getFeeAdjustedCollateral(disputedLiquidation.rawUnitCollateral)
+            );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
         // Request a price from DVM. Liquidation is pending dispute until DVM returns a price.
@@ -419,9 +418,8 @@ contract Liquidatable is PricelessPositionManager {
         // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(settlementPrice).mul(
-            feeAttenuation
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue =
+            liquidation.tokensOutstanding.mul(settlementPrice).mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
@@ -455,9 +453,8 @@ contract Liquidatable is PricelessPositionManager {
                 // If TRV > Collateral, then subtract rewards from collateral
                 // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
                 // the constructor when these params are set.
-                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
-                    disputerDisputeReward
-                );
+                FixedPoint.Unsigned memory payToLiquidator =
+                    tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
                 withdrawalAmount = withdrawalAmount.add(payToLiquidator);
                 delete liquidation.liquidator;
             }
@@ -550,16 +547,14 @@ contract Liquidatable is PricelessPositionManager {
         liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
-            liquidation.settlementPrice
-        );
+        FixedPoint.Unsigned memory tokenRedemptionValue =
+            liquidation.tokensOutstanding.mul(liquidation.settlementPrice);
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio. The Transform
         // Collateral requirement method applies a from the financial Product library to change the scaled the collateral
         // requirement based on the settlement price. If no library was specified when deploying the emp then this makes no change.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(
-            transformCollateralRequirement(liquidation.settlementPrice)
-        );
+        FixedPoint.Unsigned memory requiredCollateral =
+            tokenRedemptionValue.mul(transformCollateralRequirement(liquidation.settlementPrice));
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
@@ -576,7 +571,7 @@ contract Liquidatable is PricelessPositionManager {
         );
     }
 
-    function _pfc() internal override view returns (FixedPoint.Unsigned memory) {
+    function _pfc() internal view override returns (FixedPoint.Unsigned memory) {
         return super._pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
