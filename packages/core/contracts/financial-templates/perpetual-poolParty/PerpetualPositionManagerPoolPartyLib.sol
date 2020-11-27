@@ -560,7 +560,6 @@ library PerpetualPositionManagerPoolPartyLib {
         PerpetualPositionManagerPoolParty.PositionManagerData storage positionManagerData,
         FeePayerPoolParty.FeePayerData storage feePayerData
     ) internal view returns (FixedPoint.Unsigned memory) {
-        require(positionManagerData.emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
         return positionManagerData._getOraclePrice(positionManagerData.emergencyShutdownTimestamp, feePayerData);
     }
 
