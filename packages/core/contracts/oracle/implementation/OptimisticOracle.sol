@@ -140,6 +140,8 @@ contract OptimisticOracle is Testable, Lockable {
 
         emit RequestPrice(msg.sender, identifier, timestamp, address(currency), reward, finalFee);
 
+        // The total bond is the final fee + the default bond, which is set to the final fee. So the total bond is
+        // 2x the final fee.
         return finalFee.mul(2);
     }
 
@@ -151,6 +153,8 @@ contract OptimisticOracle is Testable, Lockable {
         require(getState(msg.sender, identifier, timestamp) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(msg.sender, identifier, timestamp);
         request.bond = bond;
+
+        // Total bond is the final fee + the newly set bond.
         return bond.add(request.finalFee);
     }
 
