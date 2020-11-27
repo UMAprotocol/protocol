@@ -168,19 +168,6 @@ abstract contract FundingRateApplier is FeePayer {
         return OptimisticOracle(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
-    // function priceSettled(
-    //     bytes32 identifier,
-    //     uint256 timestamp,
-    //     int256 price
-    // ) external nonReentrant() {
-    //     // Check to be sure this is a valid request that is NOT the currently proposed one.
-    //     require(msg.sender == address(_getOptimisticOracle()) && identifier == fundingRate.identifier && timestamp != fundingRate.proposalTime && timestamp > fundingRate.updateTime, "Irrelevant settlement");
-
-    //     // Set the update time and the rate. This doesn't affect any currently proposed request.
-    //     fundingRate.updateTime = timestamp;
-    //     fundingRate.rate = FixedPoint.Signed(price);
-    // }
-
     function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
         return configStore.getCurrentConfig();
     }
