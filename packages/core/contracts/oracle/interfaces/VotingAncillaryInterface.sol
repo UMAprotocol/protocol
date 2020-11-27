@@ -4,23 +4,24 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
-import "./VotingAncillaryInterface.sol";
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
-abstract contract VotingInterface {
-    struct PendingRequest {
+abstract contract VotingAncillaryInterface {
+    struct PendingRequestAncillary {
         bytes32 identifier;
         uint256 time;
+        bytes ancillaryData;
     }
 
     // Captures the necessary data for making a commitment.
     // Used as a parameter when making batch commitments.
     // Not used as a data structure for storage.
-    struct Commitment {
+    struct CommitmentAncillary {
         bytes32 identifier;
         uint256 time;
+        bytes ancillaryData;
         bytes32 hash;
         bytes encryptedVote;
     }
@@ -28,12 +29,17 @@ abstract contract VotingInterface {
     // Captures the necessary data for revealing a vote.
     // Used as a parameter when making batch reveals.
     // Not used as a data structure for storage.
-    struct Reveal {
+    struct RevealAncillary {
         bytes32 identifier;
         uint256 time;
         int256 price;
+        bytes ancillaryData;
         int256 salt;
     }
+
+    // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
+    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
 
     /**
      * @notice Commit a vote for a price request for `identifier` at `time`.
@@ -49,6 +55,7 @@ abstract contract VotingInterface {
     function commitVote(
         bytes32 identifier,
         uint256 time,
+        bytes memory ancillaryData,
         bytes32 hash
     ) external virtual;
 
@@ -59,7 +66,7 @@ abstract contract VotingInterface {
      * commitments that can fit in one transaction.
      * @param commits array of structs that encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(Commitment[] calldata commits) external virtual;
+    function batchCommit(CommitmentAncillary[] calldata commits) external virtual;
 
     /**
      * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
@@ -83,6 +90,7 @@ abstract contract VotingInterface {
         bytes32 identifier,
         uint256 time,
         int256 price,
+        bytes memory ancillaryData,
         int256 salt
     ) external virtual;
 
@@ -93,24 +101,20 @@ abstract contract VotingInterface {
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(Reveal[] calldata reveals) external virtual;
+    function batchReveal(RevealAncillary[] calldata reveals) external virtual;
 
     /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests()
-        external
-        view
-        virtual
-        returns (VotingAncillaryInterface.PendingRequestAncillary[] memory);
+    function getPendingRequests() external view virtual returns (PendingRequestAncillary[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view virtual returns (VotingAncillaryInterface.Phase);
+    function getVotePhase() external view virtual returns (Phase);
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
@@ -130,6 +134,6 @@ abstract contract VotingInterface {
     function retrieveRewards(
         address voterAddress,
         uint256 roundId,
-        PendingRequest[] memory toRetrieve
+        PendingRequestAncillary[] memory toRetrieve
     ) public virtual returns (FixedPoint.Unsigned memory);
 }

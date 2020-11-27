@@ -18,7 +18,7 @@ contract VoteTimingTest {
         return voteTiming.computeCurrentRoundId(currentTime);
     }
 
-    function wrapComputeCurrentPhase(uint256 currentTime) external view returns (VotingInterface.Phase) {
+    function wrapComputeCurrentPhase(uint256 currentTime) external view returns (VotingAncillaryInterface.Phase) {
         return voteTiming.computeCurrentPhase(currentTime);
     }
 

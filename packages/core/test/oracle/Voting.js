@@ -17,6 +17,7 @@ const truffleAssert = require("truffle-assertions");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterface = artifacts.require("VotingInterface");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
@@ -47,7 +48,7 @@ contract("Voting", function(accounts) {
   };
 
   before(async function() {
-    voting = await Voting.deployed();
+    voting = await VotingInterface.at(Voting.address());
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
