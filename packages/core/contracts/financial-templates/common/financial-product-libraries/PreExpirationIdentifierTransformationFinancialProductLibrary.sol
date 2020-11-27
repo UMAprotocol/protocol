@@ -3,10 +3,6 @@ pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface ExpiringContractInterface {
-    function expirationTimestamp() external view returns (uint256);
-}
-
 /**
  * @title Pre-Expiration Identifier Transformation Financial Product Library
  * @notice Adds custom identifier transformation to enable a financial contract to use two different identifiers, depending

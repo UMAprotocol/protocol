@@ -3,10 +3,6 @@ pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface ExpiringContractInterface {
-    function expirationTimestamp() external view returns (uint256);
-}
-
 /**
  * @title Structured Note Financial Product Library
  * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract.  The

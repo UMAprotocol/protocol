@@ -2,6 +2,10 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "../../../common/implementation/FixedPoint.sol";
 
+interface ExpiringContractInterface {
+    function expirationTimestamp() external view returns (uint256);
+}
+
 /**
  * @title Financial product library contract
  * @notice Provides price and collateral requirement transformation interfaces that can be overridden by custom
