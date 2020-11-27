@@ -708,7 +708,7 @@ contract PricelessPositionManager is FeePayer {
      * @dev This method should never revert.
      */
     function transformPriceIdentifier(uint256 requestTime) public view returns (bytes32) {
-        if (address(financialProductLibrary) == address(0)) return priceIdentifier;
+        if (!address(financialProductLibrary).isContract()) return priceIdentifier;
         try financialProductLibrary.transformPriceIdentifier(priceIdentifier, requestTime) returns (
             bytes32 transformedIdentifier
         ) {

@@ -1545,7 +1545,10 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await pricelessPositionManager.transformPrice({ rawValue: "5" }, "0")).toString(), "5");
 
       // Transform identifier function in pricelessPositionManager should apply NO transformation as library is reverting.
-      assert.equal(await pricelessPositionManager.transformPriceIdentifier(priceFeedIdentifier));
+      assert.equal(
+        hexToUtf8(await pricelessPositionManager.transformPriceIdentifier("0")),
+        hexToUtf8(priceFeedIdentifier)
+      );
     });
   });
 

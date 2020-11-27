@@ -13,8 +13,6 @@ contract ExpiringMultiPartyMock is Testable {
     FixedPoint.Unsigned public collateralRequirement;
     bytes32 public priceIdentifier;
 
-    FixedPoint.Unsigned public collateralRequirement;
-
     constructor(
         address _financialProductLibraryAddress,
         uint256 _expirationTimestamp,
