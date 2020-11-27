@@ -58,8 +58,10 @@ abstract contract FundingRateApplier is FeePayer {
 
     FundingRate public fundingRate;
 
+    // Timestamp used in case of emergency shutdown. 0 if no shutdown has been triggered.
     uint256 public emergencyShutdownTimestamp;
 
+    // Remote config store managed an owner.
     ConfigStoreInterface public configStore;
 
     /****************************************
@@ -91,7 +93,11 @@ abstract contract FundingRateApplier is FeePayer {
 
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
+     * @param _fundingRateIdentifier identifier that tracks the funding rate of this contract.
+     * @param _collateralAddress address of the collateral token.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
+     * @param _configStoreAddress address of the remote configuration store managed by an external owner.
+     * @param _timerAddress address of the timer contract in test envs, otherwise 0x0.
      */
     constructor(
         bytes32 _fundingRateIdentifier,
@@ -116,6 +122,11 @@ abstract contract FundingRateApplier is FeePayer {
         _applyEffectiveFundingRate();
     }
 
+    /**
+     * @notice Proposes a new funding rate. Proposer receives a reward if correct.
+     * @param rate funding rate to being proposed.
+     * @param timestamp time at which the funding rate was computed.
+     */
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
         external
         fees()

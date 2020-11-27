@@ -35,8 +35,6 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         address collateralAddress;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
-        FixedPoint.Unsigned fundingRateRewardRate;
-        FixedPoint.Unsigned fundingRateBondPercentage;
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned collateralRequirement;
