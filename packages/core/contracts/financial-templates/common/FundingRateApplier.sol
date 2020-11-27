@@ -160,8 +160,9 @@ abstract contract FundingRateApplier is FeePayer {
         if (totalBond.isGreaterThan(0)) {
             collateralCurrency.safeTransferFrom(msg.sender, address(this), totalBond.rawValue);
             collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), totalBond.rawValue);
-            optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
         }
+
+        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.

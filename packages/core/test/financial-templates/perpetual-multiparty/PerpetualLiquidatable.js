@@ -20,6 +20,8 @@ const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
+const ConfigStore = artifacts.require("ConfigStore");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 contract("PerpetualLiquidatable", function(accounts) {
   // Roles
@@ -80,6 +82,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   let store;
   let financialContractsAdmin;
   let timer;
+  let configStore;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -90,16 +93,27 @@ contract("PerpetualLiquidatable", function(accounts) {
     liquidatedCollateral: amountOfCollateralToLiquidate
   };
 
+  // Advances time by 10k seconds.
+  const setFundingRateAndAdvanceTime = async fundingRate => {
+    const currentTime = (await liquidationContract.getCurrentTime()).toNumber();
+    await liquidationContract.proposeNewRate({ rawValue: fundingRate }, currentTime);
+    await liquidationContract.setCurrentTime(currentTime + 10000);
+  };
+
   beforeEach(async () => {
-    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    // Force each test to start with a simulated time that's synced to just before the startTimestamp.
     timer = await Timer.deployed();
-    await timer.setCurrentTime(startTime);
+    await timer.setCurrentTime(startTime - 1);
 
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
       from: contractDeployer
     });
+
+    // Add collateral to whitelist.
+    const collateralWhitelist = await AddressWhitelist.deployed();
+    await collateralWhitelist.addToWhitelist(collateralToken.address);
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -132,6 +146,12 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    configStore = await ConfigStore.new({
+      timelockLiveness: 86400, // 1 day
+      rewardRatePerSecond: { rawValue: "0" },
+      proposerBondPct: { rawValue: "0" }
+    }, timer.address);
+
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
@@ -146,7 +166,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
-      excessTokenBeneficiary: beneficiary
+      configStoreAddress: configStore.address
     };
 
     // Deploy liquidation contract and set global params
@@ -160,6 +180,9 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
+    
+    // Apply the funding to set the application time to startTime.
+    await liquidationContract.applyFundingRate();
 
     // Mint collateral to sponsor
     await collateralToken.addMember(1, contractDeployer, { from: contractDeployer });
@@ -195,29 +218,6 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
-  });
-
-  const expectNoExcessCollateralToTrim = async () => {
-    let collateralTrimAmount = await liquidationContract.trimExcess.call(collateralToken.address);
-    await liquidationContract.trimExcess(collateralToken.address);
-    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
-
-    assert.equal(collateralTrimAmount.toString(), "0");
-    assert.equal(beneficiaryCollateralBalance.toString(), "0");
-  };
-
-  const expectAndDrainExcessCollateral = async () => {
-    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
-    await liquidationContract.trimExcess(collateralToken.address);
-    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
-    collateralToken.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
-
-    // Assert that nonzero collateral was drained.
-    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
-  };
-
-  afterEach(async () => {
-    await expectNoExcessCollateralToTrim();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -409,9 +409,6 @@ contract("PerpetualLiquidatable", function(accounts) {
         { from: liquidator }
       );
 
-      // Check that excess collateral to be trimmed is still 0.
-      await expectNoExcessCollateralToTrim();
-
       // Collateral balance change should equal the final fee.
       assert.equal(
         intitialBalance.sub(await collateralToken.balanceOf(liquidator)).toString(),
@@ -446,15 +443,13 @@ contract("PerpetualLiquidatable", function(accounts) {
         return ev.sponsor == sponsor;
       });
     });
+
     it("Funding rate multiplier is updated", async () => {
       // Initially cumulativeFundingRateMultiplier is set to 1e18
 
-      // Set a positive funding rate of 0.005 in the store and apply it for a period of 10 seconds. New funding rate should
-      // be 1 * (1 + 0.005 * 10) = 1.05)
-      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-        rawValue: toWei("0.005")
-      });
-      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+      // Set a positive funding rate of 0.000005 in the store and apply it for a period of 10_000 seconds. New funding
+      // rate should be 1 * (1 + 0.000005 * 10000) = 1.05)
+      await setFundingRateAndAdvanceTime(toWei("0.000005"));
 
       // Creating a liquidation should update the funding rate multiplier
       await liquidationContract.createLiquidation(
@@ -466,8 +461,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         { from: liquidator }
       );
 
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
     });
+    
     it("Increments ID after creation", async () => {
       // Create first liquidation
       await liquidationContract.createLiquidation(
@@ -561,9 +557,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
       assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
       assert.equal(expectedLiquidatedTokens.toString(), tokensLiquidated.toString());
-
-      // Check that excess collateral to be trimmed is still 0.
-      await expectNoExcessCollateralToTrim();
 
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
@@ -823,9 +816,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       });
       it("Dispute generates no excess collateral", async () => {
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
-
-        // Check that excess collateral to be trimmed is still 0.
-        await expectNoExcessCollateralToTrim();
       });
       it("Dispute emits an event", async () => {
         const disputeResult = await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, {
@@ -1007,9 +997,6 @@ contract("PerpetualLiquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
         });
-
-        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-        await expectNoExcessCollateralToTrim();
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -1030,9 +1017,6 @@ contract("PerpetualLiquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_FAILED;
         });
-
-        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-        await expectNoExcessCollateralToTrim();
       });
       it("Dispute Succeeded even if funding rate multiplier increased sponsor debt outstanding during liquidation", async () => {
         // This test checks that the funding rate adjusted-value of the sponsor debt is frozen at liquidation time, if
@@ -1070,9 +1054,6 @@ contract("PerpetualLiquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
         });
-
-        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-        await expectNoExcessCollateralToTrim();
       });
       it("Events correctly emitted", async () => {
         // Create a successful dispute and check the event is correct.
@@ -1319,26 +1300,17 @@ contract("PerpetualLiquidatable", function(accounts) {
             startBalanceSponsor.add(toBN(sponsorAmount)).toString()
           );
 
-          // Check that excess collateral to be trimmed is 0 after the sponsor withdraws.
-          await expectNoExcessCollateralToTrim();
-
           // Liquidator balance check.
           assert.equal(
             (await collateralToken.balanceOf(liquidator)).toString(),
             startBalanceLiquidator.add(toBN(liquidatorAmount)).toString()
           );
 
-          // Check that excess collateral to be trimmed is 0 afer the liquidator withdraws.
-          await expectNoExcessCollateralToTrim();
-
           // Disputer balance check.
           assert.equal(
             (await collateralToken.balanceOf(disputer)).toString(),
             startBalanceDisputer.add(toBN(disputerAmount)).toString()
           );
-
-          // Check that excess collateral to be trimmed is 0 after the last withdrawal.
-          await expectNoExcessCollateralToTrim();
 
           // Clean up store fees.
           await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
@@ -1499,9 +1471,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
         return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
       });
-
-      // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-      await expectNoExcessCollateralToTrim();
     });
     it("Liquidation disputed unsuccessfully because funding rate multiplier increased sponsor debt outstanding", async function() {
       // We will set the funding rate multiplier to 1.05, which means that the sponsor's current adjusted debt outstanding is equal to:
@@ -1557,9 +1526,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
         return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_FAILED;
       });
-
-      // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-      await expectNoExcessCollateralToTrim();
     });
   });
 
@@ -2105,9 +2071,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "29");
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "28");
       assert.equal((await liquidationContract.rawTotalPositionCollateral()).toString(), "0");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
     it("Liquidation object is set up properly", async () => {
       let liquidationData = await liquidationContract.liquidations(sponsor, 0);
@@ -2125,9 +2088,6 @@ contract("PerpetualLiquidatable", function(accounts) {
       // locked collateral.
       // - rawUnitCollateral = (1 / 0.966666666666666666) = 1.034482758620689655
       assert.equal(fromWei(liquidationData.rawUnitCollateral.toString()), "1.034482758620689655");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
     it("withdrawLiquidation() returns the same amount of collateral that liquidationCollateral is decreased by", async () => {
       // So, the available collateral for rewards should be (lockedCollateral * feeAttenuation),
@@ -2156,9 +2116,6 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // rawLiquidationCollateral should also have been decreased by 27, from 28 to 1
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "1");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
   });
 });

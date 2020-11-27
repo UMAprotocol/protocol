@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8 } = web3.utils;
-const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
@@ -14,7 +14,6 @@ const Registry = artifacts.require("Registry");
 const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Store = artifacts.require("Store");
 const ConfigStore = artifacts.require("ConfigStore");
 
 contract("PerpetualCreator", function(accounts) {
@@ -25,8 +24,6 @@ contract("PerpetualCreator", function(accounts) {
   let perpetualCreator;
   let registry;
   let collateralTokenWhitelist;
-  let store;
-
   // Re-used variables
   let constructorParams;
   let testConfig = {
@@ -44,8 +41,6 @@ contract("PerpetualCreator", function(accounts) {
     collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
-    store = await Store.deployed();
-
     constructorParams = {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
@@ -58,8 +53,7 @@ contract("PerpetualCreator", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
-      withdrawalLiveness: 7200,
-      excessTokenBeneficiary: store.address
+      withdrawalLiveness: 7200
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -159,18 +153,6 @@ contract("PerpetualCreator", function(accounts) {
     );
   });
 
-  it("Beneficiary cannot be 0x0", async function() {
-    // Change only the beneficiary address.
-    constructorParams.excessTokenBeneficiary = ZERO_ADDRESS;
-    assert(
-      await didContractThrow(
-        perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
-        })
-      )
-    );
-  });
-
   it("Can create new instances of Perpetual", async function() {
     // Use `.call` to get the returned value from the function.
     let functionReturnedAddress = await perpetualCreator.createPerpetual.call(constructorParams, testConfig, {
@@ -201,13 +183,13 @@ contract("PerpetualCreator", function(accounts) {
     assert.equal(await perpetual.withdrawalLiveness(), constructorParams.withdrawalLiveness.toString());
     assert.equal(hexToUtf8(await perpetual.priceIdentifier()), hexToUtf8(constructorParams.priceFeedIdentifier));
     assert.equal(
-      hexToUtf8(await perpetual.fundingRateIdentifier()),
+      hexToUtf8((await perpetual.fundingRate()).identifier),
       hexToUtf8(constructorParams.fundingRateIdentifier)
     );
 
     // Cumulative multipliers are set to default.
     assert.equal((await perpetual.cumulativeFeeMultiplier()).toString(), toWei("1"));
-    assert.equal((await perpetual.cumulativeFundingRateMultiplier()).toString(), toWei("1"));
+    assert.equal((await perpetual.fundingRate()).cumulativeMultiplier.toString(), toWei("1"));
 
     // Deployed Perpetual timer should be same as Perpetual creator.
     assert.equal(await perpetual.timerAddress(), await perpetualCreator.timerAddress());
