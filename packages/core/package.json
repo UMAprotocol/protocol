@@ -30,7 +30,7 @@
     "mocha": "^8.1.2",
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
-    "solidity-coverage": "^0.7.2",
+    "solidity-coverage": "^0.7.11",
     "supertest": "^4.0.2",
     "truffle": "^5.1.16",
     "truffle-assertions": "^0.9.2",
