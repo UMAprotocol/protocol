@@ -56,7 +56,9 @@
   ],
   "scripts": {
     "test": "yarn mocha-test && yarn buidler-test",
+    "coverage": "yarn buidler-coverage",
     "buidler-test": "node --max-old-space-size=1024 $(yarn bin buidler) test",
+    "buidler-coverage": "node --max-old-space-size=1024 $(yarn bin buidler) coverage",
     "mocha-test": "mocha mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
