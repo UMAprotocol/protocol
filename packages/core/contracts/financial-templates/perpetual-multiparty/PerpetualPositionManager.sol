@@ -137,7 +137,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
@@ -149,14 +148,13 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
-        FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _excessTokenBeneficiary
     )
         public
         FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateRewardRate)
+        FundingRateApplier(_finderAddress)
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 

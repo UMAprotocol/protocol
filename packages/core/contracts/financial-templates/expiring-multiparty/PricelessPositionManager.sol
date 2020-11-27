@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -28,6 +29,7 @@ contract PricelessPositionManager is FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
+    using Address for address;
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
@@ -688,7 +690,7 @@ contract PricelessPositionManager is FeePayer {
         view
         returns (FixedPoint.Unsigned memory)
     {
-        if (address(financialProductLibrary) == address(0)) return price;
+        if (!address(financialProductLibrary).isContract()) return price;
         try financialProductLibrary.transformPrice(price, requestTime) returns (
             FixedPoint.Unsigned memory transformedPrice
         ) {

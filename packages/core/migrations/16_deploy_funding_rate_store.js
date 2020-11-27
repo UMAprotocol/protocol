@@ -16,7 +16,6 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy Store.
   const proposalLiveness = 7200; // 2 hours.
-  const proposalBondPct = web3.utils.toWei("0.0008");
   const { contract: fundingRateStore } = await deploy(
     deployer,
     network,
@@ -24,7 +23,6 @@ module.exports = async function(deployer, network, accounts) {
     proposalLiveness,
     finder.address,
     timerAddress,
-    { rawValue: proposalBondPct },
     { from: keys.deployer }
   );
 

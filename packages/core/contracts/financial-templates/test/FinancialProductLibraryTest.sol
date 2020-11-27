@@ -35,7 +35,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         return oraclePrice.mul(priceTransformationScalar);
     }
 
-    // Create a simple transformCollateralRequirement that doubles the input collateralRequirement.
+    // Create a simple Collateral Requirement transformation that doubles the input collateralRequirement.
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory price,
         FixedPoint.Unsigned memory collateralRequirement
