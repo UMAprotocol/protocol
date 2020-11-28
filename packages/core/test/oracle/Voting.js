@@ -27,7 +27,6 @@ const snapshotMessage = "Sign For Snapshot";
 contract("Voting", function(accounts) {
   let voting;
   let votingToken;
-  let votingContract;
   let registry;
   let supportedIdentifiers;
 
@@ -49,8 +48,7 @@ contract("Voting", function(accounts) {
   };
 
   before(async function() {
-    votingContract = await Voting.deployed();
-    voting = await VotingInterfaceTesting.at(votingContract.address);
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();

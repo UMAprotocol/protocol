@@ -20,6 +20,7 @@ const argv = require("minimist")(process.argv.slice(), { boolean: ["revert", "sh
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const Governor = artifacts.require("Governor");
 let snapshotId, snapshot;
 
@@ -34,7 +35,7 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const voting = await Voting.deployed();
+  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
   const governor = await Governor.deployed();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();

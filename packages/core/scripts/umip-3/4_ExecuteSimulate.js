@@ -17,6 +17,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const Store = artifacts.require("Store");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -67,7 +68,7 @@ async function runExport() {
   const finder = await Finder.at(upgradeAddresses.Finder);
   console.log("finder loaded \t\t\t", finder.address);
 
-  const voting = await Voting.at(upgradeAddresses.Voting);
+  const voting = await VotingInterfaceTesting.at(upgradeAddresses.Voting);
   console.log("voting loaded \t\t\t", voting.address);
 
   const identifierWhitelist = await IdentifierWhitelist.at(upgradeAddresses.IdentifierWhitelist);

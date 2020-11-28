@@ -9,6 +9,7 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["price", "identifier", "time", "salt"] });
 
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 
 const { hexToUtf8, fromWei } = web3.utils;
 
@@ -24,7 +25,7 @@ const revealVote = async callback => {
     }
 
     // Set up voting contract
-    const voting = await Voting.deployed();
+    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     // Read account
     const accounts = await web3.eth.getAccounts();

@@ -1,5 +1,6 @@
 const VotingScript = require("../../scripts/Voting.js");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
@@ -67,7 +68,7 @@ contract("scripts/Voting.js", function(accounts) {
   const voter = accounts[1];
 
   before(async function() {
-    voting = await Voting.deployed();
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     const supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
