@@ -28,9 +28,9 @@ contract Voting is
     Testable,
     Ownable,
     OracleInterface,
-    OracleAncillaryInterface,
+    OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     VotingInterface,
-    VotingAncillaryInterface
+    VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
 {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
@@ -173,6 +173,7 @@ contract Voting is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         uint256 numTokens
     );
 
@@ -276,7 +277,7 @@ contract Voting is
         }
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function requestPrice(bytes32 identifier, uint256 time) public override {
         requestPrice(identifier, time, "");
     }
@@ -297,7 +298,7 @@ contract Voting is
         return _hasPrice;
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
     }
@@ -321,7 +322,7 @@ contract Voting is
         return price;
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
         return getPrice(identifier, time, "");
     }
@@ -356,7 +357,7 @@ contract Voting is
         return requestStates;
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
         PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
@@ -413,7 +414,7 @@ contract Voting is
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function commitVote(
         bytes32 identifier,
         uint256 time,
@@ -498,7 +499,7 @@ contract Voting is
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function revealVote(
         bytes32 identifier,
         uint256 time,
@@ -530,7 +531,7 @@ contract Voting is
         emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function commitAndEmitEncryptedVote(
         bytes32 identifier,
         uint256 time,
@@ -565,7 +566,7 @@ contract Voting is
         }
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function batchCommit(Commitment[] memory commits) public override {
         CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
 
@@ -598,7 +599,7 @@ contract Voting is
         }
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function batchReveal(Reveal[] memory reveals) public override {
         RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
 
@@ -658,7 +659,14 @@ contract Voting is
                 continue;
             } else if (isExpired) {
                 // Emit a 0 token retrieval on expired rewards.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
+                emit RewardsRetrieved(
+                    voterAddress,
+                    roundId,
+                    toRetrieve[i].identifier,
+                    toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
+                    0
+                );
             } else if (
                 voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             ) {
@@ -677,11 +685,19 @@ contract Voting is
                     roundId,
                     toRetrieve[i].identifier,
                     toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
                     reward.rawValue
                 );
             } else {
                 // Emit a 0 token retrieval on incorrect votes.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
+                emit RewardsRetrieved(
+                    voterAddress,
+                    roundId,
+                    toRetrieve[i].identifier,
+                    toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
+                    0
+                );
             }
 
             // Delete the submission to capture any refund and clean up storage.
@@ -694,7 +710,7 @@ contract Voting is
         }
     }
 
-    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function retrieveRewards(
         address voterAddress,
         uint256 roundId,

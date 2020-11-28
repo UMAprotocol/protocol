@@ -149,7 +149,8 @@ abstract contract VotingInterface {
         PendingRequest[] memory toRetrieve
     ) public virtual returns (FixedPoint.Unsigned memory);
 
-    // OWNER FUNCTIONS
+    // Voting Owner functions.
+
     /**
      * @notice Disables this Voting contract in favor of the migrated one.
      * @dev Can only be called by the contract owner.
