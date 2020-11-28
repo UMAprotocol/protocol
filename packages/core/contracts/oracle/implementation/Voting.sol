@@ -24,7 +24,7 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-abstract contract Voting is
+contract Voting is
     Testable,
     Ownable,
     OracleInterface,
@@ -154,6 +154,7 @@ abstract contract Voting is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         bytes encryptedVote
     );
 
@@ -247,7 +248,7 @@ abstract contract Voting is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyRegisteredContract() {
+    ) public override onlyRegisteredContract() {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
@@ -275,8 +276,9 @@ abstract contract Voting is
         }
     }
 
-    function requestPrice(bytes32 identifier, uint256 time) external override {
-        this.requestPrice(identifier, time, "");
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function requestPrice(bytes32 identifier, uint256 time) public override {
+        requestPrice(identifier, time, "");
     }
 
     /**
@@ -290,13 +292,14 @@ abstract contract Voting is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external view override onlyRegisteredContract() returns (bool) {
+    ) public view override onlyRegisteredContract() returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
 
-    function hasPrice(bytes32 identifier, uint256 time) external view override returns (bool) {
-        return this.hasPrice(identifier, time, "");
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
+        return hasPrice(identifier, time, "");
     }
 
     /**
@@ -310,7 +313,7 @@ abstract contract Voting is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external view override onlyRegisteredContract() returns (int256) {
+    ) public view override onlyRegisteredContract() returns (int256) {
         (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time, ancillaryData);
 
         // If the price wasn't available, revert with the provided message.
@@ -318,8 +321,9 @@ abstract contract Voting is
         return price;
     }
 
-    function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
-        return this.getPrice(identifier, time, "");
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
+        return getPrice(identifier, time, "");
     }
 
     /**
@@ -352,16 +356,17 @@ abstract contract Voting is
         return requestStates;
     }
 
-    //     function getPriceRequestStatuses(PendingRequestNoAncillaryData[] memory requests) public view returns (RequestState[] memory) {
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+        PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
-    //         PendingRequest memory requests[requests.length];
-
-    //         for(uint128 i=0;i<requests.length;i++){
-    // // requests[i]=
-    //         }
-
-    //         return requestStates;
-    //     }
+        for (uint256 i = 0; i < requests.length; i++) {
+            requestsAncillary[i].identifier = requests[i].identifier;
+            requestsAncillary[i].time = requests[i].time;
+            requestsAncillary[i].ancillaryData = "";
+        }
+        return getPriceRequestStatuses(requestsAncillary);
+    }
 
     /****************************************
      *            VOTING FUNCTIONS          *
@@ -387,7 +392,10 @@ abstract contract Voting is
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint256 blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
+        require(
+            voteTiming.computeCurrentPhase(blockTime) == VotingAncillaryInterface.Phase.Commit,
+            "Cannot commit in reveal phase"
+        );
 
         // At this point, the computed and last updated round ID should be equal.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -405,12 +413,13 @@ abstract contract Voting is
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
     function commitVote(
         bytes32 identifier,
         uint256 time,
         bytes32 hash
     ) public override onlyIfNotMigrated() {
-        this.commitVote(identifier, time, "", hash);
+        commitVote(identifier, time, "", hash);
     }
 
     /**
@@ -489,13 +498,14 @@ abstract contract Voting is
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
     function revealVote(
         bytes32 identifier,
         uint256 time,
         int256 price,
         int256 salt
     ) public override {
-        this.revealVote(identifier, time, price, "", salt);
+        revealVote(identifier, time, price, "", salt);
     }
 
     /**
@@ -513,11 +523,23 @@ abstract contract Voting is
         bytes memory ancillaryData,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public {
+    ) public override {
         commitVote(identifier, time, ancillaryData, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        emit EncryptedVote(msg.sender, roundId, identifier, time, encryptedVote);
+        emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
+    }
+
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public override {
+        commitVote(identifier, time, "", hash);
+
+        commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
     /**
@@ -527,7 +549,7 @@ abstract contract Voting is
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(CommitmentAncillary[] calldata commits) external override {
+    function batchCommit(CommitmentAncillary[] memory commits) public override {
         for (uint256 i = 0; i < commits.length; i++) {
             if (commits[i].encryptedVote.length == 0) {
                 commitVote(commits[i].identifier, commits[i].time, commits[i].ancillaryData, commits[i].hash);
@@ -543,7 +565,19 @@ abstract contract Voting is
         }
     }
 
-    function batchCommit(Commitment[] calldata commits) external override {}
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function batchCommit(Commitment[] memory commits) public override {
+        CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
+
+        for (uint256 i = 0; i < commits.length; i++) {
+            commitsAncillary[i].identifier = commits[i].identifier;
+            commitsAncillary[i].time = commits[i].time;
+            commitsAncillary[i].ancillaryData = "";
+            commitsAncillary[i].hash = commits[i].hash;
+            commitsAncillary[i].encryptedVote = commits[i].encryptedVote;
+        }
+        batchCommit(commitsAncillary);
+    }
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -552,7 +586,7 @@ abstract contract Voting is
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(RevealAncillary[] calldata reveals) external override {
+    function batchReveal(RevealAncillary[] memory reveals) public override {
         for (uint256 i = 0; i < reveals.length; i++) {
             revealVote(
                 reveals[i].identifier,
@@ -564,10 +598,24 @@ abstract contract Voting is
         }
     }
 
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
+    function batchReveal(Reveal[] memory reveals) public override {
+        RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
+
+        for (uint256 i = 0; i < reveals.length; i++) {
+            revealsAncillary[i].identifier = reveals[i].identifier;
+            revealsAncillary[i].time = reveals[i].time;
+            revealsAncillary[i].price = reveals[i].price;
+            revealsAncillary[i].ancillaryData = "";
+            revealsAncillary[i].salt = reveals[i].salt;
+        }
+        batchReveal(revealsAncillary);
+    }
+
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
-     * @dev Can only retrieve rewards if calling for a valid round and if the
-     * call is done within the timeout threshold (not expired).
+     * @dev Can only retrieve rewards if calling for a valid round and if the call is done within the timeout threshold
+     * (not expired). Note that a named return value is used here to avoid a stack to deep error.
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
@@ -646,21 +694,21 @@ abstract contract Voting is
         }
     }
 
-    /**
-     * @notice Retrieves rewards owed for a set of resolved price requests.
-     * @dev Can only retrieve rewards if calling for a valid round and if the
-     * call is done within the timeout threshold (not expired).
-     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
-     * @param roundId the round from which voting rewards will be retrieved from.
-     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue total amount of rewards returned to the voter.
-     */
+    // Overloaded method to enable short term backwards compatability. Will be deprecated in the next DVM version.
     function retrieveRewards(
         address voterAddress,
         uint256 roundId,
         PendingRequest[] memory toRetrieve
-    ) public override returns (FixedPoint.Unsigned memory totalRewardToIssue) {
-        return FixedPoint.Unsigned(UINT_MAX);
+    ) public override returns (FixedPoint.Unsigned memory) {
+        PendingRequestAncillary[] memory toRetrieveAncillary = new PendingRequestAncillary[](toRetrieve.length);
+
+        for (uint256 i = 0; i < toRetrieve.length; i++) {
+            toRetrieveAncillary[i].identifier = toRetrieve[i].identifier;
+            toRetrieveAncillary[i].time = toRetrieve[i].time;
+            toRetrieveAncillary[i].ancillaryData = "";
+        }
+
+        return retrieveRewards(voterAddress, roundId, toRetrieveAncillary);
     }
 
     /****************************************
@@ -730,7 +778,11 @@ abstract contract Voting is
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress) external onlyOwner {
+    function setMigrated(address newVotingAddress)
+        external
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         migratedAddress = newVotingAddress;
     }
 
@@ -739,7 +791,11 @@ abstract contract Voting is
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newInflationRate sets the next round's inflation rate.
      */
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public onlyOwner {
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         inflationRate = newInflationRate;
     }
 
@@ -748,7 +804,11 @@ abstract contract Voting is
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public onlyOwner {
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
@@ -758,7 +818,11 @@ abstract contract Voting is
      * @dev This change only applies to rounds that have not yet begun.
      * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
      */
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public onlyOwner {
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         rewardsExpirationTimeout = NewRewardsExpirationTimeout;
     }
 

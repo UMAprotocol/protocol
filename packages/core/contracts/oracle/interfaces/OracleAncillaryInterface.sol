@@ -17,7 +17,7 @@ abstract contract OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external virtual;
+    ) public virtual;
 
     /**
      * @notice Whether the price for `identifier` and `time` is available.
@@ -30,7 +30,7 @@ abstract contract OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external view virtual returns (bool);
+    ) public view virtual returns (bool);
 
     /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
@@ -44,5 +44,5 @@ abstract contract OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external view virtual returns (int256);
+    ) public view virtual returns (int256);
 }

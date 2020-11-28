@@ -17,7 +17,7 @@ const truffleAssert = require("truffle-assertions");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
-const VotingInterface = artifacts.require("VotingInterface");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
@@ -27,6 +27,7 @@ const snapshotMessage = "Sign For Snapshot";
 contract("Voting", function(accounts) {
   let voting;
   let votingToken;
+  let votingContract;
   let registry;
   let supportedIdentifiers;
 
@@ -48,7 +49,9 @@ contract("Voting", function(accounts) {
   };
 
   before(async function() {
-    voting = await VotingInterface.at(Voting.address());
+    votingContract = await Voting.deployed();
+    voting = await VotingInterfaceTesting.at(votingContract.address);
+
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
@@ -1685,14 +1688,18 @@ contract("Voting", function(accounts) {
     const time1 = "1000";
     const time2 = "2000";
     // Deploy our own voting because this test case will migrate it.
-    const voting = await Voting.new(
-      "86400",
-      { rawValue: "0" },
-      { rawValue: "0" },
-      "86400",
-      votingToken.address,
-      (await Finder.deployed()).address,
-      (await Timer.deployed()).address
+    const voting = await VotingInterfaceTesting.at(
+      (
+        await Voting.new(
+          "86400",
+          { rawValue: "0" },
+          { rawValue: "0" },
+          "86400",
+          votingToken.address,
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
+        )
+      ).address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1734,14 +1741,18 @@ contract("Voting", function(accounts) {
 
   it("pendingPriceRequests array length", async function() {
     // Use a test derived contract to expose the internal array (and its length).
-    const votingTest = await VotingTest.new(
-      "86400", // 1 day phase length
-      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
-      { rawValue: "0" }, // No inflation
-      "1209600", // 2 week reward expiration
-      votingToken.address,
-      (await Finder.deployed()).address,
-      (await Timer.deployed()).address
+    const votingTest = await VotingInterfaceTesting.at(
+      (
+        await VotingTest.new(
+          "86400", // 1 day phase length
+          { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+          { rawValue: "0" }, // No inflation
+          "1209600", // 2 week reward expiration
+          votingToken.address,
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
+        )
+      ).address
     );
 
     await moveToNextRound(votingTest);

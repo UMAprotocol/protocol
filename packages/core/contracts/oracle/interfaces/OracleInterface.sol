@@ -12,7 +12,7 @@ abstract contract OracleInterface {
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      */
-    function requestPrice(bytes32 identifier, uint256 time) external virtual;
+    function requestPrice(bytes32 identifier, uint256 time) public virtual;
 
     /**
      * @notice Whether the price for `identifier` and `time` is available.
@@ -21,7 +21,7 @@ abstract contract OracleInterface {
      * @param time unix timestamp for the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint256 time) external view virtual returns (bool);
+    function hasPrice(bytes32 identifier, uint256 time) public view virtual returns (bool);
 
     /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
@@ -30,5 +30,5 @@ abstract contract OracleInterface {
      * @param time unix timestamp for the price request.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
-    function getPrice(bytes32 identifier, uint256 time) external view virtual returns (int256);
+    function getPrice(bytes32 identifier, uint256 time) public view virtual returns (int256);
 }
