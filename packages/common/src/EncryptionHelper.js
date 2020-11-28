@@ -18,6 +18,7 @@ function computeVoteHash(request) {
     { t: "int", v: request.salt },
     { t: "address", v: request.account },
     { t: "uint", v: request.time },
+    { t: "bytes", v: "0x" },
     { t: "uint", v: request.roundId },
     { t: "bytes32", v: request.identifier }
   );
