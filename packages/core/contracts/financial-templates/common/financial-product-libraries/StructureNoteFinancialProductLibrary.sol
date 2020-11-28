@@ -9,7 +9,7 @@ interface ExpiringContractInterface {
 
 /**
  * @title Structured Note Financial Product Library
- * @notice Adds custom price transformation logic to modify the behavour of the expiring multi party contract.  The
+ * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract.  The
  * contract holds say 1 WETH in collateral and pays out that 1 WETH if, at expiry, ETHUSD is below a set strike. If
  * ETHUSD is above that strike, the contract pays out a given dollar amount of ETH.
  * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH
@@ -73,6 +73,33 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
             // Token expires to be worth strike $ worth of collateral.
             // eg if ETHUSD is $500 and strike is $400, token is redeemable for 400/500 = 0.8 WETH.
             return strike.div(oraclePrice);
+        }
+    }
+
+    /**
+     * @notice Returns a transformed collateral requirement by applying the structured note payout structure. If the price
+     * of the structured note is greater than the strike then the collateral requirement scales down accordingly.
+     * @param oraclePrice price from the oracle to transform the collateral requirement.
+     * @param collateralRequirement financial products collateral requirement to be scaled according to price and strike.
+     * @return transformedCollateralRequirement the input collateral requirement with the transformation logic applied to it.
+     */
+    function transformCollateralRequirement(
+        FixedPoint.Unsigned memory oraclePrice,
+        FixedPoint.Unsigned memory collateralRequirement
+    ) public view override returns (FixedPoint.Unsigned memory) {
+        FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
+        require(strike.isGreaterThan(0), "Caller has no strike");
+        // If the price is less than the strike than the original collateral requirement is used.
+        if (oraclePrice.isLessThan(strike)) {
+            return collateralRequirement;
+        } else {
+            // If the price is more than the strike then the collateral requirement is scaled by the strike. For example
+            // a strike of $400 and a CR of 1.2 would yield:
+            // ETHUSD = $350, payout is 1 WETH. CR is multiplied by 1. resulting CR = 1.2
+            // ETHUSD = $400, payout is 1 WETH. CR is multiplied by 1. resulting CR = 1.2
+            // ETHUSD = $425, payout is 0.941 WETH (worth $400). CR is multiplied by 0.941. resulting CR = 1.1292
+            // ETHUSD = $500, payout is 0.8 WETH (worth $400). CR multiplied by 0.8. resulting CR = 0.96
+            return collateralRequirement.mul(strike.div(oraclePrice));
         }
     }
 }

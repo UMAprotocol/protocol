@@ -250,14 +250,11 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             startCollateralNetOfWithdrawal = startCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
         }
 
-        // Scoping to get rid of a stack too deep error. In this block, we use the funding-rate adjusted value
-        // of token debt to check that the desired liquidation price is valid.
+        // Scoping to get rid of a stack too deep error.
         {
-            FixedPoint.Unsigned memory startTokens =
-                _getFundingRateAppliedTokenDebt(positionToLiquidate.tokensOutstanding);
+            FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-            // The Position's funding-rate adjusted collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
-            // maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+            // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
             require(
                 maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
                 "CR is more than max liq. price"

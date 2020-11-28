@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./PricelessPositionManager.sol";
 
@@ -22,6 +23,7 @@ contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using Address for address;
 
     /****************************************
      *     LIQUIDATION DATA STRUCTURES      *
@@ -515,6 +517,28 @@ contract Liquidatable is PricelessPositionManager {
         return liquidations[sponsor];
     }
 
+    /**
+     * @notice Accessor method to calculate a transformed collateral requirement using the finanical product library
+      specified during contract deployment. If no library was provided then no modification to the collateral requirement is done.
+     * @param price input price used as an input to transform the collateral requirement.
+     * @return transformedCollateralRequirement collateral requirement with transformation applied to it.
+     * @dev This method should never revert.
+     */
+    function transformCollateralRequirement(FixedPoint.Unsigned memory price)
+        public
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (!address(financialProductLibrary).isContract()) return collateralRequirement;
+        try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
+            FixedPoint.Unsigned memory transformedCollateralRequirement
+        ) {
+            return transformedCollateralRequirement;
+        } catch {
+            return collateralRequirement;
+        }
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -537,8 +561,11 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory tokenRedemptionValue =
             liquidation.tokensOutstanding.mul(liquidation.settlementPrice);
 
-        // The required collateral is the value of the tokens in underlying * required collateral ratio.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
+        // The required collateral is the value of the tokens in underlying * required collateral ratio. The Transform
+        // Collateral requirement method applies a from the financial Product library to change the scaled the collateral
+        // requirement based on the settlement price. If no library was specified when deploying the emp then this makes no change.
+        FixedPoint.Unsigned memory requiredCollateral =
+            tokenRedemptionValue.mul(transformCollateralRequirement(liquidation.settlementPrice));
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.

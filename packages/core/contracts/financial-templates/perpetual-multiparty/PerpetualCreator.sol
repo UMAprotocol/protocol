@@ -11,6 +11,7 @@ import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
 import "./PerpetualLib.sol";
+import "./ConfigStore.sol";
 
 /**
  * @title Perpetual Contract creator.
@@ -29,6 +30,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
      *     PERP CREATOR DATA STRUCTURES      *
      ****************************************/
 
+    // Immutable params for perpetual contract.
     struct Params {
         address collateralAddress;
         bytes32 priceFeedIdentifier;
@@ -48,6 +50,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
     address public tokenFactoryAddress;
 
     event CreatedPerpetual(address indexed perpetualAddress, address indexed deployerAddress);
+    event CreatedConfigStore(address indexed configStoreAddress, address indexed ownerAddress);
 
     /**
      * @notice Constructs the Perpetual contract.
@@ -68,7 +71,16 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
      * @param params is a `ConstructorParams` object from Perpetual.
      * @return address of the deployed contract.
      */
-    function createPerpetual(Params memory params) public nonReentrant() returns (address) {
+    function createPerpetual(Params memory params, ConfigStore.ConfigSettings memory configSettings)
+        public
+        nonReentrant()
+        returns (address)
+    {
+        // Create new config settings store for this contract and reset ownership to the deployer.
+        ConfigStore configStore = new ConfigStore(configSettings, timerAddress);
+        configStore.transferOwnership(msg.sender);
+        CreatedConfigStore(address(configStore), configStore.owner());
+
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
@@ -78,7 +90,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // then a default precision of 18 will be applied to the newly created synthetic token.
         uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
         ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
-        address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency));
+        address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency, address(configStore)));
 
         // Give permissions to new derivative contract and then hand over ownership.
         tokenCurrency.addMinter(derivative);
@@ -97,11 +109,11 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
      ****************************************/
 
     // Converts createPerpetual params to Perpetual constructor params.
-    function _convertParams(Params memory params, ExpandedIERC20 newTokenCurrency)
-        private
-        view
-        returns (Perpetual.ConstructorParams memory constructorParams)
-    {
+    function _convertParams(
+        Params memory params,
+        ExpandedIERC20 newTokenCurrency,
+        address configStore
+    ) private view returns (Perpetual.ConstructorParams memory constructorParams) {
         // Known from creator deployment.
         constructorParams.finderAddress = finderAddress;
         constructorParams.timerAddress = timerAddress;
@@ -121,6 +133,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
         // Input from function call.
+        // constructorParams.configStore = configStore;
         constructorParams.tokenAddress = address(newTokenCurrency);
         constructorParams.collateralAddress = params.collateralAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
@@ -133,6 +146,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
         constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
+        // TODO: Uncomment this line once we add `configStore` to Perpetual constructor params
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
