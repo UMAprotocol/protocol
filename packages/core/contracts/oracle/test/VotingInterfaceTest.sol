@@ -7,13 +7,11 @@ import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 
-// A mock oracle used for testing. Exports the oracle voting interface, voting interface, testing and some additional
-// methods which are only accessible directly on the voting contract.
+// A mock oracle used for testing. Exports the voting & oracle interfaces and events that contain no ancillary data.
 abstract contract VotingInterfaceTesting is OracleInterface, VotingInterface, Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
-    // Extra helper interfaces.
-
+    // Events, data structures and functions not exported in the base interfaces, used for testing.
     event VoteCommitted(
         address indexed voter,
         uint256 indexed roundId,
