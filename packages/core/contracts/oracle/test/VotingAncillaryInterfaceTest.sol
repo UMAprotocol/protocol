@@ -8,7 +8,7 @@ import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/VotingAncillaryInterface.sol";
 
 // A mock oracle used for testing. Exports the voting & oracle interfaces and events that contain ancillary data.
-abstract contract VotingInterfaceTesting is OracleAncillaryInterface, VotingAncillaryInterface, Testable {
+abstract contract VotingAncillaryInterfaceTesting is OracleAncillaryInterface, VotingAncillaryInterface, Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Events, data structures and functions not exported in the base interfaces, used for testing.
@@ -53,8 +53,8 @@ abstract contract VotingInterfaceTesting is OracleAncillaryInterface, VotingAnci
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
-        bytes ancillaryData,
-        int256 price
+        int256 price,
+        bytes ancillaryData
     );
 
     struct Round {

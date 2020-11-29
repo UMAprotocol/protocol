@@ -44,6 +44,7 @@ abstract contract VotingInterfaceTesting is OracleInterface, VotingInterface, Te
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         uint256 numTokens
     );
 
@@ -53,8 +54,8 @@ abstract contract VotingInterfaceTesting is OracleInterface, VotingInterface, Te
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
-        bytes ancillaryData,
-        int256 price
+        int256 price,
+        bytes ancillaryData
     );
 
     struct Round {

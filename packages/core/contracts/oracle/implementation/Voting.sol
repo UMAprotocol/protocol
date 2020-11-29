@@ -183,8 +183,8 @@ contract Voting is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
-        bytes ancillaryData,
-        int256 price
+        int256 price,
+        bytes ancillaryData
     );
 
     /**
@@ -630,11 +630,10 @@ contract Voting is
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress, "Can only call from migrated");
         }
-        uint256 blockTime = getCurrentTime();
-        require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
+        require(roundId < voteTiming.computeCurrentRoundId(getCurrentTime()), "Invalid roundId");
 
         Round storage round = rounds[roundId];
-        bool isExpired = blockTime > round.rewardsExpirationTime;
+        bool isExpired = getCurrentTime() > round.rewardsExpirationTime;
         FixedPoint.Unsigned memory snapshotBalance =
             FixedPoint.Unsigned(votingToken.balanceOfAt(voterAddress, round.snapshotId));
 
@@ -673,6 +672,7 @@ contract Voting is
                 // The price was successfully resolved during the voter's last voting round, the voter revealed
                 // and was correct, so they are eligible for a reward.
                 // Compute the reward and add to the cumulative reward.
+
                 FixedPoint.Unsigned memory reward =
                     snapshotBalance.mul(totalRewardPerVote).div(
                         voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
@@ -935,8 +935,8 @@ contract Voting is
             priceRequest.lastVotingRound,
             priceRequest.identifier,
             priceRequest.time,
-            priceRequest.ancillaryData,
-            resolvedPrice
+            resolvedPrice,
+            priceRequest.ancillaryData
         );
     }
 
