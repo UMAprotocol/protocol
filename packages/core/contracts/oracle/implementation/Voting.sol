@@ -244,6 +244,7 @@ contract Voting is
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      */
     function requestPrice(
         bytes32 identifier,
@@ -287,6 +288,7 @@ contract Voting is
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
     function hasPrice(
@@ -308,6 +310,7 @@ contract Voting is
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
     function getPrice(
@@ -382,6 +385,7 @@ contract Voting is
      * they can determine the vote pre-reveal.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
     function commitVote(
@@ -450,6 +454,7 @@ contract Voting is
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param salt value used to hide the commitment price during the commit phase.
      */
     function revealVote(
@@ -515,6 +520,7 @@ contract Voting is
      * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
