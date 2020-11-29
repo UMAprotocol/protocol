@@ -17,15 +17,36 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
+/**
+ * @title Optimistic Requester
+ * @notice Optional interface that requesters can implement to receive callbacks.
+ */
 interface OptimisticRequester {
+    /**
+     * @notice Callback for proposals.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     */
     function priceProposed(bytes32 identifier, uint256 timestamp) external;
 
+    /**
+     * @notice Callback for disputes.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param refund refund received in the case that refundOnDispute was enabled.
+     */
     function priceDisputed(
         bytes32 identifier,
         uint256 timestamp,
         uint256 refund
     ) external;
 
+    /**
+     * @notice Callback for settlement.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param price price that was resolved by the escalation process.
+     */
     function priceSettled(
         bytes32 identifier,
         uint256 timestamp,
@@ -33,6 +54,10 @@ interface OptimisticRequester {
     ) external;
 }
 
+/**
+ * @title Optimistic Oracle
+ * @notice Pre-DVM escalation contract that allows faster settlement.
+ */
 contract OptimisticOracle is Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
