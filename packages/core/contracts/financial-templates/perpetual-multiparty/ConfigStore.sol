@@ -40,9 +40,17 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 rewardRate,
         uint256 proposerBond,
         uint256 timelockLiveness,
+        uint256 proposalTimestampBufferPast,
+        uint256 proposalTimestampBufferFuture,
         uint256 proposalPassedTimestamp
     );
-    event ChangedConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
+    event ChangedConfigSettings(
+        uint256 rewardRate,
+        uint256 proposerBond,
+        uint256 timelockLiveness,
+        uint256 proposalTimestampBufferPast,
+        uint256 proposalTimestampBufferFuture
+    );
 
     /****************************************
      *                MODIFIERS             *
@@ -104,6 +112,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             newConfig.rewardRatePerSecond.rawValue,
             newConfig.proposerBondPct.rawValue,
             newConfig.timelockLiveness,
+            newConfig.proposalTimestampBufferPast,
+            newConfig.proposalTimestampBufferFuture,
             pendingPassedTimestamp
         );
     }
@@ -125,7 +135,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             emit ChangedConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
                 currentConfig.proposerBondPct.rawValue,
-                currentConfig.timelockLiveness
+                currentConfig.timelockLiveness,
+                currentConfig.proposalTimestampBufferPast,
+                currentConfig.proposalTimestampBufferFuture
             );
         }
     }
@@ -144,6 +156,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral.
         require(config.timelockLiveness <= 7 days && config.timelockLiveness >= 1 days, "Invalid timelockLiveness");
+
+        //
 
         // Upper limits for the reward and bond rates are estimated based on offline discussions,
         // and it is expected that these hard-coded limits can change in future deployments.

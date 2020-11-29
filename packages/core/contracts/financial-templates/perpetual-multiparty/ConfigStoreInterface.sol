@@ -13,6 +13,10 @@ interface ConfigStoreInterface {
         FixedPoint.Unsigned rewardRatePerSecond;
         // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%.
         FixedPoint.Unsigned proposerBondPct;
+        // Funding rate proposal must be within the past `proposalTimestampBufferPast` seconds.
+        uint256 proposalTimestampBufferPast;
+        // Funding rate proposal cannot be more than `proposalTimestampBufferFuture` seconds in the future.
+        uint256 proposalTimestampBufferFuture;
     }
 
     function getCurrentConfig() external view returns (ConfigSettings memory);
