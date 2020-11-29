@@ -208,8 +208,10 @@ abstract contract FundingRateApplier is FeePayer {
                     if (request.disputer == address(0)) {
                         FixedPoint.Unsigned memory reward =
                             _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
-                        _adjustCumulativeFeeMultiplier(reward, _pfc());
-                        collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
+                        if (reward.isGreaterThan(0)) {
+                            _adjustCumulativeFeeMultiplier(reward, _pfc());
+                            collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
+                        }
                     }
                 }
 

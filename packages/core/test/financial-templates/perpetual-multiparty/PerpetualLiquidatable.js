@@ -29,7 +29,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   const sponsor = accounts[1];
   const liquidator = accounts[2];
   const disputer = accounts[3];
-  const beneficiary = accounts[5];
+  const proposer = accounts[4];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -96,7 +96,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   // Advances time by 10k seconds.
   const setFundingRateAndAdvanceTime = async fundingRate => {
     const currentTime = (await liquidationContract.getCurrentTime()).toNumber();
-    await liquidationContract.proposeNewRate({ rawValue: fundingRate }, currentTime);
+    await liquidationContract.proposeNewRate({ rawValue: fundingRate }, currentTime, { from: proposer });
     await liquidationContract.setCurrentTime(currentTime + 10000);
   };
 
@@ -146,11 +146,14 @@ contract("PerpetualLiquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    configStore = await ConfigStore.new({
-      timelockLiveness: 86400, // 1 day
-      rewardRatePerSecond: { rawValue: "0" },
-      proposerBondPct: { rawValue: "0" }
-    }, timer.address);
+    configStore = await ConfigStore.new(
+      {
+        timelockLiveness: 86400, // 1 day
+        rewardRatePerSecond: { rawValue: "0" },
+        proposerBondPct: { rawValue: "0" }
+      },
+      timer.address
+    );
 
     liquidatableParameters = {
       withdrawalLiveness: withdrawalLiveness.toString(),
@@ -180,7 +183,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
-    
+
     // Apply the funding to set the application time to startTime.
     await liquidationContract.applyFundingRate();
 
@@ -190,6 +193,11 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Mint dispute bond to disputer
     await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), {
+      from: contractDeployer
+    });
+
+    // Mint collateral to proposer (final fee is the proposal bond in these tests).
+    await collateralToken.mint(proposer, finalFeeAmount, {
       from: contractDeployer
     });
 
@@ -211,6 +219,10 @@ contract("PerpetualLiquidatable", function(accounts) {
     // Set allowance for contract to pull synthetic tokens from liquidator
     await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, {
       from: liquidator
+    });
+
+    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, {
+      from: proposer
     });
 
     // Get store
@@ -463,7 +475,7 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
     });
-    
+
     it("Increments ID after creation", async () => {
       // Create first liquidation
       await liquidationContract.createLiquidation(
@@ -867,19 +879,16 @@ contract("PerpetualLiquidatable", function(accounts) {
       it("Funding rate multiplier is updated", async () => {
         // Initially cumulativeFundingRateMultiplier is set to 1e18
 
-        // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-        // be 1 * (1 + 0.005 * 10) = 1.05)
-        await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-          rawValue: toWei("0.005")
-        });
-        await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+        // Set a positive funding rate of 0.000005 in the store and apply it for a period of 10k seconds. New funding
+        // rate should be 1 * (1 + 0.000005 * 10000) = 1.05)
+        await setFundingRateAndAdvanceTime(toWei("0.000005"));
 
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
         // Disputing a liquidation should update the funding rate multiplier
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
 
-        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+        assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
       });
       it("Throw if liquidation has already been disputed", async () => {
         // Mint final fee amount to disputer
@@ -1029,12 +1038,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         // So, if there is 150 collateral backing 105 token debt, with a collateral requirement of 1.2, then
         // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
 
-        // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-        // be 1 * (1 - 0.005 * 10) = 1.05)
-        await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-          rawValue: toWei("0.005")
-        });
-        await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+        // Set a positive funding rate of 0.000005 in the store and apply it for a period of 10k seconds. New funding
+        // rate should be 1 * (1 - 0.000005 * 10000) = 1.05).
+        await setFundingRateAndAdvanceTime(toWei("0.000005"));
 
         // Let's test using a price of 1.2, because this price would have caused the dispute to succeed
         // without the funding rate multiplier adjusting sponsor debt.
@@ -1047,7 +1053,7 @@ contract("PerpetualLiquidatable", function(accounts) {
         );
 
         // Test that withdrawLiquidation updated the multiplier.
-        assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+        assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
 
         // However, the multiplier-adjusted value of the debt was frozen at liquidation time, so the liquidation status
         // should be DISPUTE_SUCCEEDED
@@ -1319,12 +1325,9 @@ contract("PerpetualLiquidatable", function(accounts) {
           // We will set the funding rate multiplier to 0.95, which means that both dispute rewards would be scaled down by 0.95,
           // if the liquidated token amount had not been frozen at liquidation time.
 
-          // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
-          // be 1 * (1 - -0.005 * 10) = 0.95)
-          await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-            rawValue: toWei("-0.005")
-          });
-          await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+          // Set a positive funding rate of -0.000005 in the store and apply it for a period of 10k seconds. New
+          // funding rate should be 1 * (1 - -0.000005 * 10000) = 0.95)
+          await setFundingRateAndAdvanceTime(toWei("-0.000005"));
 
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
@@ -1341,7 +1344,7 @@ contract("PerpetualLiquidatable", function(accounts) {
           assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
 
           // Test that withdrawLiquidation updated the multiplier for the time expired.
-          assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+          assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("0.95"));
 
           // All collateral should have been removed from the contract.
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
@@ -1423,12 +1426,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       // So, if there is 150 collateral backing 95 token debt, with a collateral requirement of 1.2, then
       // the price must be <= 150 / 1.2 / 95 = 1.316.
 
-      // Set a positive funding rate of 0.995 in the store and apply it for a period of 10 seconds. New funding rate should
-      // be 1 * (1 - -0.005 * 10) = 0.95)
-      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-        rawValue: toWei("-0.005")
-      });
-      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+      // Set a positive funding rate of -0.000005 in the store and apply it for a period of 10k seconds. New funding
+      // rate should be 1 * (1 - -0.000005 * 10000) = 0.95)
+      await setFundingRateAndAdvanceTime(toWei("-0.000005"));
 
       // Create a Liquidation with the correct funding-rate adjusted token-collateral ratio. The "pricePerToken"
       // variable name is a bit misleading here, it simply should be the ratio of collateral to token units, which is
@@ -1466,7 +1466,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
       // Test that withdrawLiquidation updated the multiplier.
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("0.95"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("0.95"));
 
       truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
         return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
@@ -1478,12 +1478,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       // So, if there is 150 collateral backing 105 token debt, with a collateral requirement of 1.2, then
       // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
 
-      // Set a positive funding rate of 1.005 in the store and apply it for a period of 10 seconds. New funding rate should
-      // be 1 * (1 - 0.005 * 10) = 1.05)
-      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-        rawValue: toWei("0.005")
-      });
-      await timer.setCurrentTime((await timer.getCurrentTime()).add(toBN(10)).toString()); // Advance the time by 10 seconds
+      // Set a positive funding rate of -0.000005 in the store and apply it for a period of 10000 seconds. New funding
+      // rate should be 1 * (1 + 0.000005 * 10000) = 1.05.
+      await setFundingRateAndAdvanceTime(toWei("0.000005"));
 
       // Create a Liquidation with the correct funding-rate adjusted token-collateral ratio. The "pricePerToken"
       // variable name is a bit misleading here, it simply should be the ratio of collateral to token units, which is
@@ -1521,7 +1518,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
       // Test that withdrawLiquidation updated the multiplier.
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.05"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
 
       truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
         return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_FAILED;
@@ -1731,12 +1728,8 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     beforeEach(async () => {
       // Set a funding rate to test whether methods callable post-shutdown update the funding rate multiplier.
-      // Move time forward 1 second so we have non-default funding rate multiplier to test against.
-      await mockFundingRateStore.setFundingRate(liquidationContract.address, await timer.getCurrentTime(), {
-        rawValue: toWei("0.005")
-      });
-      let currentTime = await liquidationContract.getCurrentTime();
-      await liquidationContract.setCurrentTime(currentTime.addn(1));
+      // Move time forward 10000 second so we have non-default funding rate multiplier to test against.
+      await setFundingRateAndAdvanceTime(toWei("0.0000005"));
 
       // Create a new position.
       await liquidationContract.create(
@@ -1760,7 +1753,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       // Shuts down the position manager.
       await financialContractsAdmin.callEmergencyShutdown(liquidationContract.address);
 
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.005"));
     });
     it("Can dispute the liquidation", async () => {
       // Advance time to make sure that funding rate multiplier is not updated.
@@ -1774,7 +1767,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
 
       // Funding rate multiplier is NOT updated on `dispute()` following a shutdown.
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.005"));
     });
     it("Can withdraw liquidation rewards", async () => {
       // Dispute fails, liquidator withdraws, liquidation is deleted
@@ -1793,7 +1786,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
 
       // Funding rate multiplier is NOT updated on `withdrawLiquidation()` following a shutdown.
-      assert.equal((await liquidationContract.cumulativeFundingRateMultiplier()).toString(), toWei("1.005"));
+      assert.equal((await liquidationContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.005"));
     });
   });
   describe("Non-standard ERC20 delimitation", () => {
