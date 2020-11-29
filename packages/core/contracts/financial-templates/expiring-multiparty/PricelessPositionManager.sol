@@ -688,16 +688,10 @@ contract PricelessPositionManager is FeePayer {
     function transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
         public
         view
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        if (!address(financialProductLibrary).isContract()) return price;
-        try financialProductLibrary.transformPrice(price, requestTime) returns (
-            FixedPoint.Unsigned memory transformedPrice
-        ) {
-            return transformedPrice;
-        } catch {
-            return price;
-        }
+        return _transformPrice(price, requestTime);
     }
 
     /**
@@ -707,15 +701,8 @@ contract PricelessPositionManager is FeePayer {
      * @return transformedPrice price with the transformation function applied to it.
      * @dev This method should never revert.
      */
-    function transformPriceIdentifier(uint256 requestTime) public view returns (bytes32) {
-        if (!address(financialProductLibrary).isContract()) return priceIdentifier;
-        try financialProductLibrary.transformPriceIdentifier(priceIdentifier, requestTime) returns (
-            bytes32 transformedIdentifier
-        ) {
-            return transformedIdentifier;
-        } catch {
-            return priceIdentifier;
-        }
+    function transformPriceIdentifier(uint256 requestTime) public view nonReentrantView() returns (bytes32) {
+        return _transformPriceIdentifier(requestTime);
     }
 
     /****************************************
@@ -804,21 +791,21 @@ contract PricelessPositionManager is FeePayer {
     // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
         OracleInterface oracle = _getOracle();
-        oracle.requestPrice(transformPriceIdentifier(requestedTime), requestedTime);
+        oracle.requestPrice(_transformPriceIdentifier(requestedTime), requestedTime);
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(transformPriceIdentifier(requestedTime), requestedTime);
+        require(oracle.hasPrice(_transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
+        return _transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
@@ -934,6 +921,32 @@ contract PricelessPositionManager is FeePayer {
             return _decimals;
         } catch {
             return 18;
+        }
+    }
+
+    function _transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (!address(financialProductLibrary).isContract()) return price;
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
+            FixedPoint.Unsigned memory transformedPrice
+        ) {
+            return transformedPrice;
+        } catch {
+            return price;
+        }
+    }
+
+    function _transformPriceIdentifier(uint256 requestTime) internal view returns (bytes32) {
+        if (!address(financialProductLibrary).isContract()) return priceIdentifier;
+        try financialProductLibrary.transformPriceIdentifier(priceIdentifier, requestTime) returns (
+            bytes32 transformedIdentifier
+        ) {
+            return transformedIdentifier;
+        } catch {
+            return priceIdentifier;
         }
     }
 }
