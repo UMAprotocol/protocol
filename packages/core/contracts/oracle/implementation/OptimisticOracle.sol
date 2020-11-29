@@ -140,8 +140,8 @@ contract OptimisticOracle is Testable, Lockable {
 
         emit RequestPrice(msg.sender, identifier, timestamp, address(currency), reward, finalFee);
 
-        // The total bond is the final fee + the default bond, which is set to the final fee. So the total bond is
-        // 2x the final fee.
+        // This function returns the initial proposal bond for this request, which can be customized by calling
+        // setBond() with the same identifier and timestamp.
         return finalFee.mul(2);
     }
 
