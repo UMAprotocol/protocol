@@ -1809,13 +1809,15 @@ contract("Voting", function(accounts) {
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function() {
-    const identifier1 = web3.utils.utf8ToHex("request-retrieval1");
+    const identifier1 = web3.utils.utf8ToHex("request-retrieval");
     const time1 = "1000";
     const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
 
-    const identifier2 = web3.utils.utf8ToHex("request-retrieval2");
-    const time2 = "2000";
-    const ancillaryData2 = web3.utils.utf8ToHex(`callerAddress:${account4}`); // ancillary data should be able to store addresses
+    // Note for the second request we s et the identifier and tiem to the same as the first to show that by simply having
+    // a diffrent ancillary data we can have multipler simultanious requests that the DVM can differentiate.
+    const identifier2 = web3.utils.utf8ToHex("request-retrieval");
+    const time2 = "1000";
+    const ancillaryData2 = web3.utils.utf8ToHex(`callerAddress:${account4}`);
 
     // Make the Oracle support these two identifiers.
     await supportedIdentifiers.addSupportedIdentifier(identifier1);
