@@ -1808,7 +1808,7 @@ contract("Voting", function(accounts) {
     // After retrieval, the length should be decreased back to 0 since the element added in this test is now deleted.
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
   });
-  it("Votes can correctly handel arbitrary ancillary data", async function() {
+  it("Votes can correctly handle arbitrary ancillary data", async function() {
     const identifier1 = web3.utils.utf8ToHex("request-retrieval1");
     const time1 = "1000";
     const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
