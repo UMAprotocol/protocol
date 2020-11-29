@@ -7,15 +7,22 @@ import "../common/FundingRateApplier.sol";
 
 // Implements FundingRateApplier internal methods to enable unit testing.
 contract FundingRateApplierTest is FundingRateApplier {
-    constructor(address _fpFinderAddress, address _timerAddress)
+    constructor(
+        bytes32 _fundingRateIdentifier,
+        address _collateralAddress,
+        address _finderAddress,
+        address _configStoreAddress,
+        address _timerAddress
+    )
         public
-        Testable(_timerAddress)
-        FundingRateApplier(_fpFinderAddress)
+        FundingRateApplier(
+            _fundingRateIdentifier,
+            _collateralAddress,
+            _finderAddress,
+            _configStoreAddress,
+            _timerAddress
+        )
     {}
-
-    function applyFundingRate() public {
-        _applyEffectiveFundingRate();
-    }
 
     function calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
@@ -29,4 +36,13 @@ contract FundingRateApplierTest is FundingRateApplier {
                 currentCumulativeFundingRateMultiplier
             );
     }
+
+    // Required overrides.
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory currentPfc) {
+        return FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+    }
+
+    function emergencyShutdown() external override {}
+
+    function remargin() external override {}
 }
