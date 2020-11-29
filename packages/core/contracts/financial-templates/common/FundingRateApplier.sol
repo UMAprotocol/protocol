@@ -185,29 +185,29 @@ abstract contract FundingRateApplier is FeePayer {
     }
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
-        uint256 timestamp = fundingRate.proposalTime;
-        if (timestamp != 0) {
+        uint256 proposalTime = fundingRate.proposalTime;
+        if (proposalTime != 0) {
             // Attempt to update the funding rate.
             OptimisticOracle optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
 
             // Try to get the price from the optimistic oracle.
-            try optimisticOracle.getPrice(identifier, timestamp) returns (int256 price) {
+            try optimisticOracle.getPrice(identifier, proposalTime) returns (int256 price) {
                 // If successful, figure out the type of request.
                 OptimisticOracle.Request memory request =
-                    optimisticOracle.getRequest(address(this), identifier, timestamp);
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime);
                 uint256 lastUpdateTime = fundingRate.updateTime;
 
                 // If the request is more recent than the last update then we should update the funding rate.
-                if (timestamp >= lastUpdateTime) {
+                if (proposalTime >= lastUpdateTime) {
                     // Update funding rates
                     fundingRate.rate = FixedPoint.Signed(price);
-                    fundingRate.updateTime = timestamp;
+                    fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
                     if (request.disputer == address(0)) {
                         FixedPoint.Unsigned memory reward =
-                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(timestamp.sub(lastUpdateTime));
+                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
                         _adjustCumulativeFeeMultiplier(reward, _pfc());
                         collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                     }
@@ -217,7 +217,7 @@ abstract contract FundingRateApplier is FeePayer {
                 fundingRate.proposalTime = 0;
             } catch {
                 // Stop tracking if in dispute to allow other proposals to come in.
-                if (optimisticOracle.getRequest(address(this), identifier, timestamp).disputer != address(0)) {
+                if (optimisticOracle.getRequest(address(this), identifier, proposalTime).disputer != address(0)) {
                     fundingRate.proposalTime = 0;
                 }
             }
