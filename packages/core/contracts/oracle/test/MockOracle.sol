@@ -49,7 +49,7 @@ contract MockOracle is OracleInterface, Testable {
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
 
-    function requestPrice(bytes32 identifier, uint256 time) external override {
+    function requestPrice(bytes32 identifier, uint256 time) public override {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
@@ -82,14 +82,14 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Checks whether a price has been resolved.
-    function hasPrice(bytes32 identifier, uint256 time) external view override returns (bool) {
+    function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
-    function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
+    function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);

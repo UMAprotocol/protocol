@@ -11,6 +11,7 @@ const DesignatedVoting = artifacts.require("DesignatedVoting");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
@@ -34,7 +35,7 @@ contract("DesignatedVoting", function(accounts) {
   const voterRole = "1";
 
   before(async function() {
-    voting = await Voting.deployed();
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     const finder = await Finder.deployed();

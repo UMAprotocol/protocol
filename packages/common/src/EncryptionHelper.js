@@ -18,6 +18,19 @@ function computeVoteHash(request) {
     { t: "int", v: request.salt },
     { t: "address", v: request.account },
     { t: "uint", v: request.time },
+    { t: "bytes", v: "0x" },
+    { t: "uint", v: request.roundId },
+    { t: "bytes32", v: request.identifier }
+  );
+}
+
+function computeVoteHashAncillary(request) {
+  return web3.utils.soliditySha3(
+    { t: "int", v: request.price },
+    { t: "int", v: request.salt },
+    { t: "address", v: request.account },
+    { t: "uint", v: request.time },
+    { t: "bytes", v: request.ancillaryData },
     { t: "uint", v: request.roundId },
     { t: "bytes32", v: request.identifier }
   );
@@ -28,4 +41,4 @@ function getKeyGenMessage(roundId) {
   return `UMA Protocol one time key for round: ${roundId.toString()}`;
 }
 
-module.exports = { computeTopicHash, computeVoteHash, getKeyGenMessage };
+module.exports = { computeTopicHash, computeVoteHash, computeVoteHashAncillary, getKeyGenMessage };

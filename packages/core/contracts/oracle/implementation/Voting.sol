@@ -6,7 +6,9 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
+import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/VotingInterface.sol";
+import "../interfaces/VotingAncillaryInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
@@ -22,7 +24,14 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
+contract Voting is
+    Testable,
+    Ownable,
+    OracleInterface,
+    OracleAncillaryInterface, // Interface to support ancillary data with price requests.
+    VotingInterface,
+    VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
+{
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using VoteTiming for VoteTiming.Data;
@@ -45,6 +54,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         // The index in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX means that
         // this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
         uint256 index;
+        bytes ancillaryData;
     }
 
     struct VoteInstance {
@@ -131,13 +141,20 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      *                EVENTS                *
      ****************************************/
 
-    event VoteCommitted(address indexed voter, uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
+    event VoteCommitted(
+        address indexed voter,
+        uint256 indexed roundId,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData
+    );
 
     event EncryptedVote(
         address indexed voter,
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         bytes encryptedVote
     );
 
@@ -147,6 +164,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         bytes32 indexed identifier,
         uint256 time,
         int256 price,
+        bytes ancillaryData,
         uint256 numTokens
     );
 
@@ -155,12 +173,19 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         uint256 numTokens
     );
 
     event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
 
-    event PriceResolved(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, int256 price);
+    event PriceResolved(
+        uint256 indexed roundId,
+        bytes32 indexed identifier,
+        uint256 time,
+        int256 price,
+        bytes ancillaryData
+    );
 
     /**
      * @notice Construct the Voting contract.
@@ -219,13 +244,18 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      */
-    function requestPrice(bytes32 identifier, uint256 time) external override onlyRegisteredContract() {
+    function requestPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public override onlyRegisteredContract() {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
 
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -240,11 +270,17 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
                 identifier: identifier,
                 time: time,
                 lastVotingRound: nextRoundId,
-                index: pendingPriceRequests.length
+                index: pendingPriceRequests.length,
+                ancillaryData: ancillaryData
             });
             pendingPriceRequests.push(priceRequestId);
             emit PriceRequestAdded(nextRoundId, identifier, time);
         }
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function requestPrice(bytes32 identifier, uint256 time) public override {
+        requestPrice(identifier, time, "");
     }
 
     /**
@@ -252,11 +288,21 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint256 time) external view override onlyRegisteredContract() returns (bool) {
-        (bool _hasPrice, , ) = _getPriceOrError(identifier, time);
+    function hasPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (bool) {
+        (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
+        return hasPrice(identifier, time, "");
     }
 
     /**
@@ -264,20 +310,24 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
-    function getPrice(bytes32 identifier, uint256 time)
-        external
-        view
-        override
-        onlyRegisteredContract()
-        returns (int256)
-    {
-        (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time);
+    function getPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (int256) {
+        (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time, ancillaryData);
 
         // If the price wasn't available, revert with the provided message.
         require(_hasPrice, message);
         return price;
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
+        return getPrice(identifier, time, "");
     }
 
     /**
@@ -286,11 +336,16 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
      * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
      */
-    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+    function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
+        public
+        view
+        returns (RequestState[] memory)
+    {
         RequestState[] memory requestStates = new RequestState[](requests.length);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         for (uint256 i = 0; i < requests.length; i++) {
-            PriceRequest storage priceRequest = _getPriceRequest(requests[i].identifier, requests[i].time);
+            PriceRequest storage priceRequest =
+                _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
 
             RequestStatus status = _getRequestStatus(priceRequest, currentRoundId);
 
@@ -303,6 +358,18 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             requestStates[i].status = status;
         }
         return requestStates;
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+        PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
+
+        for (uint256 i = 0; i < requests.length; i++) {
+            requestsAncillary[i].identifier = requests[i].identifier;
+            requestsAncillary[i].time = requests[i].time;
+            requestsAncillary[i].ancillaryData = "";
+        }
+        return getPriceRequestStatuses(requestsAncillary);
     }
 
     /****************************************
@@ -318,22 +385,27 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * they can determine the vote pre-reveal.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
     function commitVote(
         bytes32 identifier,
         uint256 time,
+        bytes memory ancillaryData,
         bytes32 hash
     ) public override onlyIfNotMigrated() {
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint256 blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
+        require(
+            voteTiming.computeCurrentPhase(blockTime) == VotingAncillaryInterface.Phase.Commit,
+            "Cannot commit in reveal phase"
+        );
 
         // At this point, the computed and last updated round ID should be equal.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
             _getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
             "Cannot commit inactive request"
@@ -343,7 +415,16 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[msg.sender].commit = hash;
 
-        emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
+        emit VoteCommitted(msg.sender, currentRoundId, identifier, time, ancillaryData);
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash
+    ) public override onlyIfNotMigrated() {
+        commitVote(identifier, time, "", hash);
     }
 
     /**
@@ -353,7 +434,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param signature  signature required to prove caller is an EOA to prevent flash loans from being included in the
      * snapshot.
      */
-    function snapshotCurrentRound(bytes calldata signature) external override onlyIfNotMigrated() {
+    function snapshotCurrentRound(bytes calldata signature)
+        external
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyIfNotMigrated()
+    {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
         // Require public snapshot require signature to ensure caller is an EOA.
@@ -369,34 +454,37 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param salt value used to hide the commitment price during the commit phase.
      */
     function revealVote(
         bytes32 identifier,
         uint256 time,
         int256 price,
+        bytes memory ancillaryData,
         int256 salt
     ) public override onlyIfNotMigrated() {
-        uint256 blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
-        // Note: computing the current round is required to disallow people from
-        // revealing an old commit after the round is over.
-        uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
+        require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
+        // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
+        uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
-        // 0 hashes are disallowed in the commit phase, so they indicate a different error.
-        // Cannot reveal an uncommitted or previously revealed hash
-        require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
-        require(
-            keccak256(abi.encodePacked(price, salt, msg.sender, time, roundId, identifier)) == voteSubmission.commit,
-            "Revealed data != commit hash"
-        );
-
-        // To protect against flash loans, we require snapshot be validated as EOA.
-        require(rounds[roundId].snapshotId != 0, "Round has no snapshot");
+        // Scoping to get rid of a stack too deep error.
+        {
+            // 0 hashes are disallowed in the commit phase, so they indicate a different error.
+            // Cannot reveal an uncommitted or previously revealed hash
+            require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
+            require(
+                keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier)) ==
+                    voteSubmission.commit,
+                "Revealed data != commit hash"
+            );
+            // To protect against flash loans, we require snapshot be validated as EOA.
+            require(rounds[roundId].snapshotId != 0, "Round has no snapshot");
+        }
 
         // Get the frozen snapshotId
         uint256 snapshotId = rounds[roundId].snapshotId;
@@ -413,7 +501,17 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
+        emit VoteRevealed(msg.sender, roundId, identifier, time, price, ancillaryData, balance.rawValue);
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        int256 salt
+    ) public override {
+        revealVote(identifier, time, price, "", salt);
     }
 
     /**
@@ -422,19 +520,33 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
     function commitAndEmitEncryptedVote(
         bytes32 identifier,
         uint256 time,
+        bytes memory ancillaryData,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public {
-        commitVote(identifier, time, hash);
+    ) public override {
+        commitVote(identifier, time, ancillaryData, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        emit EncryptedVote(msg.sender, roundId, identifier, time, encryptedVote);
+        emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public override {
+        commitVote(identifier, time, "", hash);
+
+        commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
     /**
@@ -444,19 +556,34 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(Commitment[] calldata commits) external override {
+    function batchCommit(CommitmentAncillary[] memory commits) public override {
         for (uint256 i = 0; i < commits.length; i++) {
             if (commits[i].encryptedVote.length == 0) {
-                commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
+                commitVote(commits[i].identifier, commits[i].time, commits[i].ancillaryData, commits[i].hash);
             } else {
                 commitAndEmitEncryptedVote(
                     commits[i].identifier,
                     commits[i].time,
+                    commits[i].ancillaryData,
                     commits[i].hash,
                     commits[i].encryptedVote
                 );
             }
         }
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function batchCommit(Commitment[] memory commits) public override {
+        CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
+
+        for (uint256 i = 0; i < commits.length; i++) {
+            commitsAncillary[i].identifier = commits[i].identifier;
+            commitsAncillary[i].time = commits[i].time;
+            commitsAncillary[i].ancillaryData = "";
+            commitsAncillary[i].hash = commits[i].hash;
+            commitsAncillary[i].encryptedVote = commits[i].encryptedVote;
+        }
+        batchCommit(commitsAncillary);
     }
 
     /**
@@ -466,16 +593,36 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(Reveal[] calldata reveals) external override {
+    function batchReveal(RevealAncillary[] memory reveals) public override {
         for (uint256 i = 0; i < reveals.length; i++) {
-            revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
+            revealVote(
+                reveals[i].identifier,
+                reveals[i].time,
+                reveals[i].price,
+                reveals[i].ancillaryData,
+                reveals[i].salt
+            );
         }
+    }
+
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function batchReveal(Reveal[] memory reveals) public override {
+        RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
+
+        for (uint256 i = 0; i < reveals.length; i++) {
+            revealsAncillary[i].identifier = reveals[i].identifier;
+            revealsAncillary[i].time = reveals[i].time;
+            revealsAncillary[i].price = reveals[i].price;
+            revealsAncillary[i].ancillaryData = "";
+            revealsAncillary[i].salt = reveals[i].salt;
+        }
+        batchReveal(revealsAncillary);
     }
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
-     * @dev Can only retrieve rewards if calling for a valid round and if the
-     * call is done within the timeout threshold (not expired).
+     * @dev Can only retrieve rewards if calling for a valid round and if the call is done within the timeout threshold
+     * (not expired). Note that a named return value is used here to avoid a stack to deep error.
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
@@ -484,16 +631,15 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     function retrieveRewards(
         address voterAddress,
         uint256 roundId,
-        PendingRequest[] memory toRetrieve
+        PendingRequestAncillary[] memory toRetrieve
     ) public override returns (FixedPoint.Unsigned memory totalRewardToIssue) {
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress, "Can only call from migrated");
         }
-        uint256 blockTime = getCurrentTime();
-        require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
+        require(roundId < voteTiming.computeCurrentRoundId(getCurrentTime()), "Invalid roundId");
 
         Round storage round = rounds[roundId];
-        bool isExpired = blockTime > round.rewardsExpirationTime;
+        bool isExpired = getCurrentTime() > round.rewardsExpirationTime;
         FixedPoint.Unsigned memory snapshotBalance =
             FixedPoint.Unsigned(votingToken.balanceOfAt(voterAddress, round.snapshotId));
 
@@ -506,7 +652,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         totalRewardToIssue = FixedPoint.Unsigned(0);
 
         for (uint256 i = 0; i < toRetrieve.length; i++) {
-            PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
+            PriceRequest storage priceRequest =
+                _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time, toRetrieve[i].ancillaryData);
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             // Only retrieve rewards for votes resolved in same round
             require(priceRequest.lastVotingRound == roundId, "Retrieve for votes same round");
@@ -517,13 +664,21 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
                 continue;
             } else if (isExpired) {
                 // Emit a 0 token retrieval on expired rewards.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
+                emit RewardsRetrieved(
+                    voterAddress,
+                    roundId,
+                    toRetrieve[i].identifier,
+                    toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
+                    0
+                );
             } else if (
                 voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             ) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed
                 // and was correct, so they are eligible for a reward.
                 // Compute the reward and add to the cumulative reward.
+
                 FixedPoint.Unsigned memory reward =
                     snapshotBalance.mul(totalRewardPerVote).div(
                         voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
@@ -536,11 +691,19 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
                     roundId,
                     toRetrieve[i].identifier,
                     toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
                     reward.rawValue
                 );
             } else {
                 // Emit a 0 token retrieval on incorrect votes.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
+                emit RewardsRetrieved(
+                    voterAddress,
+                    roundId,
+                    toRetrieve[i].identifier,
+                    toRetrieve[i].time,
+                    toRetrieve[i].ancillaryData,
+                    0
+                );
             }
 
             // Delete the submission to capture any refund and clean up storage.
@@ -553,6 +716,23 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         }
     }
 
+    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
+    function retrieveRewards(
+        address voterAddress,
+        uint256 roundId,
+        PendingRequest[] memory toRetrieve
+    ) public override returns (FixedPoint.Unsigned memory) {
+        PendingRequestAncillary[] memory toRetrieveAncillary = new PendingRequestAncillary[](toRetrieve.length);
+
+        for (uint256 i = 0; i < toRetrieve.length; i++) {
+            toRetrieveAncillary[i].identifier = toRetrieve[i].identifier;
+            toRetrieveAncillary[i].time = toRetrieve[i].time;
+            toRetrieveAncillary[i].ancillaryData = "";
+        }
+
+        return retrieveRewards(voterAddress, roundId, toRetrieveAncillary);
+    }
+
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
@@ -562,27 +742,33 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view override returns (PendingRequest[] memory) {
+    function getPendingRequests()
+        external
+        view
+        override(VotingInterface, VotingAncillaryInterface)
+        returns (PendingRequestAncillary[] memory)
+    {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // `pendingPriceRequests` only to those requests that have an Active RequestStatus.
-        PendingRequest[] memory unresolved = new PendingRequest[](pendingPriceRequests.length);
+        PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
         for (uint256 i = 0; i < pendingPriceRequests.length; i++) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
-                unresolved[numUnresolved] = PendingRequest({
+                unresolved[numUnresolved] = PendingRequestAncillary({
                     identifier: priceRequest.identifier,
-                    time: priceRequest.time
+                    time: priceRequest.time,
+                    ancillaryData: priceRequest.ancillaryData
                 });
                 numUnresolved++;
             }
         }
 
-        PendingRequest[] memory pendingRequests = new PendingRequest[](numUnresolved);
+        PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
         for (uint256 i = 0; i < numUnresolved; i++) {
             pendingRequests[i] = unresolved[i];
         }
@@ -593,7 +779,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view override returns (Phase) {
+    function getVotePhase() external view override(VotingInterface, VotingAncillaryInterface) returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -601,7 +787,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view override returns (uint256) {
+    function getCurrentRoundId() external view override(VotingInterface, VotingAncillaryInterface) returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -614,7 +800,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress) external onlyOwner {
+    function setMigrated(address newVotingAddress)
+        external
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         migratedAddress = newVotingAddress;
     }
 
@@ -623,7 +813,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newInflationRate sets the next round's inflation rate.
      */
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public onlyOwner {
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         inflationRate = newInflationRate;
     }
 
@@ -632,7 +826,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public onlyOwner {
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
@@ -642,7 +840,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev This change only applies to rounds that have not yet begun.
      * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
      */
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public onlyOwner {
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
+        public
+        override(VotingInterface, VotingAncillaryInterface)
+        onlyOwner
+    {
         rewardsExpirationTimeout = NewRewardsExpirationTimeout;
     }
 
@@ -652,7 +854,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
-    function _getPriceOrError(bytes32 identifier, uint256 time)
+    function _getPriceOrError(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    )
         private
         view
         returns (
@@ -661,7 +867,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             string memory
         )
     {
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
@@ -679,12 +885,20 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         }
     }
 
-    function _getPriceRequest(bytes32 identifier, uint256 time) private view returns (PriceRequest storage) {
-        return priceRequests[_encodePriceRequest(identifier, time)];
+    function _getPriceRequest(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) private view returns (PriceRequest storage) {
+        return priceRequests[_encodePriceRequest(identifier, time, ancillaryData)];
     }
 
-    function _encodePriceRequest(bytes32 identifier, uint256 time) private pure returns (bytes32) {
-        return keccak256(abi.encode(identifier, time));
+    function _encodePriceRequest(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) private pure returns (bytes32) {
+        return keccak256(abi.encode(identifier, time, ancillaryData));
     }
 
     function _freezeRoundVariables(uint256 roundId) private {
@@ -723,7 +937,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         pendingPriceRequests.pop();
 
         priceRequest.index = UINT_MAX;
-        emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
+        emit PriceResolved(
+            priceRequest.lastVotingRound,
+            priceRequest.identifier,
+            priceRequest.time,
+            resolvedPrice,
+            priceRequest.ancillaryData
+        );
     }
 
     function _computeGat(uint256 roundId) private view returns (FixedPoint.Unsigned memory) {

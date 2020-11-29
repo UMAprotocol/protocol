@@ -1,4 +1,5 @@
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
@@ -727,7 +728,7 @@ async function runVoting(isProd) {
       console.log("Running Voting system");
     }
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
-    const voting = await Voting.deployed();
+    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     const account = (await web3.eth.getAccounts())[0];
     const votingSystem = new VotingSystem(voting, account, getNotifiers());
     return await votingSystem.runIteration(isProd);

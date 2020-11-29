@@ -1,6 +1,7 @@
 // Usage: $(npm bin)/truffle exec ./scripts/ClaimAllRewards.js --round <round_id> --batcherAddress 0x82458d1C812D7c930Bb3229c9e159cbabD9AA8Cb --network mainnet_mnemonic
 
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const TransactionBatcher = artifacts.require("TransactionBatcher");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["round", "batcherAddress"] });
@@ -9,7 +10,7 @@ const { toBN, toWei } = web3.utils;
 
 // This script claims all voter's rewards for the round provided.
 async function claimRewards() {
-  const voting = await Voting.deployed();
+  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
   const events = await voting.contract.getPastEvents("VoteRevealed", {
     filter: { roundId: argv.round },
