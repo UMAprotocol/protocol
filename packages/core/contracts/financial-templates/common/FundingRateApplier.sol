@@ -81,11 +81,13 @@ abstract contract FundingRateApplier is FeePayer {
      *              MODIFIERS               *
      ****************************************/
 
+    // This is overridden to both pay fees (which is done by applyFundingRate()) and apply the funding rate.
     modifier fees override {
         applyFundingRate();
         _;
     }
 
+    // Note: this modifier is intended to be used if the caller intends to _only_ pay regular fees.
     modifier regularFees {
         payRegularFees();
         _;
@@ -118,6 +120,16 @@ abstract contract FundingRateApplier is FeePayer {
         configStore = ConfigStoreInterface(_configStoreAddress);
     }
 
+    /**
+     * @notice This method takes 4 distinct actions:
+     *
+     * 1. Pays out regular fees.
+     *
+     * 2. If possible, resolves the outstanding funding rate proposal, pulling the result in and paying out the
+     *    rewards.
+     *
+     * 3. Applies the prevailing funding rate over the most recent period.
+     */
     function applyFundingRate() public regularFees() nonReentrant() {
         _applyEffectiveFundingRate();
     }
