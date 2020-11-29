@@ -718,7 +718,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOracleEmergencyShutdownPrice() internal view returns (FixedPoint.Unsigned memory) {
-        require(emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
         return _getOraclePrice(emergencyShutdownTimestamp);
     }
 
