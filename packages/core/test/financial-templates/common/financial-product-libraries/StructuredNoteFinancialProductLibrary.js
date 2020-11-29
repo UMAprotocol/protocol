@@ -8,8 +8,9 @@ const StructuredNoteFinancialProductLibrary = artifacts.require("StructuredNoteF
 const Timer = artifacts.require("Timer");
 const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
 
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toBN(toWei("400"));
+const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toWei("1.2");
 
 contract("StructuredNoteFinancialProductLibrary", function() {
@@ -27,6 +28,7 @@ contract("StructuredNoteFinancialProductLibrary", function() {
       structuredNoteFPL.address,
       expirationTime,
       { rawValue: collateralizationRatio.toString() },
+      priceFeedIdentifier,
       timer.address
     );
 

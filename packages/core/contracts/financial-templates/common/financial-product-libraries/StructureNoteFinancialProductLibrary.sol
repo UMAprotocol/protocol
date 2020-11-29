@@ -2,10 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-interface ExpiringContractInterface {
-    function expirationTimestamp() external view returns (uint256);
-}
+import "../../../common/implementation/Lockable.sol";
 
 /**
  * @title Structured Note Financial Product Library
@@ -16,22 +13,21 @@ interface ExpiringContractInterface {
  * If ETHUSD < $400 at expiry, token is redeemed for 1 ETH.
  * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determine by the DVM.
  */
-contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable {
+contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
-
-    constructor() public {}
 
     /**
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param strikePrice the strike price for the structured note to be applied to the financial product.
      * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price can not be 0.
-     * b) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
-     * c)  financialProduct must exposes an expirationTimestamp method.
+     * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
+     * d)  financialProduct must exposes an expirationTimestamp method.
      */
     function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
         public
         onlyOwner
+        nonReentrant()
     {
         require(strikePrice.isGreaterThan(0), "Cant set 0 strike");
         require(financialProductStrikes[financialProduct].isEqual(0), "Strike already set");
@@ -44,7 +40,12 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
      * @param financialProduct address of the financial product.
      * @return strikePrice for the associated financial product.
      */
-    function getStrikeForFinancialProduct(address financialProduct) public view returns (FixedPoint.Unsigned memory) {
+    function getStrikeForFinancialProduct(address financialProduct)
+        public
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory)
+    {
         return financialProductStrikes[financialProduct];
     }
 
@@ -58,6 +59,7 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
         public
         view
         override
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
@@ -86,7 +88,7 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
     function transformCollateralRequirement(
         FixedPoint.Unsigned memory oraclePrice,
         FixedPoint.Unsigned memory collateralRequirement
-    ) public view override returns (FixedPoint.Unsigned memory) {
+    ) public view override nonReentrantView() returns (FixedPoint.Unsigned memory) {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
         require(strike.isGreaterThan(0), "Caller has no strike");
         // If the price is less than the strike than the original collateral requirement is used.
