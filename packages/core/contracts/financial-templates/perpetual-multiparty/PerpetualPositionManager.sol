@@ -88,7 +88,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
-    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
     event SettleEmergencyShutdown(
         address indexed caller,

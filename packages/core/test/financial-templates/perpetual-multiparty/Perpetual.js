@@ -21,11 +21,14 @@ contract("Perpetual", function(accounts) {
   it("Can deploy", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
-    const configStore = await ConfigStore.new({
-      timelockLiveness: 86400, // 1 day
-      rewardRatePerSecond: { rawValue: "0" },
-      proposerBondPct: { rawValue: "0" }
-    }, timer.address);
+    const configStore = await ConfigStore.new(
+      {
+        timelockLiveness: 86400, // 1 day
+        rewardRatePerSecond: { rawValue: "0" },
+        proposerBondPct: { rawValue: "0" }
+      },
+      timer.address
+    );
 
     const constructorParams = {
       withdrawalLiveness: "1000",

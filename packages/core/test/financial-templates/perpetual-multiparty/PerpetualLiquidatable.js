@@ -16,7 +16,6 @@ const Liquidatable = artifacts.require("PerpetualLiquidatable");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
-const MockFundingRateStore = artifacts.require("MockFundingRateStore");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
@@ -76,7 +75,6 @@ contract("PerpetualLiquidatable", function(accounts) {
   let priceFeedIdentifier;
   let fundingRateIdentifier;
   let mockOracle;
-  let mockFundingRateStore;
   let finder;
   let liquidatableParameters;
   let store;
@@ -134,15 +132,6 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
-    });
-
-    // Create mock funding rate store & add it to the finder.
-    mockFundingRateStore = await MockFundingRateStore.new(timer.address, {
-      from: contractDeployer
-    });
-    const mockFundingRateStoreName = web3.utils.utf8ToHex(interfaceName.FundingRateStore);
-    await finder.changeImplementationAddress(mockFundingRateStoreName, mockFundingRateStore.address, {
       from: contractDeployer
     });
 

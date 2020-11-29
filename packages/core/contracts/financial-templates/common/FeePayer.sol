@@ -102,6 +102,9 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
 
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
+            // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
+            // has no locked collateral.
+            lastPaymentTime = time;
             return totalPaid;
         }
 
