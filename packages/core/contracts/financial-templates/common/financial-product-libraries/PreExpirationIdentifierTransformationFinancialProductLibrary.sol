@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../../../common/implementation/Lockable.sol";
 
 /**
  * @title Pre-Expiration Identifier Transformation Financial Product Library
@@ -10,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * & if it is at or after expiration then the original identifier is returned. This library enables self referential
  * TWAP identifier to be used on synthetics pre-expiration, in conjunction with a separate identifier at expiration.
  */
-contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Ownable {
+contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
     mapping(address => bytes32) financialProductTransformedIdentifiers;
 
     /**
@@ -24,6 +25,7 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
     function setFinancialProductTransformedIdentifier(address financialProduct, bytes32 transformedIdentifier)
         public
         onlyOwner
+        nonReentrant()
     {
         require(transformedIdentifier != "", "Cant set to empty transformation");
         require(financialProductTransformedIdentifiers[financialProduct] == "", "Transformation already set");
@@ -36,7 +38,12 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
      * @param financialProduct address of the financial product.
      * @return transformed identifier for the associated financial product.
      */
-    function getTransformedIdentifierForFinancialProduct(address financialProduct) public view returns (bytes32) {
+    function getTransformedIdentifierForFinancialProduct(address financialProduct)
+        public
+        view
+        nonReentrantView()
+        returns (bytes32)
+    {
         return financialProductTransformedIdentifiers[financialProduct];
     }
 
@@ -46,7 +53,13 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
      * @param requestTime timestamp the identifier is to be used at.
      * @return transformedPriceIdentifier the input price identifier with the transformation logic applied to it.
      */
-    function transformPriceIdentifier(bytes32 identifier, uint256 requestTime) public view override returns (bytes32) {
+    function transformPriceIdentifier(bytes32 identifier, uint256 requestTime)
+        public
+        view
+        override
+        nonReentrantView()
+        returns (bytes32)
+    {
         require(financialProductTransformedIdentifiers[msg.sender] != "", "Caller has no transformation");
         // If the request time is before contract expiration then return the transformed identifier. Else, return the
         // transformed price identifier.
