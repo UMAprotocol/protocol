@@ -107,9 +107,7 @@ abstract contract FeePayerPoolParty is AdministrateeInterface, Testable, Lockabl
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
-        FixedPoint.Unsigned memory regularFee;
-        FixedPoint.Unsigned memory latePenalty;
-        (totalPaid, regularFee, latePenalty) = feePayerData.payRegularFees(store, time, collateralPool);
+        totalPaid = feePayerData.payRegularFees(store, time, collateralPool);
         return totalPaid;
     }
 

@@ -33,30 +33,29 @@ library FeePayerPoolPartyLib {
         StoreInterface store,
         uint256 time,
         FixedPoint.Unsigned memory collateralPool
-    )
-        external
-        returns (
-            FixedPoint.Unsigned memory totalPaid,
-            FixedPoint.Unsigned memory regularFee,
-            FixedPoint.Unsigned memory latePenalty
-        )
-    {
+    ) external returns (FixedPoint.Unsigned memory totalPaid) {
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
-            return (totalPaid, regularFee, latePenalty);
+            // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
+            // has no locked collateral.
+            feePayerData.lastPaymentTime = time;
+            return totalPaid;
         }
 
         // Exit early if fees were already paid during this block.
         if (feePayerData.lastPaymentTime == time) {
-            return (totalPaid, regularFee, latePenalty);
+            return totalPaid;
         }
+
+        FixedPoint.Unsigned memory regularFee;
+        FixedPoint.Unsigned memory latePenalty;
 
         (regularFee, latePenalty) = store.computeRegularFee(feePayerData.lastPaymentTime, time, collateralPool);
         feePayerData.lastPaymentTime = time;
 
         totalPaid = regularFee.add(latePenalty);
         if (totalPaid.isEqual(0)) {
-            return (totalPaid, regularFee, latePenalty);
+            return totalPaid;
         }
         // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay
         // as much of the fee that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the
@@ -82,7 +81,7 @@ library FeePayerPoolPartyLib {
         if (latePenalty.isGreaterThan(0)) {
             feePayerData.collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
-        return (totalPaid, regularFee, latePenalty);
+        return totalPaid;
     }
 
     // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee
