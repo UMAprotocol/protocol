@@ -384,7 +384,7 @@ contract Liquidatable is PricelessPositionManager {
         disputedLiquidation.disputer = msg.sender;
 
         // Enqueue a request with the DVM.
-        _requestOraclePrice(disputedLiquidation.liquidationTime);
+        _requestOraclePriceLiquidation(disputedLiquidation.liquidationTime);
 
         emit LiquidationDisputed(
             sponsor,
@@ -549,7 +549,7 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
+        liquidation.settlementPrice = _getOraclePriceLiquidation(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue =
