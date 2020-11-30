@@ -44,7 +44,8 @@ contract("Perpetual", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      configStoreAddress: configStore.address
+      configStoreAddress: configStore.address,
+      tokenScaling: { rawValue: toWei("1") }
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();

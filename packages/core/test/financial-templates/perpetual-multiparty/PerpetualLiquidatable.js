@@ -158,7 +158,8 @@ contract("PerpetualLiquidatable", function(accounts) {
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
-      configStoreAddress: configStore.address
+      configStoreAddress: configStore.address,
+      tokenScaling: { rawValue: toWei("1") }
     };
 
     // Deploy liquidation contract and set global params

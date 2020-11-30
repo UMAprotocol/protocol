@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, toBN } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -53,7 +53,8 @@ contract("PerpetualCreator", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
-      withdrawalLiveness: 7200
+      withdrawalLiveness: 7200,
+      tokenScaling: { rawValue: toWei("1") }
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -144,6 +145,42 @@ contract("PerpetualCreator", function(accounts) {
   it("Liquidation liveness cannot be too large", async function() {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
+    assert(
+      await didContractThrow(
+        perpetualCreator.createPerpetual(constructorParams, testConfig, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Token scaling cannot be too large", async function() {
+    // Change only the token scaling.
+    // 1e28 + 1
+    constructorParams.tokenScaling = {
+      rawValue: toBN(10)
+        .pow(toBN(28))
+        .addn(1)
+        .toString()
+    };
+    assert(
+      await didContractThrow(
+        perpetualCreator.createPerpetual(constructorParams, testConfig, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Token scaling cannot be too small", async function() {
+    // Change only the token scaling.
+    // 1e8 - 1
+    constructorParams.tokenScaling = {
+      rawValue: toBN(10)
+        .pow(toBN(8))
+        .subn(1)
+        .toString()
+    };
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
