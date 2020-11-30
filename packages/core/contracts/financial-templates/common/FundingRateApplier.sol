@@ -115,13 +115,6 @@ abstract contract FundingRateApplier is FeePayer {
 
         // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
         // applied over time.
-        FixedPoint.Unsigned memory minScaling = FixedPoint.Unsigned(1e8); // 1e-10
-        FixedPoint.Unsigned memory maxScaling = FixedPoint.Unsigned(1e28); // 1e10
-
-        // Note: removed require message to save bytecode.
-        require(_tokenScaling.isGreaterThan(minScaling) && _tokenScaling.isLessThan(maxScaling));
-
-        // Seed the cumulative multiplier with the token scaling.
         fundingRate.cumulativeMultiplier = _tokenScaling;
         emergencyShutdownTimestamp = 0;
 
