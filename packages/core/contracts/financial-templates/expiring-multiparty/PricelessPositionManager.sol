@@ -11,7 +11,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 
-import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
@@ -458,7 +458,7 @@ contract PricelessPositionManager is FeePayer {
 
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     /**
@@ -602,7 +602,7 @@ contract PricelessPositionManager is FeePayer {
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
     function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() nonReentrant() {
-        require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
+        require(msg.sender == _getFinancialContractsAdminAddress());
 
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
@@ -705,6 +705,12 @@ contract PricelessPositionManager is FeePayer {
         return _transformPriceIdentifier(requestTime);
     }
 
+    function _getAncillaryData() public view returns (bytes memory) {
+        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get.
+        return abi.encodePacked(address(tokenCurrency));
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -780,8 +786,8 @@ contract PricelessPositionManager is FeePayer {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _getOracle() internal view returns (OracleInterface) {
-        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
     function _getFinancialContractsAdminAddress() internal view returns (address) {
@@ -790,16 +796,31 @@ contract PricelessPositionManager is FeePayer {
 
     // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
-        OracleInterface oracle = _getOracle();
-        oracle.requestPrice(_transformPriceIdentifier(requestedTime), requestedTime);
+        OptimisticOracleInterface oracle = _getOptimisticOracle();
+        oracle.requestPrice(
+            _transformPriceIdentifier(requestedTime),
+            requestedTime,
+            _getAncillaryData(),
+            collateralCurrency,
+            0
+        );
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint256 requestedTime) internal returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(_transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime);
+        OptimisticOracleInterface oracle = _getOptimisticOracle();
+        require(
+            oracle.hasPrice(
+                address(this),
+                _transformPriceIdentifier(requestedTime),
+                requestedTime,
+                _getAncillaryData()
+            ),
+            "Unresolved oracle price"
+        );
+        int256 oraclePrice =
+            oracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {

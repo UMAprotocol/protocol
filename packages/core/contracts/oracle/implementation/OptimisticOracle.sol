@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -70,6 +71,7 @@ interface OptimisticRequester {
 contract OptimisticOracle is Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using Address for address;
 
     event RequestPrice(
         address indexed requester,
@@ -107,6 +109,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 payout
     );
 
+    // Struct representing the state of a price request.
     enum State {
         Invalid, // Never requested.
         Requested, // Requested, no other actions taken.
@@ -313,7 +316,8 @@ contract OptimisticOracle is Testable, Lockable {
         emit ProposePrice(requester, proposer, identifier, timestamp, ancillaryData, proposedPrice);
 
         // Callback.
-        try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
+        if (address(requester).isContract())
+            try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
     }
 
     /**
@@ -436,6 +440,7 @@ contract OptimisticOracle is Testable, Lockable {
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identifiy the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
      */
@@ -453,6 +458,7 @@ contract OptimisticOracle is Testable, Lockable {
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identifiy the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
      * @return the Request data structure.
      */
     function getRequest(
@@ -469,6 +475,7 @@ contract OptimisticOracle is Testable, Lockable {
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identifiy the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
      * @return the State.
      */
     function getState(
@@ -499,6 +506,35 @@ contract OptimisticOracle is Testable, Lockable {
             _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
                 ? State.Resolved
                 : State.Disputed;
+    }
+
+    /**
+     * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identifiy the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return the State.
+     */
+    function hasPrice(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) public view returns (bool) {
+        return
+            getState(requester, identifier, timestamp, ancillaryData) == State.Settled ||
+            getState(requester, identifier, timestamp, ancillaryData) == State.Resolved;
+    }
+
+    /**
+     * @notice Generates stamped ancillary data in the format that it would be used in the case of a price dispute.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param requester sender of the initial price request.
+     * @return the stampped ancillary bytes.
+     */
+    function stampAncillaryData(bytes memory ancillaryData, address requester) public pure returns (bytes memory) {
+        return _stampAncillaryData(ancillaryData, requester);
     }
 
     function _getId(
@@ -554,9 +590,10 @@ contract OptimisticOracle is Testable, Lockable {
         );
 
         // Callback.
-        try
-            OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
-        {} catch {}
+        if (address(requester).isContract())
+            try
+                OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
+            {} catch {}
     }
 
     function _getRequest(

@@ -404,10 +404,10 @@ contract("OptimisticOracle", function(accounts) {
       // Rando should net the bond, reward, and the full bond the disputer paid in.
       await verifyBalanceSum(rando, initialUserBalance, defaultBond, reward, totalDefaultBond);
 
-      // Disputer should have lost thier bond (since they effectively gave it to rando).
+      // Disputer should have lost their bond (since they effectively gave it to rando).
       await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
 
-      // Proposer should have lost thier bond.
+      // Proposer should have lost their bond.
       await verifyBalanceSum(proposer, initialUserBalance, `-${totalDefaultBond}`);
 
       // Contract should be empty.
