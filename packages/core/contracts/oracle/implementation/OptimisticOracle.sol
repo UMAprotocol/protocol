@@ -392,7 +392,8 @@ contract OptimisticOracle is Testable, Lockable {
         emit DisputePrice(requester, request.proposer, disputer, identifier, timestamp, ancillaryData);
 
         // Callback.
-        try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
+        if (address(requester).isContract())
+            try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
     }
 
     /**
