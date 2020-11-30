@@ -7,7 +7,7 @@ const FundingRateApplier = artifacts.require("FundingRateApplierTest");
 
 // Helper contracts
 const OptimisticOracle = artifacts.require("OptimisticOracle");
-const MockOracle = artifacts.require("MockOracle");
+const MockOracle = artifacts.require("MockOracleAncillary");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -40,11 +40,27 @@ contract("FundingRateApplier", function(accounts) {
   const delay = 10000; // 10_000 seconds.
   let startTime;
   let currentTime;
+  let ancillaryData;
 
   // Accounts.
   const owner = accounts[0];
   const other = accounts[1];
   const disputer = accounts[2];
+
+  const pushPrice = async price => {
+    const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
+
+    // Check that the ancillary data matches expectations.
+    // Note: hashing seems to be the only way to generate a tight packing offchain.
+    const expectedHash = web3.utils.soliditySha3(
+      { t: "address", v: collateral.address },
+      { t: "bytes", v: web3.utils.utf8ToHex("OptimisticOracle") },
+      { t: "address", v: fundingRateApplier.address }
+    );
+    assert.equal(web3.utils.soliditySha3({ t: "bytes", v: lastQuery.ancillaryData }), expectedHash);
+
+    await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
+  };
 
   before(async () => {
     finder = await Finder.deployed();
@@ -107,6 +123,9 @@ contract("FundingRateApplier", function(accounts) {
 
     startTime = (await fundingRateApplier.getCurrentTime()).toNumber();
     currentTime = startTime;
+
+    // Note: in the test funding rate applier, the ancillary data is just the collateral address.
+    ancillaryData = collateral.address;
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
@@ -316,7 +335,9 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
 
       // Dispute proposal
-      await optimisticOracle.disputePrice(fundingRateApplier.address, identifier, currentTime, { from: disputer });
+      await optimisticOracle.disputePrice(fundingRateApplier.address, identifier, currentTime, ancillaryData, {
+        from: disputer
+      });
     });
 
     it("Doesn't pay rewards after resolution", async () => {
@@ -340,10 +361,10 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
 
       // Resolve the dispute.
-      await mockOracle.pushPrice(identifier, proposalTime, defaultProposal);
+      await pushPrice(defaultProposal);
 
       // Settle and apply.
-      await optimisticOracle.settle(fundingRateApplier.address, identifier, proposalTime);
+      await optimisticOracle.settle(fundingRateApplier.address, identifier, proposalTime, ancillaryData);
       await fundingRateApplier.applyFundingRate();
 
       // Funding rate is not updated because disputed requests do not
@@ -369,13 +390,13 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await fundingRateApplier.fundingRate()).proposalTime, "0");
 
       // Resolve the dispute.
-      await mockOracle.pushPrice(identifier, proposalTime, defaultProposal);
+      await pushPrice(defaultProposal);
 
       // No auto-expiry.
       await fundingRateApplier.applyFundingRate();
 
       // Can still settle after applying the funding rate because this rate isn't tracked anymore.
-      await optimisticOracle.settle(fundingRateApplier.address, identifier, proposalTime);
+      await optimisticOracle.settle(fundingRateApplier.address, identifier, proposalTime, ancillaryData);
 
       // Apply funding rate again for good measure.
       await fundingRateApplier.applyFundingRate();

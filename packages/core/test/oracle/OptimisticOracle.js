@@ -9,7 +9,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Addresswhitelist = artifacts.require("AddressWhitelist");
 const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
-const MockOracle = artifacts.require("MockOracle");
+const MockOracle = artifacts.require("MockOracleAncillary");
 const OptimisticRequesterTest = artifacts.require("OptimisticRequesterTest");
 
 contract("OptimisticOracle", function(accounts) {
@@ -47,9 +47,9 @@ contract("OptimisticOracle", function(accounts) {
   const disputer = accounts[2];
   const rando = accounts[3];
 
-  const verifyState = async state => {
+  const verifyState = async (state, ancillaryData = "0x") => {
     assert.equal(
-      (await optimisticOracle.getState(optimisticRequester.address, identifier, requestTime)).toString(),
+      (await optimisticOracle.getState(optimisticRequester.address, identifier, requestTime, ancillaryData)).toString(),
       state
     );
   };
@@ -63,8 +63,16 @@ contract("OptimisticOracle", function(accounts) {
     assert.equal((await collateral.balanceOf(address)).toString(), sum.toString());
   };
 
-  const verifyCorrectPrice = async () => {
-    assert.equal((await optimisticRequester.getPrice.call(identifier, requestTime)).toString(), correctPrice);
+  const verifyCorrectPrice = async (ancillaryData = "0x") => {
+    assert.equal(
+      (await optimisticRequester.getPrice.call(identifier, requestTime, ancillaryData)).toString(),
+      correctPrice
+    );
+  };
+
+  const pushPrice = async price => {
+    const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
+    await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
   before(async function() {
@@ -115,19 +123,21 @@ contract("OptimisticOracle", function(accounts) {
   });
 
   it("No fee request", async function() {
-    await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, 0);
+    await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED);
   });
 
   it("Fees are required when specified", async function() {
     assert(
-      await didContractThrow(optimisticRequester.requestPrice(identifier, requestTime, collateral.address, reward))
+      await didContractThrow(
+        optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward)
+      )
     );
   });
 
   it("Fee request", async function() {
     await collateral.transfer(optimisticRequester.address, reward);
-    await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, reward);
+    await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED);
     await verifyBalanceSum(optimisticOracle.address, reward);
   });
@@ -135,12 +145,12 @@ contract("OptimisticOracle", function(accounts) {
   describe("Requested", function() {
     beforeEach(async function() {
       await collateral.transfer(optimisticRequester.address, reward);
-      await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, reward);
+      await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
     });
 
     it("Default proposal", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
@@ -148,9 +158,9 @@ contract("OptimisticOracle", function(accounts) {
     });
 
     it("Custom bond proposal", async function() {
-      await optimisticRequester.setBond(identifier, requestTime, customBond);
+      await optimisticRequester.setBond(identifier, requestTime, "0x", customBond);
       await collateral.approve(optimisticOracle.address, totalCustomBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
@@ -164,45 +174,50 @@ contract("OptimisticOracle", function(accounts) {
         optimisticRequester.address,
         identifier,
         requestTime,
+        "0x",
         correctPrice,
         { from: proposer }
       );
       await optimisticOracle.setCurrentTime(defaultExpiryTime);
-      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
       // Note: rando should receive a BIGGER bonus over their initial balance because the initial bond didn't come out of their wallet.
       await verifyBalanceSum(rando, initialUserBalance, totalDefaultBond, reward);
     });
 
     it("Custom liveness", async function() {
-      await optimisticRequester.setCustomLiveness(identifier, requestTime, customLiveness);
+      await optimisticRequester.setCustomLiveness(identifier, requestTime, "0x", customLiveness);
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
 
       await optimisticOracle.setCurrentTime(customExpiryTime - 1);
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
-      assert(await didContractThrow(optimisticOracle.settle(optimisticRequester.address, identifier, requestTime)));
+      assert(
+        await didContractThrow(optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x"))
+      );
 
       await optimisticOracle.setCurrentTime(customExpiryTime);
       await verifyState(OptimisticOracleRequestStatesEnum.EXPIRED);
-      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
     });
 
     it("Refund", async function() {
-      await optimisticRequester.setRefundOnDispute(identifier, requestTime);
+      await optimisticRequester.setRefundOnDispute(identifier, requestTime, "0x");
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
 
       // Verify that the balance checks out and the request can settle.
       await verifyBalanceSum(optimisticRequester.address, reward);
-      await mockOracle.pushPrice(identifier, requestTime, correctPrice);
-      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime);
+      await pushPrice(correctPrice);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
       // Proposer should net the disputer's bond.
       await verifyBalanceSum(proposer, initialUserBalance, defaultBond);
@@ -221,16 +236,18 @@ contract("OptimisticOracle", function(accounts) {
     });
 
     it("Verify dispute callback", async function() {
-      await optimisticRequester.setRefundOnDispute(identifier, requestTime);
+      await optimisticRequester.setRefundOnDispute(identifier, requestTime, "0x");
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
 
       // Clear any previous callback info and call dispute.
       await optimisticRequester.clearState();
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
 
       // Timestamp, identifier, and refund should be set.
       assert.equal(hexToUtf8(await optimisticRequester.identifier()), hexToUtf8(identifier));
@@ -245,9 +262,9 @@ contract("OptimisticOracle", function(accounts) {
   describe("Proposed correctly", function() {
     beforeEach(async function() {
       await collateral.transfer(optimisticRequester.address, reward);
-      await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, reward);
+      await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, correctPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
         from: proposer
       });
     });
@@ -257,7 +274,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.EXPIRED);
 
       // Settle contract and check results.
-      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
       // Proposer should only net the reward.
       await verifyBalanceSum(proposer, initialUserBalance, reward);
@@ -268,7 +285,9 @@ contract("OptimisticOracle", function(accounts) {
     it("Can't settle before default liveness", async function() {
       await optimisticOracle.setCurrentTime(defaultExpiryTime - 1);
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
-      assert(await didContractThrow(optimisticOracle.settle(optimisticRequester.address, identifier, requestTime)));
+      assert(
+        await didContractThrow(optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x"))
+      );
     });
 
     it("Verify proposal callback", async function() {
@@ -283,16 +302,18 @@ contract("OptimisticOracle", function(accounts) {
 
     it("Disputed", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
       await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED);
       await verifyBalanceSum(optimisticOracle.address, totalDefaultBond, totalDefaultBond, reward, `-${finalFee}`);
 
       // Push price.
-      await mockOracle.pushPrice(identifier, requestTime, correctPrice);
+      await pushPrice(correctPrice);
       await verifyState(OptimisticOracleRequestStatesEnum.RESOLVED);
 
       // Settle and check price and payouts.
-      await optimisticRequester.getPrice(identifier, requestTime); // Should do the same thing as settle.
+      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
       await verifyCorrectPrice();
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
@@ -313,23 +334,25 @@ contract("OptimisticOracle", function(accounts) {
   describe("Proposed incorrectly", function() {
     beforeEach(async function() {
       await collateral.transfer(optimisticRequester.address, reward);
-      await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, reward);
+      await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, incorrectPrice, {
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", incorrectPrice, {
         from: proposer
       });
     });
 
     it("Disputed", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
 
       // Push price.
-      await mockOracle.pushPrice(identifier, requestTime, correctPrice);
+      await pushPrice(correctPrice);
       await verifyState(OptimisticOracleRequestStatesEnum.RESOLVED);
 
       // Settle and check price and payouts.
-      await optimisticRequester.getPrice(identifier, requestTime); // Should do the same thing as settle.
+      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
       await verifyCorrectPrice();
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
@@ -348,14 +371,16 @@ contract("OptimisticOracle", function(accounts) {
 
     it("Verify settlement callback", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
 
       // Clear previous callback state.
       await optimisticRequester.clearState();
 
       // Push price and settle.
-      await mockOracle.pushPrice(identifier, requestTime, correctPrice);
-      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime);
+      await pushPrice(correctPrice);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
       // Timestamp, identifier, and price should be set.
       assert.equal(hexToUtf8(await optimisticRequester.identifier()), hexToUtf8(identifier));
@@ -368,13 +393,13 @@ contract("OptimisticOracle", function(accounts) {
 
     it("Dispute For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePriceFor(rando, optimisticRequester.address, identifier, requestTime, {
+      await optimisticOracle.disputePriceFor(rando, optimisticRequester.address, identifier, requestTime, "0x", {
         from: disputer
       });
 
       // Push price and settle.
-      await mockOracle.pushPrice(identifier, requestTime, correctPrice);
-      await optimisticRequester.getPrice(identifier, requestTime); // Same as settle.
+      await pushPrice(correctPrice);
+      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Same as settle.
 
       // Rando should net the bond, reward, and the full bond the disputer paid in.
       await verifyBalanceSum(rando, initialUserBalance, defaultBond, reward, totalDefaultBond);
@@ -391,5 +416,49 @@ contract("OptimisticOracle", function(accounts) {
       // Store should have a final fee.
       await verifyBalanceSum(store.address, finalFee);
     });
+  });
+
+  it("Ancillary data lifecycle", async function() {
+    const ancillaryData = "0x1234";
+
+    // Initial state.
+    await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
+    assert.isNull(await optimisticRequester.ancillaryData());
+
+    // Requested.
+    await collateral.transfer(optimisticRequester.address, reward);
+    await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
+    await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
+
+    // Proposed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+    await optimisticOracle.proposePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      ancillaryData,
+      incorrectPrice,
+      {
+        from: proposer
+      }
+    );
+    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Disputed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+    await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
+      from: disputer
+    });
+    await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Settled
+    await pushPrice(correctPrice);
+    await optimisticRequester.getPrice(identifier, requestTime, ancillaryData);
+    await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
   });
 });

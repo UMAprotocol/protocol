@@ -358,7 +358,9 @@ contract PerpetualPositionManager is FundingRateApplier {
 
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
+
+        // Note: revert reason removed to save bytecode.
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     /**
@@ -500,7 +502,8 @@ contract PerpetualPositionManager is FundingRateApplier {
      * to occur via the `settleEmergencyShutdown` function.
      */
     function emergencyShutdown() external override notEmergencyShutdown() fees() nonReentrant() {
-        require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
+        // Note: revert reason removed to save bytecode.
+        require(msg.sender == _getFinancialContractsAdminAddress());
 
         emergencyShutdownTimestamp = getCurrentTime();
         _requestOraclePrice(emergencyShutdownTimestamp);
@@ -720,7 +723,8 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     function _isEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
+        // Note: removed require string to save bytecode.
+        require(emergencyShutdownTimestamp != 0);
     }
 
     // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the
@@ -761,5 +765,9 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory ratio)
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
+    }
+
+    function _getTokenAddress() internal view override returns (address) {
+        return address(tokenCurrency);
     }
 }
