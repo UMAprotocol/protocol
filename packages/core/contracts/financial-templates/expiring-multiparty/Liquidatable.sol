@@ -527,16 +527,10 @@ contract Liquidatable is PricelessPositionManager {
     function transformCollateralRequirement(FixedPoint.Unsigned memory price)
         public
         view
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        if (!address(financialProductLibrary).isContract()) return collateralRequirement;
-        try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
-            FixedPoint.Unsigned memory transformedCollateralRequirement
-        ) {
-            return transformedCollateralRequirement;
-        } catch {
-            return collateralRequirement;
-        }
+        return _transformCollateralRequirement(price);
     }
 
     /****************************************
@@ -565,7 +559,7 @@ contract Liquidatable is PricelessPositionManager {
         // Collateral requirement method applies a from the financial Product library to change the scaled the collateral
         // requirement based on the settlement price. If no library was specified when deploying the emp then this makes no change.
         FixedPoint.Unsigned memory requiredCollateral =
-            tokenRedemptionValue.mul(transformCollateralRequirement(liquidation.settlementPrice));
+            tokenRedemptionValue.mul(_transformCollateralRequirement(liquidation.settlementPrice));
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
@@ -627,5 +621,20 @@ contract Liquidatable is PricelessPositionManager {
                 ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
             "Liquidation not withdrawable"
         );
+    }
+
+    function _transformCollateralRequirement(FixedPoint.Unsigned memory price)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (!address(financialProductLibrary).isContract()) return collateralRequirement;
+        try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
+            FixedPoint.Unsigned memory transformedCollateralRequirement
+        ) {
+            return transformedCollateralRequirement;
+        } catch {
+            return collateralRequirement;
+        }
     }
 }

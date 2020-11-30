@@ -13,8 +13,7 @@ const deployTestnetToken = require("../migrations/13_deploy_testnet_token.js");
 const deployTokenfactory = require("../migrations/14_deploy_tokenfactory.js");
 const deployExpiringMultiPartyCreator = require("../migrations/15_deploy_expiring_multi_party_creator.js");
 const deployLocalWeth = require("../migrations/16_deploy_local_weth.js");
-const deployFundingRateStore = require("../migrations/17_deploy_funding_rate_store.js");
-const deployPerpetualCreator = require("../migrations/18_deploy_perpetual_creator.js");
+const deployPerpetualCreator = require("../migrations/17_deploy_perpetual_creator.js");
 
 module.exports = async ({ network, web3 }) => {
   const accounts = await web3.eth.getAccounts();
@@ -34,6 +33,5 @@ module.exports = async ({ network, web3 }) => {
   await deployTokenfactory(null, network.name, accounts);
   await deployExpiringMultiPartyCreator(null, network.name, accounts);
   await deployLocalWeth(null, network.name, accounts);
-  await deployFundingRateStore(null, network.name, accounts);
   await deployPerpetualCreator(null, network.name, accounts);
 };

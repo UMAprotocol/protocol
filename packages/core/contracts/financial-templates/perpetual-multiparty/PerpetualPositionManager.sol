@@ -14,7 +14,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
-import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
 /**
