@@ -47,6 +47,6 @@ contract FundingRateApplierTest is FundingRateApplier {
     function remargin() external override {}
 
     function _getTokenAddress() internal view override returns (address) {
-        return address(this);
+        return address(collateralCurrency);
     }
 }

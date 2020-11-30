@@ -49,6 +49,16 @@ contract("FundingRateApplier", function(accounts) {
 
   const pushPrice = async price => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
+
+    // Check that the ancillary data matches expectations.
+    // Note: hashing seems to be the only way to generate a tight packing offchain.
+    const expectedHash = web3.utils.soliditySha3(
+      { t: "address", v: collateral.address },
+      { t: "bytes", v: web3.utils.utf8ToHex("OptimisticOracle") },
+      { t: "address", v: fundingRateApplier.address }
+    );
+    assert.equal(web3.utils.soliditySha3({ t: "bytes", v: lastQuery.ancillaryData }), expectedHash);
+
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
@@ -114,8 +124,8 @@ contract("FundingRateApplier", function(accounts) {
     startTime = (await fundingRateApplier.getCurrentTime()).toNumber();
     currentTime = startTime;
 
-    // Note: in the test funding rate applier, the ancillary data is just its address.
-    ancillaryData = fundingRateApplier.address;
+    // Note: in the test funding rate applier, the ancillary data is just the collateral address.
+    ancillaryData = collateral.address;
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
