@@ -1827,23 +1827,21 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
-    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
+    const expectedOptimisticOracleBalance = (await collateral.balanceOf(optimisticOracle.address)).add(
+      toBN(finalFeePaid)
+    );
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expirationResult = await pricelessPositionManager.expire({ from: other });
 
-    // Check that final fees were paid correctly and position's locked collateral was decremented
-    truffleAssert.eventEmitted(expirationResult, "FinalFeesPaid", ev => {
-      return ev.amount.toString() === finalFeePaid.toString();
-    });
+    // Final fees should not be paid. Instead, a reward should have been sent to the optimistic oracle.
+    truffleAssert.eventNotEmitted(expirationResult, "FinalFeesPaid");
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal(
-      collateralAmount.rawValue.toString(),
-      toBN(toWei("98"))
-        .subn(100)
-        .toString()
+      (await collateral.balanceOf(optimisticOracle.address)).toString(),
+      expectedOptimisticOracleBalance.toString()
     );
-    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
@@ -1902,9 +1900,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Excess collateral = 100 - 50 * 1.2 - 1 = 39
     const expectedSponsorCollateralUnderlying = toBN(toWei("39"));
     // Value of remaining synthetic tokens = 25 * 1.2 = 30
-    const expectedSponsorCollateralSynthetic = toBN(toWei("30"))
-      .sub(toBN(toWei("1")))
-      .subn(100);
+    const expectedSponsorCollateralSynthetic = toBN(toWei("30"));
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );

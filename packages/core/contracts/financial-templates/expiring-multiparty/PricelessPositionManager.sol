@@ -585,8 +585,7 @@ contract PricelessPositionManager is FeePayer {
     function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
         contractState = ContractState.ExpiredPriceRequested;
 
-        // The final fee for this request is paid out of the contract rather than by the caller.
-        _payFinalFees(address(this), _computeFinalFees());
+        // Final fees do not need to be paid when sending a request to the optimistic oracle.
         _requestOraclePriceExpiration(expirationTimestamp);
 
         emit ContractExpired(msg.sender);
