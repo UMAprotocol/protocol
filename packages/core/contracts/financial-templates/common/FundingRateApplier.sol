@@ -106,14 +106,23 @@ abstract contract FundingRateApplier is FeePayer {
         address _collateralAddress,
         address _finderAddress,
         address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
 
-        // Seed the cumulative multiplier as 1, from which it will be scaled as funding rates are applied over time.
-        fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
+        // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
+        // applied over time.
+        FixedPoint.Unsigned memory minScaling = FixedPoint.Unsigned(1e8); // 1e-10
+        FixedPoint.Unsigned memory maxScaling = FixedPoint.Unsigned(1e28); // 1e10
+
+        // Note: removed require message to save bytecode.
+        require(_tokenScaling.isGreaterThan(minScaling) && _tokenScaling.isLessThan(maxScaling));
+
+        // Seed the cumulative multiplier with the token scaling.
+        fundingRate.cumulativeMultiplier = _tokenScaling;
         emergencyShutdownTimestamp = 0;
 
         fundingRate.identifier = _fundingRateIdentifier;

@@ -42,6 +42,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
+        FixedPoint.Unsigned tokenScaling;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
     }
@@ -143,6 +144,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
+        constructorParams.tokenScaling = params.tokenScaling;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,

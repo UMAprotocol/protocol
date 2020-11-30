@@ -70,6 +70,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned tokenScaling;
     }
 
     // This struct is used in the `withdrawLiquidation` method that disperses liquidation and dispute rewards.
@@ -178,6 +179,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.fundingRateIdentifier,
             params.minSponsorTokens,
             params.configStoreAddress,
+            params.tokenScaling,
             params.timerAddress
         )
     {
