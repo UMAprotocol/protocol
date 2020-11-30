@@ -8,7 +8,8 @@ const SolcoverConfig = {
     "common/test",
     "oracle/test",
     "oracle/implementation/test"
-  ]
+  ],
+  measureStatementCoverage: false
 };
 
 module.exports = { SolcoverConfig };
