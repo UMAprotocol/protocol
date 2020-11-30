@@ -794,13 +794,20 @@ contract PricelessPositionManager is FeePayer {
     // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePriceExpiration(uint256 requestedTime) internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+
+        // Increase token allowance to enable the optimistic oracle reward transfer.
+        FixedPoint.Unsigned memory reward = _computeFinalFees();
+        collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), reward.rawValue);
         optimisticOracle.requestPrice(
             _transformPriceIdentifier(requestedTime),
             requestedTime,
             _getAncillaryData(),
             collateralCurrency,
-            0
+            reward.rawValue // Reward is equal to the final fee
         );
+
+        // Apply haircut to all sponsors by decrementing the cumlativeFeeMultiplier by the amount lost from the final fee.
+        _adjustCumulativeFeeMultiplier(reward, _pfc());
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.

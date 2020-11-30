@@ -1837,7 +1837,12 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.amount.toString() === finalFeePaid.toString();
     });
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-    assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
+    assert.equal(
+      collateralAmount.rawValue.toString(),
+      toBN(toWei("98"))
+        .subn(100)
+        .toString()
+    );
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
@@ -1897,20 +1902,22 @@ contract("PricelessPositionManager", function(accounts) {
     // Excess collateral = 100 - 50 * 1.2 - 1 = 39
     const expectedSponsorCollateralUnderlying = toBN(toWei("39"));
     // Value of remaining synthetic tokens = 25 * 1.2 = 30
-    const expectedSponsorCollateralSynthetic = toBN(toWei("30"));
+    const expectedSponsorCollateralSynthetic = toBN(toWei("30"))
+      .sub(toBN(toWei("1")))
+      .subn(100);
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
-      expectedTotalSponsorCollateralReturned
+      expectedTotalSponsorCollateralReturned.toString()
     );
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
 
     // The contract should have no more collateral tokens
-    assert.equal(await collateral.balanceOf(pricelessPositionManager.address), 0);
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
