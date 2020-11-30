@@ -178,7 +178,8 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             FixedPoint.Unsigned memory collateralPool = _pfc();
 
             // The final fee must be < available collateral or the fee will be larger than 100%.
-            require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
+            // Note: revert reason removed to save bytecode.
+            require(collateralPool.isGreaterThan(amount));
 
             _adjustCumulativeFeeMultiplier(amount, collateralPool);
         }

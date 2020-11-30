@@ -163,9 +163,15 @@ abstract contract FundingRateApplier is FeePayer {
 
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
-        optimisticOracle.requestPrice(identifier, timestamp, collateralCurrency, 0);
+        bytes memory ancillaryData = _getAncillaryData();
+        optimisticOracle.requestPrice(identifier, timestamp, ancillaryData, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
-            optimisticOracle.setBond(identifier, timestamp, _pfc().mul(_getConfig().proposerBondPct).rawValue)
+            optimisticOracle.setBond(
+                identifier,
+                timestamp,
+                ancillaryData,
+                _pfc().mul(_getConfig().proposerBondPct).rawValue
+            )
         );
 
         // Pull bond from caller and send to optimistic oracle.
@@ -174,7 +180,14 @@ abstract contract FundingRateApplier is FeePayer {
             collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), totalBond.rawValue);
         }
 
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, timestamp, rate.rawValue);
+        optimisticOracle.proposePriceFor(
+            msg.sender,
+            address(this),
+            identifier,
+            timestamp,
+            ancillaryData,
+            rate.rawValue
+        );
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
@@ -202,12 +215,13 @@ abstract contract FundingRateApplier is FeePayer {
             // Attempt to update the funding rate.
             OptimisticOracle optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
+            bytes memory ancillaryData = _getAncillaryData();
 
             // Try to get the price from the optimistic oracle.
-            try optimisticOracle.getPrice(identifier, proposalTime) returns (int256 price) {
+            try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, figure out the type of request.
                 OptimisticOracle.Request memory request =
-                    optimisticOracle.getRequest(address(this), identifier, proposalTime);
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                 uint256 lastUpdateTime = fundingRate.updateTime;
 
                 // If the request is more recent than the last update then we should update the funding rate.
@@ -231,7 +245,10 @@ abstract contract FundingRateApplier is FeePayer {
                 fundingRate.proposalTime = 0;
             } catch {
                 // Stop tracking if in dispute to allow other proposals to come in.
-                if (optimisticOracle.getRequest(address(this), identifier, proposalTime).disputer != address(0)) {
+                if (
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData).disputer !=
+                    address(0)
+                ) {
                     fundingRate.proposalTime = 0;
                 }
             }
@@ -304,4 +321,12 @@ abstract contract FundingRateApplier is FeePayer {
         // cumulative funding rate multiplier.
         newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
+
+    function _getAncillaryData() public view returns (bytes memory) {
+        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get.
+        return abi.encodePacked(_getTokenAddress());
+    }
+
+    function _getTokenAddress() internal view virtual returns (address);
 }
