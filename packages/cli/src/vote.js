@@ -34,7 +34,8 @@ const vote = async () => {
 const votingMenu = async function(web3, artifacts) {
   try {
     const Voting = artifacts.require("Voting");
-    const votingContract = await Voting.deployed();
+    const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
+    const votingContract = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     const designatedVotingContract = await getTwoKeyContract(web3, artifacts);
 
     const inputs = (await vote())["voteTopMenu"];
