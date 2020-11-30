@@ -704,12 +704,6 @@ contract PricelessPositionManager is FeePayer {
         return _transformPriceIdentifier(requestTime);
     }
 
-    function _getAncillaryData() public view returns (bytes memory) {
-        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
-        // whose funding rate it's trying to get.
-        return abi.encodePacked(address(tokenCurrency));
-    }
-
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -992,5 +986,11 @@ contract PricelessPositionManager is FeePayer {
         } catch {
             return priceIdentifier;
         }
+    }
+
+    function _getAncillaryData() internal view returns (bytes memory) {
+        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get.
+        return abi.encodePacked(address(tokenCurrency));
     }
 }
