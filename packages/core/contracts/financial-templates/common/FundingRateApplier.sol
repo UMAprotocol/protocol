@@ -322,7 +322,7 @@ abstract contract FundingRateApplier is FeePayer {
         newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
 
-    function _getAncillaryData() public view returns (bytes memory) {
+    function _getAncillaryData() internal view returns (bytes memory) {
         // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
         // whose funding rate it's trying to get.
         return abi.encodePacked(_getTokenAddress());
