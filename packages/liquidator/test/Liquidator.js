@@ -981,7 +981,7 @@ contract("Liquidator.js", function(accounts) {
         });
       });
       describe("enabling withdraw defense feature", () => {
-        it("should initilize when enabled", async () => {
+        it("should initialize when enabled", async () => {
           const liquidatorConfig = {
             whaleDefenseFundWei: 1,
             defenseActivationPercent: 50
@@ -999,7 +999,12 @@ contract("Liquidator.js", function(accounts) {
           });
           assert.ok(liquidator);
         });
-        it("should enable and not affect existing logic if not triggered", async () => {
+        it("full liquidation: should enable and not affect existing logic if not triggered", async () => {
+          // In this test, the liquidator sets its `whaleDefenseFundWei` to a trivially small value.
+          // Recall that the amount of capital available to the liquidator is: `tokenBalance - whaleDefenseFundWei`,
+          // so by setting `whaleDefenseFundWei = 1 wei`, we make the liquidator's entire `tokenBalance` available
+          // to it. So in this test, the WDF is not triggered because the liquidator has enough available capital
+          // to liquidate a full position.
           const liquidatorConfig = {
             whaleDefenseFundWei: 1,
             defenseActivationPercent: 50
@@ -1044,6 +1049,12 @@ contract("Liquidator.js", function(accounts) {
           // This places their position with a CR of: 115 / (100 * 1) * 100 = 115%. This is below the CR threshold.
           await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
 
+          // Advance time to the defenseActivationPercent to see if the WDF would trigger.
+          let sponsor1Positions = await emp.positions(sponsor1);
+          const withdrawLiveness = empProps.withdrawLiveness.toNumber();
+          let nextTime = Math.ceil(Number(sponsor1Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5);
+          await emp.setCurrentTime(nextTime);
+
           priceFeedMock.setCurrentPrice("1");
           await liquidator.update();
           await liquidator.liquidatePositions();
@@ -1060,8 +1071,8 @@ contract("Liquidator.js", function(accounts) {
 
           // Advance the timer to the liquidation expiry.
           const liquidationTime = liquidationObject.liquidationTime;
-          const withdrawLiveness = 1000;
-          await emp.setCurrentTime(Number(liquidationTime) + withdrawLiveness);
+          const liquidationLiveness = 1000;
+          await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
 
           // Now that the liquidation has expired, the liquidator can withdraw rewards.
           const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
