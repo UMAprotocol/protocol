@@ -19,8 +19,7 @@ const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
-const Voting = artifacts.require("Voting");
-const Governor = artifacts.require("Governor");
+const { getAbi, getAddress } = require("../../index");
 
 let snapshotId;
 
@@ -35,18 +34,19 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const voting = await Voting.deployed();
-  const governor = await Governor.deployed();
+  // const voting = await Voting.deployed();
+  const voting = new web3.eth.Contract(getAbi("Voting", "1.1.0"), getAddress("Voting", "1", "1.1.0"));
+  const governor = new web3.eth.Contract(getAbi("Governor", "1.1.0"), getAddress("Governor", "1", "1.1.0"));
 
-  let currentTime = (await voting.getCurrentTime()).toNumber();
-  let votingPhase = (await voting.getVotePhase()).toNumber();
+  let currentTime = Number(await voting.methods.getCurrentTime().call());
+  let votingPhase = Number(await voting.methods.getVotePhase().call());
 
   const secondsPerDay = 86400;
   const accounts = await web3.eth.getAccounts();
 
   // These two assertions must be true for the script to be starting in the right state. This assumes the script
   // is run within the same round and phase as running the `Propose.js` script.
-  assert((await governor.numProposals()).toNumber() > 1);
+  assert(Number(await governor.methods.numProposals().call()) > 1);
 
   console.log(
     "1 pending proposal. No pending requests.\nCurrent timestamp:",
@@ -54,7 +54,7 @@ async function runExport() {
     "Voting phase:",
     votingPhase,
     "CurrentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    (await voting.methods.getCurrentRoundId().call()).toString()
   );
 
   /** ****************************************************
@@ -73,20 +73,20 @@ async function runExport() {
   }
   console.log(
     "⏱  Advancing time by one phase to enable voting by the DVM\nNew timestamp",
-    (await voting.getCurrentTime()).toString(),
+    await voting.methods.getCurrentTime().call(),
     "voting phase",
-    (await voting.getVotePhase()).toNumber(),
+    await voting.methods.getVotePhase().call(),
     "CurrentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    await voting.methods.getCurrentRoundId().call()
   );
-  let pendingRequests = await voting.getPendingRequests();
+  let pendingRequests = await voting.methods.getPendingRequests().call();
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
   /** *****************************************************
    * 2) Build vote tx from the foundation wallet         *
    *******************************************************/
 
-  let currentRoundId = (await voting.getCurrentRoundId()).toString();
+  let currentRoundId = await voting.methods.getCurrentRoundId().call();
 
   const identifier = pendingRequests[0].identifier.toString();
   const time = pendingRequests[0].time.toString();
@@ -128,64 +128,69 @@ async function runExport() {
     gas: 2000000
   });
 
-  const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet, gas: 2000000 });
-  console.log("Voting Tx done!", VoteTx.tx);
+  const VoteTx = await voting.methods
+    .commitVote(identifier, time, voteHash)
+    .send({ from: foundationWallet, gas: 2000000 });
+  console.log("Voting Tx done!", VoteTx.transactionHash);
 
   /** *****************************************************
    * 4) Advance to the next phase & reveal the vote      *
    *******************************************************/
   console.log("3. REVEALING FOUNDATION VOTE");
-  currentTime = (await voting.getCurrentTime()).toNumber();
+  currentTime = Number(await voting.methods.getCurrentTime().call());
   await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
 
   console.log(
     "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
-    (await voting.getCurrentTime()).toString(),
+    await voting.methods.getCurrentTime().call(),
     "voting phase",
-    (await voting.getVotePhase()).toNumber(),
+    Number(await voting.methods.getVotePhase().call()),
     "currentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    await voting.methods.getCurrentRoundId().call()
   );
 
   console.log("📸 Generating a voting token snapshot.");
   const account = (await web3.eth.getAccounts())[0];
   const snapshotMessage = "Sign For Snapshot";
   let signature = await signMessage(web3, snapshotMessage, account);
-  await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
+  await voting.methods.snapshotCurrentRound(signature).send({ from: account, gas: 2000000 });
 
-  const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet, gas: 2000000 });
-  console.log("Reveal Tx done!", revealTx.tx);
+  const revealTx = await voting.methods
+    .revealVote(identifier, time, price, salt.toString())
+    .send({ from: foundationWallet, gas: 2000000 });
+  console.log("Reveal Tx done!", revealTx.transactionHash);
 
-  currentTime = (await voting.getCurrentTime()).toNumber();
+  currentTime = Number(await voting.methods.getCurrentTime().call());
   await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
 
   console.log(
     "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
-    (await voting.getCurrentTime()).toString(),
+    await voting.methods.getCurrentTime().call(),
     "voting phase",
-    (await voting.getVotePhase()).toNumber(),
+    Number(await voting.methods.getVotePhase().call()),
     "currentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    await voting.methods.getCurrentRoundId().call()
   );
 
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+  assert.equal((await voting.methods.getPendingRequests().call()).length, 0); // There should be no pending requests as vote is concluded
 
   /** *******************************************************************
    * 4) Execute proposal submitted to governor now that voting is done *
    **********************************************************************/
 
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
-  const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
-  const proposal = await governor.getProposal(proposalId);
+  const proposalId = (Number(await governor.methods.numProposals().call()) - 1).toString(); // most recent proposal in voting.sol
+  const proposal = await governor.methods.getProposal(proposalId.toString()).call();
+  console.log(proposal.transactions[0]);
 
   // for every transactions within the proposal
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");
-    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), {
+    let tx = await governor.methods.executeProposal(proposalId.toString(), i.toString()).send({
       from: foundationWallet,
       gas: 2000000
     });
-    console.log("Transaction", i, "submitted! tx", tx.tx);
+    console.log("Transaction", i, "submitted! tx", tx.transactionHash);
   }
 
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");

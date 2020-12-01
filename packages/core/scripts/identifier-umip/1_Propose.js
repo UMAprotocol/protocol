@@ -11,9 +11,9 @@
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
 // Then execute the script as: truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 
+const { getAbi, getAddress } = require("../../index");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
@@ -35,21 +35,26 @@ async function runExport() {
     identifiers = [argv.identifier];
   }
 
-  const identifierWhitelist = await IdentifierWhitelist.deployed();
+  const identifierWhitelist = new web3.eth.Contract(
+    getAbi("IdentifierWhitelist", "1.1.0"),
+    getAddress("IdentifierWhitelist", "1", "1.1.0")
+  );
   const governor = await Governor.deployed();
 
   // Generate the list of transactions from the list of identifiers.
   const transactions = identifiers.map(identifier => {
     const identifierBytes = web3.utils.utf8ToHex(identifier);
-    const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
+    const addIdentifierTx = identifierWhitelist.methods.addSupportedIdentifier(identifierBytes).encodeABI();
     console.log("addIdentifierTx", addIdentifierTx);
     return {
-      to: identifierWhitelist.address,
+      to: identifierWhitelist.options.address,
       value: 0,
       data: addIdentifierTx
     };
   });
 
+  // TODO: Calling this via the web3.eth.Contract method fails, possibly because `transactions` array is in an
+  // unparseable format for governor.methods.propose() to read.
   await governor.propose(transactions, { from: proposerWallet });
 
   const identifierTable = identifiers.map(identifier => {

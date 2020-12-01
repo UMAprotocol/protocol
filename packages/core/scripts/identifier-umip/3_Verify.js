@@ -6,7 +6,8 @@
 
 const assert = require("assert").strict;
 
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const { getAbi, getAddress } = require("../../index");
+
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
 async function runExport() {
@@ -25,10 +26,16 @@ async function runExport() {
     identifiers = [argv.identifier];
   }
 
-  const identifierWhitelist = await IdentifierWhitelist.deployed();
+  const identifierWhitelist = new web3.eth.Contract(
+    getAbi("IdentifierWhitelist", "1.1.0"),
+    getAddress("IdentifierWhitelist", "1", "1.1.0")
+  );
 
   for (const identifier of identifiers) {
-    assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
+    assert.equal(
+      await identifierWhitelist.methods.isIdentifierSupported(web3.utils.utf8ToHex(identifier)).call(),
+      true
+    );
   }
 
   console.log("Upgrade Verified!");
