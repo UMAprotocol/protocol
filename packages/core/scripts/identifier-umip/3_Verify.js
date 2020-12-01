@@ -6,7 +6,9 @@
 
 const assert = require("assert").strict;
 
-const { getAbi, getAddress } = require("../../index");
+// Use the same ABI's as deployed contracts:
+const { getTruffleContract } = require("../../index");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
@@ -26,16 +28,10 @@ async function runExport() {
     identifiers = [argv.identifier];
   }
 
-  const identifierWhitelist = new web3.eth.Contract(
-    getAbi("IdentifierWhitelist", "1.1.0"),
-    getAddress("IdentifierWhitelist", "1", "1.1.0")
-  );
+  const identifierWhitelist = await IdentifierWhitelist.deployed();
 
   for (const identifier of identifiers) {
-    assert.equal(
-      await identifierWhitelist.methods.isIdentifierSupported(web3.utils.utf8ToHex(identifier)).call(),
-      true
-    );
+    assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
   }
 
   console.log("Upgrade Verified!");
