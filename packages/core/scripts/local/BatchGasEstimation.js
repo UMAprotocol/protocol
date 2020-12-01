@@ -20,11 +20,12 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 
 async function run() {
-  const voting = await Voting.deployed();
+  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
   const votingToken = await VotingToken.deployed();
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const registry = await Registry.deployed();

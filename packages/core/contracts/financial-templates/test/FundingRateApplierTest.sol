@@ -4,18 +4,28 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../common/FundingRateApplier.sol";
+import "../../common/implementation/FixedPoint.sol";
 
 // Implements FundingRateApplier internal methods to enable unit testing.
 contract FundingRateApplierTest is FundingRateApplier {
-    constructor(address _fpFinderAddress, address _timerAddress)
+    constructor(
+        bytes32 _fundingRateIdentifier,
+        address _collateralAddress,
+        address _finderAddress,
+        address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
+        address _timerAddress
+    )
         public
-        Testable(_timerAddress)
-        FundingRateApplier(_fpFinderAddress)
+        FundingRateApplier(
+            _fundingRateIdentifier,
+            _collateralAddress,
+            _finderAddress,
+            _configStoreAddress,
+            _tokenScaling,
+            _timerAddress
+        )
     {}
-
-    function applyFundingRate() public {
-        _applyEffectiveFundingRate();
-    }
 
     function calculateEffectiveFundingRate(
         uint256 paymentPeriodSeconds,
@@ -28,5 +38,18 @@ contract FundingRateApplierTest is FundingRateApplier {
                 fundingRatePerSecond,
                 currentCumulativeFundingRateMultiplier
             );
+    }
+
+    // Required overrides.
+    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory currentPfc) {
+        return FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+    }
+
+    function emergencyShutdown() external override {}
+
+    function remargin() external override {}
+
+    function _getTokenAddress() internal view override returns (address) {
+        return address(collateralCurrency);
     }
 }

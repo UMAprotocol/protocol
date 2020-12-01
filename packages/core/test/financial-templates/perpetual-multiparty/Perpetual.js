@@ -8,6 +8,7 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
+const ConfigStore = artifacts.require("ConfigStore");
 
 contract("Perpetual", function(accounts) {
   let finder, timer;
@@ -20,6 +21,14 @@ contract("Perpetual", function(accounts) {
   it("Can deploy", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
+    const configStore = await ConfigStore.new(
+      {
+        timelockLiveness: 86400, // 1 day
+        rewardRatePerSecond: { rawValue: "0" },
+        proposerBondPct: { rawValue: "0" }
+      },
+      timer.address
+    );
 
     const constructorParams = {
       withdrawalLiveness: "1000",
@@ -35,7 +44,8 @@ contract("Perpetual", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      excessTokenBeneficiary: accounts[0]
+      configStoreAddress: configStore.address,
+      tokenScaling: { rawValue: toWei("1") }
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();

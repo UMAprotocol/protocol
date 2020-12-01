@@ -54,17 +54,18 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
-        // Params for PricelessPositionManager only.
+        // Params for PerpetualPositionManager only.
         uint256 withdrawalLiveness;
+        address configStoreAddress;
         address collateralAddress;
         address tokenAddress;
         address finderAddress;
         address timerAddress;
-        address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         FixedPoint.Unsigned minSponsorTokens;
-        // Params specifically for Liquidatable.
+        FixedPoint.Unsigned tokenScaling;
+        // Params specifically for PerpetualLiquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
@@ -177,8 +178,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.priceFeedIdentifier,
             params.fundingRateIdentifier,
             params.minSponsorTokens,
-            params.timerAddress,
-            params.excessTokenBeneficiary
+            params.configStoreAddress,
+            params.tokenScaling,
+            params.timerAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
@@ -223,9 +225,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         uint256 deadline
     )
         external
-        fees()
         notEmergencyShutdown()
-        updateFundingRate()
+        fees()
         nonReentrant()
         returns (
             uint256 liquidationId,
@@ -364,7 +365,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
@@ -414,7 +414,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (RewardsData memory)
     {

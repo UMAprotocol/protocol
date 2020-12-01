@@ -21,9 +21,10 @@ contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
+    const currentTime = (await timer.getCurrentTime()).toNumber();
 
     const constructorParams = {
-      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
+      expirationTimestamp: (currentTime + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,

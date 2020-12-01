@@ -23,22 +23,12 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      *        STORE DATA STRUCTURES         *
      ****************************************/
 
-    // All of the configuration settings available for querying by a perpetual.
-    struct ConfigSettings {
-        // Liveness period (in seconds) for an update to currentConfig to become official.
-        uint256 timelockLiveness;
-        // Reward rate paid to successful proposers. Percentage of 1 E.g., .1 is 10%.
-        FixedPoint.Unsigned rewardRatePerSecond;
-        // Bond % (of given contract's PfC) that must be staked by proposers. Percentage of 1, e.g. 0.0005 is 0.05%.
-        FixedPoint.Unsigned proposerBondPct;
-    }
-
     // Make currentConfig private to force user to call getCurrentConfig, which returns the pendingConfig
     // if its liveness has expired.
-    ConfigSettings private currentConfig;
+    ConfigStoreInterface.ConfigSettings private currentConfig;
 
     // Beginning on `pendingPassedTimestamp`, the `pendingConfig` can be published as the current config.
-    ConfigSettings public pendingConfig;
+    ConfigStoreInterface.ConfigSettings public pendingConfig;
     uint256 public pendingPassedTimestamp;
 
     /****************************************
@@ -79,7 +69,13 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      * @notice Returns current config or pending config if pending liveness has expired.
      * @return ConfigSettings config settings that calling financial contract should view as "live".
      */
-    function getCurrentConfig() external view override nonReentrantView() returns (ConfigSettings memory) {
+    function getCurrentConfig()
+        external
+        view
+        override
+        nonReentrantView()
+        returns (ConfigStoreInterface.ConfigSettings memory)
+    {
         if (_pendingProposalPassed()) {
             return pendingConfig;
         } else {
@@ -144,7 +140,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     }
 
     // Use this method to constrain values with which you can set ConfigSettings.
-    function _validateConfig(ConfigSettings memory config) internal pure {
+    function _validateConfig(ConfigStoreInterface.ConfigSettings memory config) internal pure {
         // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral.
         require(config.timelockLiveness <= 7 days && config.timelockLiveness >= 1 days, "Invalid timelockLiveness");

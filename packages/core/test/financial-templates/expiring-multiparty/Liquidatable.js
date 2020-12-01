@@ -17,6 +17,7 @@ const Liquidatable = artifacts.require("Liquidatable");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const FinancialProductLibraryTest = artifacts.require("FinancialProductLibraryTest");
@@ -78,6 +79,7 @@ contract("Liquidatable", function(accounts) {
   let syntheticToken;
   let identifierWhitelist;
   let priceFeedIdentifier;
+  let collateralWhitelist;
   let mockOracle;
   let finder;
   let liquidatableParameters;
@@ -173,6 +175,10 @@ contract("Liquidatable", function(accounts) {
 
     // Get store
     store = await Store.deployed();
+
+    // Get collateralWhitelist
+    collateralWhitelist = await AddressWhitelist.deployed();
+    await collateralWhitelist.addToWhitelist(collateralToken.address);
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
@@ -1566,6 +1572,7 @@ contract("Liquidatable", function(accounts) {
     beforeEach(async () => {
       // Start by creating a ERC20 token with different delimitations. 6 decimals for USDC
       collateralToken = await TestnetERC20.new("USDC", "USDC", 6);
+      await collateralWhitelist.addToWhitelist(collateralToken.address);
       await collateralToken.allocateTo(sponsor, toWei("100"));
       await collateralToken.allocateTo(disputer, toWei("100"));
 

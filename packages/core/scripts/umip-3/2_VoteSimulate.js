@@ -37,7 +37,7 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const voting = await Voting.deployed();
+  const voting = await await Voting.deployed();
   const governor = await Governor.deployed();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();

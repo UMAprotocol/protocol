@@ -42,9 +42,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
+        FixedPoint.Unsigned tokenScaling;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
-        address excessTokenBeneficiary;
     }
     // Address of TokenFactory used to create a new synthetic token.
     address public tokenFactoryAddress;
@@ -121,7 +121,6 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // Enforce configuration constraints.
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
-        require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
         _requireWhitelistedCollateral(params.collateralAddress);
 
         // We don't want perpetual deployers to be able to intentionally or unintentionally set
@@ -132,8 +131,16 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(params.withdrawalLiveness < 5200 weeks, "Withdrawal liveness too large");
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
+        // To avoid precision loss or overflows, prevent the token scaling from being too large or too small.
+        FixedPoint.Unsigned memory minScaling = FixedPoint.Unsigned(1e8); // 1e-10
+        FixedPoint.Unsigned memory maxScaling = FixedPoint.Unsigned(1e28); // 1e10
+        require(
+            params.tokenScaling.isGreaterThan(minScaling) && params.tokenScaling.isLessThan(maxScaling),
+            "Invalid tokenScaling"
+        );
+
         // Input from function call.
-        // constructorParams.configStore = configStore;
+        constructorParams.configStoreAddress = configStore;
         constructorParams.tokenAddress = address(newTokenCurrency);
         constructorParams.collateralAddress = params.collateralAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
@@ -145,8 +152,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
-        constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
-        // TODO: Uncomment this line once we add `configStore` to Perpetual constructor params
+        constructorParams.tokenScaling = params.tokenScaling;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,

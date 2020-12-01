@@ -27,7 +27,8 @@ async function decodeGovernorProposal(artifacts, id) {
 
 async function decodeAllActiveGovernorProposals(artifacts, web3) {
   const Voting = artifacts.require("Voting");
-  const voting = await Voting.deployed();
+  const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
+  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
   // Search through pending requests to find active governor proposals.
   const pendingRequests = await voting.getPendingRequests();
