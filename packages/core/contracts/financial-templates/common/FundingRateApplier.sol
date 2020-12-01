@@ -99,6 +99,7 @@ abstract contract FundingRateApplier is FeePayer {
      * @param _collateralAddress address of the collateral token.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _configStoreAddress address of the remote configuration store managed by an external owner.
+     * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress address of the timer contract in test envs, otherwise 0x0.
      */
     constructor(

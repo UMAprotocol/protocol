@@ -64,13 +64,13 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         FixedPoint.Unsigned minSponsorTokens;
+        FixedPoint.Unsigned tokenScaling;
         // Params specifically for PerpetualLiquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
-        FixedPoint.Unsigned tokenScaling;
     }
 
     // This struct is used in the `withdrawLiquidation` method that disperses liquidation and dispute rewards.

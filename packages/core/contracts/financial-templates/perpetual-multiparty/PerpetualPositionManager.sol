@@ -133,6 +133,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      */
     constructor(
