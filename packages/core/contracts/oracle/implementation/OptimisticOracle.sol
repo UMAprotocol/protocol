@@ -11,6 +11,7 @@ import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
+import "../interfaces/OptimisticOracleInterface.sol";
 import "./Constants.sol";
 
 import "../../common/implementation/Testable.sol";
@@ -68,7 +69,7 @@ interface OptimisticRequester {
  * @title Optimistic Oracle
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracle is Testable, Lockable {
+contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
@@ -108,33 +109,6 @@ contract OptimisticOracle is Testable, Lockable {
         int256 price,
         uint256 payout
     );
-
-    // Struct representing the state of a price request.
-    enum State {
-        Invalid, // Never requested.
-        Requested, // Requested, no other actions taken.
-        Proposed, // Proposed, but not expired or disputed yet.
-        Expired, // Proposed, not disputed, past liveness.
-        Disputed, // Disputed, but no DVM price returned yet.
-        Resolved, // Disputed and DVM price is available.
-        Settled // Final price has been set in the contract (can get here from Expired or Resolved).
-    }
-
-    // Struct representing a price request.
-    struct Request {
-        address proposer; // Address of the proposer.
-        address disputer; // Address of the disputer.
-        IERC20 currency; // ERC20 token used to pay rewards and fees.
-        bool settled; // True if the request is settled.
-        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
-        int256 proposedPrice; // Price that the proposer submitted.
-        int256 resolvedPrice; // Price resolved once the request is settled.
-        uint256 expirationTime; // Time at which the request auto-settles without a dispute.
-        uint256 reward; // Amount of the currency to pay to the proposer on settlement.
-        uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
-        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
-        uint256 customLiveness; // Custom liveness value set by the requester.
-    }
 
     mapping(bytes32 => Request) public requests;
 
@@ -178,7 +152,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes memory ancillaryData,
         IERC20 currency,
         uint256 reward
-    ) external nonReentrant() returns (uint256 totalBond) {
+    ) external override nonReentrant() returns (uint256 totalBond) {
         require(getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
@@ -223,7 +197,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 bond
-    ) external nonReentrant() returns (uint256 totalBond) {
+    ) external override nonReentrant() returns (uint256 totalBond) {
         require(getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
         request.bond = bond;
@@ -244,7 +218,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() {
+    ) external override nonReentrant() {
         require(
             getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setRefundOnDispute: Requested"
@@ -265,7 +239,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 customLiveness
-    ) external nonReentrant() {
+    ) external override nonReentrant() {
         require(
             getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setCustomLiveness: Requested"
@@ -293,7 +267,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData,
         int256 proposedPrice
-    ) public nonReentrant() returns (uint256 totalBond) {
+    ) public override nonReentrant() returns (uint256 totalBond) {
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "proposePriceFor: Requested"
@@ -336,7 +310,7 @@ contract OptimisticOracle is Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData,
         int256 proposedPrice
-    ) external returns (uint256 totalBond) {
+    ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
         return proposePriceFor(msg.sender, requester, identifier, timestamp, ancillaryData, proposedPrice);
     }
@@ -358,7 +332,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public nonReentrant() returns (uint256 totalBond) {
+    ) public override nonReentrant() returns (uint256 totalBond) {
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Proposed,
             "disputePriceFor: Proposed"
@@ -410,7 +384,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external returns (uint256 totalBond) {
+    ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
         return disputePriceFor(msg.sender, requester, identifier, timestamp, ancillaryData);
     }
@@ -428,7 +402,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() returns (int256) {
+    ) external override nonReentrant() returns (int256) {
         if (getState(msg.sender, identifier, timestamp, ancillaryData) != State.Settled) {
             _settle(msg.sender, identifier, timestamp, ancillaryData);
         }
@@ -450,7 +424,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() returns (uint256 payout) {
+    ) external override nonReentrant() returns (uint256 payout) {
         return _settle(requester, identifier, timestamp, ancillaryData);
     }
 
@@ -467,7 +441,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view returns (Request memory) {
+    ) public view override returns (Request memory) {
         return _getRequest(requester, identifier, timestamp, ancillaryData);
     }
 
@@ -484,7 +458,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view returns (State) {
+    ) public view override returns (State) {
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
 
         if (address(request.currency) == address(0)) {
@@ -522,7 +496,7 @@ contract OptimisticOracle is Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         return
             getState(requester, identifier, timestamp, ancillaryData) == State.Settled ||
             getState(requester, identifier, timestamp, ancillaryData) == State.Resolved;
