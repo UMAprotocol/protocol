@@ -37,6 +37,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier", "collateral"] });
+const { getAbi } = require("../../index");
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -123,7 +124,9 @@ const deployEMP = async callback => {
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
-    const encodedParameters = web3.eth.abi.encodeParameters(ExpiringMultiParty.abi[0].inputs, [empConstructorParams]);
+    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", "1.1.0")[0].inputs, [
+      empConstructorParams
+    ]);
     console.log("Encoded EMP Parameters", encodedParameters);
 
     // Done!
