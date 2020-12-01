@@ -42,6 +42,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
+        FixedPoint.Unsigned tokenScaling;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
     }
@@ -130,6 +131,14 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         require(params.withdrawalLiveness < 5200 weeks, "Withdrawal liveness too large");
         require(params.liquidationLiveness < 5200 weeks, "Liquidation liveness too large");
 
+        // To avoid precision loss or overflows, prevent the token scaling from being too large or too small.
+        FixedPoint.Unsigned memory minScaling = FixedPoint.Unsigned(1e8); // 1e-10
+        FixedPoint.Unsigned memory maxScaling = FixedPoint.Unsigned(1e28); // 1e10
+        require(
+            params.tokenScaling.isGreaterThan(minScaling) && params.tokenScaling.isLessThan(maxScaling),
+            "Invalid tokenScaling"
+        );
+
         // Input from function call.
         constructorParams.configStoreAddress = configStore;
         constructorParams.tokenAddress = address(newTokenCurrency);
@@ -143,6 +152,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
+        constructorParams.tokenScaling = params.tokenScaling;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,

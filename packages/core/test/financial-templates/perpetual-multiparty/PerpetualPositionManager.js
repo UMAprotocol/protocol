@@ -137,6 +137,7 @@ contract("PerpetualPositionManager", function(accounts) {
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
+      { rawValue: toWei("1") }, // _tokenScaling
       timer.address, // _timerAddress
       { from: contractDeployer }
     );
@@ -223,6 +224,7 @@ contract("PerpetualPositionManager", function(accounts) {
           fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           configStore.address, // _configStoreAddress
+          { rawValue: toWei("1") }, // _tokenScaling
           timer.address, // _timerAddress
           { from: contractDeployer }
         )
@@ -249,6 +251,7 @@ contract("PerpetualPositionManager", function(accounts) {
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
+      { rawValue: toWei("1") }, // _tokenScaling
       timer.address, // _timerAddress
       { from: contractDeployer }
     );
@@ -1672,6 +1675,7 @@ contract("PerpetualPositionManager", function(accounts) {
       fundingRateFeedIdentifier, // _fundingRateFeedIdentifier
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
+      { rawValue: toWei("1") }, // _tokenScaling
       timer.address, // _timerAddress
       { from: contractDeployer }
     );

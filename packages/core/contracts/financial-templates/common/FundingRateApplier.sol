@@ -99,6 +99,7 @@ abstract contract FundingRateApplier is FeePayer {
      * @param _collateralAddress address of the collateral token.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _configStoreAddress address of the remote configuration store managed by an external owner.
+     * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress address of the timer contract in test envs, otherwise 0x0.
      */
     constructor(
@@ -106,14 +107,16 @@ abstract contract FundingRateApplier is FeePayer {
         address _collateralAddress,
         address _finderAddress,
         address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
 
-        // Seed the cumulative multiplier as 1, from which it will be scaled as funding rates are applied over time.
-        fundingRate.cumulativeMultiplier = FixedPoint.fromUnscaledUint(1);
+        // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
+        // applied over time.
+        fundingRate.cumulativeMultiplier = _tokenScaling;
         emergencyShutdownTimestamp = 0;
 
         fundingRate.identifier = _fundingRateIdentifier;

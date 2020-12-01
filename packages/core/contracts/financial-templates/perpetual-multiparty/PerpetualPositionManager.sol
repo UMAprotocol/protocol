@@ -133,6 +133,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      */
     constructor(
@@ -144,6 +145,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         bytes32 _fundingRateIdentifier,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     )
         public
@@ -152,6 +154,7 @@ contract PerpetualPositionManager is FundingRateApplier {
             _collateralAddress,
             _finderAddress,
             _configStoreAddress,
+            _tokenScaling,
             _timerAddress
         )
     {
@@ -305,7 +308,8 @@ contract PerpetualPositionManager is FundingRateApplier {
      */
     function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
+        // No pending withdrawal require message removed to save bytecode.
+        require(positionData.withdrawalRequestPassTimestamp != 0);
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -719,7 +723,8 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     function _notEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
+        // Note: removed require string to save bytecode.
+        require(emergencyShutdownTimestamp == 0);
     }
 
     function _isEmergencyShutdown() internal view {

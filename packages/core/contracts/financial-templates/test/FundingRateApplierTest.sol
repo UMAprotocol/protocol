@@ -4,6 +4,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../common/FundingRateApplier.sol";
+import "../../common/implementation/FixedPoint.sol";
 
 // Implements FundingRateApplier internal methods to enable unit testing.
 contract FundingRateApplierTest is FundingRateApplier {
@@ -12,6 +13,7 @@ contract FundingRateApplierTest is FundingRateApplier {
         address _collateralAddress,
         address _finderAddress,
         address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     )
         public
@@ -20,6 +22,7 @@ contract FundingRateApplierTest is FundingRateApplier {
             _collateralAddress,
             _finderAddress,
             _configStoreAddress,
+            _tokenScaling,
             _timerAddress
         )
     {}

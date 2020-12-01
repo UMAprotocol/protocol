@@ -37,6 +37,7 @@ contract("FundingRateApplier", function(accounts) {
   const identifier = utf8ToHex("Test Identifier");
   const initialUserBalance = toWei("100");
   const defaultProposal = toWei("0.0000001"); // 1 percent every 100_000 seconds.
+  const tokenScaling = toWei("1");
   const delay = 10000; // 10_000 seconds.
   let startTime;
   let currentTime;
@@ -108,6 +109,7 @@ contract("FundingRateApplier", function(accounts) {
       collateral.address,
       finder.address,
       config.address,
+      { rawValue: tokenScaling },
       timer.address
     );
 
@@ -126,6 +128,20 @@ contract("FundingRateApplier", function(accounts) {
 
     // Note: in the test funding rate applier, the ancillary data is just the collateral address.
     ancillaryData = collateral.address;
+  });
+
+  it("Correctly sets funding rate multiplier", async () => {
+    const customTokenScaling = toWei("1000");
+    fundingRateApplier = await FundingRateApplier.new(
+      identifier,
+      collateral.address,
+      finder.address,
+      config.address,
+      { rawValue: customTokenScaling },
+      timer.address
+    );
+
+    assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.toString(), customTokenScaling);
   });
 
   it("Computation of effective funding rate and its effect on the cumulative multiplier is correct", async () => {
