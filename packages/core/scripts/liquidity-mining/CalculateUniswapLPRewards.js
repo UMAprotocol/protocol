@@ -1,10 +1,10 @@
-// This script calculates $UMA liquidity mining rewards for Balancer Pools. This is done with the following process:
+// This script calculates $UMA liquidity mining rewards for Uniswap Pools. This is done with the following process:
 // -> Define the starting and ending blockheight of each week.
 // -> Define snapshot blocks (eg every 64 blocks ~15min). For each snapshot block, calculate the proportional liquidity
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: node ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromBlock 10725993 --toBlock 10752010 --week=1
+// Example usage from core: node ./scripts/liquidity-mining/CalculateUniswapLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromBlock 10725993 --toBlock 10752010 --week=1
 
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
@@ -25,7 +25,7 @@ const argv = require("minimist")(process.argv.slice(), {
   integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"]
 });
 
-async function calculateBalancerLPRewards(
+async function calculateUniswapLPRewards(
   fromBlock,
   toBlock,
   tokenName,
@@ -40,7 +40,7 @@ async function calculateBalancerLPRewards(
     throw new Error("Missing or invalid parameter! Provide poolAddress, fromBlock, toBlock, week & tokenName");
   }
 
-  console.log(`🔥Starting $UMA Balancer liquidity provider script for ${tokenName}🔥`);
+  console.log(`🔥Starting $UMA Uniswap liquidity provider script for ${tokenName}🔥`);
 
   // Calculate the total number of snapshots over the interval.
   const snapshotsToTake = Math.ceil((toBlock - fromBlock) / blocksPerSnapshot);
@@ -55,13 +55,13 @@ async function calculateBalancerLPRewards(
     )}`
   );
 
-  console.log("⚖️  Finding balancer pool info...");
+  console.log("⚖️  Finding Uniswap pool info...");
   // Get the information on a particular pool. This includes a mapping of all previous token holders (shareholders).
-  const poolInfo = await _fetchBalancerPoolInfo(poolAddress);
+  const poolInfo = await _fetchUniswapPoolInfo(poolAddress);
   console.log("poolInfo", poolInfo);
-
   // Extract the addresses of all historic shareholders.
   const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
+  console.log("shareHolders", shareHolders);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
   let bPool = new web3.eth.Contract(poolAbi.abi, poolAddress);
@@ -128,11 +128,11 @@ async function _calculatePayoutsBetweenBlocks(
 // For a given `blockNumber` (snapshot in time), return an updated `shareHolderPayout` object that has appended
 // payouts for a given `bPool` at a rate of `umaPerSnapshot`.
 async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPerSnapshot) {
-  // Get the total supply of Balancer Pool tokens at the given snapshot's block number.
+  // Get the total supply of Uniswap Pool tokens at the given snapshot's block number.
   const bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
 
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
-  const balanceResults = await Promise.map(
+  const uniswapResults = await Promise.map(
     Object.keys(shareHolderPayout),
     shareHolder => bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
     {
@@ -140,11 +140,11 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
     }
   );
   // For each balance result, calculate their associated payment addition.
-  balanceResults.forEach(function(balanceResult, index) {
+  uniswapResults.forEach(function(uniswapResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResult === "0") return;
+    if (uniswapResult === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
-    const shareHolderBalanceAtSnapshot = toBN(balanceResult);
+    const shareHolderBalanceAtSnapshot = toBN(uniswapResult);
     const shareHolderFractionAtSnapshot = toBN(toWei("1"))
       .mul(shareHolderBalanceAtSnapshot)
       .div(bptSupplyAtSnapshot);
@@ -183,20 +183,17 @@ function _saveShareHolderPayout(
   console.log("🗄  File successfully written to", savePath);
 }
 
-// Find information about a given balancer `poolAddress` `shares` returns a list of all historic LP providers.
-async function _fetchBalancerPoolInfo(poolAddress) {
-  const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/balancer-labs/balancer";
+// Find information about a given Uniswap `poolAddress` `shares` returns a list of all historic LP providers.
+async function _fetchUniswapPoolInfo(poolAddress) {
+  const SUBGRAPH_URL = process.env.SUBGRAPH_URL || "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2";
   const query = `
-        {
-          pools (where: {id: "${poolAddress.toLowerCase()}"}) {
-            id
-            shares (first: 1000) {
-              userAddress {
-                id
-              }
-            }
-          }
-        }
+  {
+    liquidityPositions (where:{pair:"${poolAddress.toLowerCase()}"} ) {
+      user {
+        id
+      }
+    }
+  }   
     `;
 
   const response = await fetch(SUBGRAPH_URL, {
@@ -208,17 +205,18 @@ async function _fetchBalancerPoolInfo(poolAddress) {
     body: JSON.stringify({ query })
   });
   const data = (await response.json()).data;
-  if (data.pools.length > 0) {
-    return data.pools[0];
+  console.log("data", data);
+  if (data.liquidityPositions.length > 0) {
+    return data.liquidityPositions;
   }
-  throw "⚠️  Balancer pool provided is not indexed in the subgraph or bad address!";
+  throw "⚠️  Uniswap pool provided is not indexed in the subgraph or bad address!";
 }
 
 // Implement async callback to enable the script to be run by truffle or node.
 async function Main(callback) {
   try {
     // Pull the parameters from process arguments. Specifying them like this lets tests add its own.
-    await calculateBalancerLPRewards(
+    await calculateUniswapLPRewards(
       argv.fromBlock,
       argv.toBlock,
       argv.tokenName,
@@ -248,9 +246,9 @@ if (require.main === module) {
 }
 
 // Each function is then appended onto to the `Main` which is exported. This enables these function to be tested.
-Main.calculateBalancerLPRewards = calculateBalancerLPRewards;
+Main.calculateUniswapLPRewards = calculateUniswapLPRewards;
 Main._calculatePayoutsBetweenBlocks = _calculatePayoutsBetweenBlocks;
 Main._updatePayoutAtBlock = _updatePayoutAtBlock;
 Main._saveShareHolderPayout = _saveShareHolderPayout;
-Main._fetchBalancerPoolInfo = _fetchBalancerPoolInfo;
+Main._fetchUniswapPoolInfo = _fetchUniswapPoolInfo;
 module.exports = Main;
