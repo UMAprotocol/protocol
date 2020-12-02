@@ -21,6 +21,10 @@ const devRewardsToDistribute = "50000";
 // mocks
 const { Queries, Coingecko, SynthPrices } = mocks;
 
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
+const { toWei } = web3.utils;
+
 describe("DeployerRewards", function() {
   let affiliates;
   before(function() {
@@ -51,10 +55,10 @@ describe("DeployerRewards", function() {
       assert.ok(history.history.length());
     });
   });
-  it("getCollateralPriceHistory", async function() {
+  it("getCoingeckoPriceHistory", async function() {
     this.timeout(10000);
     const [, address] = collateralTokens;
-    const result = await affiliates.utils.getCollateralPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
+    const result = await affiliates.utils.getCoingeckoPriceHistory(address, "usd", startingTimestamp, endingTimestamp);
     assert.ok(result.prices.length);
   });
   it("getSyntheticPriceHistory", async function() {
@@ -93,6 +97,17 @@ describe("DeployerRewards", function() {
     result = affiliates.utils.calculateValue(target, "0.021647425848012932", "45829514207149404216", 18, 18).toString();
     diff = BigInt(result) - target;
     assert(diff > 0 ? diff : -diff < epsilon);
+  });
+  it("calculateValueFromUsd", async function() {
+    // these are all stable coins so they should roughly be around 1 dollar
+    // epsilon is high because variations could be nearly a dollar in any direction
+    const target = 10n ** 18n;
+    const syntheticPrice = 26.358177384415466
+    let result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 18, 18).toString();
+    assert.equal(result,toWei(syntheticPrice.toFixed(18)))
+
+    result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 0, 8).toString();
+    assert.equal(result,toWei(syntheticPrice.toFixed(18)))
   });
   it("calculateRewards", async function() {
     this.timeout(1000000);

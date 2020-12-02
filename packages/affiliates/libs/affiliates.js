@@ -51,9 +51,21 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     );
   }
   // Gets the value of collateral currency in USD.
-  async function getCollateralPriceHistory(address, currency = "usd", start, end) {
+  async function getCoingeckoPriceHistory(address, currency = "usd", start, end) {
     const result = await coingecko.getHistoricContractPrices(address, currency, start, end);
     return Prices(result);
+  }
+
+  // the fallback requires a different value calculation, so this is probably the cleanest way to "switch"
+  // between value by and value by usd. The function to calculate value is passed along with the data.
+  async function getSyntheticPriceHistoryWithFallback(address,start,end, syntheticAddress){
+    try{
+      // this will throw if the feed isnt available (among other errors probably)
+      return [await getSyntheticPriceHistory(address,start,end), calculateValue]
+    }catch(err){
+      // this will need to do a lookup based on synthetic token address not emp
+      return [await getCoingeckoPriceHistory(syntheticAddress,'usd',start,end), calculateValueFromUsd]
+    }
   }
 
   // Gets the value of synthetics in collateral currency.
@@ -61,6 +73,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     const result = await synthPrices.getHistoricSynthPrices(address, start, end);
     return Prices(result);
   }
+
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
     return blocks.map(block => {
@@ -89,6 +102,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
 
   // Calculates the value of x `tokens` in USD based on `collateralPrice` in USD, `syntheticPrice` in collateral considering
   // the decimals of both the collateral and synthetic token.
+  // this should output estimated usd value of the synthetic tokens with 18 decimals (in wei)
   function calculateValue(tokens, collateralPrice, syntheticPrice, collateralTokenDecimal, syntheticTokenDecimal) {
     return toBN(tokens.toString())
       .mul(toBN(syntheticPrice.toString()))
@@ -99,6 +113,15 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           .mul(toBN(toWei("1")))
       );
   }
+  // Calculates value of x tokens based on syntheticPrice in usd  ( from a coingecko feed)
+  // copies the same api from the original calculateValue but doesnt use all params
+  // should output the price of tokens measured in usd in wei
+  /* eslint-disable-next-line no-unused-vars */
+  function calculateValueFromUsd(tokens, collateralPrice, syntheticPrice, collateralTokenDecimal, syntheticTokenDecimal) { 
+    return toBN(tokens.toString())
+      .mul(toBN(toWei(syntheticPrice.toFixed(18))))
+      .div(toBN(toWei("1")));
+  }
 
   // pure function to separate out queries from calculations
   // this is adapted from scrips/example-contract-deployer-attributation.js
@@ -108,7 +131,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     totalRewards,
     collateralTokenPrices,
     collateralTokenDecimals,
-    syntheticTokenPrices,
+    syntheticTokenPricesWithValueCalculation,
     syntheticTokenDecimals,
     blocks,
     balanceHistories,
@@ -116,7 +139,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   }) {
     assert(empWhitelist, "requires empWhitelist");
     assert(collateralTokenPrices, "requires collateral token prices prices");
-    assert(syntheticTokenPrices, "requires synthetic token prices prices");
+    assert(syntheticTokenPricesWithValueCalculation, "requires synthetic token prices with value function");
     assert(blocks, "requires blocks");
     assert(balanceHistories, "requires balanceHistories");
     assert(empDeployers, "requires empDeployers");
@@ -134,13 +157,14 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       const { timestamp } = block;
       const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
         try {
+          const [syntheticTokenPrices, syntheticValueCalculation] = syntheticTokenPricesWithValueCalculation[empIndex];
           const { tokens } = balanceHistories.get(empAddress).history.lookup(block.number);
           const [, closestCollateralPrice] = collateralTokenPrices[empIndex].closest(timestamp);
-          const [, closestSyntheticPrice] = syntheticTokenPrices[empIndex].closest(timestamp);
+          const [, closestSyntheticPrice] = syntheticTokenPrices.closest(timestamp);
           const totalTokens = Object.values(tokens).reduce((result, value) => {
             return result.add(toBN(value));
           }, toBN("0"));
-          const value = calculateValue(
+          const value = syntheticValueCalculation(
             totalTokens,
             closestCollateralPrice,
             closestSyntheticPrice,
@@ -217,16 +241,17 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     empCreatorAddress,
     collateralTokens = [],
     collateralTokenDecimals = [],
+    syntheticTokens = [],
     syntheticTokenDecimals = [],
     snapshotSteps = 1
   }) {
     // query all required data ahead of calcuation
-    const [collateralTokenPrices, syntheticTokenPrices, blocks, empDeployers, balanceHistories] = await Promise.all([
+    const [collateralTokenPrices, syntheticTokenPricesWithValueCalculation, blocks, empDeployers, balanceHistories] = await Promise.all([
       Promise.map(
         collateralTokens,
-        async address => await getCollateralPriceHistory(address, "usd", startTime, endTime)
+        async address => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
       ),
-      Promise.map(empWhitelist, async address => await getSyntheticPriceHistory(address, startTime, endTime)),
+      Promise.map(empWhitelist, async (address,i) => await getSyntheticPriceHistoryWithFallback(address, startTime, endTime, syntheticTokens[i])),
       getBlocks(startTime, endTime),
       // these are block events, and they ignore start/end time as we need all events from start of each contract
       getEmpDeployerHistory(empCreatorAddress),
@@ -244,7 +269,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       totalRewards,
       collateralTokenPrices,
       collateralTokenDecimals,
-      syntheticTokenPrices,
+      syntheticTokenPricesWithValueCalculation,
       syntheticTokenDecimals,
       blocks,
       balanceHistories,
@@ -257,12 +282,13 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     utils: {
       getBalanceHistory,
       getAllBalanceHistories,
-      getCollateralPriceHistory,
+      getCoingeckoPriceHistory,
       getSyntheticPriceHistory,
       getBlocks,
       getEmpDeployerHistory,
       calculateRewards,
-      calculateValue
+      calculateValue,
+      calculateValueFromUsd
     }
   };
 };
