@@ -1,4 +1,5 @@
 // Usage: From protocol/, run `yarn truffle exec ./packages/core/scripts/local/HistoricalPriceRequests.js --network mainnet_mnemonic`
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const Voting = artifacts.require("Voting");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Governor = artifacts.require("Governor");
@@ -9,7 +10,7 @@ const { isAdminRequest } = require("@uma/common");
 // This script fetches and classifies all historical DVM price requests.
 async function run() {
   const votingLegacy = await Voting.at("0x9921810C710E7c3f7A7C6831e30929f19537a545");
-  const voting = await Voting.deployed();
+  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
   const governor = await Governor.deployed();
 
   // There have been 2 DVM's deployed on Mainnet to receive price requests so we need to query events from both.

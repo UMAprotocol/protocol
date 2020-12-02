@@ -59,7 +59,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      ****************************************/
 
     // modifier that calls payRegularFees().
-    modifier fees {
+    modifier fees virtual {
         payRegularFees();
         _;
     }
@@ -102,6 +102,9 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
 
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
+            // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
+            // has no locked collateral.
+            lastPaymentTime = time;
             return totalPaid;
         }
 
@@ -175,7 +178,8 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             FixedPoint.Unsigned memory collateralPool = _pfc();
 
             // The final fee must be < available collateral or the fee will be larger than 100%.
-            require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
+            // Note: revert reason removed to save bytecode.
+            require(collateralPool.isGreaterThan(amount));
 
             _adjustCumulativeFeeMultiplier(amount, collateralPool);
         }

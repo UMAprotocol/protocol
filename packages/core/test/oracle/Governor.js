@@ -12,6 +12,7 @@ const truffleAssert = require("truffle-assertions");
 const Governor = artifacts.require("Governor");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const ReentrancyChecker = artifacts.require("ReentrancyChecker");
@@ -45,7 +46,7 @@ contract("Governor", function(accounts) {
   };
 
   before(async function() {
-    voting = await Voting.deployed();
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     governor = await Governor.deployed();
     testToken = await TestnetERC20.deployed();
