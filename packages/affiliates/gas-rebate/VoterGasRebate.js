@@ -75,10 +75,13 @@ function getDataForTimestamp(dayData, timestamp) {
   // If we get here, then we will just use last day.
   return sortedDayData[sortedDayData.length - 1];
 }
-async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput }) {
+async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput, debug = false }) {
   const revealVotersToRebate = {};
 
-  const progressBarReveal = multibar.create(revealedVotes.length, 0, { label: "Reveal Events" });
+  let progressBarReveal;
+  if (!debug) {
+    progressBarReveal = multibar.create(revealedVotes.length, 0, { label: "Reveal Events" });
+  }
 
   for (let i = 0; i < revealedVotes.length; i++) {
     const reveal = revealedVotes[i];
@@ -134,9 +137,14 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 
     // Save and continue to lookup txn data for next event.
     revealVotersToRebate[key] = val;
-    progressBarReveal.update(i + 1);
+
+    if (progressBarReveal) {
+      progressBarReveal.update(i + 1);
+    }
   }
-  progressBarReveal.stop();
+  if (progressBarReveal) {
+    progressBarReveal.stop();
+  }
 
   // Rebate voters
   const rebateReceipts = {};
@@ -219,10 +227,13 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 // Example of such a transaction: https://etherscan.io/tx/0xed907cc499fb6bdccb6fb350dd8dd9cf90e7b24c855a5e857b24156f18e0e4bb#eventlog
 const UMA_DEV_ACCOUNT = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 
-async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
+async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug = false }) {
   const rewardedVotersToRebate = {};
 
-  const progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
+  let progressBarClaim;
+  if (!debug) {
+    progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
+  }
 
   for (let i = 0; i < claimedRewards.length; i++) {
     const claim = claimedRewards[i];
@@ -257,9 +268,13 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
       rewardedVotersToRebate[key] = val;
     }
 
-    progressBarClaim.update(i + 1);
+    if (progressBarClaim) {
+      progressBarClaim.update(i + 1);
+    }
   }
-  progressBarClaim.stop();
+  if (progressBarClaim) {
+    progressBarClaim.stop();
+  }
 
   // Rebate voters
   const rebateReceipts = {};
@@ -382,7 +397,8 @@ async function calculateRebate({
           committedVotes,
           revealedVotes,
           priceData,
-          rebateOutput
+          rebateOutput,
+          debug
         })
       );
     } else {
@@ -395,7 +411,8 @@ async function calculateRebate({
         parseClaimEvents({
           claimedRewards,
           priceData,
-          rebateOutput
+          rebateOutput,
+          debug
         })
       );
     } else {
