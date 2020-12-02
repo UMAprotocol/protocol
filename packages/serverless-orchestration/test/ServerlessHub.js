@@ -4,8 +4,8 @@ const { toWei, utf8ToHex } = web3.utils;
 const request = require("supertest");
 
 // Script to test
-const hub = require("../ServerlessHub");
-const spoke = require("../ServerlessSpoke");
+const hub = require("../src/ServerlessHub");
+const spoke = require("../src/ServerlessSpoke");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -15,16 +15,19 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
+const SyntheticToken = artifacts.require("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
+const { ZERO_ADDRESS } = require("@uma/common");
 
 contract("ServerlessHub.js", function(accounts) {
-  const contractCreator = accounts[0];
+  const contractDeployer = accounts[0];
 
   let collateralToken;
+  let syntheticToken;
   let emp;
   let uniswap;
   let defaultUniswapPricefeedConfig;
@@ -61,7 +64,10 @@ contract("ServerlessHub.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
+      from: contractDeployer
+    });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -95,11 +101,10 @@ contract("ServerlessHub.js", function(accounts) {
       expirationTimestamp: "22345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
       finderAddress: (await Finder.deployed()).address,
       tokenFactoryAddress: (await TokenFactory.deployed()).address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"),
-      syntheticName: "ETH/BTC synthetic token",
-      syntheticSymbol: "ETH/BTC",
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -107,7 +112,8 @@ contract("ServerlessHub.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: "0x0000000000000000000000000000000000000000"
+      excessTokenBeneficiary: ZERO_ADDRESS,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party
