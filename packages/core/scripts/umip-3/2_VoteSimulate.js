@@ -19,9 +19,10 @@ const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
-const Voting = artifacts.require("Voting");
-const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
-const Governor = artifacts.require("Governor");
+// Use the same ABI's as deployed contracts:
+const { getTruffleContract } = require("../../index");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
+const Voting = getTruffleContract("Voting", web3, "1.1.0");
 
 let snapshotId;
 
@@ -36,7 +37,7 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
+  const voting = await await Voting.deployed();
   const governor = await Governor.deployed();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();

@@ -2,6 +2,8 @@
 // a new price identifier.
 
 // @dev: This script will FAIL if the caller (i.e. web3.accounts[0]) does not hold the PROPOSER role in the Governor contract
+// Dec 1st: The current Proposer is the same account used to make proposals in the `identifier-umip` scripts, and can be
+// accessed using `--network mainnet_gckms --keys deployer`
 // @dev: This script will have the side effect of making the Governor contract the owner of the IdentifierWhitelist.
 
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -16,6 +18,7 @@ async function propose(callback) {
     // The `proposedTx` will be executed by the Governor if the proposal is voted YES on.
     const identifierUtf8 = "TEST-NEW-IDENTIFIER";
     const identifierBytes = web3.utils.utf8ToHex(identifierUtf8);
+    console.log(`Hex identifier for ${identifierUtf8}: ${identifierBytes}`);
     const proposedTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
 
     console.log("Admin proposal transaction", proposedTx);
