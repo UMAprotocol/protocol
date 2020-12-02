@@ -5,12 +5,14 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
@@ -28,6 +30,7 @@ contract PricelessPositionManager is FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
+    using Address for address;
 
     /****************************************
      *  PRICELESS POSITION DATA STRUCTURES  *
@@ -176,8 +179,8 @@ contract PricelessPositionManager is FeePayer {
         address _excessTokenBeneficiary,
         address _financialProductLibraryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
-        require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
+        require(_expirationTimestamp > getCurrentTime());
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
@@ -201,11 +204,11 @@ contract PricelessPositionManager is FeePayer {
      */
     function requestTransferPosition() public onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
+        require(positionData.transferPositionRequestPassTimestamp == 0);
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime < expirationTimestamp, "Request expires post-expiry");
+        require(requestPassTime < expirationTimestamp);
 
         // Update the position object for the user.
         positionData.transferPositionRequestPassTimestamp = requestPassTime;
@@ -228,14 +231,12 @@ contract PricelessPositionManager is FeePayer {
         require(
             _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
                 FixedPoint.fromUnscaledUint(0)
-            ),
-            "Sponsor already has position"
+            )
         );
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             positionData.transferPositionRequestPassTimestamp != 0 &&
-                positionData.transferPositionRequestPassTimestamp <= getCurrentTime(),
-            "Invalid transfer request"
+                positionData.transferPositionRequestPassTimestamp <= getCurrentTime()
         );
 
         // Reset transfer request.
@@ -254,7 +255,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function cancelTransferPosition() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
+        require(positionData.transferPositionRequestPassTimestamp != 0);
 
         emit RequestTransferPositionCanceled(msg.sender);
 
@@ -456,7 +457,7 @@ contract PricelessPositionManager is FeePayer {
 
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     /**
@@ -527,7 +528,7 @@ contract PricelessPositionManager is FeePayer {
 
         // Get the current settlement price and store it. If it is not resolved will revert.
         if (contractState != ContractState.ExpiredPriceReceived) {
-            expiryPrice = _getOraclePrice(expirationTimestamp);
+            expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
             contractState = ContractState.ExpiredPriceReceived;
         }
 
@@ -584,9 +585,8 @@ contract PricelessPositionManager is FeePayer {
     function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
         contractState = ContractState.ExpiredPriceRequested;
 
-        // The final fee for this request is paid out of the contract rather than by the caller.
-        _payFinalFees(address(this), _computeFinalFees());
-        _requestOraclePrice(expirationTimestamp);
+        // Final fees do not need to be paid when sending a request to the optimistic oracle.
+        _requestOraclePriceExpiration(expirationTimestamp);
 
         emit ContractExpired(msg.sender);
     }
@@ -600,14 +600,14 @@ contract PricelessPositionManager is FeePayer {
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
     function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() nonReentrant() {
-        require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
+        require(msg.sender == _getFinancialContractsAdminAddress());
 
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
         // Price requested at this time stamp. `settleExpired` can now withdraw at this timestamp.
         uint256 oldExpirationTimestamp = expirationTimestamp;
         expirationTimestamp = getCurrentTime();
-        _requestOraclePrice(expirationTimestamp);
+        _requestOraclePriceExpiration(expirationTimestamp);
 
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
@@ -675,9 +675,10 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @notice Accessor method to calculate a transformed price using the provided finanicalProductLibrary specified
-     * during contract deployment. If no library was provided then no modification to the price is done.
+     * @notice Accessor method to compute a transformed price using the finanicalProductLibrary specified at contract
+     * deployment. If no library was provided then no modification to the price is done.
      * @param price input price to be transformed.
+     * @param requestTime timestamp the oraclePrice was requested at.
      * @return transformedPrice price with the transformation function applied to it.
      * @dev This method should never revert.
      */
@@ -685,16 +686,21 @@ contract PricelessPositionManager is FeePayer {
     function transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
         public
         view
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        if (address(financialProductLibrary) == address(0)) return price;
-        try financialProductLibrary.transformPrice(price, requestTime) returns (
-            FixedPoint.Unsigned memory transformedPrice
-        ) {
-            return transformedPrice;
-        } catch {
-            return price;
-        }
+        return _transformPrice(price, requestTime);
+    }
+
+    /**
+     * @notice Accessor method to compute a transformed price identifier using the finanicalProductLibrary specified
+     * at contract deployment. If no library was provided then no modification to the identifier is done.
+     * @param requestTime timestamp the identifier is to be used at.
+     * @return transformedPrice price with the transformation function applied to it.
+     * @dev This method should never revert.
+     */
+    function transformPriceIdentifier(uint256 requestTime) public view nonReentrantView() returns (bytes32) {
+        return _transformPriceIdentifier(requestTime);
     }
 
     /****************************************
@@ -776,28 +782,74 @@ contract PricelessPositionManager is FeePayer {
         return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
+    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    }
+
     function _getFinancialContractsAdminAddress() internal view returns (address) {
         return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
-    // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
-    function _requestOraclePrice(uint256 requestedTime) internal {
-        OracleInterface oracle = _getOracle();
-        oracle.requestPrice(priceIdentifier, requestedTime);
+    // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
+    function _requestOraclePriceExpiration(uint256 requestedTime) internal {
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+
+        // Increase token allowance to enable the optimistic oracle reward transfer.
+        FixedPoint.Unsigned memory reward = _computeFinalFees();
+        collateralCurrency.safeIncreaseAllowance(address(optimisticOracle), reward.rawValue);
+        optimisticOracle.requestPrice(
+            _transformPriceIdentifier(requestedTime),
+            requestedTime,
+            _getAncillaryData(),
+            collateralCurrency,
+            reward.rawValue // Reward is equal to the final fee
+        );
+
+        // Apply haircut to all sponsors by decrementing the cumlativeFeeMultiplier by the amount lost from the final fee.
+        _adjustCumulativeFeeMultiplier(reward, _pfc());
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (FixedPoint.Unsigned memory) {
+        // Create an instance of the oracle and get the price. If the price is not resolved revert.
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        require(
+            optimisticOracle.hasPrice(
+                address(this),
+                _transformPriceIdentifier(requestedTime),
+                requestedTime,
+                _getAncillaryData()
+            ),
+            "Unresolved oracle price"
+        );
+        int256 optimisticOraclePrice =
+            optimisticOracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
+
+        // For now we don't want to deal with negative prices in positions.
+        if (optimisticOraclePrice < 0) {
+            optimisticOraclePrice = 0;
+        }
+        return _transformPrice(FixedPoint.Unsigned(uint256(optimisticOraclePrice)), requestedTime);
+    }
+
+    // Requests a price for transformed `priceIdentifier` at `requestedTime` from the Oracle.
+    function _requestOraclePriceLiquidation(uint256 requestedTime) internal {
+        OracleInterface oracle = _getOracle();
+        oracle.requestPrice(_transformPriceIdentifier(requestedTime), requestedTime);
+    }
+
+    // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
+    function _getOraclePriceLiquidation(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        require(oracle.hasPrice(_transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
+        return _transformPrice(FixedPoint.Unsigned(uint256(oraclePrice)), requestedTime);
     }
 
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
@@ -914,5 +966,37 @@ contract PricelessPositionManager is FeePayer {
         } catch {
             return 18;
         }
+    }
+
+    function _transformPrice(FixedPoint.Unsigned memory price, uint256 requestTime)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (!address(financialProductLibrary).isContract()) return price;
+        try financialProductLibrary.transformPrice(price, requestTime) returns (
+            FixedPoint.Unsigned memory transformedPrice
+        ) {
+            return transformedPrice;
+        } catch {
+            return price;
+        }
+    }
+
+    function _transformPriceIdentifier(uint256 requestTime) internal view returns (bytes32) {
+        if (!address(financialProductLibrary).isContract()) return priceIdentifier;
+        try financialProductLibrary.transformPriceIdentifier(priceIdentifier, requestTime) returns (
+            bytes32 transformedIdentifier
+        ) {
+            return transformedIdentifier;
+        } catch {
+            return priceIdentifier;
+        }
+    }
+
+    function _getAncillaryData() internal view returns (bytes memory) {
+        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get.
+        return abi.encodePacked(address(tokenCurrency));
     }
 }

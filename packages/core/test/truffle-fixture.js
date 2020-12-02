@@ -7,12 +7,12 @@ const deployFinancialContractsAdmin = require("../migrations/7_deploy_financial_
 const deployStore = require("../migrations/8_deploy_store.js");
 const deployGovernor = require("../migrations/9_deploy_governor.js");
 const deployDesignatedVotingFactory = require("../migrations/10_deploy_designated_voting_factory.js");
-const deploySupportIdentifiers = require("../migrations/11_support_identifiers.js");
-const deployTestnetToken = require("../migrations/12_deploy_testnet_token.js");
-const deployTokenfactory = require("../migrations/13_deploy_tokenfactory.js");
-const deployExpiringMultiPartyCreator = require("../migrations/14_deploy_expiring_multi_party_creator.js");
-const deployLocalWeth = require("../migrations/15_deploy_local_weth.js");
-const deployFundingRateStore = require("../migrations/16_deploy_funding_rate_store.js");
+const deployOptimisticOracle = require("../migrations/11_deploy_optimistic_oracle.js");
+const deploySupportIdentifiers = require("../migrations/12_support_identifiers.js");
+const deployTestnetToken = require("../migrations/13_deploy_testnet_token.js");
+const deployTokenfactory = require("../migrations/14_deploy_tokenfactory.js");
+const deployExpiringMultiPartyCreator = require("../migrations/15_deploy_expiring_multi_party_creator.js");
+const deployLocalWeth = require("../migrations/16_deploy_local_weth.js");
 const deployPerpetualCreator = require("../migrations/17_deploy_perpetual_creator.js");
 
 module.exports = async ({ network, web3 }) => {
@@ -27,11 +27,11 @@ module.exports = async ({ network, web3 }) => {
   await deployStore(null, network.name, accounts);
   await deployGovernor(null, network.name, accounts);
   await deployDesignatedVotingFactory(null, network.name, accounts);
+  await deployOptimisticOracle(null, network.name, accounts);
   await deploySupportIdentifiers(null, network.name, accounts);
   await deployTestnetToken(null, network.name, accounts);
   await deployTokenfactory(null, network.name, accounts);
   await deployExpiringMultiPartyCreator(null, network.name, accounts);
   await deployLocalWeth(null, network.name, accounts);
-  await deployFundingRateStore(null, network.name, accounts);
   await deployPerpetualCreator(null, network.name, accounts);
 };

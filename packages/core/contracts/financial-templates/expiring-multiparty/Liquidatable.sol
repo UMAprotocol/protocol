@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./PricelessPositionManager.sol";
 
@@ -22,6 +23,7 @@ contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using Address for address;
 
     /****************************************
      *     LIQUIDATION DATA STRUCTURES      *
@@ -382,7 +384,7 @@ contract Liquidatable is PricelessPositionManager {
         disputedLiquidation.disputer = msg.sender;
 
         // Enqueue a request with the DVM.
-        _requestOraclePrice(disputedLiquidation.liquidationTime);
+        _requestOraclePriceLiquidation(disputedLiquidation.liquidationTime);
 
         emit LiquidationDisputed(
             sponsor,
@@ -515,6 +517,22 @@ contract Liquidatable is PricelessPositionManager {
         return liquidations[sponsor];
     }
 
+    /**
+     * @notice Accessor method to calculate a transformed collateral requirement using the finanical product library
+      specified during contract deployment. If no library was provided then no modification to the collateral requirement is done.
+     * @param price input price used as an input to transform the collateral requirement.
+     * @return transformedCollateralRequirement collateral requirement with transformation applied to it.
+     * @dev This method should never revert.
+     */
+    function transformCollateralRequirement(FixedPoint.Unsigned memory price)
+        public
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory)
+    {
+        return _transformCollateralRequirement(price);
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
@@ -531,14 +549,17 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
+        liquidation.settlementPrice = _getOraclePriceLiquidation(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue =
             liquidation.tokensOutstanding.mul(liquidation.settlementPrice);
 
-        // The required collateral is the value of the tokens in underlying * required collateral ratio.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
+        // The required collateral is the value of the tokens in underlying * required collateral ratio. The Transform
+        // Collateral requirement method applies a from the financial Product library to change the scaled the collateral
+        // requirement based on the settlement price. If no library was specified when deploying the emp then this makes no change.
+        FixedPoint.Unsigned memory requiredCollateral =
+            tokenRedemptionValue.mul(_transformCollateralRequirement(liquidation.settlementPrice));
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
@@ -600,5 +621,20 @@ contract Liquidatable is PricelessPositionManager {
                 ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
             "Liquidation not withdrawable"
         );
+    }
+
+    function _transformCollateralRequirement(FixedPoint.Unsigned memory price)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        if (!address(financialProductLibrary).isContract()) return collateralRequirement;
+        try financialProductLibrary.transformCollateralRequirement(price, collateralRequirement) returns (
+            FixedPoint.Unsigned memory transformedCollateralRequirement
+        ) {
+            return transformedCollateralRequirement;
+        } catch {
+            return collateralRequirement;
+        }
     }
 }

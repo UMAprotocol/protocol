@@ -14,7 +14,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
-import "../common/FundingRatePayer.sol";
 import "../common/FundingRateApplier.sol";
 
 /**
@@ -23,7 +22,7 @@ import "../common/FundingRateApplier.sol";
  * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
-contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
+contract PerpetualPositionManager is FundingRateApplier {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -75,9 +74,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     // Expiry price pulled from the DVM in the case of an emergency shutdown.
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
-    // The excessTokenBeneficiary of any excess tokens added to the contract.
-    address public excessTokenBeneficiary;
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -91,7 +87,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
-    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
     event SettleEmergencyShutdown(
         address indexed caller,
@@ -137,10 +132,9 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _fundingRateRewardRate Reward rate to pay FundingRateStore to use funding rate data.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
-     * @param _excessTokenBeneficiary Beneficiary to send all excess token balances that accrue in the contract.
      */
     constructor(
         uint256 _withdrawalLiveness,
@@ -149,14 +143,20 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         address _finderAddress,
         bytes32 _priceIdentifier,
         bytes32 _fundingRateIdentifier,
-        FixedPoint.Unsigned memory _fundingRateRewardRate,
         FixedPoint.Unsigned memory _minSponsorTokens,
-        address _timerAddress,
-        address _excessTokenBeneficiary
+        address _configStoreAddress,
+        FixedPoint.Unsigned memory _tokenScaling,
+        address _timerAddress
     )
         public
-        FundingRatePayer(_fundingRateIdentifier, _collateralAddress, _finderAddress, _timerAddress)
-        FundingRateApplier(_finderAddress, _fundingRateRewardRate)
+        FundingRateApplier(
+            _fundingRateIdentifier,
+            _collateralAddress,
+            _finderAddress,
+            _configStoreAddress,
+            _tokenScaling,
+            _timerAddress
+        )
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -164,7 +164,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
-        excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
     /****************************************
@@ -183,7 +182,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(sponsor)
         fees()
-        updateFundingRate()
         nonReentrant()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
@@ -221,7 +219,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -250,7 +247,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         public
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
-        updateFundingRate()
         nonReentrant()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -278,7 +274,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         external
         notEmergencyShutdown()
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -311,9 +306,10 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
+    function cancelWithdrawal() external notEmergencyShutdown() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
+        // No pending withdrawal require message removed to save bytecode.
+        require(positionData.withdrawalRequestPassTimestamp != 0);
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -335,7 +331,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         public
         notEmergencyShutdown()
         fees()
-        updateFundingRate()
         nonReentrant()
     {
         PositionData storage positionData = positions[msg.sender];
@@ -367,7 +362,9 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
+
+        // Note: revert reason removed to save bytecode.
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     /**
@@ -384,7 +381,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         notEmergencyShutdown()
         noPendingWithdrawal(msg.sender)
         fees()
-        updateFundingRate()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -426,30 +422,8 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
-    function repay(FixedPoint.Unsigned memory numTokens)
-        public
-        notEmergencyShutdown()
-        noPendingWithdrawal(msg.sender)
-        fees()
-        updateFundingRate()
-        nonReentrant()
-    {
-        PositionData storage positionData = _getPositionData(msg.sender);
-        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
-
-        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
-        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
-        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
-        positionData.tokensOutstanding = newTokenCount;
-
-        // Update the totalTokensOutstanding after redemption.
-        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
-
-        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
-
-        // Transfer the tokens back from the sponsor and burn them.
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
-        tokenCurrency.burn(numTokens.rawValue);
+    function repay(FixedPoint.Unsigned memory numTokens) public {
+        deposit(redeem(numTokens));
     }
 
     /**
@@ -525,18 +499,15 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
-    function applyFundingRate() external notEmergencyShutdown() updateFundingRate() nonReentrant() {
-        return;
-    }
-
     /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override notEmergencyShutdown() updateFundingRate() nonReentrant() {
-        require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
+    function emergencyShutdown() external override notEmergencyShutdown() fees() nonReentrant() {
+        // Note: revert reason removed to save bytecode.
+        require(msg.sender == _getFinancialContractsAdminAddress());
 
         emergencyShutdownTimestamp = getCurrentTime();
         _requestOraclePrice(emergencyShutdownTimestamp);
@@ -552,25 +523,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
      */
     function remargin() external override {
         return;
-    }
-
-    /**
-     * @notice Drains any excess balance of the provided ERC20 token to a pre-selected beneficiary.
-     * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
-     * @param token address of the ERC20 token whose excess balance should be drained.
-     */
-    function trimExcess(IERC20 token) external nonReentrant() returns (FixedPoint.Unsigned memory amount) {
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
-
-        if (address(token) == address(collateralCurrency)) {
-            // If it is the collateral currency, send only the amount that the contract is not tracking.
-            // Note: this could be due to rounding error or balance-changing tokens, like aTokens.
-            amount = balance.sub(_pfc());
-        } else {
-            // If it's not the collateral currency, send the entire balance.
-            amount = balance;
-        }
-        token.safeTransfer(excessTokenBeneficiary, amount.rawValue);
     }
 
     /**
@@ -707,9 +659,7 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory price) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        int256 oraclePrice = _getOracle().getPrice(priceIdentifier, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
@@ -720,7 +670,6 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOracleEmergencyShutdownPrice() internal view returns (FixedPoint.Unsigned memory) {
-        require(emergencyShutdownTimestamp != 0, "No shutdown timestamp set");
         return _getOraclePrice(emergencyShutdownTimestamp);
     }
 
@@ -774,11 +723,13 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
     }
 
     function _notEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp == 0, "Contract emergency shutdown");
+        // Note: removed require string to save bytecode.
+        require(emergencyShutdownTimestamp == 0);
     }
 
     function _isEmergencyShutdown() internal view {
-        require(emergencyShutdownTimestamp != 0, "Contract not emergency shutdown");
+        // Note: removed require string to save bytecode.
+        require(emergencyShutdownTimestamp != 0);
     }
 
     // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the
@@ -819,5 +770,9 @@ contract PerpetualPositionManager is FundingRatePayer, FundingRateApplier {
         returns (FixedPoint.Unsigned memory ratio)
     {
         return numTokens.isLessThanOrEqual(0) ? FixedPoint.fromUnscaledUint(0) : collateral.div(numTokens);
+    }
+
+    function _getTokenAddress() internal view override returns (address) {
+        return address(tokenCurrency);
     }
 }

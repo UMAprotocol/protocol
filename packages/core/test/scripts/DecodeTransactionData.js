@@ -3,6 +3,7 @@ const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 
 contract("scripts/DecodeTransactionData.js", function() {
   it("Decode registerContract", async function() {
@@ -26,7 +27,7 @@ contract("scripts/DecodeTransactionData.js", function() {
   });
 
   it("Decode batchReveal", async function() {
-    const voting = await Voting.deployed();
+    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     // Generate 5 random reveals to test.
     const revealArray = [];

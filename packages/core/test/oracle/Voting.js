@@ -8,6 +8,7 @@ const {
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
   computeVoteHash,
+  computeVoteHashAncillary,
   getKeyGenMessage,
   signMessage
 } = require("@uma/common");
@@ -17,6 +18,8 @@ const truffleAssert = require("truffle-assertions");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
+const VotingAncillaryInterfaceTesting = artifacts.require("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
@@ -47,7 +50,8 @@ contract("Voting", function(accounts) {
   };
 
   before(async function() {
-    voting = await Voting.deployed();
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
+
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
@@ -72,6 +76,9 @@ contract("Voting", function(accounts) {
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
     await registry.registerContract([], registeredContract, { from: account1 });
     signature = await signMessage(web3, snapshotMessage, account1);
+
+    // Reset the rounds.
+    await moveToNextRound(voting);
   });
 
   it("Constructor", async function() {
@@ -1684,14 +1691,18 @@ contract("Voting", function(accounts) {
     const time1 = "1000";
     const time2 = "2000";
     // Deploy our own voting because this test case will migrate it.
-    const voting = await Voting.new(
-      "86400",
-      { rawValue: "0" },
-      { rawValue: "0" },
-      "86400",
-      votingToken.address,
-      (await Finder.deployed()).address,
-      (await Timer.deployed()).address
+    const voting = await VotingInterfaceTesting.at(
+      (
+        await Voting.new(
+          "86400",
+          { rawValue: "0" },
+          { rawValue: "0" },
+          "86400",
+          votingToken.address,
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
+        )
+      ).address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1733,14 +1744,18 @@ contract("Voting", function(accounts) {
 
   it("pendingPriceRequests array length", async function() {
     // Use a test derived contract to expose the internal array (and its length).
-    const votingTest = await VotingTest.new(
-      "86400", // 1 day phase length
-      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
-      { rawValue: "0" }, // No inflation
-      "1209600", // 2 week reward expiration
-      votingToken.address,
-      (await Finder.deployed()).address,
-      (await Timer.deployed()).address
+    const votingTest = await VotingInterfaceTesting.at(
+      (
+        await VotingTest.new(
+          "86400", // 1 day phase length
+          { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+          { rawValue: "0" }, // No inflation
+          "1209600", // 2 week reward expiration
+          votingToken.address,
+          (await Finder.deployed()).address,
+          (await Timer.deployed()).address
+        )
+      ).address
     );
 
     await moveToNextRound(votingTest);
@@ -1758,7 +1773,7 @@ contract("Voting", function(accounts) {
     // Request a price.
     await votingTest.requestPrice(identifier, time, { from: registeredContract });
 
-    // There should be one element in the array after the first price request.
+    // There should be one element in the array after the fist price request.
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 1);
 
     // Move to voting round.
@@ -1792,5 +1807,305 @@ contract("Voting", function(accounts) {
 
     // After retrieval, the length should be decreased back to 0 since the element added in this test is now deleted.
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
+  });
+  it("Votes can correctly handle arbitrary ancillary data", async function() {
+    const identifier1 = web3.utils.utf8ToHex("request-retrieval");
+    const time1 = "1000";
+    const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
+
+    // Note for the second request we s et the identifier and tiem to the same as the first to show that by simply having
+    // a diffrent ancillary data we can have multipler simultanious requests that the DVM can differentiate.
+    const identifier2 = web3.utils.utf8ToHex("request-retrieval");
+    const time2 = "1000";
+    const ancillaryData2 = web3.utils.utf8ToHex(`callerAddress:${account4}`);
+
+    // Make the Oracle support these two identifiers.
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+
+    // Instantiate a voting interface that supports ancillary data.
+    voting = await VotingAncillaryInterfaceTesting.at(voting.address);
+
+    // Store the number of price requests to verify the right number are enqued.
+    const priceRequestLengthBefore = (await voting.getPendingRequests()).length;
+
+    // Requests should not be added to the current voting round.
+    await voting.requestPrice(identifier1, time1, ancillaryData1, { from: registeredContract });
+    await voting.requestPrice(identifier2, time2, ancillaryData2, { from: registeredContract });
+
+    // Since the round for these requests has not started, the price retrieval should fail.
+    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+
+    // Move to the voting round.
+    await moveToNextRound(voting);
+    const roundId = (await voting.getCurrentRoundId()).toString();
+
+    // Ancillary data should be correctly preserved and accessible to voters.
+    const priceRequests = await voting.getPendingRequests();
+
+    assert.equal(priceRequests.length - priceRequestLengthBefore, 2);
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore].identifier),
+      web3.utils.hexToUtf8(identifier1)
+    );
+    assert.equal(priceRequests[priceRequestLengthBefore].time, time1);
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore].ancillaryData),
+      web3.utils.hexToUtf8(ancillaryData1)
+    );
+
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore + 1].identifier),
+      web3.utils.hexToUtf8(identifier2)
+    );
+    assert.equal(priceRequests[priceRequestLengthBefore + 1].time, time2);
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore + 1].ancillaryData),
+      web3.utils.hexToUtf8(ancillaryData2)
+    );
+
+    // Commit vote 1.
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = computeVoteHashAncillary({
+      price: price1,
+      salt: salt1,
+      account: account1,
+      time: time1,
+      ancillaryData: ancillaryData1,
+      roundId,
+      identifier: identifier1
+    });
+
+    await voting.commitVote(identifier1, time1, ancillaryData1, hash1);
+
+    // Commit vote 2.
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = computeVoteHashAncillary({
+      price: price2,
+      salt: salt2,
+      account: account1,
+      time: time2,
+      ancillaryData: ancillaryData2,
+      roundId,
+      identifier: identifier2
+    });
+    await voting.commitVote(identifier2, time2, ancillaryData2, hash2);
+
+    // If the voting period is ongoing, prices cannot be returned since they are not finalized.
+    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+
+    // Move to the reveal phase of the voting period.
+    await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
+    // Reveal both votes.
+    await voting.revealVote(identifier1, time1, price1, ancillaryData1, salt1);
+    await voting.revealVote(identifier2, time2, price2, ancillaryData2, salt2);
+
+    // Prices cannot be provided until both commit and reveal for the current round have finished.
+    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+
+    // Move past the voting round.
+    await moveToNextRound(voting);
+
+    // Note: all voting results are currently hardcoded to 1.
+    assert.isTrue(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
+    assert.isTrue(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
+    assert.equal(
+      (await voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })).toString(),
+      price1.toString()
+    );
+    assert.equal(
+      (await voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })).toString(),
+      price2.toString()
+    );
+  });
+  it("Mixing ancillary and no ancillary price requests is compatible", async function() {
+    // This test shows that the current DVM implementation is still compatable, when mixed with diffrent kinds of requests.
+    // Also, this test shows that the overloading syntax operates as expected.
+
+    // Price request 1 that includes ancillary data.
+    const identifier1 = web3.utils.utf8ToHex("request-retrieval1b");
+    const time1 = "1000";
+    const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
+    // Price request 2 that will have no additional data added.
+    const identifier2 = web3.utils.utf8ToHex("request-retrieval2b");
+    const time2 = "2000";
+
+    // Make the Oracle support these two identifiers.
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+
+    // Instantiate a voting interface that supports ancillary data.
+    voting = await Voting.at(voting.address);
+
+    // Store the number of price requests to verify the right number are enqued.
+    const priceRequestLengthBefore = (await voting.getPendingRequests()).length;
+
+    // Requests should not be added to the current voting round.
+    await voting.methods["requestPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+      from: registeredContract
+    });
+    await voting.methods["requestPrice(bytes32,uint256)"](identifier2, time2, {
+      from: registeredContract
+    });
+
+    // Since the round for these requests has not started, the price retrieval should fail.
+    assert.isFalse(
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+        from: registeredContract
+      })
+    );
+    assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+          from: registeredContract
+        })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract })
+      )
+    );
+
+    // Move to the voting round.
+    await moveToNextRound(voting);
+    const roundId = (await voting.getCurrentRoundId()).toString();
+
+    // Ancillary data should be correctly preserved and accessible to voters.
+    const priceRequests = await voting.getPendingRequests();
+
+    assert.equal(priceRequests.length, priceRequestLengthBefore + 2);
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore].identifier),
+      web3.utils.hexToUtf8(identifier1)
+    );
+    assert.equal(priceRequests[priceRequestLengthBefore].time, time1);
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore].ancillaryData),
+      web3.utils.hexToUtf8(ancillaryData1)
+    );
+
+    assert.equal(
+      web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore + 1].identifier),
+      web3.utils.hexToUtf8(identifier2)
+    );
+    assert.equal(priceRequests[priceRequestLengthBefore + 1].time, time2);
+    // assert.equal(web3.utils.hexToUtf8(priceRequests[1].ancillaryData), web3.utils.hexToUtf("")));
+
+    // Commit vote 1.
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = computeVoteHashAncillary({
+      price: price1,
+      salt: salt1,
+      account: account1,
+      time: time1,
+      ancillaryData: ancillaryData1,
+      roundId,
+      identifier: identifier1
+    });
+
+    await voting.methods["commitVote(bytes32,uint256,bytes,bytes32)"](identifier1, time1, ancillaryData1, hash1);
+
+    // Commit vote 2.
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = computeVoteHash({
+      price: price2,
+      salt: salt2,
+      account: account1,
+      time: time2,
+
+      roundId,
+      identifier: identifier2
+    });
+    await voting.methods["commitVote(bytes32,uint256,bytes32)"](identifier2, time2, hash2);
+
+    // If the voting period is ongoing, prices cannot be returned since they are not finalized.
+    assert.isFalse(
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+        from: registeredContract
+      })
+    );
+    assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+          from: registeredContract
+        })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract })
+      )
+    );
+
+    // Move to the reveal phase of the voting period.
+    await moveToNextPhase(voting);
+
+    await voting.snapshotCurrentRound(signature);
+
+    // Reveal both votes.
+    await voting.revealVote(identifier1, time1, price1, ancillaryData1, salt1);
+    await voting.revealVote(identifier2, time2, price2, salt2);
+
+    // Prices cannot be provided until both commit and reveal for the current round have finished.
+    assert.isFalse(
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+        from: registeredContract
+      })
+    );
+    assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+          from: registeredContract
+        })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods["getPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract })
+      )
+    );
+
+    // Move past the voting round.
+    await moveToNextRound(voting);
+
+    // Note: all voting results are currently hardcoded to 1.
+    assert.isTrue(
+      await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+        from: registeredContract
+      })
+    );
+    assert.isTrue(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
+    assert.equal(
+      (
+        await voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
+          from: registeredContract
+        })
+      ).toString(),
+      price1.toString()
+    );
+    assert.equal(
+      (await voting.methods["getPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract })).toString(),
+      price2.toString()
+    );
   });
 });

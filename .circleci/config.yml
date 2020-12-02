@@ -6,20 +6,12 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - v1919191999999999
-            - v1919191999999999
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Dependencies
-          command: npx lerna bootstrap -- --frozen-lockfile
-      - save_cache:
-          key: v1919191999999999
-          paths:
-            - node_modules
+          command: yarn --frozen-lockfile
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -111,7 +103,21 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: yarn run test
+          # Note: this is a workaround for a strnage truffle issue.
+          # The core idea is that truffle sees the absolute paths in old artifacts that are used outside of the core
+          # directory and it tries to add those absolute paths to the list of sources to compile. Normally, this
+          # wouldn't be an issue since those absolute paths wouldn't exist on the machine you're compiling on. However,
+          # because the published core contracts are compiled in the ci env, many of these absolute paths do match in
+          # this environment. This creates a very nasty situation where multiple versions of the same contracts are
+          # compiled and it's non-deterministic which one will be used by truffle. To avoid this, we just change the dir
+          # structure to disrupt the absolute paths. This means that truffle will not know how up-to-date the bytecode
+          # is, however, so testing will require a recompile for every contract.
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            yarn run test
   coverage:
     docker:
       - image: circleci/node:12

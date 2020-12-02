@@ -4,6 +4,7 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
+import "./VotingAncillaryInterface.sol";
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
@@ -34,10 +35,6 @@ abstract contract VotingInterface {
         int256 salt;
     }
 
-    // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
-    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
-    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
-
     /**
      * @notice Commit a vote for a price request for `identifier` at `time`.
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
@@ -62,7 +59,23 @@ abstract contract VotingInterface {
      * commitments that can fit in one transaction.
      * @param commits array of structs that encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(Commitment[] calldata commits) external virtual;
+    function batchCommit(Commitment[] memory commits) public virtual;
+
+    /**
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
+     */
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public virtual;
 
     /**
      * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
@@ -87,7 +100,7 @@ abstract contract VotingInterface {
         uint256 time,
         int256 price,
         int256 salt
-    ) external virtual;
+    ) public virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -96,20 +109,24 @@ abstract contract VotingInterface {
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(Reveal[] calldata reveals) external virtual;
+    function batchReveal(Reveal[] memory reveals) public virtual;
 
     /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view virtual returns (PendingRequest[] memory);
+    function getPendingRequests()
+        external
+        view
+        virtual
+        returns (VotingAncillaryInterface.PendingRequestAncillary[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view virtual returns (Phase);
+    function getVotePhase() external view virtual returns (VotingAncillaryInterface.Phase);
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
@@ -131,4 +148,34 @@ abstract contract VotingInterface {
         uint256 roundId,
         PendingRequest[] memory toRetrieve
     ) public virtual returns (FixedPoint.Unsigned memory);
+
+    // Voting Owner functions.
+
+    /**
+     * @notice Disables this Voting contract in favor of the migrated one.
+     * @dev Can only be called by the contract owner.
+     * @param newVotingAddress the newly migrated contract address.
+     */
+    function setMigrated(address newVotingAddress) external virtual;
+
+    /**
+     * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
+     * @dev This method is public because calldata structs are not currently supported by solidity.
+     * @param newInflationRate sets the next round's inflation rate.
+     */
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public virtual;
+
+    /**
+     * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
+     * @dev This method is public because calldata structs are not currently supported by solidity.
+     * @param newGatPercentage sets the next round's Gat percentage.
+     */
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public virtual;
+
+    /**
+     * @notice Resets the rewards expiration timeout.
+     * @dev This change only applies to rounds that have not yet begun.
+     * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
+     */
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public virtual;
 }

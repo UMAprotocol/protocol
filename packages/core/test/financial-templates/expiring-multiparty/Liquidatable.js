@@ -1,8 +1,9 @@
 // Helper scripts
 const { LiquidationStatesEnum, didContractThrow, MAX_UINT_VAL } = require("@uma/common");
 const { interfaceName } = require("@uma/common");
+const { assert } = require("chai");
 const truffleAssert = require("truffle-assertions");
-const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, fromWei, hexToUtf8, toBN, utf8ToHex } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
@@ -16,8 +17,10 @@ const Liquidatable = artifacts.require("Liquidatable");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const FinancialProductLibraryTest = artifacts.require("FinancialProductLibraryTest");
 const Timer = artifacts.require("Timer");
 
 contract("Liquidatable", function(accounts) {
@@ -76,6 +79,7 @@ contract("Liquidatable", function(accounts) {
   let syntheticToken;
   let identifierWhitelist;
   let priceFeedIdentifier;
+  let collateralWhitelist;
   let mockOracle;
   let finder;
   let liquidatableParameters;
@@ -104,7 +108,7 @@ contract("Liquidatable", function(accounts) {
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    priceFeedIdentifier = web3.utils.utf8ToHex("TEST_IDENTIFIER");
+    priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
@@ -115,7 +119,7 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+    const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });
@@ -171,6 +175,10 @@ contract("Liquidatable", function(accounts) {
 
     // Get store
     store = await Store.deployed();
+
+    // Get collateralWhitelist
+    collateralWhitelist = await AddressWhitelist.deployed();
+    await collateralWhitelist.addToWhitelist(collateralToken.address);
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
@@ -1564,6 +1572,7 @@ contract("Liquidatable", function(accounts) {
     beforeEach(async () => {
       // Start by creating a ERC20 token with different delimitations. 6 decimals for USDC
       collateralToken = await TestnetERC20.new("USDC", "USDC", 6);
+      await collateralWhitelist.addToWhitelist(collateralToken.address);
       await collateralToken.allocateTo(sponsor, toWei("100"));
       await collateralToken.allocateTo(disputer, toWei("100"));
 
@@ -1743,6 +1752,328 @@ contract("Liquidatable", function(accounts) {
         const deletedLiquidation = await USDCLiquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
         assert.equal(deletedLiquidation.liquidator, zeroAddress);
         assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
+      });
+    });
+  });
+  describe("Custom Financial Contract Library", () => {
+    // All tests up until now have not used a custom financial contract library to preform any kind of transformations
+    // against the contract collateralization ratio. In this set of tests we will verify that a financial contract
+    // library can apply transformation logic to a contracts collateral requirement & price identifie when preforming
+    // liquidations/disputed.
+
+    let fclLiquidationContract;
+    let financialProductLibraryTest;
+    describe("Collateral requirement transformation", () => {
+      beforeEach(async () => {
+        // Deploy the financial product library.
+        financialProductLibraryTest = await FinancialProductLibraryTest.new(
+          { rawValue: toWei("1") }, // _priceTransformationScalar. Set to 1 to not adjust the oracle price.
+          { rawValue: toWei("2") }, // _collateralRequirementTransformationScalar. Set to 2 to scale the contract CR by 2.
+          priceFeedIdentifier // _transformedPriceIdentifier. Set to the original priceFeedIdentifier to apply no transformation.
+        );
+
+        // Create a custom liquidatable object, containing the financialProductLibraryAddress.
+        let fclLiquidatableParameters = liquidatableParameters;
+        fclLiquidatableParameters.financialProductLibraryAddress = financialProductLibraryTest.address;
+        fclLiquidationContract = await Liquidatable.new(fclLiquidatableParameters, {
+          from: contractDeployer
+        });
+
+        await syntheticToken.addMinter(fclLiquidationContract.address);
+        await syntheticToken.addBurner(fclLiquidationContract.address);
+
+        // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop.
+        for (let i = 1; i < 4; i++) {
+          await syntheticToken.approve(fclLiquidationContract.address, toWei("100000"), {
+            from: accounts[i]
+          });
+          await collateralToken.approve(fclLiquidationContract.address, toWei("100000"), {
+            from: accounts[i]
+          });
+        }
+
+        // Next, create the position which will be used in the liquidation event.
+        await fclLiquidationContract.create(
+          { rawValue: amountOfCollateral.toString() },
+          { rawValue: amountOfSynthetic.toString() },
+          { from: sponsor }
+        );
+        // Transfer synthetic tokens to a liquidator.
+        await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+
+        // Create a Liquidation which can be tested against.
+        await fclLiquidationContract.createLiquidation(
+          sponsor,
+          { rawValue: "0" },
+          { rawValue: pricePerToken.toString() }, // Prices should use 18 decimals.
+          { rawValue: amountOfSynthetic.toString() },
+          unreachableDeadline,
+          { from: liquidator }
+        );
+
+        // Finally, dispute the liquidation.
+        await fclLiquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+      });
+      it("Call from liquidatable should transform CR requirement", async () => {
+        // The price in this call (the parameter) does not matter as this test library simply applies a scaler to the CR.
+        assert.equal(
+          (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+          collateralRequirement.muln(2).toString()
+        );
+      });
+      it("Call to financial product library directly", async () => {
+        // Test calling the library directly.
+        const financialProductLibrary = await FinancialProductLibraryTest.at(
+          await fclLiquidationContract.financialProductLibrary()
+        );
+        assert.equal(
+          (
+            await financialProductLibrary.transformCollateralRequirement(
+              { rawValue: toWei("10") }, // price. Again does not matter.
+              { rawValue: collateralRequirement.toString() } // input collateralRequirement to transform.
+            )
+          ).toString(),
+          collateralRequirement.muln(2).toString()
+        );
+      });
+
+      describe("Transformation should inform dispute outcome", () => {
+        // The sponsor has 100 units of synthetics and 150 units of collateral. Because of the transformation library,
+        // the CR requirement of the contract is 1.2 * 2 = 2.4. With this CR requirement, any price larger than 0.625
+        // will place the position undercollateralized. Any price below 0.625 will make the position over collateralized.
+        // The tests below validate that this transformation was correctly applied to the dispute outcome.
+
+        it("Dispute succeeds", async () => {
+          // For the dispute to succeed, the liquidation needs to be invalid. For the liquidation to be invalid, the position
+          // should have been correctly collateralized at liquidation time. To achieve this the price should be < 0.625.
+          // Pick a value of 0.62. This places the sponsor at a CR of 150/(100*0.62) = 2.419 which is larger than the 2.4 CR.
+          const liquidationTime = await fclLiquidationContract.getCurrentTime();
+          await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, toBN(toWei("0.62")));
+
+          // Withdraw as the liquidator to finailize the dispute.
+          const withdrawResult = await fclLiquidationContract.withdrawLiquidation(
+            liquidationParams.liquidationId,
+            sponsor,
+            {
+              from: liquidator
+            }
+          );
+
+          // Verify the dispute succeeded from the event.
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+            return ev.disputeSucceeded; // disputeSuccess should be true.
+          });
+
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+            return (
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
+              ev.settlementPrice.toString() == toBN(toWei("0.62")).toString() // Correct settlement price
+            );
+          });
+        });
+        it("Dispute fails", async () => {
+          // For the dispute to fail, the liquidation needs to be valid. For the liquidation to be valid, the position
+          // should have been incorrectly collateralized at liquidation time. To achieve this the price should be >= 0.625.
+          // Pick a value of 0.63. This places the sponsor at a CR of 150/(100*0.63) = 2.38 which is less than the 2.4 CR.
+          const liquidationTime = await fclLiquidationContract.getCurrentTime();
+          await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, toBN(toWei("0.63")));
+
+          // Withdraw as the liquidator to finailize the dispute.
+          const withdrawResult = await fclLiquidationContract.withdrawLiquidation(
+            liquidationParams.liquidationId,
+            sponsor,
+            {
+              from: liquidator
+            }
+          );
+
+          // Verify the dispute failed from the event.
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+            return !ev.disputeSucceeded; // disputeSuccess should be false.
+          });
+
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+            return (
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
+              ev.settlementPrice.toString() == toBN(toWei("0.63")).toString() // Correct settlement price
+            );
+          });
+        });
+      });
+      describe("Can correctly handel reverting library call", () => {
+        beforeEach(async () => {
+          await financialProductLibraryTest.setShouldRevert(true);
+        });
+        it("Test Library reverts correctly", async () => {
+          assert.isTrue(await financialProductLibraryTest.shouldRevert());
+          assert(
+            await didContractThrow(
+              financialProductLibraryTest.transformCollateralRequirement(
+                { rawValue: toWei("10") },
+                { rawValue: collateralRequirement.toString() }
+              )
+            )
+          );
+        });
+        it("Liquidatable correctly applies no transformation to revetting library call", async () => {
+          assert.equal(
+            (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+            collateralRequirement.toString()
+          );
+        });
+        it("Invalid financial contract library object is handled correctly", async () => {
+          // Create a custom liquidatable object, containing the financialProductLibraryAddress but set it to a contract
+          // that is not a valid financial product library.
+          let brokenFclLiquidatableParameters = liquidatableParameters;
+          brokenFclLiquidatableParameters.financialProductLibraryAddress = mockOracle.address; // set to something that is not at all a financial contract library to test
+          fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
+            from: contractDeployer
+          });
+
+          assert.equal(
+            (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+            collateralRequirement.toString()
+          );
+        });
+        it("EOA financial contract library object is handled correctly", async () => {
+          // Create a custom liquidatable object, containing the financialProductLibraryAddress to an EOA.
+          // that is not a valid financial product library.
+          let brokenFclLiquidatableParameters = liquidatableParameters;
+          brokenFclLiquidatableParameters.financialProductLibraryAddress = rando; // set to EOA.
+          fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
+            from: contractDeployer
+          });
+
+          assert.equal(
+            (await fclLiquidationContract.transformCollateralRequirement({ rawValue: toWei("10") })).toString(),
+            collateralRequirement.toString()
+          );
+        });
+      });
+    });
+    describe("Price identifier transformation", () => {
+      const transformedPriceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER_TRANSFORMED");
+      beforeEach(async () => {
+        // Deploy the financial product library.
+        financialProductLibraryTest = await FinancialProductLibraryTest.new(
+          { rawValue: toWei("1") }, // _priceTransformationScalar. Set to 1 to not adjust the oracle price.
+          { rawValue: toWei("1") }, // _collateralRequirementTransformationScalar. Set to 1 to apply no transformation.
+          transformedPriceFeedIdentifier // _transformedPriceIdentifier. Set to the original priceFeedIdentifier to apply no transformation.
+        );
+
+        // Register the transformed price identifier with the identifier whitelist.
+        identifierWhitelist = await IdentifierWhitelist.deployed();
+        await identifierWhitelist.addSupportedIdentifier(transformedPriceFeedIdentifier, {
+          from: contractDeployer
+        });
+
+        // Create a custom liquidatable object, containing the financialProductLibraryAddress.
+        let fclLiquidatableParameters = liquidatableParameters;
+        fclLiquidatableParameters.financialProductLibraryAddress = financialProductLibraryTest.address;
+        fclLiquidationContract = await Liquidatable.new(fclLiquidatableParameters, {
+          from: contractDeployer
+        });
+
+        await syntheticToken.addMinter(fclLiquidationContract.address);
+        await syntheticToken.addBurner(fclLiquidationContract.address);
+
+        // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop.
+        for (let i = 1; i < 4; i++) {
+          await syntheticToken.approve(fclLiquidationContract.address, toWei("100000"), {
+            from: accounts[i]
+          });
+          await collateralToken.approve(fclLiquidationContract.address, toWei("100000"), {
+            from: accounts[i]
+          });
+        }
+
+        // Next, create the position which will be used in the liquidation event.
+        await fclLiquidationContract.create(
+          { rawValue: amountOfCollateral.toString() },
+          { rawValue: amountOfSynthetic.toString() },
+          { from: sponsor }
+        );
+        // Transfer synthetic tokens to a liquidator.
+        await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+
+        // Create a Liquidation which can be tested against.
+        await fclLiquidationContract.createLiquidation(
+          sponsor,
+          { rawValue: "0" },
+          { rawValue: pricePerToken.toString() }, // Prices should use 18 decimals.
+          { rawValue: amountOfSynthetic.toString() },
+          unreachableDeadline,
+          { from: liquidator }
+        );
+
+        // Finally, dispute the liquidation.
+        await fclLiquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+      });
+
+      it("Dispute should have enquired transformed price request", async () => {
+        // Check that the enquire price request with the DVM is for the transformed price identifier.
+        const priceRequestStatus = await mockOracle.getPendingQueries();
+        assert.equal(priceRequestStatus.length, 1); // there should be only one request
+        assert.equal(hexToUtf8(priceRequestStatus[0].identifier), hexToUtf8(transformedPriceFeedIdentifier)); // the requested identifier should be transformed
+      });
+
+      describe("transformed identifier should be used correctly in dispute outcome", () => {
+        it("Dispute succeeds", async () => {
+          // For the dispute to succeed, the liquidation needs to be invalid. For the liquidation to be invalid, the position
+          // should have been correctly collateralized at liquidation time. To achieve this the price should be < 1.25.
+          // Pick a value of 1.24. This places the sponsor at a CR of 150/(100*1.24) = 1.2096 which is larger than the 1.2 CR.
+          const liquidationTime = await fclLiquidationContract.getCurrentTime();
+          await mockOracle.pushPrice(transformedPriceFeedIdentifier, liquidationTime, toBN(toWei("1.24")));
+
+          // Withdraw as the liquidator to finailize the dispute.
+          const withdrawResult = await fclLiquidationContract.withdrawLiquidation(
+            liquidationParams.liquidationId,
+            sponsor,
+            {
+              from: liquidator
+            }
+          );
+
+          // Verify the dispute succeeded from the event.
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+            return ev.disputeSucceeded; // disputeSuccess should be true.
+          });
+
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+            return (
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
+              ev.settlementPrice.toString() == toBN(toWei("1.24")).toString() // Correct settlement price
+            );
+          });
+        });
+        it("Dispute fails", async () => {
+          // For the dispute to fail, the liquidation needs to be valid. For the liquidation to be valid, the position
+          // should have been incorrectly collateralized at liquidation time. To achieve this the price should be >= 1.25.
+          // Pick a value of 1.26. This places the sponsor at a CR of 150/(100*1.26) = 1.19 which is less than the 1.2 CR.
+          const liquidationTime = await fclLiquidationContract.getCurrentTime();
+          await mockOracle.pushPrice(transformedPriceFeedIdentifier, liquidationTime, toBN(toWei("1.26")));
+
+          // Withdraw as the liquidator to finailize the dispute.
+          const withdrawResult = await fclLiquidationContract.withdrawLiquidation(
+            liquidationParams.liquidationId,
+            sponsor,
+            {
+              from: liquidator
+            }
+          );
+
+          // Verify the dispute failed from the event.
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+            return !ev.disputeSucceeded; // disputeSuccess should be false.
+          });
+
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+            return (
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
+              ev.settlementPrice.toString() == toBN(toWei("1.26")).toString() // Correct settlement price
+            );
+          });
+        });
       });
     });
   });
