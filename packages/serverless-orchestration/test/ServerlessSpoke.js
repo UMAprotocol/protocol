@@ -80,7 +80,8 @@ contract("ServerlessSpoke.js", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: ZERO_ADDRESS
+      excessTokenBeneficiary: ZERO_ADDRESS,
+      financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party
