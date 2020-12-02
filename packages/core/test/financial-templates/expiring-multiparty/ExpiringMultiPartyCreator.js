@@ -15,6 +15,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
+const StructuredNoteFinancialProductLibrary = artifacts.require("StructuredNoteFinancialProductLibrary");
 
 contract("ExpiringMultiPartyCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -292,5 +293,28 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(expiringMultiPartyAddress));
+  });
+
+  it("Creator can specify a financial product library to transform contract state", async function() {
+    // Create a new FPLib that can transform price and configure the factory to link it with a newly deployed EMP.
+    const structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
+    constructorParams.financialProductLibraryAddress = structuredNoteFPL.address;
+
+    // Create the new EMP and grab its saved FPLib.
+    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+      from: contractCreator
+    });
+    let expiringMultiPartyAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
+      expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
+      return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+    let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
+    let linkedFPLib = await StructuredNoteFinancialProductLibrary.at(
+      await expiringMultiParty.financialProductLibrary()
+    );
+
+    // FPLib address is saved correctly.
+    assert.equal(linkedFPLib.address, structuredNoteFPL.address);
   });
 });

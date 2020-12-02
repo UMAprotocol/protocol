@@ -163,9 +163,9 @@ contract PricelessPositionManager is FeePayer {
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
-     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be
-     * sent.
      * Must be set to 0x0 for production environments that use live time.
+     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be sent.
+     * @param _financialProductLibraryAddress Contract providing contract state transformations.
      */
     constructor(
         uint256 _expirationTimestamp,
