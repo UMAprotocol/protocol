@@ -13,10 +13,9 @@ const Promise = require("bluebird");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
-const poolAbi = require("../../build/contracts/ERC20.json");
-
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getAbi } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -58,13 +57,13 @@ async function calculateUniswapLPRewards(
   console.log("⚖️  Finding Uniswap pool info...");
   // Get the information on a particular pool. This includes a mapping of all previous token holders (shareholders).
   const poolInfo = await _fetchUniswapPoolInfo(poolAddress);
-  console.log("poolInfo", poolInfo);
+  console.log("poolInfo", JSON.stringify(poolInfo));
   // Extract the addresses of all historic shareholders.
-  const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
+  const shareHolders = poolInfo.flatMap(a => a.user.id);
   console.log("shareHolders", shareHolders);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
-  let bPool = new web3.eth.Contract(poolAbi.abi, poolAddress);
+  const bPool = new web3.eth.Contract(getAbi("ERC20"), poolAddress);
 
   const shareHolderPayout = await _calculatePayoutsBetweenBlocks(
     bPool,
@@ -205,7 +204,6 @@ async function _fetchUniswapPoolInfo(poolAddress) {
     body: JSON.stringify({ query })
   });
   const data = (await response.json()).data;
-  console.log("data", data);
   if (data.liquidityPositions.length > 0) {
     return data.liquidityPositions;
   }
