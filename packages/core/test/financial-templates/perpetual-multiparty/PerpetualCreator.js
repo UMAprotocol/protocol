@@ -29,7 +29,9 @@ contract("PerpetualCreator", function(accounts) {
   let testConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
-    proposerBondPct: { rawValue: toWei("0.0001") }
+    proposerBondPct: { rawValue: toWei("0.0001") },
+    proposalTimeFutureLimit: 90,
+    proposalTimePastLimit: 1800
   };
 
   beforeEach(async () => {

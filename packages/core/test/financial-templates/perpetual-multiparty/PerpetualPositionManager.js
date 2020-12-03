@@ -122,7 +122,9 @@ contract("PerpetualPositionManager", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPct: { rawValue: "0" }
+        proposerBondPct: { rawValue: "0" },
+        proposalTimeFutureLimit: 0,
+        proposalTimePastLimit: 0
       },
       timer.address
     );
