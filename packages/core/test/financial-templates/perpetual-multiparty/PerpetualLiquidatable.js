@@ -55,8 +55,8 @@ contract("PerpetualLiquidatable", function(accounts) {
     .muln(3); // In seconds
   const startTime = "15798990420";
   const minSponsorTokens = toBN(toWei("1"));
-  const maxFundingRate = toWei("0.00001");
-  const minFundingRate = toWei("-0.00001");
+  const maxFundingRate = toWei("0");
+  const minFundingRate = toWei("0");
 
   // Synthetic Token Position contract params
   const withdrawalLiveness = toBN(60)
