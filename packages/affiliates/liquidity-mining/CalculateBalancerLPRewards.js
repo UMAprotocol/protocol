@@ -4,8 +4,9 @@
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: node ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate="2020-07-06" --toDate="2020-07-13" --week=1
-
+// Example usage from affiliates: node ./liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic \
+// --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromDate = "2020-07-06" --toDate = "2020-07-13" --week \
+// = 1 --network mainnet_mnemonic
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
 require("dotenv").config();
@@ -13,10 +14,9 @@ const Promise = require("bluebird");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
-const poolAbi = require("../../build/contracts/ERC20.json");
-
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getAbi } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -63,7 +63,7 @@ async function calculateBalancerLPRewards(
   const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
-  let bPool = new web3.eth.Contract(poolAbi.abi, poolAddress);
+  let bPool = new web3.eth.Contract(getAbi("ERC20"), poolAddress);
 
   const shareHolderPayout = await _calculatePayoutsBetweenBlocks(
     bPool,

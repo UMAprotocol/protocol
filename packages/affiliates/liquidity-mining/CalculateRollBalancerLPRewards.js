@@ -6,19 +6,23 @@
 // -> This calculation considers the total yUSD between the two pools in the roll, using the following formula:
 // myReward = totalUMAPayout * (myyUSDinBP1 + myyUSDinBP2) / (totalyUSDinBP1 + totalyUSDinBP2)
 
-// Example usage from core: node ./scripts/liquidity-mining/CalculateRollBalancerLPRewards.js --fromBlock 10725993 --toBlock 10752010 --pool1Address="0x58EF3abAB72c6C365D4D0D8a70039752b9f32Bc9" --pool2Address="0xd2f574637898526fcddfb3d487cc73c957fa0268" --tokenName="yusdeth" --rollNum=1 --umaPerWeek=25000 --blocksPerSnapshot=2056 --synth1Address="0x81ab848898b5ffD3354dbbEfb333D5D183eEDcB5" --synth2Address="0xB2FdD60AD80ca7bA89B9BAb3b5336c2601C020b4"
+// Example usage from affiliates: node ./scripts/liquidity-mining/CalculateRollBalancerLPRewards.js --fromBlock 10725993 /
+// --toBlock 10752010 --pool1Address = "0x58EF3abAB72c6C365D4D0D8a70039752b9f32Bc9" /
+// --pool2Address = "0xd2f574637898526fcddfb3d487cc73c957fa0268" --tokenName = "yusdeth" --rollNum = 1 /
+// --umaPerWeek = 25000 --blocksPerSnapshot = 2056 --synth1Address = "0x81ab848898b5ffD3354dbbEfb333D5D183eEDcB5" /
+// --synth2Address = "0xB2FdD60AD80ca7bA89B9BAb3b5336c2601C020b4" --network mainnet_mnemonic
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 
 const cliProgress = require("cli-progress");
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
-const erc20 = require("../../build/contracts/ERC20.json");
+const { getWeb3 } = require("@uma/common");
 const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
 const { delay } = require("@uma/financial-templates-lib");
 
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getAbi } = require("@uma/core");
+const web3 = getWeb3();
 
 const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
@@ -83,10 +87,10 @@ async function calculateRollBalancerLPProviders(
   const shareHolders = [...pool1ShareHolders, ...pool2ShareHolders];
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
-  const bPool1 = new web3.eth.Contract(erc20.abi, pool1Address);
-  const bPool2 = new web3.eth.Contract(erc20.abi, pool2Address);
-  const synth1 = new web3.eth.Contract(erc20.abi, synth1Address);
-  const synth2 = new web3.eth.Contract(erc20.abi, synth2Address);
+  const bPool1 = new web3.eth.Contract(getAbi("ERC20"), pool1Address);
+  const bPool2 = new web3.eth.Contract(getAbi("ERC20"), pool2Address);
+  const synth1 = new web3.eth.Contract(getAbi("ERC20"), synth1Address);
+  const synth2 = new web3.eth.Contract(getAbi("ERC20"), synth2Address);
 
   const shareHolderPayout = await _calculatePayoutsBetweenBlocks(
     bPool1,

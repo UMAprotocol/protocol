@@ -1,7 +1,7 @@
 const { toWei, toBN, fromWei } = web3.utils;
 
 // Script to test.
-const { _joinPayouts } = require("../JoinRolledPayouts");
+const { _joinPayouts } = require("../../../liquidity-mining/JoinRolledPayouts");
 
 contract("JoinRolledPayouts.js", function(accounts) {
   it("Correctly joins balances between weekly and rolled payouts", async function() {

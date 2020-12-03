@@ -1,12 +1,12 @@
 // This script calculates the block number closet to a given timestamp.
-// Script can be run as: truffle exec ./scripts/liquidity-mining/FindBlockAtTimeStamp.js --dateTime="2020-05-05 00:00"
+// Script can be run as: node ./liquidity-mining/FindBlockAtTimeStamp.js --dateTime="2020-05-05 00:00" --network mainnet_mnemonic
 
 const moment = require("moment");
 const argv = require("minimist")(process.argv.slice(), {
   string: ["dateTime"]
 });
-const Web3 = require("web3");
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 
 const FindBlockAtTimeStamp = async callback => {
   try {

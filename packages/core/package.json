@@ -21,7 +21,6 @@
     "bip39": "^3.0.2",
     "buidler-gas-reporter": "^0.1.4",
     "chai": "^4.2.0",
-    "cli-progress": "^3.8.2",
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
