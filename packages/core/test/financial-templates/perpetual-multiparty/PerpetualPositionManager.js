@@ -831,21 +831,6 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await collateral.balanceOf(proposer)).toString(), toWei("0.02"));
   });
 
-  it("Funding rate proposal must be within limits", async function() {
-    // Max/min funding rate per second is [< +1e-5, > -1e-5].
-    const currentTime = (await positionManager.getCurrentTime()).toNumber();
-    assert(
-      await didContractThrow(
-        positionManager.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime, { from: proposer })
-      )
-    );
-    assert(
-      await didContractThrow(
-        positionManager.proposeNewRate({ rawValue: toWei("-0.00002") }, currentTime, { from: proposer })
-      )
-    );
-  });
-
   it("Basic oracle fees", async function() {
     // Set up position.
     await collateral.approve(positionManager.address, toWei("1000"), { from: other });
