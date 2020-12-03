@@ -102,12 +102,12 @@ describe("DeployerRewards", function() {
     // these are all stable coins so they should roughly be around 1 dollar
     // epsilon is high because variations could be nearly a dollar in any direction
     const target = 10n ** 18n;
-    const syntheticPrice = 26.358177384415466
+    const syntheticPrice = 26.358177384415466;
     let result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 18, 18).toString();
-    assert.equal(result,toWei(syntheticPrice.toFixed(18)))
+    assert.equal(result, toWei(syntheticPrice.toFixed(18)));
 
     result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 0, 8).toString();
-    assert.equal(result,toWei(syntheticPrice.toFixed(18)))
+    assert.equal(result, toWei(syntheticPrice.toFixed(18)));
   });
   it("calculateRewards", async function() {
     this.timeout(1000000);

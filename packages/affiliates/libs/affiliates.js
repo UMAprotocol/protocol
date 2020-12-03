@@ -58,13 +58,13 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
 
   // the fallback requires a different value calculation, so this is probably the cleanest way to "switch"
   // between value by and value by usd. The function to calculate value is passed along with the data.
-  async function getSyntheticPriceHistoryWithFallback(address,start,end, syntheticAddress){
-    try{
+  async function getSyntheticPriceHistoryWithFallback(address, start, end, syntheticAddress) {
+    try {
       // this will throw if the feed isnt available (among other errors probably)
-      return [await getSyntheticPriceHistory(address,start,end), calculateValue]
-    }catch(err){
+      return [await getSyntheticPriceHistory(address, start, end), calculateValue];
+    } catch (err) {
       // this will need to do a lookup based on synthetic token address not emp
-      return [await getCoingeckoPriceHistory(syntheticAddress,'usd',start,end), calculateValueFromUsd]
+      return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
     }
   }
 
@@ -116,8 +116,10 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
   // Calculates value of x tokens based on syntheticPrice in usd  ( from a coingecko feed)
   // copies the same api from the original calculateValue but doesnt use all params
   // should output the price of tokens measured in usd in wei
-  /* eslint-disable-next-line no-unused-vars */
-  function calculateValueFromUsd(tokens, collateralPrice, syntheticPrice, collateralTokenDecimal, syntheticTokenDecimal) { 
+  function calculateValueFromUsd(...args) {
+    // have to do this because eslint wont pass and wont ignore unused vars. These params need to be
+    // identical to calculateValue so the calls can be interchangeable.
+    const [tokens, , syntheticPrice] = args;
     return toBN(tokens.toString())
       .mul(toBN(toWei(syntheticPrice.toFixed(18))))
       .div(toBN(toWei("1")));
@@ -246,12 +248,22 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     snapshotSteps = 1
   }) {
     // query all required data ahead of calcuation
-    const [collateralTokenPrices, syntheticTokenPricesWithValueCalculation, blocks, empDeployers, balanceHistories] = await Promise.all([
+    const [
+      collateralTokenPrices,
+      syntheticTokenPricesWithValueCalculation,
+      blocks,
+      empDeployers,
+      balanceHistories
+    ] = await Promise.all([
       Promise.map(
         collateralTokens,
         async address => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
       ),
-      Promise.map(empWhitelist, async (address,i) => await getSyntheticPriceHistoryWithFallback(address, startTime, endTime, syntheticTokens[i])),
+      Promise.map(
+        empWhitelist,
+        async (address, i) =>
+          await getSyntheticPriceHistoryWithFallback(address, startTime, endTime, syntheticTokens[i])
+      ),
       getBlocks(startTime, endTime),
       // these are block events, and they ignore start/end time as we need all events from start of each contract
       getEmpDeployerHistory(empCreatorAddress),

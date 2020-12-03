@@ -56,7 +56,7 @@ async function App(config) {
       result.syntheticTokens.push(syntheticInfo.address);
       return result;
     },
-    { collateralTokens: [], collateralTokenDecimals: [], syntheticTokenDecimals: [], syntheticTokens:[] }
+    { collateralTokens: [], collateralTokenDecimals: [], syntheticTokenDecimals: [], syntheticTokens: [] }
   );
 
   const result = await rewards.getRewards({
