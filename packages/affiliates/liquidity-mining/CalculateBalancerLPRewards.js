@@ -13,10 +13,9 @@ const Promise = require("bluebird");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
-const poolAbi = require("../../build/contracts/ERC20.json");
-
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const { getAbi } = require("@uma/core");
+const { getWeb3 } = require("@uma/common");
+const web3 = getWeb3();
 
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -64,7 +63,7 @@ async function calculateBalancerLPRewards(
   const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
-  let bPool = new web3.eth.Contract(poolAbi.abi, poolAddress);
+  let bPool = new web3.eth.Contract(getAbi("ERC20"), poolAddress);
 
   const shareHolderPayout = await _calculatePayoutsBetweenBlocks(
     bPool,

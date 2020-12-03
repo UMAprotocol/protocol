@@ -4,8 +4,10 @@
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
 // Then execute the script as: truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Governor = artifacts.require("Governor");
+// Use the same ABI's as deployed contracts:
+const { getTruffleContract } = require("../../index");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 

@@ -6,7 +6,10 @@
 
 const assert = require("assert").strict;
 
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+// Use the same ABI's as deployed contracts:
+const { getTruffleContract } = require("../../index");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
+
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
 async function runExport() {

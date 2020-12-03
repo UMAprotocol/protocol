@@ -7,7 +7,7 @@
  * This script therefore relies on accurate (1) average gas price data over the specified period (i.e. in gwei), (2) average
  * ETH price data over the period, and (3) average UMA price data over the period. It also needs the current UMA-ETH price.
  *
- * Run: (from repo root) `node ./packages/core/scripts/gas-rebate/index.js  --start 1598572800 --end 1599055419`
+ * Run: (from repo root) `node ./packages/core/scripts/gas-rebate/VoterGasRebate.js  --start 1598572800 --end 1599055419` --network mainnet_mnemonic
  *
  * Config options (can be specified as CLI flags):
  * - start: {Number, optional} start timestamp to query Reveal and Claim events from, described in Unix time in seconds.
@@ -31,16 +31,16 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 const fs = require("fs");
 const path = require("path");
-const Web3 = require("web3");
+
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/core");
-
+const { getWeb3 } = require("@uma/common");
 /** *****************************************
  *
  * SETUP
  *
  *******************************************/
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CUSTOM_NODE_URL));
+const web3 = getWeb3();
 const { toBN, toWei, fromWei, toChecksumAddress } = web3.utils;
 const SCALING_FACTOR = toBN(toWei("1"));
 const multibar = new cliProgress.MultiBar(
@@ -75,10 +75,13 @@ function getDataForTimestamp(dayData, timestamp) {
   // If we get here, then we will just use last day.
   return sortedDayData[sortedDayData.length - 1];
 }
-async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput }) {
+async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput, debug = false }) {
   const revealVotersToRebate = {};
 
-  const progressBarReveal = multibar.create(revealedVotes.length, 0, { label: "Reveal Events" });
+  let progressBarReveal;
+  if (!debug) {
+    progressBarReveal = multibar.create(revealedVotes.length, 0, { label: "Reveal Events" });
+  }
 
   for (let i = 0; i < revealedVotes.length; i++) {
     const reveal = revealedVotes[i];
@@ -134,9 +137,14 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 
     // Save and continue to lookup txn data for next event.
     revealVotersToRebate[key] = val;
-    progressBarReveal.update(i + 1);
+
+    if (progressBarReveal) {
+      progressBarReveal.update(i + 1);
+    }
   }
-  progressBarReveal.stop();
+  if (progressBarReveal) {
+    progressBarReveal.stop();
+  }
 
   // Rebate voters
   const rebateReceipts = {};
@@ -219,10 +227,13 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 // Example of such a transaction: https://etherscan.io/tx/0xed907cc499fb6bdccb6fb350dd8dd9cf90e7b24c855a5e857b24156f18e0e4bb#eventlog
 const UMA_DEV_ACCOUNT = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 
-async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
+async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug = false }) {
   const rewardedVotersToRebate = {};
 
-  const progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
+  let progressBarClaim;
+  if (!debug) {
+    progressBarClaim = multibar.create(claimedRewards.length, 0, { label: "Claim Events" });
+  }
 
   for (let i = 0; i < claimedRewards.length; i++) {
     const claim = claimedRewards[i];
@@ -257,9 +268,13 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput }) {
       rewardedVotersToRebate[key] = val;
     }
 
-    progressBarClaim.update(i + 1);
+    if (progressBarClaim) {
+      progressBarClaim.update(i + 1);
+    }
   }
-  progressBarClaim.stop();
+  if (progressBarClaim) {
+    progressBarClaim.stop();
+  }
 
   // Rebate voters
   const rebateReceipts = {};
@@ -382,7 +397,8 @@ async function calculateRebate({
           committedVotes,
           revealedVotes,
           priceData,
-          rebateOutput
+          rebateOutput,
+          debug
         })
       );
     } else {
@@ -395,7 +411,8 @@ async function calculateRebate({
         parseClaimEvents({
           claimedRewards,
           priceData,
-          rebateOutput
+          rebateOutput,
+          debug
         })
       );
     } else {
@@ -486,7 +503,7 @@ async function getUmaPriceAtTimestamp(timestamp) {
     return ethExchangeRate;
   } catch (err) {
     console.error("Failed to fetch UMA historical price from Coingecko, falling back to default");
-    return 10;
+    return 0.1;
   }
 }
 
