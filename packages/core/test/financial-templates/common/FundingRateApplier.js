@@ -198,7 +198,7 @@ contract("FundingRateApplier", function(accounts) {
   });
 
   it("Proposal time checks", async () => {
-    const newRate = { rawValue: toWei("-0.0001") };
+    const newRate = { rawValue: toWei("-0.000001") };
 
     // Cannot be at or before the last update time.
     assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, startTime)));
