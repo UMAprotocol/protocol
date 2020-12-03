@@ -87,13 +87,6 @@ contract("ConfigStore", function(accounts) {
         rewardRatePerSecond: { rawValue: toWei("0.00000331") }
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
-
-      // Invalid proposal bond
-      invalidConfig = {
-        ...testConfig,
-        proposerBondPct: { rawValue: toWei("0.00041") }
-      };
-      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
     });
   });
   describe("Proposing a new configuration", function() {

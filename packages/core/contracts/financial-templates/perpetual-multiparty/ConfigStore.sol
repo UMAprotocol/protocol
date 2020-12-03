@@ -141,21 +141,23 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigStoreInterface.ConfigSettings memory config) internal pure {
-        // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
+        // Make sure timelockLiveness is not too long, otherwise contract might not be able to reset params
         // before a vulnerability drains its collateral.
         require(config.timelockLiveness <= 7 days && config.timelockLiveness >= 1 days, "Invalid timelockLiveness");
 
-        // Upper limits for the reward and bond rates are estimated based on offline discussions,
-        // and it is expected that these hard-coded limits can change in future deployments.
+        // Upper limits for the reward are estimated based on offline discussions,
+        // and it is expected that these hard-coded limits change in future deployments.
         // For a discussion thread, go [here](https://github.com/UMAprotocol/protocol/pull/2223#discussion_r530692149).
-
-        // Proposer bond of 0.04% is based on a maximum expected funding rate error of 200%/year.
-        FixedPoint.Unsigned memory maxProposerBond = FixedPoint.fromUnscaledUint(4).div(1e4);
-        require(config.proposerBondPct.isLessThan(maxProposerBond), "Invalid proposerBondPct");
 
         // Reward rate should be less than 100% a year => 100% / 360 days / 24 hours / 60 mins / 60 secs
         // = 0.0000033
         FixedPoint.Unsigned memory maxRewardRatePerSecond = FixedPoint.fromUnscaledUint(33).div(1e7);
         require(config.rewardRatePerSecond.isLessThan(maxRewardRatePerSecond), "Invalid rewardRatePerSecond");
+
+        // We don't set a limit on the proposer bond because it is a defense against dishonest proposers. If a proposer
+        // were to successfully propose a very high or low funding rate, then their PfC would be very high. The proposer
+        // could theoretically keep their "evil" funding rate alive for 74 hours by continuously disputing honest
+        // proposers, so we would want to be able to set the proposal bond (equal to the dispute bond) high enough to
+        // reduce the proposer's length of attack.
     }
 }

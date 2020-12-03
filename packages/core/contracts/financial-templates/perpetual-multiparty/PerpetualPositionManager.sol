@@ -184,7 +184,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         fees()
         nonReentrant()
     {
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(sponsor);
 
         // Increase the position and global collateral balance by collateral amount.
@@ -223,7 +223,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(collateralAmount.isGreaterThan(0));
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
@@ -252,8 +252,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             collateralAmount.isGreaterThan(0) &&
-                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral)),
-            "Invalid collateral amount"
+                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral))
         );
 
         // Update the position object for the user.
@@ -280,8 +279,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             positionData.withdrawalRequestPassTimestamp != 0 &&
-                positionData.withdrawalRequestPassTimestamp <= getCurrentTime(),
-            "Invalid withdraw request"
+                positionData.withdrawalRequestPassTimestamp <= getCurrentTime()
         );
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
@@ -344,7 +342,7 @@ contract PerpetualPositionManager is FundingRateApplier {
             "Insufficient collateral"
         );
 
-        require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp == 0);
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
             emit NewSponsor(msg.sender);
@@ -385,7 +383,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding));
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed =
@@ -716,10 +714,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(
-            _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
-            "Position has no collateral"
-        );
+        require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 
     function _notEmergencyShutdown() internal view {
@@ -736,7 +731,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // `create` method because it is possible that `create` is called on a new position (i.e. one without any collateral
     // or tokens outstanding) which would fail the `onlyCollateralizedPosition` modifier on `_getPositionData`.
     function _positionHasNoPendingWithdrawal(address sponsor) internal view {
-        require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
+        require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0);
     }
 
     /****************************************
