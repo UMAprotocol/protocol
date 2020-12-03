@@ -25,7 +25,9 @@ contract("Perpetual", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPct: { rawValue: "0" }
+        proposerBondPct: { rawValue: "0" },
+        maxFundingRate: { rawValue: "0" },
+        minFundingRate: { rawValue: "0" }
       },
       timer.address
     );

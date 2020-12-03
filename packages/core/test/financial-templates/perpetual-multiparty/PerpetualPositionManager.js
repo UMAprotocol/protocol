@@ -50,6 +50,8 @@ contract("PerpetualPositionManager", function(accounts) {
   const priceFeedIdentifier = utf8ToHex("TEST_IDENTIIFER");
   const fundingRateRewardRate = toWei("0.000001");
   const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
+  const maxFundingRate = toWei("0.00001");
+  const minFundingRate = toWei("-0.00001");
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
@@ -122,7 +124,9 @@ contract("PerpetualPositionManager", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPct: { rawValue: "0" }
+        proposerBondPct: { rawValue: "0" },
+        maxFundingRate: { rawValue: maxFundingRate },
+        minFundingRate: { rawValue: minFundingRate }
       },
       timer.address
     );
@@ -175,7 +179,9 @@ contract("PerpetualPositionManager", function(accounts) {
     await setNewConfig({
       timelockLiveness: 86400, // 1 day
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
-      proposerBondPct: { rawValue: "0" }
+      proposerBondPct: { rawValue: "0" },
+      maxFundingRate: { rawValue: maxFundingRate },
+      minFundingRate: { rawValue: minFundingRate }
     });
 
     // The total time elapsed to publish the proposal is 5 seconds, so let's set the regular fee to 20%/second.
@@ -802,7 +808,9 @@ contract("PerpetualPositionManager", function(accounts) {
     await setNewConfig({
       timelockLiveness: 86400, // 1 day
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
-      proposerBondPct: { rawValue: "0" }
+      proposerBondPct: { rawValue: "0" },
+      maxFundingRate: { rawValue: maxFundingRate },
+      minFundingRate: { rawValue: minFundingRate }
     });
     await setFundingRateAndAdvanceTime("0");
     await positionManager.applyFundingRate();

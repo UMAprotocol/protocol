@@ -37,6 +37,8 @@ contract("FundingRateApplier", function(accounts) {
   const identifier = utf8ToHex("Test Identifier");
   const initialUserBalance = toWei("100");
   const defaultProposal = toWei("0.0000001"); // 1 percent every 100_000 seconds.
+  const maxFundingRate = toWei("0.00001");
+  const minFundingRate = toWei("-0.00001");
   const tokenScaling = toWei("1");
   const delay = 10000; // 10_000 seconds.
   let startTime;
@@ -98,7 +100,9 @@ contract("FundingRateApplier", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: rewardRate },
-        proposerBondPct: { rawValue: bondPercentage }
+        proposerBondPct: { rawValue: bondPercentage },
+        maxFundingRate: { rawValue: maxFundingRate },
+        minFundingRate: { rawValue: minFundingRate }
       },
       timer.address
     );
@@ -195,6 +199,13 @@ contract("FundingRateApplier", function(accounts) {
     await fundingRateApplier.applyFundingRate();
     assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue.toString(), toWei("1"));
     assert.equal((await fundingRateApplier.fundingRate()).rate.rawValue.toString(), "0");
+  });
+
+  it("Funding rate proposal must be within limits", async function() {
+    // Max/min funding rate per second is [< +1e-5, > -1e-5].
+    const currentTime = (await fundingRateApplier.getCurrentTime()).toNumber();
+    assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime)));
+    assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: toWei("-0.00002") }, currentTime)));
   });
 
   it("Proposal time checks", async () => {

@@ -28,12 +28,16 @@ contract("ConfigStore", function(accounts) {
   let testConfig = {
     timelockLiveness: 86401, // 1 day + 1 second
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
-    proposerBondPct: { rawValue: toWei("0.0001") }
+    proposerBondPct: { rawValue: toWei("0.0001") },
+    maxFundingRate: { rawValue: toWei("0.00001") },
+    minFundingRate: { rawValue: toWei("-0.00001") }
   };
   let defaultConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: "0" },
-    proposerBondPct: { rawValue: "0" }
+    proposerBondPct: { rawValue: "0" },
+    maxFundingRate: { rawValue: toWei("0") },
+    minFundingRate: { rawValue: toWei("0") }
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
@@ -44,6 +48,8 @@ contract("ConfigStore", function(accounts) {
       _inputConfig.rewardRatePerSecond.rawValue.toString()
     );
     assert.equal(currentConfig.proposerBondPct.rawValue.toString(), _inputConfig.proposerBondPct.rawValue.toString());
+    assert.equal(currentConfig.maxFundingRate.rawValue.toString(), _inputConfig.maxFundingRate.rawValue.toString());
+    assert.equal(currentConfig.minFundingRate.rawValue.toString(), _inputConfig.minFundingRate.rawValue.toString());
   }
 
   async function pendingConfigMatchesInput(_store, _inputConfig) {
@@ -54,6 +60,8 @@ contract("ConfigStore", function(accounts) {
       _inputConfig.rewardRatePerSecond.rawValue.toString()
     );
     assert.equal(pendingConfig.proposerBondPct.rawValue.toString(), _inputConfig.proposerBondPct.rawValue.toString());
+    assert.equal(pendingConfig.maxFundingRate.rawValue.toString(), _inputConfig.maxFundingRate.rawValue.toString());
+    assert.equal(pendingConfig.minFundingRate.rawValue.toString(), _inputConfig.minFundingRate.rawValue.toString());
   }
 
   async function storeHasNoPendingConfig(_store) {
@@ -71,6 +79,8 @@ contract("ConfigStore", function(accounts) {
       assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
       assert.equal(config.rewardRatePerSecond.rawValue.toString(), testConfig.rewardRatePerSecond.rawValue);
       assert.equal(config.proposerBondPct.rawValue.toString(), testConfig.proposerBondPct.rawValue);
+      assert.equal(config.maxFundingRate.rawValue.toString(), testConfig.maxFundingRate.rawValue.toString());
+      assert.equal(config.minFundingRate.rawValue.toString(), testConfig.minFundingRate.rawValue.toString());
       await storeHasNoPendingConfig(configStore);
     });
     it("Invalid default values revert on construction", async function() {
@@ -106,7 +116,9 @@ contract("ConfigStore", function(accounts) {
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue
         );
       });
       await incrementTime(configStore, defaultConfig.timelockLiveness);
@@ -118,7 +130,9 @@ contract("ConfigStore", function(accounts) {
         return (
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
-          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString()
+          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue
         );
       });
 
@@ -137,7 +151,9 @@ contract("ConfigStore", function(accounts) {
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue
         );
       });
 
@@ -175,7 +191,9 @@ contract("ConfigStore", function(accounts) {
           ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
           ev.proposalPassedTimestamp.toString() ===
-            overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+            overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === test2Config.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === test2Config.minFundingRate.rawValue
         );
       });
       await currentConfigMatchesInput(configStore, defaultConfig);
@@ -205,7 +223,9 @@ contract("ConfigStore", function(accounts) {
         return (
           ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
-          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString()
+          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
+          ev.maxFundingRate.toString() === test2Config.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === test2Config.minFundingRate.rawValue
         );
       });
       await storeHasNoPendingConfig(configStore);

@@ -40,9 +40,17 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 rewardRate,
         uint256 proposerBond,
         uint256 timelockLiveness,
+        int256 maxFundingRate,
+        int256 minFundingRate,
         uint256 proposalPassedTimestamp
     );
-    event ChangedConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
+    event ChangedConfigSettings(
+        uint256 rewardRate,
+        uint256 proposerBond,
+        uint256 timelockLiveness,
+        int256 maxFundingRate,
+        int256 minFundingRate
+    );
 
     /****************************************
      *                MODIFIERS             *
@@ -104,6 +112,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             newConfig.rewardRatePerSecond.rawValue,
             newConfig.proposerBondPct.rawValue,
             newConfig.timelockLiveness,
+            newConfig.maxFundingRate.rawValue,
+            newConfig.minFundingRate.rawValue,
             pendingPassedTimestamp
         );
     }
@@ -125,7 +135,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             emit ChangedConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
                 currentConfig.proposerBondPct.rawValue,
-                currentConfig.timelockLiveness
+                currentConfig.timelockLiveness,
+                currentConfig.maxFundingRate.rawValue,
+                currentConfig.minFundingRate.rawValue
             );
         }
     }
@@ -159,5 +171,10 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // could theoretically keep their "evil" funding rate alive for 74 hours by continuously disputing honest
         // proposers, so we would want to be able to set the proposal bond (equal to the dispute bond) high enough to
         // reduce the proposer's length of attack.
+
+        // We also don't set a limit on the funding rate max/min because we might need to allow very high magnitude
+        // funding rates in extraordinarily volatile market situations. Note, that even though we do not bound
+        // the max/min, we still recommend that the deployer of this contract set the funding rate max/min values
+        // to bound the PfC of a dishonest proposer.
     }
 }
