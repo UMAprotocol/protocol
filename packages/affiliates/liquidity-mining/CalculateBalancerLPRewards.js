@@ -4,7 +4,8 @@
 // provided by for each liquidity provider to the single whitelisted pool.
 // -> For each snapshot block, calculate the $UMA rewards to be received by each liquidity provider based on the target weekly distribution.
 
-// Example usage from core: node ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromBlock 10725993 --toBlock 10752010 --week=1
+// Example usage from core: node ./scripts/liquidity-mining/CalculateBalancerLPRewards.js --network mainnet_mnemonic \
+// --poolAddress="0x0099447ef539718bba3c4d4d4b4491d307eedc53" --fromBlock 10725993 --toBlock 10752010 --week = 1
 
 // Set the archival node using: export CUSTOM_NODE_URL=<your node here>
 const cliProgress = require("cli-progress");
@@ -57,7 +58,6 @@ async function calculateBalancerLPRewards(
   console.log("⚖️  Finding balancer pool info...");
   // Get the information on a particular pool. This includes a mapping of all previous token holders (shareholders).
   const poolInfo = await _fetchBalancerPoolInfo(poolAddress);
-  console.log("poolInfo", poolInfo);
 
   // Extract the addresses of all historic shareholders.
   const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
