@@ -262,17 +262,19 @@ abstract contract FundingRateApplier is FeePayer {
 
     function _validateFundingRate(FixedPoint.Signed memory rate) internal pure {
         // Constraining range of funding rates limits the PfC for any dishonest proposer and enhances the perpetual's
-        // security. A 600% funding rate range is equal to a 5% PfC for a proposer who can deter honest proposers
-        // for 74 hours: 600%/year / 360 days / 24 hours * 74 hours max attack time = ~ 5%.
-        // Note: 600% range is equivalent to a funding rate bounds of +300%/-300%. Imagine that the market is very
-        // volatile currently and that the "true" funding rate for the next 74 hours is -300%, but a dishonest
-        // proposer successfully proposes a rate of +300% (after a two hour liveness) and disputes honest
-        // proposers for the next 72 hours. This results in a funding rate error of 600% for 74 hours, until the DVM
+        // security. A 1000% funding rate range is equal to a 8.6% PfC for a proposer who can deter honest proposers
+        // for 74 hours: 1000%/year / 360 days / 24 hours * 74 hours max attack time = ~ 8.6%.
+        // Note: 1000% range is equivalent to a funding rate bounds of +500%/-500%. Imagine that the market is very
+        // volatile currently and that the "true" funding rate for the next 74 hours is -500%, but a dishonest
+        // proposer successfully proposes a rate of +500% (after a two hour liveness) and disputes honest
+        // proposers for the next 72 hours. This results in a funding rate error of 1000% for 74 hours, until the DVM
         // can set the funding rate back to its correct value.
+
+        // Approximate range is corresponding to +/- 500% is [0.000016, -0.000016].
         FixedPoint.Signed memory MAX_FUNDING_RATE_PER_SECOND =
-            FixedPoint.fromUnscaledInt(300).div(360).div(24).div(60).div(60);
+            FixedPoint.fromUnscaledInt(500).div(360).div(24).div(60).div(60);
         FixedPoint.Signed memory MIN_FUNDING_RATE_PER_SECOND =
-            FixedPoint.fromUnscaledInt(-300).div(360).div(24).div(60).div(60);
+            FixedPoint.fromUnscaledInt(-500).div(360).div(24).div(60).div(60);
 
         require(
             rate.isLessThanOrEqual(MAX_FUNDING_RATE_PER_SECOND) &&

@@ -828,12 +828,12 @@ contract("PerpetualPositionManager", function(accounts) {
     const currentTime = (await positionManager.getCurrentTime()).toNumber();
     assert(
       await didContractThrow(
-        positionManager.proposeNewRate({ rawValue: toWei("0.00001") }, currentTime, { from: proposer })
+        positionManager.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime, { from: proposer })
       )
     );
     assert(
       await didContractThrow(
-        positionManager.proposeNewRate({ rawValue: toWei("-0.00001") }, currentTime, { from: proposer })
+        positionManager.proposeNewRate({ rawValue: toWei("-0.00002") }, currentTime, { from: proposer })
       )
     );
   });
