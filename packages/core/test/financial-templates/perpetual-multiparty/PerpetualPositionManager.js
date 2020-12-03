@@ -50,8 +50,8 @@ contract("PerpetualPositionManager", function(accounts) {
   const priceFeedIdentifier = utf8ToHex("TEST_IDENTIIFER");
   const fundingRateRewardRate = toWei("0.000001");
   const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
-  const maxFundingRate = toWei("0.00001");
-  const minFundingRate = toWei("-0.00001");
+  const maxFundingRate = toWei("0");
+  const minFundingRate = toWei("0");
   const minSponsorTokens = "5";
 
   // Conveniently asserts expected collateral and token balances, assuming that
