@@ -241,7 +241,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
-        require(tokensLiquidated.isGreaterThan(0));
+        require(tokensLiquidated.isGreaterThan(0), "Liquidating 0 tokens");
 
         // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
         // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
