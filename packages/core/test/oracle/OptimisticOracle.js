@@ -122,7 +122,7 @@ contract("OptimisticOracle", function(accounts) {
     await verifyState(OptimisticOracleRequestStatesEnum.INVALID);
   });
 
-  it("Future request", async function() {
+  it("Request timestamp in the future", async function() {
     const currentTime = (await optimisticOracle.getCurrentTime()).toNumber();
 
     // 90 seconds in the future is okay.
