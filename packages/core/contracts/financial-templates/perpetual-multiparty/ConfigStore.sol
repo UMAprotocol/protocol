@@ -40,9 +40,17 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 rewardRate,
         uint256 proposerBond,
         uint256 timelockLiveness,
+        uint256 proposalTimeFutureLimit,
+        uint256 proposalTimePastLimit,
         uint256 proposalPassedTimestamp
     );
-    event ChangedConfigSettings(uint256 rewardRate, uint256 proposerBond, uint256 timelockLiveness);
+    event ChangedConfigSettings(
+        uint256 rewardRate,
+        uint256 proposerBond,
+        uint256 timelockLiveness,
+        uint256 proposalTimeFutureLimit,
+        uint256 proposalTimePastLimit
+    );
 
     /****************************************
      *                MODIFIERS             *
@@ -104,6 +112,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             newConfig.rewardRatePerSecond.rawValue,
             newConfig.proposerBondPct.rawValue,
             newConfig.timelockLiveness,
+            newConfig.proposalTimeFutureLimit,
+            newConfig.proposalTimePastLimit,
             pendingPassedTimestamp
         );
     }
@@ -125,7 +135,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             emit ChangedConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
                 currentConfig.proposerBondPct.rawValue,
-                currentConfig.timelockLiveness
+                currentConfig.timelockLiveness,
+                currentConfig.proposalTimeFutureLimit,
+                currentConfig.proposalTimePastLimit
             );
         }
     }
@@ -141,6 +153,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigStoreInterface.ConfigSettings memory config) internal pure {
+        // Its hard to ascertain what are reasonable limits, into the future and the past, for proposal timestamps.
+        // So, we do not set any limits.
+
         // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral.
         require(config.timelockLiveness <= 7 days && config.timelockLiveness >= 1 days, "Invalid timelockLiveness");

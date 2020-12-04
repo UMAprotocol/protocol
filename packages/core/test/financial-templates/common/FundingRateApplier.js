@@ -38,6 +38,8 @@ contract("FundingRateApplier", function(accounts) {
   const initialUserBalance = toWei("100");
   const defaultProposal = toWei("0.0000001"); // 1 percent every 100_000 seconds.
   const tokenScaling = toWei("1");
+  const proposalTimeFutureLimit = 90;
+  const proposalTimePastLimit = 1800; // 30 mins.
   const delay = 10000; // 10_000 seconds.
   let startTime;
   let currentTime;
@@ -98,7 +100,9 @@ contract("FundingRateApplier", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: rewardRate },
-        proposerBondPct: { rawValue: bondPercentage }
+        proposerBondPct: { rawValue: bondPercentage },
+        proposalTimeFutureLimit: proposalTimeFutureLimit,
+        proposalTimePastLimit: proposalTimePastLimit // 30 mins
       },
       timer.address
     );
@@ -207,13 +211,13 @@ contract("FundingRateApplier", function(accounts) {
     const currentTime = startTime + delay;
     await fundingRateApplier.setCurrentTime(currentTime);
 
-    // Time must be _around_ now. (between 30 minutes in the past and 90 seconds in the future).
-    const thirtyMinutes = 1800;
-    const ninetySeconds = 90;
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime - thirtyMinutes - 1)));
-    await fundingRateApplier.proposeNewRate.call(newRate, currentTime - thirtyMinutes);
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + ninetySeconds + 1)));
-    await fundingRateApplier.proposeNewRate(newRate, currentTime + ninetySeconds);
+    // Time must be within the past and future bounds around the current time.
+    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime - proposalTimePastLimit - 1)));
+    await fundingRateApplier.proposeNewRate.call(newRate, currentTime - proposalTimePastLimit);
+    assert(
+      await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit + 1))
+    );
+    await fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit);
   });
 
   describe("Undisputed proposal", async () => {
