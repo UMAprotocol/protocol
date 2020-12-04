@@ -143,7 +143,9 @@ contract("PerpetualLiquidatable", function(accounts) {
         rewardRatePerSecond: { rawValue: "0" },
         proposerBondPct: { rawValue: "0" },
         maxFundingRate: { rawValue: maxFundingRate },
-        minFundingRate: { rawValue: minFundingRate }
+        minFundingRate: { rawValue: minFundingRate },
+        proposalTimeFutureLimit: 0,
+        proposalTimePastLimit: 0
       },
       timer.address
     );

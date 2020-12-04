@@ -156,7 +156,9 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
         require(
-            timestamp > updateTime && timestamp >= currentTime.sub(30 minutes) && timestamp <= currentTime.add(90),
+            timestamp > updateTime &&
+                timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit) &&
+                timestamp <= currentTime.add(_getConfig().proposalTimeFutureLimit),
             "Invalid proposal time"
         );
 

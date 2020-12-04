@@ -4658,7 +4658,7 @@
     "@truffle/contract" "^4.2.20"
     "@uma/common" "^1.0.1"
 
-"@uma/core@npm:@uma/core@1.2.0":
+"@uma/core-1-2-0@npm:@uma/core@1.2.0", "@uma/core@npm:@uma/core@1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.0.tgz#7fce04924d28194090eecdf4087786f7bb56a755"
   integrity sha512-Etg5ZTDknuGnbgx9U3rZWLCW6aR3INwF/rx5qldtll8WBmWFyGiHTexHrP1fDECXRQ6dn4gzeK4FeDgWhiGvsA==

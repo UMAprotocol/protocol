@@ -43,7 +43,7 @@ async function App(config) {
   });
 
   // get emp info
-  const { collateralTokens, collateralTokenDecimals, syntheticTokenDecimals } = await Promise.reduce(
+  const { collateralTokens, collateralTokenDecimals, syntheticTokenDecimals, syntheticTokens } = await Promise.reduce(
     empWhitelist,
     async (result, address) => {
       // switch this to tokenInfo if you want to base prices off tokens
@@ -53,9 +53,10 @@ async function App(config) {
 
       const syntheticInfo = await emp.tokenInfo(address);
       result.syntheticTokenDecimals.push(syntheticInfo.decimals);
+      result.syntheticTokens.push(syntheticInfo.address);
       return result;
     },
-    { collateralTokens: [], collateralTokenDecimals: [], syntheticTokenDecimals: [] }
+    { collateralTokens: [], collateralTokenDecimals: [], syntheticTokenDecimals: [], syntheticTokens: [] }
   );
 
   const result = await rewards.getRewards({
@@ -66,6 +67,7 @@ async function App(config) {
     empCreatorAddress: empCreator,
     collateralTokens,
     collateralTokenDecimals,
+    syntheticTokens,
     syntheticTokenDecimals
   });
 

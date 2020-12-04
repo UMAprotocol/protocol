@@ -126,7 +126,9 @@ contract("PerpetualPositionManager", function(accounts) {
         rewardRatePerSecond: { rawValue: "0" },
         proposerBondPct: { rawValue: "0" },
         maxFundingRate: { rawValue: maxFundingRate },
-        minFundingRate: { rawValue: minFundingRate }
+        minFundingRate: { rawValue: minFundingRate },
+        proposalTimeFutureLimit: 0,
+        proposalTimePastLimit: 0
       },
       timer.address
     );
@@ -181,7 +183,9 @@ contract("PerpetualPositionManager", function(accounts) {
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
       proposerBondPct: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
-      minFundingRate: { rawValue: minFundingRate }
+      minFundingRate: { rawValue: minFundingRate },
+      proposalTimeFutureLimit: 0,
+      proposalTimePastLimit: 0
     });
 
     // The total time elapsed to publish the proposal is 5 seconds, so let's set the regular fee to 20%/second.
@@ -810,7 +814,9 @@ contract("PerpetualPositionManager", function(accounts) {
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
       proposerBondPct: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
-      minFundingRate: { rawValue: minFundingRate }
+      minFundingRate: { rawValue: minFundingRate },
+      proposalTimeFutureLimit: 0,
+      proposalTimePastLimit: 0
     });
     await setFundingRateAndAdvanceTime("0");
     await positionManager.applyFundingRate();
