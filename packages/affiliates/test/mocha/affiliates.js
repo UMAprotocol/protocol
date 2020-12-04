@@ -35,7 +35,7 @@ const { Queries, Coingecko, SynthPrices } = mocks;
 describe("DeployerRewards", function() {
   describe("CalculateRewards Simple Data", function() {
     let balanceHistories, params, totalRewards, affiliates;
-    before(function() {
+    beforeEach(function() {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
@@ -81,7 +81,7 @@ describe("DeployerRewards", function() {
         totalRewards
       };
     });
-    it("should work with basic test cases", function() {
+    it("should give full rewards to a single emp with balance", function() {
       // add some balance histories to the emp contracts. this is really what ends up adjusting the distribution.
       // this adds a single balance history event starting at time 0 for the first emp
       balanceHistories[0][1].handleEvent(0, {
@@ -94,8 +94,31 @@ describe("DeployerRewards", function() {
       const result = affiliates.utils.calculateRewards(params);
       assert.equal(result.empPayouts["a"], totalRewards);
     });
-    it("should work with basic test cases", function() {
+    it("should split rewards equally between equally funded emps", function() {
       // update balance history for emp a user aa
+      balanceHistories[0][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "aa" with 2 collateral 1 synthetic
+        args: ["aa", "2", "1"],
+        blockTimestamp: 0
+      });
+      balanceHistories[0][1].finalize();
+
+      // update balance history for emp b user bb
+      balanceHistories[1][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "bb" with 2 collateral 1 synthetic
+        args: ["bb", "2", "1"],
+        blockTimestamp: 0
+      });
+      balanceHistories[1][1].finalize();
+
+      const result = affiliates.utils.calculateRewards(params);
+      assert.equal(result.empPayouts["a"], totalRewards / 2);
+      assert.equal(result.empPayouts["b"], totalRewards / 2);
+    });
+    it("should work with an emp which had balance and expired", function() {
+      // update balance history for emp a user aa: balanceHistories[0][1] 0 = emp index, 1 = balanceHistory
       balanceHistories[0][1].handleEvent(0, {
         name: "PositionCreated",
         // creating a position for address "aa" with 2 collateral 1 synthetic
@@ -111,11 +134,23 @@ describe("DeployerRewards", function() {
         args: ["bb", "2", "1"],
         blockTimestamp: 0
       });
+      // have "bb" settle expired position. Essentially drains emp B at time 5
+      balanceHistories[1][1].handleEvent(4, {
+        name: "SettleExpiredPosition",
+        // creating a position for address "bb" with 2 collateral 1 synthetic
+        args: ["bb", "2", "1"],
+        blockTimestamp: 0
+      });
       balanceHistories[1][1].finalize();
 
+      // if emp a has a position of 1 for 10 blocks, and b position of 1 for 4 steps, we should see rewards:
+      // a share: 80% (.5 + .5 + .5 + .5) + 6 vs b share: 20% (.5 + .5 + .5 + .5)
+      // For the first 4 blocks each contract spits rewards per block. Giving each 20%. From there emp
+      // b ends and all funds are withdrawn while emp a continue earning 100% of rewards, giving it 80% of shares.
+
       const result = affiliates.utils.calculateRewards(params);
-      assert.equal(result.empPayouts["a"], totalRewards / 2);
-      assert.equal(result.empPayouts["b"], totalRewards / 2);
+      assert.equal(result.empPayouts["a"], 80);
+      assert.equal(result.empPayouts["b"], 20);
     });
   });
   describe("running dataset 1", function() {

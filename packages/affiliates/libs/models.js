@@ -171,7 +171,7 @@ function History() {
   const history = [];
   // Used internally, but will insert a block into cache sorted by timestamp ascending
   function insert(data) {
-    assert(data.blockNumber === 0 || data.blockNumber > 0, "requires blockNumber");
+    assert(typeof data.blockNumber === "number" && data.blockNumber >= 0, "requires blockNumber");
     const index = lodash.sortedIndexBy(history, data, "blockNumber");
     history.splice(index, 0, data);
     return data;
