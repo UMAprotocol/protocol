@@ -122,6 +122,20 @@ contract("OptimisticOracle", function(accounts) {
     await verifyState(OptimisticOracleRequestStatesEnum.INVALID);
   });
 
+  it("Future request", async function() {
+    const currentTime = (await optimisticOracle.getCurrentTime()).toNumber();
+
+    // 90 seconds in the future is okay.
+    await optimisticRequester.requestPrice(identifier, currentTime + 90, "0x", collateral.address, 0);
+
+    // 91 seconds in the future is not okay.
+    assert(
+      await didContractThrow(
+        optimisticRequester.requestPrice(identifier, currentTime + 91, "0x", collateral.address, 0)
+      )
+    );
+  });
+
   it("No fee request", async function() {
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED);
