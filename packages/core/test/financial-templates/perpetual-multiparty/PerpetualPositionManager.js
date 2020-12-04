@@ -127,7 +127,6 @@ contract("PerpetualPositionManager", function(accounts) {
         proposerBondPct: { rawValue: "0" },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
-        proposalTimeFutureLimit: 0,
         proposalTimePastLimit: 0
       },
       timer.address
@@ -184,7 +183,6 @@ contract("PerpetualPositionManager", function(accounts) {
       proposerBondPct: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
       minFundingRate: { rawValue: minFundingRate },
-      proposalTimeFutureLimit: 0,
       proposalTimePastLimit: 0
     });
 
@@ -815,7 +813,6 @@ contract("PerpetualPositionManager", function(accounts) {
       proposerBondPct: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
       minFundingRate: { rawValue: minFundingRate },
-      proposalTimeFutureLimit: 0,
       proposalTimePastLimit: 0
     });
     await setFundingRateAndAdvanceTime("0");

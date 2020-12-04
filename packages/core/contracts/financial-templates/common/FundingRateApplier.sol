@@ -151,14 +151,11 @@ abstract contract FundingRateApplier is FeePayer {
         require(fundingRate.proposalTime == 0, "Proposal in progress");
         _validateFundingRate(rate);
 
-        // Timestamp must be after the last funding rate update time, within the last 30 minutes, and it cannot be more
-        // than 90 seconds ahead of the block timestamp.
+        // Timestamp must be after the last funding rate update time, within the last 30 minutes.
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
         require(
-            timestamp > updateTime &&
-                timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit) &&
-                timestamp <= currentTime.add(_getConfig().proposalTimeFutureLimit),
+            timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit),
             "Invalid proposal time"
         );
 
@@ -170,6 +167,7 @@ abstract contract FundingRateApplier is FeePayer {
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
         bytes memory ancillaryData = _getAncillaryData();
+        // Note: requestPrice will revert if `timestamp` is less than the current block timestamp
         optimisticOracle.requestPrice(identifier, timestamp, ancillaryData, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
             optimisticOracle.setBond(

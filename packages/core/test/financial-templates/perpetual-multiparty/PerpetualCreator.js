@@ -33,7 +33,6 @@ contract("PerpetualCreator", function(accounts) {
     proposerBondPct: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
-    proposalTimeFutureLimit: 90,
     proposalTimePastLimit: 1800
   };
 

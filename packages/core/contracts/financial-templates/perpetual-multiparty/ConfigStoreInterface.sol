@@ -17,8 +17,6 @@ interface ConfigStoreInterface {
         FixedPoint.Signed maxFundingRate;
         // Minimum funding rate % per second that can be proposed.
         FixedPoint.Signed minFundingRate;
-        // Funding rate proposal timestamp cannot be more than this amount of seconds in the future .
-        uint256 proposalTimeFutureLimit;
         // Funding rate proposal timestamp cannot be more than this amount of seconds in the past from the latest
         // update time.
         uint256 proposalTimePastLimit;

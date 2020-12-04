@@ -28,7 +28,6 @@ contract("Perpetual", function(accounts) {
         proposerBondPct: { rawValue: "0" },
         maxFundingRate: { rawValue: "0" },
         minFundingRate: { rawValue: "0" },
-        proposalTimeFutureLimit: 0,
         proposalTimePastLimit: 0
       },
       timer.address

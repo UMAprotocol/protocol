@@ -42,7 +42,6 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 timelockLiveness,
         int256 maxFundingRate,
         int256 minFundingRate,
-        uint256 proposalTimeFutureLimit,
         uint256 proposalTimePastLimit,
         uint256 proposalPassedTimestamp
     );
@@ -52,7 +51,6 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 timelockLiveness,
         int256 maxFundingRate,
         int256 minFundingRate,
-        uint256 proposalTimeFutureLimit,
         uint256 proposalTimePastLimit
     );
 
@@ -118,7 +116,6 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
             newConfig.timelockLiveness,
             newConfig.maxFundingRate.rawValue,
             newConfig.minFundingRate.rawValue,
-            newConfig.proposalTimeFutureLimit,
             newConfig.proposalTimePastLimit,
             pendingPassedTimestamp
         );
@@ -144,7 +141,6 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
                 currentConfig.timelockLiveness,
                 currentConfig.maxFundingRate.rawValue,
                 currentConfig.minFundingRate.rawValue,
-                currentConfig.proposalTimeFutureLimit,
                 currentConfig.proposalTimePastLimit
             );
         }
@@ -162,8 +158,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigStoreInterface.ConfigSettings memory config) internal pure {
         // We don't set limits on proposal timestamps because there are already natural limits:
-        // - Future: price requests to the OptimisticOracle must be in the past (plus some buffer allowing for the time
-        //   that blocks take to get mined).
+        // - Future: price requests to the OptimisticOracle must be in the past---we can't add further constraints.
         // - Past: proposal times must always be after the last update time, and  a reasonable past limit would be 30
         //   mins, meaning that no proposal timestamp can be more than 30 minutes behind the current time.
 

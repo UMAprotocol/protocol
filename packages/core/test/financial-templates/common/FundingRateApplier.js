@@ -40,7 +40,6 @@ contract("FundingRateApplier", function(accounts) {
   const maxFundingRate = toWei("0.00001");
   const minFundingRate = toWei("-0.00001");
   const tokenScaling = toWei("1");
-  const proposalTimeFutureLimit = 90;
   const proposalTimePastLimit = 1800; // 30 mins.
   const delay = 10000; // 10_000 seconds.
   let startTime;
@@ -105,7 +104,6 @@ contract("FundingRateApplier", function(accounts) {
         proposerBondPct: { rawValue: bondPercentage },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
-        proposalTimeFutureLimit: proposalTimeFutureLimit,
         proposalTimePastLimit: proposalTimePastLimit // 30 mins
       },
       timer.address
@@ -225,10 +223,8 @@ contract("FundingRateApplier", function(accounts) {
     // Time must be within the past and future bounds around the current time.
     assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime - proposalTimePastLimit - 1)));
     await fundingRateApplier.proposeNewRate.call(newRate, currentTime - proposalTimePastLimit);
-    assert(
-      await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit + 1))
-    );
-    await fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit);
+    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + 1)));
+    await fundingRateApplier.proposeNewRate(newRate, currentTime);
   });
 
   describe("Undisputed proposal", async () => {
