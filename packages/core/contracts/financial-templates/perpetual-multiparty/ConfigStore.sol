@@ -183,7 +183,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // were to successfully propose a very high or low funding rate, then their PfC would be very high. The proposer
         // could theoretically keep their "evil" funding rate alive for 74 hours by continuously disputing honest
         // proposers, so we would want to be able to set the proposal bond (equal to the dispute bond) high enough to
-        // reduce the proposer's length of attack.
+        // reduce the proposer's length of attack. The downside of not limiting this is that the config store owner
+        // can set it arbitrarily high and preclude a new funding rate from ever coming in.
 
         // We also don't set a limit on the funding rate max/min because we might need to allow very high magnitude
         // funding rates in extraordinarily volatile market situations. Note, that even though we do not bound
