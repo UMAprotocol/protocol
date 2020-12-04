@@ -125,14 +125,12 @@ contract("OptimisticOracle", function(accounts) {
   it("Request timestamp in the future", async function() {
     const currentTime = (await optimisticOracle.getCurrentTime()).toNumber();
 
-    // 90 seconds in the future is okay.
-    await optimisticRequester.requestPrice(identifier, currentTime + 90, "0x", collateral.address, 0);
+    // Request for current time is okay.
+    await optimisticRequester.requestPrice(identifier, currentTime, "0x", collateral.address, 0);
 
-    // 91 seconds in the future is not okay.
+    // 1 second in the future is not okay.
     assert(
-      await didContractThrow(
-        optimisticRequester.requestPrice(identifier, currentTime + 91, "0x", collateral.address, 0)
-      )
+      await didContractThrow(optimisticRequester.requestPrice(identifier, currentTime + 1, "0x", collateral.address, 0))
     );
   });
 

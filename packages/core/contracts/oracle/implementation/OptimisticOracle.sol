@@ -156,7 +156,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(timestamp <= getCurrentTime().add(90), "Timestamp in future"); // Give 90 seconds of leeway.
+        require(timestamp <= getCurrentTime(), "Timestamp in future"); // Give 90 seconds of leeway.
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
