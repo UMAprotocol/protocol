@@ -43,15 +43,6 @@ const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
 const Store = getTruffleContract("Store", web3, abiVersion);
 
-// Contracts we need to interact with.
-let collateralToken;
-let emp;
-let mockOracle;
-let identifierWhitelist;
-let collateralTokenWhitelist;
-let expiringMultiPartyCreator;
-let store;
-
 const isUsingWeth = identifier => {
   return identifier.toUpperCase().endsWith("ETH");
 };
@@ -63,12 +54,15 @@ const deployEMP = async callback => {
   try {
     const accounts = await web3.eth.getAccounts();
     const deployer = accounts[0];
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    const finder = await Finder.deployed();
+    const store = await Store.deployed();
+    const tokenFactory = await TokenFactory.deployed();
 
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
     const priceFeedIdentifier = utf8ToHex(identifierBase);
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     if (!(await identifierWhitelist.isIdentifierSupported(priceFeedIdentifier))) {
       await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
       console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
@@ -77,6 +71,7 @@ const deployEMP = async callback => {
     // This subs in WETH where necessary.
     const TokenContract = isUsingWeth(identifierBase) ? WETH9 : TestnetERC20;
 
+    let collateralToken;
     if (!argv.collateral) {
       collateralToken = await TokenContract.deployed();
     } else {
@@ -86,19 +81,16 @@ const deployEMP = async callback => {
 
     if (argv.test) {
       // When running in test mode, deploy a mock oracle and whitelist the collateral currency used.
-      const finder = await Finder.deployed();
-      mockOracle = await MockOracle.new(finder.address, Timer.address);
+      const mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
       // Whitelist collateral currency
-      collateralTokenWhitelist = await AddressWhitelist.deployed();
+      const collateralTokenWhitelist = await AddressWhitelist.deployed();
       await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
       console.log("Whitelisted collateral currency");
     }
-
-    store = await Store.deployed();
 
     // Create a new EMP
     const constructorParams = {
@@ -119,12 +111,12 @@ const deployEMP = async callback => {
 
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
-    emp = await ExpiringMultiParty.at(_emp);
+    const emp = await ExpiringMultiParty.at(_emp);
 
     const empConstructorParams = {
       ...constructorParams,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: finder.address,
+      tokenFactoryAddress: tokenFactory.address,
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
