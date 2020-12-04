@@ -19,25 +19,29 @@
  * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
  *
- * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC
+ * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("@uma/common");
+const { getAbi, getTruffleContract } = require("../../index");
+const argv = require("minimist")(process.argv.slice(), {
+  boolean: ["test"],
+  string: ["identifier", "collateral", "cversion"]
+});
+const abiVersion = argv.cversion || "1.1.0"; // Default to most recent mainnet deployment, 1.1.0.
 
 // Deployed contract ABI's and addresses we need to fetch.
-const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const MockOracle = artifacts.require("MockOracle");
-const TestnetERC20 = artifacts.require("TestnetERC20");
-const WETH9 = artifacts.require("WETH9");
-const Timer = artifacts.require("Timer");
-const TokenFactory = artifacts.require("TokenFactory");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Store = artifacts.require("Store");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier", "collateral"] });
-const { getAbi } = require("../../index");
+const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, abiVersion);
+const Finder = getTruffleContract("Finder", web3, abiVersion);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, abiVersion);
+const MockOracle = getTruffleContract("MockOracle", web3, abiVersion);
+const TestnetERC20 = getTruffleContract("TestnetERC20", web3, abiVersion);
+const WETH9 = getTruffleContract("WETH9", web3, abiVersion);
+const Timer = getTruffleContract("Timer", web3, abiVersion);
+const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
+const Store = getTruffleContract("Store", web3, abiVersion);
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -124,7 +128,7 @@ const deployEMP = async callback => {
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
-    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", "1.1.0")[0].inputs, [
+    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
       empConstructorParams
     ]);
     console.log("Encoded EMP Parameters", encodedParameters);
