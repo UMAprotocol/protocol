@@ -167,7 +167,7 @@ abstract contract FundingRateApplier is FeePayer {
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
         bytes memory ancillaryData = _getAncillaryData();
-        // Note: requestPrice will revert if `timestamp` is less than the current block timestamp
+        // Note: requestPrice will revert if `timestamp` is less than the current block timestamp.
         optimisticOracle.requestPrice(identifier, timestamp, ancillaryData, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
             optimisticOracle.setBond(
