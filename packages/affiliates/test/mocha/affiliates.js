@@ -117,6 +117,31 @@ describe("DeployerRewards", function() {
       assert.equal(result.empPayouts["a"], totalRewards / 2);
       assert.equal(result.empPayouts["b"], totalRewards / 2);
     });
+    it("should split rewards pro rata between emp with different funding sizes", function() {
+      // update balance history for emp a user aa
+      balanceHistories[0][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "aa" with 10 collateral 1 synthetic
+        args: ["aa", "10", "1"],
+        blockTimestamp: 0
+      });
+      balanceHistories[0][1].finalize();
+
+      // update balance history for emp b user bb
+      balanceHistories[1][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "bb" with 10 collateral 3 synthetic
+        args: ["bb", "10", "3"],
+        blockTimestamp: 0
+      });
+      balanceHistories[1][1].finalize();
+
+      // EMP A should be rewarded less than B since less synth is minted for the same collateral
+      // In this case B should be reward 3/4 and A should be rewarded 1/4
+      const result = affiliates.utils.calculateRewards(params);
+      assert.equal(result.empPayouts["a"], totalRewards / 4);
+      assert.equal(result.empPayouts["b"], (totalRewards * 3) / 4);
+    });
     it("should work with an emp which had balance and expired", function() {
       // update balance history for emp a user aa: balanceHistories[0][1] 0 = emp index, 1 = balanceHistory
       balanceHistories[0][1].handleEvent(0, {
@@ -137,7 +162,7 @@ describe("DeployerRewards", function() {
       // have "bb" settle expired position. Essentially drains emp B at time 5
       balanceHistories[1][1].handleEvent(4, {
         name: "SettleExpiredPosition",
-        // creating a position for address "bb" with 2 collateral 1 synthetic
+        // settle a position (withdraw) for address "bb" with 2 collateral 1 synthetic
         args: ["bb", "2", "1"],
         blockTimestamp: 0
       });
@@ -147,7 +172,6 @@ describe("DeployerRewards", function() {
       // a share: 80% (.5 + .5 + .5 + .5) + 6 vs b share: 20% (.5 + .5 + .5 + .5)
       // For the first 4 blocks each contract spits rewards per block. Giving each 20%. From there emp
       // b ends and all funds are withdrawn while emp a continue earning 100% of rewards, giving it 80% of shares.
-
       const result = affiliates.utils.calculateRewards(params);
       assert.equal(result.empPayouts["a"], 80);
       assert.equal(result.empPayouts["b"], 20);
