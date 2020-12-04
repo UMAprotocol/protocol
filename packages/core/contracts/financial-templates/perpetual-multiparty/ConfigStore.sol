@@ -161,8 +161,10 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Use this method to constrain values with which you can set ConfigSettings.
     function _validateConfig(ConfigStoreInterface.ConfigSettings memory config) internal pure {
-        // Its hard to ascertain what are reasonable limits, into the future and the past, for proposal timestamps.
-        // So, we do not set any limits.
+        // We don't set limits on proposal timestamps because there are already natural limits:
+        // - Future: price requests to the OptimisticOracle must be in the past (plus some buffer allowing for the time
+        //   that blocks take to get mined).
+        // - Past: proposal times must be after the last update time.
 
         // Make sure timelockLiveness is not too long, otherwise contract can might not be able to fix itself
         // before a vulnerability drains its collateral.
