@@ -19,34 +19,29 @@
  * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
  *
- * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC
+ * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("@uma/common");
+const { getAbi, getTruffleContract } = require("../../index");
+const argv = require("minimist")(process.argv.slice(), {
+  boolean: ["test"],
+  string: ["identifier", "collateral", "cversion"]
+});
+const abiVersion = argv.cversion || "1.1.0"; // Default to most recent mainnet deployment, 1.1.0.
 
 // Deployed contract ABI's and addresses we need to fetch.
-const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const MockOracle = artifacts.require("MockOracle");
-const TestnetERC20 = artifacts.require("TestnetERC20");
-const WETH9 = artifacts.require("WETH9");
-const Timer = artifacts.require("Timer");
-const TokenFactory = artifacts.require("TokenFactory");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Store = artifacts.require("Store");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["test"], string: ["identifier", "collateral"] });
-const { getAbi } = require("../../index");
-
-// Contracts we need to interact with.
-let collateralToken;
-let emp;
-let mockOracle;
-let identifierWhitelist;
-let collateralTokenWhitelist;
-let expiringMultiPartyCreator;
-let store;
+const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, abiVersion);
+const Finder = getTruffleContract("Finder", web3, abiVersion);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, abiVersion);
+const MockOracle = getTruffleContract("MockOracle", web3, abiVersion);
+const TestnetERC20 = getTruffleContract("TestnetERC20", web3, abiVersion);
+const WETH9 = getTruffleContract("WETH9", web3, abiVersion);
+const Timer = getTruffleContract("Timer", web3, abiVersion);
+const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
+const Store = getTruffleContract("Store", web3, abiVersion);
 
 const isUsingWeth = identifier => {
   return identifier.toUpperCase().endsWith("ETH");
@@ -59,12 +54,15 @@ const deployEMP = async callback => {
   try {
     const accounts = await web3.eth.getAccounts();
     const deployer = accounts[0];
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    const finder = await Finder.deployed();
+    const store = await Store.deployed();
+    const tokenFactory = await TokenFactory.deployed();
 
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
     const priceFeedIdentifier = utf8ToHex(identifierBase);
 
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
     if (!(await identifierWhitelist.isIdentifierSupported(priceFeedIdentifier))) {
       await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
       console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
@@ -73,6 +71,7 @@ const deployEMP = async callback => {
     // This subs in WETH where necessary.
     const TokenContract = isUsingWeth(identifierBase) ? WETH9 : TestnetERC20;
 
+    let collateralToken;
     if (!argv.collateral) {
       collateralToken = await TokenContract.deployed();
     } else {
@@ -82,19 +81,16 @@ const deployEMP = async callback => {
 
     if (argv.test) {
       // When running in test mode, deploy a mock oracle and whitelist the collateral currency used.
-      const finder = await Finder.deployed();
-      mockOracle = await MockOracle.new(finder.address, Timer.address);
+      const mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
       // Whitelist collateral currency
-      collateralTokenWhitelist = await AddressWhitelist.deployed();
+      const collateralTokenWhitelist = await AddressWhitelist.deployed();
       await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
       console.log("Whitelisted collateral currency");
     }
-
-    store = await Store.deployed();
 
     // Create a new EMP
     const constructorParams = {
@@ -115,16 +111,16 @@ const deployEMP = async callback => {
 
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
-    emp = await ExpiringMultiParty.at(_emp);
+    const emp = await ExpiringMultiParty.at(_emp);
 
     const empConstructorParams = {
       ...constructorParams,
-      finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
+      finderAddress: finder.address,
+      tokenFactoryAddress: tokenFactory.address,
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
-    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", "1.1.0")[0].inputs, [
+    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
       empConstructorParams
     ]);
     console.log("Encoded EMP Parameters", encodedParameters);
