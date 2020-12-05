@@ -38,7 +38,6 @@ contract("FundingRateApplier", function(accounts) {
   const initialUserBalance = toWei("100");
   const defaultProposal = toWei("0.0000001"); // 1 percent every 100_000 seconds.
   const tokenScaling = toWei("1");
-  const proposalTimeFutureLimit = 90;
   const proposalTimePastLimit = 1800; // 30 mins.
   const delay = 10000; // 10_000 seconds.
   let startTime;
@@ -101,7 +100,7 @@ contract("FundingRateApplier", function(accounts) {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: rewardRate },
         proposerBondPct: { rawValue: bondPercentage },
-        proposalTimeFutureLimit: proposalTimeFutureLimit,
+        proposalTimeFutureLimit: 90, // Note: this doesn't affect the contract due to the stricter limits imposed by the optimistic oracle.
         proposalTimePastLimit: proposalTimePastLimit // 30 mins
       },
       timer.address
@@ -214,10 +213,8 @@ contract("FundingRateApplier", function(accounts) {
     // Time must be within the past and future bounds around the current time.
     assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime - proposalTimePastLimit - 1)));
     await fundingRateApplier.proposeNewRate.call(newRate, currentTime - proposalTimePastLimit);
-    assert(
-      await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit + 1))
-    );
-    await fundingRateApplier.proposeNewRate(newRate, currentTime + proposalTimeFutureLimit);
+    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + 1)));
+    await fundingRateApplier.proposeNewRate(newRate, currentTime);
   });
 
   describe("Undisputed proposal", async () => {
