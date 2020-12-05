@@ -26,11 +26,13 @@ contract("PerpetualCreator", function(accounts) {
   let collateralTokenWhitelist;
   // Re-used variables
   let constructorParams;
+
   let testConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
     proposerBondPct: { rawValue: toWei("0.0001") },
-    proposalTimeFutureLimit: 90,
+    maxFundingRate: { rawValue: toWei("0.00001") },
+    minFundingRate: { rawValue: toWei("-0.00001") },
     proposalTimePastLimit: 1800
   };
 
@@ -320,5 +322,24 @@ contract("PerpetualCreator", function(accounts) {
 
     let configStore = await ConfigStore.at(configStoreAddress);
     assert.equal(await configStore.owner(), contractCreator);
+  });
+  it("Funding rate bounds are set correctly", async function() {
+    let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
+      from: contractCreator
+    });
+
+    let perpetualAddress;
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+      perpetualAddress = ev.perpetualAddress;
+      return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
+    });
+    let perpetual = await Perpetual.at(perpetualAddress);
+
+    const currentTime = (await perpetual.getCurrentTime()).toNumber();
+    assert(
+      await didContractThrow(
+        perpetual.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
+      )
+    );
   });
 });

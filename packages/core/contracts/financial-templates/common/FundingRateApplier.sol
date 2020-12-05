@@ -149,15 +149,13 @@ abstract contract FundingRateApplier is FeePayer {
         returns (FixedPoint.Unsigned memory totalBond)
     {
         require(fundingRate.proposalTime == 0, "Proposal in progress");
+        _validateFundingRate(rate);
 
-        // Timestamp must be after the last funding rate update time, within the last 30 minutes, and it cannot be more
-        // than 90 seconds ahead of the block timestamp.
+        // Timestamp must be after the last funding rate update time, within the last 30 minutes.
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
         require(
-            timestamp > updateTime &&
-                timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit) &&
-                timestamp <= currentTime.add(_getConfig().proposalTimeFutureLimit),
+            timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit),
             "Invalid proposal time"
         );
 
@@ -169,6 +167,7 @@ abstract contract FundingRateApplier is FeePayer {
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
         bytes memory ancillaryData = _getAncillaryData();
+        // Note: requestPrice will revert if `timestamp` is less than the current block timestamp.
         optimisticOracle.requestPrice(identifier, timestamp, ancillaryData, collateralCurrency, 0);
         totalBond = FixedPoint.Unsigned(
             optimisticOracle.setBond(
@@ -259,6 +258,22 @@ abstract contract FundingRateApplier is FeePayer {
             }
         }
         return fundingRate.rate;
+    }
+
+    // Constraining the range of funding rates limits the PfC for any dishonest proposer and enhances the
+    // perpetual's security. For example, let's examine the case where the max and min funding rates
+    // are equivalent to +/- 500%/year. This 1000% funding rate range allows a 8.6% profit from corruption for a
+    // proposer who can deter honest proposers for 74 hours:
+    // 1000%/year / 360 days / 24 hours * 74 hours max attack time = ~ 8.6%.
+    // How would attack work? Imagine that the market is very volatile currently and that the "true" funding
+    // rate for the next 74 hours is -500%, but a dishonest proposer successfully proposes a rate of +500%
+    // (after a two hour liveness) and disputes honest proposers for the next 72 hours. This results in a funding
+    // rate error of 1000% for 74 hours, until the DVM can set the funding rate back to its correct value.
+    function _validateFundingRate(FixedPoint.Signed memory rate) internal view {
+        require(
+            rate.isLessThanOrEqual(_getConfig().maxFundingRate) &&
+                rate.isGreaterThanOrEqual(_getConfig().minFundingRate)
+        );
     }
 
     // Fetches a funding rate from the Store, determines the period over which to compute an effective fee,
