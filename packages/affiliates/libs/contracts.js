@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
+
 function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
