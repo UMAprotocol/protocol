@@ -102,7 +102,8 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
     ]);
 
     // Metrics:
-    if (metrics.identifiers.indexOf(identifier) === -1) metrics.identifiers.push(identifier);
+    const uniqueVoteKey = `${identifier}-${requestTime}`;
+    if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
 
     const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
     const val = {
@@ -258,7 +259,8 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
       const requestTime = claim.returnValues.time;
 
       // Metrics.
-      if (metrics.identifiers.indexOf(identifier) === -1) metrics.identifiers.push(identifier);
+      const uniqueVoteKey = `${identifier}-${requestTime}`;
+      if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
 
       const gasUsed = parseInt(transactionReceipt.gasUsed);
       const txnTimestamp = transactionBlock.timestamp;
@@ -483,6 +485,10 @@ async function calculateRebate({
       // Add useful data to output file:
       rebateOutput.countVoters = Object.keys(rebateOutput.shareHolderPayout).length;
       rebateOutput.uniqueIdentifiers = metrics.identifiers;
+      rebateOutput.totalRebateAmount = Object.keys(rebateOutput.shareHolderPayout).reduce(
+        (agg, curr) => agg + rebateOutput.shareHolderPayout[curr],
+        0
+      );
       // Format output and save to file.
       const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));

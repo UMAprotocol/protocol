@@ -439,16 +439,18 @@
   },
   "countVoters": 59,
   "uniqueIdentifiers": [
-    "USDPERL",
-    "Admin 17",
-    "Admin 16",
-    "USDETH",
-    "USDBTC",
-    "Admin 20",
-    "Admin 18",
-    "Admin 19",
-    "Admin 21",
-    "Admin 22",
-    "Admin 23"
-  ]
+    "USDPERL-1604181600",
+    "Admin 17-1603141493",
+    "Admin 16-1602521399",
+    "USDETH-1601457112",
+    "USDETH-1601503200",
+    "USDBTC-1601503200",
+    "Admin 20-1604426844",
+    "Admin 18-1604426273",
+    "Admin 19-1604426534",
+    "Admin 21-1605642015",
+    "Admin 22-1605642070",
+    "Admin 23-1606841089"
+  ],
+  "totalRebateAmount": 286.6662367848736
 }
