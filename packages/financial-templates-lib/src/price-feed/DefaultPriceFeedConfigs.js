@@ -49,6 +49,7 @@ const defaultConfigs = {
     lookback: 7200,
     invertPrice: true,
     minTimeBetweenUpdates: 60,
+    priceFeedDecimals: 8,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },

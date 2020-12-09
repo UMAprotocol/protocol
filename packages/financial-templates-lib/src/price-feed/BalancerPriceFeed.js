@@ -30,6 +30,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
       return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
     });
   }
+
   getHistoricalPrice(time) {
     // We want the block and price equal to or before this time
     const block = this.blockHistory.getClosestBefore(time);
@@ -39,13 +40,20 @@ class BalancerPriceFeed extends PriceFeedInterface {
     }
     return this.priceHistory.get(block.timestamp);
   }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
+
   getCurrentPrice() {
     // current price can be undefined, will throw for any other errors
     return this.priceHistory.currentPrice();
   }
+
+  getPriceFeedDecimals() {
+    return 18;
+  }
+
   async update() {
     this.lastUpdateTime = await this.getTime();
     let blocks = [];

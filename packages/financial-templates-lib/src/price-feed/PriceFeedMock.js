@@ -1,10 +1,12 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
+const { toBN } = require("web3").utils;
 
 // An implementation of PriceFeedInterface that medianizes other price feeds.
 class PriceFeedMock extends PriceFeedInterface {
   // Constructs the MedianizerPriceFeed.
   // priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface. Must be an array of
-  // at least one element.
+  // at least one element. Note that no decimals are included in this price feed. It simply stores the exact input number
+  // provided by teh test suite. Therefore, decimal conversion is expected to occur within the tests themselves.
   constructor(currentPrice, historicalPrice, lastUpdateTime) {
     super();
     this.updateCalled = 0;
@@ -15,7 +17,8 @@ class PriceFeedMock extends PriceFeedInterface {
   }
 
   setCurrentPrice(currentPrice) {
-    this.currentPrice = currentPrice;
+    // allows this to be set to null without throwing.
+    this.currentPrice = currentPrice ? toBN(currentPrice) : currentPrice;
   }
 
   // Store an array of historical prices [{timestamp, price}] so that getHistoricalPrice can return
@@ -26,7 +29,7 @@ class PriceFeedMock extends PriceFeedInterface {
         throw "Invalid historical price => [{timestamp, price}]";
       }
 
-      this.historicalPrices[_price.timestamp] = _price.price;
+      this.historicalPrices[_price.timestamp] = toBN(_price.price);
     });
   }
 

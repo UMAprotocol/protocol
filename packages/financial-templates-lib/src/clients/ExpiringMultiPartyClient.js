@@ -3,7 +3,6 @@
 
 const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@uma/common");
 const Promise = require("bluebird");
-
 class ExpiringMultiPartyClient {
   /**
    * @notice Constructs new ExpiringMultiPartyClient.
@@ -13,7 +12,15 @@ class ExpiringMultiPartyClient {
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress, collateralDecimals = 18, syntheticDecimals = 18) {
+  constructor(
+    logger,
+    empAbi,
+    web3,
+    empAddress,
+    collateralDecimals = 18,
+    syntheticDecimals = 18,
+    priceFeedDecimals = 18
+  ) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -30,6 +37,7 @@ class ExpiringMultiPartyClient {
     this.collateralRequirement = null;
     this.collateralDecimals = collateralDecimals;
     this.syntheticDecimals = syntheticDecimals;
+    this.priceFeedDecimals = priceFeedDecimals;
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
@@ -43,7 +51,11 @@ class ExpiringMultiPartyClient {
     // currently not implemented
     this.convertSynthetic = Convert(syntheticDecimals);
     this.convertCollateral = Convert(collateralDecimals);
-    this.convertCollateralToSynthetic = ConvertDecimals(collateralDecimals, syntheticDecimals, this.web3);
+    this.convertCollateralDecimalsToSyntheticDecimals = ConvertDecimals(
+      collateralDecimals,
+      syntheticDecimals,
+      this.web3
+    );
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -220,19 +232,23 @@ class ExpiringMultiPartyClient {
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   }
+  // The formula for an undercollateralized position is: (numTokens * trv) * collateralRequirement > amountCollateral.
+  // This equation assumes the decimal points across the inputs are normalized to the same basis. However, this wont always
+  // be the case and so we need to consider arbitrary decimals coming into the equation. When considering decimals of
+  // each variable within the as collateral (cD), synthetic (sD), CR (1e18), trv (trvD) this equation becomes:
+  // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD * (10^sD / 10^cD) * 10^18 * 10^trvD
+  // Using this we can normalize the scale across the equation to one basis, irrespective of the input decimals.
   _isUnderCollateralized(numTokens, amountCollateral, trv) {
     const fixedPointAdjustment = this.toBN(this.toWei("1"));
-    // The formula for an undercollateralized position is:
-    // (numTokens * trv) * collateralRequirement > amountCollateral.
-    // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
-    // we need to convert our tokens down to collateral decimals
-    return this.toBN(numTokens)
-      .mul(this.toBN(trv))
-      .mul(this.collateralRequirement)
+    const priceFeedAdjustment = this.toBN(this.toBN("10").pow(this.toBN(this.priceFeedDecimals.toString())));
+
+    return this.toBN(numTokens) // scaled by 10^sD
+      .mul(this.toBN(trv)) // scaled by 10^trvD
+      .mul(this.collateralRequirement) // scaled by 10^18
       .gt(
-        this.convertCollateralToSynthetic(amountCollateral)
-          .mul(fixedPointAdjustment)
-          .mul(fixedPointAdjustment)
+        this.convertCollateralDecimalsToSyntheticDecimals(amountCollateral) // converts arbitrary collateral decimal scale to synthetic decimal scale.
+          .mul(fixedPointAdjustment) // 10^18
+          .mul(priceFeedAdjustment) // 10^trvD
       );
   }
 
