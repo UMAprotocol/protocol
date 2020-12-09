@@ -15,7 +15,7 @@ import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 // TODO: point this at an interface instead.
-import "../../oracle/implementation/OptimisticOracle.sol";
+import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
 import "./FeePayer.sol";
@@ -162,7 +162,7 @@ abstract contract FundingRateApplier is FeePayer {
         // Set the proposal time in order to allow this contract to track this request.
         fundingRate.proposalTime = timestamp;
 
-        OptimisticOracle optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
@@ -205,8 +205,8 @@ abstract contract FundingRateApplier is FeePayer {
         return rawTokenDebt.mul(fundingRate.cumulativeMultiplier);
     }
 
-    function _getOptimisticOracle() internal view returns (OptimisticOracle) {
-        return OptimisticOracle(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
     function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
@@ -217,14 +217,14 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 proposalTime = fundingRate.proposalTime;
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
-            OptimisticOracle optimisticOracle = _getOptimisticOracle();
+            OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
             bytes memory ancillaryData = _getAncillaryData();
 
             // Try to get the price from the optimistic oracle.
             try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, figure out the type of request.
-                OptimisticOracle.Request memory request =
+                OptimisticOracleInterface.Request memory request =
                     optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                 uint256 lastUpdateTime = fundingRate.updateTime;
 
