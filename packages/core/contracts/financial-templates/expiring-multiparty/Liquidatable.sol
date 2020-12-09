@@ -244,7 +244,7 @@ contract Liquidatable is PricelessPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
-        require(tokensLiquidated.isGreaterThan(0), "Liquidating 0 tokens");
+        require(tokensLiquidated.isGreaterThan(0));
 
         // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
         // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).

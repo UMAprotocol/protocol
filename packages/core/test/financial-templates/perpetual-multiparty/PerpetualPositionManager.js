@@ -914,6 +914,34 @@ contract("PerpetualPositionManager", function(accounts) {
     truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
   });
 
+  it("Gulps non-PfC collateral into PfC", async function() {
+    // Set up position.
+    await collateral.approve(positionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await positionManager.create({ rawValue: toWei("3") }, { rawValue: toWei("100000") }, { from: other });
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Verify the current PfC:
+    assert.equal((await positionManager.pfc()).toString(), toWei("4"));
+
+    // Send collateral to the contract so that its collateral balance is greater than its PfC.
+    await collateral.mint(positionManager.address, toWei("0.5"), { from: collateralOwner });
+
+    // Gulp and check that (1) the contract's PfC adjusted and (2) each sponsor's locked collateral increased.
+    // Ratio of total-collateral / PfC = (4.5/4) = 1.125
+    // New fee multiplier = 1 * 1.125 = 1.125
+    // Sponsor's collateral should now be multiplied by 1.125
+    await positionManager.gulp();
+    assert.equal((await positionManager.pfc()).toString(), toWei("4.5"));
+    // Gulping twice does nothing.
+    await positionManager.gulp();
+    assert.equal((await positionManager.getCollateral(other)).toString(), toWei("3.375"));
+    assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("1.125"));
+    assert.equal((await collateral.balanceOf(positionManager.address)).toString(), toWei("4.5"));
+  });
+
   it("Emergency shutdown: lifecycle", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
