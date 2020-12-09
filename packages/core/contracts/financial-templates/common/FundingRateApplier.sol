@@ -248,9 +248,15 @@ abstract contract FundingRateApplier is FeePayer {
                 // Set proposal time to 0 since this proposal has now been resolved.
                 fundingRate.proposalTime = 0;
             } catch {
-                // Stop tracking if in dispute to allow other proposals to come in.
+                // Stop tracking and allow other proposals to come in if:
+                // - The requester address is empty, indicating that the Oracle does not know about
+                //   this funding rate request. This is possible if the Oracle is replaced while the price request
+                //   is still pending.
+                // - The request has been disputed.
                 if (
                     optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData).disputer !=
+                    address(0) ||
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData).proposer ==
                     address(0)
                 ) {
                     fundingRate.proposalTime = 0;
