@@ -135,7 +135,7 @@ contract("index.js", function(accounts) {
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      priceFeedConfig: { ...defaultPriceFeedConfig } // add a non-standard price feed decimal
+      priceFeedConfig: defaultPriceFeedConfig
     });
 
     // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
