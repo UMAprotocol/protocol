@@ -1733,6 +1733,36 @@ contract("PerpetualPositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.redeem({ rawValue: "16" }, { from: sponsor })));
   });
 
+  it("Can withdraw excess collateral", async function() {
+    // Attempt to redeem a position smaller s.t. the resulting position is less than 5 wei tokens (the min sponsor
+    // position size)
+    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: sponsor });
+
+    await positionManager.create({ rawValue: "40" }, { rawValue: "20" }, { from: sponsor });
+
+    // Transfer extra collateral in.
+    await collateral.transfer(positionManager.address, web3.utils.toWei("10"), { from: sponsor });
+    let excessCollateral = await positionManager.trimExcess.call(collateral.address);
+    await positionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+    assert.equal(excessCollateral.toString(), web3.utils.toWei("10"));
+    assert.equal(beneficiaryCollateralBalance.toString(), web3.utils.toWei("10"));
+    await collateral.transfer(sponsor, web3.utils.toWei("10"), { from: beneficiary });
+
+    // Transfer extra tokens in.
+    await tokenCurrency.transfer(positionManager.address, "10", { from: sponsor });
+    let excessTokens = await positionManager.trimExcess.call(tokenCurrency.address);
+    await positionManager.trimExcess(tokenCurrency.address);
+    let beneficiaryTokenBalance = await tokenCurrency.balanceOf(beneficiary);
+    assert.equal(excessTokens.toString(), "10");
+    assert.equal(beneficiaryTokenBalance.toString(), "10");
+
+    // Redeem still succeeds.
+    await tokenCurrency.transfer(sponsor, "10", { from: beneficiary });
+    await positionManager.redeem({ rawValue: "20" }, { from: sponsor });
+  });
+
   it("Non-standard ERC20 delimitation", async function() {
     // To test non-standard ERC20 token delimitation a new ERC20 token is created which has 6 decimal points of precision.
     // A new priceless position manager is then created and and set to use this token as collateral. To generate values
