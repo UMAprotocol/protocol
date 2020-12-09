@@ -112,11 +112,11 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Detects price feed decimals from collateral decimals", async function() {
+  it("Detects price feed, collateral and synthetic decimals", async function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
     collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
@@ -135,11 +135,13 @@ contract("index.js", function(accounts) {
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
+      priceFeedConfig: { ...defaultPriceFeedConfig } // add a non-standard price feed decimal
     });
 
-    // First log should include # of decimals
-    assert.isTrue(spyLogIncludes(spy, 0, "8"));
+    // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":8'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
 
   it("EMP is expired, liquidator exits early without throwing", async function() {
@@ -165,8 +167,7 @@ contract("index.js", function(accounts) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
 
-    // There should be 2 logs that communicates that contract has expired,
-    // and no logs about approvals.
+    // There should be 2 logs that communicates that contract has expired, and no logs about approvals.
     assert.equal(spy.getCalls().length, 2);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
     assert.isTrue(spyLogIncludes(spy, 1, "expired"));

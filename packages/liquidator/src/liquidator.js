@@ -239,6 +239,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Detected a liquidatable position",
         scaledPrice: scaledPrice.toString(),
+        maxCollateralPerToken: maxCollateralPerToken.toString(),
         position: JSON.stringify(position)
       });
 
@@ -350,6 +351,7 @@ class Liquidator {
           delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
         });
       } catch (error) {
+        console.log("error", error);
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
