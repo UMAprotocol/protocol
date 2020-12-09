@@ -125,6 +125,14 @@ abstract contract FeePayerPoolParty is AdministrateeInterface, Testable, Lockabl
         return _pfc();
     }
 
+    /**
+     * @notice Gets the collateral currency of the derivative
+     * @return Collateral currency
+     */
+    function collateralCurrency() public view nonReentrantView() returns (IERC20) {
+        return feePayerData.collateralCurrency;
+    }
+
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/

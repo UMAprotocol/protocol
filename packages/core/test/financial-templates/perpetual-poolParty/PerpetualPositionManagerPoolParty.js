@@ -179,8 +179,8 @@ contract("PerpetualPositionManagerPoolParty", function(accounts) {
   it("Correct deployment and variable assignment", async function() {
     // PricelessPosition variables
     assert.equal((await positionManager.positionManagerData.call()).withdrawalLiveness, withdrawalLiveness);
-    assert.equal((await positionManager.feePayerData.call()).collateralCurrency, collateral.address);
-    assert.equal((await positionManager.positionManagerData.call()).tokenCurrency, tokenCurrency.address);
+    assert.equal(await positionManager.collateralCurrency.call(), collateral.address);
+    assert.equal(await positionManager.tokenCurrency.call(), tokenCurrency.address);
     assert.equal((await positionManager.feePayerData.call()).finder, finder.address);
     assert.equal(
       hexToUtf8((await positionManager.positionManagerData.call()).priceIdentifier),
@@ -934,7 +934,7 @@ contract("PerpetualPositionManagerPoolParty", function(accounts) {
     // Pool can initiate emergency shutdown.
     const emergencyShutdownTx = await positionManager.emergencyShutdown({ from: sponsor });
     assert.equal((await positionManager.positionManagerData.call()).emergencyShutdownTimestamp, shutdownTimestamp);
-    assert.equal((await positionManager.positionManagerData.call()).emergencyShutdownPrice.toString(), 0);
+    assert.equal((await positionManager.emergencyShutdownPrice.call()).toString(), 0);
 
     // Check EmergencyShutdown event
     truffleAssert.eventEmitted(emergencyShutdownTx, "EmergencyShutdown", ev => {
@@ -980,7 +980,7 @@ contract("PerpetualPositionManagerPoolParty", function(accounts) {
     assert(await didContractThrow(positionManager.settleEmergencyShutdown({ from: tokenHolder })));
     await tokenCurrency.addBurner(positionManager.address);
     await positionManager.settleEmergencyShutdown({ from: tokenHolder });
-    assert.equal((await positionManager.positionManagerData.call()).emergencyShutdownPrice.toString(), toWei("1.1"));
+    assert.equal((await positionManager.emergencyShutdownPrice.call()).toString(), toWei("1.1"));
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     const expectedTokenHolderFinalCollateral = toWei("55");
@@ -1499,7 +1499,7 @@ contract("PerpetualPositionManagerPoolParty", function(accounts) {
     newPositionManagerData.tokenAddress = nonStandardToken.address;
 
     let custompositionManager = await PerpetualPositionManagerPoolParty.new(newPositionManagerData, roles);
-    tokenCurrency = await SyntheticToken.at((await custompositionManager.positionManagerData.call()).tokenCurrency);
+    tokenCurrency = await SyntheticToken.at(await custompositionManager.tokenCurrency.call());
     await tokenCurrency.addMinter(custompositionManager.address);
     await tokenCurrency.addBurner(custompositionManager.address);
 

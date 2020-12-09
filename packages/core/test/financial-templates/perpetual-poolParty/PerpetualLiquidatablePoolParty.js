@@ -1410,9 +1410,7 @@ contract("PerpetualLiquidatablePoolParty", function(accounts) {
       await syntheticToken.addMinter(edgeLiquidationContract.address);
       await syntheticToken.addBurner(edgeLiquidationContract.address);
       // Get newly created synthetic token
-      const edgeSyntheticToken = await Token.at(
-        (await edgeLiquidationContract.positionManagerData.call()).tokenCurrency
-      );
+      const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency.call());
       // Reset start time signifying the beginning of the first liquidation
       await edgeLiquidationContract.setCurrentTime(startTime);
       // Mint collateral to sponsor

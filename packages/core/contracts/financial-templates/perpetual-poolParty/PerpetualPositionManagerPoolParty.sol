@@ -571,6 +571,14 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     }
 
     /**
+     * @notice Get emergency shutdown price
+     * @return Synthetic token
+     */
+    function tokenCurrency() external view nonReentrantView() returns (IERC20) {
+        return positionManagerData.tokenCurrency;
+    }
+
+    /**
      * @notice Accessor method for the total collateral stored within the PerpetualPositionManager.
      * @return totalCollateral amount of all collateral within the position manager.
      */
@@ -584,6 +592,20 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
             globalPositionData.rawTotalPositionCollateral.getFeeAdjustedCollateral(
                 feePayerData.cumulativeFeeMultiplier
             );
+    }
+
+    /**
+     * @notice Get the price of synthetic token set by DVM after emergencyShutdown call
+     * @return Price of synthetic token
+     */
+    function emergencyShutdownPrice()
+        external
+        view
+        isEmergencyShutdown()
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory)
+    {
+        return positionManagerData.emergencyShutdownPrice;
     }
 
     /**
