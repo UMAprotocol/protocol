@@ -29,6 +29,7 @@ contract("PerpetualLiquidatable", function(accounts) {
   const liquidator = accounts[2];
   const disputer = accounts[3];
   const proposer = accounts[4];
+  const beneficiary = accounts[5];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -164,6 +165,7 @@ contract("PerpetualLiquidatable", function(accounts) {
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
       configStoreAddress: configStore.address,
+      excessTokenBeneficiary: beneficiary,
       tokenScaling: { rawValue: toWei("1") }
     };
 
@@ -225,6 +227,29 @@ contract("PerpetualLiquidatable", function(accounts) {
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
+  });
+
+  const expectNoExcessCollateralToTrim = async () => {
+    let collateralTrimAmount = await liquidationContract.trimExcess.call(collateralToken.address);
+    await liquidationContract.trimExcess(collateralToken.address);
+    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
+
+    assert.equal(collateralTrimAmount.toString(), "0");
+    assert.equal(beneficiaryCollateralBalance.toString(), "0");
+  };
+
+  const expectAndDrainExcessCollateral = async () => {
+    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
+    await liquidationContract.trimExcess(collateralToken.address);
+    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
+    collateralToken.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
+
+    // Assert that nonzero collateral was drained.
+    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
+  };
+
+  afterEach(async () => {
+    await expectNoExcessCollateralToTrim();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -2059,6 +2084,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "29");
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "28");
       assert.equal((await liquidationContract.rawTotalPositionCollateral()).toString(), "0");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
     it("Liquidation object is set up properly", async () => {
       let liquidationData = await liquidationContract.liquidations(sponsor, 0);
@@ -2076,6 +2104,9 @@ contract("PerpetualLiquidatable", function(accounts) {
       // locked collateral.
       // - rawUnitCollateral = (1 / 0.966666666666666666) = 1.034482758620689655
       assert.equal(fromWei(liquidationData.rawUnitCollateral.toString()), "1.034482758620689655");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
     it("withdrawLiquidation() returns the same amount of collateral that liquidationCollateral is decreased by", async () => {
       // So, the available collateral for rewards should be (lockedCollateral * feeAttenuation),
@@ -2104,6 +2135,9 @@ contract("PerpetualLiquidatable", function(accounts) {
 
       // rawLiquidationCollateral should also have been decreased by 27, from 28 to 1
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "1");
+
+      // Check that the excess collateral can be drained.
+      await expectAndDrainExcessCollateral();
     });
   });
 });

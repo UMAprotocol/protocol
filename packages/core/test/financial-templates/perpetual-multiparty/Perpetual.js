@@ -48,6 +48,7 @@ contract("Perpetual", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       configStoreAddress: configStore.address,
+      excessTokenBeneficiary: accounts[0],
       tokenScaling: { rawValue: toWei("1") }
     };
 

@@ -27,6 +27,7 @@ contract("PerpetualPositionManager", function(accounts) {
   const other = accounts[3];
   const collateralOwner = accounts[4];
   const proposer = accounts[5];
+  const beneficiary = accounts[6];
 
   // Contracts
   let collateral;
@@ -72,6 +73,29 @@ contract("PerpetualPositionManager", function(accounts) {
     assert.equal((await positionManager.totalTokensOutstanding()).toString(), expectedTotalTokens.toString());
     assert.equal(await collateral.balanceOf(positionManager.address), expectedTotalCollateral.toString());
   };
+
+  const expectNoExcessCollateralToTrim = async () => {
+    let collateralTrimAmount = await positionManager.trimExcess.call(collateral.address);
+    await positionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+
+    assert.equal(collateralTrimAmount.toString(), "0");
+    assert.equal(beneficiaryCollateralBalance.toString(), "0");
+  };
+
+  const expectAndDrainExcessCollateral = async () => {
+    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
+    await positionManager.trimExcess(collateral.address);
+    let beneficiaryCollateralBalance = await collateral.balanceOf(beneficiary);
+    collateral.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
+
+    // Assert that nonzero collateral was drained.
+    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
+  };
+
+  afterEach(async () => {
+    await expectNoExcessCollateralToTrim();
+  });
 
   before(async function() {
     store = await Store.deployed();
@@ -143,6 +167,7 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
+      beneficiary, // _excessTokenBeneficiary
       timer.address, // _timerAddress
       { from: contractDeployer }
     );
@@ -233,6 +258,7 @@ contract("PerpetualPositionManager", function(accounts) {
           { rawValue: minSponsorTokens }, // _minSponsorTokens
           configStore.address, // _configStoreAddress
           { rawValue: toWei("1") }, // _tokenScaling
+          beneficiary, // _excessTokenBeneficiary
           timer.address, // _timerAddress
           { from: contractDeployer }
         )
@@ -260,6 +286,7 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
+      beneficiary, // _excessTokenBeneficiary
       timer.address, // _timerAddress
       { from: contractDeployer }
     );
@@ -1316,6 +1343,9 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(positionManager.address)).toString(), "29");
       assert.equal((await positionManager.totalPositionCollateral()).toString(), "28");
       assert.equal((await positionManager.rawTotalPositionCollateral()).toString(), "30");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("settleEmergencyShutdown() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // Emergency shutdown the contract
@@ -1406,6 +1436,9 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
       assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("withdraw() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to withdraw 12 collateral.
@@ -1427,6 +1460,9 @@ contract("PerpetualPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(positionManager.address)).toString(), "18");
       assert.equal((await positionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await positionManager.rawTotalPositionCollateral()).toString(), "18");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
     it("redeem() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // The sponsor requests to redeem 9 tokens. (9/20 = 0.45) tokens should result in a proportional redemption of the totalPositionCollateral,
@@ -1448,6 +1484,9 @@ contract("PerpetualPositionManager", function(accounts) {
 
       // Expected number of synthetic tokens are burned.
       assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), "11");
+
+      // Drain excess collateral left because of precesion loss.
+      await expectAndDrainExcessCollateral();
     });
   });
 
@@ -1714,6 +1753,7 @@ contract("PerpetualPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       configStore.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
+      beneficiary, // _excessTokenBeneficiary
       timer.address, // _timerAddress
       { from: contractDeployer }
     );

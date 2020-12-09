@@ -74,6 +74,9 @@ contract PerpetualPositionManager is FundingRateApplier {
     // Expiry price pulled from the DVM in the case of an emergency shutdown.
     FixedPoint.Unsigned public emergencyShutdownPrice;
 
+    // The excessTokenBeneficiary of any excess tokens added to the contract.
+    address public excessTokenBeneficiary;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -134,6 +137,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
+     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be sent.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      */
     constructor(
@@ -146,6 +150,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
+        address _excessTokenBeneficiary,
         address _timerAddress
     )
         public
@@ -164,6 +169,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
+        excessTokenBeneficiary = _excessTokenBeneficiary;
     }
 
     /****************************************
@@ -525,6 +531,25 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     /**
+     * @notice Drains any excess balance of the provided ERC20 token to a pre-selected beneficiary.
+     * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
+     * @param token address of the ERC20 token whose excess balance should be drained.
+     */
+    function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
+
+        if (address(token) == address(collateralCurrency)) {
+            // If it is the collateral currency, send only the amount that the contract is not tracking.
+            // Note: this could be due to rounding error or balance-changing tokens, like aTokens.
+            amount = balance.sub(_pfc());
+        } else {
+            // If it's not the collateral currency, send the entire balance.
+            amount = balance;
+        }
+        token.safeTransfer(excessTokenBeneficiary, amount.rawValue);
+    }
+
+    /**
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
@@ -715,10 +740,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(
-            _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
-            "Position has no collateral"
-        );
+        require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 
     function _notEmergencyShutdown() internal view {

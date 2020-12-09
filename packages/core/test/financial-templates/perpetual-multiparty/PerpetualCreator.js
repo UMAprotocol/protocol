@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
+const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
@@ -15,6 +15,7 @@ const Perpetual = artifacts.require("Perpetual");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ConfigStore = artifacts.require("ConfigStore");
+const Store = artifacts.require("Store");
 
 contract("PerpetualCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -24,6 +25,7 @@ contract("PerpetualCreator", function(accounts) {
   let perpetualCreator;
   let registry;
   let collateralTokenWhitelist;
+  let store;
   // Re-used variables
   let constructorParams;
 
@@ -45,6 +47,8 @@ contract("PerpetualCreator", function(accounts) {
     collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
+    store = await Store.deployed();
+
     constructorParams = {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
@@ -58,6 +62,7 @@ contract("PerpetualCreator", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
+      excessTokenBeneficiary: store.address,
       tokenScaling: { rawValue: toWei("1") }
     };
 
@@ -152,6 +157,18 @@ contract("PerpetualCreator", function(accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Beneficiary cannot be 0x0", async function() {
+    // Change only the beneficiary address.
+    constructorParams.excessTokenBeneficiary = ZERO_ADDRESS;
+    assert(
+      await didContractThrow(
+        perpetualCreator.createPerpetual(constructorParams, {
           from: contractCreator
         })
       )

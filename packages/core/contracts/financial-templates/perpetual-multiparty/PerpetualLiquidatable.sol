@@ -61,6 +61,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         address tokenAddress;
         address finderAddress;
         address timerAddress;
+        address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         FixedPoint.Unsigned minSponsorTokens;
@@ -180,14 +181,12 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.minSponsorTokens,
             params.configStoreAddress,
             params.tokenScaling,
+            params.excessTokenBeneficiary,
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
-        require(
-            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Rewards are more than 100%"
-        );
+        require(params.collateralRequirement.isGreaterThan(1));
+        require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
@@ -256,14 +255,11 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
             // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
-            require(
-                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is more than max liq. price"
-            );
             // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
             require(
-                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is less than min liq. price"
+                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal) &&
+                    minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
+                "CR outside max/min liq. price"
             );
         }
 
@@ -571,8 +567,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Revert if the caller is attempting to access an invalid liquidation
         // (one that has never been created or one has never been initialized).
         require(
-            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized,
-            "Invalid liquidation ID"
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
         );
         return liquidationArray[liquidationId];
     }
@@ -586,10 +581,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute),
-            "Liquidation not disputable"
-        );
+        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
     }
 
     function _withdrawable(uint256 liquidationId, address sponsor) internal view {
@@ -599,8 +591,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Must be disputed or the liquidation has passed expiry.
         require(
             (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
-            "Liquidation not withdrawable"
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
         );
     }
 }

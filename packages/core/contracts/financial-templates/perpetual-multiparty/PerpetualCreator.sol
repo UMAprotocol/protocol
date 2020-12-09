@@ -33,6 +33,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
     // Immutable params for perpetual contract.
     struct Params {
         address collateralAddress;
+        address excessTokenBeneficiary;
         bytes32 priceFeedIdentifier;
         bytes32 fundingRateIdentifier;
         string syntheticName;
@@ -121,6 +122,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // Enforce configuration constraints.
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
+        require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
         _requireWhitelistedCollateral(params.collateralAddress);
 
         // We don't want perpetual deployers to be able to intentionally or unintentionally set
@@ -153,6 +155,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
         constructorParams.tokenScaling = params.tokenScaling;
+        constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
