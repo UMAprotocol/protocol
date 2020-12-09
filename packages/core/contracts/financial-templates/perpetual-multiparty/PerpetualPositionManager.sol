@@ -184,7 +184,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         fees()
         nonReentrant()
     {
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(sponsor);
 
         // Increase the position and global collateral balance by collateral amount.
@@ -223,7 +223,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(collateralAmount.isGreaterThan(0));
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
@@ -252,8 +252,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             collateralAmount.isGreaterThan(0) &&
-                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral)),
-            "Invalid collateral amount"
+                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral))
         );
 
         // Update the position object for the user.
@@ -385,7 +384,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding), "Invalid token amount");
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding));
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed =
