@@ -1805,6 +1805,34 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
   });
 
+  it("Gulps non-PfC collateral into PfC", async function() {
+    // Set up position.
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await pricelessPositionManager.create({ rawValue: toWei("3") }, { rawValue: toWei("100000") }, { from: other });
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Verify the current PfC:
+    assert.equal((await pricelessPositionManager.pfc()).toString(), toWei("4"));
+
+    // Send collateral to the contract so that its collateral balance is greater than its PfC.
+    await collateral.mint(pricelessPositionManager.address, toWei("0.5"), { from: collateralOwner });
+
+    // Gulp and check that (1) the contract's PfC adjusted and (2) each sponsor's locked collateral increased.
+    // Ratio of total-collateral / PfC = (4.5/4) = 1.125
+    // New fee multiplier = 1 * 1.125 = 1.125
+    // Sponsor's collateral should now be multiplied by 1.125
+    await pricelessPositionManager.gulp();
+    assert.equal((await pricelessPositionManager.pfc()).toString(), toWei("4.5"));
+    // Gulping twice does nothing.
+    await pricelessPositionManager.gulp();
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), toWei("3.375"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("1.125"));
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), toWei("4.5"));
+  });
+
   it("Final fees", async function() {
     // Create a new position
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
