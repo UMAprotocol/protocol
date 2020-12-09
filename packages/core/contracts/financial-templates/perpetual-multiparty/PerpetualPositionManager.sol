@@ -715,10 +715,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(
-            _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
-            "Position has no collateral"
-        );
+        require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 
     function _notEmergencyShutdown() internal view {
