@@ -13,8 +13,6 @@ import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
-
-// TODO: point this at an interface instead.
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
@@ -215,15 +213,23 @@ abstract contract FundingRateApplier is FeePayer {
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
         uint256 proposalTime = fundingRate.proposalTime;
+
+        // If there is no pending proposal then return the current funding rate, otherwise
+        // check to see if we can update the funding rate.
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
             OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
             bytes memory ancillaryData = _getAncillaryData();
 
-            // Try to get the price from the optimistic oracle.
+            // Fetch the price request from the Oracle which we will interact with regardless of the return
+            // value of getPrice.
             OptimisticOracleInterface.Request memory request =
                 optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
+
+            // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
+            // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
+            // "forget" the pending proposal and allow new proposals to update the funding rate.
             try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, determine if the funding rate state needs to be updated.
                 // If the request is more recent than the last update then we should update it.
