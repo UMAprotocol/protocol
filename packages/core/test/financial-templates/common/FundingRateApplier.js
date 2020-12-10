@@ -208,16 +208,7 @@ contract("FundingRateApplier", function(accounts) {
     assert.equal((await fundingRateApplier.fundingRate()).rate.rawValue.toString(), "0");
 
     // A NewFundingRateMultiplier is emitted.
-    truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
-      return (
-        ev.newMultiplier == toWei("1") &&
-        ev.lastApplicationTime == startTime.toString() &&
-        ev.applicationTime == (startTime + 1000).toString() &&
-        ev.paymentPeriod == "1000" &&
-        ev.latestFundingRate == "0" &&
-        ev.periodRate == "0"
-      );
-    });
+    truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
   });
 
   it("Funding rate proposal must be within limits", async function() {
