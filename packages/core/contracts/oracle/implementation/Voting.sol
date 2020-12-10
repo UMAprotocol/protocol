@@ -259,7 +259,7 @@ contract Voting is
         // As of December 2020, the current Ethereum gas limit is 12.5 million. This function's gas primarily
         // comes from computing a Keccak-256 hash in _encodePriceRequest and writing a new PriceRequest to
         // storage. We have empirically determined an ancillary data limit of 8192 bytes that keeps this function
-        // well within the gas limit. To learn more about the gas limit and EVM opcode costs go here:
+        // well within the gas limit at ~8 million gas. To learn more about the gas limit and EVM opcode costs go here:
         // - https://etherscan.io/chart/gaslimit
         // - https://github.com/djrtwo/evm-opcode-gas-costs
         require(ancillaryData.length <= 8192, "Invalid ancillary data");
