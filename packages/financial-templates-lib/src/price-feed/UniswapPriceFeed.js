@@ -157,7 +157,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     }
 
     if (timeSum === 0) {
-      return null;
+      return this.toBN("0");
     }
 
     return priceSum.divn(timeSum);
