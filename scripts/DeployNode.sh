@@ -24,12 +24,17 @@ gcloud compute instances create-with-container geth-node \
     --container-mount-disk=mount-path=/node-disk \
     --machine-type $MACHINE_TYPE \
     --container-privileged \
-    --container-arg="--rpc" \
-    --container-arg="--rpcaddr" \
+    --container-arg="--http" \
+    --container-arg="--http.addr" \
     --container-arg="0.0.0.0" \
+    --container-arg="--http.port" \
+    --container-arg="3565" \
     --container-arg="--ws" \
-    --container-arg="--wsaddr" \
+    --container-arg="--ws.addr" \
     --container-arg="0.0.0.0" \
+    --container-arg="--ws.port" \
+    --container-arg="3566" \
     --container-arg="--ipcdisable" \
     --container-arg="--datadir" \
-    --container-arg="/node-disk/ethereum"
+    --container-arg="/node-disk/ethereum" \
+    --tags="http-server"
