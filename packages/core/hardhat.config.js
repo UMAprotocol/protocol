@@ -1,10 +1,26 @@
+const fs = require("fs");
+const path = require("path");
 const chalkPipe = require("chalk-pipe");
 const { task } = require("hardhat/config");
+
+// Etherscan verification stuff
+const { ethers } = require("ethers");
+const { NomicLabsBuidlerPluginError, readArtifact } = require("@nomiclabs/hardhat/plugins");
+const { TASK_COMPILE, TASK_COMPILE_GET_COMPILER_INPUT } = require("@nomiclabs/hardhat/builtin-tasks/task-names");
+const {
+  getVerificationStatus,
+  verifyContract
+} = require("@nomiclabs/hardhat-etherscan/dist/etherscan/EtherscanService");
+const { getDefaultEtherscanConfig } = require("@nomiclabs/hardhat-etherscan/dist/config");
+const { getLongVersion } = require("@nomiclabs/hardhat-etherscan/dist/solc/SolcVersions");
 
 require("solidity-coverage");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
+
+// Solc version defined here so etherscan-verification has access to it
+const solcVersion = "0.6.12";
 
 task("test")
   .addFlag("debug", "Compile without optimizer")
@@ -181,7 +197,7 @@ task("etherscan-verification", "Verifies contract on etherscan")
 
 module.exports = {
   solidity: {
-    version: "0.6.12",
+    version: solcVersion,
     settings: {
       optimizer: {
         enabled: true,

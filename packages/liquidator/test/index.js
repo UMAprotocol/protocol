@@ -19,7 +19,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
 
-contract("index.js", function (accounts) {
+contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
   const sponsorUndercollateralized = accounts[1];
   const sponsorOvercollateralized = accounts[2];

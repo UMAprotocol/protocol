@@ -117,7 +117,6 @@ contract("Liquidator.js", function(accounts) {
         });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
-
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", tokenConfig.collateralDecimals);
 
