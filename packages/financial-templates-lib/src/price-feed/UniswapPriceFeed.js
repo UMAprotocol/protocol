@@ -81,7 +81,12 @@ class UniswapPriceFeed extends PriceFeedInterface {
     });
 
     // Search backwards through the array and grab block timestamps for everything in our lookback window.
-    const currentTime = this.getTime();
+    // TODO: this feed SHOULD use the this.getTime() method. However, this is incompatible with hardhat which advances
+    // For now we will simply pull the most recent block's time as the current time and to work around this for now.
+    // This should be refactored at some point in the future.
+    const currentTime = (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp;
+    // const currentTime = this.getTime();
+
     const lookbackWindowStart = currentTime - (this.twapLength + this.historicalLookback);
     let i = events.length;
     while (i !== 0) {
@@ -157,7 +162,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     }
 
     if (timeSum === 0) {
-      return this.toBN("0");
+      return null;
     }
 
     return priceSum.divn(timeSum);
