@@ -66,14 +66,7 @@ abstract contract FundingRateApplier is FeePayer {
      *                EVENTS                *
      ****************************************/
 
-    event NewFundingRateMultiplier(
-        uint256 indexed newMultiplier,
-        uint256 lastApplicationTime,
-        uint256 applicationTime,
-        uint256 indexed paymentPeriod,
-        int256 indexed latestFundingRate,
-        int256 periodRate
-    );
+    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime);
 
     /****************************************
      *              MODIFIERS               *
@@ -248,6 +241,8 @@ abstract contract FundingRateApplier is FeePayer {
                             collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                         }
                     }
+
+                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime);
                 }
 
                 // Set proposal time to 0 since this proposal has now been resolved.
@@ -296,22 +291,10 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 
-        FixedPoint.Signed memory _latestFundingRatePerSecond = _getLatestFundingRate();
-
-        FixedPoint.Signed memory periodRate;
-        (fundingRate.cumulativeMultiplier, periodRate) = _calculateEffectiveFundingRate(
+        fundingRate.cumulativeMultiplier = _calculateEffectiveFundingRate(
             paymentPeriod,
             _getLatestFundingRate(),
             fundingRate.cumulativeMultiplier
-        );
-
-        emit NewFundingRateMultiplier(
-            fundingRate.cumulativeMultiplier.rawValue,
-            fundingRate.applicationTime,
-            currentTime,
-            paymentPeriod,
-            _latestFundingRatePerSecond.rawValue,
-            periodRate.rawValue
         );
 
         fundingRate.applicationTime = currentTime;
@@ -321,11 +304,7 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 paymentPeriodSeconds,
         FixedPoint.Signed memory fundingRatePerSecond,
         FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
-    )
-        internal
-        pure
-        returns (FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier, FixedPoint.Signed memory periodRate)
-    {
+    ) internal pure returns (FixedPoint.Unsigned memory newCumulativeFundingRateMultiplier) {
         // Note: this method uses named return variables to save a little bytecode.
 
         // The overall formula that this function is performing:
@@ -334,7 +313,7 @@ abstract contract FundingRateApplier is FeePayer {
         FixedPoint.Signed memory ONE = FixedPoint.fromUnscaledInt(1);
 
         // Multiply the per-second rate over the number of seconds that have elapsed to get the period rate.
-        periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
+        FixedPoint.Signed memory periodRate = fundingRatePerSecond.mul(SafeCast.toInt256(paymentPeriodSeconds));
 
         // Add one to create the multiplier to scale the existing fee multiplier.
         FixedPoint.Signed memory signedPeriodMultiplier = ONE.add(periodRate);
