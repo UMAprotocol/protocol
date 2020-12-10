@@ -51,6 +51,7 @@ contract("Liquidator.js", function(accounts) {
       const contractCreator = accounts[4];
       const liquidityProvider = accounts[5];
 
+      let store;
       let finder;
       let collateralToken;
       let emp;
@@ -96,20 +97,26 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.mint(liquidatorBot, convert("100000"), { from: contractCreator });
 
         // Create identifier whitelist and register the price tracking ticker with it.
-        const identifierWhitelist = await IdentifierWhitelist.deployed();
+        const identifierWhitelist = await IdentifierWhitelist.new();
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
+
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+        await finder.changeImplementationAddress(
+          web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
       });
 
       beforeEach(async function() {
-        // Create a mockOracle and finder. Register the mockMoracle with the finder.
-        finder = await Finder.deployed();
-        mockOracle = await MockOracle.new(finder.address, Timer.address, {
+        mockOracle = await MockOracle.new(finder.address, timer.address, {
           from: contractCreator
         });
-        const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
-        await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-        const store = await Store.deployed();
-        timer = await Timer.deployed();
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", tokenConfig.collateralDecimals);
@@ -140,15 +147,23 @@ contract("Liquidator.js", function(accounts) {
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor1 });
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor2 });
         await collateralToken.approve(emp.address, convert("10000000"), { from: sponsor3 });
-        await collateralToken.approve(emp.address, convert("100000000"), { from: liquidatorBot });
-        await collateralToken.approve(emp.address, convert("100000000"), { from: liquidityProvider });
+        await collateralToken.approve(emp.address, convert("100000000"), {
+          from: liquidatorBot
+        });
+        await collateralToken.approve(emp.address, convert("100000000"), {
+          from: liquidityProvider
+        });
 
         syntheticToken = await Token.at(await emp.tokenCurrency());
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
-        await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
-        await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidityProvider });
+        await syntheticToken.approve(emp.address, toWei("100000000"), {
+          from: liquidatorBot
+        });
+        await syntheticToken.approve(emp.address, toWei("100000000"), {
+          from: liquidityProvider
+        });
 
         spy = sinon.spy();
 

@@ -19,7 +19,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
 
-contract("index.js", function(accounts) {
+contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
   const sponsorUndercollateralized = accounts[1];
   const sponsorOvercollateralized = accounts[2];
@@ -49,18 +49,25 @@ contract("index.js", function(accounts) {
   before(async function() {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
-    // Create identifier whitelist and register the price tracking ticker with it.
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+    finder = await Finder.new();
 
-    store = await Store.deployed();
-    timer = await Timer.deployed();
-    finder = await Finder.deployed();
+    // Create identifier whitelist and register the price tracking ticker with it.
+    const identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+    await finder.changeImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+      identifierWhitelist.address
+    );
+
+    timer = await Timer.new();
+
     mockOracle = await MockOracle.new(finder.address, timer.address, {
       from: contractCreator
     });
-    const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
   });
 
   beforeEach(async function() {
