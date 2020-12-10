@@ -18,7 +18,7 @@ const Store = artifacts.require("Store");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
-const { ZERO_ADDRESS } = require("@uma/common");
+const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -29,6 +29,9 @@ contract("index.js", function(accounts) {
   let uniswap;
   let constructorParams;
   let identifierWhitelist;
+  let finder;
+  let timer;
+  let store;
 
   let defaultUniswapPricefeedConfig;
   let defaultMedianizerPricefeedConfig;
@@ -45,8 +48,17 @@ contract("index.js", function(accounts) {
   before(async function() {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
+    identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    finder = await Finder.new();
+    timer = await Timer.new();
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
   });
 
@@ -57,7 +69,6 @@ contract("index.js", function(accounts) {
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
-    const store = await Store.deployed();
 
     // Create a new synthetic token
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
@@ -67,7 +78,7 @@ contract("index.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: Finder.address,
+      finderAddress: finder.address,
       priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
@@ -75,7 +86,7 @@ contract("index.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };

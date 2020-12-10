@@ -1,5 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const { MAX_UINT_VAL, ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -13,6 +13,7 @@ const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 const Store = artifacts.require("Store");
+const MockOracle = artifacts.require("MockOracle");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -32,6 +33,7 @@ contract("index.js", function(accounts) {
   let constructorParams;
   let store;
   let timer;
+  let mockOracle;
   let finder;
 
   let spy;
@@ -43,10 +45,23 @@ contract("index.js", function(accounts) {
 
   before(async function() {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-
+    finder = await Finder.new();
+    timer = await Timer.new();
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+    await finder.changeImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+      identifierWhitelist.address
+    );
+
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
+      from: contractCreator
+    });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
   });
 
   beforeEach(async function() {
@@ -56,10 +71,6 @@ contract("index.js", function(accounts) {
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
-
-    store = await Store.deployed();
-    timer = await Timer.deployed();
-    finder = await Finder.deployed();
 
     // Create a new synthetic token
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });

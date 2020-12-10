@@ -48,9 +48,7 @@ contract("index.js", function(accounts) {
 
   before(async function() {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-
     finder = await Finder.new();
-
     // Create identifier whitelist and register the price tracking ticker with it.
     const identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
