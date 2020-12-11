@@ -215,11 +215,6 @@ abstract contract FundingRateApplier is FeePayer {
             bytes32 identifier = fundingRate.identifier;
             bytes memory ancillaryData = _getAncillaryData();
 
-            // Fetch the price request from the Oracle which we will interact with regardless of the return
-            // value of getPrice.
-            OptimisticOracleInterface.Request memory request =
-                optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
-
             // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
             // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
             // "forget" the pending proposal and allow new proposals to update the funding rate.
@@ -233,6 +228,8 @@ abstract contract FundingRateApplier is FeePayer {
                     fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
+                    OptimisticOracleInterface.Request memory request =
+                        optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                     if (request.disputer == address(0)) {
                         FixedPoint.Unsigned memory reward =
                             _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
@@ -253,6 +250,8 @@ abstract contract FundingRateApplier is FeePayer {
                 //   this funding rate request. This is possible if the Oracle is replaced while the price request
                 //   is still pending.
                 // - The request has been disputed.
+                OptimisticOracleInterface.Request memory request =
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                 if (request.disputer != address(0) || request.proposer == address(0)) {
                     fundingRate.proposalTime = 0;
                 }
