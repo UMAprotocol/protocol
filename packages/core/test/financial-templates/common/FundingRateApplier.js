@@ -15,7 +15,7 @@ const Token = artifacts.require("ExpandedERC20");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ConfigStore = artifacts.require("ConfigStore");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
 contract("FundingRateApplier", function(accounts) {
   // Single-deploy contracts.
@@ -192,11 +192,23 @@ contract("FundingRateApplier", function(accounts) {
     assert.equal(test4.rawValue, toWei("1.05"));
   });
 
-  it("Initial 0 funding rate", async () => {
+  it("Initial funding rate struct is correct", async () => {
+    const fundingRate = await fundingRateApplier.fundingRate();
+    assert.equal(fundingRate.rate.toString(), "0");
+    assert.equal(hexToUtf8(fundingRate.identifier), hexToUtf8(identifier));
+    assert.equal(fundingRate.cumulativeMultiplier.toString(), toWei("1"));
+    assert.equal(fundingRate.updateTime.toString(), startTime.toString());
+    assert.equal(fundingRate.applicationTime.toString(), startTime.toString());
+    assert.equal(fundingRate.proposalTime.toString(), "0");
+  });
+  it("Calling applyFundingRate without a pending proposal does not change multiplier", async () => {
     await fundingRateApplier.setCurrentTime(startTime + 1000);
-    await fundingRateApplier.applyFundingRate();
+    const receipt = await fundingRateApplier.applyFundingRate();
     assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue.toString(), toWei("1"));
     assert.equal((await fundingRateApplier.fundingRate()).rate.rawValue.toString(), "0");
+
+    // A NewFundingRateMultiplier is emitted.
+    truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
   });
 
   it("Funding rate proposal must be within limits", async function() {
@@ -225,7 +237,7 @@ contract("FundingRateApplier", function(accounts) {
 
   describe("Undisputed proposal", async () => {
     beforeEach(async () => {
-      // Move time forward to give some space for new proposals.
+      // Move time forward to give some space for new proposals since the last update time was set to deployment time.
       currentTime = startTime + delay;
       await fundingRateApplier.setCurrentTime(currentTime);
 
@@ -234,10 +246,6 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Two proposals cannot coexist", async () => {
-      // Move time forward a small amount to not expire the previous one, but to give room for a new proposal.
-      currentTime += 5;
-      await fundingRateApplier.setCurrentTime(currentTime);
-
       // Proposal should fail because the previous one has not expired.
       assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
 
@@ -316,6 +324,21 @@ contract("FundingRateApplier", function(accounts) {
       // Apply the rate again.
       await fundingRateApplier.applyFundingRate();
       assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1.000998999"));
+    });
+
+    it("Oracle is upgraded while the request is still pending", async () => {
+      // Register a new optimistic oracle in the finder.
+      let optimisticOracleV2 = await OptimisticOracle.new(liveness, finder.address, timer.address);
+      await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracleV2.address);
+
+      // propose() should reset the proposal time to 0 via the fees() modifier, and therefore it should be possible
+      // to propose a new rate.
+      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      // The funding rate multiplier should be unchanged.
+      assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1"));
+
+      // As long as this new oracle is not upgraded and the proposal has not expired, then propose() should revert.
+      assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
     });
   });
 

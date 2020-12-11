@@ -571,8 +571,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Revert if the caller is attempting to access an invalid liquidation
         // (one that has never been created or one has never been initialized).
         require(
-            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized,
-            "Invalid liquidation ID"
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
         );
         return liquidationArray[liquidationId];
     }
