@@ -147,21 +147,11 @@ contract("Disputer.js", function(accounts) {
           priceIdentifier: await emp.priceIdentifier()
         };
 
-        await collateralToken.approve(emp.address, convert("100000000"), {
-          from: sponsor1
-        });
-        await collateralToken.approve(emp.address, convert("100000000"), {
-          from: sponsor2
-        });
-        await collateralToken.approve(emp.address, convert("100000000"), {
-          from: sponsor3
-        });
-        await collateralToken.approve(emp.address, convert("100000000"), {
-          from: liquidator
-        });
-        await collateralToken.approve(emp.address, convert("100000000"), {
-          from: disputeBot
-        });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: sponsor1 });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: sponsor2 });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: sponsor3 });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: liquidator });
+        await collateralToken.approve(emp.address, convert("100000000"), { from: disputeBot });
 
         syntheticToken = await Token.at(await emp.tokenCurrency());
         await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
