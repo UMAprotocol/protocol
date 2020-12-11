@@ -11,9 +11,6 @@
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@ethersproject/units": "^5.0.3",
-    "@nomiclabs/hardhat-etherscan": "^2.1.0",
-    "@nomiclabs/hardhat-truffle5": "^2.0.0",
-    "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "3.0.0",
     "@sendgrid/mail": "^6.4.0",
     "@uma/financial-templates-lib": "^1.2.0",
@@ -23,8 +20,6 @@
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
     "gmail-send": "^1.2.14",
-    "hardhat": "^2.0.4",
-    "hardhat-gas-reporter": "^1.0.3",
     "lodash": "^4.17.20",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
