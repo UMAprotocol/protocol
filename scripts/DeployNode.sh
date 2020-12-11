@@ -37,4 +37,6 @@ gcloud compute instances create-with-container geth-node \
     --container-arg="--ipcdisable" \
     --container-arg="--datadir" \
     --container-arg="/node-disk/ethereum" \
+    --container-arg="--config" \
+    --container-arg="/node-disk/ethereum/config.toml" \
     --tags="http-server"
