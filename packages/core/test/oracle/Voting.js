@@ -14,7 +14,6 @@ const {
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
-const crypto = require("crypto");
 
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
@@ -1936,8 +1935,8 @@ contract("Voting", function(accounts) {
   it("Stress testing the size of ancillary data", async function() {
     let identifier = web3.utils.utf8ToHex("stress-test");
     let time = "1000";
-    const DATA_LIMIT = 8192;
-    let ancillaryData = web3.utils.bytesToHex(crypto.randomBytes(DATA_LIMIT));
+    const DATA_LIMIT_BYTES = 8192;
+    let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1951,11 +1950,7 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, time, ancillaryData, { from: registeredContract });
 
     // Ancillary data length must not be more than the limit.
-    assert(
-      await didContractThrow(
-        voting.requestPrice(identifier, time, web3.utils.bytesToHex(crypto.randomBytes(DATA_LIMIT + 1)))
-      )
-    );
+    assert(await didContractThrow(voting.requestPrice(identifier, time, web3.utils.randomHex(DATA_LIMIT_BYTES + 1))));
 
     // Since the round for these requests has not started, the price retrieval should fail.
     assert.isFalse(await voting.hasPrice(identifier, time, ancillaryData, { from: registeredContract }));
