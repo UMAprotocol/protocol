@@ -5,17 +5,21 @@ const highland = require("highland");
 const moment = require("moment");
 const Promise = require("bluebird");
 const assert = require("assert");
+const lodash = require("lodash");
 
 const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
-const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrices }) => {
+const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
-  assert(empCreatorAbi, "requires creator abi");
   assert(empAbi, "requires empAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
+
+  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
+  firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
+
   async function getBalanceHistory(address, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
     // We need all logs from beginning of time. This could be optimized by deducing or supplying
@@ -84,22 +88,6 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     });
   }
 
-  // returns array of tuples [emp address, deployer address]
-  async function getEmpDeployerHistory(address) {
-    // this query is relatively small but expensive, gets all logs from begginning of time
-    const logs = await queries.getAllLogsByContract(address);
-    const decode = DecodeLog(empCreatorAbi);
-    return logs
-      .map(log => decode(log, log))
-      .reduce((result, log) => {
-        result.push([
-          log.args.expiringMultiPartyAddress,
-          { deployer: log.args.deployerAddress, timestamp: log.block_timestamp, number: log.block_number }
-        ]);
-        return result;
-      }, []);
-  }
-
   // Calculates the value of x `tokens` in USD based on `collateralPrice` in USD, `syntheticPrice` in collateral considering
   // the decimals of both the collateral and synthetic token.
   // this should output estimated usd value of the synthetic tokens with 18 decimals (in wei)
@@ -125,6 +113,23 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       .div(toBN(toWei("1")));
   }
 
+  function toChecksumAddress(address) {
+    assert(address, "requires an eth address");
+    return web3.utils.toChecksumAddress(address);
+  }
+
+  function validateEmpInput(empValue) {
+    assert(
+      lodash.isArray(empValue),
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+    );
+    assert(
+      empValue.length == 2,
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+    );
+    return empValue;
+  }
+
   // pure function to separate out queries from calculations
   // this is adapted from scrips/example-contract-deployer-attributation.js
   function calculateRewards({
@@ -136,19 +141,19 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     syntheticTokenPricesWithValueCalculation,
     syntheticTokenDecimals,
     blocks,
-    balanceHistories,
-    empDeployers
+    balanceHistories
   }) {
     assert(empWhitelist, "requires empWhitelist");
     assert(collateralTokenPrices, "requires collateral token prices prices");
     assert(syntheticTokenPricesWithValueCalculation, "requires synthetic token prices with value function");
     assert(blocks, "requires blocks");
     assert(balanceHistories, "requires balanceHistories");
-    assert(empDeployers, "requires empDeployers");
 
     balanceHistories = new Map(balanceHistories);
-    empDeployers = new Map(empDeployers);
     let startBlock, endBlock;
+
+    // Lookup payout address by emp address
+    const empLookup = new Map(empWhitelist);
 
     const rewardsPerBlock = toBN(toWei(totalRewards.toString())).div(toBN(blocks.length));
     const payoutPerSnapshot = rewardsPerBlock.mul(toBN(snapshotSteps));
@@ -157,7 +162,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       if (startBlock == null) startBlock = block;
       endBlock = block;
       const { timestamp, number } = block;
-      const valueByEmp = empWhitelist.reduce((result, empAddress, empIndex) => {
+      const valueByEmp = empWhitelist.reduce((result, [empAddress], empIndex) => {
         try {
           const [syntheticTokenPrices, syntheticValueCalculation] = syntheticTokenPricesWithValueCalculation[empIndex];
           const { tokens } = balanceHistories.get(empAddress).history.lookup(number);
@@ -193,7 +198,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           return result.add(toBN(value));
         }, toBN("0"));
         valueByEmp.forEach(([emp, value]) => {
-          const { deployer } = empDeployers.get(emp);
+          const payoutAddress = empLookup.get(emp);
           const contribution =
             totalValueLocked.toString() != "0"
               ? toBN(value) // eslint-disable-line indent
@@ -203,11 +208,11 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
           const rewards = contribution.mul(payoutPerSnapshot).div(toBN(toWei("1")));
 
           // save lookup table of emp to deployer
-          empToDeployer[emp] = deployer;
+          empToDeployer[emp] = payoutAddress;
 
           // calculate deployer rewards
-          if (deployerPayouts[deployer] == null) deployerPayouts[deployer] = toBN("0");
-          deployerPayouts[deployer] = deployerPayouts[deployer].add(rewards);
+          if (deployerPayouts[payoutAddress] == null) deployerPayouts[payoutAddress] = toBN("0");
+          deployerPayouts[payoutAddress] = deployerPayouts[payoutAddress].add(rewards);
 
           // calculate per emp rewards
           if (empPayouts[emp] == null) empPayouts[emp] = toBN("0");
@@ -240,19 +245,21 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
     startTime,
     endTime,
     empWhitelist = [],
-    empCreatorAddress,
     collateralTokens = [],
     collateralTokenDecimals = [],
     syntheticTokens = [],
     syntheticTokenDecimals = [],
     snapshotSteps = 1
   }) {
+    // API has changed, we need to validate input. Emps will be required to include payout address.
+    // Want to give additional direction to user if this function is called directly.
+    empWhitelist.forEach(validateEmpInput);
+
     // query all required data ahead of calcuation
     const [
       collateralTokenPrices,
       syntheticTokenPricesWithValueCalculation,
       blocks,
-      empDeployers,
       balanceHistories
     ] = await Promise.all([
       Promise.map(
@@ -261,22 +268,23 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       ),
       Promise.map(
         empWhitelist,
-        async (address, i) =>
+        // each empwhitelist contains, [empaddress,deployeraddres], so we only care about empaddress
+        async ([address], i) =>
           await getSyntheticPriceHistoryWithFallback(address, startTime, endTime, syntheticTokens[i])
       ),
       getBlocks(startTime, endTime),
-      // these are block events, and they ignore start/end time as we need all events from start of each contract
-      getEmpDeployerHistory(empCreatorAddress),
-      // TODO: optimize this to get start time from the results of getEmpDeployerHistory. Will be different for
-      // each emp, so getAllBalanceHistories won't be able to be used.
-      getAllBalanceHistories(empWhitelist, 1, endTime)
+      // Each empwhitelist contains, [empaddress,deployeraddres], balance histories expects array of just emp addresses
+      getAllBalanceHistories(
+        empWhitelist.map(([empaddress]) => empaddress),
+        firstEmpDate,
+        endTime
+      )
     ]);
 
     return calculateRewards({
       startTime,
       endTime,
       empWhitelist,
-      empCreatorAddress,
       snapshotSteps,
       totalRewards,
       collateralTokenPrices,
@@ -284,8 +292,7 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       syntheticTokenPricesWithValueCalculation,
       syntheticTokenDecimals,
       blocks,
-      balanceHistories,
-      empDeployers
+      balanceHistories
     });
   }
 
@@ -297,10 +304,11 @@ const DeployerRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrice
       getCoingeckoPriceHistory,
       getSyntheticPriceHistory,
       getBlocks,
-      getEmpDeployerHistory,
       calculateRewards,
       calculateValue,
-      calculateValueFromUsd
+      calculateValueFromUsd,
+      validateEmpInput,
+      toChecksumAddress
     }
   };
 };

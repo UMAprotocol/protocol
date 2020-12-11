@@ -92,10 +92,29 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
   };
 }
 
+// returns array of tuples [emp address, deployer address]
+// This acted as a discovery function to assign rewards to an address in lieu of explicitly being given one.
+// It is now deprecated we are making a requirement that EMP Deployers provide us an address rewards should go to.
+const GetEmpDeployerHistory = ({ queries, empCreatorAbi }) => async address => {
+  // this query is relatively small but expensive, gets all logs from begginning of time
+  const logs = await queries.getAllLogsByContract(address);
+  const decode = DecodeLog(empCreatorAbi);
+  return logs
+    .map(log => decode(log, log))
+    .reduce((result, log) => {
+      result.push([
+        log.args.expiringMultiPartyAddress,
+        { deployer: log.args.deployerAddress, timestamp: log.block_timestamp, number: log.block_number }
+      ]);
+      return result;
+    }, []);
+};
+
 module.exports = {
   DecodeLog,
   DecodeTransaction,
   decodeAttribution,
   Emp,
-  Erc20
+  Erc20,
+  GetEmpDeployerHistory
 };
