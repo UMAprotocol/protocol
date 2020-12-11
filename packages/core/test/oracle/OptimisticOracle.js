@@ -473,4 +473,60 @@ contract("OptimisticOracle", function(accounts) {
     await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
     assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
   });
+  it("Stress testing the size of ancillary data", async function() {
+    const DATA_LIMIT_BYTES = 8192;
+    let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+
+    // Initial state.
+    await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
+    assert.isNull(await optimisticRequester.ancillaryData());
+
+    // Requested.
+    await collateral.transfer(optimisticRequester.address, reward);
+    // Ancillary data length must not be more than the limit.
+    assert(
+      await didContractThrow(
+        optimisticRequester.requestPrice(
+          identifier,
+          requestTime,
+          web3.utils.randomHex(DATA_LIMIT_BYTES + 1),
+          collateral.address,
+          reward
+        )
+      )
+    );
+    await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
+    await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
+
+    // Proposed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+    await optimisticOracle.proposePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      ancillaryData,
+      incorrectPrice,
+      {
+        from: proposer
+      }
+    );
+    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Disputed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+    await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
+      from: disputer
+    });
+    await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Settled
+    await pushPrice(correctPrice);
+    await optimisticRequester.getPrice(identifier, requestTime, ancillaryData);
+    await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+  });
 });

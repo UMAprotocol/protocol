@@ -135,6 +135,15 @@ contract Voting is
     // Max value of an unsigned integer.
     uint256 private constant UINT_MAX = ~uint256(0);
 
+    // Max length in bytes of ancillary data that can be appended to a price request.
+    // As of December 2020, the current Ethereum gas limit is 12.5 million. This requestPrice function's gas primarily
+    // comes from computing a Keccak-256 hash in _encodePriceRequest and writing a new PriceRequest to
+    // storage. We have empirically determined an ancillary data limit of 8192 bytes that keeps this function
+    // well within the gas limit at ~8 million gas. To learn more about the gas limit and EVM opcode costs go here:
+    // - https://etherscan.io/chart/gaslimit
+    // - https://github.com/djrtwo/evm-opcode-gas-costs
+    uint256 public constant ancillaryBytesLimit = 8192;
+
     bytes32 public snapshotMessageHash = ECDSA.toEthSignedMessageHash(keccak256(bytes("Sign For Snapshot")));
 
     /***************************************
@@ -241,7 +250,8 @@ contract Voting is
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
-     * @dev Time must be in the past and the identifier must be supported.
+     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
+     * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitary data appended to a price request to give the voters more info from the caller.
@@ -254,6 +264,7 @@ contract Voting is
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
+        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
