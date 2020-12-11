@@ -9,7 +9,9 @@
 # This script has the following preconditions:
 # 1. You have a GCE SSD disk called node-disk with enough space for a geth db.
 # 2. node-disk is writable by most/all users (rw filesystem permissions have been granted).
-# 3. node-disk contains a folder called ethereum (can be empty).
+# 3. node-disk contains a folder called ethereum.
+# 4. ethereum folder must contain a file called config.toml, which can optionally have additional config options not
+#    specified below (for instance, custom request timeouts must be set in this config).
 
 MACHINE_TYPE=$1
 : ${MACHINE_TYPE:=n1-highmem-8}
