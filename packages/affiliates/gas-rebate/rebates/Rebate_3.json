@@ -213,5 +213,14 @@
         "avgPx": "0.022055343310878658"
       }
     ]
-  }
+  },
+  "countVoters": 60,
+  "uniqueIdentifiers": [
+    "Admin 16-1602521399",
+    "USDETH-1601457112",
+    "USDETH-1601503200",
+    "USDBTC-1601503200",
+    "Admin 17-1603141493"
+  ],
+  "totalRebateAmount": 58.35188991088588
 }
