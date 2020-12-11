@@ -13,9 +13,7 @@ import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
-
-// TODO: point this at an interface instead.
-import "../../oracle/implementation/OptimisticOracle.sol";
+import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
 import "./FeePayer.sol";
@@ -155,7 +153,7 @@ abstract contract FundingRateApplier is FeePayer {
         // Set the proposal time in order to allow this contract to track this request.
         fundingRate.proposalTime = timestamp;
 
-        OptimisticOracle optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // Set up optimistic oracle.
         bytes32 identifier = fundingRate.identifier;
@@ -198,8 +196,8 @@ abstract contract FundingRateApplier is FeePayer {
         return rawTokenDebt.mul(fundingRate.cumulativeMultiplier);
     }
 
-    function _getOptimisticOracle() internal view returns (OptimisticOracle) {
-        return OptimisticOracle(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
     function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
@@ -208,26 +206,30 @@ abstract contract FundingRateApplier is FeePayer {
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
         uint256 proposalTime = fundingRate.proposalTime;
+
+        // If there is no pending proposal then return the current funding rate, otherwise
+        // check to see if we can update the funding rate.
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
-            OptimisticOracle optimisticOracle = _getOptimisticOracle();
+            OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
             bytes32 identifier = fundingRate.identifier;
             bytes memory ancillaryData = _getAncillaryData();
 
-            // Try to get the price from the optimistic oracle.
+            // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
+            // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
+            // "forget" the pending proposal and allow new proposals to update the funding rate.
             try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
-                // If successful, figure out the type of request.
-                OptimisticOracle.Request memory request =
-                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
+                // If successful, determine if the funding rate state needs to be updated.
+                // If the request is more recent than the last update then we should update it.
                 uint256 lastUpdateTime = fundingRate.updateTime;
-
-                // If the request is more recent than the last update then we should update the funding rate.
                 if (proposalTime >= lastUpdateTime) {
                     // Update funding rates
                     fundingRate.rate = FixedPoint.Signed(price);
                     fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
+                    OptimisticOracleInterface.Request memory request =
+                        optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                     if (request.disputer == address(0)) {
                         FixedPoint.Unsigned memory reward =
                             _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
@@ -243,11 +245,14 @@ abstract contract FundingRateApplier is FeePayer {
                 // Set proposal time to 0 since this proposal has now been resolved.
                 fundingRate.proposalTime = 0;
             } catch {
-                // Stop tracking if in dispute to allow other proposals to come in.
-                if (
-                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData).disputer !=
-                    address(0)
-                ) {
+                // Stop tracking and allow other proposals to come in if:
+                // - The requester address is empty, indicating that the Oracle does not know about
+                //   this funding rate request. This is possible if the Oracle is replaced while the price request
+                //   is still pending.
+                // - The request has been disputed.
+                OptimisticOracleInterface.Request memory request =
+                    optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
+                if (request.disputer != address(0) || request.proposer == address(0)) {
                     fundingRate.proposalTime = 0;
                 }
             }
