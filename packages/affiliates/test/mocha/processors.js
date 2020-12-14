@@ -38,7 +38,7 @@ describe("AttributionHistory", function() {
         });
         // filter transactions we shouldnt process, could probably just do this in the handlers too
         if (!allowedTransactions.includes(decoded.name)) return;
-        attributionsHistory.handleTransaction(decoded.blockNumber, decoded);
+        attributionsHistory.handleEvent(decoded.blockNumber, decoded);
       } catch (err) {
         // decoding transaction error, abi probably missing an event
         console.log("error decoding transaction:", err);

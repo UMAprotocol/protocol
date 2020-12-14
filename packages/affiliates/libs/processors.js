@@ -11,8 +11,7 @@ function AttributionHistory() {
   const history = History();
   let lastBlockNumber;
 
-  // this probably needs to be re-thought to take into
-  // consideration token amounts as well as collateral
+  // These are handling transaction function calls into the EMP, not events, since only transactions are tagged.
   const Handlers = ({ affiliate, user }) => {
     return {
       create(collateralAmount, numTokens) {
@@ -30,16 +29,7 @@ function AttributionHistory() {
     };
   };
 
-  function handleEvent({ user, affiliate }, { name, args = [] }) {
-    assert(affiliate, "requires affiliate address");
-    assert(user, "requires user address");
-    const handlers = Handlers({ user, affiliate });
-    assert(handlers[name], "No handler for event: " + name);
-    return handlers[name](...args);
-  }
-
-  // event is a decoded transaction
-  function handleTransaction(blockNumber, event) {
+  function handleEvent(blockNumber, event) {
     assert(blockNumber, "requires blockNumber");
     if (lastBlockNumber == null) {
       lastBlockNumber = blockNumber;
@@ -53,14 +43,31 @@ function AttributionHistory() {
     // both of these things arent stored in tx data
     const affiliate = decodeAttribution(event.input);
     const user = event.fromAddress;
-    handleEvent({ user, affiliate }, event);
+
+    assert(affiliate, "requires affiliate address");
+    assert(user, "requires user address");
+    const {name,args=[]} = event
+    const handlers = Handlers({ user, affiliate });
+    assert(handlers[name], "No handler for event: " + name);
+    return handlers[name](...args);
   }
+
+  // function to snapshot the final balance
+  function finalize() {
+    if (history.has(lastBlockNumber)) return;
+    history.insert({
+      blockNumber: lastBlockNumber,
+      blockTimestamp: lastBlockTimestamp,
+      tokens: balances.tokens.snapshot(),
+      collateral: balances.collateral.snapshot()
+    });
+  }
+
 
   return {
     attributions,
     history,
     handleEvent,
-    handleTransaction
   };
 }
 

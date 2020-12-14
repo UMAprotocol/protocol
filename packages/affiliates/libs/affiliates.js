@@ -1,4 +1,4 @@
-const { EmpBalancesHistory } = require("./processors");
+const { EmpBalancesHistory, AttributionHistory } = require("./processors");
 const { Prices } = require("./models");
 const { DecodeLog } = require("./contracts");
 const highland = require("highland");
@@ -312,6 +312,64 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
     }
   };
 };
+
+const AttributionRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPrices }) => {
+  // This is a bit tricky. Every time a position is created, we need to check the users balance
+  // at the current time and see how much it changed from the last balance update. We take
+  // that balance delta and add or remove it to the developers stake on that user.
+
+  async function getAttributionHistory(empAddress, start, end) {
+    // stream is a bit more optimal than waiting for entire query to return as array
+    // We need all logs from beginning of time. This could be optimized by deducing or supplying
+    // the specific emp start time to narrow down the query.
+    const stream = await queries.streamLogsByContract(address, start, end);
+    const decode = DecodeLog(empAbi);
+    const attributionHistory = AttributionHistory();
+
+    await highland(stream)
+      .map(log => {
+        return decode(log, {
+          blockNumber: log.block_number,
+          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
+          ...log
+        });
+      })
+      .doto(log => attributionHistory.handleEvent(log.blockNumber, log))
+      .last()
+      .toPromise(Promise);
+
+    // finalize makes sure the last snapshot is taken once all data has been handled
+    attributionHistory.finalize();
+
+    return attributionHistory;
+  }
+
+  async function getBlocks(start, end) {
+    const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
+    return blocks.map(block => {
+      return {
+        ...block,
+        timestamp: moment(block.timestamp.value).valueOf()
+      };
+    });
+  }
+
+  function getRewards({
+    empAddress,
+    startTime,
+    endTime,
+    payoutWhitelist,
+    totalRewards,
+    snapshotSteps,
+  }){
+  }
+
+  return {
+    getRewards,
+    utils:{
+    }
+  }
+}
 
 module.exports = {
   // Calculate rewards for deployers
