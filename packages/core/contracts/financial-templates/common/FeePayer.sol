@@ -162,6 +162,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      * @notice Removes excess collateral balance not counted in the PfC by distributing it out pro-rata to all sponsors.
      * @dev Multiplying the `cumulativeFeeMultiplier` by the ratio of non-PfC-collateral :: PfC-collateral effectively
      * pays all sponsors a pro-rata portion of the excess collateral.
+     * @dev This will revert if PfC is 0.
      */
     function gulp() external nonReentrant() {
         _gulp();

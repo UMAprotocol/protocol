@@ -1694,6 +1694,39 @@ contract("PerpetualPositionManager", function(accounts) {
     assert(await didContractThrow(positionManager.redeem({ rawValue: "16" }, { from: sponsor })));
   });
 
+  it("Gulp edge cases", async function() {
+    // Gulp does not revert if PfC and collateral balance are both 0
+    await positionManager.gulp();
+
+    // Send 1 wei of excess collateral to the contract.
+    await collateral.transfer(positionManager.address, "1", { from: sponsor });
+
+    // Gulp reverts if PfC is 0 but collateral balance is > 0.
+    assert(await didContractThrow(positionManager.gulp()));
+
+    // Create a position to gulp.
+    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await positionManager.create({ rawValue: toWei("10") }, { rawValue: "20" }, { from: sponsor });
+
+    // Gulp does not do anything if the intermediate calculation (collateral balance / PfC) has precision loss.
+    // For example:
+    // - collateral balance = 10e18 + 1
+    // - PfC = 10e18
+    // - Gulp ratio = (10e18 + 1) / 10e18 =  1.0000000000000000001, which is 1e18 + 1e-19, which gets truncated to 1e18
+    // - Therefore, the multiplier remains at 1e18.
+    await positionManager.gulp();
+    assert.equal((await positionManager.cumulativeFeeMultiplier()).toString(), web3.utils.toWei("1"));
+
+    // Gulp will shift the multiplier if enough excess collateral builds up in the contract to negate precision loss.
+    await collateral.transfer(positionManager.address, "9", { from: sponsor });
+    await positionManager.gulp();
+    assert.equal(
+      (await positionManager.cumulativeFeeMultiplier()).toString(),
+      web3.utils.toWei("1.000000000000000001")
+    );
+  });
+
   it("Non-standard ERC20 delimitation", async function() {
     // To test non-standard ERC20 token delimitation a new ERC20 token is created which has 6 decimal points of precision.
     // A new priceless position manager is then created and and set to use this token as collateral. To generate values
