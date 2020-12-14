@@ -42,7 +42,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned minSponsorTokens;
         uint256 withdrawalLiveness;
         uint256 liquidationLiveness;
-        address excessTokenBeneficiary;
         address financialProductLibraryAddress;
     }
     // Address of TokenFactory used to create a new synthetic token.
@@ -110,7 +109,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // Enforce configuration constraints.
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
-        require(params.excessTokenBeneficiary != address(0), "Token Beneficiary cannot be 0x0");
         require(params.expirationTimestamp > now, "Invalid expiration time");
         _requireWhitelistedCollateral(params.collateralAddress);
 
@@ -134,7 +132,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
-        constructorParams.excessTokenBeneficiary = params.excessTokenBeneficiary;
         constructorParams.financialProductLibraryAddress = params.financialProductLibraryAddress;
     }
 
