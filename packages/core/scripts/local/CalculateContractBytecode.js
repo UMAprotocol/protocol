@@ -1,7 +1,7 @@
 // This simple script tells you how big your contract byte code is and how much you have until you exceed
 // the current block limit as defined by EIP170. This script should be run from the /core directory.
 // To run the script navigate to /core and then run:
-// yarn truffle compile && yarn buidler compile && yarn truffle exec --network test ./scripts/local/CalculateContractBytecode.js --contract Voting
+// yarn truffle compile && yarn hardhat compile && yarn truffle exec --network test ./scripts/local/CalculateContractBytecode.js --contract Voting
 // where voting is the name of the contract you want to check.
 
 const argv = require("minimist")(process.argv.slice(), { string: ["contract"] });
@@ -26,8 +26,8 @@ module.exports = async function(callback) {
   printBytecodeInfo("./../../build/contracts/" + argv.contract + ".json");
   console.groupEnd();
 
-  // Buidler
-  console.group("Buidler Compilation Output");
+  // hardhat
+  console.group("hardhat Compilation Output");
   printBytecodeInfo("./../../artifacts/" + argv.contract + ".json");
   console.groupEnd();
 

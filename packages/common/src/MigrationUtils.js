@@ -89,7 +89,7 @@ async function deploy(deployer, network, contractType, ...args) {
   // Deploy contract.
   let contractInstance;
 
-  // Buidler
+  // hardhat
   if (contractType.setAsDeployed) {
     contractInstance = await contractType.new(...args);
     contractType.setAsDeployed(contractInstance);
