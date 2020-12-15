@@ -101,12 +101,13 @@ async function run({
       voting = null;
     }
 
+    console.log("BEFOREz");
     const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call()
     ]);
-
+    console.log("AFTERz");
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 

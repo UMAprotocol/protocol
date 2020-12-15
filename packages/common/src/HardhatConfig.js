@@ -7,7 +7,6 @@ function getHardhatConfig(configOverrides) {
 
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.6.12";
-  console.log("GETTING");
   const defaultConfig = {
     solidity: {
       version: solcVersion,

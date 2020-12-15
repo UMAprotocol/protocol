@@ -2,7 +2,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
-const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
+const { mineTransactionsAtTime, advanceBlockAndSetTime } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 
 const UniswapMock = artifacts.require("UniswapMock");
@@ -92,6 +92,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Update the prices with a small amount of time between.
     const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
     await delay(1);
+    await advanceBlockAndSetTime(web3, (await web3.eth.getBlock("latest")).timestamp + 1);
     // Invalid price should be ignored.
     await uniswapMock.setPrice(toWei("0"), toWei("1"));
     const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));
@@ -103,6 +104,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Grab the exact blocktimes.
     const time1 = await getBlockTime(result1);
     const time2 = await getBlockTime(result2);
+    await advanceBlockAndSetTime(web3, (await web3.eth.getBlock("latest")).timestamp + 1);
     mockTime = time2 + 1;
 
     // Allow the library to compute the TWAP.
@@ -128,7 +130,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapMock.setPrice(toWei("4"), toWei("1"));
 
     // Set the mock time to very far in the future.
-    mockTime = MAX_SAFE_JS_INT;
+    await advanceBlockAndSetTime(web3, (await web3.eth.getBlock("latest")).timestamp + 100000);
 
     await uniswapPriceFeed.update();
 
@@ -142,7 +144,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapMock.setPrice(toWei("4"), toWei("1"));
 
     // Set the mock time to very far in the past.
-    mockTime = 5000;
+    await advanceBlockAndSetTime(web3, 5000);
 
     await uniswapPriceFeed.update();
 
@@ -194,7 +196,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       owner
     );
 
-    mockTime = currentTime;
+    await advanceBlockAndSetTime(web3, currentTime);
 
     await uniswapPriceFeed.update();
 
@@ -216,7 +218,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
   it("Historical TWAP too far back", async function() {
     const currentTime = Math.round(new Date().getTime() / 1000);
-    mockTime = currentTime;
+    await advanceBlockAndSetTime(web3, currentTime);
     await uniswapPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
