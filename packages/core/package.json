@@ -54,7 +54,7 @@
     "mocha-test": "mocha mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
-    "build": "yarn truffle compile && yarn load-addresses && yarn hardhat compile",
+    "build": "yarn truffle compile && yarn load-addresses",
     "prepublish": "yarn run build"
   },
   "bugs": {
