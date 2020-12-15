@@ -20,11 +20,11 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
   // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
-  async function getBalanceHistory(address, start, end) {
+  async function getBalanceHistory(empAddress, start, end) {
     // stream is a bit more optimal than waiting for entire query to return as array
     // We need all logs from beginning of time. This could be optimized by deducing or supplying
     // the specific emp start time to narrow down the query.
-    const stream = await queries.streamLogsByContract(address, start, end);
+    const stream = await queries.streamLogsByContract(empAddress, start, end);
     const decode = DecodeLog(empAbi);
     const balancesHistory = EmpBalancesHistory();
     await highland(stream)
@@ -44,11 +44,11 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
 
     return balancesHistory;
   }
-  async function getAllBalanceHistories(addresses = [], start, end) {
+  async function getAllBalanceHistories(empAddresses = [], start, end) {
     return Promise.reduce(
-      addresses,
-      async (result, address) => {
-        result.push([address, await getBalanceHistory(address, start, end)]);
+      empAddresses,
+      async (result, empAddress) => {
+        result.push([empAddress, await getBalanceHistory(empAddress, start, end)]);
         return result;
       },
       []
@@ -62,10 +62,10 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
 
   // the fallback requires a different value calculation, so this is probably the cleanest way to "switch"
   // between value by and value by usd. The function to calculate value is passed along with the data.
-  async function getSyntheticPriceHistoryWithFallback(address, start, end, syntheticAddress) {
+  async function getSyntheticPriceHistoryWithFallback(empAddress, start, end, syntheticAddress) {
     try {
       // this will throw if the feed isnt available (among other errors probably)
-      return [await getSyntheticPriceHistory(address, start, end), calculateValue];
+      return [await getSyntheticPriceHistory(empAddress, start, end), calculateValue];
     } catch (err) {
       // this will need to do a lookup based on synthetic token address not emp
       return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
@@ -269,8 +269,8 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
       Promise.map(
         empWhitelist,
         // each empwhitelist contains, [empaddress,deployeraddres], so we only care about empaddress
-        async ([address], i) =>
-          await getSyntheticPriceHistoryWithFallback(address, startTime, endTime, syntheticTokens[i])
+        async ([empAddress], i) =>
+          await getSyntheticPriceHistoryWithFallback(empAddress, startTime, endTime, syntheticTokens[i])
       ),
       getBlocks(startTime, endTime),
       // Each empwhitelist contains, [empaddress,deployeraddres], balance histories expects array of just emp addresses

@@ -48,13 +48,13 @@ async function App(config) {
   // get emp info
   const { collateralTokens, collateralTokenDecimals, syntheticTokenDecimals, syntheticTokens } = await Promise.reduce(
     empWhitelist,
-    async (result, [address]) => {
+    async (result, [empAddress]) => {
       // switch this to tokenInfo if you want to base prices off tokens
-      const collateralInfo = await emp.collateralInfo(address);
+      const collateralInfo = await emp.collateralInfo(empAddress);
       result.collateralTokens.push(collateralInfo.address);
       result.collateralTokenDecimals.push(collateralInfo.decimals);
 
-      const syntheticInfo = await emp.tokenInfo(address);
+      const syntheticInfo = await emp.tokenInfo(empAddress);
       result.syntheticTokenDecimals.push(syntheticInfo.decimals);
       result.syntheticTokens.push(syntheticInfo.address);
       return result;
