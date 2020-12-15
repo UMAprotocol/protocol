@@ -1,3 +1,3 @@
-const { getHardhatConfig } = require("@UMA/common");
+const { getHardhatConfig } = require("@uma/common");
 
 module.exports = getHardhatConfig();
