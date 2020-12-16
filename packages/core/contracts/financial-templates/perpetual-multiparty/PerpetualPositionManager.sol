@@ -88,7 +88,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
-    event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
     event SettleEmergencyShutdown(
         address indexed caller,
         uint256 indexed collateralReturned,
@@ -101,16 +100,6 @@ contract PerpetualPositionManager is FundingRateApplier {
 
     modifier onlyCollateralizedPosition(address sponsor) {
         _onlyCollateralizedPosition(sponsor);
-        _;
-    }
-
-    modifier notEmergencyShutdown() {
-        _notEmergencyShutdown();
-        _;
-    }
-
-    modifier isEmergencyShutdown() {
-        _isEmergencyShutdown();
         _;
     }
 
@@ -735,16 +724,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyCollateralizedPosition(address sponsor) internal view {
         require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
-    }
-
-    function _notEmergencyShutdown() internal view {
-        // Note: removed require string to save bytecode.
-        require(emergencyShutdownTimestamp == 0);
-    }
-
-    function _isEmergencyShutdown() internal view {
-        // Note: removed require string to save bytecode.
-        require(emergencyShutdownTimestamp != 0);
     }
 
     // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the

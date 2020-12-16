@@ -16,6 +16,7 @@ import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
+import "./EmergencyShutdownable.sol";
 import "./FeePayer.sol";
 
 /**
@@ -23,7 +24,7 @@ import "./FeePayer.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-abstract contract FundingRateApplier is FeePayer {
+abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
@@ -55,9 +56,6 @@ abstract contract FundingRateApplier is FeePayer {
     }
 
     FundingRate public fundingRate;
-
-    // Timestamp used in case of emergency shutdown. 0 if no shutdown has been triggered.
-    uint256 public emergencyShutdownTimestamp;
 
     // Remote config store managed an owner.
     ConfigStoreInterface public configStore;
@@ -100,7 +98,7 @@ abstract contract FundingRateApplier is FeePayer {
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
@@ -108,7 +106,6 @@ abstract contract FundingRateApplier is FeePayer {
         // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
         // applied over time.
         fundingRate.cumulativeMultiplier = _tokenScaling;
-        emergencyShutdownTimestamp = 0;
 
         fundingRate.identifier = _fundingRateIdentifier;
         configStore = ConfigStoreInterface(_configStoreAddress);
