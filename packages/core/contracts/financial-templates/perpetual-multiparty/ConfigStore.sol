@@ -65,8 +65,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     }
 
     /**
-     * @notice Propose new configuration settings. New settings go into effect
-     * after a liveness period passes.
+     * @notice Propose new configuration settings. New settings go into effect after a liveness period passes.
      * @param _initialConfig Configuration settings to initialize `currentConfig` with.
      * @param _timerAddress Address of testable Timer contract.
      */
@@ -94,8 +93,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     }
 
     /**
-     * @notice Propose new configuration settings. New settings go into effect
-     * after a liveness period passes.
+     * @notice Propose new configuration settings. New settings go into effect after a liveness period passes.
      * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from now.
      * @dev Callable only by owner. Calling this while there is already a pending proposal
      * will overwrite the pending proposal.
@@ -121,6 +119,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         );
     }
 
+    /**
+     * @notice Publish any pending configuration settings if there is a pending proposal that has passed liveness.
+     */
     function publishPendingConfig() external nonReentrant() updateConfig() {}
 
     /****************************************
@@ -177,8 +178,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // could theoretically keep their "evil" funding rate alive indefinitely by continuously disputing honest
         // proposers, so we would want to be able to set the proposal bond (equal to the dispute bond) higher than their
         // PfC for each proposal liveness window. The downside of not limiting this is that the config store owner
-        // can set it arbitrarily high and preclude a new funding rate from ever coming in. We suggest setting the proposal
-        // bond based on the configuration's funding rate range like in this discussion:
+        // can set it arbitrarily high and preclude a new funding rate from ever coming in. We suggest setting the
+        // proposal bond based on the configuration's funding rate range like in this discussion:
         // https://github.com/UMAprotocol/protocol/issues/2039#issuecomment-719734383
 
         // We also don't set a limit on the funding rate max/min because we might need to allow very high magnitude
