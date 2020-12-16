@@ -95,8 +95,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     /**
      * @notice Propose new configuration settings. New settings go into effect after a liveness period passes.
      * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from now.
-     * @dev Callable only by owner. Calling this while there is already a pending proposal
-     * will overwrite the pending proposal.
+     * @dev Callable only by owner. Calling this while there is already a pending proposal will overwrite the pending proposal.
      */
     function proposeNewConfig(ConfigSettings memory newConfig) external onlyOwner() nonReentrant() updateConfig() {
         _validateConfig(newConfig);
@@ -127,7 +126,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Check if pending proposal can overwrite the current config.
     function _updateConfig() internal {
-        // If liveness has passed, publish new reward rate.
+        // If liveness has passed, publish proposed configuration settings.
         if (_pendingProposalPassed()) {
             currentConfig = pendingConfig;
 
