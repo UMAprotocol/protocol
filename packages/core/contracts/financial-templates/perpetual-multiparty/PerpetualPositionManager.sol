@@ -419,7 +419,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
      * @dev This contract must have the Burner role for the `tokenCurrency`.
-     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
+     * @param numTokens is the number of tokens to be burnt from the sponsors debt position.
      */
     function repay(FixedPoint.Unsigned memory numTokens) public {
         deposit(redeem(numTokens));
