@@ -265,7 +265,8 @@ contract("FundingRateApplier", function(accounts) {
       truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
-          ev.updateTime.toString() === (currentTime - delay).toString() // Update time is equal to the proposal time.
+          ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
+          ev.reward.toString() === "0"
         );
       });
 
@@ -275,7 +276,8 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Pays rewards", async () => {
-      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store.
+      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store for the
+      // proposal bond.
       assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
 
       // Funding rate store does not escrow, the optimistic oracle does.
@@ -287,7 +289,15 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the newly expired rate.
-      await fundingRateApplier.applyFundingRate();
+      const receipt = await fundingRateApplier.applyFundingRate();
+      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
+        return (
+          ev.newFundingRate.toString() === defaultProposal &&
+          ev.updateTime.toString() === (currentTime - delay).toString() && // Update time set to proposal time.
+          ev.reward.toString() === toWei("1")
+          // Check that reward amount is emitted correctly, see below for reward calculation.
+        );
+      });
 
       // Owner should have their bond back and have received:
       // - a reward of 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc -- 1 token.

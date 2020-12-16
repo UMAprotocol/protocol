@@ -66,7 +66,7 @@ abstract contract FundingRateApplier is FeePayer {
      *                EVENTS                *
      ****************************************/
 
-    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime);
+    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime, uint256 reward);
 
     /****************************************
      *              MODIFIERS               *
@@ -228,18 +228,18 @@ abstract contract FundingRateApplier is FeePayer {
                     fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
+                    FixedPoint.Unsigned memory reward = FixedPoint.fromUnscaledUint(0);
                     OptimisticOracleInterface.Request memory request =
                         optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                     if (request.disputer == address(0)) {
-                        FixedPoint.Unsigned memory reward =
-                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
+                        reward = _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
                         if (reward.isGreaterThan(0)) {
                             _adjustCumulativeFeeMultiplier(reward, _pfc());
                             collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                         }
                     }
 
-                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime);
+                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime, reward.rawValue);
                 }
 
                 // Set proposal time to 0 since this proposal has now been resolved.
