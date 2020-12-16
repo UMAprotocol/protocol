@@ -43,8 +43,9 @@ spoke.post("/", async (req, res) => {
             : JSON.stringify(req.body.environmentVariables[key]);
       });
     }
-
+    console.log("EXEC");
     const execResponse = await _execShellCommand(req.body.serverlessCommand, processedEnvironmentVariables);
+    console.log("After exec");
 
     if (execResponse.error) {
       throw execResponse;

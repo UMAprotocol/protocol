@@ -104,7 +104,8 @@ contract("index.js", function(accounts) {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
-      lookback: 1
+      lookback: 1,
+      getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
     };
     defaultMedianizerPricefeedConfig = {};
 

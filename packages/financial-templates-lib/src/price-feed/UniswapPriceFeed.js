@@ -81,11 +81,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     });
 
     // Search backwards through the array and grab block timestamps for everything in our lookback window.
-    // TODO: this feed SHOULD use the this.getTime() method. However, this is incompatible with hardhat which advances
-    // For now we will simply pull the most recent block's time as the current time and to work around this for now.
-    // This should be refactored at some point in the future.
-    const currentTime = (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp;
-    // const currentTime = this.getTime();
+    // Get Time can either be a synchronous OR asynchronous function depending on how the UniswapPriceFeed is setup.
+    // Specifically, when tests are run using hardhat, we use the current block number as the getTimeFunction. This
+    // check enables us to support both types of getTime functions.
+    const currentTime = this.getTime.constructor.name === "AsyncFunction" ? await this.getTime() : this.getTime();
 
     const lookbackWindowStart = currentTime - (this.twapLength + this.historicalLookback);
     let i = events.length;
