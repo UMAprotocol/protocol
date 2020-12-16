@@ -7,7 +7,7 @@ import "../../../common/implementation/Lockable.sol";
 /**
  * @title Pre-Expiration Identifier Transformation Financial Product Library
  * @notice Adds custom identifier transformation to enable a financial contract to use two different identifiers, depending
- * on when a price request is made. If the request is made before expiration than a transformation is made to the identifier
+ * on when a price request is made. If the request is made before expiration then a transformation is made to the identifier
  * & if it is at or after expiration then the original identifier is returned. This library enables self referential
  * TWAP identifier to be used on synthetics pre-expiration, in conjunction with a separate identifier at expiration.
  */
@@ -18,9 +18,9 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
      * @notice Enables the deployer of the library to set the transformed identifier for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param transformedIdentifier the identifier for the financial product to be used if the contract is post expiration.
-     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier Cant
+     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier Can't
      * be set to blank. c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
-     * d)  financialProduct must exposes an expirationTimestamp method.
+     * d)  financialProduct must expose an expirationTimestamp method.
      */
     function setFinancialProductTransformedIdentifier(address financialProduct, bytes32 transformedIdentifier)
         public

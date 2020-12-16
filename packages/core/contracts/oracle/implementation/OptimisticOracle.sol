@@ -210,7 +210,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     /**
      * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
-     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the others'
+     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
      * bond, so there is still profit to be made even if the reward is refunded.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identifiy the existing request.
@@ -326,7 +326,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param timestamp timestamp to identifiy the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
-     * the disputer once settled if the dispute was value (the proposal was incorrect).
+     * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
     function disputePriceFor(
         address disputer,

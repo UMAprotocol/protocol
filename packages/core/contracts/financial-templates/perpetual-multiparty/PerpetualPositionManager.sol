@@ -226,7 +226,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         require(collateralAmount.isGreaterThan(0));
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
-        // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
+        // position remains above the GCR within the withdrawal. If this is not the case the caller must submit a request.
         amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
@@ -239,7 +239,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     /**
-     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw` from their position.
+     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw from their position.
      * @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      * @param collateralAmount the amount of collateral requested to withdraw
      */

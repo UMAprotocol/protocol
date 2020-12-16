@@ -130,7 +130,7 @@ abstract contract FundingRateApplier is FeePayer {
 
     /**
      * @notice Proposes a new funding rate. Proposer receives a reward if correct.
-     * @param rate funding rate to being proposed.
+     * @param rate funding rate being proposed.
      * @param timestamp time at which the funding rate was computed.
      */
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
