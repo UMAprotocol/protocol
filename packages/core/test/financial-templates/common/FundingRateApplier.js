@@ -266,7 +266,8 @@ contract("FundingRateApplier", function(accounts) {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
           ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
-          ev.reward.toString() === "0"
+          ev.reward.toString() === toWei("1")
+          // The reward is 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc --> 1 token
         );
       });
 
@@ -289,15 +290,7 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the newly expired rate.
-      const receipt = await fundingRateApplier.applyFundingRate();
-      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
-        return (
-          ev.newFundingRate.toString() === defaultProposal &&
-          ev.updateTime.toString() === (currentTime - delay).toString() && // Update time set to proposal time.
-          ev.reward.toString() === toWei("1")
-          // Check that reward amount is emitted correctly, see below for reward calculation.
-        );
-      });
+      await fundingRateApplier.applyFundingRate();
 
       // Owner should have their bond back and have received:
       // - a reward of 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc -- 1 token.
