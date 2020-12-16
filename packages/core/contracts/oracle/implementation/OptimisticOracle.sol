@@ -20,7 +20,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
 /**
- * @title Optimistic Requester
+ * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
  */
 interface OptimisticRequester {
@@ -66,7 +66,7 @@ interface OptimisticRequester {
 }
 
 /**
- * @title Optimistic Oracle
+ * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
 contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
