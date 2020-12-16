@@ -270,6 +270,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData,
         int256 proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
+        require(proposer != address(0), "proposer address must be non 0");
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "proposePriceFor: Requested"
@@ -335,6 +336,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public override nonReentrant() returns (uint256 totalBond) {
+        require(disputer != address(0), "disputer address must be non 0");
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Proposed,
             "disputePriceFor: Proposed"

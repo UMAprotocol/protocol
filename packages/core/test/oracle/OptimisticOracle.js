@@ -179,6 +179,19 @@ contract("OptimisticOracle", function(accounts) {
       await verifyBalanceSum(optimisticOracle.address, reward, totalCustomBond);
     });
 
+    it("Should Revert When Proposed For With 0 Address", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      const request = optimisticOracle.proposePriceFor(
+        "0x0000000000000000000000000000000000000000",
+        optimisticRequester.address,
+        identifier,
+        requestTime,
+        "0x",
+        correctPrice,
+        { from: proposer }
+      );
+      assert(await didContractThrow(request));
+    });
     it("Propose For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePriceFor(
@@ -403,6 +416,20 @@ contract("OptimisticOracle", function(accounts) {
       assert.equal((await optimisticRequester.refund()).toString(), "0");
     });
 
+    it("Should Revert When Dispute For With 0 Address", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      const request = optimisticOracle.disputePriceFor(
+        "0x0000000000000000000000000000000000000000",
+        optimisticRequester.address,
+        identifier,
+        requestTime,
+        "0x",
+        {
+          from: disputer
+        }
+      );
+      assert(await didContractThrow(request));
+    });
     it("Dispute For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePriceFor(rando, optimisticRequester.address, identifier, requestTime, "0x", {
