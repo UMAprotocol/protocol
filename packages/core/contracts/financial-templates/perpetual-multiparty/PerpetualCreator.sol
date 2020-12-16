@@ -82,7 +82,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // Create new config settings store for this contract and reset ownership to the deployer.
         ConfigStore configStore = new ConfigStore(configSettings, timerAddress);
         configStore.transferOwnership(msg.sender);
-        CreatedConfigStore(address(configStore), configStore.owner());
+        emit CreatedConfigStore(address(configStore), configStore.owner());
 
         // Create a new synthetic token using the params.
         TokenFactory tf = TokenFactory(tokenFactoryAddress);
