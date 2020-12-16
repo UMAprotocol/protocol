@@ -81,16 +81,12 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      */
     function getCurrentConfig()
         external
-        view
         override
-        nonReentrantView()
+        updateConfig()
+        nonReentrant()
         returns (ConfigStoreInterface.ConfigSettings memory)
     {
-        if (_pendingProposalPassed()) {
-            return pendingConfig;
-        } else {
-            return currentConfig;
-        }
+        return currentConfig;
     }
 
     /**

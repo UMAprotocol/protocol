@@ -22,5 +22,5 @@ interface ConfigStoreInterface {
         uint256 proposalTimePastLimit;
     }
 
-    function getCurrentConfig() external view returns (ConfigSettings memory);
+    function getCurrentConfig() external returns (ConfigSettings memory);
 }
