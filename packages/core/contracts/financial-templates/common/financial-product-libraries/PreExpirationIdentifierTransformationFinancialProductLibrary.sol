@@ -62,7 +62,7 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
     {
         require(financialProductTransformedIdentifiers[msg.sender] != "", "Caller has no transformation");
         // If the request time is before contract expiration then return the transformed identifier. Else, return the
-        // transformed price identifier.
+        // original price identifier.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
             return financialProductTransformedIdentifiers[msg.sender];
         } else {

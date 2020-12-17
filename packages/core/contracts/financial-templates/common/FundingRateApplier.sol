@@ -115,13 +115,9 @@ abstract contract FundingRateApplier is FeePayer {
     }
 
     /**
-     * @notice This method takes 4 distinct actions:
-     *
+     * @notice This method takes 3 distinct actions:
      * 1. Pays out regular fees.
-     *
-     * 2. If possible, resolves the outstanding funding rate proposal, pulling the result in and paying out the
-     *    rewards.
-     *
+     * 2. If possible, resolves the outstanding funding rate proposal, pulling the result in and paying out the rewards.
      * 3. Applies the prevailing funding rate over the most recent period.
      */
     function applyFundingRate() public regularFees() nonReentrant() {
@@ -186,8 +182,7 @@ abstract contract FundingRateApplier is FeePayer {
     }
 
     // Returns a token amount scaled by the current funding rate multiplier.
-    // Note: if the contract has paid fees since it was deployed, the raw
-    // value should be larger than the returned value.
+    // Note: if the contract has paid fees since it was deployed, the raw value should be larger than the returned value.
     function _getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
         internal
         view
@@ -246,9 +241,8 @@ abstract contract FundingRateApplier is FeePayer {
                 fundingRate.proposalTime = 0;
             } catch {
                 // Stop tracking and allow other proposals to come in if:
-                // - The requester address is empty, indicating that the Oracle does not know about
-                //   this funding rate request. This is possible if the Oracle is replaced while the price request
-                //   is still pending.
+                // - The requester address is empty, indicating that the Oracle does not know about this funding rate
+                //   request. This is possible if the Oracle is replaced while the price request is still pending.
                 // - The request has been disputed.
                 OptimisticOracleInterface.Request memory request =
                     optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);

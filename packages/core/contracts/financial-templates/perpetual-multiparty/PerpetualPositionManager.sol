@@ -87,6 +87,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
+    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event EmergencyShutdown(address indexed caller, uint256 shutdownTimestamp);
     event SettleEmergencyShutdown(
         address indexed caller,
@@ -343,9 +344,9 @@ contract PerpetualPositionManager is FundingRateApplier {
             "Insufficient collateral"
         );
 
-        require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp == 0);
         if (positionData.tokensOutstanding.isEqual(0)) {
-            require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
+            require(numTokens.isGreaterThanOrEqual(minSponsorTokens));
             emit NewSponsor(msg.sender);
         }
 
@@ -399,7 +400,7 @@ contract PerpetualPositionManager is FundingRateApplier {
 
             // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
-            require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
+            require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
             positionData.tokensOutstanding = newTokenCount;
 
             // Update the totalTokensOutstanding after redemption.
@@ -419,10 +420,31 @@ contract PerpetualPositionManager is FundingRateApplier {
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
      * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
      * @dev This contract must have the Burner role for the `tokenCurrency`.
-     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
+     * @param numTokens is the number of tokens to be burnt from the sponsor's debt position.
      */
-    function repay(FixedPoint.Unsigned memory numTokens) public {
-        deposit(redeem(numTokens));
+    function repay(FixedPoint.Unsigned memory numTokens)
+        public
+        notEmergencyShutdown()
+        noPendingWithdrawal(msg.sender)
+        fees()
+        nonReentrant()
+    {
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding));
+
+        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
+        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+        positionData.tokensOutstanding = newTokenCount;
+
+        // Update the totalTokensOutstanding after redemption.
+        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
+
+        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
+
+        // Transfer the tokens back from the sponsor and burn them.
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     /**
@@ -594,10 +616,7 @@ contract PerpetualPositionManager is FundingRateApplier {
 
         // Ensure that the sponsor will meet the min position size after the reduction.
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
-        require(
-            positionData.tokensOutstanding.isGreaterThanOrEqual(minSponsorTokens),
-            "Below minimum sponsor position"
-        );
+        require(positionData.tokensOutstanding.isGreaterThanOrEqual(minSponsorTokens));
 
         // Decrement the position's withdrawal amount.
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
@@ -732,7 +751,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     // `create` method because it is possible that `create` is called on a new position (i.e. one without any collateral
     // or tokens outstanding) which would fail the `onlyCollateralizedPosition` modifier on `_getPositionData`.
     function _positionHasNoPendingWithdrawal(address sponsor) internal view {
-        require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
+        require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0);
     }
 
     /****************************************
