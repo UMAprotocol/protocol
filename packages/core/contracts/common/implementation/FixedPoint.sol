@@ -22,7 +22,7 @@ library FixedPoint {
     }
 
     /**
-     * @notice Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`.
+     * @notice Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5*(10**18)`.
      * @param a uint to convert into a FixedPoint.
      * @return the converted FixedPoint.
      */
@@ -399,7 +399,7 @@ library FixedPoint {
     }
 
     /**
-     * @notice Constructs a `Signed` from an unscaled int, e.g., `b=5` gets stored internally as `5**18`.
+     * @notice Constructs a `Signed` from an unscaled int, e.g., `b=5` gets stored internally as `5*(10**18)`.
      * @param a int to convert into a FixedPoint.Signed.
      * @return the converted FixedPoint.Signed.
      */
