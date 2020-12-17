@@ -99,9 +99,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
 
         _registerContract(new address[](0), address(derivative));
 
-        emit CreatedPerpetual(address(derivative), msg.sender);
+        emit CreatedPerpetual(derivative, msg.sender);
 
-        return address(derivative);
+        return derivative;
     }
 
     /****************************************
