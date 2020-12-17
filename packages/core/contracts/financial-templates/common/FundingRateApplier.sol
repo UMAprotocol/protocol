@@ -199,11 +199,9 @@ abstract contract FundingRateApplier is FeePayer {
         return configStore.getCurrentConfig();
     }
 
-    function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
+    function _updateFundingRate() internal {
         uint256 proposalTime = fundingRate.proposalTime;
-
-        // If there is no pending proposal then return the current funding rate, otherwise
-        // check to see if we can update the funding rate.
+        // If there is no pending proposal then do nothing. Otherwise check to see if we can update the funding rate.
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
             OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
@@ -251,6 +249,9 @@ abstract contract FundingRateApplier is FeePayer {
                 }
             }
         }
+    }
+
+    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
         return fundingRate.rate;
     }
 
@@ -284,6 +285,7 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 
+        _updateFundingRate(); // Update the funding rate if there is a resolved proposal.
         fundingRate.cumulativeMultiplier = _calculateEffectiveFundingRate(
             paymentPeriod,
             _getLatestFundingRate(),
