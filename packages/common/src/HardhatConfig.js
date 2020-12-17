@@ -1,5 +1,4 @@
 function getHardhatConfig(configOverrides) {
-  require("solidity-coverage");
   require("@nomiclabs/hardhat-truffle5");
   require("@nomiclabs/hardhat-etherscan");
   require("hardhat-gas-reporter");
