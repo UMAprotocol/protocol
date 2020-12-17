@@ -18,7 +18,7 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
      * @notice Enables the deployer of the library to set the transformed identifier for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param transformedIdentifier the identifier for the financial product to be used if the contract is post expiration.
-     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier Can't
+     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier can't
      * be set to blank. c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
      * d)  financialProduct must expose an expirationTimestamp method.
      */
