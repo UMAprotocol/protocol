@@ -87,9 +87,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
 
         _registerContract(new address[](0), address(derivative));
 
-        emit CreatedExpiringMultiParty(address(derivative), msg.sender);
+        emit CreatedExpiringMultiParty(derivative, msg.sender);
 
-        return address(derivative);
+        return derivative;
     }
 
     /****************************************
