@@ -33,9 +33,7 @@ function makeTransaction(data) {
   return {
     from: tag,
     to: emp,
-    value: 0,
-    data,
-    gas: 1000000
+    data
   };
 }
 
