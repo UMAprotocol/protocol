@@ -13,7 +13,6 @@ import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "../common/FeePayer.sol";
 import "../common/FundingRateApplier.sol";
 
 /**
