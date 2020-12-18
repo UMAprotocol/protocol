@@ -85,7 +85,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         tokenCurrency.addBurner(derivative);
         tokenCurrency.resetOwner(derivative);
 
-        _registerContract(new address[](0), address(derivative));
+        _registerContract(new address[](0), derivative);
 
         emit CreatedExpiringMultiParty(derivative, msg.sender);
 
