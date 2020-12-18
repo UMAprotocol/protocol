@@ -2,6 +2,7 @@ function getHardhatConfig(configOverrides) {
   const fs = require("fs");
   const path = require("path");
   const chalkPipe = require("chalk-pipe");
+  const { task } = require("hardhat/config");
 
   // Etherscan verification stuff
   const { ethers } = require("ethers");
@@ -63,7 +64,7 @@ function getHardhatConfig(configOverrides) {
         console.log(chalkPipe("orange.bold")("Unable to automatically detect network"));
       }
 
-      const etherscan = getDefaultEtherscanConfig(bre.config);
+      const etherscan = defaultEtherscanConfig(bre.config);
 
       if (etherscan.apiKey === undefined || etherscan.apiKey.trim() === "") {
         throw new NomicLabsBuidlerPluginError(
