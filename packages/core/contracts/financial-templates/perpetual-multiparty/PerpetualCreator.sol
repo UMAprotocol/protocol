@@ -97,11 +97,11 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         tokenCurrency.addBurner(derivative);
         tokenCurrency.resetOwner(derivative);
 
-        _registerContract(new address[](0), address(derivative));
+        _registerContract(new address[](0), derivative);
 
-        emit CreatedPerpetual(address(derivative), msg.sender);
+        emit CreatedPerpetual(derivative, msg.sender);
 
-        return address(derivative);
+        return derivative;
     }
 
     /****************************************
