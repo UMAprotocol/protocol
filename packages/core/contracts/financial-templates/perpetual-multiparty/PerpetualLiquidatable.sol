@@ -183,7 +183,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
+        require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
         require(
             params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
             "Rewards are more than 100%"
