@@ -745,12 +745,12 @@ contract("PerpetualPositionManager", function(accounts) {
     const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
 
     // Event is correctly emitted.
-    truffleAssert.eventEmitted(repayResult, "Redeem", ev => {
-      return ev.sponsor == sponsor && ev.tokenAmount == toWei("40");
-    });
-
-    truffleAssert.eventEmitted(repayResult, "Deposit", ev => {
-      return ev.sponsor == sponsor;
+    truffleAssert.eventEmitted(repayResult, "Repay", ev => {
+      return (
+        ev.sponsor == sponsor &&
+        ev.numTokensRepaid.toString() == toWei("40") &&
+        ev.newTokenCount.toString() === toWei("60")
+      );
     });
 
     const tokensPaid = initialSponsorTokens.sub(await tokenCurrency.balanceOf(sponsor));
@@ -784,6 +784,22 @@ contract("PerpetualPositionManager", function(accounts) {
         )
       )
     );
+
+    // Caller needs to set allowance in order to repay.
+    await tokenCurrency.approve(positionManager.address, "0", { from: sponsor });
+    assert(
+      await didContractThrow(
+        positionManager.repay(
+          {
+            rawValue: toBN(toWei("60"))
+              .sub(toBN(minSponsorTokens))
+              .toString()
+          },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.approve(positionManager.address, toWei("60"), { from: sponsor });
 
     // Can repay up to the minimum sponsor size
     await positionManager.repay(

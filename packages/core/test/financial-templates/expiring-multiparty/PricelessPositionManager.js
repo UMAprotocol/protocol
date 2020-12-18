@@ -1642,6 +1642,97 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
   });
 
+  it("Sponsor can use repay to decrease their debt", async function() {
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100") }, { from: sponsor });
+
+    const initialSponsorTokens = await tokenCurrency.balanceOf(sponsor);
+    const initialSponsorTokenDebt = toBN(
+      (await pricelessPositionManager.positions(sponsor)).tokensOutstanding.rawValue
+    );
+    const initialTotalTokensOutstanding = await pricelessPositionManager.totalTokensOutstanding();
+
+    // Check that repay fails if missing Burner role.
+    await tokenCurrency.removeBurner(pricelessPositionManager.address);
+    assert(await didContractThrow(pricelessPositionManager.repay({ rawValue: toWei("40") }, { from: sponsor })));
+    await tokenCurrency.addBurner(pricelessPositionManager.address);
+    const repayResult = await pricelessPositionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
+
+    // Event is correctly emitted.
+    truffleAssert.eventEmitted(repayResult, "Repay", ev => {
+      return (
+        ev.sponsor == sponsor &&
+        ev.numTokensRepaid.toString() == toWei("40") &&
+        ev.newTokenCount.toString() === toWei("60")
+      );
+    });
+
+    const tokensPaid = initialSponsorTokens.sub(await tokenCurrency.balanceOf(sponsor));
+    const tokenDebtDecreased = initialSponsorTokenDebt.sub(
+      toBN((await pricelessPositionManager.positions(sponsor)).tokensOutstanding.rawValue)
+    );
+    const totalTokensOutstandingDecreased = initialTotalTokensOutstanding.sub(
+      await pricelessPositionManager.totalTokensOutstanding()
+    );
+
+    // Tokens paid back to contract,the token debt decrease and decrease in outstanding should all equal 40 tokens.
+    assert.equal(tokensPaid.toString(), toWei("40"));
+    assert.equal(tokenDebtDecreased.toString(), toWei("40"));
+    assert.equal(totalTokensOutstandingDecreased.toString(), toWei("40"));
+
+    // Can not request to repay more than their token balance. Sponsor has remaining 60. max they can repay is 60
+    assert.equal((await pricelessPositionManager.positions(sponsor)).tokensOutstanding.rawValue, toWei("60"));
+    assert(await didContractThrow(pricelessPositionManager.repay({ rawValue: toWei("65") }, { from: sponsor })));
+
+    // Can not repay to position less than minimum sponsor size. Minimum sponsor size is 5 wei. Repaying 60 - 3 wei
+    // would leave the position at a size of 2 wei, which is less than acceptable minimum.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.repay(
+          {
+            rawValue: toBN(toWei("60"))
+              .subn(3)
+              .toString()
+          },
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Caller needs to set allowance in order to repay.
+    await tokenCurrency.approve(pricelessPositionManager.address, "0", { from: sponsor });
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.repay(
+          {
+            rawValue: toBN(toWei("60"))
+              .sub(toBN(minSponsorTokens))
+              .toString()
+          },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("60"), { from: sponsor });
+
+    // Can repay up to the minimum sponsor size
+    await pricelessPositionManager.repay(
+      {
+        rawValue: toBN(toWei("60"))
+          .sub(toBN(minSponsorTokens))
+          .toString()
+      },
+      { from: sponsor }
+    );
+
+    assert.equal((await pricelessPositionManager.positions(sponsor)).tokensOutstanding.rawValue, minSponsorTokens);
+
+    // As at the minimum sponsor size even removing 1 wei wll revert.
+    assert(await didContractThrow(pricelessPositionManager.repay({ rawValue: "1" }, { from: sponsor })));
+  });
+
   it("Basic fees", async function() {
     // Set up position.
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
