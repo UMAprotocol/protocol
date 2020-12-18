@@ -11,7 +11,7 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 /**
- * @notice ConfigStore stores configuration settings for a perpetual contract and provides and interface for it
+ * @notice ConfigStore stores configuration settings for a perpetual contract and provides an interface for it
  * to query settings such as reward rates, proposal bond sizes, etc. The configuration settings can be upgraded
  * by a privileged account and the upgraded changes are timelocked.
  */

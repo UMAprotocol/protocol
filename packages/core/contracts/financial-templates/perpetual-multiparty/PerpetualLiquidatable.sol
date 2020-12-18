@@ -183,7 +183,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
+        require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
         require(
             params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
             "Rewards are more than 100%"
@@ -542,7 +542,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
         FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
 
-        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
+        // If the position has more than the required collateral it is solvent and the dispute is valid (liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
         bool disputeSucceeded = liquidation.liquidatedCollateral.isGreaterThanOrEqual(requiredCollateral);
         liquidation.state = disputeSucceeded ? Status.DisputeSucceeded : Status.DisputeFailed;

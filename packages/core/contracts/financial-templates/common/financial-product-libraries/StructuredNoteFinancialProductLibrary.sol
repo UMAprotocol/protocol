@@ -11,7 +11,7 @@ import "../../../common/implementation/Lockable.sol";
  * ETHUSD is above that strike, the contract pays out a given dollar amount of ETH.
  * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH
  * If ETHUSD < $400 at expiry, token is redeemed for 1 ETH.
- * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determine by the DVM.
+ * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determined by the DVM.
  */
 contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
@@ -20,7 +20,7 @@ contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownab
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param strikePrice the strike price for the structured note to be applied to the financial product.
-     * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price can not be 0.
+     * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price cannot be 0.
      * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
      * d)  financialProduct must exposes an expirationTimestamp method.
      */
