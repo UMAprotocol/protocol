@@ -10,8 +10,6 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 
-import "../../oracle/interfaces/StoreInterface.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
@@ -123,7 +121,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
 
     /**
      * @notice Proposes a new funding rate. Proposer receives a reward if correct.
-     * @param rate funding rate to being proposed.
+     * @param rate funding rate being proposed.
      * @param timestamp time at which the funding rate was computed.
      */
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
