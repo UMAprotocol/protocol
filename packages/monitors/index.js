@@ -56,7 +56,6 @@ async function run({
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig
 }) {
-  console.log("top");
   try {
     const { hexToUtf8 } = web3.utils;
 
