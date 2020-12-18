@@ -14,6 +14,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("MintableBurnableERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("MintableBurnableSyntheticToken");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 const FeePayerPoolPartyLib = artifacts.require("FeePayerPoolPartyLib");
 const PerpetualPositionManagerPoolPartyLib = artifacts.require("PerpetualPositionManagerPoolPartyLib");
@@ -1041,6 +1042,31 @@ contract("PerpetualPositionManagerPoolParty", function(accounts) {
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
     await positionManager.renouncePool({ from: tokenHolder });
+  });
+
+  it("Financial admin can call emergency shutdown", async function() {
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
+    // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
+    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await positionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
+
+    await positionManager.addPool(tokenHolder, { from: sponsor });
+
+    // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
+    const shutdownTimestamp = Number(await positionManager.getCurrentTime()) + 1000;
+    await positionManager.setCurrentTime(shutdownTimestamp);
+
+    // Pool can initiate emergency shutdown.
+    const financialContractsAdmin = await FinancialContractsAdmin.deployed();
+    await financialContractsAdmin.callEmergencyShutdown(positionManager.address);
+    assert.equal((await positionManager.positionManagerData.call()).emergencyShutdownTimestamp, shutdownTimestamp);
+    assert.equal((await positionManager.emergencyShutdownPrice.call()).toString(), 0);
   });
 
   describe("Precision loss as a result of regular fees is handled as expected", () => {

@@ -412,7 +412,11 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
      * to occur via the `settleEmergencyShutdown` function.
      */
-    function emergencyShutdown() external override onlyPool() notEmergencyShutdown() nonReentrant() {
+    function emergencyShutdown() external override notEmergencyShutdown() nonReentrant() {
+        require(
+            hasRole(POOL_ROLE, msg.sender) || msg.sender == _getFinancialContractsAdminAddress(),
+            "Caller must be a pool or the UMA governor"
+        );
         positionManagerData.emergencyShutdownTimestamp = getCurrentTime();
         positionManagerData.requestOraclePrice(positionManagerData.emergencyShutdownTimestamp, feePayerData);
         emit EmergencyShutdown(msg.sender, positionManagerData.emergencyShutdownTimestamp);
@@ -693,5 +697,9 @@ contract PerpetualPositionManagerPoolParty is AccessControl, FeePayerPoolParty {
     // or tokens outstanding) which would fail the `onlyCollateralizedPosition` modifier on `_getPositionData`.
     function _positionHasNoPendingWithdrawal(address sponsor) internal view {
         require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
+    }
+
+    function _getFinancialContractsAdminAddress() internal view returns (address) {
+        return feePayerData.finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 }
