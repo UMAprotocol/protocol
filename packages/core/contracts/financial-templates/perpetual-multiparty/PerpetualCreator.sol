@@ -17,7 +17,7 @@ import "./ConfigStore.sol";
  * @title Perpetual Contract creator.
  * @notice Factory contract to create and register new instances of perpetual contracts.
  * Responsible for constraining the parameters used to construct a new perpetual. This creator contains a number of constraints
- * that are applied to newly created  contract. These constraints can evolve over time and are
+ * that are applied to newly created contract. These constraints can evolve over time and are
  * initially constrained to conservative values in this first iteration. Technically there is nothing in the
  * Perpetual contract requiring these constraints. However, because `createPerpetual()` is intended
  * to be the only way to create valid financial contracts that are registered with the DVM (via _registerContract),
@@ -79,7 +79,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // Create new config settings store for this contract and reset ownership to the deployer.
         ConfigStore configStore = new ConfigStore(configSettings, timerAddress);
         configStore.transferOwnership(msg.sender);
-        CreatedConfigStore(address(configStore), configStore.owner());
+        emit CreatedConfigStore(address(configStore), configStore.owner());
 
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");

@@ -104,6 +104,7 @@ contract PricelessPositionManager is FeePayer {
     event PositionCreated(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
+    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event ContractExpired(address indexed caller);
     event SettleExpiredPosition(
@@ -313,7 +314,7 @@ contract PricelessPositionManager is FeePayer {
         require(collateralAmount.isGreaterThan(0));
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
-        // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
+        // position remains above the GCR within the withdrawal. If this is not the case the caller must submit a request.
         amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
@@ -451,6 +452,38 @@ contract PricelessPositionManager is FeePayer {
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
+    }
+
+    /**
+     * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
+     * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
+     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
+     * @param numTokens is the number of tokens to be burnt from the sponsor's debt position.
+     */
+    function repay(FixedPoint.Unsigned memory numTokens)
+        public
+        onlyPreExpiration()
+        noPendingWithdrawal(msg.sender)
+        fees()
+        nonReentrant()
+    {
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding));
+
+        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
+        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+        positionData.tokensOutstanding = newTokenCount;
+
+        // Update the totalTokensOutstanding after redemption.
+        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
+
+        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
+
+        // Transfer the tokens back from the sponsor and burn them.
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     /**
