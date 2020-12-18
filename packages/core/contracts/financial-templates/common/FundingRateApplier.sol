@@ -234,6 +234,9 @@ abstract contract FundingRateApplier is FeePayer {
                         }
                     }
 
+                    // This event will only be emitted after the fundingRate struct's "updateTime" has been set
+                    // to the latest proposal's proposalTime, indicating that the proposal has been published.
+                    // So, it suffices to just emit fundingRate.updateTime here.
                     emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime, reward.rawValue);
                 }
 
