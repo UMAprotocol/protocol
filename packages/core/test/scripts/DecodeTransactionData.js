@@ -2,16 +2,14 @@ const DecodeTransactionData = require("../../scripts/DecodeTransactionData");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
 
 const Registry = artifacts.require("Registry");
+const Voting = artifacts.require("Voting");
 const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 
 contract("scripts/DecodeTransactionData.js", function() {
-  let registry;
-  before(async function() {
-    registry = await Registry.new();
-  });
   it("Decode registerContract", async function() {
     const contractAddress = web3.utils.randomHex(20);
 
+    const registry = await Registry.deployed();
     const txnData = registry.contract.methods.registerContract([], contractAddress).encodeABI();
 
     const expectedObject = {
@@ -29,7 +27,7 @@ contract("scripts/DecodeTransactionData.js", function() {
   });
 
   it("Decode batchReveal", async function() {
-    const voting = await VotingInterfaceTesting.at(registry.address);
+    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     // Generate 5 random reveals to test.
     const revealArray = [];
