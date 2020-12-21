@@ -78,7 +78,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      * @notice Returns current config or pending config if pending liveness has expired.
      * @return ConfigSettings config settings that calling financial contract should view as "live".
      */
-    function getCurrentConfig()
+    function updateAndGetCurrentConfig()
         external
         override
         updateConfig()

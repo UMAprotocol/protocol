@@ -194,7 +194,7 @@ abstract contract FundingRateApplier is FeePayer {
     }
 
     function _getConfig() internal returns (ConfigStoreInterface.ConfigSettings memory) {
-        return configStore.getCurrentConfig();
+        return configStore.updateAndGetCurrentConfig();
     }
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
