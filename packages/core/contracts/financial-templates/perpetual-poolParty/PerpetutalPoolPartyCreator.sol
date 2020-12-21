@@ -68,7 +68,7 @@ contract PerpetualPoolPartyCreator is ContractCreator, Testable, Lockable {
      * @param params is a `ConstructorParams` object from Perpetual.
      * @return address of the deployed contract.
      */
-    function createPerpetual(Params memory params) public nonReentrant() returns (address) {
+    function createPerpetual(Params memory params) public virtual nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
         require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
         require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
