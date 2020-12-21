@@ -1,6 +1,6 @@
 {
   "name": "@uma/proposer",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "description": "UMA Price Proposer",
   "dependencies": {
     "@uma/financial-templates-lib": "^1.2.0",
