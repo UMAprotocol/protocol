@@ -345,15 +345,25 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         request.disputer = disputer;
 
         uint256 finalFee = request.finalFee;
-        totalBond = request.bond.add(finalFee);
+        uint256 bond = request.bond;
+        totalBond = bond.add(finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
         StoreInterface store = _getStore();
         if (finalFee > 0) {
-            request.currency.safeIncreaseAllowance(address(store), finalFee);
-            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(finalFee));
+            // Along with the final fee, "burn" half of the loser's bond to ensure that a larger bond always makes it
+            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+            // party.
+            // burnedBond = ceil(bond / 2)
+            // Warning: this math _only_ works with a divisor of 2. This is why this number is not made into a variable/constant.
+            uint256 burnedBond = bond.div(2).add(bond % 2);
+
+            // Pay the final fee and the burned bond to the store.
+            uint256 totalFee = finalFee.add(burnedBond);
+            request.currency.safeIncreaseAllowance(address(store), totalFee);
+            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
         }
 
         _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
@@ -549,7 +559,17 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
-            payout = request.bond.mul(2).add(request.finalFee).add(request.reward);
+            uint256 bond = request.bond;
+
+            // Unburned portion of the loser's bond = floor(bond / 2)
+            uint256 unburnedBond = bond.div(2);
+
+            // Winner gets:
+            // - Their bond back.
+            // - The unburned portion of the loser's bond.
+            // - Their final fee back.
+            // - The request reward (if not already refunded -- if refunded, it will be set to 0).
+            payout = bond.add(unburnedBond).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
         } else {
             revert("_settle: not settleable");

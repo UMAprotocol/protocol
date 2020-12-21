@@ -33,8 +33,8 @@ contract("OptimisticOracle", function(accounts) {
   const customLiveness = 14400; // 4 hours.
   const reward = toWei("0.5");
   const finalFee = toWei("1");
-  const defaultBond = finalFee;
-  const totalDefaultBond = toWei("2");
+  const halfDefaultBond = toWei("0.5"); // Default bond = final fee = 1e18.
+  const totalDefaultBond = toWei("2"); // Total default bond = final fee + default bond = 2e18
   const customBond = toWei("5");
   const totalCustomBond = toWei("6");
   const correctPrice = toWei("-17");
@@ -57,7 +57,8 @@ contract("OptimisticOracle", function(accounts) {
   const verifyBalanceSum = async (address, ...balances) => {
     let sum = toBN("0");
     for (let balance of balances) {
-      sum = sum.add(toBN(balance));
+      // Handle BNs and non-BNs.
+      sum = sum.add(balance.add ? balance : toBN(balance));
     }
 
     assert.equal((await collateral.balanceOf(address)).toString(), sum.toString());
@@ -159,10 +160,12 @@ contract("OptimisticOracle", function(accounts) {
       await collateral.transfer(optimisticRequester.address, reward);
       await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, "0");
     });
+
     it("Should return false when no price was ever proposed", async function() {
       const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
       assert.equal(result, false);
     });
+
     it("Should return false when price is proposed but not past liveness", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
@@ -171,6 +174,7 @@ contract("OptimisticOracle", function(accounts) {
       const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
       assert.equal(result, false);
     });
+
     it("Should return false when price is proposed and disputed", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
@@ -185,6 +189,7 @@ contract("OptimisticOracle", function(accounts) {
       const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
       assert.equal(result, false);
     });
+
     it("Should return true when price is proposed and past liveness but not settled", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
@@ -194,6 +199,7 @@ contract("OptimisticOracle", function(accounts) {
       const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
       assert.equal(result, true);
     });
+
     it("Should return true when price is proposed, disputed and resolved by dvm", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
@@ -207,6 +213,7 @@ contract("OptimisticOracle", function(accounts) {
       const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
       assert.equal(result, true);
     });
+
     it("Should return true when price is proposed, past liveness and settled", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
@@ -218,6 +225,7 @@ contract("OptimisticOracle", function(accounts) {
       assert.equal(result, true);
     });
   });
+
   describe("Requested", function() {
     beforeEach(async function() {
       await collateral.transfer(optimisticRequester.address, reward);
@@ -241,6 +249,49 @@ contract("OptimisticOracle", function(accounts) {
       });
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
       await verifyBalanceSum(optimisticOracle.address, reward, totalCustomBond);
+    });
+
+    it("Burned bond rounding", async function() {
+      // Set bond such that rounding will occur: 1e18 + 1.
+      const bond = toBN(toWei("1")).addn(1);
+      const totalBond = bond.add(toBN(finalFee));
+      const halfBondCeil = bond.divn(2).addn(1);
+      const halfBondFloor = bond.divn(2);
+
+      await optimisticRequester.setBond(identifier, requestTime, "0x", bond);
+      await collateral.approve(optimisticOracle.address, totalBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+
+      await collateral.approve(optimisticOracle.address, totalBond, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
+
+      // Verify that the bonds have been paid in and the loser's bond and the final fee have been sent to the store.
+      await verifyBalanceSum(
+        optimisticOracle.address,
+        totalBond,
+        totalBond,
+        reward,
+        `-${halfBondCeil}`,
+        `-${finalFee}`
+      );
+      await pushPrice(correctPrice);
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
+
+      // Proposer should net half of the disputer's bond (floored) and the reward.
+      await verifyBalanceSum(proposer, initialUserBalance, halfBondFloor, reward);
+
+      // Disputer should have lost their bond.
+      await verifyBalanceSum(disputer, initialUserBalance, `-${totalBond}`);
+
+      // Contract should contain nothing.
+      await verifyBalanceSum(optimisticOracle.address);
+
+      // Store should have a final fee plus half of the bond ceiled (the "burned" portion).
+      await verifyBalanceSum(store.address, finalFee, halfBondCeil);
     });
 
     it("Should Revert When Proposed For With 0 Address", async function() {
@@ -308,8 +359,8 @@ contract("OptimisticOracle", function(accounts) {
       await pushPrice(correctPrice);
       await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
-      // Proposer should net the disputer's bond.
-      await verifyBalanceSum(proposer, initialUserBalance, defaultBond);
+      // Proposer should net half of the disputer's bond.
+      await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond);
 
       // Disputer should have lost their bond.
       await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
@@ -317,8 +368,8 @@ contract("OptimisticOracle", function(accounts) {
       // Contract should contain nothing.
       await verifyBalanceSum(optimisticOracle.address);
 
-      // Store should have a final fee.
-      await verifyBalanceSum(store.address, finalFee);
+      // Store should have a final fee plus half of the bond (the burned portion).
+      await verifyBalanceSum(store.address, finalFee, halfDefaultBond);
 
       // Check that the refund was included in the callback.
       assert.equal((await optimisticRequester.refund()).toString(), reward);
@@ -395,7 +446,14 @@ contract("OptimisticOracle", function(accounts) {
         from: disputer
       });
       await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED);
-      await verifyBalanceSum(optimisticOracle.address, totalDefaultBond, totalDefaultBond, reward, `-${finalFee}`);
+      await verifyBalanceSum(
+        optimisticOracle.address,
+        totalDefaultBond,
+        totalDefaultBond,
+        reward,
+        `-${finalFee}`,
+        `-${halfDefaultBond}`
+      );
 
       // Push price.
       await pushPrice(correctPrice);
@@ -406,17 +464,17 @@ contract("OptimisticOracle", function(accounts) {
       await verifyCorrectPrice();
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
-      // Proposer should net the bond and the reward.
-      await verifyBalanceSum(proposer, initialUserBalance, defaultBond, reward);
+      // Proposer should net half the bond and the reward.
+      await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond, reward);
 
-      // Disputer should have lost thier bond.
+      // Disputer should have lost their bond.
       await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
 
       // Contract should be empty.
       await verifyBalanceSum(optimisticOracle.address);
 
       // Store should have a final fee.
-      await verifyBalanceSum(store.address, finalFee);
+      await verifyBalanceSum(store.address, finalFee, halfDefaultBond);
     });
   });
 
@@ -446,7 +504,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
       // Disputer should net the bond and the reward.
-      await verifyBalanceSum(disputer, initialUserBalance, defaultBond, reward);
+      await verifyBalanceSum(disputer, initialUserBalance, halfDefaultBond, reward);
 
       // Proposer should have lost thier bond.
       await verifyBalanceSum(proposer, initialUserBalance, `-${totalDefaultBond}`);
@@ -455,7 +513,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyBalanceSum(optimisticOracle.address);
 
       // Store should have a final fee.
-      await verifyBalanceSum(store.address, finalFee);
+      await verifyBalanceSum(store.address, finalFee, halfDefaultBond);
     });
 
     it("Verify settlement callback", async function() {
@@ -494,6 +552,7 @@ contract("OptimisticOracle", function(accounts) {
       );
       assert(await didContractThrow(request));
     });
+
     it("Dispute For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePriceFor(rando, optimisticRequester.address, identifier, requestTime, "0x", {
@@ -504,8 +563,8 @@ contract("OptimisticOracle", function(accounts) {
       await pushPrice(correctPrice);
       await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Same as settle.
 
-      // Rando should net the bond, reward, and the full bond the disputer paid in.
-      await verifyBalanceSum(rando, initialUserBalance, defaultBond, reward, totalDefaultBond);
+      // Rando should net half the loser's bond, reward, and the full bond the disputer paid in.
+      await verifyBalanceSum(rando, initialUserBalance, halfDefaultBond, reward, totalDefaultBond);
 
       // Disputer should have lost their bond (since they effectively gave it to rando).
       await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
@@ -517,7 +576,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyBalanceSum(optimisticOracle.address);
 
       // Store should have a final fee.
-      await verifyBalanceSum(store.address, finalFee);
+      await verifyBalanceSum(store.address, finalFee, halfDefaultBond);
     });
   });
 
