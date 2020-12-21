@@ -19,10 +19,10 @@ contract MintableBurnableTokenFactory is Lockable {
      * @return newToken an instance of the newly created token interface.
      */
     function createToken(
-        string calldata tokenName,
-        string calldata tokenSymbol,
+        string memory tokenName,
+        string memory tokenSymbol,
         uint8 tokenDecimals
-    ) external nonReentrant() returns (MintableBurnableIERC20 newToken) {
+    ) public virtual nonReentrant() returns (MintableBurnableIERC20 newToken) {
         MintableBurnableSyntheticToken mintableToken =
             new MintableBurnableSyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addAdmin(msg.sender);
