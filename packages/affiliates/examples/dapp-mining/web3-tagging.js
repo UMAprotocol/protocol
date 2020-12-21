@@ -52,6 +52,16 @@ function runExample() {
   const transaction = makeTransaction(taggedData);
   console.log("Example Transaction:");
   console.table(transaction);
+  // Example of how to send the transaction with web3. This requires you instanciate it with a valid
+  // provider and signer. This example application only shows how to construct the transaction and does not
+  // instanciate a provider for you.
+
+  // The signer in this case must match the "from" field of the transaction.
+  // See web3 docs https://web3js.readthedocs.io/en/v1.3.0/web3.html#web3-instance
+  // https://web3js.readthedocs.io/en/v1.3.0/web3-eth.html#sendtransaction
+
+  // SENDING TRANSACTION:
+  // await web3.eth.sendTransaction(transaction)
 }
 
 runExample();

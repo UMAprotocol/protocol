@@ -50,6 +50,18 @@ function runExample() {
   const transaction = makeTransaction(taggedData);
   console.log("Example Transaction:");
   console.table(transaction);
+
+  // Example of how to send transaction with ethers.  This requires you instanciate ethers with a correct provider
+  // and signer which matches the "from" field of the transaction. This example does not instanciate a provider.
+
+  // Docs on provider: https://docs.ethers.io/v5/api/providers/provider/
+  // Docs on signer: https://docs.ethers.io/v5/api/signer/
+  // Docs on sendTransaction: https://docs.ethers.io/v5/api/signer/#Signer-sendTransaction
+
+  // SENDING TRANSACTION:
+  // const provider = new ethers.providers.JsonRpcProvider(providerUrl);
+  // const signer = provider.getSigner();
+  // await signer.sendTransaction(transaction)
 }
 
 runExample();
