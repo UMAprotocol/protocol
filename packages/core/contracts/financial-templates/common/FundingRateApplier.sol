@@ -70,6 +70,11 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
 
     // This is overridden to both pay fees (which is done by applyFundingRate()) and apply the funding rate.
     modifier fees override {
+        // Note: the funding rate is applied on every fee-accruing transaction, where the total change is simply the
+        // rate applied linearly since the last update. This implies that the compounding rate depends on the frequency
+        // of update transactions that have this modifier, and it never reaches the ideal of continuous compounding.
+        // This approximate-compounding pattern is common in the Ethereum ecosystem because of the complexity of
+        // compounding data on-chain.
         applyFundingRate();
         _;
     }

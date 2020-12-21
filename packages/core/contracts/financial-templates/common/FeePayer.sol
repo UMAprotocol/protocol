@@ -60,6 +60,11 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
 
     // modifier that calls payRegularFees().
     modifier fees virtual {
+        // Note: the regular fee is applied on every fee-accruing transaction, where the total change is simply the
+        // regular fee applied linearly since the last update. This implies that the compounding rate depends on the
+        // frequency of update transactions that have this modifier, and it never reaches the ideal of continuous
+        // compounding. This approximate-compounding pattern is common in the Ethereum ecosystem because of the
+        // complexity of compounding data on-chain.
         payRegularFees();
         _;
     }
