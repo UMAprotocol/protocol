@@ -76,14 +76,15 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         nonReentrant()
         returns (address)
     {
+        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
+        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
+
         // Create new config settings store for this contract and reset ownership to the deployer.
         ConfigStore configStore = new ConfigStore(configSettings, timerAddress);
         configStore.transferOwnership(msg.sender);
         emit CreatedConfigStore(address(configStore), configStore.owner());
 
         // Create a new synthetic token using the params.
-        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
-        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         TokenFactory tf = TokenFactory(tokenFactoryAddress);
 
         // If the collateral token does not have a `decimals()` method,

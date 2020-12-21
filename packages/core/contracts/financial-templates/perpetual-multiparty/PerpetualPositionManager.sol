@@ -212,8 +212,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
-        PositionData storage positionData = _getPositionData(msg.sender);
         require(collateralAmount.isGreaterThan(0));
+        PositionData storage positionData = _getPositionData(msg.sender);
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the withdrawal. If this is not the case the caller must submit a request.
