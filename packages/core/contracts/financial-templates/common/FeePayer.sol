@@ -97,9 +97,11 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      */
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory) {
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = getOutstandingRegularFees();
-        lastPaymentTime = time;
+        FixedPoint.Unsigned memory collateralPool = _pfc();
+        StoreInterface store = _getStore();
+        lastPaymentTime = getCurrentTime();
 
-        FixedPoint.Unsigned totalPaid = regularFee.add(latePenalty);
+        FixedPoint.Unsigned memory totalPaid = regularFee.add(latePenalty);
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
@@ -133,7 +135,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     function getOutstandingRegularFees()
         public
         view
-        nonReentrantView()
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
         StoreInterface store = _getStore();
@@ -142,12 +143,12 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
 
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
-            return FixedPoint.fromUnscaledUint(0);
+            return (FixedPoint.fromUnscaledUint(0), FixedPoint.fromUnscaledUint(0));
         }
 
         // Exit early if fees were already paid during this block.
         if (lastPaymentTime == time) {
-            return totalPaid;
+            return (FixedPoint.fromUnscaledUint(0), FixedPoint.fromUnscaledUint(0));
         }
 
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) =
@@ -159,9 +160,11 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         view
         returns (FixedPoint.Unsigned memory collateral)
     {
-        FixedPoint.unsigned memory currentTotalOutstandingRegularFees = getOutstandingRegularFees();
-        if (currentTotalOutstandingRegularFees.equal(FixedPoint.fromUnscaledUint(0))) return rawCollateral;
-        FixedPoint.Unsigned memory effectiveFee = getOutstandingRegularFees().divCeil(currentPfc);
+        (FixedPoint.Unsigned memory outstandingRegularFee, FixedPoint.Unsigned memory latePenalty) =
+            getOutstandingRegularFees();
+        FixedPoint.Unsigned memory currentTotalOutstandingRegularFees = outstandingRegularFee.add(latePenalty);
+        if (currentTotalOutstandingRegularFees.isEqual(FixedPoint.fromUnscaledUint(0))) return rawCollateral;
+        FixedPoint.Unsigned memory effectiveFee = currentTotalOutstandingRegularFees.divCeil(_pfc());
         return rawCollateral.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
 

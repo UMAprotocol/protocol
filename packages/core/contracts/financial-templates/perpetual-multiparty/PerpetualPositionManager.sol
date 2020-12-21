@@ -158,7 +158,7 @@ contract PerpetualPositionManager is FundingRateApplier {
             _timerAddress
         )
     {
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
         withdrawalLiveness = _withdrawalLiveness;
         tokenCurrency = ExpandedIERC20(_tokenAddress);
