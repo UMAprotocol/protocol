@@ -48,7 +48,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       await retry(
         async () => {
           // Placeholder for looping logic that should be implemented in this bot in future PR's.
-          return true;
+          return;
         },
         {
           retries: errorRetries,
