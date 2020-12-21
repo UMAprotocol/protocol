@@ -62,9 +62,9 @@ abstract contract OptimisticOracleInterface {
     ) external virtual returns (uint256 totalBond);
 
     /**
-     * @notice Requests a new price.
+     * @notice Set the proposal bond associated with a price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param bond custom bond amount to set.
      * @return totalBond new bond + final fee that the proposer and disputer will be required to pay. This can be
@@ -79,10 +79,10 @@ abstract contract OptimisticOracleInterface {
 
     /**
      * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
-     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the others'
+     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
      * bond, so there is still profit to be made even if the reward is refunded.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      */
     function setRefundOnDispute(
@@ -95,7 +95,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Sets a custom liveness value for the request. Liveness is the amount of time a proposal must wait before
      * being auto-resolved.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param customLiveness new custom liveness.
      */
@@ -112,7 +112,7 @@ abstract contract OptimisticOracleInterface {
      * @param proposer address to set as the proposer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
@@ -131,7 +131,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Proposes a price value for an existing price request.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the proposer's wallet as a bond. The bond will be returned to
@@ -151,7 +151,7 @@ abstract contract OptimisticOracleInterface {
      * @param disputer address to set as the disputer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was value (the proposal was incorrect).
@@ -168,7 +168,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Disputes a price value for an existing price request with an active proposal.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return totalBond the amount that's pulled from the disputer's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
@@ -185,7 +185,7 @@ abstract contract OptimisticOracleInterface {
      * or settleable. Note: this method is not view so that this call may actually settle the price request if it
      * hasn't been settled.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return resolved price.
      */
@@ -199,7 +199,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
@@ -215,7 +215,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Gets the current data structure containing all information about a price request.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return the Request data structure.
      */
@@ -237,7 +237,7 @@ abstract contract OptimisticOracleInterface {
      * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return the State.
      */
