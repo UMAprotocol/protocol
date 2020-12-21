@@ -1755,6 +1755,10 @@ contract("PricelessPositionManager", function(accounts) {
     // Sponsor has a position with 1e18 collateral in it. After a 1% fee is applied they should have 0.99e18.
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("0.99"));
 
+    // Equally, the totalPositionCollateral should be decremented accordingly. The total collateral is 2e18. After
+    // the pending regular fee is applied this should be set to 1.98.
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), toWei("1.98"));
+
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     // Multiply by 2 because there are two active positions
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.02")));

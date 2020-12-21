@@ -548,9 +548,8 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
-     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
-     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
-     * logic to this method to account for any such pending fees.
+     * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
+     * example if the `lastPaymentTime != currentTime`.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
@@ -574,7 +573,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         nonReentrantView()
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
     function getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
