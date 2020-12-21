@@ -249,6 +249,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
+    // Returns the user's collateral minus any pending fees that have yet to be subtracted.
     function _getPendingRegularFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
