@@ -4667,6 +4667,15 @@
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
 
+"@uma/core-1-2-1@npm:@uma/core@1.2.1":
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.1.tgz#1085984633a2e4aa15f471d01bb08bcf6a34ba64"
+  integrity sha512-8j9Rgk3V9bXO2izdBS6rXLlqNVtBEPRv6frcT7J/Btv8bjrcf+29tuH1GO66FUWb7kMrxgirFSU0LGNPRHJcbg==
+  dependencies:
+    "@truffle/contract" "^4.2.20"
+    "@uma/common" "^1.1.0"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+
 "@umaprotocol/react-plugin@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@umaprotocol/react-plugin/-/react-plugin-1.5.5.tgz#c378fe8534c9df9a0ec02e16250fd59891cbb37f"

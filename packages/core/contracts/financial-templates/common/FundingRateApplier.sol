@@ -10,12 +10,11 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 
-import "../../oracle/interfaces/StoreInterface.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
+import "./EmergencyShutdownable.sol";
 import "./FeePayer.sol";
 
 /**
@@ -23,7 +22,7 @@ import "./FeePayer.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-abstract contract FundingRateApplier is FeePayer {
+abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
@@ -56,9 +55,6 @@ abstract contract FundingRateApplier is FeePayer {
 
     FundingRate public fundingRate;
 
-    // Timestamp used in case of emergency shutdown. 0 if no shutdown has been triggered.
-    uint256 public emergencyShutdownTimestamp;
-
     // Remote config store managed an owner.
     ConfigStoreInterface public configStore;
 
@@ -66,7 +62,7 @@ abstract contract FundingRateApplier is FeePayer {
      *                EVENTS                *
      ****************************************/
 
-    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime);
+    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime, uint256 reward);
 
     /****************************************
      *              MODIFIERS               *
@@ -100,7 +96,7 @@ abstract contract FundingRateApplier is FeePayer {
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
@@ -108,7 +104,6 @@ abstract contract FundingRateApplier is FeePayer {
         // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
         // applied over time.
         fundingRate.cumulativeMultiplier = _tokenScaling;
-        emergencyShutdownTimestamp = 0;
 
         fundingRate.identifier = _fundingRateIdentifier;
         configStore = ConfigStoreInterface(_configStoreAddress);
@@ -126,7 +121,7 @@ abstract contract FundingRateApplier is FeePayer {
 
     /**
      * @notice Proposes a new funding rate. Proposer receives a reward if correct.
-     * @param rate funding rate to being proposed.
+     * @param rate funding rate being proposed.
      * @param timestamp time at which the funding rate was computed.
      */
     function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
@@ -221,18 +216,21 @@ abstract contract FundingRateApplier is FeePayer {
                     fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
+                    FixedPoint.Unsigned memory reward = FixedPoint.fromUnscaledUint(0);
                     OptimisticOracleInterface.Request memory request =
                         optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                     if (request.disputer == address(0)) {
-                        FixedPoint.Unsigned memory reward =
-                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
+                        reward = _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
                         if (reward.isGreaterThan(0)) {
                             _adjustCumulativeFeeMultiplier(reward, _pfc());
                             collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                         }
                     }
 
-                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime);
+                    // This event will only be emitted after the fundingRate struct's "updateTime" has been set
+                    // to the latest proposal's proposalTime, indicating that the proposal has been published.
+                    // So, it suffices to just emit fundingRate.updateTime here.
+                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime, reward.rawValue);
                 }
 
                 // Set proposal time to 0 since this proposal has now been resolved.

@@ -10,6 +10,7 @@ abstract contract OracleAncillaryInterface {
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param time unix timestamp for the price request.
      */
 
@@ -24,6 +25,7 @@ abstract contract OracleAncillaryInterface {
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
     function hasPrice(
@@ -37,6 +39,7 @@ abstract contract OracleAncillaryInterface {
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
 

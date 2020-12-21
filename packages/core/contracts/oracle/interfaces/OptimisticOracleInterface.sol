@@ -79,7 +79,7 @@ abstract contract OptimisticOracleInterface {
 
     /**
      * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
-     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the others'
+     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
      * bond, so there is still profit to be made even if the reward is refunded.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identify the existing request.

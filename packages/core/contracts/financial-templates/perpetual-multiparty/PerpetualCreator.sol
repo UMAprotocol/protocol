@@ -17,7 +17,7 @@ import "./ConfigStore.sol";
  * @title Perpetual Contract creator.
  * @notice Factory contract to create and register new instances of perpetual contracts.
  * Responsible for constraining the parameters used to construct a new perpetual. This creator contains a number of constraints
- * that are applied to newly created  contract. These constraints can evolve over time and are
+ * that are applied to newly created contract. These constraints can evolve over time and are
  * initially constrained to conservative values in this first iteration. Technically there is nothing in the
  * Perpetual contract requiring these constraints. However, because `createPerpetual()` is intended
  * to be the only way to create valid financial contracts that are registered with the DVM (via _registerContract),
@@ -76,14 +76,15 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         nonReentrant()
         returns (address)
     {
+        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
+        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
+
         // Create new config settings store for this contract and reset ownership to the deployer.
         ConfigStore configStore = new ConfigStore(configSettings, timerAddress);
         configStore.transferOwnership(msg.sender);
         emit CreatedConfigStore(address(configStore), configStore.owner());
 
         // Create a new synthetic token using the params.
-        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
-        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         TokenFactory tf = TokenFactory(tokenFactoryAddress);
 
         // If the collateral token does not have a `decimals()` method,
@@ -97,11 +98,11 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         tokenCurrency.addBurner(derivative);
         tokenCurrency.resetOwner(derivative);
 
-        _registerContract(new address[](0), address(derivative));
+        _registerContract(new address[](0), derivative);
 
-        emit CreatedPerpetual(address(derivative), msg.sender);
+        emit CreatedPerpetual(derivative, msg.sender);
 
-        return address(derivative);
+        return derivative;
     }
 
     /****************************************
