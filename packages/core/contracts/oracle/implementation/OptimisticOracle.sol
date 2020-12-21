@@ -488,12 +488,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
+     * @notice Checks if a given request has resolved, expired or been settled (i.e the optimistic oracle has a price).
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @return the State.
+     * @return boolean indicating true if price exists and false if not.
      */
     function hasPrice(
         address requester,
@@ -501,9 +501,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view override returns (bool) {
-        return
-            getState(requester, identifier, timestamp, ancillaryData) == State.Settled ||
-            getState(requester, identifier, timestamp, ancillaryData) == State.Resolved;
+        State state = getState(requester, identifier, timestamp, ancillaryData);
+        return state == State.Settled || state == State.Resolved || state == State.Expired;
     }
 
     /**
