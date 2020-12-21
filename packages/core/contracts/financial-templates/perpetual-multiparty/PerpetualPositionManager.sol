@@ -279,8 +279,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             positionData.withdrawalRequestPassTimestamp != 0 &&
-                positionData.withdrawalRequestPassTimestamp <= getCurrentTime(),
-            "Invalid withdraw request"
+                positionData.withdrawalRequestPassTimestamp <= getCurrentTime()
         );
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
@@ -562,7 +561,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory collateralAmount)
     {
         // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
     }
 
     /**

@@ -399,7 +399,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function cancelWithdrawal() external nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp != 0);
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -665,7 +665,7 @@ contract PricelessPositionManager is FeePayer {
         returns (FixedPoint.Unsigned memory collateralAmount)
     {
         // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
     }
 
     /**
@@ -826,8 +826,7 @@ contract PricelessPositionManager is FeePayer {
                 _transformPriceIdentifier(requestedTime),
                 requestedTime,
                 _getAncillaryData()
-            ),
-            "Unresolved oracle price"
+            )
         );
         int256 optimisticOraclePrice =
             optimisticOracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
