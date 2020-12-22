@@ -43,7 +43,7 @@ contract("ConfigStore", function(accounts) {
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
-    let currentConfig = await _store.getCurrentConfig();
+    let currentConfig = await _store.updateAndGetCurrentConfig.call();
     assert.equal(currentConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       currentConfig.rewardRatePerSecond.rawValue.toString(),
@@ -85,7 +85,7 @@ contract("ConfigStore", function(accounts) {
   describe("Construction", function() {
     it("Default values get set", async function() {
       configStore = await ConfigStore.new(testConfig, timer.address);
-      let config = await configStore.getCurrentConfig();
+      let config = await configStore.updateAndGetCurrentConfig.call();
       assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
       assert.equal(config.rewardRatePerSecond.rawValue.toString(), testConfig.rewardRatePerSecond.rawValue);
       assert.equal(config.proposerBondPercentage.rawValue.toString(), testConfig.proposerBondPercentage.rawValue);
@@ -221,7 +221,8 @@ contract("ConfigStore", function(accounts) {
       // Advancing time after the original-proposal's liveness but before the overwrite-proposal's liveness
       // doesn't change state.
       await incrementTime(configStore, defaultConfig.timelockLiveness - 1);
-      await configStore.publishPendingConfig();
+      // Can also use `updateAndGetCurrentConfig()` to publish a new config.
+      await configStore.updateAndGetCurrentConfig();
       await currentConfigMatchesInput(configStore, defaultConfig);
       await pendingConfigMatchesInput(configStore, test2Config);
       assert.equal(

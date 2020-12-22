@@ -70,6 +70,11 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
 
     // This is overridden to both pay fees (which is done by applyFundingRate()) and apply the funding rate.
     modifier fees override {
+        // Note: the funding rate is applied on every fee-accruing transaction, where the total change is simply the
+        // rate applied linearly since the last update. This implies that the compounding rate depends on the frequency
+        // of update transactions that have this modifier, and it never reaches the ideal of continuous compounding.
+        // This approximate-compounding pattern is common in the Ethereum ecosystem because of the complexity of
+        // compounding data on-chain.
         applyFundingRate();
         _;
     }
@@ -190,8 +195,8 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
-    function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
-        return configStore.getCurrentConfig();
+    function _getConfig() internal returns (ConfigStoreInterface.ConfigSettings memory) {
+        return configStore.updateAndGetCurrentConfig();
     }
 
     function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
@@ -261,7 +266,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     // rate for the next 74 hours is -500%, but a dishonest proposer successfully proposes a rate of +500%
     // (after a two hour liveness) and disputes honest proposers for the next 72 hours. This results in a funding
     // rate error of 1000% for 74 hours, until the DVM can set the funding rate back to its correct value.
-    function _validateFundingRate(FixedPoint.Signed memory rate) internal view {
+    function _validateFundingRate(FixedPoint.Signed memory rate) internal {
         require(
             rate.isLessThanOrEqual(_getConfig().maxFundingRate) &&
                 rate.isGreaterThanOrEqual(_getConfig().minFundingRate)

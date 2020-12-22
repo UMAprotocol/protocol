@@ -184,10 +184,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         )
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
-        require(
-            params.sponsorDisputeRewardPercentage.add(params.disputerDisputeRewardPercentage).isLessThan(1),
-            "Rewards are more than 100%"
-        );
+        require(params.sponsorDisputeRewardPercentage.add(params.disputerDisputeRewardPercentage).isLessThan(1));
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
