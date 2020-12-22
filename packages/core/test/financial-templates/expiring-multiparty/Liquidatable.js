@@ -30,7 +30,6 @@ contract("Liquidatable", function(accounts) {
   const liquidator = accounts[2];
   const disputer = accounts[3];
   const rando = accounts[4];
-  const beneficiary = accounts[5];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -138,7 +137,6 @@ contract("Liquidatable", function(accounts) {
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
-      excessTokenBeneficiary: beneficiary,
       financialProductLibraryAddress: zeroAddress
     };
 
@@ -182,29 +180,6 @@ contract("Liquidatable", function(accounts) {
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
-  });
-
-  const expectNoExcessCollateralToTrim = async () => {
-    let collateralTrimAmount = await liquidationContract.trimExcess.call(collateralToken.address);
-    await liquidationContract.trimExcess(collateralToken.address);
-    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
-
-    assert.equal(collateralTrimAmount.toString(), "0");
-    assert.equal(beneficiaryCollateralBalance.toString(), "0");
-  };
-
-  const expectAndDrainExcessCollateral = async () => {
-    // Drains the collateral from the contract and transfers it all back to the sponsor account to leave the beneficiary empty.
-    await liquidationContract.trimExcess(collateralToken.address);
-    let beneficiaryCollateralBalance = await collateralToken.balanceOf(beneficiary);
-    collateralToken.transfer(sponsor, beneficiaryCollateralBalance.toString(), { from: beneficiary });
-
-    // Assert that nonzero collateral was drained.
-    assert.notEqual(beneficiaryCollateralBalance.toString(), "0");
-  };
-
-  afterEach(async () => {
-    await expectNoExcessCollateralToTrim();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -395,9 +370,6 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
 
-      // Check that excess collateral to be trimmed is still 0.
-      await expectNoExcessCollateralToTrim();
-
       // Collateral balance change should equal the final fee.
       assert.equal(
         intitialBalance.sub(await collateralToken.balanceOf(liquidator)).toString(),
@@ -525,9 +497,6 @@ contract("Liquidatable", function(accounts) {
       assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
       assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
       assert.equal(expectedLiquidatedTokens.toString(), tokensLiquidated.toString());
-
-      // Check that excess collateral to be trimmed is still 0.
-      await expectNoExcessCollateralToTrim();
 
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
@@ -785,12 +754,6 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
-      it("Dispute generates no excess collateral", async () => {
-        await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
-
-        // Check that excess collateral to be trimmed is still 0.
-        await expectNoExcessCollateralToTrim();
-      });
       it("Dispute emits an event", async () => {
         const disputeResult = await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, {
           from: disputer
@@ -954,9 +917,6 @@ contract("Liquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
         });
-
-        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-        await expectNoExcessCollateralToTrim();
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -977,9 +937,6 @@ contract("Liquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_FAILED;
         });
-
-        // Check that excess collateral to be trimmed is still 0 after the withdrawal.
-        await expectNoExcessCollateralToTrim();
       });
       it("Events correctly emitted", async () => {
         // Create a successful dispute and check the event is correct.
@@ -1227,26 +1184,17 @@ contract("Liquidatable", function(accounts) {
             startBalanceSponsor.add(toBN(sponsorAmount)).toString()
           );
 
-          // Check that excess collateral to be trimmed is 0 after the sponsor withdraws.
-          await expectNoExcessCollateralToTrim();
-
           // Liquidator balance check.
           assert.equal(
             (await collateralToken.balanceOf(liquidator)).toString(),
             startBalanceLiquidator.add(toBN(liquidatorAmount)).toString()
           );
 
-          // Check that excess collateral to be trimmed is 0 afer the liquidator withdraws.
-          await expectNoExcessCollateralToTrim();
-
           // Disputer balance check.
           assert.equal(
             (await collateralToken.balanceOf(disputer)).toString(),
             startBalanceDisputer.add(toBN(disputerAmount)).toString()
           );
-
-          // Check that excess collateral to be trimmed is 0 after the last withdrawal.
-          await expectNoExcessCollateralToTrim();
 
           // Clean up store fees.
           await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
@@ -2149,9 +2097,6 @@ contract("Liquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "29");
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "28");
       assert.equal((await liquidationContract.rawTotalPositionCollateral()).toString(), "0");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
     it("Liquidation object is set up properly", async () => {
       let liquidationData = await liquidationContract.liquidations(sponsor, 0);
@@ -2169,9 +2114,6 @@ contract("Liquidatable", function(accounts) {
       // locked collateral.
       // - rawUnitCollateral = (1 / 0.966666666666666666) = 1.034482758620689655
       assert.equal(fromWei(liquidationData.rawUnitCollateral.toString()), "1.034482758620689655");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
     it("withdrawLiquidation() returns the same amount of collateral that liquidationCollateral is decreased by", async () => {
       // So, the available collateral for rewards should be (lockedCollateral * feeAttenuation),
@@ -2200,9 +2142,6 @@ contract("Liquidatable", function(accounts) {
 
       // rawLiquidationCollateral should also have been decreased by 27, from 28 to 1
       assert.equal((await liquidationContract.rawLiquidationCollateral()).toString(), "1");
-
-      // Check that the excess collateral can be drained.
-      await expectAndDrainExcessCollateral();
     });
   });
 });

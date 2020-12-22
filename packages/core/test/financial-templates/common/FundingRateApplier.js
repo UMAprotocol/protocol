@@ -265,7 +265,9 @@ contract("FundingRateApplier", function(accounts) {
       truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
-          ev.updateTime.toString() === (currentTime - delay).toString() // Update time is equal to the proposal time.
+          ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
+          ev.reward.toString() === toWei("1")
+          // The reward is 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc --> 1 token
         );
       });
 
@@ -275,7 +277,8 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Pays rewards", async () => {
-      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store.
+      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store for the
+      // proposal bond.
       assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
 
       // Funding rate store does not escrow, the optimistic oracle does.

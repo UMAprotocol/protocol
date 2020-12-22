@@ -46,12 +46,12 @@ async function runExport() {
   const secondsPerDay = 86400;
   const accounts = await web3.eth.getAccounts();
 
-  // These two assertions must be true for the script to be starting in the right state. This assumes the script
-  // is run within the same round and phase as running the `Propose.js` script.
-  assert((await governor.numProposals()).toNumber() > 1);
+  const numProposals = (await governor.numProposals()).toNumber();
+
+  assert(numProposals >= 1);
 
   console.log(
-    "1 pending proposal. No pending requests.\nCurrent timestamp:",
+    `${numProposals} pending proposal. No pending requests.\nCurrent timestamp:`,
     currentTime,
     "Voting phase:",
     votingPhase,
@@ -82,41 +82,42 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
   let pendingRequests = await voting.getPendingRequests();
-  assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
+  assert(pendingRequests.length >= 1); // there should be at least one pending request
 
   /** *****************************************************
    * 2) Build vote tx from the foundation wallet         *
    *******************************************************/
 
   let currentRoundId = (await voting.getCurrentRoundId()).toString();
+  const requestsToVoteOn = [];
 
-  const identifier = pendingRequests[0].identifier.toString();
-  const time = pendingRequests[0].time.toString();
-  const price = web3.utils.toWei("1"); // a "yes" vote
+  for (let pendingIndex = 0; pendingIndex < pendingRequests.length; pendingIndex++) {
+    const identifier = pendingRequests[pendingIndex].identifier.toString();
+    const time = pendingRequests[pendingIndex].time.toString();
+    const price = web3.utils.toWei("1"); // a "yes" vote
 
-  const salt = getRandomUnsignedInt();
-  // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
-  let voteHash;
-  const request = pendingRequests[0];
-  voteHash = computeVoteHash({
-    price,
-    salt,
-    account: foundationWallet,
-    time: request.time,
-    roundId: currentRoundId,
-    identifier: request.identifier
-  });
+    const salt = getRandomUnsignedInt();
+    // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
+    let voteHash;
+    const request = pendingRequests[pendingIndex];
+    voteHash = computeVoteHash({
+      price,
+      salt,
+      account: foundationWallet,
+      time: request.time,
+      roundId: currentRoundId,
+      identifier: request.identifier
+    });
+    requestsToVoteOn.push({
+      identifier,
+      salt,
+      time,
+      price,
+      voteHash
+    });
+  }
 
   console.log("2. COMMIT VOTE FROM FOUNDATION WALLET\nVote information:");
-  console.table({
-    price: price,
-    salt: salt.toString(),
-    account: foundationWallet,
-    time: time,
-    roundId: currentRoundId,
-    identifier: identifier,
-    voteHash: voteHash
-  });
 
   /** *****************************************************
    * 3) Vote on the proposal and validate the commitment *
@@ -130,8 +131,23 @@ async function runExport() {
     gas: 2000000
   });
 
-  const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet, gas: 2000000 });
-  console.log("Voting Tx done!", VoteTx.tx);
+  for (let i = 0; i < pendingRequests.length; i++) {
+    const request = requestsToVoteOn[i];
+    console.table({
+      price: request.price,
+      salt: request.salt.toString(),
+      account: foundationWallet,
+      time: request.time,
+      roundId: currentRoundId,
+      identifier: request.identifier,
+      voteHash: request.voteHash
+    });
+    const VoteTx = await voting.commitVote(request.identifier, request.time, request.voteHash, {
+      from: foundationWallet,
+      gas: 2000000
+    });
+    console.log("Voting Tx done!", VoteTx.tx);
+  }
 
   /** *****************************************************
    * 4) Advance to the next phase & reveal the vote      *
@@ -155,8 +171,15 @@ async function runExport() {
   let signature = await signMessage(web3, snapshotMessage, account);
   await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
 
-  const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet, gas: 2000000 });
-  console.log("Reveal Tx done!", revealTx.tx);
+  for (let i = 0; i < pendingRequests.length; i++) {
+    const request = requestsToVoteOn[i];
+
+    const revealTx = await voting.revealVote(request.identifier, request.time, request.price, request.salt, {
+      from: foundationWallet,
+      gas: 2000000
+    });
+    console.log("Reveal Tx done!", revealTx.tx);
+  }
 
   currentTime = (await voting.getCurrentTime()).toNumber();
   await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
@@ -177,17 +200,18 @@ async function runExport() {
    **********************************************************************/
 
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
-  const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
-  const proposal = await governor.getProposal(proposalId);
-
-  // for every transactions within the proposal
-  for (let i = 0; i < proposal.transactions.length; i++) {
-    console.log("Submitting tx", i, "...");
-    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), {
-      from: foundationWallet,
-      gas: 2000000
-    });
-    console.log("Transaction", i, "submitted! tx", tx.tx);
+  for (let proposalIndex = pendingRequests.length; proposalIndex > 0; proposalIndex--) {
+    const proposalId = (await governor.numProposals()).subn(proposalIndex).toString(); // most recent proposal in voting.sol
+    const proposal = await governor.getProposal(proposalId);
+    // for every transactions within the proposal
+    for (let i = 0; i < proposal.transactions.length; i++) {
+      console.log("Submitting tx", i, "from proposal", proposalIndex - 1, "...");
+      let tx = await governor.executeProposal(proposalId.toString(), i.toString(), {
+        from: foundationWallet,
+        gas: 2000000
+      });
+      console.log("Transaction", i, "from proposal", proposalIndex - 1, "submitted! tx", tx.tx);
+    }
   }
 
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
