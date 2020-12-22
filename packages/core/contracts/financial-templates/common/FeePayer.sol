@@ -96,8 +96,10 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      * This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
+        StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
+
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
             // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
@@ -105,19 +107,20 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             lastPaymentTime = time;
             return totalPaid;
         }
+
+        // Exit early if fees were already paid during this block.
         if (lastPaymentTime == time) {
             return totalPaid;
         }
 
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) =
-            getOutstandingRegularFees(time);
+            store.computeRegularFee(lastPaymentTime, time, collateralPool);
         lastPaymentTime = time;
 
         totalPaid = regularFee.add(latePenalty);
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
-        StoreInterface store = _getStore();
         // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay
         // as much of the fee that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the
         // regular fee, which has the effect of paying the store first, followed by the caller if there is any fee remaining.
@@ -143,27 +146,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
         return totalPaid;
-    }
-
-    function getOutstandingRegularFees(uint256 time)
-        public
-        view
-        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
-    {
-        StoreInterface store = _getStore();
-        FixedPoint.Unsigned memory collateralPool = _pfc();
-
-        // Exit early if there is no collateral from which to pay fees.
-        if (collateralPool.isEqual(0)) {
-            return (regularFee, latePenalty);
-        }
-
-        // Exit early if fees were already paid during this block.
-        if (lastPaymentTime == time) {
-            return (regularFee, latePenalty);
-        }
-
-        (regularFee, latePenalty) = store.computeRegularFee(lastPaymentTime, time, collateralPool);
     }
 
     /**
@@ -244,7 +226,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     function _getFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory collateral)
     {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
@@ -254,7 +236,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     function _convertToRawCollateral(FixedPoint.Unsigned memory collateral)
         internal
         view
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory rawCollateral)
     {
         return collateral.div(cumulativeFeeMultiplier);
     }
