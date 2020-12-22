@@ -10,7 +10,7 @@ import "../../common/implementation/FixedPoint.sol";
 contract FundingRateApplierTest is FundingRateApplier {
     constructor(
         bytes32 _fundingRateIdentifier,
-        address _collateralAddress,
+        address _collateralTokenAddress,
         address _finderAddress,
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
@@ -19,7 +19,7 @@ contract FundingRateApplierTest is FundingRateApplier {
         public
         FundingRateApplier(
             _fundingRateIdentifier,
-            _collateralAddress,
+            _collateralTokenAddress,
             _finderAddress,
             _configStoreAddress,
             _tokenScaling,

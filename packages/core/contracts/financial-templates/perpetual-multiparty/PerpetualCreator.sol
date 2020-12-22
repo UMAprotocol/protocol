@@ -38,9 +38,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned collateralRequirement;
-        FixedPoint.Unsigned disputeBondPct;
-        FixedPoint.Unsigned sponsorDisputeRewardPct;
-        FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned disputeBondPercentage;
+        FixedPoint.Unsigned sponsorDisputeRewardPercentage;
+        FixedPoint.Unsigned disputerDisputeRewardPercentage;
         FixedPoint.Unsigned minSponsorTokens;
         FixedPoint.Unsigned tokenScaling;
         uint256 withdrawalLiveness;
@@ -90,13 +90,13 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // If the collateral token does not have a `decimals()` method,
         // then a default precision of 18 will be applied to the newly created synthetic token.
         uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
-        ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
-        address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency, address(configStore)));
+        ExpandedIERC20 syntheticToken = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
+        address derivative = PerpetualLib.deploy(_convertParams(params, syntheticToken, address(configStore)));
 
         // Give permissions to new derivative contract and then hand over ownership.
-        tokenCurrency.addMinter(derivative);
-        tokenCurrency.addBurner(derivative);
-        tokenCurrency.resetOwner(derivative);
+        syntheticToken.addMinter(derivative);
+        syntheticToken.addBurner(derivative);
+        syntheticToken.resetOwner(derivative);
 
         _registerContract(new address[](0), derivative);
 
@@ -147,9 +147,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.fundingRateIdentifier = params.fundingRateIdentifier;
         constructorParams.collateralRequirement = params.collateralRequirement;
-        constructorParams.disputeBondPct = params.disputeBondPct;
-        constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
-        constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+        constructorParams.disputeBondPercentage = params.disputeBondPercentage;
+        constructorParams.sponsorDisputeRewardPercentage = params.sponsorDisputeRewardPercentage;
+        constructorParams.disputerDisputeRewardPercentage = params.disputerDisputeRewardPercentage;
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;
@@ -159,8 +159,8 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
     // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
     // https://eips.ethereum.org/EIPS/eip-20#methods.
-    function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
-        try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
+    function _getSyntheticDecimals(address _collateralTokenAddress) public view returns (uint8 decimals) {
+        try IERC20Standard(_collateralTokenAddress).decimals() returns (uint8 _decimals) {
             return _decimals;
         } catch {
             return 18;

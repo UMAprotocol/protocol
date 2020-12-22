@@ -25,7 +25,7 @@ contract("Perpetual", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPct: { rawValue: "0" },
+        proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: "0" },
         minFundingRate: { rawValue: "0" },
         proposalTimePastLimit: 0
@@ -42,9 +42,9 @@ contract("Perpetual", function(accounts) {
       fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       configStoreAddress: configStore.address,

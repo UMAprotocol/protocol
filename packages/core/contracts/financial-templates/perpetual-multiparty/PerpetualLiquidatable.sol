@@ -68,9 +68,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Params specifically for PerpetualLiquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
-        FixedPoint.Unsigned disputeBondPct;
-        FixedPoint.Unsigned sponsorDisputeRewardPct;
-        FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned disputeBondPercentage;
+        FixedPoint.Unsigned sponsorDisputeRewardPercentage;
+        FixedPoint.Unsigned disputerDisputeRewardPercentage;
     }
 
     // This struct is used in the `withdrawLiquidation` method that disperses liquidation and dispute rewards.
@@ -104,13 +104,13 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
-    FixedPoint.Unsigned public disputeBondPct;
+    FixedPoint.Unsigned public disputeBondPercentage;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
     // Represented as a multiplier, see above.
-    FixedPoint.Unsigned public sponsorDisputeRewardPct;
+    FixedPoint.Unsigned public sponsorDisputeRewardPercentage;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multiplier, see above.
-    FixedPoint.Unsigned public disputerDisputeRewardPct;
+    FixedPoint.Unsigned public disputerDisputeRewardPercentage;
 
     /****************************************
      *                EVENTS                *
@@ -185,16 +185,16 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
         require(
-            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
+            params.sponsorDisputeRewardPercentage.add(params.disputerDisputeRewardPercentage).isLessThan(1),
             "Rewards are more than 100%"
         );
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
         collateralRequirement = params.collateralRequirement;
-        disputeBondPct = params.disputeBondPct;
-        sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
-        disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+        disputeBondPercentage = params.disputeBondPercentage;
+        sponsorDisputeRewardPercentage = params.sponsorDisputeRewardPercentage;
+        disputerDisputeRewardPercentage = params.disputerDisputeRewardPercentage;
     }
 
     /****************************************
@@ -206,8 +206,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * synthetic tokens to retire the position's outstanding tokens. Liquidations above
      * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
-     * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
-     * @dev This contract must have the Burner role for the `tokenCurrency`.
+     * approved to spend at least `tokensLiquidated` of `syntheticToken` and at least `finalFeeBond` of `collateralCurrency`.
+     * @dev This contract must have the Burner role for the `syntheticToken`.
      * @param sponsor address of the sponsor to liquidate.
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
@@ -344,8 +344,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         );
 
         // Destroy tokens
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
-        tokenCurrency.burn(tokensLiquidated.rawValue);
+        syntheticToken.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
+        syntheticToken.burn(tokensLiquidated.rawValue);
 
         // Pull final fee from liquidator.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
@@ -356,7 +356,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * and pay a fixed final fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no other pending disputes.
      * This contract must be approved to spend at least the dispute bond amount of `collateralCurrency`. This dispute
-     * bond amount is calculated from `disputeBondPct` times the collateral in the liquidation.
+     * bond amount is calculated from `disputeBondPercentage` times the collateral in the liquidation.
      * @param liquidationId of the disputed liquidation.
      * @param sponsor the address of the sponsor whose liquidation is being disputed.
      * @return totalPaid amount of collateral charged to disputer (i.e. final fee bond + dispute bond).
@@ -372,7 +372,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
         FixedPoint.Unsigned memory disputeBondAmount =
-            disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
+            disputedLiquidation.lockedCollateral.mul(disputeBondPercentage).mul(
                 _getFeeAdjustedCollateral(disputedLiquidation.rawUnitCollateral)
             );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
@@ -431,9 +431,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         FixedPoint.Unsigned memory tokenRedemptionValue =
             liquidation.tokensOutstanding.mul(settlementPrice).mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
-        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
-        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
-        FixedPoint.Unsigned memory disputeBondAmount = collateral.mul(disputeBondPct);
+        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPercentage.mul(tokenRedemptionValue);
+        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPercentage.mul(tokenRedemptionValue);
+        FixedPoint.Unsigned memory disputeBondAmount = collateral.mul(disputeBondPercentage);
         FixedPoint.Unsigned memory finalFee = liquidation.finalFee.mul(feeAttenuation);
 
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
@@ -453,7 +453,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
             // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
             // If TRV > Collateral, then subtract rewards from collateral
-            // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
+            // NOTE: This should never be below zero since we prevent (sponsorDisputePercentage+disputerDisputePercentage) >= 0 in
             // the constructor when these params are set.
             rewards.payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
 

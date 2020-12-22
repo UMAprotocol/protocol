@@ -37,8 +37,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     event ProposedNewConfigSettings(
         address indexed proposer,
-        uint256 rewardRate,
-        uint256 proposerBond,
+        uint256 rewardRatePerSecond,
+        uint256 proposerBondPercentage,
         uint256 timelockLiveness,
         int256 maxFundingRate,
         int256 minFundingRate,
@@ -46,8 +46,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         uint256 proposalPassedTimestamp
     );
     event ChangedConfigSettings(
-        uint256 rewardRate,
-        uint256 proposerBond,
+        uint256 rewardRatePerSecond,
+        uint256 proposerBondPercentage,
         uint256 timelockLiveness,
         int256 maxFundingRate,
         int256 minFundingRate,
@@ -109,7 +109,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         emit ProposedNewConfigSettings(
             msg.sender,
             newConfig.rewardRatePerSecond.rawValue,
-            newConfig.proposerBondPct.rawValue,
+            newConfig.proposerBondPercentage.rawValue,
             newConfig.timelockLiveness,
             newConfig.maxFundingRate.rawValue,
             newConfig.minFundingRate.rawValue,
@@ -137,7 +137,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
             emit ChangedConfigSettings(
                 currentConfig.rewardRatePerSecond.rawValue,
-                currentConfig.proposerBondPct.rawValue,
+                currentConfig.proposerBondPercentage.rawValue,
                 currentConfig.timelockLiveness,
                 currentConfig.maxFundingRate.rawValue,
                 currentConfig.minFundingRate.rawValue,

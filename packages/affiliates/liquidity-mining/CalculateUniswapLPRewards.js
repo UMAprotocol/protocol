@@ -295,7 +295,7 @@ async function _fetchUniswapPoolInfo(poolAddress) {
         id
       }
     }
-  }   
+  }
     `;
 
   const response = await fetch(SUBGRAPH_URL, {

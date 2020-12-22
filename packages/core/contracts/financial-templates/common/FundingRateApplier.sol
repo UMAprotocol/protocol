@@ -75,7 +75,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     }
 
     // Note: this modifier is intended to be used if the caller intends to _only_ pay regular fees.
-    modifier regularFees {
+    modifier paysRegularFees {
         payRegularFees();
         _;
     }
@@ -83,7 +83,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _fundingRateIdentifier identifier that tracks the funding rate of this contract.
-     * @param _collateralAddress address of the collateral token.
+     * @param _collateralTokenAddress address of the collateral token.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _configStoreAddress address of the remote configuration store managed by an external owner.
      * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
@@ -91,12 +91,12 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      */
     constructor(
         bytes32 _fundingRateIdentifier,
-        address _collateralAddress,
+        address _collateralTokenAddress,
         address _finderAddress,
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
+    ) public FeePayer(_collateralTokenAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
@@ -115,7 +115,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      * 2. If possible, resolves the outstanding funding rate proposal, pulling the result in and paying out the rewards.
      * 3. Applies the prevailing funding rate over the most recent period.
      */
-    function applyFundingRate() public regularFees() nonReentrant() {
+    function applyFundingRate() public paysRegularFees() nonReentrant() {
         _applyEffectiveFundingRate();
     }
 
@@ -156,7 +156,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
                 identifier,
                 timestamp,
                 ancillaryData,
-                _pfc().mul(_getConfig().proposerBondPct).rawValue
+                _pfc().mul(_getConfig().proposerBondPercentage).rawValue
             )
         );
 

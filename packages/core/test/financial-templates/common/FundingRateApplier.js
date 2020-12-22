@@ -101,7 +101,7 @@ contract("FundingRateApplier", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: rewardRate },
-        proposerBondPct: { rawValue: bondPercentage },
+        proposerBondPercentage: { rawValue: bondPercentage },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
         proposalTimePastLimit: proposalTimePastLimit // 30 mins

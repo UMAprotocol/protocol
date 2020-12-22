@@ -30,7 +30,7 @@ contract("PerpetualCreator", function(accounts) {
   let testConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
-    proposerBondPct: { rawValue: toWei("0.0001") },
+    proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
     proposalTimePastLimit: 1800
@@ -52,9 +52,9 @@ contract("PerpetualCreator", function(accounts) {
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
@@ -256,12 +256,12 @@ contract("PerpetualCreator", function(accounts) {
     let perpetual = await Perpetual.at(perpetualAddress);
 
     // New synthetic currency and collateral currency should have the same precision.
-    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
+    const syntheticToken = await Token.at(await perpetual.syntheticToken());
     const collateralCurrency = await Token.at(await perpetual.collateralCurrency());
-    assert.equal((await tokenCurrency.decimals()).toString(), (await collateralCurrency.decimals()).toString());
+    assert.equal((await syntheticToken.decimals()).toString(), (await collateralCurrency.decimals()).toString());
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
+    const tokenContract = await SyntheticToken.at(syntheticToken.address);
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
@@ -292,8 +292,8 @@ contract("PerpetualCreator", function(accounts) {
     let perpetual = await Perpetual.at(perpetualAddress);
 
     // New synthetic currency should have 18 precision.
-    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
-    assert.equal((await tokenCurrency.decimals()).toString(), "18");
+    const syntheticToken = await Token.at(await perpetual.syntheticToken());
+    assert.equal((await syntheticToken.decimals()).toString(), "18");
   });
 
   it("Creation correctly registers Perpetual within the registry", async function() {
