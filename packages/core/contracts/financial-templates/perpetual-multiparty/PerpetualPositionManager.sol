@@ -148,7 +148,7 @@ contract PerpetualPositionManager is FundingRateApplier {
             _timerAddress
         )
     {
-        require(_getIdentifierAllowList().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         withdrawalLiveness = _withdrawalLiveness;
         syntheticToken = ExpandedIERC20(_tokenAddress);
@@ -646,7 +646,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         return positions[sponsor];
     }
 
-    function _getIdentifierAllowList() internal view returns (IdentifierWhitelistInterface) {
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
