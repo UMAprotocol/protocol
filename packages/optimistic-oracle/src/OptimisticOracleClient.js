@@ -100,7 +100,8 @@ class OptimisticOracleClient {
       if (state === OptimisticOracleRequestStatesEnum.REQUESTED) {
         this.priceRequests.push(requestData);
       } else if (state === OptimisticOracleRequestStatesEnum.PROPOSED) {
-        // TODO: Add data specific for proposals
+        // TODO: Add data specific for proposals,
+        // or alternatively search for ProposedPrice events.
         this.priceProposals.push(requestData);
       }
     });
