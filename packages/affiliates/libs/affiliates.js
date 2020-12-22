@@ -11,6 +11,111 @@ const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
+const Utils = ({queries, empAbi, coingecko, synthPrices, firstEmpDate}) => {
+  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
+  firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
+  async function getBalanceHistory(empAddress, start, end) {
+    // stream is a bit more optimal than waiting for entire query to return as array
+    // We need all logs from beginning of time. This could be optimized by deducing or supplying
+    // the specific emp start time to narrow down the query.
+    const stream = await queries.streamLogsByContract(empAddress, start, end);
+    const decode = DecodeLog(empAbi);
+    const balancesHistory = EmpBalancesHistory();
+    await highland(stream)
+      .map(log => {
+        return decode(log, {
+          blockNumber: log.block_number,
+          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
+          ...log
+        });
+      })
+      .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
+      .last()
+      .toPromise(Promise);
+
+    // finalize makes sure the last snapshot is taken once all data has been handled
+    balancesHistory.finalize();
+
+    return balancesHistory;
+  }
+  async function getAllBalanceHistories(empAddresses = [], start, end) {
+    return Promise.reduce(
+      empAddresses,
+      async (result, empAddress) => {
+        result.push([empAddress, await getBalanceHistory(empAddress, start, end)]);
+        return result;
+      },
+      []
+    );
+  }
+  // Gets the value of collateral currency in USD.
+  async function getCoingeckoPriceHistory(address, currency = "usd", start, end) {
+    const result = await coingecko.getHistoricContractPrices(address, currency, start, end);
+    return Prices(result);
+  }
+
+  // the fallback requires a different value calculation, so this is probably the cleanest way to "switch"
+  // between value by and value by usd. The function to calculate value is passed along with the data.
+  async function getSyntheticPriceHistoryWithFallback(empAddress, start, end, syntheticAddress) {
+    try {
+      // this will throw if the feed isnt available (among other errors probably)
+      return [await getSyntheticPriceHistory(empAddress, start, end), calculateValue];
+    } catch (err) {
+      // this will need to do a lookup based on synthetic token address not emp
+      return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
+    }
+  }
+
+  // Gets the value of synthetics in collateral currency.
+  async function getSyntheticPriceHistory(address, start, end) {
+    const result = await synthPrices.getHistoricSynthPrices(address, start, end);
+    return Prices(result);
+  }
+
+  async function getBlocks(start, end) {
+    const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
+    return blocks.map(block => {
+      return {
+        ...block,
+        timestamp: moment(block.timestamp.value).valueOf()
+      };
+    });
+  }
+
+  async function getAttributionHistory(empAddress, start, end) {
+    // stream is a bit more optimal than waiting for entire query to return as array
+    // We need all logs from beginning of time. This could be optimized by deducing or supplying
+    // the specific emp start time to narrow down the query.
+    const stream = await queries.streamLogsByContract(address, start, end);
+    const decode = DecodeLog(empAbi);
+    const attributionHistory = AttributionHistory();
+
+    await highland(stream)
+      .map(log => {
+        return decode(log, {
+          blockNumber: log.block_number,
+          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
+          ...log
+        });
+      })
+      .doto(log => attributionHistory.handleEvent(log.blockNumber, log))
+      .last()
+      .toPromise(Promise);
+
+    // finalize makes sure the last snapshot is taken once all data has been handled
+    attributionHistory.finalize();
+
+    return attributionHistory;
+  }
+
+  return {
+    getBlocks,
+    getSyntheticPriceHistory,
+    getAllBalanceHistories,
+    getBalanceHistory,
+  }
+}
+
 const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
   assert(empAbi, "requires empAbi");
@@ -318,31 +423,6 @@ const AttributionRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPr
   // at the current time and see how much it changed from the last balance update. We take
   // that balance delta and add or remove it to the developers stake on that user.
 
-  async function getAttributionHistory(empAddress, start, end) {
-    // stream is a bit more optimal than waiting for entire query to return as array
-    // We need all logs from beginning of time. This could be optimized by deducing or supplying
-    // the specific emp start time to narrow down the query.
-    const stream = await queries.streamLogsByContract(address, start, end);
-    const decode = DecodeLog(empAbi);
-    const attributionHistory = AttributionHistory();
-
-    await highland(stream)
-      .map(log => {
-        return decode(log, {
-          blockNumber: log.block_number,
-          blockTimestamp: moment(log.block_timestamp.value).valueOf(),
-          ...log
-        });
-      })
-      .doto(log => attributionHistory.handleEvent(log.blockNumber, log))
-      .last()
-      .toPromise(Promise);
-
-    // finalize makes sure the last snapshot is taken once all data has been handled
-    attributionHistory.finalize();
-
-    return attributionHistory;
-  }
 
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
@@ -373,6 +453,6 @@ const AttributionRewards = ({ queries, empCreatorAbi, empAbi, coingecko, synthPr
 
 module.exports = {
   // Calculate rewards for deployers
-  DeployerRewards
-  // We may have future reward types, such as tagged rewards
+  DeployerRewards,
+  AttributionRewards,
 };

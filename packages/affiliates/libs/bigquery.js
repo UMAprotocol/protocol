@@ -55,6 +55,25 @@ module.exports = ({ client } = {}) => {
         ORDER BY block_timestamp ASC;
       `;
     },
+    // search transactions for many contracts
+    transactionsByContracts(contracts=[], start, end = Date.now(), selection = ["*"]) {
+      contracts = lodash.castArray(contracts).map(x=>x.toLowerCase())
+      assert(contracts, "requires contracts");
+      assert(contracts.length, "requires at least one contract");
+      assert(start >= 0, "requires start");
+      selection = lodash.castArray(selection);
+
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.transactions
+        WHERE
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
+          AND LOWER(to_address) IN ('${contracts.join("', '")}')
+        ORDER BY block_timestamp ASC;
+      `;
+    },
     blocks(start, end, selection = ["*"]) {
       assert(start >= 0, "requires start");
       selection = lodash.castArray(selection);
@@ -76,6 +95,10 @@ module.exports = ({ client } = {}) => {
   }
   function streamLogsByContract(...args) {
     const query = queries.logsByContract(...args);
+    return client.createQueryStream({ query });
+  }
+  function streamTransactionsByContracts(...args) {
+    const query = queries.transactionsByContracts(...args);
     return client.createQueryStream({ query });
   }
   function streamTransactionsByContract(...args) {
@@ -110,16 +133,22 @@ module.exports = ({ client } = {}) => {
     const [rows] = await job.getQueryResults();
     return rows;
   }
+  function getBlockStream(...args) {
+    const query = queries.blocks(...args);
+    return client.createQueryStream({ query });
+  }
   return {
     // main api, use streams or "get" to return data as array
     streamLogsByContract,
     streamAllLogsByContract,
     streamTransactionsByContract,
+    streamTransactionsByContracts,
     streamBlocks,
     getLogsByContract,
     getAllLogsByContract,
     getTransactionsByContract,
     getBlocks,
+    getBlockStream,
     // exposed for testing or as utilities
     utils: {
       queries,

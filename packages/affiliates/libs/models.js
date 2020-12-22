@@ -40,21 +40,26 @@ function Prices(prices = []) {
 
 // users show current ratio of affiliates tagged on thier deposits
 // keyed by user address, and show total attributed for each affiliate per user
+// addresses are converted to lower case because theres inconsistent address reporting from various sources.
 function SharedAttributions({ scale = 10n ** 18n } = {}) {
   const addresses = new Map();
   function create(user) {
+    user = user.toLowerCase()
     assert(!addresses.has(user), "Already has user");
     return set(user, {});
   }
   function get(user) {
+    user = user.toLowerCase()
     assert(addresses.has(user), "User does not exist");
     return addresses.get(user);
   }
   function getOrCreate(user) {
+    user = user.toLowerCase()
     if (addresses.has(user)) return get(user);
     return create(user);
   }
   function set(user, data) {
+    user = user.toLowerCase()
     addresses.set(user, data);
     return data;
   }
@@ -68,14 +73,15 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     return set(user, data);
   }
   function calculateShare(user, affiliate) {
-    const data = get(user);
-    if (data[affiliate] == null) return 0;
+    const data = getOrCreate(user);
+    if (data[affiliate] == null) return '0';
     const sum = Object.values(data).reduce((sum, val) => {
       return sum + BigInt(val);
     }, 0n);
     return percent(data[affiliate], sum, scale).toString();
   }
-  function percent(val, sum) {
+
+  function percent(val, sum, scale) {
     return (BigInt(val) * scale) / BigInt(sum);
   }
 
@@ -98,6 +104,14 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     }, {});
   }
 
+  function forEach(cb){
+    addresses.forEach((affiliates,userid)=>{
+      Object.entries(affiliates,([affiliateid,amount])=>{
+        cb(userid,affiliateid,amount)
+      })
+    })
+  }
+
   return {
     get,
     set,
@@ -105,21 +119,29 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     getOrCreate,
     attribute,
     calculateShare,
-    snapshot
+    snapshot,
+    addresses,
   };
 }
 
 // Table of address balances. Option to allow negative balances.
 function Balances({ allowNegative = false } = {}) {
+  let total = 0n
   const balances = new Map();
+  function keys(){
+    return [...balances.keys()]
+  }
   function create(addr) {
+    addr = addr.toLowerCase()
     assert(!balances.has(addr), "Already has addr");
     return set(addr, "0");
   }
   function has(addr) {
+    addr = addr.toLowerCase()
     return balances.has(addr);
   }
   function get(addr) {
+    addr = addr.toLowerCase()
     assert(balances.has(addr), "addr does not exist");
     return balances.get(addr);
   }
@@ -131,6 +153,7 @@ function Balances({ allowNegative = false } = {}) {
     if (!allowNegative) {
       assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
     }
+    addr = addr.toLowerCase()
     balances.set(addr, balance);
     return balance;
   }
@@ -138,19 +161,34 @@ function Balances({ allowNegative = false } = {}) {
     amount = BigInt(amount);
     assert(amount >= 0n, "amount must be >= 0: " + amount);
     const balance = getOrCreate(addr);
-    return set(addr, (BigInt(balance) + BigInt(amount)).toString());
+    const result = set(addr, (BigInt(balance) + BigInt(amount)).toString());
+    total = total + BigInt(amount)
+    return result
   }
   function sub(addr, amount) {
     amount = BigInt(amount);
     assert(amount >= 0n, "amount must be >= 0: " + amount);
     const balance = getOrCreate(addr);
-    return set(addr, (BigInt(balance) - BigInt(amount)).toString());
+    const result = set(addr, (BigInt(balance) - BigInt(amount)).toString());
+    total = total - BigInt(amount)
+    return result
   }
   function snapshot() {
     return [...balances.entries()].reduce((result, [key, value]) => {
       result[key] = value;
       return result;
     }, {});
+  }
+  function getTotal(){
+    return total.toString()
+  }
+  function getPercent(userid,scale = 10n**18n){
+    const balance = getOrCreate(userid)
+    return (BigInt(balance) * scale / total).toString()
+  }
+
+  function forEach(cb){
+    balances.forEach(cb)
   }
 
   return {
@@ -161,7 +199,11 @@ function Balances({ allowNegative = false } = {}) {
     getOrCreate,
     sub,
     add,
-    snapshot
+    snapshot,
+    keys,
+    getTotal,
+    getPercent,
+    forEach,
   };
 }
 

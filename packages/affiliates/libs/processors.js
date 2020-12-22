@@ -1,7 +1,35 @@
-/* eslint-disable no-unused-vars */
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
-const { decodeAttribution } = require("./contracts");
+const { DecodeAttribution, toChecksumAddress } = require("./contracts");
+const ethers = require('ethers')
+
+function EmpAttributions(empAbi,defaultAddress){
+  // stores complete balances for all events
+  const attributions = SharedAttributions();
+  const decoder = DecodeAttribution(empAbi,defaultAddress)
+  // These are handling transaction function calls into the EMP, not events, since only transactions are tagged.
+  const Handlers = ({ affiliate, user }) => {
+    return {
+      create(collateralAmount, numTokens) {
+        attributions.attribute(user, affiliate, numTokens);
+      },
+    };
+  };
+
+  function handleTransaction(transaction){
+    assert(transaction.name == 'create','Can only handle emp create transactions')
+    const attributionAddress = decoder(transaction)
+    const user = transaction.from_address
+    const [collateralAmount, tokenAmount ] = transaction.args
+    // console.log({user,attributionAddress,tokenAmount:tokenAmount.toString()})
+    attributions.attribute(user, attributionAddress, tokenAmount.toString());
+  }
+
+  return {
+    handleTransaction,
+    attributions
+  }
+}
 
 // keeps snapshots of all attributions to affiliates keyed by user
 function AttributionHistory() {
@@ -11,23 +39,6 @@ function AttributionHistory() {
   const history = History();
   let lastBlockNumber;
 
-  // These are handling transaction function calls into the EMP, not events, since only transactions are tagged.
-  const Handlers = ({ affiliate, user }) => {
-    return {
-      create(collateralAmount, numTokens) {
-        attributions.attribute(user, affiliate, collateralAmount);
-      },
-      deposit(collateralAmount) {
-        attributions.attribute(user, affiliate, collateralAmount);
-      },
-      depositTo(sponsor, collateralAmount) {
-        attributions.attribute(user, affiliate, collateralAmount);
-      },
-      transferPositionPassedRequest(newSponsorAddress) {
-        attributions.attribute(newSponsorAddress, affiliate);
-      }
-    };
-  };
 
   function handleEvent(blockNumber, event) {
     assert(blockNumber, "requires blockNumber");
@@ -228,7 +239,8 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
 module.exports = {
   EmpBalances,
   EmpBalancesHistory,
-  AttributionHistory
+  AttributionHistory,
+  EmpAttributions,
 };
 
 /* eslint-enable no-unused-vars */
