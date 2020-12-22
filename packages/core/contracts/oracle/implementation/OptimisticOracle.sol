@@ -402,7 +402,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param ancillaryData ancillary data of the price being requested.
      * @return resolved price.
      */
-    function getPrice(
+    function settleAndGetPrice(
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData

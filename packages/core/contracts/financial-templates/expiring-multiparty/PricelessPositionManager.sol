@@ -830,7 +830,11 @@ contract PricelessPositionManager is FeePayer {
             "Unresolved oracle price"
         );
         int256 optimisticOraclePrice =
-            optimisticOracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
+            optimisticOracle.settleAndGetPrice(
+                _transformPriceIdentifier(requestedTime),
+                requestedTime,
+                _getAncillaryData()
+            );
 
         // For now we don't want to deal with negative prices in positions.
         if (optimisticOraclePrice < 0) {
@@ -850,7 +854,7 @@ contract PricelessPositionManager is FeePayer {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(_transformPriceIdentifier(requestedTime), requestedTime), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime);
+        int256 oraclePrice = _getOracle().getPrice(_transformPriceIdentifier(requestedTime), requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {

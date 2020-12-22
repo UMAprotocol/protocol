@@ -206,7 +206,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
             // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
             // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
             // "forget" the pending proposal and allow new proposals to update the funding rate.
-            try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
+            try optimisticOracle.settleAndGetPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, determine if the funding rate state needs to be updated.
                 // If the request is more recent than the last update then we should update it.
                 uint256 lastUpdateTime = fundingRate.updateTime;
@@ -249,10 +249,6 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         }
     }
 
-    function _getLatestFundingRate() internal view returns (FixedPoint.Signed memory) {
-        return fundingRate.rate;
-    }
-
     // Constraining the range of funding rates limits the PfC for any dishonest proposer and enhances the
     // perpetual's security. For example, let's examine the case where the max and min funding rates
     // are equivalent to +/- 500%/year. This 1000% funding rate range allows a 8.6% profit from corruption for a
@@ -286,7 +282,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         _updateFundingRate(); // Update the funding rate if there is a resolved proposal.
         fundingRate.cumulativeMultiplier = _calculateEffectiveFundingRate(
             paymentPeriod,
-            _getLatestFundingRate(),
+            fundingRate.rate,
             fundingRate.cumulativeMultiplier
         );
 

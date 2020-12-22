@@ -65,7 +65,7 @@ contract("OptimisticOracle", function(accounts) {
 
   const verifyCorrectPrice = async (ancillaryData = "0x") => {
     assert.equal(
-      (await optimisticRequester.getPrice.call(identifier, requestTime, ancillaryData)).toString(),
+      (await optimisticRequester.settleAndGetPrice.call(identifier, requestTime, ancillaryData)).toString(),
       correctPrice
     );
   };
@@ -402,7 +402,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.RESOLVED);
 
       // Settle and check price and payouts.
-      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
+      await optimisticRequester.settleAndGetPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
       await verifyCorrectPrice();
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
@@ -441,7 +441,7 @@ contract("OptimisticOracle", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.RESOLVED);
 
       // Settle and check price and payouts.
-      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
+      await optimisticRequester.settleAndGetPrice(identifier, requestTime, "0x"); // Should do the same thing as settle.
       await verifyCorrectPrice();
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED);
 
@@ -502,7 +502,7 @@ contract("OptimisticOracle", function(accounts) {
 
       // Push price and settle.
       await pushPrice(correctPrice);
-      await optimisticRequester.getPrice(identifier, requestTime, "0x"); // Same as settle.
+      await optimisticRequester.settleAndGetPrice(identifier, requestTime, "0x"); // Same as settle.
 
       // Rando should net the bond, reward, and the full bond the disputer paid in.
       await verifyBalanceSum(rando, initialUserBalance, defaultBond, reward, totalDefaultBond);
@@ -560,7 +560,7 @@ contract("OptimisticOracle", function(accounts) {
 
     // Settled
     await pushPrice(correctPrice);
-    await optimisticRequester.getPrice(identifier, requestTime, ancillaryData);
+    await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
     await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
     assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
   });
@@ -616,7 +616,7 @@ contract("OptimisticOracle", function(accounts) {
 
     // Settled
     await pushPrice(correctPrice);
-    await optimisticRequester.getPrice(identifier, requestTime, ancillaryData);
+    await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
     await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
     assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
   });
