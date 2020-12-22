@@ -75,8 +75,10 @@ hub.post("/", async (req, res) => {
 
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
+    let botConfigs = {};
     for (const botName in configObject) {
       const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
+      botConfigs[botName] = botConfig;
       promiseArray.push(_executeServerlessSpoke(spokeUrl, botConfig));
     }
     logger.debug({
@@ -99,12 +101,50 @@ hub.post("/", async (req, res) => {
       results
     });
 
-    // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
+    // Validate that the promises returned correctly. If any spokes rejected it is posible that it was due to a networking
+    // or internal GCP error. Re-try these executions. If a response is code 500 or contains an error then log it as an error.
     let errorOutputs = {};
     let validOutputs = {};
+    let rejectedOutputs = [];
     results.forEach((result, index) => {
       // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
       // correctly but contained an error.
+      if (result.status == "rejected") {
+        console.log("FOUND a rejected call");
+        rejectedOutputs.push(Object.keys(configObject)[index]);
+      }
+      if (
+        (result.value && result.value.execResponse && result.value.execResponse.error) ||
+        (result.reason && result.reason.code == "500")
+      ) {
+        errorOutputs[Object.keys(configObject)[index]] = {
+          status: result.status,
+          execResponse:
+            (result.value && result.value.execResponse) ||
+            (result.reason &&
+              result.reason.response &&
+              result.reason.response.data &&
+              result.reason.response.data.execResponse),
+          botIdentifier: Object.keys(configObject)[index]
+        };
+      } else {
+        validOutputs[Object.keys(configObject)[index]] = {
+          status: result.status,
+          execResponse: result.value && result.value.execResponse,
+          botIdentifier: Object.keys(configObject)[index]
+        };
+      }
+    });
+    console.log("rejectedOutputs", rejectedOutputs);
+    // Re-try the rejected outputs.
+    let rejectedRetryPromiseArray = [];
+    rejectedOutputs.forEach(botName => {
+      console.log("second foreach", botName);
+      rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
+    });
+    const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
+    console.log("rejectedRetryResults", rejectedRetryResults);
+    rejectedRetryResults.forEach((result, index) => {
       if (
         result.status == "rejected" ||
         (result.value && result.value.execResponse && result.value.execResponse.error) ||
@@ -128,6 +168,7 @@ hub.post("/", async (req, res) => {
         };
       }
     });
+
     if (Object.keys(errorOutputs).length > 0) {
       throw { errorOutputs, validOutputs };
     }
@@ -347,6 +388,8 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
       "Bad environment! Specify a `SPOKE_URL` & `CUSTOM_NODE_URL` to point to the a Serverless spoke instance and an Ethereum node"
     );
   }
+
+  // function _processSpokeResponse(spokeResponse, validOutputs, errorOutputs) {}
 
   // Set configs to be used in the sererless execution.
   logger = _Logger;

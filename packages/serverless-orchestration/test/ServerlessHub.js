@@ -223,7 +223,7 @@ contract("ServerlessHub.js", function(accounts) {
     };
 
     const testHubPort = 8082; // create a separate port to run this specific test on.
-    // Create a hub instance with invalid spoke port
+    // Create a hub instance with invalid spoke port. This will force the spoke to reject
     await hub.Poll(
       hubSpyLogger, // injected spy logger
       testHubPort, // port to run the hub for this test on
