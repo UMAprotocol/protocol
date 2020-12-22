@@ -553,7 +553,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
-    function getCollateral(address sponsor)
+    function payFeesAndGetCollateral(address sponsor)
         external
         fees()
         nonReentrant()
@@ -569,7 +569,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * example if the `lastPaymentTime != currentTime`.
      * @return totalCollateral amount of all collateral within the position manager.
      */
-    function totalPositionCollateral()
+    function payFeesAndGetTotalPositionCollateral()
         external
         fees()
         nonReentrant()
