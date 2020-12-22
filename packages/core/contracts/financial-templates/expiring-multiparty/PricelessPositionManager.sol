@@ -656,9 +656,9 @@ contract PricelessPositionManager is FeePayer {
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
-    function getCollateral(address sponsor) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor) external fees() nonReentrant() returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
-        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
+        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
     }
 
     /**
@@ -667,8 +667,8 @@ contract PricelessPositionManager is FeePayer {
      * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
      * example if the `lastPaymentTime != currentTime`.
      */
-    function totalPositionCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
+    function totalPositionCollateral() external fees() nonReentrant() returns (FixedPoint.Unsigned memory) {
+        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
     /**

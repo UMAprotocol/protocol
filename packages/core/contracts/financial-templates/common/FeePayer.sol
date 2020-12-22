@@ -249,20 +249,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
-    // Returns the user's collateral minus any pending fees that have yet to be subtracted.
-    function _getPendingRegularFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
-        internal
-        view
-        returns (FixedPoint.Unsigned memory)
-    {
-        (FixedPoint.Unsigned memory outstandingRegularFee, FixedPoint.Unsigned memory latePenalty) =
-            getOutstandingRegularFees(getCurrentTime());
-        FixedPoint.Unsigned memory currentTotalOutstandingRegularFees = outstandingRegularFee.add(latePenalty);
-        if (currentTotalOutstandingRegularFees.isEqual(FixedPoint.fromUnscaledUint(0))) return rawCollateral;
-        FixedPoint.Unsigned memory effectiveOutstandingFee = currentTotalOutstandingRegularFees.divCeil(_pfc());
-        return rawCollateral.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveOutstandingFee));
-    }
-
     // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees
     // have been taken from this contract in the past, then the raw value will be larger than the user-readable value.
     function _convertToRawCollateral(FixedPoint.Unsigned memory collateral)
