@@ -244,7 +244,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     function _getFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory collateral)
     {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
