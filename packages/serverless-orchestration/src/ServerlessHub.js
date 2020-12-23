@@ -101,24 +101,30 @@ hub.post("/", async (req, res) => {
       results
     });
 
-    // Validate that the promises returned correctly. If any spokes rejected it is posible that it was due to a networking
+    // Validate that the promises returned correctly. If any spokes rejected it is possible that it was due to a networking
     // or internal GCP error. Re-try these executions. If a response is code 500 or contains an error then log it as an error.
     let errorOutputs = {};
     let validOutputs = {};
-    let rejectedOutputs = [];
+    let retriedOutputs = [];
     results.forEach((result, index) => {
-      // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
-      // correctly but contained an error.
       if (result.status == "rejected") {
-        rejectedOutputs.push(Object.keys(configObject)[index]); // Add to rejectedOutputs to re-run the call.
+        // If it is rejected, the store the name so we can try re-run the spoke call.
+        retriedOutputs.push(Object.keys(configObject)[index]); // Add to retriedOutputs to re-run the call.
         return; // go to next result in the forEach loop.
       }
+      // Process the spoke response. This extracts useful log information and discern if the spoke had errored out.
       _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
-    // Re-try the rejected outputs.
+    if (retriedOutputs.length > 0) {
+      logger.debug({
+        at: "ServerlessHub",
+        message: "One or more spoke calls were rejected - Retrying",
+        retriedOutputs
+      });
+    }
+    // Re-try the rejected outputs in a separate se
     let rejectedRetryPromiseArray = [];
-    rejectedOutputs.forEach(botName => {
-      console.log("second foreach", botName);
+    retriedOutputs.forEach(botName => {
       rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
     });
     const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
@@ -126,20 +132,24 @@ hub.post("/", async (req, res) => {
       _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
 
+    // If there ar
     if (Object.keys(errorOutputs).length > 0) {
-      throw { errorOutputs, validOutputs };
+      throw { errorOutputs, validOutputs, retriedOutputs };
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
     logger.debug({
       at: "ServerlessHub",
       message: "All calls returned correctly",
-      output: { errorOutputs, validOutputs }
+      output: { errorOutputs, validOutputs, retriedOutputs }
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
+    res
+      .status(200)
+      .send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs, retriedOutputs } });
   } catch (errorOutput) {
-    // If the errorOutput is an instance of Error then we know that error was produced within the hub.
+    // If the errorOutput is an instance of Error then we know that error was produced within the hub. Else, it is from
+    // one of the upstream spoke calls. Depending on the kind of error, process the logs differently.
     if (errorOutput instanceof Error) {
       console.log("errorOutput", errorOutput);
       logger.error({
@@ -157,6 +167,7 @@ hub.post("/", async (req, res) => {
       logger.error({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors 🚨",
+        retriedSpokes: errorOutput.retriedOutputs,
         errorOutputs: Object.keys(errorOutput.errorOutputs).map(spokeName => {
           try {
             return {

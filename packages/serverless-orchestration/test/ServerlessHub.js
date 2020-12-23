@@ -234,6 +234,9 @@ contract("ServerlessHub.js", function(accounts) {
     // not a port the spoke is running on. will get rejected
     const rejectedResponse = await sendHubRequest(validBody, testHubPort);
 
+    assert.equal(JSON.parse(rejectedResponse.res.text).output.retriedOutputs.length, 1); // There should be 1 retried output.
+    assert.isTrue(spyLogIncludes(hubSpy, -3, "One or more spoke calls were rejected - Retrying"));
+    assert.isTrue(spyLogIncludes(hubSpy, -3, "retriedOutputs"));
     assert.equal(rejectedResponse.res.statusCode, 500); // error code
     assert.isTrue(rejectedResponse.res.text.includes("Some spoke calls returned errors"));
     assert.isTrue(rejectedResponse.res.text.includes("rejected"));
