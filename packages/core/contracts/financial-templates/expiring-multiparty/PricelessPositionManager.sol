@@ -345,7 +345,7 @@ contract PricelessPositionManager is FeePayer {
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime < expirationTimestamp, "Request expires post-expiry");
+        require(requestPassTime < expirationTimestamp);
 
         // Update the position object for the user.
         positionData.withdrawalRequestPassTimestamp = requestPassTime;
@@ -371,8 +371,7 @@ contract PricelessPositionManager is FeePayer {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             positionData.withdrawalRequestPassTimestamp != 0 &&
-                positionData.withdrawalRequestPassTimestamp <= getCurrentTime(),
-            "Invalid withdraw request"
+                positionData.withdrawalRequestPassTimestamp <= getCurrentTime()
         );
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
@@ -399,7 +398,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function cancelWithdrawal() external nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp != 0);
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -652,33 +651,24 @@ contract PricelessPositionManager is FeePayer {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
-     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
-     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
-     * logic to this method to account for any such pending fees.
+     * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
+     * example if the `lastPaymentTime != currentTime`.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
-    function getCollateral(address sponsor)
-        external
-        view
-        nonReentrantView()
-        returns (FixedPoint.Unsigned memory collateralAmount)
-    {
+    function getCollateral(address sponsor) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
     }
 
     /**
      * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
      * @return totalCollateral amount of all collateral within the Expiring Multi Party Contract.
+     * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
+     * example if the `lastPaymentTime != currentTime`.
      */
-    function totalPositionCollateral()
-        external
-        view
-        nonReentrantView()
-        returns (FixedPoint.Unsigned memory totalCollateral)
-    {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+    function totalPositionCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
     /**
@@ -826,8 +816,7 @@ contract PricelessPositionManager is FeePayer {
                 _transformPriceIdentifier(requestedTime),
                 requestedTime,
                 _getAncillaryData()
-            ),
-            "Unresolved oracle price"
+            )
         );
         int256 optimisticOraclePrice =
             optimisticOracle.settleAndGetPrice(
