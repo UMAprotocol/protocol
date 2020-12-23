@@ -88,7 +88,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     /**
      * @notice Constructs the FundingRateApplier contract. Called by child contracts.
      * @param _fundingRateIdentifier identifier that tracks the funding rate of this contract.
-     * @param _collateralTokenAddress address of the collateral token.
+     * @param _collateralAddress address of the collateral token.
      * @param _finderAddress Finder used to discover financial-product-related contracts.
      * @param _configStoreAddress address of the remote configuration store managed by an external owner.
      * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
@@ -96,12 +96,12 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      */
     constructor(
         bytes32 _fundingRateIdentifier,
-        address _collateralTokenAddress,
+        address _collateralAddress,
         address _finderAddress,
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralTokenAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;

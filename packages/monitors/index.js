@@ -95,13 +95,13 @@ async function run({
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
 
-    const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
+    const [priceIdentifier, collateralAddress, syntheticTokenAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call()
     ]);
 
-    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
     const [
@@ -156,7 +156,7 @@ async function run({
       logger,
       getAbi("ExpandedERC20"),
       web3,
-      collateralTokenAddress,
+      collateralAddress,
       syntheticTokenAddress
     );
 

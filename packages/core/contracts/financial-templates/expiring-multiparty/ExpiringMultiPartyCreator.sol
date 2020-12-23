@@ -138,8 +138,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
     // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
     // https://eips.ethereum.org/EIPS/eip-20#methods.
-    function _getSyntheticDecimals(address _collateralTokenAddress) public view returns (uint8 decimals) {
-        try IERC20Standard(_collateralTokenAddress).decimals() returns (uint8 _decimals) {
+    function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
+        try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
             return _decimals;
         } catch {
             return 18;

@@ -117,7 +117,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * is assigned to this contract, whose sole Minter role is assigned to this contract, and whose
      * total supply is 0 prior to construction of this contract.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
-     * @param _collateralTokenAddress ERC20 token used as collateral for all positions.
+     * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
@@ -128,7 +128,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      */
     constructor(
         uint256 _withdrawalLiveness,
-        address _collateralTokenAddress,
+        address _collateralAddress,
         address _tokenAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -141,7 +141,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         public
         FundingRateApplier(
             _fundingRateIdentifier,
-            _collateralTokenAddress,
+            _collateralAddress,
             _finderAddress,
             _configStoreAddress,
             _tokenScaling,

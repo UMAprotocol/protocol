@@ -135,7 +135,7 @@ contract("PerpetualPositionManager", function(accounts) {
     // Create the instance of the positionManager to test against.
     positionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
-      collateral.address, // _collateralTokenAddress
+      collateral.address, // _collateralAddress
       tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
@@ -225,7 +225,7 @@ contract("PerpetualPositionManager", function(accounts) {
       await didContractThrow(
         PerpetualPositionManager.new(
           withdrawalLiveness, // _withdrawalLiveness
-          collateral.address, // _collateralTokenAddress
+          collateral.address, // _collateralAddress
           tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
@@ -252,7 +252,7 @@ contract("PerpetualPositionManager", function(accounts) {
       .toString();
     positionManager = await PerpetualPositionManager.new(
       largeLiveness.toString(), // _withdrawalLiveness
-      collateral.address, // _collateralTokenAddress
+      collateral.address, // _collateralAddress
       tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
@@ -1755,7 +1755,7 @@ contract("PerpetualPositionManager", function(accounts) {
     const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6);
     let custompositionManager = await PerpetualPositionManager.new(
       withdrawalLiveness, // _withdrawalLiveness
-      USDCToken.address, // _collateralTokenAddress
+      USDCToken.address, // _collateralAddress
       nonStandardToken.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier

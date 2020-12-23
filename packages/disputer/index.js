@@ -57,12 +57,12 @@ async function run({
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [priceIdentifier, collateralTokenAddress] = await Promise.all([
+    const [priceIdentifier, collateralAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
       emp.methods.collateralCurrency().call()
     ]);
 
-    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
     const [currentAllowance, collateralCurrencyDecimals] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       collateralToken.methods.decimals().call()

@@ -174,13 +174,13 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("Default Uniswap Config", async function() {
     // Given the collateral token is 0x1, the , it should always come first, meaning the config should always be inverted.
-    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const collateralAddress = "0x0000000000000000000000000000000000000001";
     const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
-      collateralAddress: collateralTokenAddress,
+      collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
@@ -206,7 +206,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address, { twapLength });
 
     // Cannot test for the uniswap address since that depends on the synthetic token address, which is generated in a non-hermetic way.
-    // Price should always be inverted since the collateralTokenAddress is 0x1.
+    // Price should always be inverted since the collateralAddress is 0x1.
     assert.isTrue(priceFeed.invertPrice);
 
     // Config override should be passed through.
@@ -275,7 +275,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(balancerFeed, null);
   });
   it("Create token price feed for Balancer", async function() {
-    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const collateralAddress = "0x0000000000000000000000000000000000000001";
     const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
 
     const config = {
@@ -288,7 +288,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
-      collateralAddress: collateralTokenAddress,
+      collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
@@ -310,7 +310,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
 
   it("Create token price feed for Uniswap", async function() {
-    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const collateralAddress = "0x0000000000000000000000000000000000000001";
     const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
 
     const config = {
@@ -323,7 +323,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
-      collateralAddress: collateralTokenAddress,
+      collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
@@ -345,13 +345,13 @@ contract("CreatePriceFeed.js", function(accounts) {
   });
 
   it("Create token price feed defaults to Medianizer", async function() {
-    const collateralTokenAddress = "0x0000000000000000000000000000000000000001";
+    const collateralAddress = "0x0000000000000000000000000000000000000001";
     const syntheticTokenAddress = "0x0000000000000000000000000000000000000002";
 
     const constructorParams = {
       expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
       withdrawalLiveness: "1000",
-      collateralAddress: collateralTokenAddress,
+      collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
