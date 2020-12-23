@@ -98,16 +98,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
-        // Exit early if there is no collateral from which to pay fees.
-        if (collateralPool.isEqual(0)) {
-            // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
-            // has no locked collateral.
-            lastPaymentTime = time;
-            return totalPaid;
-        }
-        if (lastPaymentTime == time) {
-            return totalPaid;
-        }
 
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) =
             getOutstandingRegularFees(time);
