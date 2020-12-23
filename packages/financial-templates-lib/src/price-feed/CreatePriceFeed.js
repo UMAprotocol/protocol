@@ -7,9 +7,9 @@ const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", "1.2.0");
-const Uniswap = getTruffleContract("Uniswap", "latest");
-const Balancer = getTruffleContract("Balancer", "latest");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
+const Uniswap = getTruffleContract("Uniswap", web3, "latest");
+const Balancer = getTruffleContract("Balancer", web3, "latest");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {

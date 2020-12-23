@@ -8,8 +8,8 @@ const { getTruffleContract } = require("@uma/core");
 
 const ABI_VERSION = "latest";
 
-const UniswapMock = getTruffleContract("UniswapMock", ABI_VERSION);
-const Uniswap = getTruffleContract("Uniswap", ABI_VERSION);
+const UniswapMock = getTruffleContract("UniswapMock", web3, ABI_VERSION);
+const Uniswap = getTruffleContract("Uniswap", web3, ABI_VERSION);
 
 contract("UniswapPriceFeed.js", function(accounts) {
   const owner = accounts[0];

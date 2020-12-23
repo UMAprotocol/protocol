@@ -7,8 +7,8 @@ const { getTruffleContract } = require("@uma/core");
 
 const ABI_VERSION = "latest";
 
-const BalancerMock = getTruffleContract("BalancerMock", ABI_VERSION);
-const Balancer = getTruffleContract("Balancer", ABI_VERSION);
+const BalancerMock = getTruffleContract("BalancerMock", web3, ABI_VERSION);
+const Balancer = getTruffleContract("Balancer", web3, ABI_VERSION);
 
 contract("BalancerPriceFeed.js", async function(accounts) {
   const owner = accounts[0];

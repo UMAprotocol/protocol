@@ -10,7 +10,7 @@ const { getTruffleContract } = require("@uma/core");
 const ABI_VERSION = "latest";
 
 // Truffle artifacts
-const Token = getTruffleContract("ExpandedERC20", ABI_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, ABI_VERSION);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },

@@ -5,15 +5,15 @@ const ABI_VERSION = "latest";
 const ABI_VERSION_EMP = "1.2.0";
 
 // Tested Contract
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", ABI_VERSION_EMP);
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, ABI_VERSION_EMP);
 
 // Helper Contracts
-const Finder = getTruffleContract("Finder", ABI_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", ABI_VERSION);
-const Token = getTruffleContract("ExpandedERC20", ABI_VERSION);
-const SyntheticToken = getTruffleContract("SyntheticToken", ABI_VERSION);
-const Timer = getTruffleContract("Timer", ABI_VERSION);
-const Store = getTruffleContract("Store", ABI_VERSION);
+const Finder = getTruffleContract("Finder", web3, ABI_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, ABI_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, ABI_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, ABI_VERSION);
+const Timer = getTruffleContract("Timer", web3, ABI_VERSION);
+const Store = getTruffleContract("Store", web3, ABI_VERSION);
 
 const {
   createPriceFeed,

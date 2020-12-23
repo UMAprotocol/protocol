@@ -9,14 +9,14 @@ const ABI_VERSION = "1.2.0";
 
 const { ExpiringMultiPartyClient } = require("../../src/clients/ExpiringMultiPartyClient");
 
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", ABI_VERSION);
-const Finder = getTruffleContract("Finder", ABI_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", ABI_VERSION);
-const MockOracle = getTruffleContract("MockOracle", ABI_VERSION);
-const Token = getTruffleContract("ExpandedERC20", ABI_VERSION);
-const SyntheticToken = getTruffleContract("SyntheticToken", ABI_VERSION);
-const Timer = getTruffleContract("Timer", ABI_VERSION);
-const Store = getTruffleContract("Store", ABI_VERSION);
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, ABI_VERSION);
+const Finder = getTruffleContract("Finder", web3, ABI_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, ABI_VERSION);
+const MockOracle = getTruffleContract("MockOracle", web3, ABI_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, ABI_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, ABI_VERSION);
+const Timer = getTruffleContract("Timer", web3, ABI_VERSION);
+const Store = getTruffleContract("Store", web3, ABI_VERSION);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
