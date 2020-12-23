@@ -4677,15 +4677,6 @@
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
 
-"@uma/core-1-2-1@npm:@uma/core@1.2.1":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.1.tgz#1085984633a2e4aa15f471d01bb08bcf6a34ba64"
-  integrity sha512-8j9Rgk3V9bXO2izdBS6rXLlqNVtBEPRv6frcT7J/Btv8bjrcf+29tuH1GO66FUWb7kMrxgirFSU0LGNPRHJcbg==
-  dependencies:
-    "@truffle/contract" "^4.2.20"
-    "@uma/common" "^1.1.0"
-    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
-
 "@uma/core@npm:@uma/core@1.2.2":
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.2.tgz#40f8db9e986a6a8ae8968aa690a33de51298f322"
