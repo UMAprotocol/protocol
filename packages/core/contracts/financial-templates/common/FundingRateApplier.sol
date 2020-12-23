@@ -14,6 +14,7 @@ import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../perpetual-multiparty/ConfigStoreInterface.sol";
 
+import "./EmergencyShutdownable.sol";
 import "./FeePayer.sol";
 
 /**
@@ -21,7 +22,7 @@ import "./FeePayer.sol";
  * @notice Provides funding rate payment functionality for the Perpetual contract.
  */
 
-abstract contract FundingRateApplier is FeePayer {
+abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using SafeERC20 for IERC20;
@@ -54,9 +55,6 @@ abstract contract FundingRateApplier is FeePayer {
 
     FundingRate public fundingRate;
 
-    // Timestamp used in case of emergency shutdown. 0 if no shutdown has been triggered.
-    uint256 public emergencyShutdownTimestamp;
-
     // Remote config store managed an owner.
     ConfigStoreInterface public configStore;
 
@@ -64,7 +62,7 @@ abstract contract FundingRateApplier is FeePayer {
      *                EVENTS                *
      ****************************************/
 
-    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime);
+    event FundingRateUpdated(int256 newFundingRate, uint256 indexed updateTime, uint256 reward);
 
     /****************************************
      *              MODIFIERS               *
@@ -72,6 +70,11 @@ abstract contract FundingRateApplier is FeePayer {
 
     // This is overridden to both pay fees (which is done by applyFundingRate()) and apply the funding rate.
     modifier fees override {
+        // Note: the funding rate is applied on every fee-accruing transaction, where the total change is simply the
+        // rate applied linearly since the last update. This implies that the compounding rate depends on the frequency
+        // of update transactions that have this modifier, and it never reaches the ideal of continuous compounding.
+        // This approximate-compounding pattern is common in the Ethereum ecosystem because of the complexity of
+        // compounding data on-chain.
         applyFundingRate();
         _;
     }
@@ -98,7 +101,7 @@ abstract contract FundingRateApplier is FeePayer {
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;
@@ -106,7 +109,6 @@ abstract contract FundingRateApplier is FeePayer {
         // Seed the cumulative multiplier with the token scaling, from which it will be scaled as funding rates are
         // applied over time.
         fundingRate.cumulativeMultiplier = _tokenScaling;
-        emergencyShutdownTimestamp = 0;
 
         fundingRate.identifier = _fundingRateIdentifier;
         configStore = ConfigStoreInterface(_configStoreAddress);
@@ -193,15 +195,13 @@ abstract contract FundingRateApplier is FeePayer {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
-    function _getConfig() internal view returns (ConfigStoreInterface.ConfigSettings memory) {
-        return configStore.getCurrentConfig();
+    function _getConfig() internal returns (ConfigStoreInterface.ConfigSettings memory) {
+        return configStore.updateAndGetCurrentConfig();
     }
 
-    function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
+    function _updateFundingRate() internal {
         uint256 proposalTime = fundingRate.proposalTime;
-
-        // If there is no pending proposal then return the current funding rate, otherwise
-        // check to see if we can update the funding rate.
+        // If there is no pending proposal then do nothing. Otherwise check to see if we can update the funding rate.
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
             OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
@@ -211,7 +211,7 @@ abstract contract FundingRateApplier is FeePayer {
             // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
             // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
             // "forget" the pending proposal and allow new proposals to update the funding rate.
-            try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
+            try optimisticOracle.settleAndGetPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, determine if the funding rate state needs to be updated.
                 // If the request is more recent than the last update then we should update it.
                 uint256 lastUpdateTime = fundingRate.updateTime;
@@ -221,18 +221,21 @@ abstract contract FundingRateApplier is FeePayer {
                     fundingRate.updateTime = proposalTime;
 
                     // If there was no dispute, send a reward.
+                    FixedPoint.Unsigned memory reward = FixedPoint.fromUnscaledUint(0);
                     OptimisticOracleInterface.Request memory request =
                         optimisticOracle.getRequest(address(this), identifier, proposalTime, ancillaryData);
                     if (request.disputer == address(0)) {
-                        FixedPoint.Unsigned memory reward =
-                            _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
+                        reward = _pfc().mul(_getConfig().rewardRatePerSecond).mul(proposalTime.sub(lastUpdateTime));
                         if (reward.isGreaterThan(0)) {
                             _adjustCumulativeFeeMultiplier(reward, _pfc());
                             collateralCurrency.safeTransfer(request.proposer, reward.rawValue);
                         }
                     }
 
-                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime);
+                    // This event will only be emitted after the fundingRate struct's "updateTime" has been set
+                    // to the latest proposal's proposalTime, indicating that the proposal has been published.
+                    // So, it suffices to just emit fundingRate.updateTime here.
+                    emit FundingRateUpdated(fundingRate.rate.rawValue, fundingRate.updateTime, reward.rawValue);
                 }
 
                 // Set proposal time to 0 since this proposal has now been resolved.
@@ -249,7 +252,6 @@ abstract contract FundingRateApplier is FeePayer {
                 }
             }
         }
-        return fundingRate.rate;
     }
 
     // Constraining the range of funding rates limits the PfC for any dishonest proposer and enhances the
@@ -261,7 +263,7 @@ abstract contract FundingRateApplier is FeePayer {
     // rate for the next 74 hours is -500%, but a dishonest proposer successfully proposes a rate of +500%
     // (after a two hour liveness) and disputes honest proposers for the next 72 hours. This results in a funding
     // rate error of 1000% for 74 hours, until the DVM can set the funding rate back to its correct value.
-    function _validateFundingRate(FixedPoint.Signed memory rate) internal view {
+    function _validateFundingRate(FixedPoint.Signed memory rate) internal {
         require(
             rate.isLessThanOrEqual(_getConfig().maxFundingRate) &&
                 rate.isGreaterThanOrEqual(_getConfig().minFundingRate)
@@ -282,9 +284,10 @@ abstract contract FundingRateApplier is FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 
+        _updateFundingRate(); // Update the funding rate if there is a resolved proposal.
         fundingRate.cumulativeMultiplier = _calculateEffectiveFundingRate(
             paymentPeriod,
-            _getLatestFundingRate(),
+            fundingRate.rate,
             fundingRate.cumulativeMultiplier
         );
 

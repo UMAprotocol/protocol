@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, MAX_UINT_VAL, parseFixed, ZERO_ADDRESS } = require("@uma/common");
@@ -50,6 +50,8 @@ contract("ContractMonitor.js", function(accounts) {
       let mockOracle;
       let identifierWhitelist;
       let finder;
+      let store;
+      let timer;
 
       // Test object for EMP event client
       let eventClient;
@@ -80,22 +82,33 @@ contract("ContractMonitor.js", function(accounts) {
           { from: tokenSponsor }
         );
 
-        identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
+        identifierWhitelist = await IdentifierWhitelist.new();
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(tokenConfig.tokenName));
+
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+        await finder.changeImplementationAddress(
+          utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
+
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
-        finder = await Finder.deployed();
-        mockOracle = await MockOracle.new(finder.address, Timer.address);
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+
+        mockOracle = await MockOracle.new(finder.address, timer.address);
+        const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
       });
 
       beforeEach(async function() {
         const currentTime = await mockOracle.getCurrentTime.call();
-        const timer = await Timer.deployed();
+
         await timer.setCurrentTime(currentTime.toString());
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
-        const store = await Store.deployed();
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: tokenSponsor });
@@ -106,9 +119,9 @@ contract("ContractMonitor.js", function(accounts) {
           withdrawalLiveness: "1",
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
-          finderAddress: Finder.address,
-          timerAddress: Timer.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
+          finderAddress: finder.address,
+          timerAddress: timer.address,
+          priceFeedIdentifier: utf8ToHex(identifier),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -360,7 +373,7 @@ contract("ContractMonitor.js", function(accounts) {
         // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
         // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
         let disputePrice = convert("2.5");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // Withdraw from liquidation to settle the dispute event.
         const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -408,7 +421,7 @@ contract("ContractMonitor.js", function(accounts) {
         // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
         // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
         disputePrice = convert("2.0");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
         // Withdraw from liquidation to settle the dispute event.
         const txObject2 = await emp.withdrawLiquidation("0", sponsor2, { from: sponsor2 });

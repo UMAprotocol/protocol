@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, parseFixed, ZERO_ADDRESS } = require("@uma/common");
@@ -47,6 +47,7 @@ contract("CRMonitor.js", function(accounts) {
       let identifierWhitelist;
       let timer;
       let finder;
+      let store;
 
       // Price feed mock
       let priceFeedMock;
@@ -72,22 +73,30 @@ contract("CRMonitor.js", function(accounts) {
           { from: tokenSponsor }
         );
 
-        identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(tokenConfig.tokenName));
+        identifierWhitelist = await IdentifierWhitelist.new();
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(tokenConfig.tokenName));
+
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+        await finder.changeImplementationAddress(
+          utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(tokenConfig.tokenName));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
-        finder = await Finder.deployed();
-        mockOracle = await MockOracle.new(finder.address, Timer.address);
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+        mockOracle = await MockOracle.new(finder.address, timer.address);
+        const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
         await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
       });
 
       beforeEach(async function() {
         currentTime = await mockOracle.getCurrentTime.call();
-        timer = await Timer.deployed();
         await timer.setCurrentTime(currentTime.toString());
         expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
-        const store = await Store.deployed();
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: tokenSponsor });
@@ -98,9 +107,9 @@ contract("CRMonitor.js", function(accounts) {
           withdrawalLiveness: "10",
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
-          finderAddress: Finder.address,
-          timerAddress: Timer.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(tokenConfig.tokenName),
+          finderAddress: finder.address,
+          timerAddress: timer.address,
+          priceFeedIdentifier: utf8ToHex(tokenConfig.tokenName),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },

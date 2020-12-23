@@ -103,16 +103,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         _;
     }
 
-    modifier notEmergencyShutdown() {
-        _notEmergencyShutdown();
-        _;
-    }
-
-    modifier isEmergencyShutdown() {
-        _isEmergencyShutdown();
-        _;
-    }
-
     modifier noPendingWithdrawal(address sponsor) {
         _positionHasNoPendingWithdrawal(sponsor);
         _;
@@ -222,8 +212,8 @@ contract PerpetualPositionManager is FundingRateApplier {
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
-        PositionData storage positionData = _getPositionData(msg.sender);
         require(collateralAmount.isGreaterThan(0));
+        PositionData storage positionData = _getPositionData(msg.sender);
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the withdrawal. If this is not the case the caller must submit a request.
@@ -732,16 +722,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyCollateralizedPosition(address sponsor) internal view {
         require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
-    }
-
-    function _notEmergencyShutdown() internal view {
-        // Note: removed require string to save bytecode.
-        require(emergencyShutdownTimestamp == 0);
-    }
-
-    function _isEmergencyShutdown() internal view {
-        // Note: removed require string to save bytecode.
-        require(emergencyShutdownTimestamp != 0);
     }
 
     // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the
