@@ -5,9 +5,12 @@ const { parseFixed } = require("@uma/common");
 
 // Script to test
 const { TokenBalanceClient } = require("../../src/clients/TokenBalanceClient");
+const { getTruffleContract } = require("@uma/core");
+
+const ABI_VERSION = "latest";
 
 // Truffle artifacts
-const Token = artifacts.require("ExpandedERC20");
+const Token = getTruffleContract("ExpandedERC20", ABI_VERSION);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },

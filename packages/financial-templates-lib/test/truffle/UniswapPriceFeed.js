@@ -4,9 +4,12 @@ const winston = require("winston");
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
+const { getTruffleContract } = require("@uma/core");
 
-const UniswapMock = artifacts.require("UniswapMock");
-const Uniswap = artifacts.require("Uniswap");
+const ABI_VERSION = "latest";
+
+const UniswapMock = getTruffleContract("UniswapMock", ABI_VERSION);
+const Uniswap = getTruffleContract("Uniswap", ABI_VERSION);
 
 contract("UniswapPriceFeed.js", function(accounts) {
   const owner = accounts[0];

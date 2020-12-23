@@ -1,15 +1,19 @@
 const { toWei, utf8ToHex } = web3.utils;
+const { getTruffleContract } = require("@uma/core");
+
+const ABI_VERSION = "latest";
+const ABI_VERSION_EMP = "1.2.0";
 
 // Tested Contract
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", ABI_VERSION_EMP);
 
 // Helper Contracts
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const Timer = artifacts.require("Timer");
-const Store = artifacts.require("Store");
+const Finder = getTruffleContract("Finder", ABI_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", ABI_VERSION);
+const Token = getTruffleContract("ExpandedERC20", ABI_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", ABI_VERSION);
+const Timer = getTruffleContract("Timer", ABI_VERSION);
+const Store = getTruffleContract("Store", ABI_VERSION);
 
 const {
   createPriceFeed,

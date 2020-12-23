@@ -3,9 +3,12 @@ const lodash = require("lodash");
 
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { mineTransactionsAtTime } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
 
-const BalancerMock = artifacts.require("BalancerMock");
-const Balancer = artifacts.require("Balancer");
+const ABI_VERSION = "latest";
+
+const BalancerMock = getTruffleContract("BalancerMock", ABI_VERSION);
+const Balancer = getTruffleContract("Balancer", ABI_VERSION);
 
 contract("BalancerPriceFeed.js", async function(accounts) {
   const owner = accounts[0];
