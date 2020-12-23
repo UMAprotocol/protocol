@@ -300,6 +300,16 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     if (!combinedConfig) {
       throw new Error("createReferencePriceFeedForEmp: No default config was found and no user config was provided.");
     }
+    // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
+    // get time method with the current block time.
+    if (combinedConfig.getTimeOverride) {
+      if (combinedConfig.getTimeOverride.useBlockTime) {
+        getTime = async () =>
+          web3.eth.getBlock("latest").then(block => {
+            return block.timestamp;
+          });
+      }
+    }
   }
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }

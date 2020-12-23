@@ -390,8 +390,8 @@ contract("FundingRateApplier", function(accounts) {
       // Funding rate is not updated because disputed requests do not
       assert.equal((await fundingRateApplier.fundingRate()).proposalTime, "0");
 
-      // No net reward is paid out.
-      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("100.01"));
+      // No net reward is paid out. Half of the disputer's bond is burned to the store.
+      assert.equal((await collateral.balanceOf(owner)).toString(), toWei("100.005"));
       assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
       assert.equal((await collateral.balanceOf(fundingRateApplier.address)).toString(), toWei("100"));
     });

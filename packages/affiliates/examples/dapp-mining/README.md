@@ -7,4 +7,5 @@ The examples will output the data fields on the transaction you would need to si
 point to integrate the feature into your own front end.
 
 **[Web3 Example](./web3-tagging.js)**
+
 **[Ethers Example](./ethers-tagging.js)**

@@ -345,15 +345,23 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         request.disputer = disputer;
 
         uint256 finalFee = request.finalFee;
-        totalBond = request.bond.add(finalFee);
+        uint256 bond = request.bond;
+        totalBond = bond.add(finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
         StoreInterface store = _getStore();
         if (finalFee > 0) {
-            request.currency.safeIncreaseAllowance(address(store), finalFee);
-            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(finalFee));
+            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
+            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+            // party.
+            uint256 burnedBond = _computeBurnedBond(request);
+
+            // Pay the final fee and the burned bond to the store.
+            uint256 totalFee = finalFee.add(burnedBond);
+            request.currency.safeIncreaseAllowance(address(store), totalFee);
+            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
         }
 
         _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
@@ -402,7 +410,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param ancillaryData ancillary data of the price being requested.
      * @return resolved price.
      */
-    function getPrice(
+    function settleAndGetPrice(
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
@@ -549,7 +557,17 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
-            payout = request.bond.mul(2).add(request.finalFee).add(request.reward);
+            uint256 bond = request.bond;
+
+            // Unburned portion of the loser's bond = 1 - burned bond.
+            uint256 unburnedBond = bond.sub(_computeBurnedBond(request));
+
+            // Winner gets:
+            // - Their bond back.
+            // - The unburned portion of the loser's bond.
+            // - Their final fee back.
+            // - The request reward (if not already refunded -- if refunded, it will be set to 0).
+            payout = bond.add(unburnedBond).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
         } else {
             revert("_settle: not settleable");
@@ -581,6 +599,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData
     ) private view returns (Request storage) {
         return requests[_getId(requester, identifier, timestamp, ancillaryData)];
+    }
+
+    function _computeBurnedBond(Request storage request) private view returns (uint256) {
+        // burnedBond = floor(bond / 2)
+        return request.bond.div(2);
     }
 
     function _validateLiveness(uint256 _liveness) private pure {
