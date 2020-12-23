@@ -153,13 +153,8 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         StoreInterface store = _getStore();
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Exit early if there is no collateral from which to pay fees.
-        if (collateralPool.isEqual(0)) {
-            return (regularFee, latePenalty, totalPaid);
-        }
-
-        // Exit early if fees were already paid during this block.
-        if (lastPaymentTime == time) {
+        // Exit early if there is no collateral or if fees were already paid during this block.
+        if (collateralPool.isEqual(0) || lastPaymentTime == time) {
             return (regularFee, latePenalty, totalPaid);
         }
 
