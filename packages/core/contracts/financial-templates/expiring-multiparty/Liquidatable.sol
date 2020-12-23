@@ -63,7 +63,6 @@ contract Liquidatable is PricelessPositionManager {
         address tokenAddress;
         address finderAddress;
         address timerAddress;
-        address excessTokenBeneficiary;
         address financialProductLibraryAddress;
         bytes32 priceFeedIdentifier;
         FixedPoint.Unsigned minSponsorTokens;
@@ -181,12 +180,11 @@ contract Liquidatable is PricelessPositionManager {
             params.priceFeedIdentifier,
             params.minSponsorTokens,
             params.timerAddress,
-            params.excessTokenBeneficiary,
             params.financialProductLibraryAddress
         )
         nonReentrant()
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
+        require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
         require(
             params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
             "Rewards are more than 100%"
@@ -244,7 +242,7 @@ contract Liquidatable is PricelessPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
-        require(tokensLiquidated.isGreaterThan(0), "Liquidating 0 tokens");
+        require(tokensLiquidated.isGreaterThan(0));
 
         // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
         // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).

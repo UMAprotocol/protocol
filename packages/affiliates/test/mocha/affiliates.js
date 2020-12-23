@@ -8,7 +8,6 @@ const { mocks } = require("../../libs/datasets");
 const Path = require("path");
 
 const empAbi = getAbi("ExpiringMultiParty");
-const empCreatorAbi = getAbi("ExpiringMultiPartyCreator");
 
 const { EmpBalancesHistory } = require("../../libs/processors");
 
@@ -20,8 +19,8 @@ const web3 = getWeb3();
 const { toWei } = web3.utils;
 
 const {
-  empCreator,
   empContracts,
+  empDeployers,
   collateralTokens,
   collateralTokenDecimals,
   syntheticTokenDecimals,
@@ -42,7 +41,6 @@ describe("DeployerRewards", function() {
       affiliates = DeployerRewards({
         queries,
         empAbi: empAbi,
-        empCreatorAbi: empCreatorAbi,
         coingecko,
         synthPrices
       });
@@ -60,16 +58,20 @@ describe("DeployerRewards", function() {
       }
       const startTime = 0;
       const endTime = 10;
-      const empWhitelist = ["a", "b", "c", "d", "e", "f"];
-      balanceHistories = empWhitelist.map(x => [x, EmpBalancesHistory()]);
-      const empDeployers = empWhitelist.map(x => [x, { deployer: x + x }]);
+      // emp white list now contains empaddress, reward payout address
+      const empWhitelist = [
+        ["a", "aa"],
+        ["b", "bb"],
+        ["c", "cc"],
+        ["d", "dd"]
+      ];
+      balanceHistories = empWhitelist.map(([x]) => [x, EmpBalancesHistory()]);
       totalRewards = "100";
 
       params = {
         startTime,
         endTime,
         empWhitelist,
-        empCreatorAddress: "creator",
         snapshotSteps: 1,
         collateralTokenPrices: empWhitelist.map(() => makePrices(endTime - startTime)),
         collateralTokenDecimals: empWhitelist.map(() => 18),
@@ -77,7 +79,6 @@ describe("DeployerRewards", function() {
         syntheticTokenDecimals: empWhitelist.map(() => 18),
         blocks: lodash.times(endTime - startTime, i => ({ timestamp: i, number: i })),
         balanceHistories,
-        empDeployers,
         totalRewards
       };
     });
@@ -186,7 +187,6 @@ describe("DeployerRewards", function() {
       affiliates = DeployerRewards({
         queries,
         empAbi,
-        empCreatorAbi,
         coingecko,
         synthPrices
       });
@@ -225,11 +225,6 @@ describe("DeployerRewards", function() {
       const [first] = result;
       assert(first.timestamp > 0);
       assert(first.number > 0);
-    });
-    it("getEmpDeployerHistory", async function() {
-      this.timeout(10000);
-      const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
-      assert(result.length);
     });
     it("calculateValue", async function() {
       // these are all stable coins so they should roughly be around 1 dollar
@@ -293,11 +288,6 @@ describe("DeployerRewards", function() {
       assert(first.timestamp > 0);
       assert(first.number > 0);
     });
-    it("getEmpDeployerHistory", async function() {
-      this.timeout(10000);
-      const result = await affiliates.utils.getEmpDeployerHistory(empCreator, startingTimestamp);
-      assert(result.length);
-    });
     it("calculateRewards", async function() {
       this.timeout(1000000);
       // small value to give floating math some wiggle room
@@ -307,8 +297,7 @@ describe("DeployerRewards", function() {
         totalRewards: devRewardsToDistribute,
         startTime: startingTimestamp,
         endTime: endingTimestamp,
-        empWhitelist: empContracts,
-        empCreatorAddress: empCreator,
+        empWhitelist: lodash.zip(empContracts, empDeployers),
         collateralTokens: collateralTokens,
         collateralTokenDecimals: collateralTokenDecimals,
         syntheticTokenDecimals: syntheticTokenDecimals

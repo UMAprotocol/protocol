@@ -154,6 +154,70 @@ contract("OptimisticOracle", function(accounts) {
     await verifyBalanceSum(optimisticOracle.address, reward);
   });
 
+  describe("hasPrice", function() {
+    beforeEach(async function() {
+      await collateral.transfer(optimisticRequester.address, reward);
+      await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, "0");
+    });
+    it("Should return false when no price was ever proposed", async function() {
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, false);
+    });
+    it("Should return false when price is proposed but not past liveness", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, false);
+    });
+    it("Should return false when price is proposed and disputed", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
+
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, false);
+    });
+    it("Should return true when price is proposed and past liveness but not settled", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(await optimisticOracle.defaultLiveness()));
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, true);
+    });
+    it("Should return true when price is proposed, disputed and resolved by dvm", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+        from: disputer
+      });
+      await pushPrice(correctPrice);
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, true);
+    });
+    it("Should return true when price is proposed, past liveness and settled", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+        from: proposer
+      });
+      await timer.setCurrentTime((await timer.getCurrentTime()).add(await optimisticOracle.defaultLiveness()));
+      await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
+      const result = await optimisticOracle.hasPrice(optimisticRequester.address, identifier, requestTime, "0x");
+      assert.equal(result, true);
+    });
+  });
   describe("Requested", function() {
     beforeEach(async function() {
       await collateral.transfer(optimisticRequester.address, reward);
@@ -179,6 +243,19 @@ contract("OptimisticOracle", function(accounts) {
       await verifyBalanceSum(optimisticOracle.address, reward, totalCustomBond);
     });
 
+    it("Should Revert When Proposed For With 0 Address", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      const request = optimisticOracle.proposePriceFor(
+        "0x0000000000000000000000000000000000000000",
+        optimisticRequester.address,
+        identifier,
+        requestTime,
+        "0x",
+        correctPrice,
+        { from: proposer }
+      );
+      assert(await didContractThrow(request));
+    });
     it("Propose For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePriceFor(
@@ -403,6 +480,20 @@ contract("OptimisticOracle", function(accounts) {
       assert.equal((await optimisticRequester.refund()).toString(), "0");
     });
 
+    it("Should Revert When Dispute For With 0 Address", async function() {
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      const request = optimisticOracle.disputePriceFor(
+        "0x0000000000000000000000000000000000000000",
+        optimisticRequester.address,
+        identifier,
+        requestTime,
+        "0x",
+        {
+          from: disputer
+        }
+      );
+      assert(await didContractThrow(request));
+    });
     it("Dispute For", async function() {
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePriceFor(rando, optimisticRequester.address, identifier, requestTime, "0x", {
@@ -439,6 +530,62 @@ contract("OptimisticOracle", function(accounts) {
 
     // Requested.
     await collateral.transfer(optimisticRequester.address, reward);
+    await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
+    await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
+
+    // Proposed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+    await optimisticOracle.proposePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      ancillaryData,
+      incorrectPrice,
+      {
+        from: proposer
+      }
+    );
+    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Disputed.
+    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+    await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
+      from: disputer
+    });
+    await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+    await optimisticRequester.clearState();
+
+    // Settled
+    await pushPrice(correctPrice);
+    await optimisticRequester.getPrice(identifier, requestTime, ancillaryData);
+    await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
+    assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+  });
+  it("Stress testing the size of ancillary data", async function() {
+    const DATA_LIMIT_BYTES = 8192;
+    let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+
+    // Initial state.
+    await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
+    assert.isNull(await optimisticRequester.ancillaryData());
+
+    // Requested.
+    await collateral.transfer(optimisticRequester.address, reward);
+    // Ancillary data length must not be more than the limit.
+    assert(
+      await didContractThrow(
+        optimisticRequester.requestPrice(
+          identifier,
+          requestTime,
+          web3.utils.randomHex(DATA_LIMIT_BYTES + 1),
+          collateral.address,
+          reward
+        )
+      )
+    );
     await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
 

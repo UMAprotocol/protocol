@@ -2,7 +2,7 @@
 // final deployer reward output.
 // example: node apps/DeployerRewards ./config.example.js --network=mainnet_mnemonic >> output.json
 const assert = require("assert");
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
 
@@ -17,16 +17,13 @@ const { getWeb3 } = require("@uma/common");
 // This is the main function which configures all data sources for the calculation.
 async function App(config) {
   const web3 = getWeb3();
-  const { empWhitelist = [], startTime, endTime, totalRewards, network = 1 } = config;
+  let { empWhitelist = [], startTime, endTime, totalRewards } = config;
   assert(empWhitelist, "requires whitelist");
   assert(startTime, "requires startTime");
   assert(endTime, "requires endTime");
   assert(totalRewards, "requires totalRewards");
 
-  // this needs alookup by network
-  const empCreator = getAddress("ExpiringMultiPartyCreator", network);
   const empAbi = getAbi("ExpiringMultiParty");
-  const empCreatorAbi = getAbi("ExpiringMultiPartyCreator");
 
   const emp = Emp({ web3 });
   const client = new BigQuery();
@@ -36,22 +33,28 @@ async function App(config) {
 
   const rewards = DeployerRewards({
     queries,
-    empCreatorAbi,
     empAbi,
     coingecko,
     synthPrices
   });
 
+  // API has changed, we need to validate input. Emps will be required to include payout address.
+  empWhitelist = empWhitelist.map(empInput => {
+    rewards.utils.validateEmpInput(empInput);
+    // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
+    return empInput.map(rewards.utils.toChecksumAddress);
+  });
+
   // get emp info
   const { collateralTokens, collateralTokenDecimals, syntheticTokenDecimals, syntheticTokens } = await Promise.reduce(
     empWhitelist,
-    async (result, address) => {
+    async (result, [empAddress]) => {
       // switch this to tokenInfo if you want to base prices off tokens
-      const collateralInfo = await emp.collateralInfo(address);
+      const collateralInfo = await emp.collateralInfo(empAddress);
       result.collateralTokens.push(collateralInfo.address);
       result.collateralTokenDecimals.push(collateralInfo.decimals);
 
-      const syntheticInfo = await emp.tokenInfo(address);
+      const syntheticInfo = await emp.tokenInfo(empAddress);
       result.syntheticTokenDecimals.push(syntheticInfo.decimals);
       result.syntheticTokens.push(syntheticInfo.address);
       return result;
@@ -64,7 +67,6 @@ async function App(config) {
     startTime,
     endTime,
     empWhitelist,
-    empCreatorAddress: empCreator,
     collateralTokens,
     collateralTokenDecimals,
     syntheticTokens,

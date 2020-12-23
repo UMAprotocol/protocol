@@ -31,7 +31,7 @@ contract FundingRateApplierTest is FundingRateApplier {
         uint256 paymentPeriodSeconds,
         FixedPoint.Signed memory fundingRatePerSecond,
         FixedPoint.Unsigned memory currentCumulativeFundingRateMultiplier
-    ) public pure returns (FixedPoint.Unsigned memory, FixedPoint.Signed memory) {
+    ) public pure returns (FixedPoint.Unsigned memory) {
         return
             _calculateEffectiveFundingRate(
                 paymentPeriodSeconds,

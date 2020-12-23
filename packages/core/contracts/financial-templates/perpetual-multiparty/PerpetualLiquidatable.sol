@@ -183,11 +183,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
-        require(
-            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Rewards are more than 100%"
-        );
+        require(params.collateralRequirement.isGreaterThan(1));
+        require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
@@ -542,7 +539,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
         FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
 
-        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
+        // If the position has more than the required collateral it is solvent and the dispute is valid (liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
         bool disputeSucceeded = liquidation.liquidatedCollateral.isGreaterThanOrEqual(requiredCollateral);
         liquidation.state = disputeSucceeded ? Status.DisputeSucceeded : Status.DisputeFailed;
@@ -571,8 +568,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Revert if the caller is attempting to access an invalid liquidation
         // (one that has never been created or one has never been initialized).
         require(
-            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized,
-            "Invalid liquidation ID"
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
         );
         return liquidationArray[liquidationId];
     }

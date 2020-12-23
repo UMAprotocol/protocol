@@ -60,6 +60,11 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
 
     // modifier that calls payRegularFees().
     modifier fees virtual {
+        // Note: the regular fee is applied on every fee-accruing transaction, where the total change is simply the
+        // regular fee applied linearly since the last update. This implies that the compounding rate depends on the
+        // frequency of update transactions that have this modifier, and it never reaches the ideal of continuous
+        // compounding. This approximate-compounding pattern is common in the Ethereum ecosystem because of the
+        // complexity of compounding data on-chain.
         payRegularFees();
         _;
     }
@@ -158,6 +163,16 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         return _pfc();
     }
 
+    /**
+     * @notice Removes excess collateral balance not counted in the PfC by distributing it out pro-rata to all sponsors.
+     * @dev Multiplying the `cumulativeFeeMultiplier` by the ratio of non-PfC-collateral :: PfC-collateral effectively
+     * pays all sponsors a pro-rata portion of the excess collateral.
+     * @dev This will revert if PfC is 0 and this contract's collateral balance > 0.
+     */
+    function gulp() external nonReentrant() {
+        _gulp();
+    }
+
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
@@ -189,6 +204,14 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         StoreInterface store = _getStore();
         collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
         store.payOracleFeesErc20(address(collateralCurrency), amount);
+    }
+
+    function _gulp() internal {
+        FixedPoint.Unsigned memory currentPfc = _pfc();
+        FixedPoint.Unsigned memory currentBalance = FixedPoint.Unsigned(collateralCurrency.balanceOf(address(this)));
+        if (currentPfc.isLessThan(currentBalance)) {
+            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(currentBalance.div(currentPfc));
+        }
     }
 
     function _pfc() internal view virtual returns (FixedPoint.Unsigned memory);

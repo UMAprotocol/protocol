@@ -20,7 +20,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
 /**
- * @title Optimistic Requester
+ * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
  */
 interface OptimisticRequester {
@@ -66,7 +66,7 @@ interface OptimisticRequester {
 }
 
 /**
- * @title Optimistic Oracle
+ * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
 contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
@@ -157,6 +157,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
+        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
@@ -185,9 +186,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Requests a new price.
+     * @notice Set the proposal bond associated with a price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param bond custom bond amount to set.
      * @return totalBond new bond + final fee that the proposer and disputer will be required to pay. This can be
@@ -209,10 +210,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     /**
      * @notice Sets the request to refund the reward if the proposal is disputed. This can help to "hedge" the caller
-     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the others'
+     * in the event of a dispute-caused delay. Note: in the event of a dispute, the winner still receives the other's
      * bond, so there is still profit to be made even if the reward is refunded.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      */
     function setRefundOnDispute(
@@ -231,7 +232,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Sets a custom liveness value for the request. Liveness is the amount of time a proposal must wait before
      * being auto-resolved.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param customLiveness new custom liveness.
      */
@@ -255,7 +256,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param proposer address to set as the proposer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
@@ -269,6 +270,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData,
         int256 proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
+        require(proposer != address(0), "proposer address must be non 0");
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "proposePriceFor: Requested"
@@ -299,7 +301,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Proposes a price value for an existing price request.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the proposer's wallet as a bond. The bond will be returned to
@@ -322,10 +324,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param disputer address to set as the disputer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
-     * the disputer once settled if the dispute was value (the proposal was incorrect).
+     * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
     function disputePriceFor(
         address disputer,
@@ -334,6 +336,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public override nonReentrant() returns (uint256 totalBond) {
+        require(disputer != address(0), "disputer address must be non 0");
         require(
             getState(requester, identifier, timestamp, ancillaryData) == State.Proposed,
             "disputePriceFor: Proposed"
@@ -375,7 +378,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Disputes a price value for an existing price request with an active proposal.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return totalBond the amount that's pulled from the disputer's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
@@ -395,7 +398,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * or settleable. Note: this method is not view so that this call may actually settle the price request if it
      * hasn't been settled.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return resolved price.
      */
@@ -415,7 +418,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
@@ -433,7 +436,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Gets the current data structure containing all information about a price request.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return the Request data structure.
      */
@@ -450,7 +453,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Computes the current state of a price request. See the State enum for more details.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
      * @return the State.
      */
@@ -485,12 +488,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
-     * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
+     * @notice Checks if a given request has resolved, expired or been settled (i.e the optimistic oracle has a price).
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identifiy the existing request.
+     * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @return the State.
+     * @return boolean indicating true if price exists and false if not.
      */
     function hasPrice(
         address requester,
@@ -498,9 +501,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view override returns (bool) {
-        return
-            getState(requester, identifier, timestamp, ancillaryData) == State.Settled ||
-            getState(requester, identifier, timestamp, ancillaryData) == State.Resolved;
+        State state = getState(requester, identifier, timestamp, ancillaryData);
+        return state == State.Settled || state == State.Resolved || state == State.Expired;
     }
 
     /**

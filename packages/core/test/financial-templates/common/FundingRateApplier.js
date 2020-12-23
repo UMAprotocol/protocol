@@ -15,7 +15,7 @@ const Token = artifacts.require("ExpandedERC20");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ConfigStore = artifacts.require("ConfigStore");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
 contract("FundingRateApplier", function(accounts) {
   // Single-deploy contracts.
@@ -159,8 +159,7 @@ contract("FundingRateApplier", function(accounts) {
       { rawValue: toWei("0.0015") },
       { rawValue: toWei("1") }
     );
-    assert.equal(test1[0].rawValue, toWei("1.03"));
-    assert.equal(test1[1].rawValue, toWei("0.03"));
+    assert.equal(test1.rawValue, toWei("1.03"));
 
     // Previous test but change the starting multiplier to 1.05:
     // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
@@ -170,8 +169,7 @@ contract("FundingRateApplier", function(accounts) {
       { rawValue: toWei("0.0015") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test2[0].rawValue, toWei("1.0815"));
-    assert.equal(test2[1].rawValue, toWei("0.03"));
+    assert.equal(test2.rawValue, toWei("1.0815"));
 
     // Previous test but change the funding rate to -0.15%:
     // Effective Rate: -0.0015 * 20 = -0.03, funding rate is negative so subtract from 1 => 0.97
@@ -181,8 +179,7 @@ contract("FundingRateApplier", function(accounts) {
       { rawValue: toWei("-0.0015") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test3[0].rawValue, toWei("1.0185"));
-    assert.equal(test3[1].rawValue, toWei("-0.03"));
+    assert.equal(test3.rawValue, toWei("1.0185"));
 
     // Previous test but change the funding rate to 0% meaning that the multiplier shouldn't change:
     // Effective Rate: 0 * 20 = 0, funding rate is neutral so no change to the cumulative multiplier.
@@ -192,15 +189,26 @@ contract("FundingRateApplier", function(accounts) {
       { rawValue: toWei("0") },
       { rawValue: toWei("1.05") }
     );
-    assert.equal(test4[0].rawValue, toWei("1.05"));
-    assert.equal(test4[1].rawValue, toWei("0"));
+    assert.equal(test4.rawValue, toWei("1.05"));
   });
 
-  it("Initial 0 funding rate", async () => {
+  it("Initial funding rate struct is correct", async () => {
+    const fundingRate = await fundingRateApplier.fundingRate();
+    assert.equal(fundingRate.rate.toString(), "0");
+    assert.equal(hexToUtf8(fundingRate.identifier), hexToUtf8(identifier));
+    assert.equal(fundingRate.cumulativeMultiplier.toString(), toWei("1"));
+    assert.equal(fundingRate.updateTime.toString(), startTime.toString());
+    assert.equal(fundingRate.applicationTime.toString(), startTime.toString());
+    assert.equal(fundingRate.proposalTime.toString(), "0");
+  });
+  it("Calling applyFundingRate without a pending proposal does not change multiplier", async () => {
     await fundingRateApplier.setCurrentTime(startTime + 1000);
-    await fundingRateApplier.applyFundingRate();
+    const receipt = await fundingRateApplier.applyFundingRate();
     assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue.toString(), toWei("1"));
     assert.equal((await fundingRateApplier.fundingRate()).rate.rawValue.toString(), "0");
+
+    // A NewFundingRateMultiplier is emitted.
+    truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
   });
 
   it("Funding rate proposal must be within limits", async function() {
@@ -229,7 +237,7 @@ contract("FundingRateApplier", function(accounts) {
 
   describe("Undisputed proposal", async () => {
     beforeEach(async () => {
-      // Move time forward to give some space for new proposals.
+      // Move time forward to give some space for new proposals since the last update time was set to deployment time.
       currentTime = startTime + delay;
       await fundingRateApplier.setCurrentTime(currentTime);
 
@@ -238,10 +246,6 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Two proposals cannot coexist", async () => {
-      // Move time forward a small amount to not expire the previous one, but to give room for a new proposal.
-      currentTime += 5;
-      await fundingRateApplier.setCurrentTime(currentTime);
-
       // Proposal should fail because the previous one has not expired.
       assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
 
@@ -257,7 +261,15 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the newly expired rate.
-      await fundingRateApplier.applyFundingRate();
+      const receipt = await fundingRateApplier.applyFundingRate();
+      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
+        return (
+          ev.newFundingRate.toString() === defaultProposal &&
+          ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
+          ev.reward.toString() === toWei("1")
+          // The reward is 1% (10_000 seconds * 0.000001 reward rate / second) of 100 tokens of pfc --> 1 token
+        );
+      });
 
       // 1 percent per 100_000 seconds is the default proposal. It has been applied for 10_000 seconds, so we should
       // see a +0.1% change.
@@ -265,7 +277,8 @@ contract("FundingRateApplier", function(accounts) {
     });
 
     it("Pays rewards", async () => {
-      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store.
+      // Owner should have already paid 0.01 percent of pfc (0.01 token) to the funding rate store for the
+      // proposal bond.
       assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
 
       // Funding rate store does not escrow, the optimistic oracle does.
@@ -287,45 +300,21 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await collateral.balanceOf(fundingRateApplier.address)).toString(), toWei("99"));
     });
 
-    it("Event + compounding funding rate multiplier", async () => {
+    it("Compounding funding rate multiplier", async () => {
       // Move time forward to expire the proposal.
       currentTime += delay;
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the newly expired rate.
-      let receipt = await fundingRateApplier.applyFundingRate();
-
-      // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
-        return (
-          ev.newMultiplier == toWei("1.001") &&
-          ev.lastApplicationTime == (currentTime - delay).toString() &&
-          ev.applicationTime == currentTime.toString() &&
-          ev.paymentPeriod == delay.toString() &&
-          ev.latestFundingRate == defaultProposal &&
-          ev.periodRate == toWei("0.001")
-        );
-      });
+      await fundingRateApplier.applyFundingRate();
+      assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1.001"));
 
       // Move time forward again.
       currentTime += delay;
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the rate again.
-      receipt = await fundingRateApplier.applyFundingRate();
-
-      // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
-        return (
-          ev.newMultiplier == toWei("1.002001") &&
-          ev.lastApplicationTime == (currentTime - delay).toString() &&
-          ev.applicationTime == currentTime.toString() &&
-          ev.paymentPeriod == delay.toString() &&
-          ev.latestFundingRate == defaultProposal &&
-          ev.periodRate == toWei("0.001")
-        );
-      });
-
+      await fundingRateApplier.applyFundingRate();
       assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1.002001"));
 
       // Propose a new rate of the negative of the previous proposal
@@ -336,19 +325,23 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // Apply the rate again.
-      receipt = await fundingRateApplier.applyFundingRate();
+      await fundingRateApplier.applyFundingRate();
+      assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1.000998999"));
+    });
 
-      // Update and check event
-      truffleAssert.eventEmitted(receipt, "NewFundingRateMultiplier", ev => {
-        return (
-          ev.newMultiplier == toWei("1.000998999") &&
-          ev.lastApplicationTime == (currentTime - delay).toString() &&
-          ev.applicationTime == currentTime.toString() &&
-          ev.paymentPeriod == delay.toString() &&
-          ev.latestFundingRate == `-${defaultProposal}` &&
-          ev.periodRate == toWei("-0.001")
-        );
-      });
+    it("Oracle is upgraded while the request is still pending", async () => {
+      // Register a new optimistic oracle in the finder.
+      let optimisticOracleV2 = await OptimisticOracle.new(liveness, finder.address, timer.address);
+      await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracleV2.address);
+
+      // propose() should reset the proposal time to 0 via the fees() modifier, and therefore it should be possible
+      // to propose a new rate.
+      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      // The funding rate multiplier should be unchanged.
+      assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1"));
+
+      // As long as this new oracle is not upgraded and the proposal has not expired, then propose() should revert.
+      assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
     });
   });
 

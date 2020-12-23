@@ -11,7 +11,7 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 /**
- * @notice ConfigStore stores configuration settings for a perpetual contract and provides and interface for it
+ * @notice ConfigStore stores configuration settings for a perpetual contract and provides an interface for it
  * to query settings such as reward rates, proposal bond sizes, etc. The configuration settings can be upgraded
  * by a privileged account and the upgraded changes are timelocked.
  */
@@ -65,8 +65,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
     }
 
     /**
-     * @notice Propose new configuration settings. New settings go into effect
-     * after a liveness period passes.
+     * @notice Construct the Config Store. An initial configuration is provided and set on construction.
      * @param _initialConfig Configuration settings to initialize `currentConfig` with.
      * @param _timerAddress Address of testable Timer contract.
      */
@@ -79,26 +78,20 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      * @notice Returns current config or pending config if pending liveness has expired.
      * @return ConfigSettings config settings that calling financial contract should view as "live".
      */
-    function getCurrentConfig()
+    function updateAndGetCurrentConfig()
         external
-        view
         override
-        nonReentrantView()
+        updateConfig()
+        nonReentrant()
         returns (ConfigStoreInterface.ConfigSettings memory)
     {
-        if (_pendingProposalPassed()) {
-            return pendingConfig;
-        } else {
-            return currentConfig;
-        }
+        return currentConfig;
     }
 
     /**
-     * @notice Propose new configuration settings. New settings go into effect
-     * after a liveness period passes.
+     * @notice Propose new configuration settings. New settings go into effect after a liveness period passes.
      * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from now.
-     * @dev Callable only by owner. Calling this while there is already a pending proposal
-     * will overwrite the pending proposal.
+     * @dev Callable only by owner. Calling this while there is already a pending proposal will overwrite the pending proposal.
      */
     function proposeNewConfig(ConfigSettings memory newConfig) external onlyOwner() nonReentrant() updateConfig() {
         _validateConfig(newConfig);
@@ -121,6 +114,9 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         );
     }
 
+    /**
+     * @notice Publish any pending configuration settings if there is a pending proposal that has passed liveness.
+     */
     function publishPendingConfig() external nonReentrant() updateConfig() {}
 
     /****************************************
@@ -129,7 +125,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     // Check if pending proposal can overwrite the current config.
     function _updateConfig() internal {
-        // If liveness has passed, publish new reward rate.
+        // If liveness has passed, publish proposed configuration settings.
         if (_pendingProposalPassed()) {
             currentConfig = pendingConfig;
 
@@ -177,8 +173,8 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
         // could theoretically keep their "evil" funding rate alive indefinitely by continuously disputing honest
         // proposers, so we would want to be able to set the proposal bond (equal to the dispute bond) higher than their
         // PfC for each proposal liveness window. The downside of not limiting this is that the config store owner
-        // can set it arbitrarily high and preclude a new funding rate from ever coming in. We suggest setting the proposal
-        // bond based on the configuration's funding rate range like in this discussion:
+        // can set it arbitrarily high and preclude a new funding rate from ever coming in. We suggest setting the
+        // proposal bond based on the configuration's funding rate range like in this discussion:
         // https://github.com/UMAprotocol/protocol/issues/2039#issuecomment-719734383
 
         // We also don't set a limit on the funding rate max/min because we might need to allow very high magnitude

@@ -745,12 +745,12 @@ contract("PerpetualPositionManager", function(accounts) {
     const repayResult = await positionManager.repay({ rawValue: toWei("40") }, { from: sponsor });
 
     // Event is correctly emitted.
-    truffleAssert.eventEmitted(repayResult, "Redeem", ev => {
-      return ev.sponsor == sponsor && ev.tokenAmount == toWei("40");
-    });
-
-    truffleAssert.eventEmitted(repayResult, "Deposit", ev => {
-      return ev.sponsor == sponsor;
+    truffleAssert.eventEmitted(repayResult, "Repay", ev => {
+      return (
+        ev.sponsor == sponsor &&
+        ev.numTokensRepaid.toString() == toWei("40") &&
+        ev.newTokenCount.toString() === toWei("60")
+      );
     });
 
     const tokensPaid = initialSponsorTokens.sub(await tokenCurrency.balanceOf(sponsor));
@@ -784,6 +784,22 @@ contract("PerpetualPositionManager", function(accounts) {
         )
       )
     );
+
+    // Caller needs to set allowance in order to repay.
+    await tokenCurrency.approve(positionManager.address, "0", { from: sponsor });
+    assert(
+      await didContractThrow(
+        positionManager.repay(
+          {
+            rawValue: toBN(toWei("60"))
+              .sub(toBN(minSponsorTokens))
+              .toString()
+          },
+          { from: sponsor }
+        )
+      )
+    );
+    await tokenCurrency.approve(positionManager.address, toWei("60"), { from: sponsor });
 
     // Can repay up to the minimum sponsor size
     await positionManager.repay(
@@ -912,6 +928,34 @@ contract("PerpetualPositionManager", function(accounts) {
     await positionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1));
     const payZeroFeesResult = await payRegularFees();
     truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
+  });
+
+  it("Gulps non-PfC collateral into PfC", async function() {
+    // Set up position.
+    await collateral.approve(positionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(positionManager.address, toWei("1000"), { from: sponsor });
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await positionManager.create({ rawValue: toWei("3") }, { rawValue: toWei("100000") }, { from: other });
+    await positionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Verify the current PfC:
+    assert.equal((await positionManager.pfc()).toString(), toWei("4"));
+
+    // Send collateral to the contract so that its collateral balance is greater than its PfC.
+    await collateral.mint(positionManager.address, toWei("0.5"), { from: collateralOwner });
+
+    // Gulp and check that (1) the contract's PfC adjusted and (2) each sponsor's locked collateral increased.
+    // Ratio of total-collateral / PfC = (4.5/4) = 1.125
+    // New fee multiplier = 1 * 1.125 = 1.125
+    // Sponsor's collateral should now be multiplied by 1.125
+    await positionManager.gulp();
+    assert.equal((await positionManager.pfc()).toString(), toWei("4.5"));
+    // Gulping twice does nothing.
+    await positionManager.gulp();
+    assert.equal((await positionManager.getCollateral(other)).toString(), toWei("3.375"));
+    assert.equal((await positionManager.getCollateral(sponsor)).toString(), toWei("1.125"));
+    assert.equal((await collateral.balanceOf(positionManager.address)).toString(), toWei("4.5"));
   });
 
   it("Emergency shutdown: lifecycle", async function() {
@@ -1664,6 +1708,39 @@ contract("PerpetualPositionManager", function(accounts) {
     await positionManager.create({ rawValue: "40" }, { rawValue: "20" }, { from: sponsor });
 
     assert(await didContractThrow(positionManager.redeem({ rawValue: "16" }, { from: sponsor })));
+  });
+
+  it("Gulp edge cases", async function() {
+    // Gulp does not revert if PfC and collateral balance are both 0
+    await positionManager.gulp();
+
+    // Send 1 wei of excess collateral to the contract.
+    await collateral.transfer(positionManager.address, "1", { from: sponsor });
+
+    // Gulp reverts if PfC is 0 but collateral balance is > 0.
+    assert(await didContractThrow(positionManager.gulp()));
+
+    // Create a position to gulp.
+    await collateral.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(positionManager.address, toWei("100000"), { from: sponsor });
+    await positionManager.create({ rawValue: toWei("10") }, { rawValue: "20" }, { from: sponsor });
+
+    // Gulp does not do anything if the intermediate calculation (collateral balance / PfC) has precision loss.
+    // For example:
+    // - collateral balance = 10e18 + 1
+    // - PfC = 10e18
+    // - Gulp ratio = (10e18 + 1) / 10e18 =  1.0000000000000000001, which is 1e18 + 1e-19, which gets truncated to 1e18
+    // - Therefore, the multiplier remains at 1e18.
+    await positionManager.gulp();
+    assert.equal((await positionManager.cumulativeFeeMultiplier()).toString(), web3.utils.toWei("1"));
+
+    // Gulp will shift the multiplier if enough excess collateral builds up in the contract to negate precision loss.
+    await collateral.transfer(positionManager.address, "9", { from: sponsor });
+    await positionManager.gulp();
+    assert.equal(
+      (await positionManager.cumulativeFeeMultiplier()).toString(),
+      web3.utils.toWei("1.000000000000000001")
+    );
   });
 
   it("Non-standard ERC20 delimitation", async function() {
