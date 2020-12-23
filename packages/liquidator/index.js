@@ -56,13 +56,8 @@ async function run({
     // Load unlocked web3 accounts and get the networkId.
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
-    // Setup contract instances. NOTE getAddress("Voting", networkId) will error if run in tests. Catch & set it to null.
-    let voting;
-    try {
-      voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-    } catch {
-      voting = null;
-    }
+    // Setup contract instances.
+    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Returns whether the EMP has expired yet

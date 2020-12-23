@@ -229,6 +229,17 @@ function getHardhatConfig(configOverrides) {
   };
   return { ...defaultConfig, ...configOverrides };
 }
+
+// Helper method to let the user of HarhatConfig assign a global address which is then accessible from the @uma/core
+// getAddressTest method. This enables hardhat to be used in tests like the main index.js entry tests in the liquidator
+// disputer and monitor bots. In future, this should be refactored to use https://github.com/wighawag/hardhat-deploy
+function addGlobalHardhatTestingAddress(contractName, address) {
+  if (!global.hardhatTestingAddresses) {
+    global.hardhatTestingAddresses = {};
+  }
+  global.hardhatTestingAddresses[contractName] = address;
+}
 module.exports = {
-  getHardhatConfig
+  getHardhatConfig,
+  addGlobalHardhatTestingAddress
 };

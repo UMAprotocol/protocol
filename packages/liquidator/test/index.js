@@ -1,5 +1,11 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL, ZERO_ADDRESS, LiquidationStatesEnum, interfaceName } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  ZERO_ADDRESS,
+  LiquidationStatesEnum,
+  interfaceName,
+  addGlobalHardhatTestingAddress
+} = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -63,6 +69,8 @@ contract("index.js", function(accounts) {
       from: contractCreator
     });
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    // Set the address in the global name space to enable disputer's index.js to access it.
+    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
 
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
