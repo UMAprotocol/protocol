@@ -269,8 +269,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             positionData.withdrawalRequestPassTimestamp != 0 &&
-                positionData.withdrawalRequestPassTimestamp <= getCurrentTime(),
-            "Invalid withdraw request"
+                positionData.withdrawalRequestPassTimestamp <= getCurrentTime()
         );
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
@@ -539,9 +538,8 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
-     * @dev TODO: This method does not account for any pending regular fees that have not yet been withdrawn
-     * from this contract, for example if the `lastPaymentTime != currentTime`. Future work should be to add
-     * logic to this method to account for any such pending fees.
+     * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
+     * example if the `lastPaymentTime != currentTime`.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
@@ -552,7 +550,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         returns (FixedPoint.Unsigned memory collateralAmount)
     {
         // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
     }
 
     /**
@@ -565,7 +563,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         nonReentrantView()
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
     function getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)
