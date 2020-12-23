@@ -110,32 +110,11 @@ hub.post("/", async (req, res) => {
       // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
       // correctly but contained an error.
       if (result.status == "rejected") {
-        console.log("FOUND a rejected call");
-        rejectedOutputs.push(Object.keys(configObject)[index]);
+        rejectedOutputs.push(Object.keys(configObject)[index]); // Add to rejectedOutputs to re-run the call.
+        return; // go to next result in the forEach loop.
       }
-      if (
-        (result.value && result.value.execResponse && result.value.execResponse.error) ||
-        (result.reason && result.reason.code == "500")
-      ) {
-        errorOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse:
-            (result.value && result.value.execResponse) ||
-            (result.reason &&
-              result.reason.response &&
-              result.reason.response.data &&
-              result.reason.response.data.execResponse),
-          botIdentifier: Object.keys(configObject)[index]
-        };
-      } else {
-        validOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse: result.value && result.value.execResponse,
-          botIdentifier: Object.keys(configObject)[index]
-        };
-      }
+      _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
-    console.log("rejectedOutputs", rejectedOutputs);
     // Re-try the rejected outputs.
     let rejectedRetryPromiseArray = [];
     rejectedOutputs.forEach(botName => {
@@ -143,30 +122,8 @@ hub.post("/", async (req, res) => {
       rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
     });
     const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
-    console.log("rejectedRetryResults", rejectedRetryResults);
     rejectedRetryResults.forEach((result, index) => {
-      if (
-        result.status == "rejected" ||
-        (result.value && result.value.execResponse && result.value.execResponse.error) ||
-        (result.reason && result.reason.code == "500")
-      ) {
-        errorOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse:
-            (result.value && result.value.execResponse) ||
-            (result.reason &&
-              result.reason.response &&
-              result.reason.response.data &&
-              result.reason.response.data.execResponse),
-          botIdentifier: Object.keys(configObject)[index]
-        };
-      } else {
-        validOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse: result.value && result.value.execResponse,
-          botIdentifier: Object.keys(configObject)[index]
-        };
-      }
+      _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
 
     if (Object.keys(errorOutputs).length > 0) {
@@ -184,6 +141,7 @@ hub.post("/", async (req, res) => {
   } catch (errorOutput) {
     // If the errorOutput is an instance of Error then we know that error was produced within the hub.
     if (errorOutput instanceof Error) {
+      console.log("errorOutput", errorOutput);
       logger.error({
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
@@ -380,6 +338,33 @@ async function _postJson(url, body) {
   return await response.json(); // extract JSON from the http response
 }
 
+// Takes in a spokeResponse object for a given botKey and identifies if the response includes an error. If it does,
+// append the error information to the errorOutputs. If there is no error, append to validOutputs.
+function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
+  if (
+    spokeResponse.status == "rejected" ||
+    (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
+    (spokeResponse.reason && spokeResponse.reason.code == "500")
+  ) {
+    errorOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse:
+        (spokeResponse.value && spokeResponse.value.execResponse) ||
+        (spokeResponse.reason &&
+          spokeResponse.reason.response &&
+          spokeResponse.reason.response.data &&
+          spokeResponse.reason.response.data.execResponse),
+      botIdentifier: botKey
+    };
+  } else {
+    validOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+      botIdentifier: botKey
+    };
+  }
+}
+
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
   // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
@@ -388,8 +373,6 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
       "Bad environment! Specify a `SPOKE_URL` & `CUSTOM_NODE_URL` to point to the a Serverless spoke instance and an Ethereum node"
     );
   }
-
-  // function _processSpokeResponse(spokeResponse, validOutputs, errorOutputs) {}
 
   // Set configs to be used in the sererless execution.
   logger = _Logger;
