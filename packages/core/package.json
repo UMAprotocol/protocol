@@ -6,20 +6,16 @@
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^1.1.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
-    "@uma/core-1-2-0": "npm:@uma/core@1.2.0"
+    "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
+    "@uma/core-1-2-1": "npm:@uma/core@1.2.1"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@ethersproject/units": "^5.0.3",
-    "@nomiclabs/buidler": "^1.3.8",
-    "@nomiclabs/buidler-etherscan": "^1.3.3",
-    "@nomiclabs/buidler-truffle5": "^1.3.4",
-    "@nomiclabs/buidler-web3": "^1.3.4",
     "@openzeppelin/contracts": "3.0.0",
     "@sendgrid/mail": "^6.4.0",
     "@uma/financial-templates-lib": "^1.2.0",
     "bip39": "^3.0.2",
-    "buidler-gas-reporter": "^0.1.4",
     "chai": "^4.2.0",
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
@@ -54,13 +50,14 @@
     "/config/*.json"
   ],
   "scripts": {
-    "test": "yarn mocha-test && yarn buidler-test",
-    "buidler-test": "node --max-old-space-size=1024 $(yarn bin buidler) test",
-    "mocha-test": "mocha mocha-test --recursive",
+    "test": "yarn mocha-test && yarn hardhat-test && yarn truffle-test",
+    "truffle-test": "truffle test ./truffle-test/*",
+    "hardhat-test": "node --max-old-space-size=1024 $(yarn bin hardhat) test",
+    "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses",
-    "prepublish": "yarn run build"
+    "prepublish": "yarn build"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

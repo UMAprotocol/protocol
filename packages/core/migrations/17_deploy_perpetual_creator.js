@@ -44,7 +44,7 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy PerpLib and link to PerpCreator.
 
-  // Buidler
+  // hardhat
   if (PerpetualLib.setAsDeployed) {
     const { contract: perpLib } = await deploy(deployer, network, PerpetualLib);
 
@@ -53,7 +53,7 @@ module.exports = async function(deployer, network, accounts) {
     try {
       await PerpetualCreator.link(perpLib);
     } catch (e) {
-      // Allow this to fail in the Buidler case.
+      // Allow this to fail in the hardhat case.
     }
   } else {
     // Truffle

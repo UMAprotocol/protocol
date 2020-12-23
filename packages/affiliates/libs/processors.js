@@ -74,7 +74,7 @@ function EmpBalancesHistory() {
 
   // takes a snapshot of balances if the next event falls on a new block
   function handleEvent(blockNumber, event) {
-    assert(blockNumber, "requires blockNumber");
+    assert(blockNumber === 0 || blockNumber > 0, "requires blockNumber");
     if (lastBlockNumber == null) {
       lastBlockNumber = blockNumber;
       lastBlockTimestamp = event.blockTimestamp;

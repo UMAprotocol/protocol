@@ -85,9 +85,6 @@ contract PricelessPositionManager is FeePayer {
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
-    // The excessTokenBeneficiary of any excess tokens added to the contract.
-    address public excessTokenBeneficiary;
-
     // Instance of FinancialProductLibrary to provide custom price and collateral requirement transformations to extend
     // the functionality of the EMP to support a wider range of financial products.
     FinancialProductLibrary public financialProductLibrary;
@@ -107,6 +104,7 @@ contract PricelessPositionManager is FeePayer {
     event PositionCreated(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event NewSponsor(address indexed sponsor);
     event EndedSponsorPosition(address indexed sponsor);
+    event Repay(address indexed sponsor, uint256 indexed numTokensRepaid, uint256 indexed newTokenCount);
     event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event ContractExpired(address indexed caller);
     event SettleExpiredPosition(
@@ -164,7 +162,6 @@ contract PricelessPositionManager is FeePayer {
      * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
-     * @param _excessTokenBeneficiary Beneficiary to which all excess token balances that accrue in the contract can be sent.
      * @param _financialProductLibraryAddress Contract providing contract state transformations.
      */
     constructor(
@@ -176,7 +173,6 @@ contract PricelessPositionManager is FeePayer {
         bytes32 _priceIdentifier,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
-        address _excessTokenBeneficiary,
         address _financialProductLibraryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime());
@@ -187,7 +183,6 @@ contract PricelessPositionManager is FeePayer {
         tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
-        excessTokenBeneficiary = _excessTokenBeneficiary;
 
         // Initialize the financialProductLibrary at the provided address.
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);
@@ -277,7 +272,7 @@ contract PricelessPositionManager is FeePayer {
         fees()
         nonReentrant()
     {
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(sponsor);
 
         // Increase the position and global collateral balance by collateral amount.
@@ -315,11 +310,11 @@ contract PricelessPositionManager is FeePayer {
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
-        // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
+        // position remains above the GCR within the withdrawal. If this is not the case the caller must submit a request.
         amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
@@ -345,8 +340,7 @@ contract PricelessPositionManager is FeePayer {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
             collateralAmount.isGreaterThan(0) &&
-                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral)),
-            "Invalid collateral amount"
+                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral))
         );
 
         // Make sure the proposed expiration of this request is not post-expiry.
@@ -461,6 +455,38 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
+     * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
+     * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
+     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
+     * @param numTokens is the number of tokens to be burnt from the sponsor's debt position.
+     */
+    function repay(FixedPoint.Unsigned memory numTokens)
+        public
+        onlyPreExpiration()
+        noPendingWithdrawal(msg.sender)
+        fees()
+        nonReentrant()
+    {
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(numTokens.isLessThanOrEqual(positionData.tokensOutstanding));
+
+        // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
+        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+        positionData.tokensOutstanding = newTokenCount;
+
+        // Update the totalTokensOutstanding after redemption.
+        totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
+
+        emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
+
+        // Transfer the tokens back from the sponsor and burn them.
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
+    }
+
+    /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
@@ -477,7 +503,7 @@ contract PricelessPositionManager is FeePayer {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
+        require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed =
@@ -620,25 +646,6 @@ contract PricelessPositionManager is FeePayer {
      */
     function remargin() external override onlyPreExpiration() nonReentrant() {
         return;
-    }
-
-    /**
-     * @notice Drains any excess balance of the provided ERC20 token to a pre-selected beneficiary.
-     * @dev This will drain down to the amount of tracked collateral and drain the full balance of any other token.
-     * @param token address of the ERC20 token whose excess balance should be drained.
-     */
-    function trimExcess(IERC20 token) external fees() nonReentrant() returns (FixedPoint.Unsigned memory amount) {
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(token.balanceOf(address(this)));
-
-        if (address(token) == address(collateralCurrency)) {
-            // If it is the collateral currency, send only the amount that the contract is not tracking.
-            // Note: this could be due to rounding error or balance-changing tokens, like aTokens.
-            amount = balance.sub(_pfc());
-        } else {
-            // If it's not the collateral currency, send the entire balance.
-            amount = balance;
-        }
-        token.safeTransfer(excessTokenBeneficiary, amount.rawValue);
     }
 
     /**
@@ -823,7 +830,11 @@ contract PricelessPositionManager is FeePayer {
             "Unresolved oracle price"
         );
         int256 optimisticOraclePrice =
-            optimisticOracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
+            optimisticOracle.settleAndGetPrice(
+                _transformPriceIdentifier(requestedTime),
+                requestedTime,
+                _getAncillaryData()
+            );
 
         // For now we don't want to deal with negative prices in positions.
         if (optimisticOraclePrice < 0) {

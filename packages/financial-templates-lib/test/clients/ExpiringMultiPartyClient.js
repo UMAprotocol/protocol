@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, utf8ToHex } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
@@ -65,6 +65,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       let convertCollateral;
       let convertSynthetic;
       let convertPrice;
+      let finder;
+      let timer;
 
       const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
         await client.update();
@@ -87,16 +89,21 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         await collateralToken.mint(sponsor1, convertSynthetic("100000"), { from: sponsor1 });
         await collateralToken.mint(sponsor2, convertSynthetic("100000"), { from: sponsor1 });
 
-        identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
+        identifierWhitelist = await IdentifierWhitelist.new();
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
 
-        store = await Store.deployed();
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
 
-        // Create a mockOracle and finder. Register the mockOracle with the finder.
-        const finder = await Finder.deployed();
-        mockOracle = await MockOracle.new(finder.address, Timer.address);
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
-        await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        await finder.changeImplementationAddress(
+          utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
+
+        mockOracle = await MockOracle.new(finder.address, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
       });
 
       beforeEach(async function() {
@@ -105,15 +112,15 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
-          finderAddress: Finder.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
+          finderAddress: finder.address,
+          priceFeedIdentifier: utf8ToHex(identifier),
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: convertSynthetic("1") },
-          timerAddress: Timer.address,
+          timerAddress: timer.address,
           excessTokenBeneficiary: store.address,
           financialProductLibraryAddress: ZERO_ADDRESS
         };
@@ -609,7 +616,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         // Force a price such that the dispute fails, and then
         // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
         const disputePrice = convertPrice("1.6");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
         await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
         await client.update();
         assert.deepStrictEqual([], client.getDisputedLiquidations().sort());

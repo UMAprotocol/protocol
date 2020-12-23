@@ -62,6 +62,16 @@ const defaultConfigs = {
     invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }]
+  },
+  BCHNBTC: {
+    type: "medianizer",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
+    ]
   }
 };
 

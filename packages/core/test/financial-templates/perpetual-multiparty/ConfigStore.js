@@ -28,22 +28,31 @@ contract("ConfigStore", function(accounts) {
   let testConfig = {
     timelockLiveness: 86401, // 1 day + 1 second
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
-    proposerBondPct: { rawValue: toWei("0.0001") }
+    proposerBondPct: { rawValue: toWei("0.0001") },
+    maxFundingRate: { rawValue: toWei("0.00001") },
+    minFundingRate: { rawValue: toWei("-0.00001") },
+    proposalTimePastLimit: 1800 // 30 mins
   };
   let defaultConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: "0" },
-    proposerBondPct: { rawValue: "0" }
+    proposerBondPct: { rawValue: "0" },
+    maxFundingRate: { rawValue: toWei("0") },
+    minFundingRate: { rawValue: toWei("0") },
+    proposalTimePastLimit: 0
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
-    let currentConfig = await _store.getCurrentConfig();
+    let currentConfig = await _store.updateAndGetCurrentConfig.call();
     assert.equal(currentConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       currentConfig.rewardRatePerSecond.rawValue.toString(),
       _inputConfig.rewardRatePerSecond.rawValue.toString()
     );
     assert.equal(currentConfig.proposerBondPct.rawValue.toString(), _inputConfig.proposerBondPct.rawValue.toString());
+    assert.equal(currentConfig.maxFundingRate.rawValue.toString(), _inputConfig.maxFundingRate.rawValue.toString());
+    assert.equal(currentConfig.minFundingRate.rawValue.toString(), _inputConfig.minFundingRate.rawValue.toString());
+    assert.equal(currentConfig.proposalTimePastLimit.toString(), _inputConfig.proposalTimePastLimit.toString());
   }
 
   async function pendingConfigMatchesInput(_store, _inputConfig) {
@@ -54,6 +63,9 @@ contract("ConfigStore", function(accounts) {
       _inputConfig.rewardRatePerSecond.rawValue.toString()
     );
     assert.equal(pendingConfig.proposerBondPct.rawValue.toString(), _inputConfig.proposerBondPct.rawValue.toString());
+    assert.equal(pendingConfig.maxFundingRate.rawValue.toString(), _inputConfig.maxFundingRate.rawValue.toString());
+    assert.equal(pendingConfig.minFundingRate.rawValue.toString(), _inputConfig.minFundingRate.rawValue.toString());
+    assert.equal(pendingConfig.proposalTimePastLimit.toString(), _inputConfig.proposalTimePastLimit.toString());
   }
 
   async function storeHasNoPendingConfig(_store) {
@@ -67,10 +79,13 @@ contract("ConfigStore", function(accounts) {
   describe("Construction", function() {
     it("Default values get set", async function() {
       configStore = await ConfigStore.new(testConfig, timer.address);
-      let config = await configStore.getCurrentConfig();
+      let config = await configStore.updateAndGetCurrentConfig.call();
       assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
       assert.equal(config.rewardRatePerSecond.rawValue.toString(), testConfig.rewardRatePerSecond.rawValue);
       assert.equal(config.proposerBondPct.rawValue.toString(), testConfig.proposerBondPct.rawValue);
+      assert.equal(config.maxFundingRate.rawValue.toString(), testConfig.maxFundingRate.rawValue.toString());
+      assert.equal(config.minFundingRate.rawValue.toString(), testConfig.minFundingRate.rawValue.toString());
+      assert.equal(config.proposalTimePastLimit.toString(), testConfig.proposalTimePastLimit.toString());
       await storeHasNoPendingConfig(configStore);
     });
     it("Invalid default values revert on construction", async function() {
@@ -85,13 +100,6 @@ contract("ConfigStore", function(accounts) {
       invalidConfig = {
         ...testConfig,
         rewardRatePerSecond: { rawValue: toWei("0.00000331") }
-      };
-      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
-
-      // Invalid proposal bond
-      invalidConfig = {
-        ...testConfig,
-        proposerBondPct: { rawValue: toWei("0.00041") }
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
     });
@@ -113,7 +121,10 @@ contract("ConfigStore", function(accounts) {
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue &&
+          ev.proposalTimePastLimit.toString() === testConfig.proposalTimePastLimit.toString()
         );
       });
       await incrementTime(configStore, defaultConfig.timelockLiveness);
@@ -125,7 +136,10 @@ contract("ConfigStore", function(accounts) {
         return (
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
-          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString()
+          ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue &&
+          ev.proposalTimePastLimit.toString() === testConfig.proposalTimePastLimit.toString()
         );
       });
 
@@ -144,7 +158,10 @@ contract("ConfigStore", function(accounts) {
           ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === testConfig.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
-          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+          ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue &&
+          ev.proposalTimePastLimit.toString() === testConfig.proposalTimePastLimit.toString()
         );
       });
 
@@ -182,7 +199,10 @@ contract("ConfigStore", function(accounts) {
           ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
           ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
           ev.proposalPassedTimestamp.toString() ===
-            overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString()
+            overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
+          ev.maxFundingRate.toString() === test2Config.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === test2Config.minFundingRate.rawValue &&
+          ev.proposalTimePastLimit.toString() === test2Config.proposalTimePastLimit.toString()
         );
       });
       await currentConfigMatchesInput(configStore, defaultConfig);
@@ -195,7 +215,8 @@ contract("ConfigStore", function(accounts) {
       // Advancing time after the original-proposal's liveness but before the overwrite-proposal's liveness
       // doesn't change state.
       await incrementTime(configStore, defaultConfig.timelockLiveness - 1);
-      await configStore.publishPendingConfig();
+      // Can also use `updateAndGetCurrentConfig()` to publish a new config.
+      await configStore.updateAndGetCurrentConfig();
       await currentConfigMatchesInput(configStore, defaultConfig);
       await pendingConfigMatchesInput(configStore, test2Config);
       assert.equal(
@@ -212,7 +233,10 @@ contract("ConfigStore", function(accounts) {
         return (
           ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
           ev.proposerBond.toString() === test2Config.proposerBondPct.rawValue &&
-          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString()
+          ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
+          ev.maxFundingRate.toString() === test2Config.maxFundingRate.rawValue &&
+          ev.minFundingRate.toString() === test2Config.minFundingRate.rawValue &&
+          ev.proposalTimePastLimit.toString() === test2Config.proposalTimePastLimit.toString()
         );
       });
       await storeHasNoPendingConfig(configStore);
