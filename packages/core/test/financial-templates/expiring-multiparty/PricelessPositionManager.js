@@ -63,14 +63,14 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalCollateral = expectedSponsorCollateral.add(initialPositionCollateral);
 
     const positionData = await pricelessPositionManager.positions(sponsor);
-    const sponsorCollateral = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+    const sponsorCollateral = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(sponsorCollateral.toString(), expectedSponsorCollateral.toString());
     // The below assertion only holds if the sponsor holds all of the tokens outstanding.
     assert.equal(positionData.tokensOutstanding.toString(), expectedSponsorTokens.toString());
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
 
     assert.equal(
-      (await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(),
+      (await pricelessPositionManager.totalPositionCollateral()).toString(),
       expectedTotalCollateral.toString()
     );
     assert.equal((await pricelessPositionManager.totalTokensOutstanding()).toString(), expectedTotalTokens.toString());
@@ -672,7 +672,7 @@ contract("PricelessPositionManager", function(accounts) {
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), amountCollateral);
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), amountCollateral);
     assert.equal(
       (await pricelessPositionManager.positions(other)).rawCollateral.toString(),
       initialPositionCollateral.toString()
@@ -729,10 +729,7 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.sponsor == tokenHolder;
     });
     assert.equal((await pricelessPositionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));
-    assert.equal(
-      (await pricelessPositionManager.payFeesAndGetCollateral.call(tokenHolder)).toString(),
-      amountCollateral
-    );
+    assert.equal((await pricelessPositionManager.getCollateral(tokenHolder)).toString(), amountCollateral);
 
     // Check that transfer-request related parameters in pricelessPositionManager are reset.
     const positionData = await pricelessPositionManager.positions(sponsor);
@@ -1614,8 +1611,8 @@ contract("PricelessPositionManager", function(accounts) {
     // Other makes a deposit to the sponsor's account.
     await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
 
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("2"));
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(other)).toString(), "0");
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), "0");
   });
 
   it("Existing sponsor can use depositTo on other account", async function() {
@@ -1629,8 +1626,8 @@ contract("PricelessPositionManager", function(accounts) {
     // Other makes a deposit to the sponsor's account despite having their own position.
     await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
 
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("2"));
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(other)).toString(), toWei("1"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), toWei("1"));
   });
 
   it("Sponsor use depositTo on own account", async function() {
@@ -1642,7 +1639,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Sponsor makes a deposit to their own account.
     await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: sponsor });
 
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("2"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
   });
 
   it("Sponsor can use repay to decrease their debt", async function() {
@@ -1756,14 +1753,11 @@ contract("PricelessPositionManager", function(accounts) {
     // getCollateral for a given sponsor should correctly reflect the pending regular fee that has not yet been paid.
     // As no function calls have been made after incrementing time, the fees are still in a "pending" state.
     // Sponsor has a position with 1e18 collateral in it. After a 1% fee is applied they should have 0.99e18.
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("0.99"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("0.99"));
 
     // Equally, the totalPositionCollateral should be decremented accordingly. The total collateral is 2e18. After
     // the pending regular fee is applied this should be set to 1.98.
-    assert.equal(
-      (await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(),
-      toWei("1.98")
-    );
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), toWei("1.98"));
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     // Multiply by 2 because there are two active positions
@@ -1777,7 +1771,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(payFeesResult, "RegularFeesPaid", ev => {
       return ev.regularFee.toString() === toWei("0.02") && ev.lateFee.toString() === "0";
     });
-    let collateralAmount = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
@@ -1790,14 +1784,14 @@ contract("PricelessPositionManager", function(accounts) {
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.
     await pricelessPositionManager.deposit({ rawValue: toWei("99") }, { from: sponsor });
-    collateralAmount = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+    collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("99.99"));
 
     // Ensure that the conversion works correctly for withdrawals.
     const expectedSponsorBalance = (await collateral.balanceOf(sponsor)).add(toBN(toWei("1")));
     await pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor });
     assert.equal((await collateral.balanceOf(sponsor)).toString(), expectedSponsorBalance.toString());
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("98.99"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Test that regular fees accrue after an emergency shutdown is triggered.
     await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
@@ -1816,7 +1810,7 @@ contract("PricelessPositionManager", function(accounts) {
       // There should be 98.99 + 0.99 = 99.98 collateral remaining in the contract.
       return ev.regularFee.toString() === toWei("99.98") && ev.lateFee.toString() === "0";
     });
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), "0");
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), "0");
 
     // TODO: Add unit tests for when the latePenalty > 0 but (latePenalty + regularFee > pfc). The component fees need to be reduced properly.
 
@@ -1852,8 +1846,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.pfc()).toString(), toWei("4.5"));
     // Gulping twice does nothing.
     await pricelessPositionManager.gulp();
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(other)).toString(), toWei("3.375"));
-    assert.equal((await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(), toWei("1.125"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), toWei("3.375"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("1.125"));
     assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), toWei("4.5"));
   });
 
@@ -1888,7 +1882,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Final fees should not be paid. Instead, a reward should have been sent to the optimistic oracle.
     truffleAssert.eventNotEmitted(expirationResult, "FinalFeesPaid");
-    let collateralAmount = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal(
       (await collateral.balanceOf(optimisticOracle.address)).toString(),
@@ -2012,7 +2006,7 @@ contract("PricelessPositionManager", function(accounts) {
       // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally div() would floor
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
       // lower `totalPositionCollateral` and `positionAdjustment` values.
-      let collateralAmount = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+      let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
       assert.isTrue(toBN(collateralAmount.rawValue).lt(toBN("29")));
       assert.equal(
         (await pricelessPositionManager.cumulativeFeeMultiplier()).toString(),
@@ -2024,7 +2018,7 @@ contract("PricelessPositionManager", function(accounts) {
       // because `(30 * 0.966666666666666666 = 28.999...98)`. `30` is the rawCollateral and if the fee multiplier were correct,
       // then `totalPositionCollateral` would be `(30 * 0.966666666666666666...) = 29`.
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "29");
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "28");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "28");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "30");
     });
     it("settleExpired() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
@@ -2064,7 +2058,7 @@ contract("PricelessPositionManager", function(accounts) {
       const expectedTokenHolderFinalCollateral = "11";
       assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "17");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
 
       // The token holder should have no synthetic positions left after settlement.
@@ -2090,7 +2084,7 @@ contract("PricelessPositionManager", function(accounts) {
       // Recall previously that rawCollateral was last set to 18, so `totalPositionCollateral = (18-16) * 0.966666666666666666 ~= 1.97`
       // which gets truncated to 1.
       // The previous totalPositionCollateral was 17, so we will withdraw (17-1) = 16 tokens instead of the 17 as the user expected.
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "1");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "1");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "2");
       const expectedSponsorCollateralSynthetic = toBN("11");
       const expectedSponsorCollateralUnderlying = toBN("5");
@@ -2109,7 +2103,7 @@ contract("PricelessPositionManager", function(accounts) {
       // We started with 30, paid 1 in final fees, returned 11 to the token holder, and 16 to the sponsor:
       // (30 - 1 - 11 - 16 = 2)
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "2");
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "1");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "1");
 
       // Last check is that after redemption the position in the positions mapping is still removed despite leaving collateral dust.
       const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
@@ -2137,7 +2131,7 @@ contract("PricelessPositionManager", function(accounts) {
       const expectedFinalCollateral = "11";
       assert.equal(finalCollateral.sub(initialCollateral), expectedFinalCollateral);
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "17");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
     });
     it("redeem() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
@@ -2155,7 +2149,7 @@ contract("PricelessPositionManager", function(accounts) {
       // The sponsor should gain their requested amount minus precision loss.
       assert.equal(finalCollateral.sub(initialCollateral), "11");
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
-      assert.equal((await pricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(), "17");
+      assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
       assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
 
       // Expected number of synthetic tokens are burned.
@@ -2182,7 +2176,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
 
     // Position has frozen collateral
-    let frozenCollateralAmount = await pricelessPositionManager.payFeesAndGetCollateral.call(sponsor);
+    let frozenCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(frozenCollateralAmount.rawValue.toString(), amountCollateral);
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
@@ -2579,7 +2573,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
     assert.equal(
-      (await customPricelessPositionManager.payFeesAndGetCollateral.call(sponsor)).toString(),
+      (await customPricelessPositionManager.getCollateral(sponsor)).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal(
@@ -2587,7 +2581,7 @@ contract("PricelessPositionManager", function(accounts) {
       expectedSponsorTokens.toString()
     );
     assert.equal(
-      (await customPricelessPositionManager.payFeesAndGetTotalPositionCollateral.call()).toString(),
+      (await customPricelessPositionManager.totalPositionCollateral()).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal(

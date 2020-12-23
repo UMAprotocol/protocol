@@ -545,37 +545,35 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     /**
-     * @notice Fetch the feed adjusted collateral for a given sponsor.
-     * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't
-     * a user-readable value as it does not consider the cumlative fee multiplier.
+     * @notice Accessor method for a sponsor's collateral.
+     * @dev This is necessary because the struct returned by the positions() method shows
+     * rawCollateral, which isn't a user-readable value.
      * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
      * example if the `lastPaymentTime != currentTime`.
      * @param sponsor address whose collateral amount is retrieved.
      * @return collateralAmount amount of collateral within a sponsors position.
      */
-    function payFeesAndGetCollateral(address sponsor)
+    function getCollateral(address sponsor)
         external
-        fees()
-        nonReentrant()
+        view
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory collateralAmount)
     {
         // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral));
     }
 
     /**
-     * @notice Fetch the total collateral stored within the PerpetualPositionManager.
-     * @dev This method accounts for pending regular fees that have not yet been withdrawn from this contract, for
-     * example if the `lastPaymentTime != currentTime`.
+     * @notice Accessor method for the total collateral stored within the PerpetualPositionManager.
      * @return totalCollateral amount of all collateral within the position manager.
      */
-    function payFeesAndGetTotalPositionCollateral()
+    function totalPositionCollateral()
         external
-        fees()
-        nonReentrant()
+        view
+        nonReentrantView()
         returns (FixedPoint.Unsigned memory totalCollateral)
     {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+        return _getPendingRegularFeeAdjustedCollateral(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
     }
 
     function getFundingRateAppliedTokenDebt(FixedPoint.Unsigned memory rawTokenDebt)

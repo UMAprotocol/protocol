@@ -595,8 +595,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         // Must be disputed or the liquidation has passed expiry.
         require(
             (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
-            "Liquidation not withdrawable"
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
         );
     }
 }
