@@ -13,12 +13,13 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const UniswapMock = artifacts.require("UniswapMock");
 const Store = artifacts.require("Store");
+const MockOracle = artifacts.require("MockOracle");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
-const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
+const { ZERO_ADDRESS, interfaceName, addGlobalHardhatTestingAddress } = require("@uma/common");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -30,6 +31,7 @@ contract("index.js", function(accounts) {
   let constructorParams;
   let identifierWhitelist;
   let finder;
+  let mockOracle;
   let timer;
   let store;
 
@@ -60,6 +62,13 @@ contract("index.js", function(accounts) {
 
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+
+    mockOracle = await MockOracle.new(finder.address, timer.address, {
+      from: contractCreator
+    });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    // Set the address in the global name space to enable disputer's index.js to access it.
+    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
 
   beforeEach(async function() {
