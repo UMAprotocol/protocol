@@ -3,7 +3,7 @@
 require("dotenv").config();
 const retry = require("async-retry");
 
-const { Logger, waitForLogger, delay } = require("@uma/financial-templates-lib");
+const { Logger, waitForLogger, delay, OptimisticOracleClient } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
@@ -40,14 +40,18 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     // TODO:
     // - Miscellaneous setup
-    // - Instantiate an OO client
-    // - Run proposer and/or disputer strategy
+    // - Pass gasEstimator, proposer and/or disputer strategy to keeper bot.
+
+    // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
+    // instance of the OO Keeper to respond to price requests and proposals.
+    const ooClient = new OptimisticOracleClient(logger, getAbi("OptimisticOracle"), web3, oracle.address);
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async () => {
           // Placeholder for looping logic that should be implemented in this bot in future PR's.
+          await ooClient.update();
           return;
         },
         {

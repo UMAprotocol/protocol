@@ -1,17 +1,21 @@
 const winston = require("winston");
 
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
-const { OptimisticOracleClient } = require("../src/OptimisticOracleClient");
+const { OptimisticOracleClient } = require("../../src/clients/OptimisticOracleClient");
+const { interfaceName } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
 
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Timer = artifacts.require("Timer");
-const Store = artifacts.require("Store");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Token = artifacts.require("ExpandedERC20");
-const OptimisticRequesterTest = artifacts.require("OptimisticRequesterTest");
-const OptimisticOracle = artifacts.require("OptimisticOracle");
+const ABI_VERSION = "latest";
+
+const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, ABI_VERSION);
+const Finder = getTruffleContract("Finder", web3, ABI_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, ABI_VERSION);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, ABI_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, ABI_VERSION);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, ABI_VERSION);
+const Timer = getTruffleContract("Timer", web3, ABI_VERSION);
+const Store = getTruffleContract("Store", web3, ABI_VERSION);
 
 contract("OptimisticOracleClient.js", function(accounts) {
   const owner = accounts[0];
@@ -43,16 +47,19 @@ contract("OptimisticOracleClient.js", function(accounts) {
   const identifier = web3.utils.utf8ToHex("Test Identifier");
 
   before(async function() {
-    finder = await Finder.deployed();
-    timer = await Timer.deployed();
+    finder = await Finder.new();
+    timer = await Timer.new();
 
     // Whitelist an initial identifier we can use to make default price requests.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(identifier);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
-    collateralWhitelist = await AddressWhitelist.deployed();
+    collateralWhitelist = await AddressWhitelist.new();
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
 
-    store = await Store.deployed();
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
   });
 
   beforeEach(async function() {
