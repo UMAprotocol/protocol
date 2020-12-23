@@ -117,7 +117,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
-        StoreInterface store = _getStore();
         // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay
         // as much of the fee that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the
         // regular fee, which has the effect of paying the store first, followed by the caller if there is any fee remaining.
@@ -135,6 +134,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
 
         if (regularFee.isGreaterThan(0)) {
+            StoreInterface store = _getStore();
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency), regularFee);
         }
@@ -259,7 +259,11 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             getOutstandingRegularFees(getCurrentTime());
         FixedPoint.Unsigned memory currentTotalOutstandingRegularFees = outstandingRegularFee.add(latePenalty);
         if (currentTotalOutstandingRegularFees.isEqual(FixedPoint.fromUnscaledUint(0))) return rawCollateral;
+
+        // Calculate the total outstanding regular fee as a fraction of the total contract PFC.
         FixedPoint.Unsigned memory effectiveOutstandingFee = currentTotalOutstandingRegularFees.divCeil(_pfc());
+
+        // Scale as rawCollateral* (1 - effectiveOutstandingFee) to apply the pro-rata amount to the regular fee.
         return rawCollateral.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveOutstandingFee));
     }
 
