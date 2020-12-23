@@ -353,12 +353,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         StoreInterface store = _getStore();
         if (finalFee > 0) {
-            // Along with the final fee, "burn" half of the loser's bond to ensure that a larger bond always makes it
+            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
             // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
             // party.
-            // burnedBond = ceil(bond / 2)
-            // Warning: this math _only_ works with a divisor of 2. This is why this number is not made into a variable/constant.
-            uint256 burnedBond = bond.div(2).add(bond % 2);
+            uint256 burnedBond = _computeBurnedBond(request);
 
             // Pay the final fee and the burned bond to the store.
             uint256 totalFee = finalFee.add(burnedBond);
@@ -561,8 +559,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 bond = request.bond;
 
-            // Unburned portion of the loser's bond = floor(bond / 2)
-            uint256 unburnedBond = bond.div(2);
+            // Unburned portion of the loser's bond = 1 - burned bond.
+            uint256 unburnedBond = bond.sub(_computeBurnedBond(request));
 
             // Winner gets:
             // - Their bond back.
@@ -601,6 +599,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData
     ) private view returns (Request storage) {
         return requests[_getId(requester, identifier, timestamp, ancillaryData)];
+    }
+
+    function _computeBurnedBond(Request storage request) private view returns (uint256) {
+        // burnedBond = floor(bond / 2)
+        return request.bond.div(2);
     }
 
     function _validateLiveness(uint256 _liveness) private pure {

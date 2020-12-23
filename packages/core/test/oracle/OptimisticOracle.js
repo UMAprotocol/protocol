@@ -275,14 +275,14 @@ contract("OptimisticOracle", function(accounts) {
         totalBond,
         totalBond,
         reward,
-        `-${halfBondCeil}`,
+        `-${halfBondFloor}`,
         `-${finalFee}`
       );
       await pushPrice(correctPrice);
       await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
 
-      // Proposer should net half of the disputer's bond (floored) and the reward.
-      await verifyBalanceSum(proposer, initialUserBalance, halfBondFloor, reward);
+      // Proposer should net half of the disputer's bond (ceiled) and the reward.
+      await verifyBalanceSum(proposer, initialUserBalance, halfBondCeil, reward);
 
       // Disputer should have lost their bond.
       await verifyBalanceSum(disputer, initialUserBalance, `-${totalBond}`);
@@ -290,8 +290,8 @@ contract("OptimisticOracle", function(accounts) {
       // Contract should contain nothing.
       await verifyBalanceSum(optimisticOracle.address);
 
-      // Store should have a final fee plus half of the bond ceiled (the "burned" portion).
-      await verifyBalanceSum(store.address, finalFee, halfBondCeil);
+      // Store should have a final fee plus half of the bond floored (the "burned" portion).
+      await verifyBalanceSum(store.address, finalFee, halfBondFloor);
     });
 
     it("Should Revert When Proposed For With 0 Address", async function() {
