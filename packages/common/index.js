@@ -29,7 +29,8 @@ if (process.browser) {
     ...require("./src/MetaMaskTruffleProvider"),
     ...require("./src/MigrationUtils"),
     ...require("./src/TruffleConfig"),
-    ...require("./src/ProviderUtils")
+    ...require("./src/ProviderUtils"),
+    ...require("./src/HardhatConfig")
   };
 
   module.exports = {

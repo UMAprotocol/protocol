@@ -1,4 +1,4 @@
-const { getAbi, getAddress, getTruffleContract } = require("../../");
+const { getAbi, getAddress, getTruffleContract } = require("../..");
 const { assert } = require("chai");
 
 const Voting = artifacts.require("Voting");

@@ -46,7 +46,7 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy EMPLib and link to EMPCreator.
 
-  // Buidler
+  // hardhat
   if (ExpiringMultiPartyLib.setAsDeployed) {
     const { contract: empLib } = await deploy(deployer, network, ExpiringMultiPartyLib);
 
@@ -55,7 +55,7 @@ module.exports = async function(deployer, network, accounts) {
     try {
       await ExpiringMultiPartyCreator.link(empLib);
     } catch (e) {
-      // Allow this to fail in the Buidler case.
+      // Allow this to fail in the hardhat case.
     }
   } else {
     // Truffle

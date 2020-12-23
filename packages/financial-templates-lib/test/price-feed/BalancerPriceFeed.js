@@ -56,7 +56,7 @@ contract("BalancerPriceFeed.js", async function(accounts) {
   });
   it("historical price", async function() {
     // going to try all block times from start to end and times in between
-    for (let time = startTime; time <= endTime; time += blockTime / 2) {
+    for (let time = startTime; time <= endTime; time += blockTime) {
       const price = Math.floor((time - startTime) / blockTime);
       assert.equal(balancerPriceFeed.getHistoricalPrice(time), price);
     }
