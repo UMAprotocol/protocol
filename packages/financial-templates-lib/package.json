@@ -35,7 +35,7 @@
     "/src/**/*.js"
   ],
   "scripts": {
-    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* && truffle test ./test/truffle"
+    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* && truffle test ./test/truffle/*"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
