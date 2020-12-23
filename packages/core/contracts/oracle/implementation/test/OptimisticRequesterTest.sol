@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.6.0;
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../OptimisticOracle.sol";
@@ -30,12 +32,12 @@ contract OptimisticRequesterTest is OptimisticRequester {
         optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward);
     }
 
-    function getPrice(
+    function settleAndGetPrice(
         bytes32 _identifier,
         uint256 _timestamp,
         bytes memory _ancillaryData
     ) external returns (int256) {
-        return optimisticOracle.getPrice(_identifier, _timestamp, _ancillaryData);
+        return optimisticOracle.settleAndGetPrice(_identifier, _timestamp, _ancillaryData);
     }
 
     function setBond(
