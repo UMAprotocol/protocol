@@ -256,12 +256,12 @@ contract("PerpetualCreator", function(accounts) {
     let perpetual = await Perpetual.at(perpetualAddress);
 
     // New synthetic currency and collateral currency should have the same precision.
-    const syntheticToken = await Token.at(await perpetual.syntheticToken());
+    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
     const collateralCurrency = await Token.at(await perpetual.collateralCurrency());
-    assert.equal((await syntheticToken.decimals()).toString(), (await collateralCurrency.decimals()).toString());
+    assert.equal((await tokenCurrency.decimals()).toString(), (await collateralCurrency.decimals()).toString());
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await SyntheticToken.at(syntheticToken.address);
+    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
@@ -292,8 +292,8 @@ contract("PerpetualCreator", function(accounts) {
     let perpetual = await Perpetual.at(perpetualAddress);
 
     // New synthetic currency should have 18 precision.
-    const syntheticToken = await Token.at(await perpetual.syntheticToken());
-    assert.equal((await syntheticToken.decimals()).toString(), "18");
+    const tokenCurrency = await Token.at(await perpetual.tokenCurrency());
+    assert.equal((await tokenCurrency.decimals()).toString(), "18");
   });
 
   it("Creation correctly registers Perpetual within the registry", async function() {
@@ -338,7 +338,7 @@ contract("PerpetualCreator", function(accounts) {
     const currentTime = (await perpetual.getCurrentTime()).toNumber();
     assert(
       await didContractThrow(
-        perpetual.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
+        perpetual.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
       )
     );
   });

@@ -109,7 +109,7 @@ contract DepositBox is FeePayer, ContractCreator {
 
     /**
      * @notice Construct the DepositBox.
-     * @param _collateralAddress ERC20 token to be deposited.
+     * @param _collateralTokenAddress ERC20 token to be deposited.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM, used to price the ERC20 deposited.
      * The price identifier consists of a "base" asset and a "quote" asset. The "base" asset corresponds to the collateral ERC20
@@ -119,14 +119,14 @@ contract DepositBox is FeePayer, ContractCreator {
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        address _collateralAddress,
+        address _collateralTokenAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
         address _timerAddress
     )
         public
         ContractCreator(_finderAddress)
-        FeePayer(_collateralAddress, _finderAddress, _timerAddress)
+        FeePayer(_collateralTokenAddress, _finderAddress, _timerAddress)
         nonReentrant()
     {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");

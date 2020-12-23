@@ -28,7 +28,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      ****************************************/
 
     // Because of the check in withdrawable(), the order of these enum values should not change.
-    enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
+    enum Status { Uninitialized, NotDisputed, Disputed, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
         // Following variables set upon creation of liquidation:
@@ -203,8 +203,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * synthetic tokens to retire the position's outstanding tokens. Liquidations above
      * a minimum size also reset an ongoing "slow withdrawal"'s liveness.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
-     * approved to spend at least `tokensLiquidated` of `syntheticToken` and at least `finalFeeBond` of `collateralCurrency`.
-     * @dev This contract must have the Burner role for the `syntheticToken`.
+     * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param sponsor address of the sponsor to liquidate.
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
@@ -302,7 +302,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             LiquidationData({
                 sponsor: sponsor,
                 liquidator: msg.sender,
-                state: Status.PreDispute,
+                state: Status.NotDisputed,
                 liquidationTime: getCurrentTime(),
                 tokensOutstanding: _getFundingRateAppliedTokenDebt(tokensLiquidated),
                 lockedCollateral: lockedCollateral,
@@ -341,8 +341,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         );
 
         // Destroy tokens
-        syntheticToken.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
-        syntheticToken.burn(tokensLiquidated.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
+        tokenCurrency.burn(tokensLiquidated.rawValue);
 
         // Pull final fee from liquidator.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
@@ -375,7 +375,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
         // Request a price from DVM. Liquidation is pending dispute until DVM returns a price.
-        disputedLiquidation.state = Status.PendingDispute;
+        disputedLiquidation.state = Status.Disputed;
         disputedLiquidation.disputer = msg.sender;
 
         // Enqueue a request with the DVM.
@@ -475,7 +475,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
             // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
             // state as a dispute failed and the liquidator can withdraw.
-        } else if (liquidation.state == Status.PreDispute) {
+        } else if (liquidation.state == Status.NotDisputed) {
             // Pay LIQUIDATOR: collateral + returned final fee
             rewards.payToLiquidator = collateral.add(finalFee);
 
@@ -518,14 +518,14 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    // This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
-    // If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
+    // This settles a liquidation if it is in the Disputed state. If not, it will immediately return.
+    // If the liquidation is in the Disputed state, but a price is not available, this will revert.
     function _settle(uint256 liquidationId, address sponsor) internal {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
-        // Settlement only happens when state == PendingDispute and will only happen once per liquidation.
+        // Settlement only happens when state == Disputed and will only happen once per liquidation.
         // If this liquidation is not ready to be settled, this method should return immediately.
-        if (liquidation.state != Status.PendingDispute) {
+        if (liquidation.state != Status.Disputed) {
             return;
         }
 
@@ -583,7 +583,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute),
+            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed),
             "Liquidation not disputable"
         );
     }
@@ -594,8 +594,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Must be disputed or the liquidation has passed expiry.
         require(
-            (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
+            (state > Status.NotDisputed) ||
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.NotDisputed)),
             "Liquidation not withdrawable"
         );
     }

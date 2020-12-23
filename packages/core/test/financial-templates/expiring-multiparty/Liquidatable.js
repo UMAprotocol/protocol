@@ -44,13 +44,13 @@ contract("Liquidatable", function(accounts) {
   const settlementTRV = amountOfSynthetic.mul(settlementPrice).div(toBN(toWei("1")));
 
   // Liquidation contract params
-  const disputeBondPct = toBN(toWei("0.1"));
-  const disputeBond = disputeBondPct.mul(amountOfCollateral).div(toBN(toWei("1")));
+  const disputeBondPercentage = toBN(toWei("0.1"));
+  const disputeBond = disputeBondPercentage.mul(amountOfCollateral).div(toBN(toWei("1")));
   const collateralRequirement = toBN(toWei("1.2"));
-  const sponsorDisputeRewardPct = toBN(toWei("0.05"));
-  const sponsorDisputeReward = sponsorDisputeRewardPct.mul(settlementTRV).div(toBN(toWei("1")));
-  const disputerDisputeRewardPct = toBN(toWei("0.05"));
-  const disputerDisputeReward = disputerDisputeRewardPct.mul(settlementTRV).div(toBN(toWei("1")));
+  const sponsorDisputeRewardPercentage = toBN(toWei("0.05"));
+  const sponsorDisputeReward = sponsorDisputeRewardPercentage.mul(settlementTRV).div(toBN(toWei("1")));
+  const disputerDisputeRewardPercentage = toBN(toWei("0.05"));
+  const disputerDisputeReward = disputerDisputeRewardPercentage.mul(settlementTRV).div(toBN(toWei("1")));
   const liquidationLiveness = toBN(60)
     .muln(60)
     .muln(3); // In seconds
@@ -132,9 +132,9 @@ contract("Liquidatable", function(accounts) {
       priceFeedIdentifier: priceFeedIdentifier,
       liquidationLiveness: liquidationLiveness.toString(),
       collateralRequirement: { rawValue: collateralRequirement.toString() },
-      disputeBondPct: { rawValue: disputeBondPct.toString() },
-      sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
-      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
+      disputeBondPercentage: { rawValue: disputeBondPercentage.toString() },
+      sponsorDisputeRewardPercentage: { rawValue: sponsorDisputeRewardPercentage.toString() },
+      disputerDisputeRewardPercentage: { rawValue: disputerDisputeRewardPercentage.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
       financialProductLibraryAddress: zeroAddress
@@ -764,7 +764,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.liquidationId == 0 &&
-            ev.disputeBondAmount == toWei("15").toString() // 10% of the collateral as disputeBondPct * amountOfCollateral
+            ev.disputeBondAmount == toWei("15").toString() // 10% of the collateral as disputeBondPercentage * amountOfCollateral
           );
         });
       });
@@ -1276,8 +1276,8 @@ contract("Liquidatable", function(accounts) {
       // Deploy liquidation contract and set global params.
       // Set the add of the dispute rewards to be >= 100 %
       let invalidConstructorParameter = liquidatableParameters;
-      invalidConstructorParameter.sponsorDisputeRewardPct = { rawValue: toWei("0.6") };
-      invalidConstructorParameter.disputerDisputeRewardPct = { rawValue: toWei("0.5") };
+      invalidConstructorParameter.sponsorDisputeRewardPercentage = { rawValue: toWei("0.6") };
+      invalidConstructorParameter.disputerDisputeRewardPercentage = { rawValue: toWei("0.5") };
       assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));
     });
     it("Collateral requirement should be later than 100%", async () => {
@@ -1286,8 +1286,8 @@ contract("Liquidatable", function(accounts) {
       assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));
     });
     it("Dispute bond can be over 100%", async () => {
-      const edgeDisputeBondPct = toBN(toWei("1.0"));
-      const edgeDisputeBond = edgeDisputeBondPct.mul(amountOfCollateral).div(toBN(toWei("1")));
+      const edgedisputeBondPercentage = toBN(toWei("1.0"));
+      const edgeDisputeBond = edgedisputeBondPercentage.mul(amountOfCollateral).div(toBN(toWei("1")));
 
       // Send away previous balances
       await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
@@ -1512,9 +1512,9 @@ contract("Liquidatable", function(accounts) {
 
     // Next, re-define a number of constants used before in terms of the newly scaled variables
     const USDCSettlementTRV = USDCAmountOfSynthetic.mul(settlementPrice).div(toBN(toWei("1"))); // 100e6
-    const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
-    const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
-    const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
+    const USDCSponsorDisputeReward = sponsorDisputeRewardPercentage.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
+    const USDTDisputerDisputeReward = disputerDisputeRewardPercentage.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
+    const USDCDisputeBond = disputeBondPercentage.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
 
     let USDCLiquidationContract;
     beforeEach(async () => {

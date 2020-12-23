@@ -129,7 +129,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      * @param rate funding rate being proposed.
      * @param timestamp time at which the funding rate was computed.
      */
-    function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
+    function proposeFundingRate(FixedPoint.Signed memory rate, uint256 timestamp)
         external
         fees()
         nonReentrant()

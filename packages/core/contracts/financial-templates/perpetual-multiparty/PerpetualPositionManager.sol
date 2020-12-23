@@ -55,7 +55,7 @@ contract PerpetualPositionManager is FundingRateApplier {
     FixedPoint.Unsigned public rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
-    ExpandedIERC20 public syntheticToken;
+    ExpandedIERC20 public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifier;
@@ -151,7 +151,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
         withdrawalLiveness = _withdrawalLiveness;
-        syntheticToken = ExpandedIERC20(_tokenAddress);
+        tokenCurrency = ExpandedIERC20(_tokenAddress);
         minSponsorTokens = _minSponsorTokens;
         priceIdentifier = _priceIdentifier;
     }
@@ -308,8 +308,8 @@ contract PerpetualPositionManager is FundingRateApplier {
 
     /**
      * @notice Creates tokens by creating a new position or by augmenting an existing position. Pulls `collateralAmount
-     * ` into the sponsor's position and mints `numTokens` of `syntheticToken`.
-     * @dev This contract must have the Minter role for the `syntheticToken`.
+     * ` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Minter role for the `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
      * `collateralCurrency`.
@@ -353,15 +353,15 @@ contract PerpetualPositionManager is FundingRateApplier {
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
 
         // Note: revert reason removed to save bytecode.
-        require(syntheticToken.mint(msg.sender, numTokens.rawValue));
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     /**
-     * @notice Burns `numTokens` of `syntheticToken` and sends back the proportional amount of `collateralCurrency`.
+     * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
-     * `syntheticToken`.
-     * @dev This contract must have the Burner role for the `syntheticToken`.
+     * `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -400,15 +400,15 @@ contract PerpetualPositionManager is FundingRateApplier {
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
-        syntheticToken.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
-        syntheticToken.burn(numTokens.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     /**
-     * @notice Burns `numTokens` of `syntheticToken` to decrease sponsors position size, without sending back `collateralCurrency`.
+     * @notice Burns `numTokens` of `tokenCurrency` to decrease sponsors position size, without sending back `collateralCurrency`.
      * This is done by a sponsor to increase position CR. Resulting size is bounded by minSponsorTokens.
-     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `syntheticToken`.
-     * @dev This contract must have the Burner role for the `syntheticToken`.
+     * @dev Can only be called by token sponsor. This contract must be approved to spend `numTokens` of `tokenCurrency`.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt from the sponsor's debt position.
      */
     function repay(FixedPoint.Unsigned memory numTokens)
@@ -432,17 +432,17 @@ contract PerpetualPositionManager is FundingRateApplier {
         emit Repay(msg.sender, numTokens.rawValue, newTokenCount.rawValue);
 
         // Transfer the tokens back from the sponsor and burn them.
-        syntheticToken.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
-        syntheticToken.burn(numTokens.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     /**
      * @notice If the contract is emergency shutdown then all token holders and sponsors can redeem their tokens or
      * remaining collateral for underlying at the prevailing price defined by a DVM vote.
-     * @dev This burns all tokens from the caller of `syntheticToken` and sends back the resolved settlement value of
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the resolved settlement value of
      * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
-     * precision loss. This contract must be approved to spend `syntheticToken` at least up to the caller's full balance.
-     * @dev This contract must have the Burner role for the `syntheticToken`.
+     * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
+     * @dev This contract must have the Burner role for the `tokenCurrency`.
      * @dev Note that this function does not call the updateFundingRate modifier to update the funding rate as this
      * function is only called after an emergency shutdown & there should be no funding rate updates after the shutdown.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -460,7 +460,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
-        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(syntheticToken.balanceOf(msg.sender));
+        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
         FixedPoint.Unsigned memory totalRedeemableCollateral =
             _getFundingRateAppliedTokenDebt(tokensToRedeem).mul(emergencyShutdownPrice);
 
@@ -501,8 +501,8 @@ contract PerpetualPositionManager is FundingRateApplier {
 
         // Transfer tokens & collateral and burn the redeemed tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
-        syntheticToken.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
-        syntheticToken.burn(tokensToRedeem.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
+        tokenCurrency.burn(tokensToRedeem.rawValue);
     }
 
     /****************************************
@@ -767,6 +767,6 @@ contract PerpetualPositionManager is FundingRateApplier {
     }
 
     function _getTokenAddress() internal view override returns (address) {
-        return address(syntheticToken);
+        return address(tokenCurrency);
     }
 }

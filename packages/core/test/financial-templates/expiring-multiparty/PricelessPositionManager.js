@@ -162,7 +162,7 @@ contract("PricelessPositionManager", function(accounts) {
     pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      collateral.address, // _collateralAddress
+      collateral.address, // _collateralTokenAddress
       tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
@@ -184,7 +184,7 @@ contract("PricelessPositionManager", function(accounts) {
         PricelessPositionManager.new(
           startTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
-          collateral.address, // _collateralAddress
+          collateral.address, // _collateralTokenAddress
           tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           priceFeedIdentifier, // _priceFeedIdentifier
@@ -201,7 +201,7 @@ contract("PricelessPositionManager", function(accounts) {
         PricelessPositionManager.new(
           expirationTimestamp, // _expirationTimestamp
           withdrawalLiveness, // _withdrawalLiveness
-          collateral.address, // _collateralAddress
+          collateral.address, // _collateralTokenAddress
           tokenCurrency.address, // _tokenAddress
           finder.address, // _finderAddress
           utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
@@ -233,7 +233,7 @@ contract("PricelessPositionManager", function(accounts) {
         PricelessPositionManager.new(
           expirationTimestamp, // _expirationTimestamp (unchanged)
           withdrawalLiveness, // _withdrawalLiveness (unchanged)
-          collateral.address, // _collateralAddress (unchanged)
+          collateral.address, // _collateralTokenAddress (unchanged)
           tokenCurrency.address, // _tokenAddress (unchanged)
           finder.address, // _finderAddress (unchanged)
           utf8ToHex("UNKNOWN"), // Some identifier that the whitelist tracker does not know
@@ -259,7 +259,7 @@ contract("PricelessPositionManager", function(accounts) {
     pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       largeLiveness.toString(), // _withdrawalLiveness
-      collateral.address, // _collateralAddress
+      collateral.address, // _collateralTokenAddress
       tokenCurrency.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier
@@ -948,7 +948,7 @@ contract("PricelessPositionManager", function(accounts) {
       pricelessPositionManager = await PricelessPositionManager.new(
         expirationTimestamp, // _expirationTimestamp
         withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
+        collateral.address, // _collateralTokenAddress
         tokenCurrency.address, // _tokenAddress
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
@@ -1115,7 +1115,7 @@ contract("PricelessPositionManager", function(accounts) {
       pricelessPositionManager = await PricelessPositionManager.new(
         expirationTimestamp, // _expirationTimestamp
         withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
+        collateral.address, // _collateralTokenAddress
         tokenCurrency.address, // _tokenAddress
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
@@ -1161,7 +1161,7 @@ contract("PricelessPositionManager", function(accounts) {
       pricelessPositionManager = await PricelessPositionManager.new(
         expirationTimestamp, // _expirationTimestamp
         withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
+        collateral.address, // _collateralTokenAddress
         tokenCurrency.address, // _tokenAddress
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
@@ -1342,7 +1342,7 @@ contract("PricelessPositionManager", function(accounts) {
       pricelessPositionManager = await PricelessPositionManager.new(
         expirationTimestamp, // _expirationTimestamp
         withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
+        collateral.address, // _collateralTokenAddress
         tokenCurrency.address, // _tokenAddress
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
@@ -1538,7 +1538,7 @@ contract("PricelessPositionManager", function(accounts) {
       pricelessPositionManager = await PricelessPositionManager.new(
         expirationTimestamp, // _expirationTimestamp
         withdrawalLiveness, // _withdrawalLiveness
-        collateral.address, // _collateralAddress
+        collateral.address, // _collateralTokenAddress
         tokenCurrency.address, // _tokenAddress
         finder.address, // _finderAddress
         priceFeedIdentifier, // _priceFeedIdentifier
@@ -2507,7 +2507,7 @@ contract("PricelessPositionManager", function(accounts) {
     let customPricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      USDCToken.address, // _collateralAddress
+      USDCToken.address, // _collateralTokenAddress
       nonStandardToken.address, // _tokenAddress
       finder.address, // _finderAddress
       priceFeedIdentifier, // _priceFeedIdentifier

@@ -124,8 +124,8 @@ contract("ConfigStore", function(accounts) {
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
-          ev.proposerBond.toString() === testConfig.proposerBondPercentage.rawValue &&
+          ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBondPercentage.toString() === testConfig.proposerBondPercentage.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
           ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
           ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
@@ -140,8 +140,8 @@ contract("ConfigStore", function(accounts) {
       proposeTxn = await configStore.proposeNewConfig(testConfig);
       truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
         return (
-          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
-          ev.proposerBond.toString() === testConfig.proposerBondPercentage.rawValue &&
+          ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBondPercentage.toString() === testConfig.proposerBondPercentage.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
           ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
           ev.minFundingRate.toString() === testConfig.minFundingRate.rawValue &&
@@ -161,8 +161,8 @@ contract("ConfigStore", function(accounts) {
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === testConfig.rewardRatePerSecond.rawValue &&
-          ev.proposerBond.toString() === testConfig.proposerBondPercentage.rawValue &&
+          ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
+          ev.proposerBondPercentage.toString() === testConfig.proposerBondPercentage.rawValue &&
           ev.timelockLiveness.toString() === testConfig.timelockLiveness.toString() &&
           ev.proposalPassedTimestamp.toString() === proposeTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
           ev.maxFundingRate.toString() === testConfig.maxFundingRate.rawValue &&
@@ -201,8 +201,8 @@ contract("ConfigStore", function(accounts) {
       truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
         return (
           ev.proposer === owner &&
-          ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
-          ev.proposerBond.toString() === test2Config.proposerBondPercentage.rawValue &&
+          ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
+          ev.proposerBondPercentage.toString() === test2Config.proposerBondPercentage.rawValue &&
           ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
           ev.proposalPassedTimestamp.toString() ===
             overwriteProposalTime.add(toBN(defaultConfig.timelockLiveness)).toString() &&
@@ -237,8 +237,8 @@ contract("ConfigStore", function(accounts) {
       proposeTxn = await configStore.publishPendingConfig();
       truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
         return (
-          ev.rewardRate.toString() === test2Config.rewardRatePerSecond.rawValue &&
-          ev.proposerBond.toString() === test2Config.proposerBondPercentage.rawValue &&
+          ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
+          ev.proposerBondPercentage.toString() === test2Config.proposerBondPercentage.rawValue &&
           ev.timelockLiveness.toString() === test2Config.timelockLiveness.toString() &&
           ev.maxFundingRate.toString() === test2Config.maxFundingRate.rawValue &&
           ev.minFundingRate.toString() === test2Config.minFundingRate.rawValue &&

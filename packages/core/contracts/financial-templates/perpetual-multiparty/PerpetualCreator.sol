@@ -90,13 +90,13 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         // If the collateral token does not have a `decimals()` method,
         // then a default precision of 18 will be applied to the newly created synthetic token.
         uint8 syntheticDecimals = _getSyntheticDecimals(params.collateralAddress);
-        ExpandedIERC20 syntheticToken = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
-        address derivative = PerpetualLib.deploy(_convertParams(params, syntheticToken, address(configStore)));
+        ExpandedIERC20 tokenCurrency = tf.createToken(params.syntheticName, params.syntheticSymbol, syntheticDecimals);
+        address derivative = PerpetualLib.deploy(_convertParams(params, tokenCurrency, address(configStore)));
 
         // Give permissions to new derivative contract and then hand over ownership.
-        syntheticToken.addMinter(derivative);
-        syntheticToken.addBurner(derivative);
-        syntheticToken.resetOwner(derivative);
+        tokenCurrency.addMinter(derivative);
+        tokenCurrency.addBurner(derivative);
+        tokenCurrency.resetOwner(derivative);
 
         _registerContract(new address[](0), derivative);
 
