@@ -1,7 +1,7 @@
-const { toWei } = web3.utils;
+const { toWei, utf8ToHex } = web3.utils;
 const winston = require("winston");
 
-const { interfaceName, parseFixed, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const { interfaceName, parseFixed, MAX_UINT_VAL, ZERO_ADDRESS, advanceBlockAndSetTime } = require("@uma/common");
 
 const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMultiPartyEventClient");
 
@@ -40,6 +40,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       let identifierWhitelist;
       let store;
       let timer;
+      let finder;
 
       // Test object for EMP event client
       let client;
@@ -73,16 +74,21 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         await collateralToken.mint(sponsor2, convert("100000"), { from: tokenSponsor });
         await collateralToken.mint(sponsor3, convert("100000"), { from: tokenSponsor });
 
-        identifierWhitelist = await IdentifierWhitelist.deployed();
-        await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(identifier));
+        identifierWhitelist = await IdentifierWhitelist.new();
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
 
-        // Create a mockOracle and finder. Register the mockOracle with the finder.
-        const finder = await Finder.deployed();
-        timer = await Timer.deployed();
-        store = await Store.deployed();
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+        await finder.changeImplementationAddress(
+          utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
+
         mockOracle = await MockOracle.new(finder.address, timer.address);
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
-        await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
       });
 
       beforeEach(async function() {
@@ -99,8 +105,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           withdrawalLiveness: "1000",
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
-          finderAddress: Finder.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
+          finderAddress: finder.address,
+          priceFeedIdentifier: utf8ToHex(identifier),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPercentage: { rawValue: toWei("0.1") },
@@ -627,7 +633,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
         // disputed liquidation.
         const disputePrice = toWei("1.6");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
         const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
         await client.clearState();
@@ -681,7 +687,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         // Force a price such that the dispute succeeds, and then withdraw from the successfully
         // disputed liquidation.
         const disputePrice = convert("0.1");
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, disputePrice);
+        await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
         const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
         await client.clearState();
@@ -716,7 +722,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         // Expire contract at settlement price of 0.2.
         await timer.setCurrentTime(expirationTime.toString());
         await emp.expire();
-        await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), expirationTime.toString(), convert("0.2"));
+        await mockOracle.pushPrice(utf8ToHex(identifier), expirationTime.toString(), convert("0.2"));
         const txObject = await emp.settleExpired({ from: sponsor1 });
 
         await client.update();
@@ -776,6 +782,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           emp.address,
           currentBlockNumber + 1 // Start the bot one block after the liquidation event
         );
+        const currentTimestamp = (await web3.eth.getBlock("latest")).timestamp;
+        await advanceBlockAndSetTime(web3, currentTimestamp + 1);
+        await advanceBlockAndSetTime(web3, currentTimestamp + 2);
+        await advanceBlockAndSetTime(web3, currentTimestamp + 3);
 
         await offSetClient.update();
 

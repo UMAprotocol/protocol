@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { parseFixed } = require("@ethersproject/bignumber");
 
-const { toWei, toBN } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 
 // Script to test
 const { Disputer } = require("../src/disputer.js");
@@ -53,6 +53,8 @@ contract("Disputer.js", function(accounts) {
       let mockOracle;
       let store;
       let timer;
+      let identifierWhitelist;
+      let finder;
 
       let spy;
       let spyLogger;
@@ -90,18 +92,25 @@ contract("Disputer.js", function(accounts) {
         await collateralToken.mint(sponsor3, convert("100000"), { from: contractCreator });
         await collateralToken.mint(liquidator, convert("100000"), { from: contractCreator });
         await collateralToken.mint(disputeBot, convert("100000"), { from: contractCreator });
+
+        // Create identifier whitelist and register the price tracking ticker with it.
+        identifierWhitelist = await IdentifierWhitelist.new();
+        finder = await Finder.new();
+        timer = await Timer.new();
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+        await finder.changeImplementationAddress(
+          utf8ToHex(interfaceName.IdentifierWhitelist),
+          identifierWhitelist.address
+        );
       });
 
       beforeEach(async function() {
-        // Create a mockOracle and finder. Register the mockMoracle with the finder.
-        const finder = await Finder.deployed();
-        mockOracle = await MockOracle.new(finder.address, Timer.address, {
+        mockOracle = await MockOracle.new(finder.address, timer.address, {
           from: contractCreator
         });
-        const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
-        await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-        store = await Store.deployed();
-        timer = await Timer.deployed();
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", tokenConfig.collateralDecimals);
@@ -112,7 +121,7 @@ contract("Disputer.js", function(accounts) {
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          priceFeedIdentifier: web3.utils.utf8ToHex(identifier),
+          priceFeedIdentifier: utf8ToHex(identifier),
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.2") },
           disputeBondPercentage: { rawValue: toWei("0.1") },
@@ -124,7 +133,6 @@ contract("Disputer.js", function(accounts) {
           financialProductLibraryAddress: ZERO_ADDRESS
         };
 
-        const identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
           from: accounts[0]
         });

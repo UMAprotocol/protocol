@@ -93,6 +93,7 @@ async function run({
 
     // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    // Setup contract instances.
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
 
     const [priceIdentifier, collateralAddress, syntheticTokenAddress] = await Promise.all([
@@ -100,8 +101,7 @@ async function run({
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call()
     ]);
-
-    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
     const [

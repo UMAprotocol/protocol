@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, utf8ToHex } = web3.utils;
 
 // Tested Contract
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -24,7 +24,7 @@ const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFee
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
-const { ZERO_ADDRESS } = require("@uma/common");
+const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
 contract("CreatePriceFeed.js", function(accounts) {
   const { toChecksumAddress, randomHex } = web3.utils;
@@ -33,6 +33,9 @@ contract("CreatePriceFeed.js", function(accounts) {
   let networker;
   let logger;
   let store;
+  let timer;
+  let finder;
+  let identifierWhitelist;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -44,12 +47,20 @@ contract("CreatePriceFeed.js", function(accounts) {
   const uniswapAddress = toChecksumAddress(randomHex(20));
   const balancerAddress = toChecksumAddress(randomHex(20));
 
+  before(async function() {
+    identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+    finder = await Finder.new();
+    timer = await Timer.new();
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+  });
+
   beforeEach(async function() {
     networker = new NetworkerMock();
     logger = winston.createLogger({
       silent: true
     });
-    store = await Store.deployed();
   });
 
   it("No type", async function() {
@@ -182,15 +193,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -225,15 +236,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -290,15 +301,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -325,15 +336,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -353,15 +364,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralAddress,
       tokenAddress: syntheticTokenAddress,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -476,15 +487,15 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
@@ -512,20 +523,19 @@ contract("CreatePriceFeed.js", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: Finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("Invalid Identifier"),
+      finderAddress: finder.address,
+      priceFeedIdentifier: utf8ToHex("Invalid Identifier"),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address,
+      timerAddress: timer.address,
       excessTokenBeneficiary: store.address,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: accounts[0]
     });

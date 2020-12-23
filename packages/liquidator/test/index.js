@@ -1,5 +1,11 @@
 const { toWei, utf8ToHex } = web3.utils;
-const { MAX_UINT_VAL, ZERO_ADDRESS, LiquidationStatesEnum, interfaceName } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  ZERO_ADDRESS,
+  LiquidationStatesEnum,
+  interfaceName,
+  addGlobalHardhatTestingAddress
+} = require("@uma/common");
 
 // Script to test
 const Poll = require("../index.js");
@@ -48,19 +54,26 @@ contract("index.js", function(accounts) {
 
   before(async function() {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-
+    finder = await Finder.new();
     // Create identifier whitelist and register the price tracking ticker with it.
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
+    const identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
+    await finder.changeImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+      identifierWhitelist.address
+    );
 
-    store = await Store.deployed();
-    timer = await Timer.deployed();
-    finder = await Finder.deployed();
+    timer = await Timer.new();
+
     mockOracle = await MockOracle.new(finder.address, timer.address, {
       from: contractCreator
     });
-    const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    // Set the address in the global name space to enable disputer's index.js to access it.
+    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
   });
 
   beforeEach(async function() {
@@ -104,7 +117,8 @@ contract("index.js", function(accounts) {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
-      lookback: 1
+      lookback: 1,
+      getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
     };
 
     // Set two uniswap prices to give it a little history.
@@ -338,7 +352,8 @@ contract("index.js", function(accounts) {
       type: "uniswap",
       uniswapAddress: uniswap.address,
       twapLength: 1,
-      lookback: 1
+      lookback: 1,
+      getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
     };
 
     errorRetries = 3; // set execution retries to 3 to validate.

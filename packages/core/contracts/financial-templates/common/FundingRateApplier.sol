@@ -199,11 +199,9 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         return configStore.updateAndGetCurrentConfig();
     }
 
-    function _getLatestFundingRate() internal returns (FixedPoint.Signed memory) {
+    function _updateFundingRate() internal {
         uint256 proposalTime = fundingRate.proposalTime;
-
-        // If there is no pending proposal then return the current funding rate, otherwise
-        // check to see if we can update the funding rate.
+        // If there is no pending proposal then do nothing. Otherwise check to see if we can update the funding rate.
         if (proposalTime != 0) {
             // Attempt to update the funding rate.
             OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
@@ -213,7 +211,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
             // Try to get the price from the optimistic oracle. This call will revert if the request has not resolved
             // yet. If the request has not resolved yet, then we need to do additional checks to see if we should
             // "forget" the pending proposal and allow new proposals to update the funding rate.
-            try optimisticOracle.getPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
+            try optimisticOracle.settleAndGetPrice(identifier, proposalTime, ancillaryData) returns (int256 price) {
                 // If successful, determine if the funding rate state needs to be updated.
                 // If the request is more recent than the last update then we should update it.
                 uint256 lastUpdateTime = fundingRate.updateTime;
@@ -254,7 +252,6 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
                 }
             }
         }
-        return fundingRate.rate;
     }
 
     // Constraining the range of funding rates limits the PfC for any dishonest proposer and enhances the
@@ -287,9 +284,10 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         uint256 currentTime = getCurrentTime();
         uint256 paymentPeriod = currentTime.sub(fundingRate.applicationTime);
 
+        _updateFundingRate(); // Update the funding rate if there is a resolved proposal.
         fundingRate.cumulativeMultiplier = _calculateEffectiveFundingRate(
             paymentPeriod,
-            _getLatestFundingRate(),
+            fundingRate.rate,
             fundingRate.cumulativeMultiplier
         );
 

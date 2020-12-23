@@ -830,7 +830,11 @@ contract PricelessPositionManager is FeePayer {
             "Unresolved oracle price"
         );
         int256 optimisticOraclePrice =
-            optimisticOracle.getPrice(_transformPriceIdentifier(requestedTime), requestedTime, _getAncillaryData());
+            optimisticOracle.settleAndGetPrice(
+                _transformPriceIdentifier(requestedTime),
+                requestedTime,
+                _getAncillaryData()
+            );
 
         // For now we don't want to deal with negative prices in positions.
         if (optimisticOraclePrice < 0) {
