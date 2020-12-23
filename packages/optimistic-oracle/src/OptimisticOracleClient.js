@@ -73,6 +73,9 @@ class OptimisticOracleClient {
       Promise.map(
         requestEvents,
         request =>
+          // Since we're making an async web3 call here, consider calling
+          // requests(web3.utils.soliditySha3(requester, id, timestamp, acData)) instead
+          // so we can grab more data including that relevant for proposals.
           this.oracle.methods
             .getState(
               request.returnValues.requester,
