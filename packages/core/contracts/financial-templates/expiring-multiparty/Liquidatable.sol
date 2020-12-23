@@ -18,6 +18,9 @@ import "../../common/implementation/FixedPoint.sol";
  * a DVM price. The contract enforces dispute rewards in order to incentivize disputers to correctly dispute false
  * liquidations and compensate position sponsors who had their position incorrectly liquidated. Importantly, a
  * prospective disputer must deposit a dispute bond that they can lose in the case of an unsuccessful dispute.
+ * NOTE: this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
+ * money themselves).
  */
 contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
