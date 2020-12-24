@@ -85,7 +85,7 @@ async function run({
       collateralRequirement,
       priceIdentifier,
       minSponsorTokens,
-      collateralAddress,
+      collateralTokenAddress,
       syntheticTokenAddress,
       isExpired,
       withdrawLiveness
@@ -102,7 +102,7 @@ async function run({
     // Initial EMP expiry status
     let IS_EXPIRED = isExpired;
 
-    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
+    const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
     const [currentCollateralAllowance, currentSyntheticAllowance, collateralCurrencyDecimals] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),

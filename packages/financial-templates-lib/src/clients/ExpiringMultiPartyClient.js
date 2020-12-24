@@ -184,7 +184,7 @@ class ExpiringMultiPartyClient {
         };
 
         // Get all undisputed liquidations.
-        if (this._isLiquidationNotDisputed(liquidation)) {
+        if (this._isLiquidationPreDispute(liquidation)) {
           // Determine whether liquidation has expired.
           if (!this._isExpired(liquidation, currentTime)) {
             undisputedLiquidations.push(liquidationData);
@@ -240,7 +240,7 @@ class ExpiringMultiPartyClient {
     return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
   }
 
-  _isLiquidationNotDisputed(liquidation) {
+  _isLiquidationPreDispute(liquidation) {
     return liquidation.state === LiquidationStatesEnum.PRE_DISPUTE;
   }
 }

@@ -1,4 +1,4 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 const {
   MAX_UINT_VAL,
   ZERO_ADDRESS,
@@ -94,12 +94,12 @@ contract("index.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPercentage: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       excessTokenBeneficiary: store.address,

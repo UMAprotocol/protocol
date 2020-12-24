@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, MAX_UINT_VAL, parseFixed, ZERO_ADDRESS } = require("@uma/common");
@@ -121,12 +121,12 @@ contract("ContractMonitor.js", function(accounts) {
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
           timerAddress: timer.address,
-          priceFeedIdentifier: utf8ToHex(identifier),
+          priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
-          disputeBondPercentage: { rawValue: toWei("0.1") },
-          sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-          disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
+          disputeBondPct: { rawValue: toWei("0.1") },
+          sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+          disputerDisputeRewardPct: { rawValue: toWei("0.1") },
           minSponsorTokens: { rawValue: toWei("1") },
           excessTokenBeneficiary: store.address,
           financialProductLibraryAddress: ZERO_ADDRESS

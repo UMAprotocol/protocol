@@ -8,16 +8,16 @@ class TokenBalanceClient {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} erc20abi ERC20 token abi used to create a token contract instance to query.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
-   * @param {String} collateralAddress Ethereum address of the Collateral ERC20 token from the EMP.
+   * @param {String} collateralTokenAddress Ethereum address of the Collateral ERC20 token from the EMP.
    * @param {String} syntheticTokenAddress Ethereum address of the Synthetic ERC20 token from the EMP.
    * @return None or throws an Error.
    */
-  constructor(logger, erc20abi, web3, collateralAddress, syntheticTokenAddress) {
+  constructor(logger, erc20abi, web3, collateralTokenAddress, syntheticTokenAddress) {
     this.logger = logger;
     this.web3 = web3;
 
     // Token contracts
-    this.collateralToken = new web3.eth.Contract(erc20abi, collateralAddress);
+    this.collateralToken = new web3.eth.Contract(erc20abi, collateralTokenAddress);
     this.syntheticToken = new web3.eth.Contract(erc20abi, syntheticTokenAddress);
 
     // Token balances to enable synchronous return of the latest token ballance cashed in the client.
