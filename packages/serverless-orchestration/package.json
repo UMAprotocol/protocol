@@ -5,6 +5,7 @@
   "dependencies": {
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^1.0.1",
+    "@uma/core": "npm:@uma/core@1.2.0",
     "@uma/financial-templates-lib": "^1.2.0"
   },
   "devDependencies": {

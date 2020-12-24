@@ -7,11 +7,10 @@ const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-const Uniswap = getTruffleContract("Uniswap", web3, "latest");
-const Balancer = getTruffleContract("Balancer", web3, "latest");
-
 async function createPriceFeed(logger, web3, networker, getTime, config) {
+  const Uniswap = getTruffleContract("Uniswap", web3, "latest");
+  const Balancer = getTruffleContract("Balancer", web3, "latest");
+
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
 
@@ -316,6 +315,7 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
 }
 
 function getEmpAtAddress(web3, empAddress) {
+  const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
   return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
 }
 
