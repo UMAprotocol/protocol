@@ -6,7 +6,7 @@ const retry = require("async-retry");
 const { Logger, waitForLogger, delay, OptimisticOracleClient } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -22,6 +22,14 @@ const { getWeb3 } = require("@uma/common");
  */
 async function run({ logger, web3, oracleAddress, pollingDelay, errorRetries, errorRetriesTimeout }) {
   try {
+
+    // TODO: Consider auto-detecting the OptimisticOracle address since we can probably assume
+    // that there will only ever be one. The reason we're not doing this now is because 
+    // `getAddress("OptimisticOracle")` is throwing an error in the hardhat tests:
+    // `Error: No address found for contract OptimisticOracle on network 31337`
+    // const [networkId] = await Promise.all([web3.eth.net.getId()]);
+    // const optimisticOracle = new web3.eth.Contract(getAbi("OptimisticOracle"), getAddress("OptimisticOracle", networkId));
+    
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({

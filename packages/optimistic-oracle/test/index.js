@@ -7,6 +7,9 @@ const sinon = require("sinon");
 
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
 const { getTruffleContract } = require("@uma/core");
+const {
+  addGlobalHardhatTestingAddress
+} = require("@uma/common");
 
 const ABI_VERSION = "latest";
 
@@ -32,6 +35,7 @@ contract("index.js", function() {
 
     // Deploy a new OptimisticOracle.
     optimisticOracle = await OptimisticOracle.new("120", finder.address, timer.address);
+    // addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
   });
   beforeEach(async function() {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
