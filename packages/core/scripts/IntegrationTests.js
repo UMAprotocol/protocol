@@ -89,9 +89,9 @@ contract("IntegrationTest", function(accounts) {
       syntheticSymbol: "SYNTH",
       liquidationLiveness: "3600",
       collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("0") }
     };
 

@@ -124,7 +124,7 @@ contract("PerpetualPositionManager", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPct: { rawValue: "0" },
+        proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
         proposalTimePastLimit: 0
@@ -159,7 +159,7 @@ contract("PerpetualPositionManager", function(accounts) {
   // Advances time by 10k seconds.
   const setFundingRateAndAdvanceTime = async fundingRate => {
     const currentTime = (await positionManager.getCurrentTime()).toNumber();
-    await positionManager.proposeNewRate({ rawValue: fundingRate }, currentTime, { from: proposer });
+    await positionManager.proposeFundingRate({ rawValue: fundingRate }, currentTime, { from: proposer });
     await positionManager.setCurrentTime(currentTime + 10000);
   };
 
@@ -180,7 +180,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await setNewConfig({
       timelockLiveness: 86400, // 1 day
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
-      proposerBondPct: { rawValue: "0" },
+      proposerBondPercentage: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
       minFundingRate: { rawValue: minFundingRate },
       proposalTimePastLimit: 0
@@ -826,7 +826,7 @@ contract("PerpetualPositionManager", function(accounts) {
     await setNewConfig({
       timelockLiveness: 86400, // 1 day
       rewardRatePerSecond: { rawValue: fundingRateRewardRate },
-      proposerBondPct: { rawValue: "0" },
+      proposerBondPercentage: { rawValue: "0" },
       maxFundingRate: { rawValue: maxFundingRate },
       minFundingRate: { rawValue: minFundingRate },
       proposalTimePastLimit: 0

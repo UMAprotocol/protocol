@@ -47,8 +47,8 @@ async function run(
   });
 
   const emp = await ExpiringMultiParty.at(address);
-  const collateralTokenAddress = await emp.collateralCurrency();
-  const collateralToken = await ExpandedERC20.at(collateralTokenAddress);
+  const collateralAddress = await emp.collateralCurrency();
+  const collateralToken = await ExpandedERC20.at(collateralAddress);
   const syntheticTokenAddress = await emp.tokenCurrency();
   const syntheticToken = await ExpandedERC20.at(syntheticTokenAddress);
 
@@ -106,7 +106,7 @@ async function run(
     Logger,
     ExpandedERC20.abi,
     web3,
-    collateralTokenAddress,
+    collateralAddress,
     syntheticTokenAddress,
     10
   );

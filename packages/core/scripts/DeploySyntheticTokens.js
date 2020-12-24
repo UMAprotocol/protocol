@@ -97,9 +97,9 @@ const actualDeploy = async inputCsv => {
       syntheticName: params.tokenName,
       syntheticSymbol: params.tokenSymbol,
       collateralRequirement: percentToFixedPoint(params.collateralRequirement),
-      disputeBondPct: percentToFixedPoint(params.disputeBond),
-      sponsorDisputeRewardPct: percentToFixedPoint(params.sponsorDisputeReward),
-      disputerDisputeRewardPct: percentToFixedPoint(params.disputeReward),
+      disputeBondPercentage: percentToFixedPoint(params.disputeBond),
+      sponsorDisputeRewardPercentage: percentToFixedPoint(params.sponsorDisputeReward),
+      disputerDisputeRewardPercentage: percentToFixedPoint(params.disputeReward),
       minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
       excessTokenBeneficiary: store.address
     };

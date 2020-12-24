@@ -32,9 +32,9 @@ contract("ExpiringMultiParty", function(accounts) {
       priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       financialProductLibraryAddress: ZERO_ADDRESS

@@ -30,7 +30,7 @@ contract("PerpetualCreator", function(accounts) {
   let testConfig = {
     timelockLiveness: 86400, // 1 day
     rewardRatePerSecond: { rawValue: toWei("0.000001") },
-    proposerBondPct: { rawValue: toWei("0.0001") },
+    proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
     proposalTimePastLimit: 1800
@@ -52,9 +52,9 @@ contract("PerpetualCreator", function(accounts) {
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
@@ -338,7 +338,7 @@ contract("PerpetualCreator", function(accounts) {
     const currentTime = (await perpetual.getCurrentTime()).toNumber();
     assert(
       await didContractThrow(
-        perpetual.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
+        perpetual.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
       )
     );
   });
