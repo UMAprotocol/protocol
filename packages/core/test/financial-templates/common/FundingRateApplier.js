@@ -101,7 +101,7 @@ contract("FundingRateApplier", function(accounts) {
       {
         timelockLiveness: 86400, // 1 day
         rewardRatePerSecond: { rawValue: rewardRate },
-        proposerBondPct: { rawValue: bondPercentage },
+        proposerBondPercentage: { rawValue: bondPercentage },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
         proposalTimePastLimit: proposalTimePastLimit // 30 mins
@@ -214,25 +214,27 @@ contract("FundingRateApplier", function(accounts) {
   it("Funding rate proposal must be within limits", async function() {
     // Max/min funding rate per second is [< +1e-5, > -1e-5].
     const currentTime = (await fundingRateApplier.getCurrentTime()).toNumber();
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: toWei("0.00002") }, currentTime)));
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: toWei("-0.00002") }, currentTime)));
+    assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)));
+    assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("-0.00002") }, currentTime)));
   });
 
   it("Proposal time checks", async () => {
     const newRate = { rawValue: toWei("-0.000001") };
 
     // Cannot be at or before the last update time.
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, startTime)));
+    assert(await didContractThrow(fundingRateApplier.proposeFundingRate(newRate, startTime)));
 
     // Move time forward to give some space for new proposals.
     const currentTime = startTime + delay;
     await fundingRateApplier.setCurrentTime(currentTime);
 
     // Time must be within the past and future bounds around the current time.
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime - proposalTimePastLimit - 1)));
-    await fundingRateApplier.proposeNewRate.call(newRate, currentTime - proposalTimePastLimit);
-    assert(await didContractThrow(fundingRateApplier.proposeNewRate(newRate, currentTime + 1)));
-    await fundingRateApplier.proposeNewRate(newRate, currentTime);
+    assert(
+      await didContractThrow(fundingRateApplier.proposeFundingRate(newRate, currentTime - proposalTimePastLimit - 1))
+    );
+    await fundingRateApplier.proposeFundingRate.call(newRate, currentTime - proposalTimePastLimit);
+    assert(await didContractThrow(fundingRateApplier.proposeFundingRate(newRate, currentTime + 1)));
+    await fundingRateApplier.proposeFundingRate(newRate, currentTime);
   });
 
   describe("Undisputed proposal", async () => {
@@ -242,17 +244,17 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // First proposal at the current time.
-      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime);
     });
 
     it("Two proposals cannot coexist", async () => {
       // Proposal should fail because the previous one has not expired.
-      assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
+      assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime)));
 
       // Expire the previous proposal allowing a new proposal to succeed.
       currentTime += delay;
       await fundingRateApplier.setCurrentTime(currentTime);
-      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime);
     });
 
     it("Correctly sets price and updates cumulative multiplier", async () => {
@@ -318,7 +320,7 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1.002001"));
 
       // Propose a new rate of the negative of the previous proposal
-      await fundingRateApplier.proposeNewRate({ rawValue: `-${defaultProposal}` }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: `-${defaultProposal}` }, currentTime);
 
       // Move time forward again.
       currentTime += delay;
@@ -336,12 +338,12 @@ contract("FundingRateApplier", function(accounts) {
 
       // propose() should reset the proposal time to 0 via the fees() modifier, and therefore it should be possible
       // to propose a new rate.
-      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime);
       // The funding rate multiplier should be unchanged.
       assert.equal((await fundingRateApplier.fundingRate()).cumulativeMultiplier.rawValue, toWei("1"));
 
       // As long as this new oracle is not upgraded and the proposal has not expired, then propose() should revert.
-      assert(await didContractThrow(fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime)));
+      assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime)));
     });
   });
 
@@ -352,7 +354,7 @@ contract("FundingRateApplier", function(accounts) {
       await fundingRateApplier.setCurrentTime(currentTime);
 
       // First proposal at the current time.
-      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime);
 
       // Dispute proposal
       await optimisticOracle.disputePrice(fundingRateApplier.address, identifier, currentTime, ancillaryData, {
@@ -429,7 +431,7 @@ contract("FundingRateApplier", function(accounts) {
       // Time must move forward so this isn't the _exact_ same proposal as the previous.
       currentTime += 1;
       await fundingRateApplier.setCurrentTime(currentTime);
-      await fundingRateApplier.proposeNewRate({ rawValue: defaultProposal }, currentTime);
+      await fundingRateApplier.proposeFundingRate({ rawValue: defaultProposal }, currentTime);
     });
   });
 });

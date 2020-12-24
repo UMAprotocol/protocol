@@ -66,9 +66,9 @@ async function createTestEnvironment() {
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceTrackingIdentifier = utf8ToHex("TEST_IDENTIFIER");
   const collateralRequirement = toWei("1.5");
-  const disputeBondPct = toWei("0.1");
-  const sponsorDisputeRewardPct = toWei("0.1");
-  const disputerDisputeRewardPct = toWei("0.1");
+  const disputeBondPercentage = toWei("0.1");
+  const sponsorDisputeRewardPercentage = toWei("0.1");
+  const disputerDisputeRewardPercentage = toWei("0.1");
 
   // Create and mint collateral token.
   collateral = await MarginToken.new("UMA", "UMA", 18);
@@ -103,9 +103,9 @@ async function createTestEnvironment() {
     syntheticSymbol: syntheticSymbol,
     liquidationLiveness: liquidationLiveness,
     collateralRequirement: { rawValue: collateralRequirement },
-    disputeBondPct: { rawValue: disputeBondPct },
-    sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct },
-    disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct },
+    disputeBondPercentage: { rawValue: disputeBondPercentage },
+    sponsorDisputeRewardPercentage: { rawValue: sponsorDisputeRewardPercentage },
+    disputerDisputeRewardPercentage: { rawValue: disputerDisputeRewardPercentage },
     minSponsorTokens: { rawValue: "0" },
     timerAddress: Timer.address
   };
