@@ -38,9 +38,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         string syntheticName;
         string syntheticSymbol;
         FixedPoint.Unsigned collateralRequirement;
-        FixedPoint.Unsigned disputeBondPct;
-        FixedPoint.Unsigned sponsorDisputeRewardPct;
-        FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned disputeBondPercentage;
+        FixedPoint.Unsigned sponsorDisputeRewardPercentage;
+        FixedPoint.Unsigned disputerDisputeRewardPercentage;
         FixedPoint.Unsigned minSponsorTokens;
         FixedPoint.Unsigned tokenScaling;
         uint256 withdrawalLiveness;
@@ -147,9 +147,9 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.fundingRateIdentifier = params.fundingRateIdentifier;
         constructorParams.collateralRequirement = params.collateralRequirement;
-        constructorParams.disputeBondPct = params.disputeBondPct;
-        constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
-        constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+        constructorParams.disputeBondPercentage = params.disputeBondPercentage;
+        constructorParams.sponsorDisputeRewardPercentage = params.sponsorDisputeRewardPercentage;
+        constructorParams.disputerDisputeRewardPercentage = params.disputerDisputeRewardPercentage;
         constructorParams.minSponsorTokens = params.minSponsorTokens;
         constructorParams.withdrawalLiveness = params.withdrawalLiveness;
         constructorParams.liquidationLiveness = params.liquidationLiveness;

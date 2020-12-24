@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { parseFixed } = require("@ethersproject/bignumber");
 
-const { toWei, toBN, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex, padRight } = web3.utils;
 
 // Script to test
 const { Disputer } = require("../src/disputer.js");
@@ -121,7 +121,7 @@ contract("Disputer.js", function(accounts) {
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          priceFeedIdentifier: utf8ToHex(identifier),
+          priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.2") },
           disputeBondPct: { rawValue: toWei("0.1") },

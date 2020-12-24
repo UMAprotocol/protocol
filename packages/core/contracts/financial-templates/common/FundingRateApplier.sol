@@ -80,7 +80,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     }
 
     // Note: this modifier is intended to be used if the caller intends to _only_ pay regular fees.
-    modifier regularFees {
+    modifier paysRegularFees {
         payRegularFees();
         _;
     }
@@ -120,7 +120,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      * 2. If possible, resolves the outstanding funding rate proposal, pulling the result in and paying out the rewards.
      * 3. Applies the prevailing funding rate over the most recent period.
      */
-    function applyFundingRate() public regularFees() nonReentrant() {
+    function applyFundingRate() public paysRegularFees() nonReentrant() {
         _applyEffectiveFundingRate();
     }
 
@@ -129,7 +129,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
      * @param rate funding rate being proposed.
      * @param timestamp time at which the funding rate was computed.
      */
-    function proposeNewRate(FixedPoint.Signed memory rate, uint256 timestamp)
+    function proposeFundingRate(FixedPoint.Signed memory rate, uint256 timestamp)
         external
         fees()
         nonReentrant()
@@ -161,7 +161,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
                 identifier,
                 timestamp,
                 ancillaryData,
-                _pfc().mul(_getConfig().proposerBondPct).rawValue
+                _pfc().mul(_getConfig().proposerBondPercentage).rawValue
             )
         );
 
