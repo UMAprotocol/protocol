@@ -1,6 +1,6 @@
 {
   "name": "@uma/core",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@truffle/contract": "^4.2.20",
