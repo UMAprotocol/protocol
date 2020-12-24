@@ -6,33 +6,28 @@ const retry = require("async-retry");
 const { Logger, waitForLogger, delay, OptimisticOracleClient } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
  * @notice Runs strategies that propose and dispute prices for any price identifier serviced by the Optimistic Oracle.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
+ * @param {String} oracleAddress Contract address of the Optimistic Oracle.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @return None or throws an Error.
  */
-async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout }) {
+async function run({ logger, web3, oracleAddress, pollingDelay, errorRetries, errorRetriesTimeout }) {
   try {
-    // Load unlocked web3 accounts and get the networkId.
-    const [networkId] = await Promise.all([web3.eth.net.getId()]);
-
-    // Setup contract instances. NOTE that getAddress("OptimisticOracle", networkId) will resolve to null in tests.
-    const oracle = new web3.eth.Contract(getAbi("OptimisticOracle"), getAddress("OptimisticOracle", networkId));
-
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
       message: "OO keeper started 🌊",
-      oracleAddress: oracle.address,
+      oracleAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout
@@ -44,7 +39,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Keeper to respond to price requests and proposals.
-    const ooClient = new OptimisticOracleClient(logger, getAbi("OptimisticOracle"), web3, oracle.address);
+    const ooClient = new OptimisticOracleClient(logger, getAbi("OptimisticOracle"), web3, oracleAddress);
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
@@ -94,6 +89,8 @@ async function Poll(callback) {
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
+      // Optimistic Oracle Address. Should be an Ethereum address
+      oracleAddress: process.env.OPTIMISTIC_ORACLE_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
