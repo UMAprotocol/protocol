@@ -11,7 +11,7 @@ const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 contract("contracts", function(accounts) {
   describe("emp contract", function() {
@@ -37,12 +37,12 @@ contract("contracts", function(accounts) {
         collateralAddress: collateralToken.address,
         tokenAddress: token.address,
         finderAddress: finder.address,
-        priceFeedIdentifier: utf8ToHex(identifier),
+        priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
         liquidationLiveness: "1000",
         collateralRequirement: { rawValue: toWei("1.2") },
-        disputeBondPercentage: { rawValue: toWei("0.1") },
-        sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-        disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
+        disputeBondPct: { rawValue: toWei("0.1") },
+        sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+        disputerDisputeRewardPct: { rawValue: toWei("0.1") },
         minSponsorTokens: { rawValue: toWei("5") },
         timerAddress: timer.address,
         excessTokenBeneficiary: store.address,

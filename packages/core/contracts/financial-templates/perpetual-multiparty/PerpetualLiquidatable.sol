@@ -186,7 +186,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
+        require(params.collateralRequirement.isGreaterThan(1));
         require(params.sponsorDisputeRewardPercentage.add(params.disputerDisputeRewardPercentage).isLessThan(1));
 
         // Set liquidatable specific variables.
