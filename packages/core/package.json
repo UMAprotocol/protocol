@@ -12,7 +12,7 @@
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@ethersproject/units": "^5.0.3",
-    "@openzeppelin/contracts": "3.0.0",
+    "@openzeppelin/contracts": "3.3.0",
     "@sendgrid/mail": "^6.4.0",
     "@uma/financial-templates-lib": "^1.2.0",
     "bip39": "^3.0.2",

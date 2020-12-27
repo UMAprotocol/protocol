@@ -14,4 +14,11 @@ const configOverride = {
   }
 };
 
-module.exports = getHardhatConfig(configOverride);
+// `getHardhatConfig` has a `configOverrides` parameter, but we can't use it
+// since it does a shallow merge and we want to override a single nested field.
+const config = getHardhatConfig(configOverride);
+
+// The default is 199. FiXME - comment out this line to see what goes wrong:
+config.solidity.settings.optimizer.runs = 25;
+
+module.exports = config;
