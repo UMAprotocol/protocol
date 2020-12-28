@@ -28,7 +28,7 @@ const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
   string: ["identifier", "collateral", "cversion"]
 });
-const abiVersion = argv.cversion || "1.2.1"; // Default to most recent mainnet deployment, 1.1.0.
+const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
