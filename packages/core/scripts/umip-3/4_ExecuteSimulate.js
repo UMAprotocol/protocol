@@ -273,9 +273,9 @@ async function runExport() {
     syntheticName: "Test Synthetic Token",
     syntheticSymbol: "ETHBTCSynth",
     collateralRequirement: { rawValue: web3.utils.toWei("1.5") },
-    disputeBondPct: { rawValue: web3.utils.toWei("0.1") },
-    sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
-    disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
+    disputeBondPercentage: { rawValue: web3.utils.toWei("0.1") },
+    sponsorDisputeRewardPercentage: { rawValue: web3.utils.toWei("0.1") },
+    disputerDisputeRewardPercentage: { rawValue: web3.utils.toWei("0.1") },
     minSponsorTokens: { rawValue: web3.utils.toWei("1") },
     timerAddress: zeroAddress
   };

@@ -100,31 +100,69 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      * This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
-    function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
-        StoreInterface store = _getStore();
+    function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory) {
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Exit early if there is no collateral from which to pay fees.
-        if (collateralPool.isEqual(0)) {
-            // Note: set the lastPaymentTime in this case so the contract is credited for paying during periods when it
-            // has no locked collateral.
-            lastPaymentTime = time;
-            return totalPaid;
-        }
-
-        // Exit early if fees were already paid during this block.
-        if (lastPaymentTime == time) {
-            return totalPaid;
-        }
-
-        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) =
-            store.computeRegularFee(lastPaymentTime, time, collateralPool);
+        // Fetch the regualar fees, late penatly and the max posible to pay given the current collateral within the contract.
+        (
+            FixedPoint.Unsigned memory regularFee,
+            FixedPoint.Unsigned memory latePenalty,
+            FixedPoint.Unsigned memory totalPaid
+        ) = getOutstandingRegularFees(time);
         lastPaymentTime = time;
+
+        // If there are no fees to pay then exit early.
+        if (totalPaid.isEqual(0)) {
+            return totalPaid;
+        }
+
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
+
+        _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
+
+        if (regularFee.isGreaterThan(0)) {
+            StoreInterface store = _getStore();
+            collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
+            store.payOracleFeesErc20(address(collateralCurrency), regularFee);
+        }
+
+        if (latePenalty.isGreaterThan(0)) {
+            collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
+        }
+        return totalPaid;
+    }
+
+    /**
+     * @notice Fetch any regular fees that the contract has pending but has not yet paid. If the fees to be paid are more
+     * than the total collateral within the contract then the totalPaid returned is full contract collateral amount.
+     * @dev This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
+     * @return regularFee outstanding unpaid regualr fee.
+     * @return latePenalty outstanding unpaid late fee for being late in previous fee payments.
+     * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
+     */
+    function getOutstandingRegularFees(uint256 time)
+        public
+        view
+        returns (
+            FixedPoint.Unsigned memory regularFee,
+            FixedPoint.Unsigned memory latePenalty,
+            FixedPoint.Unsigned memory totalPaid
+        )
+    {
+        StoreInterface store = _getStore();
+        FixedPoint.Unsigned memory collateralPool = _pfc();
+
+        // Exit early if there is no collateral or if fees were already paid during this block.
+        if (collateralPool.isEqual(0) || lastPaymentTime == time) {
+            return (regularFee, latePenalty, totalPaid);
+        }
+
+        (regularFee, latePenalty) = store.computeRegularFee(lastPaymentTime, time, collateralPool);
 
         totalPaid = regularFee.add(latePenalty);
         if (totalPaid.isEqual(0)) {
-            return totalPaid;
+            return (regularFee, latePenalty, totalPaid);
         }
         // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay
         // as much of the fee that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the
@@ -137,20 +175,6 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
             regularFee = regularFee.sub(FixedPoint.min(regularFee, deficit));
             totalPaid = collateralPool;
         }
-
-        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
-
-        _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
-
-        if (regularFee.isGreaterThan(0)) {
-            collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
-            store.payOracleFeesErc20(address(collateralCurrency), regularFee);
-        }
-
-        if (latePenalty.isGreaterThan(0)) {
-            collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
-        }
-        return totalPaid;
     }
 
     /**
@@ -234,6 +258,23 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         returns (FixedPoint.Unsigned memory collateral)
     {
         return rawCollateral.mul(cumulativeFeeMultiplier);
+    }
+
+    // Returns the user's collateral minus any pending fees that have yet to be subtracted.
+    function _getPendingRegularFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        (, , FixedPoint.Unsigned memory currentTotalOutstandingRegularFees) =
+            getOutstandingRegularFees(getCurrentTime());
+        if (currentTotalOutstandingRegularFees.isEqual(FixedPoint.fromUnscaledUint(0))) return rawCollateral;
+
+        // Calculate the total outstanding regular fee as a fraction of the total contract PFC.
+        FixedPoint.Unsigned memory effectiveOutstandingFee = currentTotalOutstandingRegularFees.divCeil(_pfc());
+
+        // Scale as rawCollateral* (1 - effectiveOutstandingFee) to apply the pro-rata amount to the regular fee.
+        return rawCollateral.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveOutstandingFee));
     }
 
     // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees

@@ -1,4 +1,4 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
@@ -113,7 +113,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          priceFeedIdentifier: utf8ToHex(identifier),
+          priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
