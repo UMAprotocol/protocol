@@ -28,8 +28,8 @@ class PriceFeedMock extends PriceFeedInterface {
       if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
       }
-
-      this.historicalPrices[_price.timestamp] = toBN(_price.price);
+      // allows this to be set to null without throwing.
+      this.historicalPrices[_price.timestamp] = _price.price ? toBN(_price.price) : _price.price;
     });
   }
 
