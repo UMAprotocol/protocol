@@ -1,7 +1,7 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { ConvertDecimals, parseFixed, LiquidationStatesEnum } = require("@uma/common");
+const { ConvertDecimals, LiquidationStatesEnum } = require("@uma/common");
 const Promise = require("bluebird");
 class ExpiringMultiPartyClient {
   /**
@@ -10,6 +10,12 @@ class ExpiringMultiPartyClient {
    * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @param {Number} collateralDecimals Number of decimals within the collateral currency.
+   * @param {Number} syntheticDecimals Number of decimals within the synthetic currency.
+   * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
+   * EMPS this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new EMPs this has been
+   * updated to always use 18 decimals, irrespective of the collateral type for consistency.
+   *
    * @return None or throws an Error.
    */
   constructor(
@@ -46,11 +52,8 @@ class ExpiringMultiPartyClient {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
 
-    const Convert = (decimals = 18) => number => this.toBN(parseFixed(number.toString(), decimals).toString());
-
-    // currently not implemented
-    this.convertSynthetic = Convert(syntheticDecimals);
-    this.convertCollateral = Convert(collateralDecimals);
+    // Converts a number delimited with collateral decimals to a number delimited with synthetic decimals. For example
+    // 100 BTC is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to synthetic decimals.
     this.convertCollateralDecimalsToSyntheticDecimals = ConvertDecimals(
       collateralDecimals,
       syntheticDecimals,
@@ -247,8 +250,8 @@ class ExpiringMultiPartyClient {
       .mul(this.collateralRequirement) // scaled by 10^18
       .gt(
         this.convertCollateralDecimalsToSyntheticDecimals(amountCollateral) // converts arbitrary collateral decimal scale to synthetic decimal scale.
-          .mul(fixedPointAdjustment) // 10^18
-          .mul(priceFeedAdjustment) // 10^trvD
+          .mul(fixedPointAdjustment) // 10^18. Cancels the scaling from the collateralRequirement (always 10^18).
+          .mul(priceFeedAdjustment) // 10^trvD. Cancels ths scaling from the token redemption value (price feed decimals)
       );
   }
 
