@@ -15,7 +15,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const assert = require("assert");
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["nonce", "gasPrice", "prod"]
+  boolean: ["prod"]
 });
 
 // Customizable settings:
@@ -31,18 +31,6 @@ async function propose(callback) {
      *********************************/
     const signingAccount = (await web3.eth.getAccounts())[0];
     console.group(`Proposer account: ${signingAccount}`);
-    const nextNonce = Number(await web3.eth.getTransactionCount(signingAccount));
-    console.log(`- Default next nonce to be used: ${nextNonce}`);
-
-    // Force the user to specify nonce and gas price so that they are less likely to send duplicate proposals,
-    // which would result in unneccessary duplicated Admin votes.
-    if (!argv.nonce || !argv.gasPrice) {
-      throw new Error(`- Specify --gasPrice and --nonce, e.g. --gasPrice 50 --nonce ${nextNonce}`);
-    }
-    const gasPrice = web3.utils.toWei(argv.gasPrice, "gwei");
-    const nonce = argv.nonce;
-    console.log(`- Custom gasPrice (wei): ${gasPrice}`);
-    console.log(`- Custom nonce: ${nonce}`);
     console.groupEnd();
 
     /** *******************************
@@ -76,37 +64,23 @@ async function propose(callback) {
      * Submit the Proposal
      *
      *********************************/
-    const txnConfig = {
-      from: proposerAddress,
-      gasPrice,
-      nonce
-    };
     const proposalTxn = governor.contract.methods.propose([
       {
         to: identifierWhitelist.address,
-        value: 0,
         data: proposedTx
       }
     ]);
-    const estimatedGas = await proposalTxn.estimateGas(txnConfig);
+    const estimatedGas = await proposalTxn.estimateGas({ from: proposerAddress });
     console.log(`Successful simulated execution! Estimated gas: ${estimatedGas}`);
-    console.log("Run this script again with the --prod flag set to send the transaction on mainnet.");
 
     // For security, force the user to explicitly run this in production mode before sending a mainnet transaction.
     if (argv.prod) {
-      await governor.propose(
-        [
-          {
-            to: identifierWhitelist.address,
-            value: 0,
-            data: proposedTx
-          }
-        ],
+      await governor.propose([
         {
-          gasPrice,
-          nonce
+          to: identifierWhitelist.address,
+          data: proposedTx
         }
-      );
+      ]);
 
       console.log(`
     
@@ -116,6 +90,10 @@ async function propose(callback) {
         - ${identifierBytes} (HEX)
     
       `);
+    } else {
+      console.log(
+        "To execute this transaction on Mainnet, run this script with the --prod flag. Be sure that the --gasPrice is set appropriately and that the --nonce would not send out a duplicate admin proposal."
+      );
     }
   } catch (err) {
     callback(err);
