@@ -351,7 +351,6 @@ class Liquidator {
           delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
         });
       } catch (error) {
-        console.log("error", error);
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
