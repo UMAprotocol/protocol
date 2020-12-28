@@ -108,31 +108,30 @@ hub.post("/", async (req, res) => {
     let retriedOutputs = [];
     results.forEach((result, index) => {
       if (result.status == "rejected") {
-        // If it is rejected, the store the name so we can try re-run the spoke call.
+        // If it is rejected, then store the name so we can try re-run the spoke call.
         retriedOutputs.push(Object.keys(configObject)[index]); // Add to retriedOutputs to re-run the call.
         return; // go to next result in the forEach loop.
       }
-      // Process the spoke response. This extracts useful log information and discern if the spoke had errored out.
+      // Process the spoke response. This extracts useful log information and discern if the spoke had generated an error.
       _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
+    // Re-try the rejected outputs in a separate promise.all array.
     if (retriedOutputs.length > 0) {
       logger.debug({
         at: "ServerlessHub",
         message: "One or more spoke calls were rejected - Retrying",
         retriedOutputs
       });
+      let rejectedRetryPromiseArray = [];
+      retriedOutputs.forEach(botName => {
+        rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
+      });
+      const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
+      rejectedRetryResults.forEach((result, index) => {
+        _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
+      });
     }
-    // Re-try the rejected outputs in a separate se
-    let rejectedRetryPromiseArray = [];
-    retriedOutputs.forEach(botName => {
-      rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
-    });
-    const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
-    rejectedRetryResults.forEach((result, index) => {
-      _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
-    });
-
-    // If there ar
+    // If there are any error outputs(from the original loop or from re-tried calls) then throw.
     if (Object.keys(errorOutputs).length > 0) {
       throw { errorOutputs, validOutputs, retriedOutputs };
     }
