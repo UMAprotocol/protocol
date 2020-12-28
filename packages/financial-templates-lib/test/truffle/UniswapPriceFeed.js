@@ -6,10 +6,10 @@ const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
-const ABI_VERSION = "latest";
+const CONTRACT_VERSION = "latest";
 
-const UniswapMock = getTruffleContract("UniswapMock", web3, ABI_VERSION);
-const Uniswap = getTruffleContract("Uniswap", web3, ABI_VERSION);
+const UniswapMock = getTruffleContract("UniswapMock", web3, CONTRACT_VERSION);
+const Uniswap = getTruffleContract("Uniswap", web3, CONTRACT_VERSION);
 
 contract("UniswapPriceFeed.js", function(accounts) {
   const owner = accounts[0];

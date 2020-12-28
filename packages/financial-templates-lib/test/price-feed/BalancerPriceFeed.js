@@ -5,10 +5,10 @@ const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { mineTransactionsAtTime } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
-const ABI_VERSION = "latest";
+const CONTRACT_VERSION = "latest";
 
-const BalancerMock = getTruffleContract("BalancerMock", web3, ABI_VERSION);
-const Balancer = getTruffleContract("Balancer", web3, ABI_VERSION);
+const BalancerMock = getTruffleContract("BalancerMock", web3, CONTRACT_VERSION);
+const Balancer = getTruffleContract("Balancer", web3, CONTRACT_VERSION);
 
 contract("BalancerPriceFeed.js", async function(accounts) {
   const owner = accounts[0];
