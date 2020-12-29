@@ -74,30 +74,29 @@ const defaultConfigs = {
   },
   STABLESPREAD: {
     type: "stablespread",
-    lookback: 7200,
-    minTimeBetweenUpdates: 60,
+    minTimeBetweenUpdates: 120,
     experimentalBasket: [
       {
         label: "USDTUSDT",
         type: "medianizer",
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt", lookback: 7200 },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt", lookback: 7200 }
         ]
       },
       {
         label: "BUSDUSDT",
         type: "medianizer",
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt", lookback: 7200 },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt", lookback: 7200 }
         ]
       },
       {
         label: "CUSDUSDT",
         type: "medianizer",
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt", lookback: 7200 }
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
           // presumably because it has such low volume.
           // { type: "cryptowatch", exchange: "okcoin" }
@@ -115,8 +114,9 @@ const defaultConfigs = {
             // Setting USDC as tokenIn and MUSD as tokenOut, we get the price of MUSD denominated in USDC.
             balancerTokenIn: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC in
             balancerTokenOut: "0xe2f2a5C287993345a840Db3B0845fbC70f5935a5", // MUSD out
-            lookback: 7200,
-            poolDecimals: 6 // Prices are reported from this pool in 6 decimals to match USDC
+            poolDecimals: 6, // Prices are reported from this pool in 6 decimals to match USDC
+            lookback: 7200 // TODO: This look back should be allowed to default to the EMP's liquidation liveness,
+            // but the current lookback is 172800 for this particular EMP which causes the Balancer price feed to timeout.
           }
         ]
       }
