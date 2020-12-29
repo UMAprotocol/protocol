@@ -58,25 +58,23 @@ module.exports = ({ queries, empAbi, web3 }) => {
   ) {
     // for every user with a token balance
     balances.keys().forEach(userid => {
-      // get their stake percent relative to all balances in emp
-      // const balancePercent = balances.getPercent(userid)
+      // get users balance
       const balance = balances.get(userid);
-      // console.log({balancePercent,userid})
       // go through all whitelisted tags
       whitelist.forEach(tag => {
-        if (rewards[tag] == null) rewards[tag] = "0";
+        if (rewards[tag] == null) rewards[tag] = toBN("0");
         // get that tags attribution percent for that user relative to all other affiliates
         const attributionPercent = attributions.calculateShare(userid, tag);
-        // multiply the balance percent and the attribution percent to get final attribution weight
-        // and add it to the rest of the weights.
-        rewards[tag] = (BigInt(rewards[tag]) + BigInt(balance) * BigInt(attributionPercent)).toString();
+        // multiply the balance and the attribution percent to get final attribution weight
+        // and add it to the rest of the weights. This will need to be divided by total balances eventually.
+        rewards[tag] = rewards[tag].add(toBN(balance).mul(toBN(attributionPercent)));
       });
     });
     // normalize balances based on total in all balances. This is done last instead of in the above to
     // reduce precision loss which seems to happen the more divisions there are.
-    const total = BigInt(balances.getTotal());
+    const total = toBN(balances.getTotal());
     return Object.entries(rewards).reduce((result, [key, value]) => {
-      result[key] = (BigInt(value) / total).toString();
+      result[key] = value.div(total).toString();
       return result;
     }, {});
   }
@@ -88,9 +86,9 @@ module.exports = ({ queries, empAbi, web3 }) => {
   // calculates attribution weights for multiple blocks by simply taking last snapshot state and multiplying by
   // the number of blocks elapsed.
   function sumAttributions(attributions, blocksElapsed = 1, sum = SharedAttributions()) {
-    blocksElapsed = BigInt(blocksElapsed);
+    blocksElapsed = toBN(blocksElapsed);
     attributions.forEach((userid, developerid, amount) => {
-      const weighted = BigInt(amount) * blocksElapsed;
+      const weighted = toBN(amount).mul(blocksElapsed);
       sum.attribute(userid, developerid, weighted.toString());
     });
     return sum;
@@ -98,8 +96,9 @@ module.exports = ({ queries, empAbi, web3 }) => {
   // calculates balance weights for multiple blocks by taking last balance snapshot and multplying it by
   // the number of blocks elapsed until next change.
   function sumBalances(balances, blocksElapsed = 1, sum = Balances()) {
+    blocksElapsed = toBN(blocksElapsed);
     balances.forEach((value, userid) => {
-      const weighted = BigInt(value) * BigInt(blocksElapsed);
+      const weighted = toBN(value).mul(blocksElapsed);
       sum.add(userid, weighted.toString());
     });
     return sum;
@@ -194,7 +193,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
     assert(whitelist && whitelist.length, "requires an array of whitelisted payout addresses");
     assert(totalRewards > 0, "requires totalRewards above 0 to be shared across dapps");
 
-    // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
+    // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
     firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
     // Pull external data

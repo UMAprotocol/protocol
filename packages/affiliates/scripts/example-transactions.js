@@ -28,7 +28,6 @@ async function runTest() {
       // but we could easily do any type of scheme with JS filtering
       .map(x => decode(x, x))
       .filter(x => x.name == "create")
-      // .doto(x=>console.log(JSON.stringify(x,undefined,2)))
       .map(x => x.input.slice(inputLength))
       .collect()
       // emit the stream as a promise when the stream ends
@@ -39,5 +38,5 @@ async function runTest() {
 }
 
 runTest()
-  // .then(console.log)
+  .then(console.log)
   .catch(console.log);

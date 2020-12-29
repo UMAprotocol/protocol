@@ -1,17 +1,22 @@
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
-const { DecodeAttribution } = require("./contracts");
+const { DecodeAttribution, isAddress } = require("./contracts");
 
 function EmpAttributions(empAbi, defaultAddress) {
   assert(empAbi, "requires empAbi");
   assert(defaultAddress, "requires defaultAddress");
   // stores complete balances for all events
   const attributions = SharedAttributions();
-  const decoder = DecodeAttribution(empAbi, defaultAddress);
+  const decoder = DecodeAttribution(empAbi);
 
   function handleTransaction(transaction) {
     assert(transaction.name == "create", "Can only handle emp create transactions");
-    const attributionAddress = decoder(transaction);
+    // decoder may return nothing, garbage data, or a hex address without the 0x prepended
+    const tag = "0x" + decoder(transaction);
+    let attributionAddress = defaultAddress;
+    // validate the tag is an address, otherwise fallback to default address
+    // currently we will only accept valid addresses as a tag, this may change in future.
+    if (isAddress(tag)) attributionAddress = tag;
     const user = transaction.from_address;
     const [, tokenAmount] = transaction.args;
     attributions.attribute(user, attributionAddress, tokenAmount.toString());

@@ -24,13 +24,13 @@ describe("EmpAttributions", function() {
     const length = GetInputLength(abi)("create");
     attributions.handleTransaction({
       name: "create",
-      input: web3.utils.randomHex(length / 8) + "developer",
+      input: web3.utils.randomHex(length / 8) + "9a9dcd6b52b45a78cd13b395723c245dabfbab71",
       from_address: "user",
       args: ["1", "1"]
     });
     const result = attributions.attributions.snapshot();
     assert(result.user);
-    assert(result.user["0xdeveloper"]);
+    assert(result.user["0x9a9dcd6b52b45a78cd13b395723c245dabfbab71"]);
   });
 });
 

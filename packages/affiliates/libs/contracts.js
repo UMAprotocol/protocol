@@ -7,6 +7,9 @@ const web3 = new Web3();
 function toChecksumAddress(addr) {
   return web3.utils.toChecksumAddress(addr);
 }
+function isAddress(addr) {
+  return web3.utils.isAddress(addr);
+}
 
 function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
@@ -67,12 +70,14 @@ function GetInputLength(abi) {
   };
 }
 
-const DecodeAttribution = (abi, defaultAddress) => {
+const DecodeAttribution = abi => {
+  // convert bits to hex (div by 4) and add 2 for 0x
   const inputLength = GetInputLength(abi)("create") / 4 + 2;
   return createTransaction => {
     assert(createTransaction.name == "create", "Only decodes create transactions");
-    if (createTransaction.input.length == inputLength) return defaultAddress;
-    return "0x" + createTransaction.input.slice(inputLength);
+    // tagged transactions are assumed to exist when there is more data than the required inputLength
+    // in this case we may return nothing if no tag was added
+    return createTransaction.input.slice(inputLength);
   };
 };
 
@@ -142,5 +147,6 @@ module.exports = {
   Emp,
   Erc20,
   GetInputLength,
-  toChecksumAddress
+  toChecksumAddress,
+  isAddress
 };

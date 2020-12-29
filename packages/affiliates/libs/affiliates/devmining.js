@@ -18,7 +18,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
 
-  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
+  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
   async function getBalanceHistory(empAddress, start, end) {
