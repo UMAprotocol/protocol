@@ -150,7 +150,6 @@ hub.post("/", async (req, res) => {
     // If the errorOutput is an instance of Error then we know that error was produced within the hub. Else, it is from
     // one of the upstream spoke calls. Depending on the kind of error, process the logs differently.
     if (errorOutput instanceof Error) {
-      console.log("errorOutput", errorOutput);
       logger.error({
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
