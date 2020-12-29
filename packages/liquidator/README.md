@@ -3,6 +3,8 @@
 This package contains the UMA Liquidation bot reference implementation. This executable will watch an
 ExpiringMultiParty contract for undercollateralized positions and liquidate them.
 
+For more information about running a liquidator bot, see the [docs](https://docs.umaproject.org/developers/bots).
+
 ## Installing the package
 
 ```bash

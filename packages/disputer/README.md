@@ -3,6 +3,8 @@
 This package contains the UMA Dispute bot reference implementation. This executable will watch an ExpiringMultiParty
 contract for liquidations and dispute any that it deems to be invalid.
 
+For more information about running a dispute bot, see the [docs](https://docs.umaproject.org/developers/bots).
+
 ## Installing the package
 
 ```bash
