@@ -133,10 +133,12 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
+    collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
     constructorParams = {
       ...constructorParams,
-      collateralAddress: collateralToken.address
+      collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(emp.address);
@@ -153,8 +155,8 @@ contract("index.js", function(accounts) {
     });
 
     // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
-    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":8'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
     assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
 

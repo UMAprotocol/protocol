@@ -115,17 +115,20 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Detects price feed decimals from collateral decimals", async function() {
+  it("Detects price feed, collateral and synthetic decimals", async function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
+    // Match the collateral and synthetic tokens and check it correctly allocates the associated decimals.
+    collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
     constructorParams = {
       ...constructorParams,
-      collateralAddress: collateralToken.address
+      collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address
     };
     emp = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(emp.address);
@@ -141,8 +144,10 @@ contract("index.js", function(accounts) {
       priceFeedConfig: defaultPriceFeedConfig
     });
 
-    // First log should include # of decimals
-    assert.isTrue(spyLogIncludes(spy, 0, "8"));
+    // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
 
   it("Allowances are set", async function() {
