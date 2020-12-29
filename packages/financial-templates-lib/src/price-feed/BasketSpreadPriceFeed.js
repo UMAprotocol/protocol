@@ -11,8 +11,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    *      Must be an array of at least one element.
    * @param {List} experimentalPriceFeed The baseline list of priceFeeds to compute the average of. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
-   * @param {Object} denominatorPriceFeed We multiply the price spread between the baseline and experimental baskets by this denominator price
-   *      In order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
+   * @param {Object} denominatorPriceFeed We divide the price spread between the baseline and experimental baskets by this denominator price
+   *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
    *      of ETH-USD.
    */
   constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
@@ -90,9 +90,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         spreadValue = this.toBN(this.toWei("2"));
       }
 
-      // Optionally, multiply by denominator pricefeed.
+      // Optionally, divide by denominator pricefeed.
       if (denominatorPrice) {
-        spreadValue = spreadValue.mul(denominatorPrice).div(this.toBN(this.toWei("1")));
+        spreadValue = spreadValue.mul(this.toBN(this.toWei("1"))).div(denominatorPrice);
       }
 
       return spreadValue;

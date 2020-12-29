@@ -123,9 +123,9 @@ const defaultConfigs = {
     denominator: {
       type: "medianizer",
       medianizedFeeds: [
-        { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd", invertPrice: true },
-        { type: "cryptowatch", exchange: "binance", pair: "ethusdt", invertPrice: true },
-        { type: "cryptowatch", exchange: "kraken", pair: "ethusd", invertPrice: true }
+        { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+        { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+        { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
       ]
     }
   },
