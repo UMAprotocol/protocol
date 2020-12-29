@@ -51,11 +51,11 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     // having to traverse backwards sequentially from the current number to this early number.
     const latestBlock = await getBlock();
     const latestBlockHeight = latestBlock.number;
-    // Add 100 block height buffer just to be safe, and if the result is negative then set it to 0. On a test network it
+    // Add 50 block height buffer just to be safe, and if the result is negative then set it to 0. On a test network it
     // is possible for the `earliestBlockHeight` to be negative.
     const earliestBlockHeight = Math.max(
       0,
-      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - 100
+      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - 50
     );
 
     // Push all getBlock() promises into an array to execute in parallel
@@ -65,8 +65,12 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     }
     const result = await Promise.all(getBlockPromises);
 
-    // Insert all blocks into cache.
-    result.map(_block => insert(_block));
+    // Insert all blocks into cache whose timestamp is equal to or greater than (now-lookback).
+    result.map(_block => {
+      if (_block.timestamp >= now - lookback) {
+        insert(_block);
+      }
+    });
     return result;
   }
 
