@@ -57,7 +57,7 @@ There are a few other helper/utility files that are relevant:
 
 ## Logger
 
-The [Logger](./src/logger) directory contains helpers and factories for logging with winston. To get the default
+The [Logger](./src/logger) directory contains helpers and factories for logging with Winston. To get the default
 logger:
 
 ```js
