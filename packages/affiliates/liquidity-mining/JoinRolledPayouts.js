@@ -29,20 +29,27 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
   const weeklyRewardsRaw = fs.readFileSync(
     `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${week}_Mining_Rewards.json`
   );
-  const weeklyRewards = JSON.parse(weeklyRewardsRaw);
+  let weeklyRewards = JSON.parse(weeklyRewardsRaw);
 
   // Read in the roll rewards. This file contains the rewards calculated over the two pools during the roll.
   const rollRewardsRaw = fs.readFileSync(
     `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/expiring-contract-rolls/Roll_${rollNum}_Mining_Rewards.json`
   );
-  const rollRewards = JSON.parse(rollRewardsRaw);
+  let rollRewards = JSON.parse(rollRewardsRaw);
 
   // Sanity check: for the pool inputs to be valid, the second pool in the roll should be the weekly rewards pool.
   // We are rolling from pool1Address into pool2Address and so we should end up in pool2Address from the weekly rewards.
   // Alternatively, in the split pool case, the first pool should equal the first roll pool and the second pool should
   // equal the second roll pool.
-  if (weeklyRewards.poolAddress && rollRewards.pool2Address != weeklyRewards.poolAddress)
-    throw "The second rolled pool address must equal the incoming weekly rewards pool";
+
+  if (rollRewards.pool1Address != weeklyRewards.poolAddress && rollRewards.pool2Address != weeklyRewards.poolAddress)
+    throw new Error("The weekly rewards pool must either be the first or second pool address from the roll");
+  let rollPool1EqualsWeeklyRewards = false;
+  if (rollRewards.pool1Address == weeklyRewards.poolAddress) {
+    rollPool1EqualsWeeklyRewards = true;
+  }
+
+  // throw "The second rolled pool address must equal the incoming weekly rewards pool";
   else if (
     weeklyRewards.splitPeriodPool1Address &&
     weeklyRewards.splitPeriodPool2Address &&
@@ -50,7 +57,8 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
       rollRewards.pool2Address != weeklyRewards.splitPeriodPool2Address)
   )
     throw "The first pool address in the roll must equal the first pool in the split period and the second pool in the roll must equal the second split period.";
-  const joinedPayouts = _joinPayouts(weeklyRewards, rollRewards);
+  console.log("rollPool1EqualsWeeklyRewards", rollPool1EqualsWeeklyRewards);
+  const joinedPayouts = _joinPayouts(weeklyRewards, rollRewards, rollPool1EqualsWeeklyRewards);
 
   console.log("👉👈 Successfully joined payouts");
 
@@ -61,16 +69,27 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
 
 // Take in a weeklyRewards object and a rollRewards object and return a joined payouts object with summed shareHolderPayout.
 // Appends additional information to the output to, such as the original value for shareHolderPayout for the weekly input.
-function _joinPayouts(weeklyRewards, rollRewards) {
+function _joinPayouts(weeklyRewards, rollRewards, rollPool1EqualsWeeklyRewards) {
   // Take the weeklyRewards data to start with. Cast to back and forth with JSON to create a deep copy.
   let outputData = JSON.parse(JSON.stringify(weeklyRewards));
 
   // Append useful data to the output.
   outputData.poolAddress = [rollRewards.pool1Address, rollRewards.pool2Address];
   outputData.rollNum = rollRewards.rollNum;
-  outputData.endRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
-  outputData.fromBlock = rollRewards.fromBlock; // the starting block num for the overall output is the roll data `from`.
-  // Note that the `outputData.toBlock` is preserved from the weeklyRewards object.
+  outputData.nonOverlapUma = weeklyRewards.umaPerWeek;
+  outputData.OverlapUma = rollRewards.umaPerWeek;
+
+  // If this is the case then the overlap between the two pools happens at the end of the roll.
+  if (rollPool1EqualsWeeklyRewards) {
+    outputData.startRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
+    outputData.fromBlock = weeklyRewards.fromBlock; // the starting block num for the overall output is the roll data `from`.
+    outputData.toBlock = rollRewards.toBlock;
+    // Else, the overlap between the pools happens at the beginning of the roll.
+  } else {
+    outputData.endRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
+    outputData.fromBlock = rollRewards.fromBlock; // the starting block num for the overall output is the roll data `from`.
+    // Note that the `outputData.toBlock` is preserved from the weeklyRewards object.
+  }
   // Store the original weeklyRewards in a key `weeklyShareHolderPayoutBeforeRollJoin` for prosperity.
   outputData.weeklyShareHolderPayoutBeforeRollJoin = JSON.parse(JSON.stringify(weeklyRewards.shareHolderPayout));
   if (weeklyRewards.umaPerWeek) outputData.umaPerWeek = weeklyRewards.umaPerWeek + rollRewards.umaPerWeek;
