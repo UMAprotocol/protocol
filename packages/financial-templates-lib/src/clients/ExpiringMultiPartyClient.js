@@ -15,7 +15,6 @@ class ExpiringMultiPartyClient {
    * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
    * EMPS this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new EMPs this has been
    * updated to always use 18 decimals, irrespective of the collateral type for consistency.
-   *
    * @return None or throws an Error.
    */
   constructor(
@@ -52,16 +51,9 @@ class ExpiringMultiPartyClient {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
 
-    // Converts a number delimited with collateral decimals to a number delimited with synthetic decimals. For example
-    // 100 BTC is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to synthetic decimals.
-    console.log(
-      "collateralDecimals",
-      collateralDecimals,
-      "syntheticDecimals",
-      syntheticDecimals,
-      "priceFeedDecimals",
-      priceFeedDecimals
-    );
+    // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
+    // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
+    // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
     this.normalizeCollateralDecimals = ConvertDecimals(collateralDecimals, 18, this.web3);
     this.normalizeSyntheticDecimals = ConvertDecimals(syntheticDecimals, 18, this.web3);
     this.normalizePriceFeedDecimals = ConvertDecimals(priceFeedDecimals, 18, this.web3);
@@ -248,16 +240,16 @@ class ExpiringMultiPartyClient {
   // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD.
   // To accommodate these different decimal points we can normalize each term to the 10^18 basis and then apply a "correction"
   // factor due to the additional scalling from multiplying basis numbers.
-  _isUnderCollateralized(numTokens, amountCollateral, trv) {
+  _isUnderCollateralized(numTokens, amountCollateral, tokenRedemptionValue) {
     // Normalize the inputs. Now all terms are 18 decimal delimited and no extra conversion is needed.
     const normalizedNumTokens = this.normalizeSyntheticDecimals(numTokens);
     const normalizedAmountCollateral = this.normalizeCollateralDecimals(amountCollateral);
-    const normalizedPrice = this.normalizePriceFeedDecimals(trv);
+    const normalizedTokenRedemptionValue = this.normalizePriceFeedDecimals(tokenRedemptionValue);
 
     const fixedPointAdjustment = this.toBN(this.toWei("1"));
 
     return normalizedNumTokens
-      .mul(normalizedPrice)
+      .mul(normalizedTokenRedemptionValue)
       .mul(this.collateralRequirement)
       .gt(normalizedAmountCollateral.mul(fixedPointAdjustment).mul(fixedPointAdjustment));
   }
