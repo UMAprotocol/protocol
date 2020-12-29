@@ -20,8 +20,6 @@ jobs:
   build:
     docker:
       - image: circleci/node:12
-    environment:
-      FROM_BLOCK: 0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -99,6 +97,8 @@ jobs:
       - image: circleci/node:12
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
+    environment:
+      FROM_BLOCK: 0
     working_directory: ~/protocol
     steps:
       - restore_cache:
