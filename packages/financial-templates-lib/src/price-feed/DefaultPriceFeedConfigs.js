@@ -121,6 +121,24 @@ const defaultConfigs = {
         ]
       }
     ]
+  },
+  "GASETH-TWAP-1Mx1M": {
+    type: "uniswap",
+    uniswapAddress: "0x25fb29D865C1356F9e95D621F21366d3a5DB6BB0",
+    twapLength: 7200,
+    lookback: 7200
+  },
+  "GASETH-FEB21": {
+    type: "uniswap",
+    uniswapAddress: "0x4a8a2ea3718964ed0551a3191c30e49ea38a5ade",
+    twapLength: 7200,
+    lookback: 7200
+  },
+  "GASETH-MAR21": {
+    type: "uniswap",
+    uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
+    twapLength: 7200,
+    lookback: 7200
   }
 };
 
