@@ -197,6 +197,8 @@ workflows:
       - build:
           requires:
             - checkout_and_install
+          environment:
+            FROM_BLOCK: 0
       - lint:
           requires:
             - checkout_and_install
@@ -204,8 +206,6 @@ workflows:
           context: api_keys
           requires:
             - build
-          environment:
-            FROM_BLOCK: 0
       - docs:
           requires:
             - checkout_and_install
