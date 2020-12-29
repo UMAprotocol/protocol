@@ -29,28 +29,23 @@ async function JoinRolledPayouts(week, rollNum, tokenName) {
   const weeklyRewardsRaw = fs.readFileSync(
     `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${week}_Mining_Rewards.json`
   );
-  let weeklyRewards = JSON.parse(weeklyRewardsRaw);
+  const weeklyRewards = JSON.parse(weeklyRewardsRaw);
 
   // Read in the roll rewards. This file contains the rewards calculated over the two pools during the roll.
   const rollRewardsRaw = fs.readFileSync(
     `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/expiring-contract-rolls/Roll_${rollNum}_Mining_Rewards.json`
   );
-  let rollRewards = JSON.parse(rollRewardsRaw);
+  const rollRewards = JSON.parse(rollRewardsRaw);
 
-  // Sanity check: for the pool inputs to be valid, the second pool in the roll should be the weekly rewards pool.
-  // We are rolling from pool1Address into pool2Address and so we should end up in pool2Address from the weekly rewards.
-  // Alternatively, in the split pool case, the first pool should equal the first roll pool and the second pool should
-  // equal the second roll pool.
-
+  // Sanity check: for the pool inputs to be valid, either the first rolled pool should equal the weekly rewards pool OR
+  // the second rolled pool should equal the weekly rewards pool. If this does not match up then something has gone wrong.
   if (rollRewards.pool1Address != weeklyRewards.poolAddress && rollRewards.pool2Address != weeklyRewards.poolAddress)
     throw new Error("The weekly rewards pool must either be the first or second pool address from the roll");
+  // we need to know the order of the rolled pools to inform the payout object later.
   let rollPool1EqualsWeeklyRewards = false;
   if (rollRewards.pool1Address == weeklyRewards.poolAddress) {
     rollPool1EqualsWeeklyRewards = true;
-  }
-
-  // throw "The second rolled pool address must equal the incoming weekly rewards pool";
-  else if (
+  } else if (
     weeklyRewards.splitPeriodPool1Address &&
     weeklyRewards.splitPeriodPool2Address &&
     (rollRewards.pool1Address != weeklyRewards.splitPeriodPool1Address ||
