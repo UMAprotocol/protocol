@@ -7,7 +7,7 @@
 // @dev: This script will have the side effect of making the Governor contract the owner of the IdentifierWhitelist.
 
 // Example execution command (from packages/core):
-// - yarn truffle exec ./scripts/local/ProposeAdmin.js --network mainnet_gckms --keys deployer --gasPrice 55 --nonce 305
+// - yarn truffle exec ./packages/core/scripts/mainnet/ProposeAdmin.js --network mainnet_gckms --keys deployer
 // Note: the above command will simulate sending the mainnet proposal transaction, run it again with the "--prod" flag
 // to actually send the transaction on mainnet.
 
@@ -20,7 +20,7 @@ const argv = require("minimist")(process.argv.slice(), {
 
 // Customizable settings:
 // - Identifier UTF8 to add to whitelist
-const IDENTIFIER_TO_WHITELIST_UTF8 = "CHANGE-ME";
+const IDENTIFIER_TO_WHITELIST_UTF8 = "CHANGEME";
 
 async function propose(callback) {
   try {
@@ -31,6 +31,9 @@ async function propose(callback) {
      *********************************/
     const signingAccount = (await web3.eth.getAccounts())[0];
     console.group(`Proposer account: ${signingAccount}`);
+    if (signingAccount !== "0x2bAaA41d155ad8a4126184950B31F50A1513cE25") {
+      throw new Error("Cannot propose admin votes from this account");
+    }
     console.groupEnd();
 
     /** *******************************
@@ -67,6 +70,7 @@ async function propose(callback) {
     const proposalTxn = governor.contract.methods.propose([
       {
         to: identifierWhitelist.address,
+        value: 0,
         data: proposedTx
       }
     ]);
@@ -75,12 +79,20 @@ async function propose(callback) {
 
     // For security, force the user to explicitly run this in production mode before sending a mainnet transaction.
     if (argv.prod) {
-      await governor.propose([
-        {
-          to: identifierWhitelist.address,
-          data: proposedTx
-        }
-      ]);
+      await governor
+        .propose([
+          {
+            to: identifierWhitelist.address,
+            data: proposedTx
+          }
+        ])
+        .on("transactionHash", function(hash) {
+          console.log(`- Pending transaction hash: ${hash}`);
+        })
+        .on("receipt", function(receipt) {
+          console.log("- Successfully sent:", receipt);
+        })
+        .on("error", console.error);
 
       console.log(`
     
