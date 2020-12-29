@@ -24,7 +24,7 @@ async function cancelPendingTransaction(callback) {
     const nonce = argv.nonce ? argv.nonce : transactionCount;
 
     if (!argv.gasPrice) {
-      throw new Error("Please specify a --gasPrice (denominated in gWe), for example: --gasPrice 150");
+      throw new Error("Please specify a --gasPrice (denominated in gwei), for example: --gasPrice 150");
     }
     const gasPrice = web3.utils.toWei(argv.gasPrice, "gwei");
     const txnConfig = {
