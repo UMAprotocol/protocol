@@ -100,6 +100,12 @@ one package, you can run:
 yarn workspace <package_name> test
 ```
 
+If you are testing the ExpiringMultiPartyClient, you will need to set an environment variable so that the test will work with Ganache.
+
+```
+export FROM_BLOCK=0
+```
+
 ### Running the linter 🧽
 
 To run the linter in autofix mode (it will attempt to fix any errors it finds), run:
