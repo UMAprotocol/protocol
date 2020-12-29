@@ -111,7 +111,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceDecimals
     );
   } else if (config.type === "stablespread") {
-    const requiredFields = ["baselineBasket", "experimentalBasket"];
+    const requiredFields = ["baselineBasket", "experimentalBasket", "denominator"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -125,8 +125,9 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     const experimentalBasket = await _createBasketOfMedianizerPriceFeeds(config.experimentalBasket);
     const baselineBasket = await _createBasketOfMedianizerPriceFeeds(config.baselineBasket);
+    const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominator);
 
-    return new BasketSpreadPriceFeed(web3, logger, baselineBasket, experimentalBasket);
+    return new BasketSpreadPriceFeed(web3, logger, baselineBasket, experimentalBasket, denominatorPriceFeed);
   }
 
   logger.error({
@@ -151,6 +152,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       // Remove basket structs from config as they are irrelevant to each individual Medianizer config.
       delete combinedConfig.baselineBasket;
       delete combinedConfig.experimentalBasket;
+      delete combinedConfig.denominator;
 
       const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 

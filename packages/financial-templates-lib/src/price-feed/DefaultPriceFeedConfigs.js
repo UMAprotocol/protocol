@@ -119,7 +119,15 @@ const defaultConfigs = {
           }
         ]
       }
-    ]
+    ],
+    denominator: {
+      type: "medianizer",
+      medianizedFeeds: [
+        { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd", invertPrice: true },
+        { type: "cryptowatch", exchange: "binance", pair: "ethusdt", invertPrice: true },
+        { type: "cryptowatch", exchange: "kraken", pair: "ethusd", invertPrice: true }
+      ]
+    }
   },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",

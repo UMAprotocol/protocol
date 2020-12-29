@@ -11,8 +11,11 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    *      Must be an array of at least one element.
    * @param {List} experimentalPriceFeed The baseline list of priceFeeds to compute the average of. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
+   * @param {Object} denominatorPriceFeed We multiply the price spread between the baseline and experimental baskets by this denominator price
+   *      In order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
+   *      of ETH-USD.
    */
-  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds) {
+  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
     super();
 
     if (baselinePriceFeeds.length === 0 || experimentalPriceFeeds.length === 0) {
@@ -21,6 +24,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
     this.baselinePriceFeeds = baselinePriceFeeds;
     this.experimentalPriceFeeds = experimentalPriceFeeds;
+    this.denominatorPriceFeed = denominatorPriceFeed;
 
     // Helper modules.
     this.web3 = web3;
@@ -61,20 +65,37 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       mean: baselineMean.toString()
     });
 
+    // If denominator price feed exists, get its price.
+    const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+    this.logger.debug({
+      at: "BasketSpreadPriceFeed",
+      message: "Denominator price",
+      denominatorPrice: denominatorPrice.toString()
+    });
+
     if (baselineMean && experimentalMean) {
-      const spreadValue = experimentalMean.sub(baselineMean).add(this.toBN(this.toWei("1")));
+      let spreadValue = experimentalMean.sub(baselineMean).add(this.toBN(this.toWei("1")));
+      this.logger.debug({
+        at: "BasketSpreadPriceFeed",
+        message: "Basket spread value",
+        spreadValue: spreadValue.toString()
+      });
 
       // Ensure non-negativity
       if (spreadValue.lt(this.toBN("0"))) {
-        return this.toBN("0");
+        spreadValue = this.toBN("0");
       }
       // Ensure symmetry
       else if (spreadValue.gt(this.toBN(this.toWei("2")))) {
-        return this.toBN(this.toWei("2"));
-      } else {
-        // TODO: Divide value by USDETH
-        return spreadValue;
+        spreadValue = this.toBN(this.toWei("2"));
       }
+
+      // Optionally, multiply by denominator pricefeed.
+      if (denominatorPrice) {
+        spreadValue = spreadValue.mul(denominatorPrice).div(this.toBN(this.toWei("1")));
+      }
+
+      return spreadValue;
     } else {
       // Something went wrong in the _computeMean step
       return null;
@@ -108,6 +129,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       this.baselinePriceFeeds
         .map(priceFeed => priceFeed.update())
         .concat(this.experimentalPriceFeeds.map(priceFeed => priceFeed.update()))
+        .concat(this.denominatorPriceFeed.update())
     );
   }
 
