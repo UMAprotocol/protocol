@@ -54,11 +54,17 @@ class ExpiringMultiPartyClient {
 
     // Converts a number delimited with collateral decimals to a number delimited with synthetic decimals. For example
     // 100 BTC is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to synthetic decimals.
-    this.convertCollateralDecimalsToSyntheticDecimals = ConvertDecimals(
+    console.log(
+      "collateralDecimals",
       collateralDecimals,
+      "syntheticDecimals",
       syntheticDecimals,
-      this.web3
+      "priceFeedDecimals",
+      priceFeedDecimals
     );
+    this.normalizeCollateralDecimals = ConvertDecimals(collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(syntheticDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(priceFeedDecimals, 18, this.web3);
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -239,20 +245,21 @@ class ExpiringMultiPartyClient {
   // This equation assumes the decimal points across the inputs are normalized to the same basis. However, this wont always
   // be the case and so we need to consider arbitrary decimals coming into the equation. When considering decimals of
   // each variable within the as collateral (cD), synthetic (sD), CR (1e18), trv (trvD) this equation becomes:
-  // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD * (10^sD / 10^cD) * 10^18 * 10^trvD
-  // Using this we can normalize the scale across the equation to one basis, irrespective of the input decimals.
+  // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD.
+  // To accommodate these different decimal points we can normalize each term to the 10^18 basis and then apply a "correction"
+  // factor due to the additional scalling from multiplying basis numbers.
   _isUnderCollateralized(numTokens, amountCollateral, trv) {
-    const fixedPointAdjustment = this.toBN(this.toWei("1"));
-    const priceFeedAdjustment = this.toBN(this.toBN("10").pow(this.toBN(this.priceFeedDecimals.toString())));
+    // Normalize the inputs. Now all terms are 18 decimal delimited and no extra conversion is needed.
+    const normalizedNumTokens = this.normalizeSyntheticDecimals(numTokens);
+    const normalizedAmountCollateral = this.normalizeCollateralDecimals(amountCollateral);
+    const normalizedPrice = this.normalizePriceFeedDecimals(trv);
 
-    return this.toBN(numTokens) // scaled by 10^sD
-      .mul(this.toBN(trv)) // scaled by 10^trvD
-      .mul(this.collateralRequirement) // scaled by 10^18
-      .gt(
-        this.convertCollateralDecimalsToSyntheticDecimals(amountCollateral) // converts arbitrary collateral decimal scale to synthetic decimal scale.
-          .mul(fixedPointAdjustment) // 10^18. Cancels the scaling from the collateralRequirement (always 10^18).
-          .mul(priceFeedAdjustment) // 10^trvD. Cancels ths scaling from the token redemption value (price feed decimals)
-      );
+    const fixedPointAdjustment = this.toBN(this.toWei("1"));
+
+    return normalizedNumTokens
+      .mul(normalizedPrice)
+      .mul(this.collateralRequirement)
+      .gt(normalizedAmountCollateral.mul(fixedPointAdjustment).mul(fixedPointAdjustment));
   }
 
   _isExpired(liquidation, currentTime) {
