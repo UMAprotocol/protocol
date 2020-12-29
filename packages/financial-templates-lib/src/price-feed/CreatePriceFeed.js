@@ -4,6 +4,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 
 const Uniswap = require("@uma/core/build/contracts/Uniswap.json");
@@ -124,7 +125,109 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.balancerAddress,
       config.balancerTokenIn,
       config.balancerTokenOut,
-      config.lookback
+      config.lookback,
+      config.poolDecimals,
+      config.priceDecimals
+    );
+  } else if (config.type === "stablespread") {
+    // This constructs a StablespreadPriceFeed in 3 steps:
+    // 1) Create a MedianizedPriceFeed for each stablecoin in the non Ethereum stablecoin basket.
+    // 2) Create a BalancerPriceFeed for MUSD, representing the Ethereum stablecoin basket.
+    // 3) Create a StablespreadPriceFeed that computes the spread between the average of the non Ethereum and Ethereum baskets.
+    const requiredFields = [];
+
+    // We're going to make an assumptions about the 3 stablecoins that constitute the "non Ethereum stablecoin" basket:
+    // UST (TerraUSD), BUSD (Binance dollar), and CUSD (Celo dollar).
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+    // Maps each basket stablecoin to the pricefeeds that should be averaged. Note that these are "averaged" because
+    // there should be at most two pricefeeds for each stablecoin, and the Medianizer computes an average when the
+    // pricefeed count is an even number.
+    const nonEthereumStablecoinBasketMedianizedFeedConfigs = [
+      {
+        label: "USDTUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+        ]
+      },
+      {
+        label: "BUSDUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+        ]
+      },
+      {
+        label: "CUSDUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ];
+    const musdPriceFeedConfig = {
+      label: "MUSDUSDC",
+      type: "balancer",
+      balancerAddress: "0x72cd8f4504941bf8c5a21d1fd83a96499fd71d2c",
+      // Setting USDC as tokenIn and MUSD as tokenOut, we get the price of MUSD denominated in USDC.
+      balancerTokenIn: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC in
+      balancerTokenOut: "0xe2f2a5C287993345a840Db3B0845fbC70f5935a5", // MUSD out
+      lookback: 7200,
+      poolDecimals: 6 // Prices are reported from the Balancer contracts in 6 decimals
+    };
+
+    // Create basket of non Ethereum stablecoin MedianizedPriceFeeds
+    const allNonEthereumStablecoinMedianizedPriceFeeds = [];
+    for (const nonEthereumStablecoin of nonEthereumStablecoinBasketMedianizedFeedConfigs) {
+      const priceFeeds = [];
+      for (const medianizedFeedConfig of nonEthereumStablecoin.medianizedFeeds) {
+        // The medianized feeds should inherit config options from the parent config if it doesn't define those values
+        // itself.
+        // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
+        // on the nested config.
+        const combinedConfig = { ...config, type: undefined, ...medianizedFeedConfig };
+
+        const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
+
+        if (priceFeed === null) {
+          // If one of the nested feeds errored and returned null, just return null up the stack.
+          // Note: no need to log an error since the nested feed construction should have thrown it.
+          return null;
+        }
+
+        priceFeeds.push(priceFeed);
+      }
+
+      logger.debug({
+        at: "createPriceFeed",
+        message: "Creating MedianizedPriceFeed",
+        config
+      });
+      const nonEthereumStablecoinBasketPriceFeed = new MedianizerPriceFeed(priceFeeds);
+      allNonEthereumStablecoinMedianizedPriceFeeds.push(nonEthereumStablecoinBasketPriceFeed);
+    }
+
+    // Create basket of Ethereum stablecoin MedianizedPriceFeeds
+    const allEthereumStablecoinMedianizedPriceFeeds = [];
+    const musdPriceFeed = await createPriceFeed(logger, web3, networker, getTime, {
+      ...config,
+      type: undefined,
+      ...musdPriceFeedConfig
+    });
+    allEthereumStablecoinMedianizedPriceFeeds.push(musdPriceFeed);
+
+    return new BasketSpreadPriceFeed(
+      web3,
+      logger,
+      allEthereumStablecoinMedianizedPriceFeeds,
+      allNonEthereumStablecoinMedianizedPriceFeeds
     );
   }
 

@@ -1,5 +1,6 @@
 const lodash = require("lodash");
 const assert = require("assert");
+const { averageBlockTimeSeconds } = require("@uma/common");
 
 // Downloads blocks and caches them for certain time into the past.
 // Allows some in memory searches to go from timestamp to block number.
@@ -40,32 +41,33 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     return blocks[index - 1];
   }
 
-  // Call to update cache with blocks between sometime in the past from a block number
-  async function fetchBetween(endTime, blockNumber) {
-    if (blockNumber < 0) return blocks;
-    // Block number is optional, if not specified will default to latest block number.
-    const block = await getBlock(blockNumber);
-    assert(block, "Provider returned empty block");
-    if (block.timestamp < endTime) return blocks;
-    blockNumber = block.number;
-    if (has(blockNumber)) return fetchBetween(endTime, blockNumber - 1);
-    insert(block);
-    return fetchBetween(endTime, blockNumber - 1);
-  }
-
   // Main call to update cache, will take care of fetching all blocks, caching and pruning cache.
-  async function update(age, now, startBlock) {
-    assert(age >= 0, "requires age in seconds");
+  async function update(lookback, now) {
+    assert(lookback >= 0, "requires lookback in seconds");
     assert(now >= 0, "requires current time");
-    const endTime = now - age;
-    pruneByTimestamp(age);
-    const result = fetchBetween(endTime, startBlock);
-    return result;
-  }
 
-  // Removes blocks from cache which are older than age
-  function pruneByTimestamp(age) {
-    blocks = blocks.filter(block => block.timestamp > age);
+    // Note, we make an informed approximation about the block height that corresponds to the earliest timestamp,
+    // this allows us to query all block heights from this early number to the current number in parallel, instead of
+    // having to traverse backwards sequentially from the current number to this early number.
+    const latestBlock = await getBlock();
+    const latestBlockHeight = latestBlock.number;
+    // Add 100 block height buffer just to be safe, and if the result is negative then set it to 0. On a test network it
+    // is possible for the `earliestBlockHeight` to be negative.
+    const earliestBlockHeight = Math.max(
+      0,
+      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - 100
+    );
+
+    // Push all getBlock() promises into an array to execute in parallel
+    const getBlockPromises = [];
+    for (let i = earliestBlockHeight; i <= latestBlockHeight; i++) {
+      getBlockPromises.push(getBlock(i));
+    }
+    const result = await Promise.all(getBlockPromises);
+
+    // Insert all blocks into cache.
+    result.map(_block => insert(_block));
+    return result;
   }
 
   // Return all blocks in cache
@@ -81,8 +83,6 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     // Private, but can use as needed
     has,
     insert,
-    fetchBetween,
-    pruneByTimestamp,
     listBlocks,
     latest
   };

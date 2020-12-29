@@ -71,6 +71,11 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
       { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
     ]
+  },
+  STABLESPREAD: {
+    type: "stablespread",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60
   }
 };
 

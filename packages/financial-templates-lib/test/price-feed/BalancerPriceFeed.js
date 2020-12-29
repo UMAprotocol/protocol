@@ -51,15 +51,43 @@ contract("BalancerPriceFeed.js", async function(accounts) {
 
   it("Basic current price", async function() {
     // last price is basically the last premine block index
-    assert.equal(balancerPriceFeed.getCurrentPrice(), (premine - 1).toString());
+    assert.equal(balancerPriceFeed.getCurrentPrice().toString(), (premine - 1).toString());
     assert.equal(balancerPriceFeed.getLastUpdateTime(), endTime);
   });
   it("historical price", async function() {
-    // going to try all block times from start to end and times in between
+    // going to try all block times from start to end and times in between.
     for (let time = startTime; time <= endTime; time += blockTime) {
       const price = Math.floor((time - startTime) / blockTime);
-      assert.equal(balancerPriceFeed.getHistoricalPrice(time), price);
+      assert.equal(balancerPriceFeed.getHistoricalPrice(time).toString(), price);
     }
+  });
+  describe("Balancer pool returns a non 18 decimal pool price", function() {
+    before(async function() {
+      // Here we specify that pool is returning a 6 decimal precision price, so the BalancerPriceFeed
+      // should scale up the price by 12 decimal points.
+      balancerPriceFeed = new BalancerPriceFeed(
+        dummyLogger,
+        web3,
+        () => endTime,
+        Balancer.abi,
+        balancerMock.address,
+        // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+        accounts[1],
+        accounts[2],
+        lookback,
+        6
+      );
+      await balancerPriceFeed.update();
+    });
+    it("Current price", async function() {
+      assert.equal(balancerPriceFeed.getCurrentPrice().toString(), ((premine - 1) * 10 ** 12).toString());
+    });
+    it("Historical prices", async function() {
+      for (let time = startTime; time <= endTime; time += blockTime) {
+        const price = Math.floor((time - startTime) / blockTime);
+        assert.equal(balancerPriceFeed.getHistoricalPrice(time).toString(), price * 10 ** 12);
+      }
+    });
   });
   it("update", async function() {
     // should not throw

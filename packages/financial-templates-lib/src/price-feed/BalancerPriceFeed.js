@@ -1,10 +1,13 @@
 const assert = require("assert");
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { BlockHistory, PriceHistory } = require("./utils");
+const { parseFixed } = require("@ethersproject/bignumber");
 
-// Gets balancer prices as well as historical prices
+// Gets balancer spot and historical prices. This price feed assumes that it is returning
+// prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
+// if the user specifies that the Balancer contract is returning non-18 decimal precision prices.
 class BalancerPriceFeed extends PriceFeedInterface {
-  constructor(logger, web3, getTime, abi, address, tokenIn, tokenOut, lookback) {
+  constructor(logger, web3, getTime, abi, address, tokenIn, tokenOut, lookback, poolDecimals = 18) {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
     assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
@@ -27,8 +30,26 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // Add a callback to get price, error can be thrown from web3 disconection or maybe something else
     // which affects the update call.
     this.priceHistory = PriceHistory(async number => {
-      return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
+      try {
+        return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
+      } catch (err) {
+        // If query failed, skip;
+        return null;
+      }
     });
+
+    // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
+    this.poolPrecision = poolDecimals;
+    // pricePrecision represents the # of decimals that we want this PriceFeed tp return prices in.
+    this.pricePrecision = 18;
+    // Convert _bn precision from poolDecimals to 18 decimals
+    this.convertDecimals = _bn => {
+      if (poolDecimals !== this.pricePrecision) {
+        return _bn.mul(this.toBN(parseFixed("1", this.pricePrecision - this.poolPrecision).toString()));
+      } else {
+        return _bn;
+      }
+    };
   }
   getHistoricalPrice(time) {
     // We want the block and price equal to or before this time
@@ -37,17 +58,22 @@ class BalancerPriceFeed extends PriceFeedInterface {
     if (!this.priceHistory.has(block.timestamp)) {
       return null;
     }
-    return this.priceHistory.get(block.timestamp);
+    return this.convertDecimals(this.priceHistory.get(block.timestamp));
   }
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
   getCurrentPrice() {
     // current price can be undefined, will throw for any other errors
-    return this.priceHistory.currentPrice();
+    return this.convertDecimals(this.priceHistory.currentPrice());
   }
   async update() {
     this.lastUpdateTime = await this.getTime();
+    this.logger.debug({
+      at: "BalancerPriceFeed",
+      message: "Updating",
+      lastUpdateTimestamp: this.lastUpdateTime
+    });
     let blocks = [];
     // disabled lookback by setting it to 0
     if (this.lookback == 0) {
