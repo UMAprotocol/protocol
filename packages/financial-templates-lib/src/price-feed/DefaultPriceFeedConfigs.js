@@ -75,7 +75,52 @@ const defaultConfigs = {
   STABLESPREAD: {
     type: "stablespread",
     lookback: 7200,
-    minTimeBetweenUpdates: 60
+    minTimeBetweenUpdates: 60,
+    experimentalBasket: [
+      {
+        label: "USDTUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+        ]
+      },
+      {
+        label: "BUSDUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+        ]
+      },
+      {
+        label: "CUSDUSDT",
+        type: "medianizer",
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselineBasket: [
+      {
+        label: "MUSDUSDC",
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "balancer",
+            balancerAddress: "0x72cd8f4504941bf8c5a21d1fd83a96499fd71d2c",
+            // Setting USDC as tokenIn and MUSD as tokenOut, we get the price of MUSD denominated in USDC.
+            balancerTokenIn: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC in
+            balancerTokenOut: "0xe2f2a5C287993345a840Db3B0845fbC70f5935a5", // MUSD out
+            lookback: 7200,
+            poolDecimals: 6 // Prices are reported from this pool in 6 decimals to match USDC
+          }
+        ]
+      }
+    ]
   }
 };
 
