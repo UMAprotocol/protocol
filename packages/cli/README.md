@@ -1,4 +1,4 @@
-# UMA CLI Tool
+# @uma/cli
 
 This package contains the UMA CLI tool. This tool works, but is deprecated, so its use is discouraged. It can be useful
 for certain tasks, like viewing governance/admin proposals, but it is usually preferred to use tools.umaproject.org or
