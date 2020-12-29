@@ -20,6 +20,8 @@ jobs:
   build:
     docker:
       - image: circleci/node:12
+    environment:
+      FROM_BLOCK: 0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -197,8 +199,6 @@ workflows:
       - build:
           requires:
             - checkout_and_install
-          environment:
-            FROM_BLOCK: 0
       - lint:
           requires:
             - checkout_and_install
