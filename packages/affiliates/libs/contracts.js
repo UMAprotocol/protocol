@@ -1,11 +1,11 @@
 const ethers = require("ethers");
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
-const Web3 = require('web3')
-const web3 = new Web3()
+const Web3 = require("web3");
+const web3 = new Web3();
 
-function toChecksumAddress(addr){
-  return web3.utils.toChecksumAddress(addr)
+function toChecksumAddress(addr) {
+  return web3.utils.toChecksumAddress(addr);
 }
 
 function DecodeLog(abi, meta = {}) {
@@ -67,14 +67,14 @@ function GetInputLength(abi) {
   };
 }
 
-const DecodeAttribution = (abi,defaultAddress) => {
-  const inputLength = GetInputLength(abi)('create') / 4 + 2
+const DecodeAttribution = (abi, defaultAddress) => {
+  const inputLength = GetInputLength(abi)("create") / 4 + 2;
   return createTransaction => {
-    assert(createTransaction.name == 'create','Only decodes create transactions')
-    if(createTransaction.input.length == inputLength) return defaultAddress
-    return '0x' + createTransaction.input.slice(inputLength)
-  }
-}
+    assert(createTransaction.name == "create", "Only decodes create transactions");
+    if (createTransaction.input.length == inputLength) return defaultAddress;
+    return "0x" + createTransaction.input.slice(inputLength);
+  };
+};
 
 // Just wraps abi to pass through to contract Lookup by erc20 address
 function Erc20({ abi = getAbi("ERC20"), web3 }) {
@@ -142,5 +142,5 @@ module.exports = {
   Emp,
   Erc20,
   GetInputLength,
-  toChecksumAddress,
+  toChecksumAddress
 };

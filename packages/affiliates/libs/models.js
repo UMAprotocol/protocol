@@ -44,22 +44,22 @@ function Prices(prices = []) {
 function SharedAttributions({ scale = 10n ** 18n } = {}) {
   const addresses = new Map();
   function create(user) {
-    user = user.toLowerCase()
+    user = user.toLowerCase();
     assert(!addresses.has(user), "Already has user");
     return set(user, {});
   }
   function get(user) {
-    user = user.toLowerCase()
+    user = user.toLowerCase();
     assert(addresses.has(user), "User does not exist");
     return addresses.get(user);
   }
   function getOrCreate(user) {
-    user = user.toLowerCase()
+    user = user.toLowerCase();
     if (addresses.has(user)) return get(user);
     return create(user);
   }
   function set(user, data) {
-    user = user.toLowerCase()
+    user = user.toLowerCase();
     addresses.set(user, data);
     return data;
   }
@@ -74,7 +74,7 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
   }
   function calculateShare(user, affiliate) {
     const data = getOrCreate(user);
-    if (data[affiliate] == null) return '0';
+    if (data[affiliate] == null) return "0";
     const sum = Object.values(data).reduce((sum, val) => {
       return sum + BigInt(val);
     }, 0n);
@@ -104,12 +104,12 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     }, {});
   }
 
-  function forEach(cb){
-    addresses.forEach((affiliates,userid)=>{
-      Object.entries(affiliates,([affiliateid,amount])=>{
-        cb(userid,affiliateid,amount)
-      })
-    })
+  function forEach(cb) {
+    addresses.forEach((affiliates, userid) => {
+      Object.entries(affiliates).forEach(([affiliateid, amount]) => {
+        cb(userid, affiliateid, amount);
+      });
+    });
   }
 
   return {
@@ -121,27 +121,28 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     calculateShare,
     snapshot,
     addresses,
+    forEach
   };
 }
 
 // Table of address balances. Option to allow negative balances.
 function Balances({ allowNegative = false } = {}) {
-  let total = 0n
+  let total = 0n;
   const balances = new Map();
-  function keys(){
-    return [...balances.keys()]
+  function keys() {
+    return [...balances.keys()];
   }
   function create(addr) {
-    addr = addr.toLowerCase()
+    addr = addr.toLowerCase();
     assert(!balances.has(addr), "Already has addr");
     return set(addr, "0");
   }
   function has(addr) {
-    addr = addr.toLowerCase()
+    addr = addr.toLowerCase();
     return balances.has(addr);
   }
   function get(addr) {
-    addr = addr.toLowerCase()
+    addr = addr.toLowerCase();
     assert(balances.has(addr), "addr does not exist");
     return balances.get(addr);
   }
@@ -153,7 +154,7 @@ function Balances({ allowNegative = false } = {}) {
     if (!allowNegative) {
       assert(balance >= 0n, "balance must be >= 0: " + balance + " for " + addr);
     }
-    addr = addr.toLowerCase()
+    addr = addr.toLowerCase();
     balances.set(addr, balance);
     return balance;
   }
@@ -162,16 +163,16 @@ function Balances({ allowNegative = false } = {}) {
     assert(amount >= 0n, "amount must be >= 0: " + amount);
     const balance = getOrCreate(addr);
     const result = set(addr, (BigInt(balance) + BigInt(amount)).toString());
-    total = total + BigInt(amount)
-    return result
+    total = total + BigInt(amount);
+    return result;
   }
   function sub(addr, amount) {
     amount = BigInt(amount);
     assert(amount >= 0n, "amount must be >= 0: " + amount);
     const balance = getOrCreate(addr);
     const result = set(addr, (BigInt(balance) - BigInt(amount)).toString());
-    total = total - BigInt(amount)
-    return result
+    total = total - BigInt(amount);
+    return result;
   }
   function snapshot() {
     return [...balances.entries()].reduce((result, [key, value]) => {
@@ -179,16 +180,16 @@ function Balances({ allowNegative = false } = {}) {
       return result;
     }, {});
   }
-  function getTotal(){
-    return total.toString()
+  function getTotal() {
+    return total.toString();
   }
-  function getPercent(userid,scale = 10n**18n){
-    const balance = getOrCreate(userid)
-    return (BigInt(balance) * scale / total).toString()
+  function getPercent(userid, scale = 10n ** 18n) {
+    const balance = getOrCreate(userid);
+    return ((BigInt(balance) * scale) / total).toString();
   }
 
-  function forEach(cb){
-    balances.forEach(cb)
+  function forEach(cb) {
+    balances.forEach(cb);
   }
 
   return {
@@ -204,6 +205,7 @@ function Balances({ allowNegative = false } = {}) {
     getTotal,
     getPercent,
     forEach,
+    balances
   };
 }
 

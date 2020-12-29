@@ -1,37 +1,21 @@
-const { DeployerRewards } = require("../../libs/affiliates");
-const lodash = require("lodash");
-const { assert } = require("chai");
-const { getAbi } = require("@uma/core");
-const { Prices } = require("../../libs/models");
-// Dataset based mocks that know how to load data from files. This is not the same as the libs/mocks file.
-const { mocks } = require("../../libs/datasets");
 const Path = require("path");
+const assert = require("assert");
 
-const empAbi = getAbi("ExpiringMultiParty");
-const empCreatorAbi = getAbi("ExpiringMultiPartyCreator");
-
-const { EmpBalancesHistory } = require("../../libs/processors");
-
-const datasetPath = Path.join(__dirname, "../datasets/set1");
-const params = require(Path.join(datasetPath, "/config.json"));
-
+const { DappMining } = require("../../libs/affiliates");
 const { getWeb3 } = require("@uma/common");
+const { getAbi } = require("@uma/core");
+const { mocks } = require("../../libs/datasets");
+const { Queries } = mocks;
+
 const web3 = getWeb3();
-const { toWei } = web3.utils;
+const empAbi = getAbi("ExpiringMultiParty");
+const datasetPath = Path.join(__dirname, "../datasets/set1");
 
-const {
-  empCreator,
-  empContracts,
-  collateralTokens,
-  collateralTokenDecimals,
-  syntheticTokenDecimals,
-  startingTimestamp,
-  endingTimestamp
-} = params;
-const devRewardsToDistribute = "50000";
-// mocks
-const { Queries, Coingecko, SynthPrices } = mocks;
-
-describe("AttributionRewards", function() {
-})
-
+describe("DappMining", function() {
+  it("should instanciate", function() {
+    const queries = Queries(datasetPath);
+    const result = DappMining({ queries, empAbi, web3 });
+    assert(result);
+  });
+  // TODO: add more tests and appropriate dataset
+});
