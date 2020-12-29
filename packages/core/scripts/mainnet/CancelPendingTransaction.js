@@ -20,8 +20,8 @@ async function cancelPendingTransaction(callback) {
     console.group(`Signing account: ${signingAccount}`);
     // By default, try to cancel the latest nonce.
     const transactionCount = await web3.eth.getTransactionCount(signingAccount);
-    console.log(`- Next nonce to be used: ${transactionCount + 1}`);
-    const nonce = argv.nonce ? argv.nonce : transactionCount + 1;
+    console.log(`- Next nonce to be used: ${transactionCount}`);
+    const nonce = argv.nonce ? argv.nonce : transactionCount;
 
     if (!argv.gasPrice) {
       throw new Error("Please specify a --gasPrice (denominated in gWe), for example: --gasPrice 150");
