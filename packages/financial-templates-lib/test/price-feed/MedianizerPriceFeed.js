@@ -35,6 +35,27 @@ contract("MedianizerPriceFeed.js", function() {
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
   });
 
+  it("Basic means", async function() {
+    const priceFeeds = [
+      //                currentPrice      historicalPrice    lastUpdatedTime
+      new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100),
+      new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000),
+      new PriceFeedMock(toBN(toWei("9")), toBN(toWei("11")), 25)
+    ];
+
+    const medianizerPriceFeed = new MedianizerPriceFeed(priceFeeds, true);
+
+    // Should return the mean current price.
+    assert.equal(medianizerPriceFeed.getCurrentPrice(), toWei("4"));
+
+    // Should return the mean historical price (because we're using mocks, the timestamp doesn't matter).
+    const arbitraryHistoricalTimestamp = 1000;
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
+
+    // Should return the *maximum* lastUpdatedTime.
+    assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
+  });
+
   it("Even count median", async function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
@@ -53,6 +74,23 @@ contract("MedianizerPriceFeed.js", function() {
     // Note: because we're using mocks, the timestamp doesn't matter.
     const arbitraryHistoricalTimestamp = 1000;
     assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
+  });
+
+  it("Even count means", async function() {
+    const priceFeeds = [
+      //                currentPrice      historicalPrice    lastUpdatedTime
+      new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
+      new PriceFeedMock(toBN(toWei("2")), toBN(toWei("58")), 50000),
+      new PriceFeedMock(toBN(toWei("3")), toBN(toWei("45")), 25),
+      new PriceFeedMock(toBN(toWei("4")), toBN(toWei("100")), 25)
+    ];
+
+    const medianizerPriceFeed = new MedianizerPriceFeed(priceFeeds, true);
+
+    // Should return the mean, which is not neccessarily the average of 3 and 2.
+    assert.equal(medianizerPriceFeed.getCurrentPrice(), toWei("2.5"));
+    const arbitraryHistoricalTimestamp = 1000;
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
   it("null inputs", async function() {

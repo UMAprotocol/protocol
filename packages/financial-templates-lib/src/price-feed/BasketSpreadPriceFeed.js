@@ -104,8 +104,11 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
   // Updates all constituent price feeds.
   async update() {
-    await Promise.all(this.baselinePriceFeeds.map(priceFeed => priceFeed.update()));
-    await Promise.all(this.experimentalPriceFeeds.map(priceFeed => priceFeed.update()));
+    await Promise.all(
+      this.baselinePriceFeeds
+        .map(priceFeed => priceFeed.update())
+        .concat(this.experimentalPriceFeeds.map(priceFeed => priceFeed.update()))
+    );
   }
 
   // Inputs are expected to be BNs.

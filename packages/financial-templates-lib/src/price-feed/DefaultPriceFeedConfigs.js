@@ -77,24 +77,24 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 120,
     experimentalBasket: [
       {
-        label: "USDTUSDT",
         type: "medianizer",
+        computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt", lookback: 7200 },
           { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt", lookback: 7200 }
         ]
       },
       {
-        label: "BUSDUSDT",
         type: "medianizer",
+        computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt", lookback: 7200 },
           { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt", lookback: 7200 }
         ]
       },
       {
-        label: "CUSDUSDT",
         type: "medianizer",
+        computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt", lookback: 7200 }
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
@@ -105,7 +105,6 @@ const defaultConfigs = {
     ],
     baselineBasket: [
       {
-        label: "MUSDUSDC",
         type: "medianizer",
         medianizedFeeds: [
           {

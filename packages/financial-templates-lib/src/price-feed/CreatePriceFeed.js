@@ -111,10 +111,6 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceDecimals
     );
   } else if (config.type === "stablespread") {
-    // This constructs a StablespreadPriceFeed in 3 steps:
-    // 1) Create a MedianizedPriceFeed for each constituent pair in the non Ethereum stablecoin basket.
-    // 2) Repeat step (1) for the Ethereum stablecoin basket
-    // 3) Create a StablespreadPriceFeed that computes the spread between the average of the two baskets and denominates the price in ETHUSD
     const requiredFields = ["baselineBasket", "experimentalBasket"];
 
     if (isMissingField(config, requiredFields, logger)) {
@@ -166,7 +162,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
       priceFeedsToMedianize.push(priceFeed);
     }
-    return new MedianizerPriceFeed(priceFeedsToMedianize);
+    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
   }
   // Returns an array or "basket" of MedianizerPriceFeeds
   async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
