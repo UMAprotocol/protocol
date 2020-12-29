@@ -17,7 +17,7 @@ const averageBlockTimeSeconds = async (/* lookbackSeconds */) => {
 };
 
 // Sets fromBlock to the value of an environment variable if one is set. This can be set to 0 to make tests work with Ganache, or any other value needed for a production script or bot.
-async function getFromBlock() {
+function getFromBlock() {
   if (process.env.FROM_BLOCK) {
     return process.env.FROM_BLOCK;
   } else {
