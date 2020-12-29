@@ -204,6 +204,8 @@ workflows:
           context: api_keys
           requires:
             - build
+          environment:
+            FROM_BLOCK: 0
       - docs:
           requires:
             - checkout_and_install
