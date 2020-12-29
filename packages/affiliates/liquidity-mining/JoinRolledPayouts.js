@@ -75,13 +75,13 @@ function _joinPayouts(weeklyRewards, rollRewards, rollPool1EqualsWeeklyRewards) 
   outputData.OverlapUma = rollRewards.umaPerWeek;
 
   // If this is the case then the overlap between the two pools happens at the end of the roll.
+  outputData.startRollBlock = rollRewards.fromBlock; // the end roll block num is the where the roll rolled `to`
+  outputData.endRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
   if (rollPool1EqualsWeeklyRewards) {
-    outputData.startRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
     outputData.fromBlock = weeklyRewards.fromBlock; // the starting block num for the overall output is the roll data `from`.
     outputData.toBlock = rollRewards.toBlock;
     // Else, the overlap between the pools happens at the beginning of the roll.
   } else {
-    outputData.endRollBlock = rollRewards.toBlock; // the end roll block num is the where the roll rolled `to`
     outputData.fromBlock = rollRewards.fromBlock; // the starting block num for the overall output is the roll data `from`.
     // Note that the `outputData.toBlock` is preserved from the weeklyRewards object.
   }
