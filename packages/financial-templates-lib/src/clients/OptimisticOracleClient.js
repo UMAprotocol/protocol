@@ -1,8 +1,3 @@
-// Note: This client should normally live in the `financial-templates-lib` package, but it requires access to
-// contract ABI's that are not available in the currently fixed version of @uma/core (1.2). Therefore,
-// this file must remain in this isolated package which uses @uma/core@latest until `financial-templates-lib`
-// is on latest.
-
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
 const { OptimisticOracleRequestStatesEnum } = require("@uma/common");
