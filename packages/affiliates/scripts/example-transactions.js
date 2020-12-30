@@ -5,8 +5,7 @@ const moment = require("moment");
 const { getAbi } = require("@uma/core");
 const { DecodeTransaction, GetInputLength } = require("../libs/contracts");
 
-// const contract = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-// const contract = "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5";
+// uGAS-MAR21
 const contract = "0xfa3aa7ee08399a4ce0b4921c85ab7d645ccac669";
 const start = moment("2020-12-20", "YYYY-MM-DD").valueOf();
 const end = moment("2020-12-23", "YYYY-MM-DD").valueOf();

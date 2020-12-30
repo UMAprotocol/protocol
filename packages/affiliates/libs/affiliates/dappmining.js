@@ -36,7 +36,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
       highland(stream)
         // trace transactions may contain the contract creation event, we cant decode this so filter out
         // fyi non contract creation "trace_type" are called "call"
-        .filter(tx => tx.trace_type !== "create")
+        .filter(tx => tx.trace_type !== "create" && tx.error == null)
         .map(tx => {
           return decodeTx(tx, {
             blockNumber: tx.block_number,
