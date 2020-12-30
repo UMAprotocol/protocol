@@ -207,13 +207,17 @@ async function _updatePayoutAtBlock(bPool1, bPool2, synth1, synth2, blockNumber,
   // For each balance result, calculate their associated payment addition.
   for (let [index, shareHolder] of Object.keys(shareHolderPayout).entries()) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
-    if (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value === "0") continue;
+    if (
+      (balanceResultsbPool1[index].value === "0" && balanceResultsbPool2[index].value === "0") ||
+      !balanceResultsbPool1[index].value ||
+      !balanceResultsbPool2[index].value
+    )
+      continue;
     // Calculate the shareholders pool1 value by taking their balance of BPT * BPT price.
 
     const shareHolderPool1Value = toBN(balanceResultsbPool1[index].value)
       .mul(bpt1Synth1Price)
       .div(toBN(toWei("1")));
-
     // Calculate the shareholders pool2 value by taking their balance of BPT * BPT price.
     const shareHolderPool2Value = toBN(balanceResultsbPool2[index].value)
       .mul(bpt2Synth2Price)
