@@ -4,18 +4,18 @@ const winston = require("winston");
 const { interfaceName, parseFixed, MAX_UINT_VAL, ZERO_ADDRESS, advanceBlockAndSetTime } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
-const ABI_VERSION = "1.2.0";
+const CONTRACT_VERSION = "1.2.0";
 
 const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMultiPartyEventClient");
 
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, ABI_VERSION);
-const Finder = getTruffleContract("Finder", web3, ABI_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, ABI_VERSION);
-const MockOracle = getTruffleContract("MockOracle", web3, ABI_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, ABI_VERSION);
-const SyntheticToken = getTruffleContract("SyntheticToken", web3, ABI_VERSION);
-const Timer = getTruffleContract("Timer", web3, ABI_VERSION);
-const Store = getTruffleContract("Store", web3, ABI_VERSION);
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, CONTRACT_VERSION);
+const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
+const MockOracle = getTruffleContract("MockOracle", web3, CONTRACT_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, CONTRACT_VERSION);
+const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
+const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },

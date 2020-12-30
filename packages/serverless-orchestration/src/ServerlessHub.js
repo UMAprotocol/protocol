@@ -75,8 +75,10 @@ hub.post("/", async (req, res) => {
 
     // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
     let promiseArray = [];
+    let botConfigs = {};
     for (const botName in configObject) {
       const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
+      botConfigs[botName] = botConfig;
       promiseArray.push(_executeServerlessSpoke(spokeUrl, botConfig));
     }
     logger.debug({
@@ -99,49 +101,54 @@ hub.post("/", async (req, res) => {
       results
     });
 
-    // Validate that the promises returned correctly. If ANY have error, then catch them and throw them all together.
+    // Validate that the promises returned correctly. If any spokes rejected it is possible that it was due to a networking
+    // or internal GCP error. Re-try these executions. If a response is code 500 or contains an error then log it as an error.
     let errorOutputs = {};
     let validOutputs = {};
+    let retriedOutputs = [];
     results.forEach((result, index) => {
-      // If the child process in the spoke crashed it will return 500 (rejected). OR If the child process exited
-      // correctly but contained an error.
-      if (
-        result.status == "rejected" ||
-        (result.value && result.value.execResponse && result.value.execResponse.error) ||
-        (result.reason && result.reason.code == "500")
-      ) {
-        errorOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse:
-            (result.value && result.value.execResponse) ||
-            (result.reason &&
-              result.reason.response &&
-              result.reason.response.data &&
-              result.reason.response.data.execResponse),
-          botIdentifier: Object.keys(configObject)[index]
-        };
-      } else {
-        validOutputs[Object.keys(configObject)[index]] = {
-          status: result.status,
-          execResponse: result.value && result.value.execResponse,
-          botIdentifier: Object.keys(configObject)[index]
-        };
+      if (result.status == "rejected") {
+        // If it is rejected, then store the name so we can try re-run the spoke call.
+        retriedOutputs.push(Object.keys(configObject)[index]); // Add to retriedOutputs to re-run the call.
+        return; // go to next result in the forEach loop.
       }
+      // Process the spoke response. This extracts useful log information and discern if the spoke had generated an error.
+      _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
     });
+    // Re-try the rejected outputs in a separate promise.all array.
+    if (retriedOutputs.length > 0) {
+      logger.debug({
+        at: "ServerlessHub",
+        message: "One or more spoke calls were rejected - Retrying",
+        retriedOutputs
+      });
+      let rejectedRetryPromiseArray = [];
+      retriedOutputs.forEach(botName => {
+        rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
+      });
+      const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
+      rejectedRetryResults.forEach((result, index) => {
+        _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
+      });
+    }
+    // If there are any error outputs(from the original loop or from re-tried calls) then throw.
     if (Object.keys(errorOutputs).length > 0) {
-      throw { errorOutputs, validOutputs };
+      throw { errorOutputs, validOutputs, retriedOutputs };
     }
 
     // If no errors and got to this point correctly then return a 200 success status.
     logger.debug({
       at: "ServerlessHub",
       message: "All calls returned correctly",
-      output: { errorOutputs, validOutputs }
+      output: { errorOutputs, validOutputs, retriedOutputs }
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(200).send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs } });
+    res
+      .status(200)
+      .send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs, retriedOutputs } });
   } catch (errorOutput) {
-    // If the errorOutput is an instance of Error then we know that error was produced within the hub.
+    // If the errorOutput is an instance of Error then we know that error was produced within the hub. Else, it is from
+    // one of the upstream spoke calls. Depending on the kind of error, process the logs differently.
     if (errorOutput instanceof Error) {
       logger.error({
         at: "ServerlessHub",
@@ -158,6 +165,7 @@ hub.post("/", async (req, res) => {
       logger.error({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors 🚨",
+        retriedSpokes: errorOutput.retriedOutputs,
         errorOutputs: Object.keys(errorOutput.errorOutputs).map(spokeName => {
           try {
             return {
@@ -337,6 +345,33 @@ async function _postJson(url, body) {
     }
   });
   return await response.json(); // extract JSON from the http response
+}
+
+// Takes in a spokeResponse object for a given botKey and identifies if the response includes an error. If it does,
+// append the error information to the errorOutputs. If there is no error, append to validOutputs.
+function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
+  if (
+    spokeResponse.status == "rejected" ||
+    (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
+    (spokeResponse.reason && spokeResponse.reason.code == "500")
+  ) {
+    errorOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse:
+        (spokeResponse.value && spokeResponse.value.execResponse) ||
+        (spokeResponse.reason &&
+          spokeResponse.reason.response &&
+          spokeResponse.reason.response.data &&
+          spokeResponse.reason.response.data.execResponse),
+      botIdentifier: botKey
+    };
+  } else {
+    validOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+      botIdentifier: botKey
+    };
+  }
 }
 
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
