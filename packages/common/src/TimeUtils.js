@@ -20,7 +20,7 @@ const averageBlockTimeSeconds = async (/* lookbackSeconds */) => {
 async function getFromBlock() {
   const networkType = await web3.eth.net.getNetworkType();
   if (process.env.FROM_BLOCK) {
-    return process.env.FROM_BLOCK;
+    return Number(process.env.FROM_BLOCK);
   } else if (networkType === "main") {
     return UMA_FIRST_EMP_BLOCK;
   } else {
