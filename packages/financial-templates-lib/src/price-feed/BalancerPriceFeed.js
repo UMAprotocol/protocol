@@ -7,7 +7,7 @@ const { parseFixed } = require("@ethersproject/bignumber");
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
 // if the user specifies that the Balancer contract is returning non-18 decimal precision prices.
 class BalancerPriceFeed extends PriceFeedInterface {
-  constructor(logger, web3, getTime, abi, address, tokenIn, tokenOut, lookback, poolDecimals = 18) {
+  constructor(logger, web3, getTime, abi, address, tokenIn, tokenOut, lookback, poolDecimals = 18, decimals = 18) {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
     assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
@@ -40,12 +40,14 @@ class BalancerPriceFeed extends PriceFeedInterface {
 
     // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
     this.poolPrecision = poolDecimals;
-    // pricePrecision represents the # of decimals that we want this PriceFeed tp return prices in.
-    this.pricePrecision = 18;
-    // Convert _bn precision from poolDecimals to 18 decimals
+
+    // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
+    // on the relationship between poolPrecision and the desired decimals.
     this.convertDecimals = _bn => {
-      if (poolDecimals !== this.pricePrecision) {
-        return _bn.mul(this.toBN(parseFixed("1", this.pricePrecision - this.poolPrecision).toString()));
+      if (this.poolPrecision < decimals) {
+        return _bn.mul(this.toBN(parseFixed("1", decimals - this.poolPrecision).toString()));
+      } else if (this.poolPrecision > decimals) {
+        return _bn.div(this.toBN(parseFixed("1", this.poolPrecision - decimals).toString()));
       } else {
         return _bn;
       }

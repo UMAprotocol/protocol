@@ -1,4 +1,5 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
+const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
 // computes the average price feed for each basket, and returns the spread between the two averages.
@@ -14,8 +15,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    * @param {Object} denominatorPriceFeed We divide the price spread between the baseline and experimental baskets by this denominator price
    *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
    *      of ETH-USD.
+   * @param {Number} decimals Number of decimals to use to convert price to wei.
    */
-  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
+  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed, decimals = 18) {
     super();
 
     if (baselinePriceFeeds.length === 0 || experimentalPriceFeeds.length === 0) {
@@ -31,6 +33,12 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.logger = logger;
+
+    this.convertDecimals = number => {
+      // Converts price result to wei
+      // returns price conversion to correct decimals as a big number
+      return this.toBN(parseFixed(number.toString(), decimals).toString());
+    };
   }
 
   // Compute the spread between the baseline and experimental pricefeeds.
@@ -74,7 +82,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     });
 
     if (baselineMean && experimentalMean) {
-      let spreadValue = experimentalMean.sub(baselineMean).add(this.toBN(this.toWei("1")));
+      let spreadValue = experimentalMean.sub(baselineMean).add(this.convertDecimals("1"));
       this.logger.debug({
         at: "BasketSpreadPriceFeed",
         message: "Basket spread value",
@@ -86,13 +94,13 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         spreadValue = this.toBN("0");
       }
       // Ensure symmetry
-      else if (spreadValue.gt(this.toBN(this.toWei("2")))) {
-        spreadValue = this.toBN(this.toWei("2"));
+      else if (spreadValue.gt(this.convertDecimals("2"))) {
+        spreadValue = this.convertDecimals("2");
       }
 
       // Optionally, divide by denominator pricefeed.
       if (denominatorPrice) {
-        spreadValue = spreadValue.mul(this.toBN(this.toWei("1"))).div(denominatorPrice);
+        spreadValue = spreadValue.mul(this.convertDecimals("1")).div(denominatorPrice);
       }
 
       return spreadValue;

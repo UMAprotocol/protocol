@@ -108,7 +108,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.balancerTokenOut,
       config.lookback,
       config.poolDecimals,
-      config.priceDecimals
+      config.decimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "stablespread") {
     const requiredFields = ["baselineBasket", "experimentalBasket", "denominator"];
@@ -127,7 +127,14 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     const baselineBasket = await _createBasketOfMedianizerPriceFeeds(config.baselineBasket);
     const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominator);
 
-    return new BasketSpreadPriceFeed(web3, logger, baselineBasket, experimentalBasket, denominatorPriceFeed);
+    return new BasketSpreadPriceFeed(
+      web3,
+      logger,
+      baselineBasket,
+      experimentalBasket,
+      denominatorPriceFeed,
+      config.decimals // This defaults to 18 unless supplied by user
+    );
   }
 
   logger.error({
