@@ -15,6 +15,9 @@ const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
 const { isPublicNetwork } = require("./MigrationUtils");
 const Web3 = require("web3");
 require("dotenv").config();
+const argv = require("minimist")(process.argv.slice(), {
+  string: ["gasPrice"]
+});
 
 // Fallback to a public mnemonic to prevent exceptions.
 const mnemonic = process.env.MNEMONIC
@@ -32,7 +35,7 @@ const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Ge
 let singletonProvider;
 
 // Default options
-const gasPx = 20000000000; // 20 gwei
+const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 20000000000; // 20 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
@@ -137,6 +140,7 @@ function addLocalNetwork(networks, name, customOptions) {
   const defaultOptions = {
     network_id: "*",
     gas: gas,
+    gasPrice: gasPx,
     provider: function(provider = nodeUrl) {
       // Don't use the singleton here because there's no reason to for local networks.
 
