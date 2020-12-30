@@ -3,6 +3,8 @@ const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
 // computes the average price feed for each basket, and returns the spread between the two averages.
+// !!Note: This PriceFeed assumes that the baselinePriceFeeds, experimentalPriceFeed, and denominatorPriceFeed
+// are all returning prices in the same precision as `decimals`.
 class BasketSpreadPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new BasketSpreadPriceFeed.
@@ -34,20 +36,21 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     this.toWei = this.web3.utils.toWei;
     this.logger = logger;
 
+    // The precision that the user wants to return prices in.
+    this.decimals = decimals;
+
+    // Scale `number` by 10**decimals.
     this.convertDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
-      return this.toBN(parseFixed(number.toString(), decimals).toString());
+      return this.toBN(parseFixed(number.toString(), this.decimals).toString());
     };
   }
 
-  // Compute the spread between the baseline and experimental pricefeeds.
-  getCurrentPrice() {
-    // First, compute the average of the experimental pricefeeds.
-    this.experimentalPriceFeeds.map(priceFeed => {
-      priceFeed;
-    });
-    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
+  // Given lists of experimental and baseline prices, and a denominator price,
+  // return the spread price, which is:
+  // (avg(experimental) - avg(baseline) + 1) / denominator
+  _getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice) {
     if (
       experimentalPrices.length === 0 ||
       experimentalPrices.some(element => element === undefined || element === null)
@@ -62,10 +65,6 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     });
 
     // Second, compute the average of the baseline pricefeeds.
-    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
-    if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
-      return null;
-    }
     const baselineMean = this._computeMean(baselinePrices);
     this.logger.debug({
       at: "BasketSpreadPriceFeed",
@@ -73,14 +72,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       mean: baselineMean.toString()
     });
 
-    // If denominator price feed exists, get its price.
-    const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
-    this.logger.debug({
-      at: "BasketSpreadPriceFeed",
-      message: "Denominator price",
-      denominatorPrice: denominatorPrice.toString()
-    });
-
+    // All calculations within this if statement will produce unexpected results if any of the
+    // experimental mean, baseline mean, or denominator price are NOT in the same precision as
+    // the one that this.convertDecimals() uses.
     if (baselineMean && experimentalMean) {
       let spreadValue = experimentalMean.sub(baselineMean).add(this.convertDecimals("1"));
       this.logger.debug({
@@ -98,9 +92,16 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         spreadValue = this.convertDecimals("2");
       }
 
-      // Optionally, divide by denominator pricefeed.
+      // Divide by denominator pricefeed.
       if (denominatorPrice) {
+        this.logger.debug({
+          at: "BasketSpreadPriceFeed",
+          message: "Denominator price",
+          denominatorPrice: denominatorPrice.toString()
+        });
         spreadValue = spreadValue.mul(this.convertDecimals("1")).div(denominatorPrice);
+      } else {
+        return null;
       }
 
       return spreadValue;
@@ -110,19 +111,28 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
-  // Takes the median of all of the constituent price feeds' historical prices.
-  getHistoricalPrice() {
-    // todo
+  getCurrentPrice() {
+    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
+    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
+    const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+
+    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
-  getHistoricalPricePeriods() {
-    // todo
+  getHistoricalPrice(time) {
+    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
+    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
+    const denominatorPrice = this.denominatorPriceFeed.getHistoricalPrice(time);
+
+    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
-    const lastUpdateTimes = this.priceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
-
+    const lastUpdateTimes = this.experimentalPriceFeeds
+      .concat(this.baselinePriceFeeds)
+      .concat(this.denominatorPriceFeed)
+      .map(priceFeed => priceFeed.getLastUpdateTime());
     if (lastUpdateTimes.some(element => element === undefined || element === null)) {
       return null;
     }

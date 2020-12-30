@@ -49,6 +49,8 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     }
   }
 
+  // Note: This method will fail if one of the pricefeeds has not implemented `getHistoricalPricePeriods`, which
+  // is basically every price feed except for the CryptoWatchPriceFeed.
   getHistoricalPricePeriods() {
     // Fetch all historical price data for all price feeds within the medianizer set.
     const historicalPricePeriods = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPricePeriods());
