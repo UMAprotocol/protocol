@@ -7,9 +7,7 @@ const sinon = require("sinon");
 
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
 const { getTruffleContract } = require("@uma/core");
-const {
-  addGlobalHardhatTestingAddress
-} = require("@uma/common");
+const { addGlobalHardhatTestingAddress } = require("@uma/common");
 
 const ABI_VERSION = "latest";
 
@@ -35,7 +33,7 @@ contract("index.js", function() {
 
     // Deploy a new OptimisticOracle.
     optimisticOracle = await OptimisticOracle.new("120", finder.address, timer.address);
-    // addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
+    addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
   });
   beforeEach(async function() {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
@@ -57,7 +55,6 @@ contract("index.js", function() {
     await Main.run({
       logger: spyLogger,
       web3,
-      oracleAddress: optimisticOracle.address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout
@@ -67,14 +64,9 @@ contract("index.js", function() {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
     }
 
-    // Logger should emit three logs:
-    // 1) indicating the start of the runner
-    // 2) the ooClient's update() method should emit a log
-    // 3) one about the early termination of the
-    // of the loop because the pollingDelay is set to 0.
-    assert.strictEqual(spy.getCalls().length, 3);
+    // The first log should indicate that the OO-Keeper runner started successfully
+    // and auto detected the OO's deployed address.
     assert.isTrue(spyLogIncludes(spy, 0, "OO keeper started"));
-    assert.isTrue(spyLogIncludes(spy, 1, "Optimistic Oracle state updated"));
-    assert.isTrue(spyLogIncludes(spy, 2, "End of serverless execution loop - terminating process"));
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
   });
 });
