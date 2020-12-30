@@ -110,8 +110,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.poolDecimals,
       config.decimals // This defaults to 18 unless supplied by user
     );
-  } else if (config.type === "stablespread") {
-    const requiredFields = ["baselineBasket", "experimentalBasket", "denominator"];
+  } else if (config.type === "basketspread") {
+    const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds", "denominatorPriceFeed"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -123,15 +123,19 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config
     });
 
-    const experimentalBasket = await _createBasketOfMedianizerPriceFeeds(config.experimentalBasket);
-    const baselineBasket = await _createBasketOfMedianizerPriceFeeds(config.baselineBasket);
-    const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominator);
+    // Currently, this file assumes that the baskets are lists of medianizer price feeds, and that the
+    // denominator is a medianizer pricefeed.
+    // Future work would relax these constraint and allow for the baskets and denominator to be
+    // any type of price feed.
+    const experimentalPriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.experimentalPriceFeeds);
+    const baselinePriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.baselinePriceFeeds);
+    const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominatorPriceFeed);
 
     return new BasketSpreadPriceFeed(
       web3,
       logger,
-      baselineBasket,
-      experimentalBasket,
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
       denominatorPriceFeed,
       config.decimals // This defaults to 18 unless supplied by user
     );
@@ -156,10 +160,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
       // on the nested config.
       const combinedConfig = { ...config, type: undefined, ..._priceFeedConfig };
+
       // Remove basket structs from config as they are irrelevant to each individual Medianizer config.
-      delete combinedConfig.baselineBasket;
-      delete combinedConfig.experimentalBasket;
-      delete combinedConfig.denominator;
+      // TODO: This is a bit of a hack because it hardcodes which parts of the config to remove,
+      // future work should dynamically strip out non-essential config params.
+      delete combinedConfig.baselinePriceFeeds;
+      delete combinedConfig.experimentalPriceFeeds;
+      delete combinedConfig.denominatorPriceFeed;
 
       const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 

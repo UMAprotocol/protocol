@@ -20,6 +20,7 @@ const {
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
+const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
@@ -73,6 +74,88 @@ contract("CreatePriceFeed.js", function(accounts) {
     };
 
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
+  });
+
+  it("Valid BasketSpread config", async function() {
+    const baselinePriceFeeds = [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "cryptowatch"
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "uniswap"
+          }
+        ]
+      }
+    ];
+    const experimentalPriceFeeds = [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "cryptowatch"
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "balancer"
+          }
+        ]
+      }
+    ];
+    const denominatorPriceFeed = {
+      type: "medianizer",
+      medianizedFeeds: [
+        {
+          type: "cryptowatch"
+        }
+      ]
+    };
+    const config = {
+      type: "basketspread",
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
+      denominatorPriceFeed,
+      // Required fields for constituent cryptowatch price feeds:
+      minTimeBetweenUpdates,
+      lookback,
+      exchange,
+      pair,
+      apiKey,
+      // Additional required fields for uniswap price feeds:
+      uniswapAddress,
+      twapLength,
+      // Additional required fields for balance price feeds:
+      balancerAddress,
+      balancerTokenIn: accounts[1],
+      balancerTokenOut: accounts[2]
+    };
+
+    const validBasketSpreadFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    assert.isTrue(validBasketSpreadFeed instanceof BasketSpreadPriceFeed);
+
+    // Check that baseline and experimental pricefeeds are lists of medianizer price feeds with the correct
+    // constituent pricefeeds.
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0] instanceof MedianizerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1] instanceof MedianizerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1].priceFeeds[0] instanceof UniswapPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0] instanceof MedianizerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[1] instanceof MedianizerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[1].priceFeeds[0] instanceof BalancerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.denominatorPriceFeed instanceof MedianizerPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.denominatorPriceFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
   });
 
   it("Valid CryptoWatch config", async function() {
