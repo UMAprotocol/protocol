@@ -9,7 +9,8 @@ const IDENTIFIER_NON_18_PRECISION = {
   USDBTC: 8,
   "STABLESPREAD/USDC": 6,
   "STABLESPREAD/BTC": 8,
-  "ELASTIC_STABLESPREAD/USDC": 6
+  "ELASTIC_STABLESPREAD/USDC": 6,
+  BCHNBTC: 8
 };
 
 const getPrecisionForIdentifier = identifier => {
