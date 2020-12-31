@@ -11,6 +11,7 @@ const { fromWei } = web3.utils;
 const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
+require("dotenv").config();
 
 const UMIP_PRECISION = {
   USDBTC: 8,
@@ -37,13 +38,19 @@ async function getMedianHistoricalPrice(callback) {
     let dummyLogger = winston.createLogger({
       silent: true
     });
+    let priceFeedConfig = {
+      // Empirically, Cryptowatch API only returns data up to ~4 days back.
+      lookback: 345600,
+      // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
+      ...JSON.parse(process.env.PRICE_FEED_CONFIG)
+    };
     const medianizerPriceFeed = await createReferencePriceFeedForEmp(
       dummyLogger,
       web3,
       new Networker(dummyLogger),
       getTime,
       null,
-      { lookback: 345600 }, // Empirically, Cryptowatch API only returns data up to ~4 days back.
+      priceFeedConfig,
       queryIdentifier
     );
     if (!medianizerPriceFeed) {
@@ -67,6 +74,7 @@ async function getMedianHistoricalPrice(callback) {
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
+    console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
     console.log(
       `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
         precisionToUse
