@@ -117,10 +117,11 @@ class ExpiringMultiPartyClient {
       await this.initialSetup();
     }
     // Fetch contract state variables in parallel.
+    const fromBlock = await getFromBlock(this.web3);
     const [newSponsorEvents, endedSponsorEvents, liquidationCreatedEvents, currentTime] = await Promise.all([
-      this.emp.getPastEvents("NewSponsor", { fromBlock: await getFromBlock(this.web3) }),
-      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock: await getFromBlock(this.web3) }),
-      this.emp.getPastEvents("LiquidationCreated", { fromBlock: await getFromBlock(this.web3) }),
+      this.emp.getPastEvents("NewSponsor", { fromBlock }),
+      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock }),
+      this.emp.getPastEvents("LiquidationCreated", { fromBlock }),
       this.emp.methods.getCurrentTime().call()
     ]);
 
