@@ -100,7 +100,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       let returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
         console.group(`\n(${this.exchange}:${this.pair}) No OHLC available @ ${time}`);
-        console.log(`- ✅ Falling back to Current Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
+        console.log(
+          `- ✅ Time is later than earliest historical time, fetching current price: ${this.web3.utils.fromWei(
+            returnPrice.toString()
+          )}`
+        );
         console.log(
           `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price`
         );
