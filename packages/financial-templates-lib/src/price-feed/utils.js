@@ -37,7 +37,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
   function getClosestBefore(timestamp) {
     const index = lodash.sortedIndexBy(blocks, { timestamp }, "timestamp");
     // need to check for an exact match in this case, otherwise go to the older block
-    if (blocks[index].timestamp === timestamp) return blocks[index];
+    if (blocks[index] && blocks[index].timestamp === timestamp) return blocks[index];
     return blocks[index - 1];
   }
 
