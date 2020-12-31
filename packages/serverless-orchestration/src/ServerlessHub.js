@@ -348,7 +348,7 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
     );
   }
 
-  // Set configs to be used in the sererless execution.
+  // Set configs to be used in the serverless execution.
   logger = _Logger;
   spokeUrl = _spokeURL;
   customNodeUrl = _CustomNodeUrl;
