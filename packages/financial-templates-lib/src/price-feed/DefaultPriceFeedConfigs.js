@@ -68,7 +68,9 @@ const defaultConfigs = {
   STABLESPREAD: {
     // This is alternatively known as "STABLESPREAD/ETH"
     type: "basketspread",
-    lookback: 7200, // We override the default value of 172800, equal to the liquidationLiveness
+    lookback: 7200,
+    // We override the default value of 172800, equal to the liquidationLiveness of this EMP, so that
+    // the BalancerPriceFeed does not throw a "too many web3 requests" error.
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
