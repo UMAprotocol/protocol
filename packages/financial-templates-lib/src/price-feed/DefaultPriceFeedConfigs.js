@@ -58,7 +58,6 @@ const defaultConfigs = {
   },
   BCHNBTC: {
     type: "medianizer",
-    lookback: 7200, // We override the default value of 172800, equal to the liquidationLiveness
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
