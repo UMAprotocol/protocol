@@ -3,7 +3,6 @@ const defaultConfigs = {
   "ETH/BTC": {
     type: "medianizer",
     pair: "ethbtc",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro" },
@@ -14,7 +13,6 @@ const defaultConfigs = {
   "COMP/USD": {
     // Kovan uses the "/"
     type: "medianizer",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
@@ -25,7 +23,6 @@ const defaultConfigs = {
   COMPUSD: {
     // Mainnet has no "/"
     type: "medianizer",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
@@ -35,7 +32,6 @@ const defaultConfigs = {
   },
   USDETH: {
     type: "medianizer",
-    lookback: 7200,
     invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
@@ -46,7 +42,6 @@ const defaultConfigs = {
   },
   USDBTC: {
     type: "medianizer",
-    lookback: 7200,
     invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
@@ -57,14 +52,13 @@ const defaultConfigs = {
   },
   USDPERL: {
     type: "medianizer",
-    lookback: 7200,
     invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }]
   },
   BCHNBTC: {
     type: "medianizer",
-    lookback: 7200,
+    lookback: 7200, // We override the default value of 172800, equal to the liquidationLiveness
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
@@ -75,8 +69,8 @@ const defaultConfigs = {
   STABLESPREAD: {
     // This is alternatively known as "STABLESPREAD/ETH"
     type: "basketspread",
-    lookback: 7200,
-    minTimeBetweenUpdates: 120,
+    lookback: 7200, // We override the default value of 172800, equal to the liquidationLiveness
+    minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
         type: "medianizer",
@@ -132,20 +126,17 @@ const defaultConfigs = {
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
     uniswapAddress: "0x25fb29D865C1356F9e95D621F21366d3a5DB6BB0",
-    twapLength: 7200,
-    lookback: 7200
+    twapLength: 7200
   },
   "GASETH-FEB21": {
     type: "uniswap",
     uniswapAddress: "0x4a8a2ea3718964ed0551a3191c30e49ea38a5ade",
-    twapLength: 7200,
-    lookback: 7200
+    twapLength: 7200
   },
   "GASETH-MAR21": {
     type: "uniswap",
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
-    twapLength: 7200,
-    lookback: 7200
+    twapLength: 7200
   }
 };
 
