@@ -330,14 +330,14 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     defaultConfig
   });
 
-  // Infer lookback from liquidation liveness if user does not specify a lookback.
+  // Infer lookback from liquidation liveness if default config does not specify a lookback.
   // - Explanation: Always setting the `lookback = emp.liquidationLiveness` can potentially introduce problems
   // if the liquidation liveness is particularly long and the pricefeed to be constructed is a DEX.
   // - For example: the Zelda Cash contract has a 172800 liveness period (48 hours) and it uses the
   // BasketSpreadPriceFeed which depends on the BalancerPriceFeed. Updating a DEX pricefeed requires
-  // a web3 call for every block included in the lookback window. Therefore, we allow the user to specify
-  // a lookback period which can override the EMP's liquidationLiveness value.
-  if (emp && defaultConfig && !config.lookback) {
+  // a web3 call for every block included in the lookback window. Therefore, we override some of the default config
+  // lookback values so that they do not make an impractically large amount of web3 requests.
+  if (emp && defaultConfig && !defaultConfig.lookback) {
     const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }
