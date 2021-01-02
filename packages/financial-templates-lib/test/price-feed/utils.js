@@ -58,13 +58,6 @@ contract("Price Feed Utils", async function() {
       // this should return the next block higher than the timestamp
       assert.equal(block.timestamp, Math.ceil(time));
     });
-    it("pruneByTimestamp", async function() {
-      const blockHistory = BlockHistory(getBlock);
-      await blockHistory.update(blockCount, blockCount);
-      blockHistory.pruneByTimestamp(5);
-      const result = blockHistory.listBlocks();
-      assert.equal(result.length, blockCount - 5);
-    });
   });
   describe("PriceHistory", function() {
     it("priceHistory.update", async function() {
