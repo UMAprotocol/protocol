@@ -48,6 +48,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
       try {
         return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
       } catch (err) {
+        // Like the UniswapPriceFeed, when the price is unavailable then return null instead of throwing.
         return null;
       }
     });
@@ -86,6 +87,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
   getCurrentPrice() {
     let currentPrice;
+    // If twap window is 0, then return last price
     if (this.twapLength === 0) {
       currentPrice = this.getSpotPrice();
     } else {
@@ -116,9 +118,8 @@ class BalancerPriceFeed extends PriceFeedInterface {
       lastUpdateTimestamp: currentTime
     });
     let blocks = [];
-    // disabled lookback by setting it and twapLength to 0
-    const lookbackWindow = this.twapLength + this.lookback;
-    if (lookbackWindow === 0) {
+    // disabled lookback by setting it to 0
+    if (this.lookback === 0) {
       // handle no lookback, we just want to insert the latest block into the blockHistory.
       const block = await this.getLatestBlock();
       this.blockHistory.insert(block);
@@ -127,13 +128,15 @@ class BalancerPriceFeed extends PriceFeedInterface {
       // handle historical lookback. Have to be careful your lookback time gives a big enough
       // window to find a single block, otherwise you will have errors. This essentially maps
       // blockHistory.insert() over all blocks in the lookback window.
-      blocks = await this.blockHistory.update(lookbackWindow, currentTime);
+      blocks = await this.blockHistory.update(this.lookback + this.twapLength, currentTime);
     }
     // The priceHistory.update() method should strip out any blocks where the price is null
     await Promise.all(blocks.map(this.priceHistory.update));
 
     this.lastUpdateTime = currentTime;
   }
+  // If priceHistory only encompasses 1 block, which happens if the `lookback` window is 0,
+  // then this should return the last and only price.
   _computeTwap(startTime, endTime) {
     // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
     const events = this.priceHistory.list().slice();

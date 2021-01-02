@@ -225,6 +225,77 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
+  it("Lookback of 0 returns only current price", async function() {
+    dexPriceFeed = new BalancerPriceFeed(
+      dummyLogger,
+      web3,
+      () => mockTime,
+      Balancer.abi,
+      dexMock.address,
+      // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+      accounts[1],
+      accounts[2],
+      0,
+      3600
+    );
+
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+
+    mockTime = currentTime;
+
+    await dexPriceFeed.update();
+
+    // Historical prices should be equal to latest price at timestamp
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
+    assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
+  });
+  it("Setting both lookback and twap to 0 should update without crashing and only return current price", async function() {
+    dexPriceFeed = new BalancerPriceFeed(
+      dummyLogger,
+      web3,
+      () => mockTime,
+      Balancer.abi,
+      dexMock.address,
+      // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+      accounts[1],
+      accounts[2],
+      0,
+      0
+    );
+
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+
+    mockTime = currentTime;
+
+    await dexPriceFeed.update();
+
+    // Historical prices should be equal to latest price at timestamp
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
+    assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
+  });
+
   describe("Can return non-18 precision prices", function() {
     let scaleDownPriceFeed, scaleUpPriceFeed;
     beforeEach(async function() {
