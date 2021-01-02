@@ -24,6 +24,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
     assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
+    assert(twapLength >= 0, "BalancerPriceFeed requires lookback >= 0");
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -47,7 +48,6 @@ class BalancerPriceFeed extends PriceFeedInterface {
       try {
         return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
       } catch (err) {
-        // If query failed, skip;
         return null;
       }
     });
@@ -73,29 +73,30 @@ class BalancerPriceFeed extends PriceFeedInterface {
       return null;
     }
 
+    let historicalPrice;
     if (this.twapLength === 0) {
-      const historicalSpotPrice = this.getSpotPrice(time);
-      return historicalSpotPrice && this.convertDecimals(historicalSpotPrice);
+      historicalPrice = this.getSpotPrice(time);
     } else {
-      const historicalTwap = this._computeTwap(time - this.twapLength, time);
-      return historicalTwap && this.convertDecimals(historicalTwap);
+      historicalPrice = this._computeTwap(time - this.twapLength, time);
     }
+    return historicalPrice && this.convertDecimals(historicalPrice);
   }
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
   getCurrentPrice() {
+    let currentPrice;
     if (this.twapLength === 0) {
-      const currentSpotPrice = this.getSpotPrice();
-      return currentSpotPrice && this.convertDecimals(currentSpotPrice);
+      currentPrice = this.getSpotPrice();
     } else {
-      return this.currentTwap && this.convertDecimals(this.currentTwap);
+      currentPrice = this._computeTwap(this.lastUpdateTime - this.twapLength, this.lastUpdateTime);
     }
+    return currentPrice && this.convertDecimals(currentPrice);
   }
   // Not part of the price feed interface. Can be used to pull the balancer price at the most recent block.
+  // If `time` is undefined, return latest block price.
   getSpotPrice(time) {
     if (!time) {
-      // current price can be undefined, will throw for any other errors
       return this.convertDecimals(this.priceHistory.currentPrice());
     } else {
       // We want the block and price equal to or before this time
@@ -118,19 +119,18 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // disabled lookback by setting it and twapLength to 0
     const lookbackWindow = this.twapLength + this.lookback;
     if (lookbackWindow === 0) {
-      // handle no lookback, we just want latest block
+      // handle no lookback, we just want to insert the latest block into the blockHistory.
       const block = await this.getLatestBlock();
       this.blockHistory.insert(block);
       blocks = this.blockHistory.listBlocks();
     } else {
       // handle historical lookback. Have to be careful your lookback time gives a big enough
-      // window to find a single block, otherwise you will have errors.
+      // window to find a single block, otherwise you will have errors. This essentially maps
+      // blockHistory.insert() over all blocks in the lookback window.
       blocks = await this.blockHistory.update(lookbackWindow, currentTime);
     }
+    // The priceHistory.update() method should strip out any blocks where the price is null
     await Promise.all(blocks.map(this.priceHistory.update));
-
-    // Compute TWAP up to the current time.
-    this.currentTwap = this._computeTwap(currentTime - this.twapLength, currentTime);
 
     this.lastUpdateTime = currentTime;
   }
@@ -157,6 +157,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
         break;
       }
 
+      // events are in the shape: [timestamp, price]
       lastPrice = event[1];
       lastTime = event[0];
     }
