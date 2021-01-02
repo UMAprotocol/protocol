@@ -143,8 +143,8 @@ exports.PriceHistory = (getPrice, prices = {}) => {
     assert(block.number >= 0, "requires block with number");
     if (has(block.timestamp)) return get(block.timestamp);
     const price = await getPrice(block.number);
-    if (price) {
-      // Only add prices to history that are non-null
+    if (price !== undefined && price !== null) {
+      // Only add prices to history that are non-null.
       return set(block.timestamp, price);
     }
   }

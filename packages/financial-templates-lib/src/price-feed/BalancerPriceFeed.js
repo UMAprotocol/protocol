@@ -73,13 +73,24 @@ class BalancerPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return this.convertDecimals(this._computeTwap(time - this.twapLength, time));
+    if (this.twapLength === 0) {
+      const historicalSpotPrice = this.getSpotPrice(time);
+      return historicalSpotPrice && this.convertDecimals(historicalSpotPrice);
+    } else {
+      const historicalTwap = this._computeTwap(time - this.twapLength, time);
+      return historicalTwap && this.convertDecimals(historicalTwap);
+    }
   }
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
   getCurrentPrice() {
-    return this.currentTwap;
+    if (this.twapLength === 0) {
+      const currentSpotPrice = this.getSpotPrice();
+      return currentSpotPrice && this.convertDecimals(currentSpotPrice);
+    } else {
+      return this.currentTwap && this.convertDecimals(this.currentTwap);
+    }
   }
   // Not part of the price feed interface. Can be used to pull the balancer price at the most recent block.
   getSpotPrice(time) {
@@ -119,7 +130,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     await Promise.all(blocks.map(this.priceHistory.update));
 
     // Compute TWAP up to the current time.
-    this.currentTwap = this.convertDecimals(this._computeTwap(currentTime - this.twapLength, currentTime));
+    this.currentTwap = this._computeTwap(currentTime - this.twapLength, currentTime);
 
     this.lastUpdateTime = currentTime;
   }
