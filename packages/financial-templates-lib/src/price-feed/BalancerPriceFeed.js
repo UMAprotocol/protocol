@@ -46,7 +46,15 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // which affects the update call.
     this.priceHistory = PriceHistory(async number => {
       try {
-        return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
+        let bPoolPrice = this.toBN(
+          await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number)
+        );
+        // Like the Uniswap price feed, if pool price is 0, then return null
+        if (!bPoolPrice.isZero()) {
+          return bPoolPrice;
+        } else {
+          return null;
+        }
       } catch (err) {
         // Like the UniswapPriceFeed, when the price is unavailable then return null instead of throwing.
         return null;

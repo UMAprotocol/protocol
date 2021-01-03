@@ -54,6 +54,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexMock.setPrice(toWei("1"));
     await dexMock.setPrice(toWei("0.5"));
     await dexMock.setPrice(toWei("0.25"));
+    // Add an invalid price as the most recent price, which should be ignored.
+    await dexMock.setPrice(toWei("0"));
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.25"));
@@ -82,6 +84,11 @@ contract("BalancerPriceFeed.js", function(accounts) {
   it("No price or only invalid prices", async function() {
     await dexPriceFeed.update();
 
+    assert.equal(dexPriceFeed.getSpotPrice(), null);
+    assert.equal(dexPriceFeed.getCurrentPrice(), null);
+
+    await dexMock.setPrice(toWei("0"));
+    assert.equal(dexPriceFeed.getSpotPrice(), null);
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
   });
 
@@ -90,6 +97,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     // Update the prices with a small amount of time between.
     const result1 = await dexMock.setPrice(toWei("1"));
     await delay(1);
+    // Invalid price should be ignored.
+    await dexMock.setPrice(toWei("0"));
     const result2 = await dexMock.setPrice(toWei("0.5"));
 
     const getBlockTime = async result => {
@@ -155,6 +164,9 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
     // At an hour and a half ago, set the price to 90.
     await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+
+    // At an hour and a half ago - 1 second, set the price to an invalid one. This should be ignored.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("0"))], currentTime - 5399, owner);
 
     // At an hour ago, set the price to 80.
     await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
