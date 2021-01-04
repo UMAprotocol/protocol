@@ -22,9 +22,9 @@ EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=your.node.url MNEMONIC="your mnemonic here" y
 
 The four monitors available are:
 
-1. The `BalanceMonitor` takes a specified list of addresses to monitor and sends alerts if their collateral synthetic or ether balance drops below defined thresholds.
+1. The `BalanceMonitor` takes a specified list of addresses to monitor and sends alerts if their collateral, synthetic or Ether balance drops below defined thresholds.
 
-1. The `ContractMonitor` sends alerts when liquidation, dispute, and dispute settlement events occur.
+1. The `ContractMonitor` sends alerts when financial contract events occur, such as liquidations and disputes.
 
 1. The `CRMonitor`, or collateralization ratio monitor, monitors a given position's CR and sends alerts if it drops below a given threshold.
 
