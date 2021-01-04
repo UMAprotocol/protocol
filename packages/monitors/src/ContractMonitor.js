@@ -21,10 +21,12 @@ class ContractMonitor {
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
    *      { collateralCurrencySymbol: "DAI",
             syntheticCurrencySymbol:"ETHBTC",
+            priceIdentifier: "ETH/BTC",
             collateralCurrencyDecimals: 18,
             syntheticCurrencyDecimals: 18,
-            priceIdentifier: "ETH/BTC",
-            networkId:1 }
+            priceFeedDecimals: 18,
+            networkId:1
+            crRequirement: 1.5e18 }
    * @param {Object} votingContract DVM to query price requests.
    */
   constructor({ logger, expiringMultiPartyEventClient, priceFeed, config, empProps, votingContract }) {
@@ -46,10 +48,6 @@ class ContractMonitor {
     this.lastDisputeBlockNumber = 0;
     this.lastDisputeSettlementBlockNumber = 0;
     this.lastNewSponsorBlockNumber = 0;
-
-    // Contract props containing collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier, networkId,
-    // collateralCurrencyDecimals,syntheticCurrencyDecimals & priceFeedDecimals, crRequirement.
-    this.empProps = empProps;
 
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
@@ -92,44 +90,41 @@ class ContractMonitor {
 
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("collateralCurrencySymbol") &&
+            typeof x.collateralCurrencySymbol === "string" &&
+            Object.keys(x).includes("syntheticCurrencySymbol") &&
+            typeof x.syntheticCurrencySymbol === "string" &&
+            Object.keys(x).includes("priceIdentifier") &&
+            typeof x.priceIdentifier === "string" &&
+            Object.keys(x).includes("collateralCurrencyDecimals") &&
+            typeof x.collateralCurrencyDecimals === "number" &&
+            Object.keys(x).includes("syntheticCurrencyDecimals") &&
+            typeof x.syntheticCurrencyDecimals === "number" &&
+            Object.keys(x).includes("priceFeedDecimals") &&
+            typeof x.priceFeedDecimals === "number" &&
+            Object.keys(x).includes("networkId") &&
+            typeof x.networkId === "number" &&
+            Object.keys(x).includes("crRequirement") &&
+            typeof x.crRequirement === "string"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
-  }
 
-  // Calculate the collateralization Ratio from the collateral, token amount and token price.
-  // This is found using the following equation cr = [collateral / (tokensOutstanding * price)] * 100.
-  // The number returned is scaled by 1e18.
-  calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
-    const normalizedCollateral = this.normalizeCollateralDecimals(collateral);
-    const normalizedTokensOutstanding = this.normalizeSyntheticDecimals(tokensOutstanding);
-    const normalizedTokenPrice = this.normalizePriceFeedDecimals(tokenPrice);
-    const fixedPointAdjustment = this.toBN(this.toWei("1"));
-
-    return normalizedCollateral
-      .mul(fixedPointAdjustment.mul(fixedPointAdjustment))
-      .div(normalizedTokensOutstanding.mul(normalizedTokenPrice))
-      .muln(100);
-  }
-
-  // Calculate the maximum price at which this liquidation would be disputable. This is found using the following
-  // equation: liquidatedCollateral / (liquidatedTokens * crRequirement)
-  calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
-    const normalizedLiquidatedCollateral = this.normalizeCollateralDecimals(liquidatedCollateral);
-    const normalizedLiquidatedTokens = this.normalizeSyntheticDecimals(liquidatedTokens);
-    const fixedPointAdjustment = this.toBN(this.toWei("1"));
-
-    return normalizedLiquidatedCollateral
-      .mul(fixedPointAdjustment.mul(fixedPointAdjustment))
-      .div(normalizedLiquidatedTokens.mul(this.toBN(crRequirement)));
-  }
-
-  getLastSeenBlockNumber(eventArray) {
-    if (eventArray.length == 0) {
-      return 0;
-    }
-    return eventArray[eventArray.length - 1].blockNumber;
+    this.fixedPointAdjustment = this.toBN(this.toWei("1"));
   }
 
   // Quries NewSponsor events since the latest query marked by `lastNewSponsorBlockNumber`.
@@ -175,7 +170,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastNewSponsorBlockNumber = this.getLastSeenBlockNumber(latestNewSponsorEvents);
+    this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -202,10 +197,10 @@ class ContractMonitor {
       let crRequirementString = this.toBN(this.empProps.crRequirement).muln(100);
       if (price) {
         collateralizationString = this.formatDecimalString(
-          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
+          this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
         );
         maxPriceToBeDisputableString = this.formatDecimalString(
-          this.calculateDisputablePrice(
+          this._calculateDisputablePrice(
             this.empProps.crRequirement,
             event.liquidatedCollateral,
             event.tokensOutstanding
@@ -265,7 +260,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastLiquidationBlockNumber = this.getLastSeenBlockNumber(latestLiquidationEvents);
+    this.lastLiquidationBlockNumber = this._getLastSeenBlockNumber(latestLiquidationEvents);
   }
 
   async checkForNewDisputeEvents() {
@@ -303,7 +298,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeBlockNumber = this.getLastSeenBlockNumber(latestDisputeEvents);
+    this.lastDisputeBlockNumber = this._getLastSeenBlockNumber(latestDisputeEvents);
   }
 
   async checkForNewDisputeSettlementEvents() {
@@ -370,7 +365,32 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeSettlementBlockNumber = this.getLastSeenBlockNumber(latestDisputeSettlementEvents);
+    this.lastDisputeSettlementBlockNumber = this._getLastSeenBlockNumber(latestDisputeSettlementEvents);
+  }
+
+  // Calculate the collateralization Ratio from the collateral, token amount and token price.
+  // This is found using the following equation cr = [collateral / (tokensOutstanding * price)] * 100.
+  // The number returned is scaled by 1e18.
+  _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
+    return this.normalizeCollateralDecimals(collateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(tokensOutstanding).mul(this.normalizePriceFeedDecimals(tokenPrice)))
+      .muln(100);
+  }
+
+  // Calculate the maximum price at which this liquidation would be disputable. This is found using the following
+  // equation: liquidatedCollateral / (liquidatedTokens * crRequirement)
+  _calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
+    return this.normalizeCollateralDecimals(liquidatedCollateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(liquidatedTokens).mul(this.toBN(crRequirement)));
+  }
+
+  _getLastSeenBlockNumber(eventArray) {
+    if (eventArray.length == 0) {
+      return 0;
+    }
+    return eventArray[eventArray.length - 1].blockNumber;
   }
 }
 

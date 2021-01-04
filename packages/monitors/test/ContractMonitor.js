@@ -24,6 +24,10 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
 
+// Run the tests against 3 different kinds of token/synth decimal combinations:
+// 1) matching 18 & 18 for collateral for most token types with normal tokens.
+// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
+// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
@@ -62,6 +66,7 @@ contract("ContractMonitor.js", function(accounts) {
       let spyLogger;
       let spy;
       let empProps;
+      let monitorConfig;
 
       // re-used variables
       let expirationTime;
@@ -77,7 +82,7 @@ contract("ContractMonitor.js", function(accounts) {
       let convertPrice;
 
       before(async function() {
-        identifier = `${testConfig.tokenName}TEST`;
+        identifier = `${testConfig.tokenSymbol}TEST`;
         convertCollateral = Convert(testConfig.collateralDecimals);
         convertSynthetic = Convert(testConfig.syntheticDecimals);
         convertPrice = Convert(testConfig.priceFeedDecimals);
@@ -156,7 +161,7 @@ contract("ContractMonitor.js", function(accounts) {
         priceFeedMock = new PriceFeedMock();
 
         // Define a configuration object. In this config only monitor one liquidator and one disputer.
-        const monitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
+        monitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
 
         syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -457,7 +462,7 @@ contract("ContractMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "succeeded")); // the disputed was successful based on settlement price
         assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
       });
-      it("Cannot set invalid config", async function() {
+      it("Cannot set invalid config or empProps", async function() {
         let errorThrown1;
         try {
           // Create an invalid config. A valid config expects two arrays of addresses.
@@ -491,7 +496,26 @@ contract("ContractMonitor.js", function(accounts) {
           errorThrown2 = true;
         }
         assert.isTrue(errorThrown2);
+
+        let errorThrown3;
+        try {
+          // Create an invalid empProps. This includes missing values or wrong type asignment.
+
+          empProps.collateralCurrencyDecimals = null; // set a variable that must be a number to null
+          contractMonitor = new ContractMonitor({
+            logger: spyLogger,
+            expiringMultiPartyEventClient: eventClient,
+            priceFeed: priceFeedMock,
+            config: monitorConfig, // valid config
+            empProps
+          });
+          errorThrown3 = false;
+        } catch (err) {
+          errorThrown3 = true;
+        }
+        assert.isTrue(errorThrown3);
       });
+
       it("Can correctly create contract monitor with no config provided", async function() {
         let errorThrown;
         try {
