@@ -6,9 +6,9 @@ const Path = require("path");
 const { getWeb3 } = require("@uma/common");
 
 const { Dataset, mocks, serializers } = require("../../libs/datasets");
-const { Blocks, Transactions, Logs, Coingecko, SynthPrices } = serializers;
+const { Blocks, Transactions, Logs, Coingecko } = serializers;
 const Queries = require("../../libs/bigquery");
-const params = require("../../test/datasets/set1");
+const params = require("../datasets/set1/config.json");
 const CoingeckoApi = require("../../libs/coingecko");
 const SynthPricesApi = require("../../libs/synthPrices");
 
@@ -173,34 +173,7 @@ describe("Datasets", function() {
       assert(result.length);
     });
   });
-  describe("Synthprices Serializer", function() {
-    it("serializes", async function() {
-      this.timeout(10000);
-      const config = {
-        contract: params.empContracts[0],
-        start: params.startingTimestamp,
-        end: params.startingTimestamp + 1000 * 60 * 60 * 24 * 10
-      };
-      const data = await synthPrices.getHistoricSynthPrices(config.contract.toLowerCase(), config.start, config.end);
-      const result = SynthPrices().serialize(data);
-      assert(result);
-    });
-    it("deserializes", async function() {
-      this.timeout(10000);
-      const config = {
-        contract: params.empContracts[0],
-        start: params.startingTimestamp,
-        end: params.startingTimestamp + 1000 * 60 * 60 * 24 * 10
-      };
-      const data = await synthPrices.getHistoricSynthPrices(config.contract.toLowerCase(), config.start, config.end);
-      const serialized = SynthPrices().serialize(data);
-      const result = await SynthPrices()
-        .deserialize(serialized.split())
-        .toPromise(Promise);
-      assert(result.length);
-    });
-  });
-  describe("Dataset and Mocks", function() {
+  describe("Dataset and Mocks for Dev Mining", function() {
     let path;
     after(function(done) {
       fs.rmdir(basePath, { recursive: true }, done);
@@ -213,10 +186,10 @@ describe("Datasets", function() {
         end: params.startingTimestamp + 1000 * 60 * 60 * 24 * 10
       };
       const ds = Dataset(basePath, { queries, coingecko, synthPrices });
-      path = await ds.save("test-set", config);
+      path = await ds.saveDevMining("dev-mining-test", config);
     });
     it("loads query mock", async function() {
-      this.timeout(10000);
+      this.timeout(100000);
       const config = {
         ...params,
         start: params.startingTimestamp,
@@ -231,9 +204,47 @@ describe("Datasets", function() {
       const cg = mocks.Coingecko(path);
       const gcprices = await cg.getHistoricContractPrices(params.collateralTokens[0]);
       assert(gcprices.length);
-      const sp = mocks.SynthPrices(path);
-      const spprices = await sp.getHistoricSynthPrices(params.empContracts[0]);
-      assert(spprices.length);
+    });
+  });
+  describe("Dataset and Mocks for Dapp Mining", function() {
+    let path;
+    after(function(done) {
+      fs.rmdir(basePath, { recursive: true }, done);
+    });
+    it("saves new set", async function() {
+      this.timeout(10000);
+      const config = {
+        empAddress: "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
+        startTime: 1607558400000,
+        endTime: 1609113600000
+      };
+      const ds = Dataset(basePath, { queries });
+      path = await ds.saveDappMining("dapp-mining-test", config);
+    });
+    it("loads query mock", async function() {
+      this.timeout(100000);
+      const config = {
+        empAddress: "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
+        startTime: 1607558400000,
+        endTime: 1609113600000
+      };
+      assert(path, "requires dataset path");
+      const query = mocks.Queries(path);
+      const blocks = await query.getBlocks(config.startTime, config.endTime);
+      assert(blocks.length);
+      const descBlocks = await query.getBlocksDescending(config.endTime, 2);
+      assert(descBlocks.length, 2);
+      assert(descBlocks[0].number > descBlocks[1].number);
+      const ascBlocks = await query.getBlocksAscending(config.startTime, 2);
+      assert(ascBlocks.length, 2);
+      assert(ascBlocks[0].number < ascBlocks[1].number);
+      const logs = await query.getLogsByContract(config.empAddress);
+      assert(logs.length);
+      const traces = await query
+        .streamTracesByContract(config.empAddress)
+        .collect()
+        .toPromise(Promise);
+      assert(traces.length);
     });
   });
 });

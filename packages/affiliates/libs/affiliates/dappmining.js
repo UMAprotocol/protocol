@@ -79,6 +79,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
     }, {});
   }
 
+  // integer percent calculation where percent is passed in as wei
   function calculatePercent(amount, percent) {
     return fromWei(toBN(amount.toString()).mul(toBN(percent.toString())));
   }
@@ -184,6 +185,22 @@ module.exports = ({ queries, empAbi, web3 }) => {
     };
   }
 
+  // Helper function to process rewards. Use this for testing business logic with custom data.
+  async function processRewardData({ attributions, balances, whitelist, totalRewards }) {
+    assert(totalRewards, "requires total rewards");
+    const percentages = calculateBlockReward({
+      attributions,
+      balances,
+      whitelist
+    });
+
+    return Object.entries(percentages).reduce((result, [key, value]) => {
+      if (value == 0) return result;
+      result[key] = calculatePercent(totalRewards, value);
+      return result;
+    }, {});
+  }
+
   // Main entrypoint to kick off reward calculations. Returns an object with rewards keyed by address and value.
   async function getRewards({ empAddress, defaultAddress, startTime, endTime, whitelist, totalRewards, firstEmpDate }) {
     assert(empAddress, "requires emp address for reward calculation");
@@ -219,18 +236,14 @@ module.exports = ({ queries, empAbi, web3 }) => {
 
     const [attributions, balances] = await Promise.all([attributionPromise, eventPromise]);
 
-    const percentages = calculateBlockReward({
+    // split out some business logic from data aquisition so we can test this function seperately with test data
+    const rewards = await processRewardData({
       attributions,
       balances,
       // add default address to whitelist if not already added
-      whitelist: [...new Set([...whitelist, defaultAddress]).values()]
+      whitelist: [...new Set([...whitelist, defaultAddress]).values()],
+      totalRewards
     });
-
-    const rewards = Object.entries(percentages).reduce((result, [key, value]) => {
-      if (value == 0) return result;
-      result[key] = calculatePercent(totalRewards, value);
-      return result;
-    }, {});
 
     return {
       startBlock,
@@ -247,7 +260,10 @@ module.exports = ({ queries, empAbi, web3 }) => {
       calculatePercent,
       calculateBlockReward,
       ProcessAttributionStream,
-      ProcessEventStream
+      ProcessEventStream,
+      sumAttributions,
+      sumBalances,
+      processRewardData
     }
   };
 };
