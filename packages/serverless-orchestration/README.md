@@ -1,5 +1,6 @@
 # @uma/serverless-orchestration
 
+This package contains scripts that enable bots to be run in a serverless fashion.
 ## Installing the package
 
 ```bash
