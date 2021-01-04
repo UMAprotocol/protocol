@@ -19,6 +19,7 @@ const defaultAddress = "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35";
 const whitelist = ["0x9a9dcd6b52b45a78cd13b395723c245dabfbab71"];
 
 module.exports = {
+  // name is ignored when running the dapp rewards script, but is required to generate output for a dataset.
   name: "dapp-mining-set1",
   empAddress,
   startTime,

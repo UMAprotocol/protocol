@@ -1,4 +1,4 @@
-const { DeployerRewards } = require("../../libs/affiliates");
+const { DevMining } = require("../../libs/affiliates");
 const lodash = require("lodash");
 const { assert } = require("chai");
 const { getAbi } = require("@uma/core");
@@ -31,14 +31,14 @@ const devRewardsToDistribute = "50000";
 // mocks
 const { Queries, Coingecko, SynthPrices } = mocks;
 
-describe("DeployerRewards", function() {
+describe("DevMining Rewards", function() {
   describe("CalculateRewards Simple Data", function() {
     let balanceHistories, params, totalRewards, affiliates;
     beforeEach(function() {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DeployerRewards({
+      affiliates = DevMining({
         queries,
         empAbi: empAbi,
         coingecko,
@@ -184,7 +184,7 @@ describe("DeployerRewards", function() {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DeployerRewards({
+      affiliates = DevMining({
         queries,
         empAbi,
         coingecko,
