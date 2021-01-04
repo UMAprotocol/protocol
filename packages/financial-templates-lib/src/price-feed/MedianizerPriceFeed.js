@@ -76,7 +76,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   getPriceFeedDecimals() {
     const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
     // Check that every price feeds decimals match the 0th price feeds decimals.
-    if (priceFeedDecimals.every(val => val !== priceFeedDecimals[0])) {
+    if (!priceFeedDecimals.every(feedDecimals => feedDecimals === priceFeedDecimals[0])) {
       throw new Error("MedianizerPriceFeed's feeds do not all have the same decimals.");
     }
 
