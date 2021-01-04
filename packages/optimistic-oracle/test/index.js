@@ -68,5 +68,6 @@ contract("index.js", function() {
     // and auto detected the OO's deployed address.
     assert.isTrue(spyLogIncludes(spy, 0, "OO keeper started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
+    assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });

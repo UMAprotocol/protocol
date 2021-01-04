@@ -1,6 +1,6 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-const { OptimisticOracleRequestStatesEnum } = require("@uma/common");
+const { OptimisticOracleRequestStatesEnum, getFromBlock } = require("@uma/common");
 const Promise = require("bluebird");
 
 class OptimisticOracleClient {
@@ -55,9 +55,11 @@ class OptimisticOracleClient {
   }
 
   async update() {
+    const fromBlock = await getFromBlock(this.web3);
+
     // Fetch contract state variables in parallel.
     const [requestEvents, currentTime] = await Promise.all([
-      this.oracle.getPastEvents("RequestPrice", { fromBlock: 0 }), // TODO: Change this `fromBlock` to something > 0
+      this.oracle.getPastEvents("RequestPrice", { fromBlock }),
       this.oracle.methods.getCurrentTime().call()
     ]);
 
