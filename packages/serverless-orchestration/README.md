@@ -3,7 +3,7 @@
 ## Installing the package
 
 ```bash
-yarn global add @uma/serverless-orchestration
+yarn add @uma/serverless-orchestration
 ```
 
 ## Orchestration scripts

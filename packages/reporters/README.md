@@ -5,7 +5,7 @@ This package contains two UMA reporter bot implementations: `GlobalSummaryReport
 ## Installing the package
 
 ```bash
-yarn global add @uma/reporters
+yarn add @uma/reporters
 ```
 
 ## Reporters

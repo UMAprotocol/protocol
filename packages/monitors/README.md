@@ -7,7 +7,7 @@ For more information about running a monitor bot, see the [docs](https://docs.um
 ## Installing the package
 
 ```bash
-yarn global add @uma/monitors
+yarn add @uma/monitors
 ```
 
 ## Running the monitors
