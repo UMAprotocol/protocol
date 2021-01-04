@@ -7,13 +7,16 @@ vote.umaproject.org.
 ## Installing the package
 
 ```bash
-yarn global add @uma/cli
+yarn add @uma/cli
 ```
+
+Note: this is a local installation, meaning it instructs yarn to install into the current package/directory. It can be
+installed globally if you'd like the executable to be accessible everywhere.
 
 ## Running the package
 
 ```bash
-uma-cli --network mainnet_mnemonic
+yarn uma-cli --network mainnet_mnemonic
 ```
 
 ## Using your own node URL
@@ -22,8 +25,7 @@ By default, this package uses a default infura account that often exceeds its da
 node ULR, export the following env variable:
 
 ```bash
-export CUSTOM_NODE_URL=your.node.url.io
-uma-cli --network mainnet_mnemonic
+CUSTOM_NODE_URL=https://your.node.url.io yarn uma-cli --network mainnet_mnemonic
 ```
 
 ## Using your private keys

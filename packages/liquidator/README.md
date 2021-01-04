@@ -8,15 +8,18 @@ For more information about running a liquidator bot, see the [docs](https://docs
 ## Installing the package
 
 ```bash
-yarn global add @uma/liquidator
+yarn add @uma/liquidator
 ```
+
+Note: this is a local installation, meaning it instructs yarn to install into the current package/directory. It can be
+installed globally if you'd like the executable to be accessible everywhere.
 
 ## Running the liquidator
 
 The simplest way to run the liquidator (with default parameters and price feeds) is:
 
 ```bash
-EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=your.node.url MNEMONIC="your mnemonic here" liquidator --network mainnet_mnemonic
+EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic here" yarn liquidator --network mainnet_mnemonic
 ```
 
 ## Other networks and private keys
