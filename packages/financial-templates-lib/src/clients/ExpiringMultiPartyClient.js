@@ -1,7 +1,7 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { ConvertDecimals, LiquidationStatesEnum } = require("@uma/common");
+const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
 const Promise = require("bluebird");
 class ExpiringMultiPartyClient {
   /**
@@ -130,10 +130,11 @@ class ExpiringMultiPartyClient {
       await this.initialSetup();
     }
     // Fetch contract state variables in parallel.
+    const fromBlock = await getFromBlock(this.web3);
     const [newSponsorEvents, endedSponsorEvents, liquidationCreatedEvents, currentTime] = await Promise.all([
-      this.emp.getPastEvents("NewSponsor", { fromBlock: 0 }),
-      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock: 0 }),
-      this.emp.getPastEvents("LiquidationCreated", { fromBlock: 0 }),
+      this.emp.getPastEvents("NewSponsor", { fromBlock }),
+      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock }),
+      this.emp.getPastEvents("LiquidationCreated", { fromBlock }),
       this.emp.methods.getCurrentTime().call()
     ]);
 
