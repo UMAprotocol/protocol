@@ -1,6 +1,3 @@
-const { EmpBalancesHistory } = require("./processors");
-const { Prices } = require("./models");
-const { DecodeLog } = require("./contracts");
 const highland = require("highland");
 const moment = require("moment");
 const Promise = require("bluebird");
@@ -11,13 +8,17 @@ const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
-const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
+const { EmpBalancesHistory } = require("../processors");
+const { Prices } = require("../models");
+const { DecodeLog } = require("../contracts");
+
+module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
   assert(empAbi, "requires empAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
 
-  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployeed before Jan of 2020.
+  // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
   async function getBalanceHistory(empAddress, start, end) {
@@ -311,10 +312,4 @@ const DeployerRewards = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate
       toChecksumAddress
     }
   };
-};
-
-module.exports = {
-  // Calculate rewards for deployers
-  DeployerRewards
-  // We may have future reward types, such as tagged rewards
 };

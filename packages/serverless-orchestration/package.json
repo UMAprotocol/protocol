@@ -4,7 +4,7 @@
   "description": "Serverless orchestration scripts to run a parallel instances of scripts or bots",
   "dependencies": {
     "@truffle/contract": "^4.2.20",
-    "@uma/common": "^1.0.1",
+    "@uma/common": "^1.1.0",
     "@uma/financial-templates-lib": "^1.2.0"
   },
   "devDependencies": {

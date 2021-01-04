@@ -6,7 +6,11 @@ const IDENTIFIER_BLACKLIST = {
 // Price identifiers that should resolve prices to non 18 decimal precision. Any identifiers
 // not on this list are assumed to resolve to 18 decimals.
 const IDENTIFIER_NON_18_PRECISION = {
-  USDBTC: 8
+  USDBTC: 8,
+  "STABLESPREAD/USDC": 6,
+  "STABLESPREAD/BTC": 8,
+  "ELASTIC_STABLESPREAD/USDC": 6,
+  BCHNBTC: 8
 };
 
 const getPrecisionForIdentifier = identifier => {
