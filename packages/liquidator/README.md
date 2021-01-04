@@ -19,7 +19,7 @@ installed globally if you'd like the executable to be accessible everywhere.
 The simplest way to run the liquidator (with default parameters and price feeds) is:
 
 ```bash
-EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic here" yarn liquidator --network mainnet_mnemonic
+EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" yarn liquidator --network mainnet_mnemonic
 ```
 
 ## Other networks and private keys
