@@ -18,6 +18,9 @@ import "../../common/implementation/FixedPoint.sol";
  * a DVM price. The contract enforces dispute rewards in order to incentivize disputers to correctly dispute false
  * liquidations and compensate position sponsors who had their position incorrectly liquidated. Importantly, a
  * prospective disputer must deposit a dispute bond that they can lose in the case of an unsuccessful dispute.
+ * NOTE: this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
+ * money themselves).
  */
 contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
@@ -30,7 +33,7 @@ contract Liquidatable is PricelessPositionManager {
      ****************************************/
 
     // Because of the check in withdrawable(), the order of these enum values should not change.
-    enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
+    enum Status { Uninitialized, NotDisputed, Disputed, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
         // Following variables set upon creation of liquidation:
@@ -69,9 +72,9 @@ contract Liquidatable is PricelessPositionManager {
         // Params specifically for Liquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
-        FixedPoint.Unsigned disputeBondPct;
-        FixedPoint.Unsigned sponsorDisputeRewardPct;
-        FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned disputeBondPercentage;
+        FixedPoint.Unsigned sponsorDisputeRewardPercentage;
+        FixedPoint.Unsigned disputerDisputeRewardPercentage;
     }
 
     // This struct is used in the `withdrawLiquidation` method that disperses liquidation and dispute rewards.
@@ -105,13 +108,13 @@ contract Liquidatable is PricelessPositionManager {
     FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
-    FixedPoint.Unsigned public disputeBondPct;
+    FixedPoint.Unsigned public disputeBondPercentage;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
     // Represented as a multiplier, see above.
-    FixedPoint.Unsigned public sponsorDisputeRewardPct;
+    FixedPoint.Unsigned public sponsorDisputeRewardPercentage;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multiplier, see above.
-    FixedPoint.Unsigned public disputerDisputeRewardPct;
+    FixedPoint.Unsigned public disputerDisputeRewardPercentage;
 
     /****************************************
      *                EVENTS                *
@@ -184,18 +187,15 @@ contract Liquidatable is PricelessPositionManager {
         )
         nonReentrant()
     {
-        require(params.collateralRequirement.isGreaterThan(1), "CR must be more than 100%");
-        require(
-            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Rewards are more than 100%"
-        );
+        require(params.collateralRequirement.isGreaterThan(1));
+        require(params.sponsorDisputeRewardPercentage.add(params.disputerDisputeRewardPercentage).isLessThan(1));
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
         collateralRequirement = params.collateralRequirement;
-        disputeBondPct = params.disputeBondPct;
-        sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
-        disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+        disputeBondPercentage = params.disputeBondPercentage;
+        sponsorDisputeRewardPercentage = params.sponsorDisputeRewardPercentage;
+        disputerDisputeRewardPercentage = params.disputerDisputeRewardPercentage;
     }
 
     /****************************************
@@ -305,7 +305,7 @@ contract Liquidatable is PricelessPositionManager {
             LiquidationData({
                 sponsor: sponsor,
                 liquidator: msg.sender,
-                state: Status.PreDispute,
+                state: Status.NotDisputed,
                 liquidationTime: getCurrentTime(),
                 tokensOutstanding: tokensLiquidated,
                 lockedCollateral: lockedCollateral,
@@ -356,7 +356,7 @@ contract Liquidatable is PricelessPositionManager {
      * and pay a fixed final fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no other pending disputes.
      * This contract must be approved to spend at least the dispute bond amount of `collateralCurrency`. This dispute
-     * bond amount is calculated from `disputeBondPct` times the collateral in the liquidation.
+     * bond amount is calculated from `disputeBondPercentage` times the collateral in the liquidation.
      * @param liquidationId of the disputed liquidation.
      * @param sponsor the address of the sponsor whose liquidation is being disputed.
      * @return totalPaid amount of collateral charged to disputer (i.e. final fee bond + dispute bond).
@@ -372,13 +372,13 @@ contract Liquidatable is PricelessPositionManager {
 
         // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
         FixedPoint.Unsigned memory disputeBondAmount =
-            disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
+            disputedLiquidation.lockedCollateral.mul(disputeBondPercentage).mul(
                 _getFeeAdjustedCollateral(disputedLiquidation.rawUnitCollateral)
             );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
         // Request a price from DVM. Liquidation is pending dispute until DVM returns a price.
-        disputedLiquidation.state = Status.PendingDispute;
+        disputedLiquidation.state = Status.Disputed;
         disputedLiquidation.disputer = msg.sender;
 
         // Enqueue a request with the DVM.
@@ -429,9 +429,9 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory tokenRedemptionValue =
             liquidation.tokensOutstanding.mul(settlementPrice).mul(feeAttenuation);
         FixedPoint.Unsigned memory collateral = liquidation.lockedCollateral.mul(feeAttenuation);
-        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
-        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
-        FixedPoint.Unsigned memory disputeBondAmount = collateral.mul(disputeBondPct);
+        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPercentage.mul(tokenRedemptionValue);
+        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPercentage.mul(tokenRedemptionValue);
+        FixedPoint.Unsigned memory disputeBondAmount = collateral.mul(disputeBondPercentage);
         FixedPoint.Unsigned memory finalFee = liquidation.finalFee.mul(feeAttenuation);
 
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
@@ -476,7 +476,7 @@ contract Liquidatable is PricelessPositionManager {
 
             // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
             // state as a dispute failed and the liquidator can withdraw.
-        } else if (liquidation.state == Status.PreDispute) {
+        } else if (liquidation.state == Status.NotDisputed) {
             // Pay LIQUIDATOR: collateral + returned final fee
             rewards.payToLiquidator = collateral.add(finalFee);
 
@@ -535,14 +535,14 @@ contract Liquidatable is PricelessPositionManager {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    // This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
-    // If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
+    // This settles a liquidation if it is in the Disputed state. If not, it will immediately return.
+    // If the liquidation is in the Disputed state, but a price is not available, this will revert.
     function _settle(uint256 liquidationId, address sponsor) internal {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
-        // Settlement only happens when state == PendingDispute and will only happen once per liquidation.
+        // Settlement only happens when state == Disputed and will only happen once per liquidation.
         // If this liquidation is not ready to be settled, this method should return immediately.
-        if (liquidation.state != Status.PendingDispute) {
+        if (liquidation.state != Status.Disputed) {
             return;
         }
 
@@ -604,7 +604,7 @@ contract Liquidatable is PricelessPositionManager {
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute),
+            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed),
             "Liquidation not disputable"
         );
     }
@@ -615,8 +615,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Must be disputed or the liquidation has passed expiry.
         require(
-            (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
+            (state > Status.NotDisputed) ||
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.NotDisputed)),
             "Liquidation not withdrawable"
         );
     }

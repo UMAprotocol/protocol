@@ -1,19 +1,22 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
 const { interfaceName, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
+
+const CONTRACT_VERSION = "1.2.0";
 
 const { ExpiringMultiPartyClient } = require("../../src/clients/ExpiringMultiPartyClient");
 
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const MockOracle = artifacts.require("MockOracle");
-const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const Timer = artifacts.require("Timer");
-const Store = artifacts.require("Store");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, CONTRACT_VERSION);
+const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
+const MockOracle = getTruffleContract("MockOracle", web3, CONTRACT_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, CONTRACT_VERSION);
+const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
+const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
 // 1) matching 18 & 18 for collateral for most token types with normal tokens.
@@ -113,7 +116,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          priceFeedIdentifier: utf8ToHex(identifier),
+          priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
           liquidationLiveness: "1000",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },

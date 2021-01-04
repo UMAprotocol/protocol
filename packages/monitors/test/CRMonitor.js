@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName, parseFixed, ZERO_ADDRESS } = require("@uma/common");
@@ -109,7 +109,7 @@ contract("CRMonitor.js", function(accounts) {
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
           timerAddress: timer.address,
-          priceFeedIdentifier: utf8ToHex(tokenConfig.tokenName),
+          priceFeedIdentifier: padRight(utf8ToHex(tokenConfig.tokenName), 64),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },

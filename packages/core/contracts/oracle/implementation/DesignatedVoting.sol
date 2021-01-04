@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
-import "../interfaces/VotingInterface.sol";
+import "../interfaces/VotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "./Constants.sol";
 
@@ -58,16 +58,20 @@ contract DesignatedVoting is Withdrawable {
     function commitVote(
         bytes32 identifier,
         uint256 time,
+        bytes memory ancillaryData,
         bytes32 hash
     ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingAddress().commitVote(identifier, time, hash);
+        _getVotingAddress().commitVote(identifier, time, ancillaryData, hash);
     }
 
     /**
      * @notice Forwards a batch commit to Voting.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(VotingInterface.Commitment[] calldata commits) external onlyRoleHolder(uint256(Roles.Voter)) {
+    function batchCommit(VotingAncillaryInterface.CommitmentAncillary[] calldata commits)
+        external
+        onlyRoleHolder(uint256(Roles.Voter))
+    {
         _getVotingAddress().batchCommit(commits);
     }
 
@@ -82,16 +86,20 @@ contract DesignatedVoting is Withdrawable {
         bytes32 identifier,
         uint256 time,
         int256 price,
+        bytes memory ancillaryData,
         int256 salt
     ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingAddress().revealVote(identifier, time, price, salt);
+        _getVotingAddress().revealVote(identifier, time, price, ancillaryData, salt);
     }
 
     /**
      * @notice Forwards a batch reveal to Voting.
      * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(VotingInterface.Reveal[] calldata reveals) external onlyRoleHolder(uint256(Roles.Voter)) {
+    function batchReveal(VotingAncillaryInterface.RevealAncillary[] calldata reveals)
+        external
+        onlyRoleHolder(uint256(Roles.Voter))
+    {
         _getVotingAddress().batchReveal(reveals);
     }
 
@@ -102,7 +110,7 @@ contract DesignatedVoting is Withdrawable {
      * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
      * @return amount of rewards that the user should receive.
      */
-    function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
+    function retrieveRewards(uint256 roundId, VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve)
         public
         onlyRoleHolder(uint256(Roles.Voter))
         returns (FixedPoint.Unsigned memory)
@@ -110,7 +118,7 @@ contract DesignatedVoting is Withdrawable {
         return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
     }
 
-    function _getVotingAddress() private view returns (VotingInterface) {
-        return VotingInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getVotingAddress() private view returns (VotingAncillaryInterface) {
+        return VotingAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }

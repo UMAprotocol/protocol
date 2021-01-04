@@ -28,7 +28,7 @@ const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
   string: ["identifier", "collateral", "cversion"]
 });
-const abiVersion = argv.cversion || "1.2.1"; // Default to most recent mainnet deployment, 1.1.0.
+const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
@@ -100,9 +100,9 @@ const deployEMP = async callback => {
       syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
       syntheticSymbol: "uUSDrBTC-OCT",
       collateralRequirement: { rawValue: toWei("1.35") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.2") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,

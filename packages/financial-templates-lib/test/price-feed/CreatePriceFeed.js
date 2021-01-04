@@ -1,15 +1,19 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
+const { getTruffleContract } = require("@uma/core");
+
+const CONTRACT_VERSION = "latest";
+const CONTRACT_VERSION_EMP = "1.2.0";
 
 // Tested Contract
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, CONTRACT_VERSION_EMP);
 
 // Helper Contracts
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const Timer = artifacts.require("Timer");
-const Store = artifacts.require("Store");
+const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, CONTRACT_VERSION);
+const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
+const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
 const {
   createPriceFeed,
@@ -49,7 +53,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   before(async function() {
     identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("ETH/BTC"), 64));
     finder = await Finder.new();
     timer = await Timer.new();
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
@@ -194,7 +198,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -237,7 +241,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -302,7 +306,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -337,7 +341,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -365,7 +369,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralTokenAddress,
       tokenAddress: syntheticTokenAddress,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.defined as part of the default bot configs
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -488,7 +492,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"), // Note: an identifier which is part of the default config is required for this test.
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
@@ -524,7 +528,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: utf8ToHex("Invalid Identifier"),
+      priceFeedIdentifier: padRight(utf8ToHex("Invalid Identifier"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },

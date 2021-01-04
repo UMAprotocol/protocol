@@ -1,18 +1,21 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 
 const { interfaceName, parseFixed, MAX_UINT_VAL, ZERO_ADDRESS, advanceBlockAndSetTime } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
+
+const CONTRACT_VERSION = "1.2.0";
 
 const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMultiPartyEventClient");
 
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const MockOracle = artifacts.require("MockOracle");
-const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const Timer = artifacts.require("Timer");
-const Store = artifacts.require("Store");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, CONTRACT_VERSION);
+const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
+const MockOracle = getTruffleContract("MockOracle", web3, CONTRACT_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, CONTRACT_VERSION);
+const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
+const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
@@ -106,7 +109,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
           collateralAddress: collateralToken.address,
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
-          priceFeedIdentifier: utf8ToHex(identifier),
+          priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
