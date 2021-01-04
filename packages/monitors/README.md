@@ -12,10 +12,10 @@ yarn add @uma/monitors
 
 ## Running the monitors
 
-The config below will start up a monitor bot that will: (1) send messages when new liquidations, alerts, or disputes occur and (2) fire if there is large volatility in the synthetic or price of the underlying. It wont report on any wallet or CR monitoring as no params have been defined.
+The config below will start up a monitor bot that will: (1) send messages when new liquidations, alerts, or disputes occur and (2) fire if there is large volatility in the synthetic or price of the underlying. It won't report on any wallet or CR monitoring as no params have been defined.
 
 ```bash
-EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=your.node.url MNEMONIC="your mnemonic here" monitors --network mainnet_mnemonic
+EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=your.node.url MNEMONIC="your mnemonic here" yarn monitors --network mainnet_mnemonic
 ```
 
 ## Monitors
