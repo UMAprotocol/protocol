@@ -6,7 +6,7 @@ class PriceFeedMock extends PriceFeedInterface {
   // Constructs the MedianizerPriceFeed.
   // priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface. Must be an array of
   // at least one element. Note that no decimals are included in this price feed. It simply stores the exact input number
-  // provided by teh test suite. Therefore, decimal conversion is expected to occur within the tests themselves.
+  // provided by the test suite. Therefore, decimal conversion is expected to occur within the tests themselves.
   constructor(currentPrice, historicalPrice, lastUpdateTime, priceFeedDecimals = 18) {
     super();
     this.updateCalled = 0;
@@ -29,8 +29,8 @@ class PriceFeedMock extends PriceFeedInterface {
       if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
       }
-
-      this.historicalPrices[_price.timestamp] = toBN(_price.price);
+      // allows this to be set to null without throwing.
+      this.historicalPrices[_price.timestamp] = _price.price ? toBN(_price.price) : _price.price;
     });
   }
 

@@ -161,7 +161,6 @@ contract("Liquidator.js", function(accounts) {
           excessTokenBeneficiary: store.address,
           financialProductLibraryAddress: ZERO_ADDRESS
         };
-        console.log("constructorParams", constructorParams);
         // Deploy a new expiring multi party
         emp = await ExpiringMultiParty.new(constructorParams);
         await syntheticToken.addMinter(emp.address);
@@ -199,7 +198,6 @@ contract("Liquidator.js", function(accounts) {
         );
         gasEstimator = new GasEstimator(spyLogger);
 
-        console.log("BEF", testConfig.priceFeedDecimals);
         // Create a new instance of the price feed mock.
         priceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
 
@@ -257,17 +255,12 @@ contract("Liquidator.js", function(accounts) {
           { from: liquidatorBot }
         );
 
-        let position = await emp.positions(sponsor1);
-        console.log("position", position);
-        console.log("getCollateral", await emp.getCollateral(sponsor1));
-
         // Start with a mocked price of 1 usd per token.
         // This puts both sponsors over collateralized so no liquidations should occur.
         priceFeedMock.setCurrentPrice(convertPrice("1"));
-        console.log("price", priceFeedMock.getCurrentPrice().toString());
+
         await liquidator.update();
         await liquidator.liquidatePositions();
-        console.log("RIGHT BEFORE");
         assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
         // Both token sponsors should still have their positions with full collateral.
@@ -289,8 +282,6 @@ contract("Liquidator.js", function(accounts) {
         assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
         assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
         assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
-
-        console.log("After no liquidation");
 
         // Next, assume the price feed given to the liquidator has moved such that two of the three sponsors
         // are now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
