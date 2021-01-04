@@ -13,19 +13,20 @@ yarn add @uma/cli
 Note: this is a local installation, meaning it instructs yarn to install into the current package/directory. It can be
 installed globally if you'd like the executable to be accessible everywhere.
 
-## Running the package
+## Running the package with default (empty) keys and node
 
 ```bash
 yarn uma-cli --network mainnet_mnemonic
 ```
 
-## Using your own node URL
+## Using a custom node URL and mnemonic
 
 By default, this package uses a default infura account that often exceeds its daily quota. To plug in your own node
-node ULR, export the following env variable:
+node URL, set the `CUSTOM_NODE_URL` env variable. It also comes with a default mnemonic -- to override, provide your
+mnemonic (seed phrase) using the `MNEMONIC` env variable.
 
 ```bash
-CUSTOM_NODE_URL=https://your.node.url.io yarn uma-cli --network mainnet_mnemonic
+CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" yarn uma-cli --network mainnet_mnemonic
 ```
 
 ## Using your private keys
