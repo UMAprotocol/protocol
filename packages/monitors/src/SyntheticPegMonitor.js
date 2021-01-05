@@ -292,6 +292,7 @@ class SyntheticPegMonitor {
   // This is equivalent of a 20 percent deviation between the numbers.
   // Note that this logger can return negative error if the deviation is in a negative direction.
   _calculateDeviationError(observedValue, expectedValue) {
+    console.log("observedValue", observedValue.toString(), "expectedValue", expectedValue.toString());
     return observedValue
       .sub(expectedValue)
       .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division

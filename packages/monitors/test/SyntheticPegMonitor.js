@@ -79,7 +79,7 @@ contract("SyntheticPegMonitor", function() {
           });
         });
 
-        it("Calculate percentage error returns expected values", async function() {
+        it.only("Calculate percentage error returns expected values", async function() {
           // Test with simple values with know percentage error.
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("1"), convertPrice("1")).toString(),
