@@ -124,9 +124,9 @@ function addSign(number) {
   }
 }
 
-// Take an amount based on fromDecimals and convert it to an amount based on toDecimals
-// For example amount = 100 usdt, its decimals are 6. You want to convert it to 18.
-// convertDecimals(6,18)(100000000)  => 1000000000000000000000.
+// Take an amount based on fromDecimals and convert it to an amount based on toDecimals. For example 100 usdt = 100e6,
+// with 6 decimals. If you wanted to convert this to a base 18 decimals you would get:
+// convertDecimals(6,18)(100000000)  => 100000000000000000000 = 100e18.
 // Returns a BigNumber you will need to call toString on
 // fromDecimals: number - decimal value of amount
 // toDecimals: number - decimal value to convert to

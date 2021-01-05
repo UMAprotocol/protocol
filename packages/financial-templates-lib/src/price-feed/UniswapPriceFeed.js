@@ -55,6 +55,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return this.lastBlockPrice;
   }
 
+  getPriceFeedDecimals() {
+    return 18;
+  }
+
   async update() {
     // TODO: optimize this call. This may be very slow or break if there are many transactions.
     const events = await this.uniswap.getPastEvents("Sync", { fromBlock: 0 });

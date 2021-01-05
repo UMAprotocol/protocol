@@ -50,7 +50,6 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Load unlocked web3 accounts and get the networkId.
@@ -104,10 +103,16 @@ async function run({
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [currentCollateralAllowance, currentSyntheticAllowance, collateralCurrencyDecimals] = await Promise.all([
+    const [
+      currentCollateralAllowance,
+      currentSyntheticAllowance,
+      collateralTokenDecimals,
+      syntheticTokenDecimals
+    ] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       syntheticToken.methods.allowance(accounts[0], empAddress).call(),
-      collateralToken.methods.decimals().call()
+      collateralToken.methods.decimals().call(),
+      syntheticToken.methods.decimals().call()
     ]);
 
     const empProps = {
@@ -115,12 +120,6 @@ async function run({
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens,
       withdrawLiveness
-    };
-
-    // Price feed must use same # of decimals as collateral currency.
-    let customPricefeedConfig = {
-      ...priceFeedConfig,
-      decimals: collateralCurrencyDecimals
     };
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -132,26 +131,37 @@ async function run({
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      priceFeedConfig: customPricefeedConfig,
+      priceFeedConfig,
       liquidatorConfig,
       liquidatorOverridePrice
     });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
-    const [priceFeed] = await Promise.all([
-      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, customPricefeedConfig)
-    ]);
+    const priceFeed = await createReferencePriceFeedForEmp(
+      logger,
+      web3,
+      new Networker(logger),
+      getTime,
+      empAddress,
+      priceFeedConfig
+    );
+
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
-    logger.debug({
-      at: "Liquidator#index",
-      message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
-    });
 
     // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
-    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
+    const empClient = new ExpiringMultiPartyClient(
+      logger,
+      getAbi("ExpiringMultiParty"),
+      web3,
+      empAddress,
+      collateralTokenDecimals,
+      syntheticTokenDecimals,
+      priceFeed.getPriceFeedDecimals()
+    );
+
     const gasEstimator = new GasEstimator(logger);
 
     if (oneSplitAddress) {
@@ -172,6 +182,15 @@ async function run({
       account: accounts[0],
       empProps,
       liquidatorConfig
+    });
+
+    logger.debug({
+      at: "Liquidator#index",
+      message: "Liquidator initialized",
+      collateralDecimals: Number(collateralTokenDecimals),
+      syntheticDecimals: Number(syntheticTokenDecimals),
+      priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
+      priceFeedConfig: priceFeedConfig
     });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate

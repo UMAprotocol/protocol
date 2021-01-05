@@ -18,16 +18,26 @@ const SyntheticToken = getTruffleContract("SyntheticToken", web3, CONTRACT_VERSI
 const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
 const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
+// Run the tests against 3 different kinds of token/synth decimal combinations:
+// 1) matching 18 & 18 for collateral for most token types with normal tokens.
+// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
+// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
-  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  {
+    tokenSymbol: "BTC",
+    collateralDecimals: 8,
+    syntheticDecimals: 8,
+    priceFeedDecimals: 18
+  }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
-  for (let tokenConfig of configs) {
-    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
+  for (let testConfig of configs) {
+    describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals`, function() {
       const sponsor1 = accounts[0];
       const sponsor2 = accounts[1];
 
@@ -42,7 +52,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       let identifierWhitelist;
       let store;
       let identifier;
-      let convert;
+      let convertCollateral;
+      let convertSynthetic;
+      let convertPrice;
       let finder;
       let timer;
 
@@ -53,18 +65,24 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       };
 
       before(async function() {
-        identifier = `${tokenConfig.tokenName}TEST`;
-        convert = Convert(tokenConfig.collateralDecimals);
+        identifier = `${testConfig.tokenName}TEST`;
+        convertCollateral = Convert(testConfig.collateralDecimals);
+        convertSynthetic = Convert(testConfig.syntheticDecimals);
+        convertPrice = Convert(testConfig.priceFeedDecimals);
         collateralToken = await Token.new(
-          tokenConfig.tokenName,
-          tokenConfig.tokenSymbol,
-          tokenConfig.collateralDecimals,
-          { from: sponsor1 }
+          testConfig.tokenSymbol + "Token", // Construct the token name.
+          testConfig.tokenSymbol,
+          testConfig.collateralDecimals,
+          {
+            from: sponsor1
+          }
         );
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: sponsor1 });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
+          from: sponsor1
+        });
         await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
-        await collateralToken.mint(sponsor1, convert("100000"), { from: sponsor1 });
-        await collateralToken.mint(sponsor2, convert("100000"), { from: sponsor1 });
+        await collateralToken.mint(sponsor1, convertSynthetic("100000"), { from: sponsor1 });
+        await collateralToken.mint(sponsor2, convertSynthetic("100000"), { from: sponsor1 });
 
         identifierWhitelist = await IdentifierWhitelist.new();
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
@@ -96,7 +114,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           disputeBondPct: { rawValue: toWei("0.1") },
           sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
           disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-          minSponsorTokens: { rawValue: toWei("1") },
+          minSponsorTokens: { rawValue: convertSynthetic("1") },
           timerAddress: timer.address,
           excessTokenBeneficiary: store.address,
           financialProductLibraryAddress: ZERO_ADDRESS
@@ -118,26 +136,32 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           ExpiringMultiParty.abi,
           web3,
           emp.address,
-          tokenConfig.collateralDecimals
+          testConfig.collateralDecimals,
+          testConfig.syntheticDecimals,
+          testConfig.priceFeedDecimals
         );
-        await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor1 });
-        await collateralToken.approve(emp.address, convert("1000000"), { from: sponsor2 });
+        await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: sponsor1 });
+        await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: sponsor2 });
 
-        await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
-        await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
+        await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: sponsor1 });
+        await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: sponsor2 });
       });
 
       it("Returns all positions", async function() {
         // Create a position and check that it is detected correctly from the client.
-        await emp.create({ rawValue: convert("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
+        await emp.create(
+          { rawValue: convertCollateral("10") },
+          { rawValue: convertSynthetic("50") },
+          { from: sponsor1 }
+        );
         await updateAndVerify(
           client,
           [sponsor1], // expected sponsor
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("50"),
-              amountCollateral: convert("10"),
+              numTokens: convertSynthetic("50"),
+              amountCollateral: convertCollateral("10"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -146,15 +170,19 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         );
 
         // Calling create again from the same sponsor should add additional collateral & debt.
-        await emp.create({ rawValue: convert("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
+        await emp.create(
+          { rawValue: convertCollateral("10") },
+          { rawValue: convertSynthetic("50") },
+          { from: sponsor1 }
+        );
         await updateAndVerify(
           client,
           [sponsor1],
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -163,23 +191,27 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         );
 
         // Calling create from a new address will create a new position and this should be added the the client.
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("100") },
+          { rawValue: convertSynthetic("45") },
+          { from: sponsor2 }
+        );
         await updateAndVerify(
           client,
           [sponsor1, sponsor2],
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
             },
             {
               sponsor: sponsor2,
-              numTokens: toWei("45"),
-              amountCollateral: convert("100"),
+              numTokens: convertSynthetic("45"),
+              amountCollateral: convertCollateral("100"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -211,8 +243,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -223,9 +255,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           {
             sponsor: sponsor2,
             id: liquidationId.toString(),
-            numTokens: toWei("45"),
-            liquidatedCollateral: convert("100"),
-            lockedCollateral: convert("100"),
+            numTokens: convertSynthetic("45"),
+            liquidatedCollateral: convertCollateral("100"),
+            lockedCollateral: convertCollateral("100"),
             liquidationTime: (await emp.getCurrentTime()).toString(),
             state: "1",
             liquidator: sponsor1,
@@ -235,7 +267,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
 
         // Pending withdrawals state should be correctly identified.
-        await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
+        await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
         await client.update();
 
         await updateAndVerify(
@@ -244,13 +276,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: true,
               withdrawalRequestPassTimestamp: (await emp.getCurrentTime())
                 .add(await emp.withdrawalLiveness())
                 .toString(),
-              withdrawalRequestAmount: convert("10")
+              withdrawalRequestAmount: convertCollateral("10")
             }
           ]
         );
@@ -264,8 +296,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -274,8 +306,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         );
 
         // Correctly returns sponsors who create, redeem.
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
-        await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("100") },
+          { rawValue: convertSynthetic("45") },
+          { from: sponsor2 }
+        );
+        await emp.redeem({ rawValue: convertSynthetic("45") }, { from: sponsor2 });
         // as created and redeemed sponsor should not show up in table as they are no longer an active sponsor.
 
         await updateAndVerify(
@@ -284,8 +320,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -293,11 +329,23 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           ]
         );
         // If sponsor, creates, redeemes and then creates again they should now appear in the table.
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
-        await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
-        await emp.redeem({ rawValue: toWei("45") }, { from: sponsor2 });
-        await emp.create({ rawValue: convert("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("100") },
+          { rawValue: convertSynthetic("45") },
+          { from: sponsor2 }
+        );
+        await emp.redeem({ rawValue: convertSynthetic("45") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("100") },
+          { rawValue: convertSynthetic("45") },
+          { from: sponsor2 }
+        );
+        await emp.redeem({ rawValue: convertSynthetic("45") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("100") },
+          { rawValue: convertSynthetic("45") },
+          { from: sponsor2 }
+        );
 
         await updateAndVerify(
           client,
@@ -305,16 +353,16 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("20"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("20"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
             },
             {
               sponsor: sponsor2,
-              numTokens: toWei("45"),
-              amountCollateral: convert("100"),
+              numTokens: convertSynthetic("45"),
+              amountCollateral: convertCollateral("100"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
@@ -324,30 +372,38 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       });
 
       it("Returns undercollateralized positions", async function() {
-        await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
-        await emp.create({ rawValue: convert("1500") }, { rawValue: toWei("100") }, { from: sponsor2 });
+        await emp.create(
+          { rawValue: convertCollateral("150") },
+          { rawValue: convertSynthetic("100") },
+          { from: sponsor1 }
+        );
+        await emp.create(
+          { rawValue: convertCollateral("1500") },
+          { rawValue: convertSynthetic("100") },
+          { from: sponsor2 }
+        );
 
         await client.update();
         // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
-        assert.deepStrictEqual([], client.getUnderCollateralizedPositions(toWei("1")));
+        assert.deepStrictEqual([], client.getUnderCollateralizedPositions(convertPrice("1")));
         // Undercollateralized at a price just above 1.
         assert.deepStrictEqual(
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("150"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("150"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
               withdrawalRequestAmount: "0"
             }
           ],
-          client.getUnderCollateralizedPositions(toWei("1.00000000000000001"))
+          client.getUnderCollateralizedPositions(convertPrice("1.00000001"))
         );
 
         // After submitting a withdraw request that brings the position below the CR ratio the client should detect this.
         // Withdrawing just 1 wei of collateral will place the position below the CR ratio.
-        await emp.requestWithdrawal({ rawValue: convert("1") }, { from: sponsor1 });
+        await emp.requestWithdrawal({ rawValue: convertCollateral("1") }, { from: sponsor1 });
 
         await client.update();
         // Update client to get withdrawal information.
@@ -356,22 +412,26 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           [
             {
               sponsor: sponsor1,
-              numTokens: toWei("100"),
-              amountCollateral: convert("150"),
+              numTokens: convertSynthetic("100"),
+              amountCollateral: convertCollateral("150"),
               hasPendingWithdrawal: true,
               withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
-              withdrawalRequestAmount: convert("1")
+              withdrawalRequestAmount: convertCollateral("1")
             }
           ],
-          client.getUnderCollateralizedPositions(toWei("1"))
+          client.getUnderCollateralizedPositions(convertPrice("1"))
         );
       });
 
       it("Returns undisputed liquidations", async function() {
         const liquidator = sponsor2;
 
-        await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
-        await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
+        await emp.create(
+          { rawValue: convertCollateral("150") },
+          { rawValue: convertSynthetic("100") },
+          { from: sponsor1 }
+        );
+        await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
 
         // Create a new liquidation for account[0]'s position.
         const { liquidationId } = await emp.createLiquidation.call(
@@ -395,8 +455,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         const liquidations = client.getUndisputedLiquidations();
         // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
         // above `1`.
-        assert.isTrue(client.isDisputable(liquidations[0], toWei("1")));
-        assert.isFalse(client.isDisputable(liquidations[0], toWei("1.00000000000000001")));
+        assert.isTrue(client.isDisputable(liquidations[0], convertPrice("1")));
+        assert.isFalse(client.isDisputable(liquidations[0], convertPrice("1.00000001")));
 
         // Dispute the liquidation and make sure it no longer shows up in the list.
         // We need to advance the Oracle time forward to make `requestPrice` work.
@@ -411,9 +471,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       it("Returns expired liquidations", async function() {
         const liquidator = sponsor2;
 
-        await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
-        await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
-        await emp.requestWithdrawal({ rawValue: convert("10") }, { from: sponsor1 });
+        await emp.create(
+          { rawValue: convertCollateral("150") },
+          { rawValue: convertSynthetic("100") },
+          { from: sponsor1 }
+        );
+        await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
+        await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
 
         // Create a new liquidation for account[0]'s position.
         await emp.createLiquidation.call(
@@ -443,9 +507,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
               id: "0",
               state: "1",
               liquidationTime: liquidationTime,
-              numTokens: toWei("100"),
-              liquidatedCollateral: convert("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
-              lockedCollateral: convert("150"),
+              numTokens: convertSynthetic("100"),
+              liquidatedCollateral: convertCollateral("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
+              lockedCollateral: convertCollateral("150"),
               liquidator: liquidator,
               disputer: zeroAddress
             }
@@ -469,9 +533,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
               id: "0",
               state: "1",
               liquidationTime: liquidationTime,
-              numTokens: toWei("100"),
-              liquidatedCollateral: convert("140"),
-              lockedCollateral: convert("150"),
+              numTokens: convertSynthetic("100"),
+              liquidatedCollateral: convertCollateral("140"),
+              lockedCollateral: convertCollateral("150"),
               liquidator: liquidator,
               disputer: zeroAddress
             }
@@ -488,8 +552,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       it("Returns disputed liquidations", async function() {
         const liquidator = sponsor2;
 
-        await emp.create({ rawValue: convert("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
-        await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
+        await emp.create(
+          { rawValue: convertCollateral("150") },
+          { rawValue: convertSynthetic("100") },
+          { from: sponsor1 }
+        );
+        await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
 
         // Create a new liquidation for account[0]'s position.
         const { liquidationId } = await emp.createLiquidation.call(
@@ -529,9 +597,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
               id: "0",
               state: "2",
               liquidationTime: liquidationTime,
-              numTokens: toWei("100"),
-              liquidatedCollateral: convert("150"),
-              lockedCollateral: convert("150"),
+              numTokens: convertSynthetic("100"),
+              liquidatedCollateral: convertCollateral("150"),
+              lockedCollateral: convertCollateral("150"),
               liquidator: liquidator,
               disputer: sponsor1
             }
@@ -542,7 +610,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
         // Force a price such that the dispute fails, and then
         // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
-        const disputePrice = convert("1.6");
+        const disputePrice = convertPrice("1.6");
         await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
         await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
         await client.update();

@@ -40,6 +40,7 @@ contract("index.js", function(accounts) {
   let timer;
   let mockOracle;
   let finder;
+  let identifierWhitelist;
 
   let defaultPriceFeedConfig;
 
@@ -53,10 +54,9 @@ contract("index.js", function(accounts) {
   let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 
   before(async function() {
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     finder = await Finder.new();
     // Create identifier whitelist and register the price tracking ticker with it.
-    const identifierWhitelist = await IdentifierWhitelist.new();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
     await finder.changeImplementationAddress(
       web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
@@ -84,8 +84,9 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    // Create a new synthetic token
+    // Create a new synthetic token & collateral token.
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
     // Deploy a new expiring multi party
     constructorParams = {
@@ -126,34 +127,45 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Detects price feed decimals from collateral decimals", async function() {
-    spy = sinon.spy(); // Create a new spy for each test.
+  it("Detects price feed, collateral and synthetic decimals", async function() {
+    spy = sinon.spy();
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
-    constructorParams = {
-      ...constructorParams,
-      collateralAddress: collateralToken.address
-    };
-    emp = await ExpiringMultiParty.new(constructorParams);
+    collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+    // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+    const decimalTestConstructorParams = JSON.parse(
+      JSON.stringify({
+        ...constructorParams,
+        collateralAddress: collateralToken.address,
+        tokenAddress: syntheticToken.address,
+        priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
+      })
+    );
+    emp = await ExpiringMultiParty.new(decimalTestConstructorParams);
     await syntheticToken.addMinter(emp.address);
     await syntheticToken.addBurner(emp.address);
 
+    // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
     await Poll.run({
       logger: spyLogger,
       web3,
       empAddress: emp.address,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
+      errorRetriesTimeout
     });
 
-    // First log should include # of decimals
-    assert.isTrue(spyLogIncludes(spy, 0, "8"));
+    // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
+    // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+    // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
+    assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
   });
 
   it("EMP is expired, liquidator exits early without throwing", async function() {
@@ -179,8 +191,7 @@ contract("index.js", function(accounts) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
 
-    // There should be 2 logs that communicates that contract has expired,
-    // and no logs about approvals.
+    // There should be 2 logs that communicates that contract has expired, and no logs about approvals.
     assert.equal(spy.getCalls().length, 2);
     assert.isTrue(spyLogIncludes(spy, 0, "expired"));
     assert.isTrue(spyLogIncludes(spy, 1, "expired"));
@@ -322,6 +333,12 @@ contract("index.js", function(accounts) {
   });
 
   it("Completes one iteration without logging any errors", async function() {
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
     await Poll.run({
       logger: spyLogger,
       web3,
@@ -335,6 +352,11 @@ contract("index.js", function(accounts) {
     for (let i = 0; i < spy.callCount; i++) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
+
+    // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
   it("Correctly re-tries after failed execution loop", async function() {
     // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
