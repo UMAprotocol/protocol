@@ -54,8 +54,8 @@ async function run(
 
   // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
   const empProps = {
-    collateralCurrencySymbol: await collateralToken.symbol(),
-    syntheticCurrencySymbol: await syntheticToken.symbol(),
+    collateralSymbol: await collateralToken.symbol(),
+    syntheticSymbol: await syntheticToken.symbol(),
     priceIdentifier: web3.utils.hexToUtf8(await emp.priceIdentifier()),
     networkId: await web3.eth.net.getId()
   };

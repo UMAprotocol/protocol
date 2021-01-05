@@ -22,8 +22,8 @@ class CRMonitor {
    *        logLevelOverrides: {crThreshold: "error"}       // Log level overrides
    *      };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencyDecimals: 18,
-            syntheticCurrencyDecimals: 18,
+   *      { collateralDecimals: 18,
+            syntheticDecimals: 18,
             priceFeedDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
@@ -40,8 +40,8 @@ class CRMonitor {
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
     // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
-    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralCurrencyDecimals, 18, this.web3);
-    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticCurrencyDecimals, 18, this.web3);
+    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
     this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
@@ -91,10 +91,10 @@ class CRMonitor {
           return (
             Object.keys(x).includes("priceIdentifier") &&
             typeof x.priceIdentifier === "string" &&
-            Object.keys(x).includes("collateralCurrencyDecimals") &&
-            typeof x.collateralCurrencyDecimals === "number" &&
-            Object.keys(x).includes("syntheticCurrencyDecimals") &&
-            typeof x.syntheticCurrencyDecimals === "number" &&
+            Object.keys(x).includes("collateralDecimals") &&
+            typeof x.collateralDecimals === "number" &&
+            Object.keys(x).includes("syntheticDecimals") &&
+            typeof x.syntheticDecimals === "number" &&
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number" &&
             Object.keys(x).includes("networkId") &&

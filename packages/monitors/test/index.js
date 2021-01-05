@@ -143,6 +143,48 @@ contract("index.js", function(accounts) {
     }
   });
 
+  it("Detects price feed, collateral and synthetic decimals", async function() {
+    spy = sinon.spy(); // Create a new spy for each test.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
+    constructorParams = {
+      ...constructorParams,
+      collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address
+    };
+    emp = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(emp.address);
+    await syntheticToken.addBurner(emp.address);
+
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      executionRetries,
+      errorRetriesTimeout,
+      startingBlock: fromBlock,
+      endingBlock: toBlock,
+      monitorConfig: defaultMonitorConfig,
+      tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+      medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+    });
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
+
+    // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+  });
+
   it("Correctly re-tries after failed execution loop", async function() {
     // To validate re-try logic this test needs to get the monitor bot to throw within the main while loop. This is
     // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the

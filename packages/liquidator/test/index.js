@@ -40,6 +40,7 @@ contract("index.js", function(accounts) {
   let timer;
   let mockOracle;
   let finder;
+  let identifierWhitelist;
 
   let defaultPriceFeedConfig;
 
@@ -56,7 +57,7 @@ contract("index.js", function(accounts) {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
     finder = await Finder.new();
     // Create identifier whitelist and register the price tracking ticker with it.
-    const identifierWhitelist = await IdentifierWhitelist.new();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
     await finder.changeImplementationAddress(
       web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
@@ -133,30 +134,33 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
+    collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 8, { from: contractCreator });
+    // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
     constructorParams = {
       ...constructorParams,
       collateralAddress: collateralToken.address,
-      tokenAddress: syntheticToken.address
+      tokenAddress: syntheticToken.address,
+      priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
     };
     emp = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(emp.address);
     await syntheticToken.addBurner(emp.address);
 
+    // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
     await Poll.run({
       logger: spyLogger,
       web3,
       empAddress: emp.address,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
+      errorRetriesTimeout
     });
 
     // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
-    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":8'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":8'));
     assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
 

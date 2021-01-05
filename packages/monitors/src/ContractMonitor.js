@@ -19,11 +19,11 @@ class ContractMonitor {
    *      { "monitoredLiquidators": ["0x1234","0x5678"],
    *        "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
+   *      { collateralSymbol: "DAI",
+            syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
-            collateralCurrencyDecimals: 18,
-            syntheticCurrencyDecimals: 18,
+            collateralDecimals: 18,
+            syntheticDecimals: 18,
             priceFeedDecimals: 18,
             networkId:1
             crRequirement: 1.5e18 }
@@ -52,8 +52,8 @@ class ContractMonitor {
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
     // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
-    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralCurrencyDecimals, 18, this.web3);
-    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticCurrencyDecimals, 18, this.web3);
+    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
     this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
@@ -97,16 +97,16 @@ class ContractMonitor {
         isValid: x => {
           // The config must contain the following keys and types:
           return (
-            Object.keys(x).includes("collateralCurrencySymbol") &&
-            typeof x.collateralCurrencySymbol === "string" &&
-            Object.keys(x).includes("syntheticCurrencySymbol") &&
-            typeof x.syntheticCurrencySymbol === "string" &&
+            Object.keys(x).includes("collateralSymbol") &&
+            typeof x.collateralSymbol === "string" &&
+            Object.keys(x).includes("syntheticSymbol") &&
+            typeof x.syntheticSymbol === "string" &&
             Object.keys(x).includes("priceIdentifier") &&
             typeof x.priceIdentifier === "string" &&
-            Object.keys(x).includes("collateralCurrencyDecimals") &&
-            typeof x.collateralCurrencyDecimals === "number" &&
-            Object.keys(x).includes("syntheticCurrencyDecimals") &&
-            typeof x.syntheticCurrencyDecimals === "number" &&
+            Object.keys(x).includes("collateralDecimals") &&
+            typeof x.collateralDecimals === "number" &&
+            Object.keys(x).includes("syntheticDecimals") &&
+            typeof x.syntheticDecimals === "number" &&
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number" &&
             Object.keys(x).includes("networkId") &&
@@ -156,11 +156,11 @@ class ContractMonitor {
         " created " +
         this.formatDecimalString(this.normalizeSyntheticDecimals(event.tokenAmount)) +
         " " +
-        this.empProps.syntheticCurrencySymbol +
+        this.empProps.syntheticSymbol +
         " backed by " +
         this.formatDecimalString(this.normalizeCollateralDecimals(event.collateralAmount)) +
         " " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
@@ -230,13 +230,13 @@ class ContractMonitor {
         " (liquidated collateral = " +
         this.formatDecimalString(this.normalizeCollateralDecimals(event.liquidatedCollateral)) +
         ") " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         " of sponsor " +
         createEtherscanLinkMarkdown(event.sponsor, this.empProps.networkId) +
         " collateral backing " +
         this.formatDecimalString(this.normalizeSyntheticDecimals(event.tokensOutstanding)) +
         " " +
-        this.empProps.syntheticCurrencySymbol +
+        this.empProps.syntheticSymbol +
         " tokens. ";
       // Add details about the liquidation price if historical data from the pricefeed is available.
       if (price) {
@@ -288,7 +288,7 @@ class ContractMonitor {
         " with a dispute bond of " +
         this.formatDecimalString(this.normalizeCollateralDecimals(event.disputeBondAmount)) +
         " " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 

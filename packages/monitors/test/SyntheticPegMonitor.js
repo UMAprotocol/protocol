@@ -48,7 +48,7 @@ contract("SyntheticPegMonitor", function() {
         invalidPriceFeedMock = new InvalidPriceFeedMock();
 
         empProps = {
-          syntheticCurrencySymbol: "SYNTH",
+          syntheticSymbol: "SYNTH",
           priceIdentifier: "TEST_IDENTIFIER",
           priceFeedDecimals: testConfig.priceFeedDecimals
         };

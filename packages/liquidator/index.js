@@ -190,7 +190,7 @@ async function run({
       collateralDecimals: Number(collateralTokenDecimals),
       syntheticDecimals: Number(syntheticTokenDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig: priceFeedConfig
+      priceFeedConfig
     });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate

@@ -103,10 +103,10 @@ contract("BalanceMonitor.js", function(accounts) {
         };
 
         empProps = {
-          collateralCurrencySymbol: await collateralToken.symbol(),
-          syntheticCurrencySymbol: await syntheticToken.symbol(),
-          collateralCurrencyDecimals: testConfig.collateralDecimals,
-          syntheticCurrencyDecimals: testConfig.syntheticDecimals,
+          collateralSymbol: await collateralToken.symbol(),
+          syntheticSymbol: await syntheticToken.symbol(),
+          collateralDecimals: testConfig.collateralDecimals,
+          syntheticDecimals: testConfig.syntheticDecimals,
           networkId: await web3.eth.net.getId()
         };
 

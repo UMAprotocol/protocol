@@ -173,12 +173,12 @@ contract("CRMonitor.js", function(accounts) {
         syntheticToken = await Token.at(await emp.tokenCurrency());
 
         empProps = {
-          collateralCurrencySymbol: await collateralToken.symbol(),
-          collateralCurrencyDecimals: testConfig.collateralDecimals,
-          syntheticCurrencyDecimals: testConfig.syntheticDecimals,
+          collateralSymbol: await collateralToken.symbol(),
+          collateralDecimals: testConfig.collateralDecimals,
+          syntheticDecimals: testConfig.syntheticDecimals,
           priceFeedDecimals: testConfig.priceFeedDecimals,
           crRequirement: constructorParams.collateralRequirement.rawValue,
-          syntheticCurrencySymbol: await syntheticToken.symbol(),
+          syntheticSymbol: await syntheticToken.symbol(),
           priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
           networkId: await web3.eth.net.getId()
         };

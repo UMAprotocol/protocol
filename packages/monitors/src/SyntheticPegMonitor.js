@@ -18,7 +18,7 @@ class SyntheticPegMonitor {
            logOverrides: {deviation: "error"}     // Log level overrides.
           }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { syntheticCurrencySymbol:"ETHBTC",
+   *      { syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
    */
@@ -91,8 +91,8 @@ class SyntheticPegMonitor {
           return (
             Object.keys(x).includes("priceIdentifier") &&
             typeof x.priceIdentifier === "string" &&
-            Object.keys(x).includes("syntheticCurrencySymbol") &&
-            typeof x.syntheticCurrencySymbol === "string" &&
+            Object.keys(x).includes("syntheticSymbol") &&
+            typeof x.syntheticSymbol === "string" &&
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number"
           );
@@ -139,7 +139,7 @@ class SyntheticPegMonitor {
         message: "Synthetic off peg alert 😵",
         mrkdwn:
           "Synthetic token " +
-          this.empProps.syntheticCurrencySymbol +
+          this.empProps.syntheticSymbol +
           " is trading at " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(uniswapTokenPrice)) +
           " on Uniswap. Target price is " +
