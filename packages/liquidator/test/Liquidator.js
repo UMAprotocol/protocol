@@ -38,27 +38,9 @@ const Store = artifacts.require("Store");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  {
-    tokenName: "Wrapped Ether",
-    tokenSymbol: "WETH",
-    collateralDecimals: 18,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 18
-  },
-  {
-    tokenName: "Legacy Wrapped Bitcoin",
-    tokenSymbol: "BTC",
-    collateralDecimals: 8,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 8
-  },
-  {
-    tokenName: "Wrapped Bitcoin",
-    tokenSymbol: "BTC",
-    collateralDecimals: 8,
-    syntheticDecimals: 8,
-    priceFeedDecimals: 18
-  }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 // allows this to be set to null without throwing.
 const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
@@ -103,9 +85,14 @@ contract("Liquidator.js", function(accounts) {
         convertCollateral = Convert(testConfig.collateralDecimals);
         convertSynthetic = Convert(testConfig.syntheticDecimals);
         convertPrice = Convert(testConfig.priceFeedDecimals);
-        collateralToken = await Token.new(testConfig.tokenName, testConfig.tokenSymbol, testConfig.collateralDecimals, {
-          from: contractCreator
-        });
+        collateralToken = await Token.new(
+          testConfig.tokenSymbol + " Token", // Construct the token name.
+          testConfig.tokenSymbol,
+          testConfig.collateralDecimals,
+          {
+            from: contractCreator
+          }
+        );
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
         });
