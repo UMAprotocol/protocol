@@ -511,7 +511,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates: 5
     });
 
-    assert.isTrue(priceFeed != null);
+    assert.isTrue(priceFeed !== null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
 
     // Note that the `ETH/BTC` feed should have an 18 decimal feed. This should be correctly detected.
@@ -553,7 +553,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates: 5
     });
 
-    assert.isTrue(priceFeed != null);
+    assert.isTrue(priceFeed !== null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
 
     // Note that the `USDBTC` feed should have an 18 decimal feed.
