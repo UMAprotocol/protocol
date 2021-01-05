@@ -23,22 +23,9 @@ const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   {
-    tokenName: "Wrapped Ether",
-    tokenSymbol: "WETH",
-    collateralDecimals: 18,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 18
-  },
-  {
-    tokenName: "Legacy Wrapped Bitcoin",
-    tokenSymbol: "BTC",
-    collateralDecimals: 8,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 8
-  },
-  {
-    tokenName: "Wrapped Bitcoin",
     tokenSymbol: "BTC",
     collateralDecimals: 8,
     syntheticDecimals: 8,
@@ -82,9 +69,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         convertCollateral = Convert(testConfig.collateralDecimals);
         convertSynthetic = Convert(testConfig.syntheticDecimals);
         convertPrice = Convert(testConfig.priceFeedDecimals);
-        collateralToken = await Token.new(testConfig.tokenName, testConfig.tokenSymbol, testConfig.collateralDecimals, {
-          from: sponsor1
-        });
+        collateralToken = await Token.new(
+          testConfig.tokenSymbol + "Token", // Construct the token name.
+          testConfig.tokenSymbol,
+          testConfig.collateralDecimals,
+          {
+            from: sponsor1
+          }
+        );
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
           from: sponsor1
         });
