@@ -86,6 +86,7 @@ function ResolvedRequests({ votingAccount }) {
     "NewProposal",
     useMemo(() => ({ fromBlock: 0 }), [])
   );
+
   const decodeRequestIndex = index => {
     const proposal = adminProposals[index];
 
@@ -128,10 +129,10 @@ function ResolvedRequests({ votingAccount }) {
         return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
+
   useEffect(() => {
     setHasSpamRequests(false);
-
-    if (allResolvedEvents) {
+    if (allResolvedEvents && allResolvedEvents.length) {
       const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
         if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {

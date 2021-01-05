@@ -187,7 +187,7 @@ echo '#                                                                  #'
 echo '# 11/16. Create a voting proxy contract                            #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Follow this tutorial to set up your 2Key wallet via the voter dApp: https://docs.umaproject.org/tutorials/voting-2key. Use your current address as the Cold Wallet Address and transfer your tokens to the proxy contract. You will be prompted to connect again to the voter dApp, but if this doesn't happen automatically then you can simply refresh the page. The Resolved Requests will no longer show that you voted on the two resolved price requests because your voting account has changed to the proxy contract's address"
+echo "- Follow this tutorial to set up your 2Key wallet via the voter dApp: https://docs.umaproject.org/uma-tokenholders/voting-2key. Use your current address as the Cold Wallet Address and transfer your tokens to the proxy contract. You will be prompted to connect again to the voter dApp, but if this doesn't happen automatically then you can simply refresh the page. The Resolved Requests will no longer show that you voted on the two resolved price requests because your voting account has changed to the proxy contract's address"
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;

@@ -73,9 +73,10 @@ const editStateReducer = (state, action) => {
   }
 };
 
-const toPriceRequestKey = (identifier, time) => time + "," + identifier;
-const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time) =>
-  votingAccount + "," + time + "," + identifier;
+// toPriceRequestKey( identifier,time, ancillarydata )
+const toPriceRequestKey = (...args) => args.join(",");
+// toVotingAccountAndPriceRequestKey( votingAccount, identifier, time, ancillarydata )
+const toVotingAccountAndPriceRequestKey = (...args) => args.join(",");
 
 // Snapshot button with hint, sets some default props
 function SnapshotButton({ hint = snapshotHint, onClick = x => x }) {
@@ -167,7 +168,6 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       currentRoundId
     ])
   );
-
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
   const [commitBackupIndex, setCommitBackupIndex] = useState(closedDialogIndex);
@@ -248,11 +248,17 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     // Get the latest `encryptedVote` for each (identifier, time).
     const encryptedVoteMap = {};
     for (const ev of encryptedVoteEvents) {
-      encryptedVoteMap[toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time)] =
-        ev.returnValues.encryptedVote;
+      encryptedVoteMap[
+        // Ancillary data is undefined or null in these "returnValues" so we add a default string of "0x".
+        // If not added, the key will improperly index and the votes will not be found.
+        toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time, ev.returnValues.ancillaryData || "0x")
+      ] = ev.returnValues.encryptedVote;
     }
     for (const request of pendingRequests) {
-      voteStatuses.push({ committedValue: encryptedVoteMap[toPriceRequestKey(request.identifier, request.time)] });
+      voteStatuses.push({
+        committedValue:
+          encryptedVoteMap[toPriceRequestKey(request.identifier, request.time, request.ancillaryData || "0x")]
+      });
     }
   }
 
@@ -312,9 +318,13 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       const currentVotes = await Promise.all(
         voteStatuses.map(async (voteStatus, index) => {
           if (voteStatus.committedValue) {
-            return JSON.parse(
-              await decryptMessage(decryptionKeys[account][currentRoundId].privateKey, voteStatus.committedValue)
-            );
+            try {
+              return JSON.parse(
+                await decryptMessage(decryptionKeys[account][currentRoundId].privateKey, voteStatus.committedValue)
+              );
+            } catch (err) {
+              return "";
+            }
           } else {
             return "";
           }
@@ -353,7 +363,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
           identifier: pendingRequests[index].identifier,
           time: pendingRequests[index].time,
           price: decryptedCommits[index].price.toString(),
-          salt: decryptedCommits[index].salt
+          salt: decryptedCommits[index].salt,
+          ancillaryData: "0x"
         });
       }
     }
@@ -387,6 +398,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       commits.push({
         identifier: pendingRequests[index].identifier,
         time: pendingRequests[index].time,
+        ancillaryData: "0x",
         hash: computeVoteHash({
           price,
           salt,
@@ -408,7 +420,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       const newCommitKey = toVotingAccountAndPriceRequestKey(
         votingAccount,
         pendingRequests[index].identifier,
-        pendingRequests[index].time
+        pendingRequests[index].time,
+        pendingRequests[index].ancillaryData
       );
       const updatedCommitBackups = Object.assign(
         {},
@@ -450,10 +463,9 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const eventsMap = {};
   for (const reveal of revealEvents) {
     const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(reveal.returnValues.identifier));
-    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatFixed(
-      reveal.returnValues.price,
-      identifierPrecision
-    );
+    eventsMap[
+      toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time, reveal.returnValues.ancillaryData)
+    ] = formatFixed(reveal.returnValues.price, identifierPrecision);
   }
 
   const hasPendingTransactions = revealStatus === "pending" || commitStatus === "pending";
@@ -473,7 +485,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       };
     }
     // In the REVEAL phase.
-    const revealEvent = eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)];
+    const revealEvent =
+      eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time, pendingRequest.ancillaryData)];
     if (revealEvent) {
       return {
         statusString: "Revealed",
@@ -519,7 +532,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     const commitKey = toVotingAccountAndPriceRequestKey(
       votingAccount,
       pendingRequests[index].identifier,
-      pendingRequests[index].time
+      pendingRequests[index].time,
+      pendingRequests[index].ancillaryData
     );
     return cookies[commitKey];
   };
