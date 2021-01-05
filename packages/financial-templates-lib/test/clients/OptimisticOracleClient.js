@@ -3,7 +3,7 @@ const winston = require("winston");
 const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
 const { OptimisticOracleClient } = require("../../src/clients/OptimisticOracleClient");
-const { interfaceName } = require("@uma/common");
+const { interfaceName, advanceBlockAndSetTime } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 const CONTRACT_VERSION = "latest";
@@ -26,6 +26,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
   let optimisticRequester;
   let optimisticOracle;
   let client;
+  let dummyLogger;
 
   let finder;
   let timer;
@@ -85,7 +86,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
 
     // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    const dummyLogger = winston.createLogger({
+    dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
     });
@@ -151,5 +152,41 @@ contract("OptimisticOracleClient.js", function(accounts) {
         finalFee
       }
     ]);
+  });
+
+  it("Lookback window enforced", async function() {
+    // Create a new client with a shorter lookback equal to approximately
+    // the amount of seconds that it takes 1 block to get mined
+    let clientShortLookback = new OptimisticOracleClient(
+      dummyLogger,
+      OptimisticOracle.abi,
+      web3,
+      optimisticOracle.address,
+      13
+    );
+
+    // Request a price and check that the longer lookback client currently sees it
+    await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
+    await client.update();
+    let result = client.getAllPriceRequests();
+    assert.deepStrictEqual(result, [
+      {
+        requester: optimisticRequester.address,
+        identifier: hexToUtf8(identifier),
+        timestamp: requestTime.toString(),
+        currency: collateral.address,
+        reward: "0",
+        finalFee
+      }
+    ]);
+
+    // Mine two blocks to move past the lookback window, and make sure the shorter lookback client
+    // ignores the price request.
+    await advanceBlockAndSetTime(web3, new Date().getTime());
+    await advanceBlockAndSetTime(web3, new Date().getTime());
+
+    await clientShortLookback.update();
+    result = clientShortLookback.getAllPriceRequests();
+    assert.deepStrictEqual(result, []);
   });
 });

@@ -1,6 +1,6 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-const { OptimisticOracleRequestStatesEnum, getFromBlock } = require("@uma/common");
+const { OptimisticOracleRequestStatesEnum, averageBlockTimeSeconds } = require("@uma/common");
 const Promise = require("bluebird");
 
 class OptimisticOracleClient {
@@ -10,9 +10,17 @@ class OptimisticOracleClient {
    * @param {Object} oracleAbi OptimisticOracle truffle ABI object to create a contract instance.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} oracleAddress Ethereum address of the OptimisticOracle contract deployed on the current network.
+   * @param {Number} lookback Any requests, proposals, or disputes that occurred prior to this timestamp will be ignored.
+   * Used to limit the web3 requests made by this client.
    * @return None or throws an Error.
    */
-  constructor(logger, oracleAbi, web3, oracleAddress) {
+  constructor(
+    logger,
+    oracleAbi,
+    web3,
+    oracleAddress,
+    lookback = 604800 // 1 Week
+  ) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -26,6 +34,7 @@ class OptimisticOracleClient {
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
+    this.lookback = lookback;
 
     // Helper functions from web3.
     this.hexToUtf8 = this.web3.utils.hexToUtf8;
@@ -55,11 +64,17 @@ class OptimisticOracleClient {
   }
 
   async update() {
-    const fromBlock = await getFromBlock(this.web3);
+    // Determine earliest block to query events for based on lookback window:
+    const [averageBlockTime, currentBlock] = await Promise.all([
+      averageBlockTimeSeconds(),
+      this.web3.eth.getBlock("latest")
+    ]);
+    const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
+    const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
     // Fetch contract state variables in parallel.
     const [requestEvents, currentTime] = await Promise.all([
-      this.oracle.getPastEvents("RequestPrice", { fromBlock }),
+      this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }),
       this.oracle.methods.getCurrentTime().call()
     ]);
 
