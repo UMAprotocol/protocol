@@ -1,6 +1,6 @@
 const lodash = require("lodash");
 const assert = require("assert");
-const { averageBlockTimeSeconds } = require("@uma/common");
+const { averageBlockTimeSeconds, MAX_SAFE_JS_INT } = require("@uma/common");
 
 // Downloads blocks and caches them for certain time into the past.
 // Allows some in memory searches to go from timestamp to block number.
@@ -165,4 +165,40 @@ exports.PriceHistory = (getPrice, prices = {}) => {
     update,
     list
   };
+};
+
+// Given a list of price events [timestamp, price] and a time window, returns the time-weighted
+// average price.
+exports.computeTWAP = (events, startTime, endTime, startingPriceSum) => {
+  // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
+  events.push([MAX_SAFE_JS_INT, null]);
+
+  let lastPrice = null;
+  let lastTime = null;
+  let priceSum = startingPriceSum;
+  let timeSum = 0;
+  for (const event of events) {
+    // Because the price window goes up until the next event, computation cannot start until event 2.
+    if (lastTime && lastPrice) {
+      const startWindow = Math.max(lastTime, startTime);
+      const endWindow = Math.min(event[0], endTime);
+      const windowLength = Math.max(endWindow - startWindow, 0);
+      priceSum = priceSum.add(lastPrice.muln(windowLength));
+      timeSum += windowLength;
+    }
+
+    if (event[0] > endTime) {
+      break;
+    }
+
+    // events are in the shape: [timestamp, price]
+    lastPrice = event[1];
+    lastTime = event[0];
+  }
+
+  if (timeSum === 0) {
+    return null;
+  }
+
+  return priceSum.divn(timeSum);
 };

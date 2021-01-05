@@ -1,7 +1,7 @@
 const assert = require("assert");
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { BlockHistory, PriceHistory } = require("./utils");
-const { MAX_SAFE_JS_INT, ConvertDecimals } = require("@uma/common");
+const { BlockHistory, PriceHistory, computeTWAP } = require("./utils");
+const { ConvertDecimals } = require("@uma/common");
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
@@ -138,38 +138,8 @@ class BalancerPriceFeed extends PriceFeedInterface {
   // If priceHistory only encompasses 1 block, which happens if the `lookback` window is 0,
   // then this should return the last and only price.
   _computeTwap(startTime, endTime) {
-    // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
     const events = this.priceHistory.list().slice();
-    events.push([MAX_SAFE_JS_INT, null]);
-
-    let lastPrice = null;
-    let lastTime = null;
-    let priceSum = this.toBN("0");
-    let timeSum = 0;
-    for (const event of events) {
-      // Because the price window goes up until the next event, computation cannot start until event 2.
-      if (lastTime && lastPrice) {
-        const startWindow = Math.max(lastTime, startTime);
-        const endWindow = Math.min(event[0], endTime);
-        const windowLength = Math.max(endWindow - startWindow, 0);
-        priceSum = priceSum.add(lastPrice.muln(windowLength));
-        timeSum += windowLength;
-      }
-
-      if (event[0] > endTime) {
-        break;
-      }
-
-      // events are in the shape: [timestamp, price]
-      lastPrice = event[1];
-      lastTime = event[0];
-    }
-
-    if (timeSum === 0) {
-      return null;
-    }
-
-    return priceSum.divn(timeSum);
+    return computeTWAP(events, startTime, endTime, this.toBN("0"));
   }
 }
 
