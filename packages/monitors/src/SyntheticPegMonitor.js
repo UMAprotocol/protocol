@@ -1,7 +1,7 @@
 // This module monitors the synthetic peg of a given expiring multiparty contract and reports when: 1) the synthetic is
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
-const { createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
+const { ConvertDecimals, createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
 
 class SyntheticPegMonitor {
   /**
@@ -18,10 +18,9 @@ class SyntheticPegMonitor {
            logOverrides: {deviation: "error"}     // Log level overrides.
           }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
+   *      { syntheticCurrencySymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
-            networkId:1 }
+            priceFeedDecimals: 18, }
    */
   constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps }) {
     this.logger = logger;
@@ -32,8 +31,7 @@ class SyntheticPegMonitor {
 
     this.web3 = web3;
 
-    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
-    this.empProps = empProps;
+    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
@@ -83,6 +81,26 @@ class SyntheticPegMonitor {
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("priceIdentifier") &&
+            typeof x.priceIdentifier === "string" &&
+            Object.keys(x).includes("syntheticCurrencySymbol") &&
+            typeof x.syntheticCurrencySymbol === "string" &&
+            Object.keys(x).includes("priceFeedDecimals") &&
+            typeof x.priceFeedDecimals === "number"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
@@ -123,11 +141,11 @@ class SyntheticPegMonitor {
           "Synthetic token " +
           this.empProps.syntheticCurrencySymbol +
           " is trading at " +
-          this.formatDecimalString(uniswapTokenPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(uniswapTokenPrice)) +
           " on Uniswap. Target price is " +
-          this.formatDecimalString(cryptoWatchTokenPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(cryptoWatchTokenPrice)) +
           ". Error of " +
-          this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
+          this.formatDecimalString(this.normalizePriceFeedDecimals(deviationError.muln(100))) + // multiply by 100 to make the error a percentage
           "%."
       });
     }
@@ -176,9 +194,9 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.empProps.priceIdentifier +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedVolatility.muln(100))) +
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
@@ -229,9 +247,9 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.empProps.priceIdentifier +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedVolatility.muln(100))) +
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +

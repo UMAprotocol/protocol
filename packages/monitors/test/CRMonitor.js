@@ -97,7 +97,7 @@ contract("CRMonitor.js", function(accounts) {
           utf8ToHex(interfaceName.IdentifierWhitelist),
           identifierWhitelist.address
         );
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(testConfig.tokenSymbol + "Token"));
+        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(testConfig.tokenSymbol + " Identifier"));
 
         // Create a mockOracle and finder. Register the mockOracle with the finder.
         mockOracle = await MockOracle.new(finder.address, timer.address);
@@ -123,7 +123,7 @@ contract("CRMonitor.js", function(accounts) {
           tokenAddress: syntheticToken.address,
           finderAddress: finder.address,
           timerAddress: timer.address,
-          priceFeedIdentifier: padRight(utf8ToHex(testConfig.tokenSymbol + "Token"), 64),
+          priceFeedIdentifier: padRight(utf8ToHex(testConfig.tokenSymbol + " Identifier"), 64),
           liquidationLiveness: "10",
           collateralRequirement: { rawValue: toWei("1.5") },
           disputeBondPct: { rawValue: toWei("0.1") },
@@ -241,7 +241,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
         assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
         assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
         assert.equal(lastSpyLogLevel(spy), "warn");
@@ -293,7 +293,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
 
         // Advance time after withdrawal liveness. Check that CR detected is the same
         // post withdrawal execution
@@ -310,7 +310,7 @@ contract("CRMonitor.js", function(accounts) {
         assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
         assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
         assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-        assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // Synthetic token symbol
+        assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
       });
       it("Cannot set invalid config", async function() {
         let errorThrown1;

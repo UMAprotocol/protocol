@@ -22,9 +22,7 @@ class CRMonitor {
    *        logLevelOverrides: {crThreshold: "error"}       // Log level overrides
    *      };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
-            collateralCurrencyDecimals: 18,
+   *      { collateralCurrencyDecimals: 18,
             syntheticCurrencyDecimals: 18,
             priceFeedDecimals: 18,
             priceIdentifier: "ETH/BTC",
@@ -91,10 +89,6 @@ class CRMonitor {
         isValid: x => {
           // The config must contain the following keys and types:
           return (
-            Object.keys(x).includes("collateralCurrencySymbol") &&
-            typeof x.collateralCurrencySymbol === "string" &&
-            Object.keys(x).includes("syntheticCurrencySymbol") &&
-            typeof x.syntheticCurrencySymbol === "string" &&
             Object.keys(x).includes("priceIdentifier") &&
             typeof x.priceIdentifier === "string" &&
             Object.keys(x).includes("collateralCurrencyDecimals") &&
@@ -191,7 +185,7 @@ class CRMonitor {
           "% which is below the " +
           wallet.crAlert * 100 +
           "% threshold. Current value of " +
-          this.empProps.syntheticCurrencySymbol +
+          this.empProps.priceIdentifier +
           " is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           ". The collateralization requirement is " +
