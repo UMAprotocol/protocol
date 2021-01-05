@@ -1,9 +1,8 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { ConvertDecimals, parseFixed, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
+const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
 const Promise = require("bluebird");
-
 class ExpiringMultiPartyClient {
   /**
    * @notice Constructs new ExpiringMultiPartyClient.
@@ -11,9 +10,22 @@ class ExpiringMultiPartyClient {
    * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @param {Number} collateralDecimals Number of decimals within the collateral currency.
+   * @param {Number} syntheticDecimals Number of decimals within the synthetic currency.
+   * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
+   * EMPS this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new EMPs this has been
+   * updated to always use 18 decimals, irrespective of the collateral type for consistency.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress, collateralDecimals = 18, syntheticDecimals = 18) {
+  constructor(
+    logger,
+    empAbi,
+    web3,
+    empAddress,
+    collateralDecimals = 18,
+    syntheticDecimals = 18,
+    priceFeedDecimals = 18
+  ) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -30,6 +42,7 @@ class ExpiringMultiPartyClient {
     this.collateralRequirement = null;
     this.collateralDecimals = collateralDecimals;
     this.syntheticDecimals = syntheticDecimals;
+    this.priceFeedDecimals = priceFeedDecimals;
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
@@ -38,12 +51,12 @@ class ExpiringMultiPartyClient {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
 
-    const Convert = (decimals = 18) => number => this.toBN(parseFixed(number.toString(), decimals).toString());
-
-    // currently not implemented
-    this.convertSynthetic = Convert(syntheticDecimals);
-    this.convertCollateral = Convert(collateralDecimals);
-    this.convertCollateralToSynthetic = ConvertDecimals(collateralDecimals, syntheticDecimals, this.web3);
+    // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
+    // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
+    // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
+    this.normalizeCollateralDecimals = ConvertDecimals(collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(syntheticDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(priceFeedDecimals, 18, this.web3);
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -221,20 +234,25 @@ class ExpiringMultiPartyClient {
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   }
-  _isUnderCollateralized(numTokens, amountCollateral, trv) {
+  // The formula for an undercollateralized position is: (numTokens * trv) * collateralRequirement > amountCollateral.
+  // This equation assumes the decimal points across the inputs are normalized to the same basis. However, this wont always
+  // be the case and so we need to consider arbitrary decimals coming into the equation. When considering decimals of
+  // each variable within the as collateral (cD), synthetic (sD), CR (1e18), trv (trvD) this equation becomes:
+  // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD.
+  // To accommodate these different decimal points we can normalize each term to the 10^18 basis and then apply a "correction"
+  // factor due to the additional scalling from multiplying basis numbers.
+  _isUnderCollateralized(numTokens, amountCollateral, tokenRedemptionValue) {
+    // Normalize the inputs. Now all terms are 18 decimal delimited and no extra conversion is needed.
+    const normalizedNumTokens = this.normalizeSyntheticDecimals(numTokens);
+    const normalizedAmountCollateral = this.normalizeCollateralDecimals(amountCollateral);
+    const normalizedTokenRedemptionValue = this.normalizePriceFeedDecimals(tokenRedemptionValue);
+
     const fixedPointAdjustment = this.toBN(this.toWei("1"));
-    // The formula for an undercollateralized position is:
-    // (numTokens * trv) * collateralRequirement > amountCollateral.
-    // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
-    // we need to convert our tokens down to collateral decimals
-    return this.toBN(numTokens)
-      .mul(this.toBN(trv))
+
+    return normalizedNumTokens
+      .mul(normalizedTokenRedemptionValue)
       .mul(this.collateralRequirement)
-      .gt(
-        this.convertCollateralToSynthetic(amountCollateral)
-          .mul(fixedPointAdjustment)
-          .mul(fixedPointAdjustment)
-      );
+      .gt(normalizedAmountCollateral.mul(fixedPointAdjustment).mul(fixedPointAdjustment));
   }
 
   _isExpired(liquidation, currentTime) {

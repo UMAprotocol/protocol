@@ -35,8 +35,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       getTime,
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.decimals, // This defaults to 18 unless supplied by user
-      config.ohlcPeriod // This defaults to 60 unless supplied by user
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.ohlcPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];

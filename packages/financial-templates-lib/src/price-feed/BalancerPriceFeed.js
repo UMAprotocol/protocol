@@ -63,11 +63,13 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
     // TODO: Should/Can we read in `poolDecimals` from this.contract?
     this.poolPrecision = poolDecimals;
+    this.decimals = decimals;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
     // on the relationship between poolPrecision and the desired decimals.
-    this.convertDecimals = ConvertDecimals(this.poolPrecision, decimals, this.web3);
+    this.convertDecimals = ConvertDecimals(this.poolPrecision, this.decimals, this.web3);
   }
+
   getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.lookback) {
       // Requesting an historical TWAP earlier than the lookback.
@@ -82,9 +84,11 @@ class BalancerPriceFeed extends PriceFeedInterface {
     }
     return historicalPrice && this.convertDecimals(historicalPrice);
   }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
+
   getCurrentPrice() {
     let currentPrice;
     // If twap window is 0, then return last price
@@ -110,6 +114,11 @@ class BalancerPriceFeed extends PriceFeedInterface {
       return this.priceHistory.get(block.timestamp) && this.convertDecimals(this.priceHistory.get(block.timestamp));
     }
   }
+
+  getPriceFeedDecimals() {
+    return this.decimals;
+  }
+
   async update() {
     const currentTime = await this.getTime();
     this.logger.debug({

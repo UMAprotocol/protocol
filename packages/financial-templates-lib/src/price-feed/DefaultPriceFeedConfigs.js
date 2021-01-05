@@ -1,3 +1,5 @@
+const { getPrecisionForIdentifier } = require("@uma/common");
+
 // Default price feed configs for currently approved identifiers.
 const defaultConfigs = {
   "ETH/BTC": {
@@ -91,5 +93,11 @@ const defaultConfigs = {
     lookback: 7200
   }
 };
+
+// Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
+// Voterdapp and ensures that price feeds are consistently scaled through the UMA ecosystem.
+Object.keys(defaultConfigs).forEach(identifierName => {
+  defaultConfigs[identifierName].priceFeedDecimals = getPrecisionForIdentifier(identifierName);
+});
 
 module.exports = { defaultConfigs };
