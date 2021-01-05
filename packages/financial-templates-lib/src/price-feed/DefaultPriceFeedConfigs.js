@@ -1,3 +1,5 @@
+const { getPrecisionForIdentifier } = require("@uma/common");
+
 // Default price feed configs for currently approved identifiers.
 const defaultConfigs = {
   "ETH/BTC": {
@@ -49,7 +51,6 @@ const defaultConfigs = {
     lookback: 7200,
     invertPrice: true,
     minTimeBetweenUpdates: 60,
-    priceFeedDecimals: 8,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
@@ -92,5 +93,11 @@ const defaultConfigs = {
     lookback: 7200
   }
 };
+
+// Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
+// Voterdapp and ensures that price feeds are consistently scaled through the UMA ecosystem.
+Object.keys(defaultConfigs).forEach(identifierName => {
+  defaultConfigs[identifierName].priceFeedDecimals = getPrecisionForIdentifier(identifierName);
+});
 
 module.exports = { defaultConfigs };

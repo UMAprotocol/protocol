@@ -46,6 +46,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
+    this.priceFeedDecimals = priceFeedDecimals;
     this.invertPrice = invertPrice;
 
     this.toBN = this.web3.utils.toBN;
