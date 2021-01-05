@@ -1,6 +1,15 @@
 const ethers = require("ethers");
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
+const Web3 = require("web3");
+const web3 = new Web3();
+
+function toChecksumAddress(addr) {
+  return web3.utils.toChecksumAddress(addr);
+}
+function isAddress(addr) {
+  return web3.utils.isAddress(addr);
+}
 
 function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
@@ -25,13 +34,52 @@ function DecodeTransaction(abi, meta = {}) {
   };
 }
 
-function decodeAttribution(
-  data,
-  delimiter = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000"
-) {
-  assert(data, "requires data to decode");
-  return data.split(delimiter)[1];
+function GetInputLength(abi) {
+  // returns length in bits of solidity type. not exhaustive but covers common params.
+  // see more: https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#argument-encoding
+  function typeToLength(type) {
+    if (type === "uint") return 256;
+    if (type === "int") return 256;
+    if (type.includes("uint")) {
+      return parseInt(type.slice(4));
+    }
+    if (type.includes("int")) {
+      return parseInt(type.slice(3));
+    }
+    if (type.includes("bool")) return 8;
+    if (type == "address") {
+      return 160;
+    }
+    throw new Error("Unknown type specified: " + type);
+  }
+  function componentLength(component) {
+    return typeToLength(component.type);
+  }
+  function componentsLength(components = []) {
+    return components.reduce((sum, component) => {
+      return sum + componentLength(component);
+    }, 0);
+  }
+  return name => {
+    const find = abi.find(x => x.name === name);
+    assert(find, "unable to find name in abi: " + name);
+    if (find.inputs == null || find.inputs.length == 0) return 0;
+    return find.inputs.reduce((length, input) => {
+      return length + componentsLength(input.components);
+    }, 32); // 4 bytes always added as function name header hash
+  };
 }
+
+const DecodeAttribution = abi => {
+  // convert bits to hex (div by 4) and add 2 for 0x
+  const inputLength = GetInputLength(abi)("create") / 4 + 2;
+  return createTransaction => {
+    assert(createTransaction.name == "create", "Only decodes create transactions");
+    // tagged transactions are assumed to exist when there is more data than the required inputLength
+    // in this case we may return nothing if no tag was added
+    return createTransaction.input.slice(inputLength);
+  };
+};
 
 // Just wraps abi to pass through to contract Lookup by erc20 address
 function Erc20({ abi = getAbi("ERC20"), web3 }) {
@@ -95,7 +143,10 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
 module.exports = {
   DecodeLog,
   DecodeTransaction,
-  decodeAttribution,
+  DecodeAttribution,
   Emp,
-  Erc20
+  Erc20,
+  GetInputLength,
+  toChecksumAddress,
+  isAddress
 };

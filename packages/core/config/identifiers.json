@@ -24,5 +24,13 @@
   "XAU/USD": {},
   "SPX/USD": {},
   "XTI/USD": {},
-  "XAG/USD": {}
+  "XAG/USD": {},
+  "STABLESPREAD": {},
+  "STABLESPREAD/USDC": {},
+  "STABLESPREAD/BTC": {},
+  "ELASTIC_STABLESPREAD/USDC": {},
+  "EURUSD": {},
+  "CHFUSD": {},
+  "GBPUSD": {},
+  "BCHNBTC": {}
 }
