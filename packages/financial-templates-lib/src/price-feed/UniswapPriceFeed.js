@@ -137,8 +137,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _computeTwap(eventsIn, startTime, endTime) {
-    // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
-    const events = eventsIn.slice().map(e => {
+    const events = eventsIn.map(e => {
       return [e.timestamp, e.price];
     });
     return computeTWAP(events, startTime, endTime, this.toBN("0"));

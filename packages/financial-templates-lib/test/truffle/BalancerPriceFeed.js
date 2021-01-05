@@ -231,9 +231,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
     // Historical prices should be equal to latest price at timestamp
     assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("80"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("80"));
     assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("70"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("70"));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
