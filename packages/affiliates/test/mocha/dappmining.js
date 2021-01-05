@@ -57,8 +57,7 @@ describe("DappMining", function() {
     });
     it("sums balances", function() {
       const balances = Balances();
-      let sum;
-      sum = utils.sumBalances(balances);
+      let sum = utils.sumBalances(balances);
       assert(sum);
       balances.add("a", "1");
       balances.add("b", "2");

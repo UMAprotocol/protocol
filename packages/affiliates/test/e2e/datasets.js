@@ -233,10 +233,10 @@ describe("Datasets", function() {
       const blocks = await query.getBlocks(config.startTime, config.endTime);
       assert(blocks.length);
       const descBlocks = await query.getBlocksDescending(config.endTime, 2);
-      assert(descBlocks.length, 2);
+      assert.equal(descBlocks.length, 2);
       assert(descBlocks[0].number > descBlocks[1].number);
       const ascBlocks = await query.getBlocksAscending(config.startTime, 2);
-      assert(ascBlocks.length, 2);
+      assert.equal(ascBlocks.length, 2);
       assert(ascBlocks[0].number < ascBlocks[1].number);
       const logs = await query.getLogsByContract(config.empAddress);
       assert(logs.length);
