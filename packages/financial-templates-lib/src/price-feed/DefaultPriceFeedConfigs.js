@@ -115,7 +115,7 @@ const defaultConfigs = {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
-              { type: "cryptowatch", exchange: "bitfinex", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
               { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
             ]
           }
