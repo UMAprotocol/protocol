@@ -1,6 +1,6 @@
 const lodash = require("lodash");
 const assert = require("assert");
-const { averageBlockTimeSeconds } = require("@uma/common");
+const { averageBlockTimeSeconds, MAX_SAFE_JS_INT } = require("@uma/common");
 
 // Downloads blocks and caches them for certain time into the past.
 // Allows some in memory searches to go from timestamp to block number.
@@ -42,7 +42,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
   }
 
   // Main call to update cache, will take care of fetching all blocks, caching and pruning cache.
-  async function update(lookback, now) {
+  async function update(lookback, now, bufferBlockLength = 50) {
     assert(lookback >= 0, "requires lookback in seconds");
     assert(now >= 0, "requires current time");
 
@@ -51,11 +51,12 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     // having to traverse backwards sequentially from the current number to this early number.
     const latestBlock = await getBlock();
     const latestBlockHeight = latestBlock.number;
-    // Add 50 block height buffer just to be safe, and if the result is negative then set it to 0. On a test network it
-    // is possible for the `earliestBlockHeight` to be negative.
+    // Add a conservative block height buffer so that we capture all of the blocks within the lookback window,
+    // and if the result is negative then set it to 0. On a test network it is possible for the `earliestBlockHeight`
+    // to be negative.
     const earliestBlockHeight = Math.max(
       0,
-      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - 50
+      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - bufferBlockLength
     );
 
     // Push all getBlock() promises into an array to execute in parallel
@@ -165,4 +166,41 @@ exports.PriceHistory = (getPrice, prices = {}) => {
     update,
     list
   };
+};
+
+// Given a list of price events in chronological order [timestamp, price] and a time window, returns the time-weighted
+// average price.
+exports.computeTWAP = (events, startTime, endTime, startingPriceSum) => {
+  // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
+  events.push([MAX_SAFE_JS_INT, null]);
+
+  let lastPrice = null;
+  let lastTime = null;
+  let priceSum = startingPriceSum;
+  let timeSum = 0;
+  for (const event of events) {
+    // Because the price window goes up until the next event, computation cannot start until event 2.
+    if (lastTime && lastPrice) {
+      const startWindow = Math.max(lastTime, startTime);
+      const endWindow = Math.min(event[0], endTime);
+      const windowLength = Math.max(endWindow - startWindow, 0);
+      priceSum = priceSum.add(lastPrice.muln(windowLength));
+      timeSum += windowLength;
+    }
+
+    // If first event is later than end time, return null
+    if (event[0] > endTime) {
+      break;
+    }
+
+    // events are in the shape: [timestamp, price]
+    lastPrice = event[1];
+    lastTime = event[0];
+  }
+
+  if (timeSum === 0) {
+    return null;
+  }
+
+  return priceSum.divn(timeSum);
 };

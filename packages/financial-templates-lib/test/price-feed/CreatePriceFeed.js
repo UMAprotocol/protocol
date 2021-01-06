@@ -595,8 +595,53 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates: 5
     });
 
-    assert.isTrue(priceFeed != null);
+    assert.isTrue(priceFeed !== null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
+
+    // Note that the `ETH/BTC` feed should have an 18 decimal feed. This should be correctly detected.
+    assert.equal(priceFeed.getPriceFeedDecimals(), 18);
+
+    // Check that the default `lookback` property is overridden.
+    assert.equal(priceFeed.priceFeeds[0].lookback, 1000);
+  });
+
+  it("Non-standard decimals reference price feed", async function() {
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 8, { from: accounts[0] });
+    const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
+
+    // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+
+    const constructorParams = {
+      expirationTimestamp: ((await web3.eth.getBlock("latest")).timestamp + 1000).toString(),
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
+      finderAddress: finder.address,
+      priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64), // Note: an identifier which is part of the default config is required for this test.
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: timer.address,
+      excessTokenBeneficiary: store.address,
+      financialProductLibraryAddress: ZERO_ADDRESS
+    };
+
+    let emp = await ExpiringMultiParty.new(constructorParams);
+
+    // Should create a valid price feed with no config.
+    const priceFeed = await createReferencePriceFeedForEmp(logger, web3, networker, getTime, emp.address, {
+      minTimeBetweenUpdates: 5
+    });
+
+    assert.isTrue(priceFeed !== null);
+    assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
+
+    // Note that the `USDBTC` feed should have an 18 decimal feed.
+    assert.equal(priceFeed.getPriceFeedDecimals(), 8);
 
     // Check that the default `lookback` property is overridden.
     assert.equal(priceFeed.priceFeeds[0].lookback, 1000);

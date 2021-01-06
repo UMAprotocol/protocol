@@ -85,6 +85,17 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
+  // Gets the decimals of the medianized price feeds. Errors out if any price feed had a different number of decimals.
+  getPriceFeedDecimals() {
+    const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+    // Check that every price feeds decimals match the 0th price feeds decimals.
+    if (!priceFeedDecimals[0] || !priceFeedDecimals.every(feedDecimals => feedDecimals === priceFeedDecimals[0])) {
+      throw new Error("MedianizerPriceFeed's feeds do not all have the same decimals or invalid decimals!");
+    }
+
+    return priceFeedDecimals[0];
+  }
+
   // Updates all constituent price feeds.
   async update() {
     await Promise.all(this.priceFeeds.map(priceFeed => priceFeed.update()));

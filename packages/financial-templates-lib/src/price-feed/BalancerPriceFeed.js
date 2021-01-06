@@ -1,8 +1,7 @@
 const assert = require("assert");
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { BlockHistory, PriceHistory } = require("./utils");
-const { parseFixed } = require("@ethersproject/bignumber");
-const { MAX_SAFE_JS_INT } = require("@uma/common");
+const { BlockHistory, PriceHistory, computeTWAP } = require("./utils");
+const { ConvertDecimals } = require("@uma/common");
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
@@ -24,6 +23,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
     assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
+    assert(twapLength >= 0, "BalancerPriceFeed requires lookback >= 0");
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -45,58 +45,65 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // which affects the update call.
     this.priceHistory = PriceHistory(async number => {
       try {
-        return this.toBN(await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number));
+        let bPoolPrice = this.toBN(
+          await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number)
+        );
+        // Like the Uniswap price feed, if pool price is 0, then return null
+        if (!bPoolPrice.isZero()) {
+          return bPoolPrice;
+        } else {
+          return null;
+        }
       } catch (err) {
-        // If query failed, skip;
+        // Like the UniswapPriceFeed, when the price is unavailable then return null instead of throwing.
         return null;
       }
     });
 
     // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
+    // TODO: Should/Can we read in `poolDecimals` from this.contract?
     this.poolPrecision = poolDecimals;
+    this.decimals = decimals;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
     // on the relationship between poolPrecision and the desired decimals.
-    this.convertDecimals = _bn => {
-      if (this.poolPrecision < decimals) {
-        return _bn.mul(this.toBN(parseFixed("1", decimals - this.poolPrecision).toString()));
-      } else if (this.poolPrecision > decimals) {
-        return _bn.div(this.toBN(parseFixed("1", this.poolPrecision - decimals).toString()));
-      } else {
-        return _bn;
-      }
-    };
+    this.convertDecimals = ConvertDecimals(this.poolPrecision, this.decimals, this.web3);
   }
+
   getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.lookback) {
       // Requesting an historical TWAP earlier than the lookback.
       return null;
     }
 
+    let historicalPrice;
     if (this.twapLength === 0) {
-      const historicalSpotPrice = this.getSpotPrice(time);
-      return historicalSpotPrice && this.convertDecimals(historicalSpotPrice);
+      historicalPrice = this.getSpotPrice(time);
     } else {
-      const historicalTwap = this._computeTwap(time - this.twapLength, time);
-      return historicalTwap && this.convertDecimals(historicalTwap);
+      historicalPrice = this._computeTwap(time - this.twapLength, time);
     }
+    return historicalPrice && this.convertDecimals(historicalPrice);
   }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
+
   getCurrentPrice() {
+    let currentPrice;
+    // If twap window is 0, then return last price
     if (this.twapLength === 0) {
-      const currentSpotPrice = this.getSpotPrice();
-      return currentSpotPrice && this.convertDecimals(currentSpotPrice);
+      currentPrice = this.getSpotPrice();
     } else {
-      return this.currentTwap && this.convertDecimals(this.currentTwap);
+      currentPrice = this._computeTwap(this.lastUpdateTime - this.twapLength, this.lastUpdateTime);
     }
+    return currentPrice && this.convertDecimals(currentPrice);
   }
   // Not part of the price feed interface. Can be used to pull the balancer price at the most recent block.
+  // If `time` is undefined, return latest block price.
   getSpotPrice(time) {
     if (!time) {
-      // current price can be undefined, will throw for any other errors
-      return this.convertDecimals(this.priceHistory.currentPrice());
+      return this.priceHistory.currentPrice() && this.convertDecimals(this.priceHistory.currentPrice());
     } else {
       // We want the block and price equal to or before this time
       const block = this.blockHistory.getClosestBefore(time);
@@ -104,9 +111,14 @@ class BalancerPriceFeed extends PriceFeedInterface {
       if (!this.priceHistory.has(block.timestamp)) {
         return null;
       }
-      return this.convertDecimals(this.priceHistory.get(block.timestamp));
+      return this.priceHistory.get(block.timestamp) && this.convertDecimals(this.priceHistory.get(block.timestamp));
     }
   }
+
+  getPriceFeedDecimals() {
+    return this.decimals;
+  }
+
   async update() {
     const currentTime = await this.getTime();
     this.logger.debug({
@@ -115,57 +127,28 @@ class BalancerPriceFeed extends PriceFeedInterface {
       lastUpdateTimestamp: currentTime
     });
     let blocks = [];
-    // disabled lookback by setting it and twapLength to 0
-    const lookbackWindow = this.twapLength + this.lookback;
-    if (lookbackWindow === 0) {
-      // handle no lookback, we just want latest block
+    // disabled lookback by setting it to 0
+    if (this.lookback === 0) {
+      // handle no lookback, we just want to insert the latest block into the blockHistory.
       const block = await this.getLatestBlock();
       this.blockHistory.insert(block);
       blocks = this.blockHistory.listBlocks();
     } else {
       // handle historical lookback. Have to be careful your lookback time gives a big enough
-      // window to find a single block, otherwise you will have errors.
-      blocks = await this.blockHistory.update(lookbackWindow, currentTime);
+      // window to find a single block, otherwise you will have errors. This essentially maps
+      // blockHistory.insert() over all blocks in the lookback window.
+      blocks = await this.blockHistory.update(this.lookback + this.twapLength, currentTime);
     }
+    // The priceHistory.update() method should strip out any blocks where the price is null
     await Promise.all(blocks.map(this.priceHistory.update));
-
-    // Compute TWAP up to the current time.
-    this.currentTwap = this._computeTwap(currentTime - this.twapLength, currentTime);
 
     this.lastUpdateTime = currentTime;
   }
+  // If priceHistory only encompasses 1 block, which happens if the `lookback` window is 0,
+  // then this should return the last and only price.
   _computeTwap(startTime, endTime) {
-    // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
     const events = this.priceHistory.list().slice();
-    events.push([MAX_SAFE_JS_INT, null]);
-
-    let lastPrice = null;
-    let lastTime = null;
-    let priceSum = this.toBN("0");
-    let timeSum = 0;
-    for (const event of events) {
-      // Because the price window goes up until the next event, computation cannot start until event 2.
-      if (lastTime && lastPrice) {
-        const startWindow = Math.max(lastTime, startTime);
-        const endWindow = Math.min(event[0], endTime);
-        const windowLength = Math.max(endWindow - startWindow, 0);
-        priceSum = priceSum.add(lastPrice.muln(windowLength));
-        timeSum += windowLength;
-      }
-
-      if (event[0] > endTime) {
-        break;
-      }
-
-      lastPrice = event[1];
-      lastTime = event[0];
-    }
-
-    if (timeSum === 0) {
-      return null;
-    }
-
-    return priceSum.divn(timeSum);
+    return computeTWAP(events, startTime, endTime, this.toBN("0"));
   }
 }
 

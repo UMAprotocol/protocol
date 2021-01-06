@@ -54,6 +54,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexMock.setPrice(toWei("1"));
     await dexMock.setPrice(toWei("0.5"));
     await dexMock.setPrice(toWei("0.25"));
+    // Add an invalid price as the most recent price, which should be ignored.
+    await dexMock.setPrice(toWei("0"));
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.25"));
@@ -82,6 +84,11 @@ contract("BalancerPriceFeed.js", function(accounts) {
   it("No price or only invalid prices", async function() {
     await dexPriceFeed.update();
 
+    assert.equal(dexPriceFeed.getSpotPrice(), null);
+    assert.equal(dexPriceFeed.getCurrentPrice(), null);
+
+    await dexMock.setPrice(toWei("0"));
+    assert.equal(dexPriceFeed.getSpotPrice(), null);
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
   });
 
@@ -90,6 +97,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     // Update the prices with a small amount of time between.
     const result1 = await dexMock.setPrice(toWei("1"));
     await delay(1);
+    // Invalid price should be ignored.
+    await dexMock.setPrice(toWei("0"));
     const result2 = await dexMock.setPrice(toWei("0.5"));
 
     const getBlockTime = async result => {
@@ -156,6 +165,9 @@ contract("BalancerPriceFeed.js", function(accounts) {
     // At an hour and a half ago, set the price to 90.
     await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
 
+    // At an hour and a half ago - 1 second, set the price to an invalid one. This should be ignored.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("0"))], currentTime - 5399, owner);
+
     // At an hour ago, set the price to 80.
     await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
 
@@ -219,12 +231,81 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
     // Historical prices should be equal to latest price at timestamp
     assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("80"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("80"));
     assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("70"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("70"));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
+  it("Lookback of 0 returns only current price", async function() {
+    dexPriceFeed = new BalancerPriceFeed(
+      dummyLogger,
+      web3,
+      () => mockTime,
+      Balancer.abi,
+      dexMock.address,
+      // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+      accounts[1],
+      accounts[2],
+      0,
+      3600
+    );
+
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+
+    mockTime = currentTime;
+
+    await dexPriceFeed.update();
+
+    // Historical prices should be equal to latest price at timestamp
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
+    assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
+  });
+  it("Setting both lookback and twap to 0 should update without crashing and only return current price", async function() {
+    dexPriceFeed = new BalancerPriceFeed(
+      dummyLogger,
+      web3,
+      () => mockTime,
+      Balancer.abi,
+      dexMock.address,
+      // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
+      accounts[1],
+      accounts[2],
+      0,
+      0
+    );
+
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+
+    mockTime = currentTime;
+
+    await dexPriceFeed.update();
+
+    // Historical prices should be equal to latest price at timestamp
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
+    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
+    assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
+  });
+
   describe("Can return non-18 precision prices", function() {
     let scaleDownPriceFeed, scaleUpPriceFeed;
     beforeEach(async function() {

@@ -132,4 +132,40 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
   });
+  it("Validates feeds decimals correctly", async function() {
+    // Create three feeds, one with a diffrent number of decimals. Medianizer should reject this when checking the decimals.
+    const validDecimalsPriceFeeds = [
+      //                currentPrice      historicalPrice    lastUpdatedTime    PriceFeed decimals
+      new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
+      new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18),
+      new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 18)
+    ];
+
+    const validMedianizerPriceFeed = new MedianizerPriceFeed(validDecimalsPriceFeeds);
+
+    let didThrow = false;
+    try {
+      const feedDecimals = validMedianizerPriceFeed.getPriceFeedDecimals();
+      assert.equal(feedDecimals, 18);
+    } catch (error) {
+      didThrow = true;
+    }
+
+    assert.isFalse(didThrow);
+
+    const inValidDecimalsPriceFeeds = [
+      //                currentPrice      historicalPrice    lastUpdatedTime    PriceFeed decimals
+      new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
+      new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18),
+      new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 17)
+    ];
+
+    const invalidMedianizerPriceFeed = new MedianizerPriceFeed(inValidDecimalsPriceFeeds);
+    try {
+      invalidMedianizerPriceFeed.getPriceFeedDecimals();
+    } catch (error) {
+      didThrow = true;
+    }
+    assert.isTrue(didThrow);
+  });
 });

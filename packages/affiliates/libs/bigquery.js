@@ -38,6 +38,22 @@ module.exports = ({ client } = {}) => {
         ORDER BY block_timestamp ASC;
       `;
     },
+    tracesByContract(contract, start, end = Date.now(), selection = ["*"]) {
+      assert(contract, "requires contract");
+      assert(start >= 0, "requires start");
+      selection = lodash.castArray(selection);
+
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.traces
+        WHERE
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
+          AND LOWER(to_address)=LOWER('${contract}')
+        ORDER BY block_timestamp ASC;
+      `;
+    },
     // transactions by contract
     transactionsByContract(contract, start, end = Date.now(), selection = ["*"]) {
       assert(contract, "requires contract");
@@ -55,6 +71,25 @@ module.exports = ({ client } = {}) => {
         ORDER BY block_timestamp ASC;
       `;
     },
+    // search transactions for many contracts
+    transactionsByContracts(contracts = [], start, end = Date.now(), selection = ["*"]) {
+      contracts = lodash.castArray(contracts).map(x => x.toLowerCase());
+      assert(contracts, "requires contracts");
+      assert(contracts.length, "requires at least one contract");
+      assert(start >= 0, "requires start");
+      selection = lodash.castArray(selection);
+
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.transactions
+        WHERE
+          block_timestamp >= TIMESTAMP_MILLIS(${start})
+          AND block_timestamp < TIMESTAMP_MILLIS(${end})
+          AND LOWER(to_address) IN ('${contracts.join("', '")}')
+        ORDER BY block_timestamp ASC;
+      `;
+    },
     blocks(start, end, selection = ["*"]) {
       assert(start >= 0, "requires start");
       selection = lodash.castArray(selection);
@@ -67,6 +102,32 @@ module.exports = ({ client } = {}) => {
           AND timestamp < TIMESTAMP_MILLIS(${end})
         ORDER BY timestamp ASC;
       `;
+    },
+    getBlocksAscending(start, limit = 1, selection = ["*"]) {
+      assert(start >= 0, "requires start");
+      selection = lodash.castArray(selection);
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.blocks
+        WHERE
+          timestamp >= TIMESTAMP_MILLIS(${start})
+        ORDER BY timestamp ASC
+        LIMIT ${limit};
+      `;
+    },
+    getBlocksDescending(start, limit = 1, selection = ["*"]) {
+      assert(start >= 0, "requires start");
+      selection = lodash.castArray(selection);
+      return `
+        SELECT ${selection.join(", ")}
+        FROM
+          bigquery-public-data.crypto_ethereum.blocks
+        WHERE
+          timestamp <= TIMESTAMP_MILLIS(${start})
+        ORDER BY timestamp DESC
+        LIMIT ${limit};
+      `;
     }
   };
 
@@ -76,6 +137,14 @@ module.exports = ({ client } = {}) => {
   }
   function streamLogsByContract(...args) {
     const query = queries.logsByContract(...args);
+    return client.createQueryStream({ query });
+  }
+  function streamTracesByContract(...args) {
+    const query = queries.tracesByContract(...args);
+    return client.createQueryStream({ query });
+  }
+  function streamTransactionsByContracts(...args) {
+    const query = queries.transactionsByContracts(...args);
     return client.createQueryStream({ query });
   }
   function streamTransactionsByContract(...args) {
@@ -110,16 +179,37 @@ module.exports = ({ client } = {}) => {
     const [rows] = await job.getQueryResults();
     return rows;
   }
+  function getBlockStream(...args) {
+    const query = queries.blocks(...args);
+    return client.createQueryStream({ query });
+  }
+  async function getBlocksAscending(...args) {
+    const query = queries.getBlocksAscending(...args);
+    const [job] = await client.createQueryJob({ query });
+    const [rows] = await job.getQueryResults();
+    return rows;
+  }
+  async function getBlocksDescending(...args) {
+    const query = queries.getBlocksDescending(...args);
+    const [job] = await client.createQueryJob({ query });
+    const [rows] = await job.getQueryResults();
+    return rows;
+  }
   return {
     // main api, use streams or "get" to return data as array
     streamLogsByContract,
     streamAllLogsByContract,
     streamTransactionsByContract,
+    streamTransactionsByContracts,
     streamBlocks,
     getLogsByContract,
     getAllLogsByContract,
     getTransactionsByContract,
     getBlocks,
+    getBlockStream,
+    getBlocksAscending,
+    getBlocksDescending,
+    streamTracesByContract,
     // exposed for testing or as utilities
     utils: {
       queries,
