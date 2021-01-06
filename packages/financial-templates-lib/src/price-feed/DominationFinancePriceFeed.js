@@ -14,10 +14,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
    * @param {Function} getTime Returns the Unix timestamp in seconds.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
-   * @param {Number} decimals Number of decimals to use to convert price to wei.
+   * @param {Number} priceFeedDecimals Number of decimals to use to convert price to wei.
    * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
    */
-  constructor(logger, web3, pair, networker, getTime, minTimeBetweenUpdates, invertPrice, decimals = 18) {
+  constructor(logger, web3, pair, networker, getTime, minTimeBetweenUpdates, invertPrice, priceFeedDecimals = 18) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -32,10 +32,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     this.BASE_URL = "https://api.domination.finance/api/v0";
     this.TICK_SECONDS = 60;
 
-    this.convertDecimals = number => {
+    this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
-      return this.toBN(parseFixed(number.toString(), decimals).toString());
+      return this.toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
     };
   }
 
@@ -87,7 +87,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     if (match === undefined) {
       let returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
-        const priceDisplay = this.convertDecimals(returnPrice.toString());
+        const priceDisplay = this.convertPriceFeedDecimals(returnPrice.toString());
         const priceUrl = this._makePriceUrl(this.pair);
 
         console.group(`\n(${this.pair}) No historical price available @ ${time}`);
@@ -105,7 +105,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       const url = this._makeHistoricalPricesUrl(this.pair);
 
       console.group(`\n(${this.pair}) Historical Prices @ ${match.closeTime}`);
-      console.log(`- ✅ Price: ${this.convertDecimals(returnPrice.toString())}`);
+      console.log(`- ✅ Price: ${this.convertPriceFeedDecimals(returnPrice.toString())}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n  - ${url}`
       );
@@ -131,6 +131,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
   getLastUpdateTime() {
     return this.lastUpdateTime;
+  }
+
+  getPriceFeedDecimals() {
+    return this.priceFeedDecimals;
   }
 
   async update() {
@@ -188,7 +192,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     //   "timestamp": 1609870472,
     //   ...
     // }
-    const newPrice = this.convertDecimals(priceResponse.price);
+    const newPrice = this.convertPriceFeedDecimals(priceResponse.price);
 
     // Return data structure:
     // {
@@ -210,7 +214,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       .map(row => ({
         openTime: row[0],
         closeTime: row[0] + this.TICK_SECONDS,
-        closePrice: this.convertDecimals(row[1])
+        closePrice: this.convertPriceFeedDecimals(row[1])
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -226,8 +230,8 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertDecimals("1")
-        .mul(this.convertDecimals("1"))
+      return this.convertPriceFeedDecimals("1")
+        .mul(this.convertPriceFeedDecimals("1"))
         .div(priceBN);
     } else {
       return undefined;
