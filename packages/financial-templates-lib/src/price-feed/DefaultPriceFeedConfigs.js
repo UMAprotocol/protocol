@@ -89,6 +89,18 @@ const defaultConfigs = {
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
     twapLength: 7200,
     lookback: 7200
+  },
+  BTCDOM: {
+    type: "domfi",
+    pair: "BTCDOM",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60
+  },
+  ALTDOM: {
+    type: "domfi",
+    pair: "ALTDOM",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60
   }
 };
 
