@@ -239,6 +239,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Detected a liquidatable position",
         scaledPrice: scaledPrice.toString(),
+        maxCollateralPerToken: maxCollateralPerToken.toString(),
         position: JSON.stringify(position)
       });
 

@@ -1,4 +1,5 @@
-const { PriceHistory, BlockHistory } = require("../../src/price-feed/utils");
+const { PriceHistory, BlockHistory, computeTWAP } = require("../../src/price-feed/utils");
+const { toBN } = web3.utils;
 
 // Moved this into same file to see if there are issues with 2 tests files mining blocks
 contract("Price Feed Utils", async function() {
@@ -58,13 +59,6 @@ contract("Price Feed Utils", async function() {
       // this should return the next block higher than the timestamp
       assert.equal(block.timestamp, Math.ceil(time));
     });
-    it("pruneByTimestamp", async function() {
-      const blockHistory = BlockHistory(getBlock);
-      await blockHistory.update(blockCount, blockCount);
-      blockHistory.pruneByTimestamp(5);
-      const result = blockHistory.listBlocks();
-      assert.equal(result.length, blockCount - 5);
-    });
   });
   describe("PriceHistory", function() {
     it("priceHistory.update", async function() {
@@ -88,6 +82,84 @@ contract("Price Feed Utils", async function() {
       const block = blockHistory.getClosestBefore(blockCount / 2);
       const result = priceHistory.get(block.timestamp);
       assert.equal(result, await getPrice(block.number));
+    });
+  });
+  describe("computeTWAP", function() {
+    it("earliest price event timestamp > endTime", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          [3, toBN("1")]
+        ],
+        1, // start time
+        2, // end time
+        toBN("0")
+      );
+      assert.equal(twap, null);
+    });
+    it("latest price event timestamp < startTime", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          [2, toBN("2")],
+          [3, toBN("3")]
+        ],
+        4, // start time
+        5, // end time
+        toBN("0")
+      );
+      // Expect that the TWAP is just the most recent price, since that was the price throughout the current window.
+      assert.equal(twap.toString(), "3");
+    });
+    it("time sum is 0", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          [3, toBN("1")]
+        ],
+        3, // start time
+        3, // end time
+        toBN("0")
+      );
+      assert.equal(twap, null);
+    });
+    it("One price TWAP", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          [3, toBN("1")]
+        ],
+        1, // start time
+        4, // end time
+        toBN("0")
+      );
+      assert.equal(twap.toString(), "1");
+    });
+    it("Zero price TWAP", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          []
+        ],
+        1, // start time
+        4, // end time
+        toBN("0")
+      );
+      assert.equal(twap, null);
+    });
+    it("Multi price TWAP", async function() {
+      const twap = computeTWAP(
+        [
+          // [timestamp, price]
+          [2, toBN("2")],
+          [3, toBN("4")]
+        ],
+        1, // start time
+        4, // end time
+        toBN("0")
+      );
+      // TWAP should be (2 * 1 second + 4 * 1 second) = 6 / 2 second window length = 3
+      assert.equal(twap.toString(), "3");
     });
   });
 });

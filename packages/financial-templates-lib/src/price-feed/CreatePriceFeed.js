@@ -36,8 +36,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       getTime,
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.decimals, // This defaults to 18 unless supplied by user
-      config.ohlcPeriod // This defaults to 60 unless supplied by user
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.ohlcPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "domfi") {
     const requiredFields = ["pair", "minTimeBetweenUpdates"];
@@ -128,7 +128,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new MedianizerPriceFeed(priceFeeds);
   } else if (config.type === "balancer") {
-    const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback"];
+    const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback", "twapLength"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -148,7 +148,10 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.balancerAddress,
       config.balancerTokenIn,
       config.balancerTokenOut,
-      config.lookback
+      config.lookback,
+      config.twapLength,
+      config.poolDecimals,
+      config.decimals // This defaults to 18 unless supplied by user
     );
   }
 
@@ -204,9 +207,10 @@ async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, e
   assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
   const emp = getEmpAtAddress(web3, empAddress);
   const balancerTokenIn = await emp.methods.tokenCurrency().call();
-  // disable lookback by default
+  // disable lookback and twap by default
   const lookback = 0;
-  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, ...config });
+  const twapLength = 0;
+  return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, twapLength, ...config });
 }
 
 async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
