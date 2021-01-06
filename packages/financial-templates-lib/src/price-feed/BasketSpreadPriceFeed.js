@@ -39,7 +39,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     this.decimals = denominatorPriceFeed.getPriceFeedDecimals();
 
     // Scale `number` by 10**decimals.
-    this.convertDecimals = number => {
+    this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
       return this.toBN(parseFixed(number.toString(), this.decimals).toString());
@@ -77,9 +77,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
     // All calculations within this if statement will produce unexpected results if any of the
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
-    // the one that this.convertDecimals() uses.
+    // the one that this.convertPriceFeedDecimals() uses.
     if (baselineMean && experimentalMean) {
-      let spreadValue = experimentalMean.sub(baselineMean).add(this.convertDecimals("1"));
+      let spreadValue = experimentalMean.sub(baselineMean).add(this.convertPriceFeedDecimals("1"));
       this.logger.debug({
         at: "BasketSpreadPriceFeed",
         message: "Basket spread value",
@@ -94,8 +94,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         spreadValue = this.toBN("0");
       }
       // Ensure symmetry
-      else if (spreadValue.gt(this.convertDecimals("2"))) {
-        spreadValue = this.convertDecimals("2");
+      else if (spreadValue.gt(this.convertPriceFeedDecimals("2"))) {
+        spreadValue = this.convertPriceFeedDecimals("2");
       }
 
       // Divide by denominator pricefeed.
@@ -105,7 +105,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
           message: "Denominator price",
           denominatorPrice: denominatorPrice.toString()
         });
-        spreadValue = spreadValue.mul(this.convertDecimals("1")).div(denominatorPrice);
+        spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
       } else {
         return null;
       }
