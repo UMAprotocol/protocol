@@ -85,15 +85,15 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
     // the one that this.convertPriceFeedDecimals() uses.
     if (!baselineMean || !experimentalMean) return null;
+
+    // TODO: Parameterize the lower (0) and upper (2) bounds, as well as allow for custom "spreadValue" formulas,
+    // for example we might not want to have the spread centered around 1, like it is here:
     let spreadValue = experimentalMean.sub(baselineMean).add(this.convertPriceFeedDecimals("1"));
     this.logger.debug({
       at: "BasketSpreadPriceFeed",
       message: "Basket spread value",
       spreadValue: spreadValue.toString()
     });
-
-    // TODO: Parameterize these lower and upper bounds, as well as allow for custom "spreadValue" formulas,
-    // for example we might not want to have the spread centered around 1.
 
     // Ensure non-negativity
     if (spreadValue.lt(this.toBN("0"))) {
