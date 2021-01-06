@@ -80,11 +80,11 @@ async function run({
     const networker = new Networker(logger);
 
     // 0. Setup EMP and token instances to monitor.
-    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed] = await Promise.all([
+    const [networkId, latestBlock, tokenPriceFeed, medianizerPriceFeed] = await Promise.all([
       web3.eth.net.getId(),
       web3.eth.getBlock("latest"),
-      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig),
-      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig)
+      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig),
+      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig)
     ]);
 
     if (!medianizerPriceFeed || !tokenPriceFeed) {
@@ -109,13 +109,13 @@ async function run({
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
-
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
       collateralSymbol,
       syntheticSymbol,
-      collateralDecimals,
-      syntheticDecimals,
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
+      priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()), // medianized feed returns the expected market price.
       priceIdentifier: hexToUtf8(priceIdentifier),
       networkId
     };
@@ -191,7 +191,6 @@ async function run({
       tokenPriceFeedConfig,
       medianizerPriceFeedConfig
     });
-
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(

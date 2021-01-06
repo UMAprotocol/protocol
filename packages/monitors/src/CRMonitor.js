@@ -98,9 +98,7 @@ class CRMonitor {
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number" &&
             Object.keys(x).includes("networkId") &&
-            typeof x.networkId === "number" &&
-            Object.keys(x).includes("crRequirement") &&
-            typeof x.crRequirement === "string"
+            typeof x.networkId === "number"
           );
         }
       }
@@ -170,7 +168,7 @@ class CRMonitor {
         const liquidationPrice = this._calculatePriceForCR(
           backingCollateral,
           tokensOutstanding,
-          this.empProps.crRequirement
+          this.empClient.collateralRequirement
         );
 
         // Sample message:
@@ -189,7 +187,7 @@ class CRMonitor {
           " is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           ". The collateralization requirement is " +
-          this.formatDecimalString(this.toBN(this.empProps.crRequirement).muln(100)) +
+          this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
           "%. Liquidation price: " +
           this.formatDecimalString(liquidationPrice) + // Note that this does NOT use normalizePriceFeedDecimals as the value has been normalized from the _calculatePriceForCR equation.
           ".";

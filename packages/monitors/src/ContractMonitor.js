@@ -25,8 +25,7 @@ class ContractMonitor {
             collateralDecimals: 18,
             syntheticDecimals: 18,
             priceFeedDecimals: 18,
-            networkId:1
-            crRequirement: 1.5e18 }
+            networkId:1 }
    * @param {Object} votingContract DVM to query price requests.
    */
   constructor({ logger, expiringMultiPartyEventClient, priceFeed, config, empProps, votingContract }) {
@@ -110,9 +109,7 @@ class ContractMonitor {
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number" &&
             Object.keys(x).includes("networkId") &&
-            typeof x.networkId === "number" &&
-            Object.keys(x).includes("crRequirement") &&
-            typeof x.crRequirement === "string"
+            typeof x.networkId === "number"
           );
         }
       }
@@ -194,17 +191,14 @@ class ContractMonitor {
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
       let collateralizationString;
       let maxPriceToBeDisputableString;
-      let crRequirementString = this.toBN(this.empProps.crRequirement).muln(100);
+      const crRequirement = await this.empContract.methods.collateralRequirement().call();
+      let crRequirementString = this.toBN(crRequirement).muln(100);
       if (price) {
         collateralizationString = this.formatDecimalString(
           this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
         );
         maxPriceToBeDisputableString = this.formatDecimalString(
-          this._calculateDisputablePrice(
-            this.empProps.crRequirement,
-            event.liquidatedCollateral,
-            event.tokensOutstanding
-          )
+          this._calculateDisputablePrice(crRequirement, event.liquidatedCollateral, event.tokensOutstanding)
         );
       } else {
         this.logger.warn({

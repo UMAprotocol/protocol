@@ -145,7 +145,7 @@ class SyntheticPegMonitor {
           " on Uniswap. Target price is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(cryptoWatchTokenPrice)) +
           ". Error of " +
-          this.formatDecimalString(this.normalizePriceFeedDecimals(deviationError.muln(100))) + // multiply by 100 to make the error a percentage
+          this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
           "%."
       });
     }
@@ -196,7 +196,7 @@ class SyntheticPegMonitor {
           " price is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedVolatility.muln(100))) +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) + // Note no normalizePriceFeedDecimals as this is unitless
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
@@ -249,7 +249,7 @@ class SyntheticPegMonitor {
           " price is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedVolatility.muln(100))) +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) + // Note no normalizePriceFeedDecimals as this is unitless
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
@@ -290,13 +290,14 @@ class SyntheticPegMonitor {
   // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
   // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
   // This is equivalent of a 20 percent deviation between the numbers.
-  // Note that this logger can return negative error if the deviation is in a negative direction.
+  // Note 1) this logger can return negative error if the deviation is in a negative direction. 2) Regarding scaling,
+  // prices can be scaled arbitrarily but this function always returns 1e18 scaled number as a deviation error is
+  // a unitless number.
   _calculateDeviationError(observedValue, expectedValue) {
-    console.log("observedValue", observedValue.toString(), "expectedValue", expectedValue.toString());
-    return observedValue
-      .sub(expectedValue)
+    return this.normalizePriceFeedDecimals(observedValue)
+      .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division
-      .div(expectedValue);
+      .div(this.normalizePriceFeedDecimals(expectedValue));
   }
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past

@@ -1,3 +1,5 @@
+const { toWei, toBN } = web3.utils;
+
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -22,7 +24,7 @@ const {
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [{ priceFeedDecimals: 18 }, { priceFeedDecimals: 8 }];
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = decimals => number => toBN(parseFixed(number.toString(), decimals).toString());
 
 contract("SyntheticPegMonitor", function() {
   for (let testConfig of configs) {
@@ -79,28 +81,28 @@ contract("SyntheticPegMonitor", function() {
           });
         });
 
-        it.only("Calculate percentage error returns expected values", async function() {
-          // Test with simple values with know percentage error.
+        it("Calculate percentage error returns expected values", async function() {
+          // Test with simple values with know percentage error. Note that the output is scaled according to toWei (1e18).// This is because a deviation error is a unitless number and is scaled independently of the price scalling.
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("1"), convertPrice("1")).toString(),
-            convertPrice("0").toString()
+            toBN(toWei("0").toString())
           );
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("1.11"), convertPrice("1")).toString(),
-            convertPrice("0.11").toString()
+            toBN(toWei("0.11")).toString()
           );
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("1.25"), convertPrice("1")).toString(),
-            convertPrice("0.25").toString()
+            toBN(toWei("0.25")).toString()
           );
 
           // More aggressive test with local validation of the calculation.
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("3.1415"), convertPrice("3.14159")).toString(),
-            convertPrice("3.1415") // actual
-              .sub(convertPrice("3.14159")) // expected
-              .mul(convertPrice("1")) // Scale the numerator before division
-              .div(convertPrice("3.14159")) // expected
+            toBN(toWei("3.1415")) // actual
+              .sub(toBN(toWei("3.14159"))) // expected
+              .mul(toBN(toWei("1"))) // Scale the numerator before division
+              .div(toBN(toWei("3.14159"))) // expected
               .toString()
           );
         });
@@ -223,13 +225,13 @@ contract("SyntheticPegMonitor", function() {
 
           // Test when volatility window is larger than the amount of historical prices. The last update time is 103,
           // so this should read the volatility from timestamps [103, 102, 102, and 100]. The min/max should be 10/13,
-          // and the volatility should be (3 / 10 = 0.3) or 30%.
+          // and the volatility should be (3 / 10 = 0.3) or 30%. Note that the output is scaled according to toWei (1e18).// This is because a volitility is a unitless number and is scaled independently of the price scalling.
           medianizerPriceFeedMock.setLastUpdateTime(103);
           assert.equal(
             syntheticPegMonitor
               ._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow)
               .volatility.toString(),
-            convertPrice("0.3").toString()
+            toBN(toWei("0.3")).toString()
           );
 
           // Test when volatility window captures only one historical price. The last update time is 100,
@@ -259,7 +261,7 @@ contract("SyntheticPegMonitor", function() {
             syntheticPegMonitor
               ._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow)
               .volatility.toString(),
-            convertPrice("0.333333333333333333").toString() // 18 3's is max that can be represented with Wei.
+            toBN(toWei("0.333333333333333333")).toString() // 18 3's is max that can be represented with Wei.
           );
         });
 

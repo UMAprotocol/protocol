@@ -75,8 +75,8 @@ contract("index.js", function(accounts) {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
     // Create a new synthetic token
@@ -180,9 +180,9 @@ contract("index.js", function(accounts) {
     }
 
     // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
-    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 9, '"collateralDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":6'));
+    assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
   });
 
   it("Correctly re-tries after failed execution loop", async function() {
@@ -240,7 +240,6 @@ contract("index.js", function(accounts) {
     } catch (error) {
       errorThrown = true;
     }
-
     // Iterate over all log events and count the number of tokenBalanceStorage, liquidator check for liquidation events
     // execution loop errors and finally liquidator polling errors.
     let reTryCounts = {

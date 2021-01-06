@@ -170,7 +170,6 @@ contract("ContractMonitor.js", function(accounts) {
           collateralDecimals: testConfig.collateralDecimals,
           syntheticDecimals: testConfig.syntheticDecimals,
           priceFeedDecimals: testConfig.priceFeedDecimals,
-          crRequirement: constructorParams.collateralRequirement.rawValue,
           syntheticSymbol: await syntheticToken.symbol(),
           priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
           networkId: await web3.eth.net.getId()
