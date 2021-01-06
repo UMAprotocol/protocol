@@ -170,12 +170,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   }
   // Returns an array or "basket" of MedianizerPriceFeeds
   async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
-    const basketOfMedianizers = [];
-    for (const _medianizerConfig of medianizerConfigs) {
-      const medianizer = await _createMedianizerPriceFeed(_medianizerConfig);
-      basketOfMedianizers.push(medianizer);
-    }
-    return basketOfMedianizers;
+    return await Promise.all(medianizerConfigs.map(config => _createMedianizerPriceFeed(config)));
   }
 }
 
