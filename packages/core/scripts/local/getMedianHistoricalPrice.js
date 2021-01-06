@@ -9,17 +9,10 @@
  */
 const { fromWei } = web3.utils;
 const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
+const { getPrecisionForIdentifier } = require("@uma/common");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
 require("dotenv").config();
-
-const UMIP_PRECISION = {
-  USDBTC: 8,
-  USDETH: 5,
-  BTCDOM: 2,
-  ALTDOM: 2
-};
-const DEFAULT_PRECISION = 5;
 
 async function getMedianHistoricalPrice(callback) {
   try {
@@ -75,7 +68,7 @@ async function getMedianHistoricalPrice(callback) {
     // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
-    const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
+    const precisionToUse = getPrecisionForIdentifier(queryIdentifier);
     console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
     console.log(
       `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
