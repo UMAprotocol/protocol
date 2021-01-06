@@ -130,6 +130,127 @@ const defaultConfigs = {
       ]
     }
   },
+  "STABLESPREAD/USDC": {
+    type: "basketspread",
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ],
+    denominatorPriceFeed: {
+      type: "medianizer",
+      medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "usdcusdt" }]
+    }
+  },
+  "STABLESPREAD/BTC": {
+    type: "basketspread",
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ],
+    denominatorPriceFeed: {
+      type: "medianizer",
+      medianizedFeeds: [
+        { type: "cryptowatch", exchange: "kraken", pair: "btcusd" },
+        { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
+      ]
+    }
+  },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
     uniswapAddress: "0x25fb29D865C1356F9e95D621F21366d3a5DB6BB0",
