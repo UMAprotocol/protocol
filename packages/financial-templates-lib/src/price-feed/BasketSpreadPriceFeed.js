@@ -78,43 +78,36 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     // All calculations within this if statement will produce unexpected results if any of the
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
     // the one that this.convertPriceFeedDecimals() uses.
-    if (baselineMean && experimentalMean) {
-      let spreadValue = experimentalMean.sub(baselineMean).add(this.convertPriceFeedDecimals("1"));
-      this.logger.debug({
-        at: "BasketSpreadPriceFeed",
-        message: "Basket spread value",
-        spreadValue: spreadValue.toString()
-      });
+    if (!baselineMean || !experimentalMean) return null;
+    let spreadValue = experimentalMean.sub(baselineMean).add(this.convertPriceFeedDecimals("1"));
+    this.logger.debug({
+      at: "BasketSpreadPriceFeed",
+      message: "Basket spread value",
+      spreadValue: spreadValue.toString()
+    });
 
-      // TODO: Parameterize these lower and upper bounds, as well as allow for custom "spreadValue" formulas,
-      // for example we might not want to have the spread centered around 1.
+    // TODO: Parameterize these lower and upper bounds, as well as allow for custom "spreadValue" formulas,
+    // for example we might not want to have the spread centered around 1.
 
-      // Ensure non-negativity
-      if (spreadValue.lt(this.toBN("0"))) {
-        spreadValue = this.toBN("0");
-      }
-      // Ensure symmetry
-      else if (spreadValue.gt(this.convertPriceFeedDecimals("2"))) {
-        spreadValue = this.convertPriceFeedDecimals("2");
-      }
-
-      // Divide by denominator pricefeed.
-      if (denominatorPrice) {
-        this.logger.debug({
-          at: "BasketSpreadPriceFeed",
-          message: "Denominator price",
-          denominatorPrice: denominatorPrice.toString()
-        });
-        spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
-      } else {
-        return null;
-      }
-
-      return spreadValue;
-    } else {
-      // Something went wrong in the _computeMean step
-      return null;
+    // Ensure non-negativity
+    if (spreadValue.lt(this.toBN("0"))) {
+      spreadValue = this.toBN("0");
     }
+    // Ensure symmetry
+    else if (spreadValue.gt(this.convertPriceFeedDecimals("2"))) {
+      spreadValue = this.convertPriceFeedDecimals("2");
+    }
+
+    // Divide by denominator pricefeed.
+    if (!denominatorPrice) return null;
+    this.logger.debug({
+      at: "BasketSpreadPriceFeed",
+      message: "Denominator price",
+      denominatorPrice: denominatorPrice.toString()
+    });
+    spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
+
+    return spreadValue;
   }
 
   getCurrentPrice() {
