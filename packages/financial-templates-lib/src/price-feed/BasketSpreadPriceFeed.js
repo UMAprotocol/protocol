@@ -15,7 +15,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    * @param {List} experimentalPriceFeed The baseline list of priceFeeds to compute the average of. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
    * @param {Object} denominatorPriceFeed We divide the price spread between the baseline and experimental baskets by this denominator price
-   *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
+   *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basket spread in terms
    *      of ETH-USD.
    */
   constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
