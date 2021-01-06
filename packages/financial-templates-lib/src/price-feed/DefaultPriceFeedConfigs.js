@@ -183,11 +183,7 @@ const defaultConfigs = {
           }
         ]
       }
-    ],
-    denominatorPriceFeed: {
-      type: "medianizer",
-      medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "usdcusdt" }]
-    }
+    ]
   },
   "STABLESPREAD/BTC": {
     type: "basketspread",

@@ -14,7 +14,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    *      Must be an array of at least one element.
    * @param {List} experimentalPriceFeed The baseline list of priceFeeds to compute the average of. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
-   * @param {Object} denominatorPriceFeed We divide the price spread between the baseline and experimental baskets by this denominator price
+   * @param {Object?} denominatorPriceFeed We optionally divide the price spread between the baseline and experimental baskets by this denominator price
    *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basket spread in terms
    *      of ETH-USD.
    */
@@ -29,14 +29,20 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     this.experimentalPriceFeeds = experimentalPriceFeeds;
     this.denominatorPriceFeed = denominatorPriceFeed;
 
+    // For convenience, concatenate all constituent price feeds.
+    this.allPriceFeeds = this.baselinePriceFeeds.concat(this.experimentalPriceFeeds);
+    if (this.denominatorPriceFeed) {
+      this.allPriceFeeds = this.allPriceFeeds.concat(this.denominatorPriceFeed);
+    }
+
     // Helper modules.
     this.web3 = web3;
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.logger = logger;
 
-    // The precision that the user wants to return prices in is determined by the denominator price feed.
-    this.decimals = denominatorPriceFeed.getPriceFeedDecimals();
+    // The precision that the user wants to return prices in must match all basket constituent price feeds and the denominator.
+    this.decimals = this.allPriceFeeds[0].getPriceFeedDecimals();
 
     // Scale `number` by 10**decimals.
     this.convertPriceFeedDecimals = number => {
@@ -98,8 +104,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       spreadValue = this.convertPriceFeedDecimals("2");
     }
 
-    // Divide by denominator pricefeed.
-    if (!denominatorPrice) return null;
+    // Optionally divide by denominator pricefeed.
+    if (!denominatorPrice) return spreadValue;
     this.logger.debug({
       at: "BasketSpreadPriceFeed",
       message: "Denominator price",
@@ -113,7 +119,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   getCurrentPrice() {
     const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
-    const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
 
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
@@ -121,17 +127,14 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   getHistoricalPrice(time) {
     const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
     const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const denominatorPrice = this.denominatorPriceFeed.getHistoricalPrice(time);
+    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
 
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
-    const lastUpdateTimes = this.experimentalPriceFeeds
-      .concat(this.baselinePriceFeeds)
-      .concat(this.denominatorPriceFeed)
-      .map(priceFeed => priceFeed.getLastUpdateTime());
+    const lastUpdateTimes = this.allPriceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
     if (lastUpdateTimes.some(element => element === undefined || element === null)) {
       return null;
     }
@@ -141,14 +144,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   getPriceFeedDecimals() {
-    const experimentalDecimals = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
-    const baselineDecimals = this.baselinePriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
-
-    // Check that every price feeds decimals match the 0th price feeds decimals.
-    if (
-      !experimentalDecimals.every(feedDecimals => feedDecimals === this.decimals) ||
-      !baselineDecimals.every(feedDecimals => feedDecimals === this.decimals)
-    ) {
+    // Check that every price feeds decimals are the same.
+    const priceFeedDecimals = this.allPriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+    if (!priceFeedDecimals.every(feedDecimals => feedDecimals === this.decimals)) {
       throw new Error("BasketPriceFeed's constituent feeds do not all match the denominator price feed's precision!");
     }
 
@@ -157,12 +155,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
   // Updates all constituent price feeds.
   async update() {
-    await Promise.all(
-      this.baselinePriceFeeds
-        .map(priceFeed => priceFeed.update())
-        .concat(this.experimentalPriceFeeds.map(priceFeed => priceFeed.update()))
-        .concat(this.denominatorPriceFeed.update())
-    );
+    await Promise.all(this.allPriceFeeds.map(priceFeed => priceFeed.update()));
   }
 
   // Inputs are expected to be BNs.

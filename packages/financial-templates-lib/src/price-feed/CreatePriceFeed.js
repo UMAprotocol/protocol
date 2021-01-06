@@ -112,7 +112,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.decimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "basketspread") {
-    const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds", "denominatorPriceFeed"];
+    const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -130,7 +130,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     // any type of price feed.
     const experimentalPriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.experimentalPriceFeeds);
     const baselinePriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.baselinePriceFeeds);
-    const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominatorPriceFeed);
+    const denominatorPriceFeed =
+      config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
   }

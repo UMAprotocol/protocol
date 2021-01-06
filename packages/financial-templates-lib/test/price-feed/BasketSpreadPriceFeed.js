@@ -42,7 +42,7 @@ contract("BasketSpreadPriceFeed.js", function() {
     assert.equal(priceFeeds[0].updateCalled, 5);
   });
   describe("Computing basket spreads when the spread is within the range [0,2]", function() {
-    function _constructPriceFeedsWithPrecision(precision) {
+    function _constructPriceFeedsWithPrecision(precision, noDenominator = false) {
       // First let's construct the constituent pricefeeds of the baskets.
       const baselineFeeds1 = new MedianizerPriceFeed(
         [
@@ -187,8 +187,7 @@ contract("BasketSpreadPriceFeed.js", function() {
         dummyLogger,
         baselinePriceFeeds,
         experimentalPriceFeeds,
-        denominatorPriceFeed,
-        precision
+        noDenominator ? null : denominatorPriceFeed
       );
     }
     it("Default price precision", async function() {
@@ -231,6 +230,27 @@ contract("BasketSpreadPriceFeed.js", function() {
         basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("0.125"))
           .div(toBN(10).pow(toBN(18 - 8)))
+          .toString()
+      );
+      assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
+    });
+    it("Skipping denominator price feed", async function() {
+      // Same computation as first test except for last step where you divide by denominator, this
+      // should skip that step. Recall that the denominator's current and historical price are:
+      // 5 and 10 respectively.
+      _constructPriceFeedsWithPrecision(6, true);
+
+      assert.equal(
+        basketSpreadPriceFeed.getCurrentPrice().toString(),
+        toBN(toWei("0.65"))
+          .div(toBN(10).pow(toBN(18 - 6)))
+          .toString()
+      );
+      const arbitraryHistoricalTimestamp = 1000;
+      assert.equal(
+        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        toBN(toWei("1.25"))
+          .div(toBN(10).pow(toBN(18 - 6)))
           .toString()
       );
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
