@@ -106,8 +106,8 @@ async function run({
     const [
       currentCollateralAllowance,
       currentSyntheticAllowance,
-      collateralTokenDecimals,
-      syntheticTokenDecimals
+      collateralDecimals,
+      syntheticDecimals
     ] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       syntheticToken.methods.allowance(accounts[0], empAddress).call(),
@@ -157,8 +157,8 @@ async function run({
       getAbi("ExpiringMultiParty"),
       web3,
       empAddress,
-      collateralTokenDecimals,
-      syntheticTokenDecimals,
+      collateralDecimals,
+      syntheticDecimals,
       priceFeed.getPriceFeedDecimals()
     );
 
@@ -187,8 +187,8 @@ async function run({
     logger.debug({
       at: "Liquidator#index",
       message: "Liquidator initialized",
-      collateralDecimals: Number(collateralTokenDecimals),
-      syntheticDecimals: Number(syntheticTokenDecimals),
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
       priceFeedConfig
     });
