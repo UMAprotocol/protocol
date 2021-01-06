@@ -173,7 +173,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       sum = sum.add(priceBN);
     }
 
-    return sum.div(this.toBN(inputs.length));
+    return sum.divn(inputs.length);
   }
 }
 
