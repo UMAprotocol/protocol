@@ -50,17 +50,20 @@ contract("BasketSpreadPriceFeed.js", function() {
           new PriceFeedMock(
             toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.2")).div(toBN(10).pow(toBN(18 - precision))),
-            200
+            200,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("1.5")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
-            55000
+            55000,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
-            50
+            50,
+            precision
           )
         ],
         false
@@ -74,17 +77,20 @@ contract("BasketSpreadPriceFeed.js", function() {
           new PriceFeedMock(
             toBN(toWei("1.1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.6")).div(toBN(10).pow(toBN(18 - precision))),
-            200
+            200,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.8")).div(toBN(10).pow(toBN(18 - precision))),
-            55000
+            55000,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("2.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2.2")).div(toBN(10).pow(toBN(18 - precision))),
-            50
+            50,
+            precision
           )
         ],
         true
@@ -104,17 +110,20 @@ contract("BasketSpreadPriceFeed.js", function() {
           new PriceFeedMock(
             toBN(toWei("1.1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.6")).div(toBN(10).pow(toBN(18 - precision))),
-            400
+            400,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("1.2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
-            60000
+            60000,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("66")).div(toBN(10).pow(toBN(18 - precision))),
-            100
+            100,
+            precision
           )
         ],
         false
@@ -128,17 +137,20 @@ contract("BasketSpreadPriceFeed.js", function() {
           new PriceFeedMock(
             toBN(toWei("0.9")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.25")).div(toBN(10).pow(toBN(18 - precision))),
-            800
+            800,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.75")).div(toBN(10).pow(toBN(18 - precision))),
-            650000
+            650000,
+            precision
           ),
           new PriceFeedMock(
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
-            200
+            200,
+            precision
           )
         ],
         true
@@ -157,12 +169,14 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("8")).div(toBN(10).pow(toBN(18 - precision))),
-          6
+          6,
+          precision
         ),
         new PriceFeedMock(
           toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
-          7
+          7,
+          precision
         )
       ]);
       // Computes the median:
@@ -236,7 +250,8 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
-          200
+          200,
+          precision
         )
       ]);
       baselinePriceFeeds = [baselineFeeds1];
@@ -247,7 +262,8 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
-          400
+          400,
+          precision
         )
       ]);
       experimentalPriceFeeds = [experimentalFeeds1];
@@ -258,12 +274,14 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("8")).div(toBN(10).pow(toBN(18 - precision))),
-          6
+          6,
+          precision
         ),
         new PriceFeedMock(
           toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
-          7
+          7,
+          precision
         )
       ]);
       // Computes the median:
@@ -319,7 +337,8 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
-          200
+          200,
+          precision
         )
       ]);
       baselinePriceFeeds = [baselineFeeds1];
@@ -330,7 +349,8 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
-          400
+          400,
+          precision
         )
       ]);
       experimentalPriceFeeds = [experimentalFeeds1];
@@ -341,12 +361,14 @@ contract("BasketSpreadPriceFeed.js", function() {
         new PriceFeedMock(
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("8")).div(toBN(10).pow(toBN(18 - precision))),
-          6
+          6,
+          precision
         ),
         new PriceFeedMock(
           toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
-          7
+          7,
+          precision
         )
       ]); // Computes the median: 5
       basketSpreadPriceFeed = new BasketSpreadPriceFeed(
@@ -395,5 +417,50 @@ contract("BasketSpreadPriceFeed.js", function() {
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
+  });
+  it("Validates constituent price feed decimals", async function() {
+    // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the
+    // denominator price feed.
+    const priceFeeds = [new PriceFeedMock()];
+    const differentPrecisionPriceFeeds = [new PriceFeedMock(undefined, undefined, 0, 8)];
+    baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    denominatorPriceFeed = new MedianizerPriceFeed(priceFeeds);
+
+    const validBasketPriceFeed = new BasketSpreadPriceFeed(
+      web3,
+      dummyLogger,
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
+      denominatorPriceFeed
+    );
+
+    let didThrow = false;
+    try {
+      const feedDecimals = validBasketPriceFeed.getPriceFeedDecimals();
+      assert.equal(feedDecimals, 18);
+    } catch (error) {
+      didThrow = true;
+    }
+
+    assert.isFalse(didThrow);
+
+    const invalidExperimentalPriceFeeds = [
+      new MedianizerPriceFeed(differentPrecisionPriceFeeds),
+      new MedianizerPriceFeed(differentPrecisionPriceFeeds)
+    ];
+    const invalidBasketPriceFeed = new BasketSpreadPriceFeed(
+      web3,
+      dummyLogger,
+      baselinePriceFeeds,
+      invalidExperimentalPriceFeeds,
+      denominatorPriceFeed
+    );
+    try {
+      invalidBasketPriceFeed.getPriceFeedDecimals();
+    } catch (error) {
+      didThrow = true;
+    }
+    assert.isTrue(didThrow);
   });
 });

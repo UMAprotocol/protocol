@@ -70,9 +70,6 @@ const defaultConfigs = {
   STABLESPREAD: {
     // This is alternatively known as "STABLESPREAD/ETH"
     type: "basketspread",
-    lookback: 7200,
-    // We override the default value of 172800, equal to the liquidationLiveness of this EMP, so that
-    // the BalancerPriceFeed does not throw a "too many web3 requests" error.
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
@@ -107,12 +104,20 @@ const defaultConfigs = {
         type: "medianizer",
         medianizedFeeds: [
           {
-            type: "balancer",
-            balancerAddress: "0x72cd8f4504941bf8c5a21d1fd83a96499fd71d2c",
-            // Setting USDC as tokenIn and MUSD as tokenOut, we get the price of MUSD denominated in USDC.
-            balancerTokenIn: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC in
-            balancerTokenOut: "0xe2f2a5C287993345a840Db3B0845fbC70f5935a5", // MUSD out
-            poolDecimals: 6 // Prices are reported from this pool in 6 decimals to match USDC
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
           }
         ]
       }
@@ -121,8 +126,7 @@ const defaultConfigs = {
       type: "medianizer",
       medianizedFeeds: [
         { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
-        { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
-        { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+        { type: "cryptowatch", exchange: "binance", pair: "ethusdt" }
       ]
     }
   },

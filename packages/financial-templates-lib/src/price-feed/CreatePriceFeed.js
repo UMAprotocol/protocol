@@ -132,14 +132,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     const baselinePriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.baselinePriceFeeds);
     const denominatorPriceFeed = await _createMedianizerPriceFeed(config.denominatorPriceFeed);
 
-    return new BasketSpreadPriceFeed(
-      web3,
-      logger,
-      baselinePriceFeeds,
-      experimentalPriceFeeds,
-      denominatorPriceFeed,
-      config.decimals // This defaults to 18 unless supplied by user
-    );
+    return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
   }
 
   logger.error({
@@ -161,13 +154,6 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
       // on the nested config.
       const combinedConfig = { ...config, type: undefined, ..._priceFeedConfig };
-
-      // Remove basket structs from config as they are irrelevant to each individual Medianizer config.
-      // TODO: This is a bit of a hack because it hardcodes which parts of the config to remove,
-      // future work should dynamically strip out non-essential config params.
-      delete combinedConfig.baselinePriceFeeds;
-      delete combinedConfig.experimentalPriceFeeds;
-      delete combinedConfig.denominatorPriceFeed;
 
       const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 
@@ -332,14 +318,8 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     defaultConfig
   });
 
-  // Infer lookback from liquidation liveness if default config does not specify a lookback.
-  // - Explanation: Always setting the `lookback = emp.liquidationLiveness` can potentially introduce problems
-  // if the liquidation liveness is particularly long and the pricefeed to be constructed is a DEX.
-  // - For example: the Zelda Cash contract has a 172800 liveness period (48 hours) and it uses the
-  // BasketSpreadPriceFeed which depends on the BalancerPriceFeed. Updating a DEX pricefeed requires
-  // a web3 call for every block included in the lookback window. Therefore, we override some of the default config
-  // lookback values so that they do not make an impractically large amount of web3 requests.
-  if (emp && defaultConfig && !defaultConfig.lookback) {
+  // Infer lookback from liquidation liveness.
+  if (emp && defaultConfig) {
     const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }

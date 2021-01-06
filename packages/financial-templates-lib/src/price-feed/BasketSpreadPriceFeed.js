@@ -17,9 +17,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    * @param {Object} denominatorPriceFeed We divide the price spread between the baseline and experimental baskets by this denominator price
    *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basekt spread in terms
    *      of ETH-USD.
-   * @param {Number} decimals Number of decimals to use to convert price to wei.
    */
-  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed, decimals = 18) {
+  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
     super();
 
     if (baselinePriceFeeds.length === 0 || experimentalPriceFeeds.length === 0) {
@@ -36,8 +35,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     this.toWei = this.web3.utils.toWei;
     this.logger = logger;
 
-    // The precision that the user wants to return prices in.
-    this.decimals = decimals;
+    // The precision that the user wants to return prices in is determined by the denominator price feed.
+    this.decimals = denominatorPriceFeed.getPriceFeedDecimals();
 
     // Scale `number` by 10**decimals.
     this.convertDecimals = number => {
@@ -51,6 +50,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // return the spread price, which is:
   // (avg(experimental) - avg(baseline) + 1) / denominator
   _getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice) {
+    // Compute experimental basket mean.
     if (
       experimentalPrices.length === 0 ||
       experimentalPrices.some(element => element === undefined || element === null)
@@ -65,6 +65,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     });
 
     // Second, compute the average of the baseline pricefeeds.
+    if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
+      return null;
+    }
     const baselineMean = this._computeMean(baselinePrices);
     this.logger.debug({
       at: "BasketSpreadPriceFeed",
@@ -82,6 +85,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         message: "Basket spread value",
         spreadValue: spreadValue.toString()
       });
+
+      // TODO: Parameterize these lower and upper bounds, as well as allow for custom "spreadValue" formulas,
+      // for example we might not want to have the spread centered around 1.
 
       // Ensure non-negativity
       if (spreadValue.lt(this.toBN("0"))) {
@@ -139,6 +145,21 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
     // Take the most recent update time.
     return Math.max(...lastUpdateTimes);
+  }
+
+  getPriceFeedDecimals() {
+    const experimentalDecimals = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+    const baselineDecimals = this.baselinePriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+
+    // Check that every price feeds decimals match the 0th price feeds decimals.
+    if (
+      !experimentalDecimals.every(feedDecimals => feedDecimals === this.decimals) ||
+      !baselineDecimals.every(feedDecimals => feedDecimals === this.decimals)
+    ) {
+      throw new Error("BasketPriceFeed's constituent feeds do not all match the denominator price feed's precision!");
+    }
+
+    return this.decimals;
   }
 
   // Updates all constituent price feeds.
