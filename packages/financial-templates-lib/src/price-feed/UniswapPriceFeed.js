@@ -1,8 +1,7 @@
 // An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { MAX_SAFE_JS_INT } = require("@uma/common");
-
+const { computeTWAP } = require("./utils");
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new uniswap TWAP price feed object.
@@ -138,37 +137,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _computeTwap(eventsIn, startTime, endTime) {
-    // Add fake element that's far in the future to the end of the array to simplify TWAP calculation.
-    const events = eventsIn.slice();
-    events.push({ timestamp: MAX_SAFE_JS_INT });
-
-    let lastPrice = null;
-    let lastTime = null;
-    let priceSum = this.toBN("0");
-    let timeSum = 0;
-    for (const event of events) {
-      // Because the price window goes up until the next event, computation cannot start until event 2.
-      if (lastTime && lastPrice) {
-        const startWindow = Math.max(lastTime, startTime);
-        const endWindow = Math.min(event.timestamp, endTime);
-        const windowLength = Math.max(endWindow - startWindow, 0);
-        priceSum = priceSum.add(lastPrice.muln(windowLength));
-        timeSum += windowLength;
-      }
-
-      if (event.timestamp > endTime) {
-        break;
-      }
-
-      lastPrice = event.price;
-      lastTime = event.timestamp;
-    }
-
-    if (timeSum === 0) {
-      return null;
-    }
-
-    return priceSum.divn(timeSum);
+    const events = eventsIn.map(e => {
+      return [e.timestamp, e.price];
+    });
+    return computeTWAP(events, startTime, endTime, this.toBN("0"));
   }
 }
 
