@@ -65,7 +65,7 @@ async function run({
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
+    const [currentAllowance, collateralTokenDecimals, syntheticTokenDecimals] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
@@ -109,8 +109,8 @@ async function run({
       getAbi("ExpiringMultiParty"),
       web3,
       empAddress,
-      collateralDecimals,
-      syntheticDecimals,
+      collateralTokenDecimals,
+      syntheticTokenDecimals,
       priceFeed.getPriceFeedDecimals()
     );
 
@@ -129,8 +129,8 @@ async function run({
     logger.debug({
       at: "Disputer#index",
       message: "Disputer initialized",
-      collateralDecimals: Number(collateralDecimals),
-      syntheticDecimals: Number(syntheticDecimals),
+      collateralDecimals: Number(collateralTokenDecimals),
+      syntheticDecimals: Number(syntheticTokenDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
       priceFeedConfig: priceFeedConfig
     });

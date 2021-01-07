@@ -122,32 +122,38 @@ contract("index.js", function(accounts) {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    // Match the collateral and synthetic tokens and check it correctly allocates the associated decimals.
-    collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
-    constructorParams = {
-      ...constructorParams,
-      collateralAddress: collateralToken.address,
-      tokenAddress: syntheticToken.address
-    };
-    emp = await ExpiringMultiParty.new(constructorParams);
+    collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+    // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+    const decimalTestConstructorParams = JSON.parse(
+      JSON.stringify({
+        ...constructorParams,
+        collateralAddress: collateralToken.address,
+        tokenAddress: syntheticToken.address,
+        priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
+      })
+    );
+    emp = await ExpiringMultiParty.new(decimalTestConstructorParams);
     await syntheticToken.addMinter(emp.address);
     await syntheticToken.addBurner(emp.address);
 
+    // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
     await Poll.run({
       logger: spyLogger,
       web3,
       empAddress: emp.address,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
+      errorRetriesTimeout
     });
 
-    // Third log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic
-    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":6'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":6'));
-    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+    // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
+    // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+    // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
+    assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
   });
 
   it("Allowances are set", async function() {

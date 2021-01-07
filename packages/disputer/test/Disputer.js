@@ -25,31 +25,19 @@ const Token = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const Store = artifacts.require("Store");
+
+// Run the tests against 3 different kinds of token/synth decimal combinations:
+// 1) matching 18 & 18 for collateral for most token types with normal tokens.
+// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
+// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  {
-    tokenName: "Wrapped Ether",
-    tokenSymbol: "WETH",
-    collateralDecimals: 18,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 18
-  },
-  {
-    tokenName: "Legacy Wrapped Bitcoin",
-    tokenSymbol: "BTC",
-    collateralDecimals: 8,
-    syntheticDecimals: 18,
-    priceFeedDecimals: 8
-  },
-  {
-    tokenName: "Wrapped Bitcoin",
-    tokenSymbol: "BTC",
-    collateralDecimals: 8,
-    syntheticDecimals: 8,
-    priceFeedDecimals: 18
-  }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+
 contract("Disputer.js", function(accounts) {
   for (let testConfig of configs) {
     describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals`, function() {
@@ -93,9 +81,14 @@ contract("Disputer.js", function(accounts) {
         convertSynthetic = Convert(testConfig.syntheticDecimals);
         convertPrice = Convert(testConfig.priceFeedDecimals);
 
-        collateralToken = await Token.new(testConfig.tokenName, testConfig.tokenSymbol, testConfig.collateralDecimals, {
-          from: contractCreator
-        });
+        collateralToken = await Token.new(
+          testConfig.tokenSymbol + " Token", // Construct the token name.
+          testConfig.tokenSymbol,
+          testConfig.collateralDecimals,
+          {
+            from: contractCreator
+          }
+        );
 
         await collateralToken.addMember(1, contractCreator, {
           from: contractCreator
