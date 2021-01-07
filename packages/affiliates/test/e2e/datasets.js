@@ -1,3 +1,10 @@
+// This file is meant to test the functionality of dataset generators. It writes files to disk during the course of
+// testing, and deletes them on cleanup.
+//
+// Every test that resides in the e2e folder is not meant to run in CI because they may read and write from disk
+// and also may queries live apis that may require authentication and potentially cause non deterministic behavior.
+//
+// This can be executed manually through the script: yarn test-e2e
 const { BigQuery } = require("@google-cloud/bigquery");
 // const highland = require("highland");
 const { assert } = require("chai");
@@ -179,7 +186,7 @@ describe("Datasets", function() {
       fs.rmdir(basePath, { recursive: true }, done);
     });
     it("saves new set", async function() {
-      this.timeout(10000);
+      this.timeout(100000);
       const config = {
         ...params,
         start: params.startingTimestamp,
@@ -212,7 +219,7 @@ describe("Datasets", function() {
       fs.rmdir(basePath, { recursive: true }, done);
     });
     it("saves new set", async function() {
-      this.timeout(10000);
+      this.timeout(100000);
       const config = {
         empAddress: "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
         startTime: 1607558400000,

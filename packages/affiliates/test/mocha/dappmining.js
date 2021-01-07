@@ -67,14 +67,20 @@ describe("DappMining", function() {
       assert.equal(sum.get("b"), "20");
       assert.equal(sum.get("c"), "30");
     });
+    // This tests 2 scenarios with the calculateBlockRewardFunction
     it("calculates block reward", function() {
       const balances = Balances();
       let attributions = SharedAttributions();
+      // Creating a whitelist with 2 tagged addresses
       const whitelist = ["Dev1", "Dev2"];
+      // This generates the current balance for each user, a, b, c and d
       balances.add("a", "10");
       balances.add("b", "20");
       balances.add("c", "30");
       balances.add("d", "40");
+      // This attributions the balances contribution to each developer. For example
+      // user a's balance was "referred" by Dev1 and Dev2 in equal proportion.
+      // All settings below split a users balance contribution equally between the 2 developers.
       attributions.attribute("a", "Dev1", "5");
       attributions.attribute("a", "Dev2", "5");
       attributions.attribute("b", "Dev1", "10");
@@ -83,10 +89,16 @@ describe("DappMining", function() {
       attributions.attribute("c", "Dev2", "15");
       attributions.attribute("d", "Dev1", "20");
       attributions.attribute("d", "Dev2", "20");
+      // Calculate block reward takes the current snapshot of attributions and balances and produces
+      // a percentage attribution for each whitelisted developer.
       let result = utils.calculateBlockReward({ attributions, balances, whitelist });
+      // Becuase balances were equally contributed to, we should expect 50% attribution.
       assert.equal(fromWei(result["Dev1"]), "0.5");
       assert.equal(fromWei(result["Dev2"]), "0.5");
+      // Instanciating a new attribution scheme
       attributions = SharedAttributions();
+      // This time we weight dev 1 to have a lower attribution than dev2 to each users balance.
+      // For a's balance, Dev 1 attributed 1/10 and dev2 attributed 9/10, etc.
       attributions.attribute("a", "Dev1", "1");
       attributions.attribute("a", "Dev2", "9");
       attributions.attribute("b", "Dev1", "1");
@@ -96,6 +108,8 @@ describe("DappMining", function() {
       attributions.attribute("d", "Dev1", "1");
       attributions.attribute("d", "Dev2", "39");
       result = utils.calculateBlockReward({ attributions, balances, whitelist });
+      // Because of the attribution distribution, dev1 should get roughly 4% of total
+      // rewards, while dev2 gets 96. There is some rounding errors which is why its not exact.
       assert.equal(fromWei(result["Dev1"]), "0.039999999999999999"); // 4%
       assert.equal(fromWei(result["Dev2"]), "0.959999999999999999"); // 96%
     });
@@ -104,9 +118,11 @@ describe("DappMining", function() {
       const dev = "0xaBBee9fC7a882499162323EEB7BF6614193312e3";
       const transactions = [await makeTx(0, 100, 100, user, dev)];
       const defaultAddress = "default";
+      // This acts like a stream of decoded transactions
       const stream = highland(transactions);
       const result = await stream
         .through(
+          // This returns a summed attribution table, summed by the number of blocks elapsed
           utils.ProcessAttributionStream({
             startBlock: 0,
             endBlock: 2,
@@ -114,16 +130,23 @@ describe("DappMining", function() {
           })
         )
         .toPromise(Promise);
+      // Blocks ran for 0 and 1, for a transaction at time 0 for 100 tokens. This should give
+      // the developer 200 attribution, 100 at time 0 plus 100 and time 1. End block= 2 and that
+      // is not included in calculation.
       assert.equal(result.getAttribution(user, dev), "200");
     });
     it("procesess complex attribution stream", async function() {
+      // same test as above with more complex array of transactions
       const transactions = [
+        // UserA has 2 attributions at time 0 by developer A1 and A3 for 100 tokens each
         await makeTx(0, 0, 100, "usera", "0x00000000000000000000000000000000000000A1"),
         await makeTx(0, 0, 100, "usera", "0x00000000000000000000000000000000000000A3"),
 
+        // UserB has 2 attributions at time 1 by dev a2 and a1 for 100 tokens each
         await makeTx(1, 0, 100, "userb", "0x00000000000000000000000000000000000000A2"),
         await makeTx(1, 0, 100, "userb", "0x00000000000000000000000000000000000000A1"),
 
+        // userc has 2 attributions at time 2 from dev a3 and a2 for only 75 tokens
         await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A3"),
         await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A2")
       ];
@@ -138,7 +161,9 @@ describe("DappMining", function() {
           })
         )
         .toPromise(Promise);
+      // Dev A1 for userA was in at time 0 for 100 for blocks 0, 1 and 2, so should be 300
       assert.equal(result.getAttribution("usera", "0x00000000000000000000000000000000000000A1"), "300");
+      // A1 was also in for userb at time 1 for 100 for blocks 1 and 2 so should be 200
       assert.equal(result.getAttribution("userb", "0x00000000000000000000000000000000000000A1"), "200");
 
       assert.equal(result.getAttribution("userb", "0x00000000000000000000000000000000000000A2"), "200");
@@ -147,7 +172,10 @@ describe("DappMining", function() {
       assert.equal(result.getAttribution("usera", "0x00000000000000000000000000000000000000A3"), "300");
       assert.equal(result.getAttribution("userc", "0x00000000000000000000000000000000000000A3"), "75");
     });
+    // This tests that token balances get update through the event stream
     it("procesess simple event stream", async function() {
+      // These events represent a stream of contract events. In this case
+      // we only carre about position created as that will add to users token balance.
       const events = [
         {
           name: "PositionCreated",
@@ -157,6 +185,7 @@ describe("DappMining", function() {
       ];
       const result = await highland(events)
         .through(
+          // Similar to the attribution processor, this will weigh balances over N blocks.
           utils.ProcessEventStream({
             startBlock: 0,
             endBlock: 1
@@ -168,16 +197,19 @@ describe("DappMining", function() {
     it("procesess complex event stream", async function() {
       const events = [
         {
+          // User a deposited at time 0 100 tokens
           name: "PositionCreated",
           args: ["usera", 100, 100],
           blockNumber: 0
         },
         {
+          // User b deposited at time 1 100 tokens
           name: "PositionCreated",
           args: ["userb", 100, 100],
           blockNumber: 1
         },
         {
+          // User c deposits at time 2 100 tokens
           name: "PositionCreated",
           args: ["userc", 100, 100],
           blockNumber: 2
@@ -191,11 +223,14 @@ describe("DappMining", function() {
           })
         )
         .toPromise(Promise);
+      // The balances get weighed by number of blocks elapsed from deposit. A was earliest, then B then C.
       assert.equal(result.get("usera"), "300");
       assert.equal(result.get("userb"), "200");
       assert.equal(result.get("userc"), "100");
     });
     it("gets rewards with simple examples", async function() {
+      // This sets up as close to a real calculation without using a real dataset.
+      // All the state is setup before hand and then reward output is checked.
       const balances = Balances();
       let attributions = SharedAttributions();
       const whitelist = ["Dev1", "Dev2"];
@@ -213,6 +248,7 @@ describe("DappMining", function() {
       attributions.attribute("d", "Dev1", "20");
       attributions.attribute("d", "Dev2", "20");
       let result = await utils.processRewardData({ attributions, balances, whitelist, totalRewards });
+      // The case sets up an equally attributed dataset to each developer, so we expect 50% split.
       assert.equal(result["Dev1"], "50");
       assert.equal(result["Dev2"], "50");
     });
