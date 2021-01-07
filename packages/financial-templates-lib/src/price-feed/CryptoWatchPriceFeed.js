@@ -55,8 +55,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
-      // returns price conversion to correct priceFeedDecimals as a big number
-      return this.toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
+      // returns price conversion to correct decimals as a big number.
+      // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
+      return this.toBN(parseFixed(number.toString().substring(0, priceFeedDecimals), priceFeedDecimals).toString());
     };
   }
 

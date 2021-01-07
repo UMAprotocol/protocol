@@ -6,8 +6,10 @@ class MedianizerPriceFeed extends PriceFeedInterface {
    * @notice Constructs new MedianizerPriceFeed.
    * @param {List} priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
+   * @param {Boolean=false} computeMean Set this to true to return the mean over price feeds instead of the median.
+   *      Default behavior is to return median.
    */
-  constructor(priceFeeds) {
+  constructor(priceFeeds, computeMean = false) {
     super();
 
     if (priceFeeds.length === 0) {
@@ -15,6 +17,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     }
 
     this.priceFeeds = priceFeeds;
+    this.computeMean = computeMean;
   }
 
   // Takes the median of all of the constituent price feeds' currentPrices.
@@ -24,7 +27,11 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return this._computeMedian(currentPrices);
+    if (this.computeMean) {
+      return this._computeMean(currentPrices);
+    } else {
+      return this._computeMedian(currentPrices);
+    }
   }
 
   // Takes the median of all of the constituent price feeds' historical prices.
@@ -35,9 +42,15 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return this._computeMedian(historicalPrices);
+    if (this.computeMean) {
+      return this._computeMean(historicalPrices);
+    } else {
+      return this._computeMedian(historicalPrices);
+    }
   }
 
+  // Note: This method will fail if one of the pricefeeds has not implemented `getHistoricalPricePeriods`, which
+  // is basically every price feed except for the CryptoWatchPriceFeed.
   getHistoricalPricePeriods() {
     // Fetch all historical price data for all price feeds within the medianizer set.
     const historicalPricePeriods = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPricePeriods());
@@ -54,7 +67,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       });
       processedMedianHistoricalPricePeriods[pricePointIndex] = [
         historicalPricePeriods[0][pricePointIndex].closeTime,
-        this._computeMedian(periodPrices).toString()
+        this.computeMean ? this._computeMean(periodPrices).toString() : this._computeMedian(periodPrices).toString()
       ];
     }
     return processedMedianHistoricalPricePeriods;
@@ -99,6 +112,19 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     // If the count is odd, the midpoint will land on a whole number, taking an average of the same number.
     // If the count is even, the midpoint will land on X.5, averaging the index below and above.
     return inputs[Math.floor(midpoint)].add(inputs[Math.ceil(midpoint)]).divn(2);
+  }
+  _computeMean(inputs) {
+    let sum = undefined;
+
+    for (let priceBN of inputs) {
+      if (sum === undefined) {
+        sum = priceBN;
+      } else {
+        sum = sum.add(priceBN);
+      }
+    }
+
+    return sum.divn(inputs.length);
   }
 }
 
