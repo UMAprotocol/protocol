@@ -86,9 +86,6 @@ class BalanceMonitor {
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
     this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
 
-    // Contract constants including collateralSymbol, syntheticSymbol,  and networkId.
-    this.empProps = empProps;
-
     // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
     const defaultEmpProps = {
       empProps: {
