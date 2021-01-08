@@ -9,6 +9,7 @@ contract("DominationFinancePriceFeed.js", function() {
   let networker;
 
   const pair = "test-pair";
+  const lookback = 120; // 2 minutes.
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 60;
 
@@ -47,6 +48,7 @@ contract("DominationFinancePriceFeed.js", function() {
       dummyLogger,
       web3,
       pair,
+      lookback,
       networker,
       getTime,
       minTimeBetweenUpdates,
@@ -57,6 +59,7 @@ contract("DominationFinancePriceFeed.js", function() {
       dummyLogger,
       web3,
       pair,
+      lookback,
       networker,
       getTime,
       minTimeBetweenUpdates,

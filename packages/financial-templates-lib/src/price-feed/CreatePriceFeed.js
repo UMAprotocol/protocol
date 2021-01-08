@@ -40,7 +40,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.ohlcPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "domfi") {
-    const requiredFields = ["pair", "minTimeBetweenUpdates"];
+    const requiredFields = ["pair", "lookback", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -56,11 +56,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3,
       config.pair,
+      config.lookback,
       networker,
       getTime,
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.decimals // This defaults to 18 unless supplied by user
+      config.decimals, // This defaults to 18 unless supplied by user
+      config.tickPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];

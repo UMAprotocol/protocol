@@ -16,22 +16,33 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
    *      this number of seconds has passed, it will be a no-op.
    * @param {Number} priceFeedDecimals Number of decimals to use to convert price to wei.
    * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
+   * @param {Number} tickPeriod Number of seconds interval between price entries.
    */
-  constructor(logger, web3, pair, networker, getTime, minTimeBetweenUpdates, invertPrice, priceFeedDecimals = 18) {
+  constructor(
+    logger,
+    web3,
+    pair,
+    lookback,
+    networker,
+    getTime,
+    minTimeBetweenUpdates,
+    invertPrice,
+    priceFeedDecimals = 18,
+    tickPeriod = 60
+  ) {
     super();
     this.logger = logger;
     this.web3 = web3;
 
     this.pair = pair;
+    this.lookback = lookback;
+    this.tickPeriod = tickPeriod;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.invertPrice = invertPrice;
 
     this.toBN = this.web3.utils.toBN;
-    this.BASE_URL = "https://api.domination.finance/api/v0";
-    this.TICK_SECONDS = 60;
-
     this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
@@ -39,12 +50,12 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     };
   }
 
-  _makePriceUrl(pair) {
-    return `${this.BASE_URL}/price/${pair}`;
+  get _priceUrl() {
+    return `https://api.domination.finance/api/v0/price/${this.pair}`;
   }
 
-  _makeHistoricalPricesUrl(pair) {
-    return `${this.BASE_URL}/price/${pair}/history`;
+  get _historicalPricesUrl() {
+    return `https://live.domination.finance/api/v0/history/${this.pair}?tick=${this.tickPeriod}s&range=${this.lookback}s`;
   }
 
   getCurrentPrice() {
@@ -88,12 +99,11 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       let returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
         const priceDisplay = this.convertPriceFeedDecimals(returnPrice.toString());
-        const priceUrl = this._makePriceUrl(this.pair);
 
         console.group(`\n(${this.pair}) No historical price available @ ${time}`);
         console.log(`- ✅ Time is later than earliest historical time, fetching current price: ${priceDisplay}`);
         console.log(
-          `- ⚠️  If you want to manually verify the specific prices, you can make a GET request to: \n- ${priceUrl}`
+          `- ⚠️  If you want to manually verify the specific prices, you can make a GET request to: \n- ${this._priceUrl}`
         );
         console.groupEnd();
       }
@@ -102,12 +112,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     let returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
     if (verbose) {
-      const url = this._makeHistoricalPricesUrl(this.pair);
-
       console.group(`\n(${this.pair}) Historical Prices @ ${match.closeTime}`);
       console.log(`- ✅ Price: ${this.convertPriceFeedDecimals(returnPrice.toString())}`);
       console.log(
-        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n  - ${url}`
+        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n  - ${this._historicalPricesUrl}`
       );
       console.log(
         '- This will return the historical prices as "data.rows". Each row contains: [unix_timestamp, price].'
@@ -161,8 +169,8 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // 1. Construct URLs.
     // See https://api.domination.finance/ additional API documentation.
-    const priceUrl = this._makePriceUrl(this.pair);
-    const historyUrl = this._makeHistoricalPricesUrl(this.pair);
+    const priceUrl = this._priceUrl;
+    const historyUrl = this._historicalPricesUrl;
 
     // 2. Send requests.
     const [priceResponse, historyResponse] = await Promise.all([
@@ -170,7 +178,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       this.networker.getJson(historyUrl)
     ]);
 
-    // 3. Check responses.
+    // 2. Check responses.
     if (!priceResponse || typeof priceResponse.price !== "string" || priceResponse.price.length === 0) {
       throw new Error(`🚨Could not parse price result from url ${historyUrl}: ${JSON.stringify(priceResponse)}`);
     }
@@ -184,7 +192,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       throw new Error(`🚨Could not parse history result from url ${historyUrl}: ${JSON.stringify(historyResponse)}`);
     }
 
-    // 4. Parse results.
+    // 3. Parse results.
     // Return data structure:
     // {
     //   "status": "success",
@@ -213,7 +221,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     const newHistoricalPricePeriods = historyResponse.data.rows
       .map(row => ({
         openTime: row[0],
-        closeTime: row[0] + this.TICK_SECONDS,
+        closeTime: row[0] + this.tickPeriod,
         closePrice: this.convertPriceFeedDecimals(row[1])
       }))
       .sort((a, b) => {
