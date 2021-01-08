@@ -132,9 +132,8 @@ class SyntheticPegMonitor {
     // (syntheticTokenPrice / denominatorPrice) against (pegTokenPrice).
     // If `denominatorPriceFeed` is undefined, then just compare:
     // (syntheticTokenPrice) against (pegTokenPrice).
-    let denominatorPrice;
     if (this.denominatorPriceFeed) {
-      denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+      const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
       // We need a "1" scaled in the same precision that the `denominatorPrice` is getting returned in, because
       // we want to apply the transformation:
       // - uniswapTokenPrice * denominatorPriceFeedScaledOne / denominatorPrice
