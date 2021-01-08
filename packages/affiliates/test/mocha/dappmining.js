@@ -44,8 +44,7 @@ describe("DappMining", function() {
     });
     it("sums attributions", function() {
       const attributions = SharedAttributions();
-      let sum;
-      sum = utils.sumAttributions(attributions);
+      let sum = utils.sumAttributions(attributions);
       assert(sum);
       attributions.attribute("a", "a", "1");
       attributions.attribute("a", "b", "2");
