@@ -1,6 +1,11 @@
 // This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 
-const { createFormatFunction, createEtherscanLinkMarkdown, createObjectFromDefaultProps } = require("@uma/common");
+const {
+  ConvertDecimals,
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps
+} = require("@uma/common");
 
 class BalanceMonitor {
   /**
@@ -20,9 +25,10 @@ class BalanceMonitor {
    *        logOverrides: {syntheticThreshold: "error", collateralThreshold: "error", ethThreshold: "error"}
    *      }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
-            priceIdentifier: "ETH/BTC",
+   *      { collateralSymbol: "DAI",
+            syntheticSymbol:"ETHBTC",
+            collateralDecimals: 18,
+            syntheticDecimals: 18,
             networkId:1 }
    */
   constructor({ logger, tokenBalanceClient, config, empProps }) {
@@ -80,17 +86,34 @@ class BalanceMonitor {
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
     this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
 
-    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
-    this.empProps = empProps;
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("collateralSymbol") &&
+            typeof x.collateralSymbol === "string" &&
+            Object.keys(x).includes("syntheticSymbol") &&
+            typeof x.syntheticSymbol === "string" &&
+            Object.keys(x).includes("collateralDecimals") &&
+            typeof x.collateralDecimals === "number" &&
+            Object.keys(x).includes("syntheticDecimals") &&
+            typeof x.syntheticDecimals === "number" &&
+            Object.keys(x).includes("networkId") &&
+            typeof x.networkId === "number"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
 
-    this.formatDecimalStringCollateral = createFormatFunction(
-      this.web3,
-      2,
-      4,
-      false,
-      this.empProps.collateralCurrencyDecimals
-    );
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
+
+    // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -113,13 +136,13 @@ class BalanceMonitor {
         this.logger[this.logOverrides.collateralThreshold || "warn"]({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
-          mrkdwn: this._createLowBalanceMrkdwnCollateralCurrency(
+          mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(monitoredAddress),
-            this.empProps.collateralCurrencySymbol,
+            this.empProps.collateralSymbol,
             "collateral",
-            this.empProps.collateralCurrencyDecimals
+            this.normalizeCollateralDecimals
           )
         });
       }
@@ -131,9 +154,9 @@ class BalanceMonitor {
             bot,
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(monitoredAddress),
-            this.empProps.syntheticCurrencySymbol,
+            this.empProps.syntheticSymbol,
             "synthetic",
-            this.empProps.syntheticCurrencyDecimals
+            this.normalizeSyntheticDecimals
           )
         });
       }
@@ -147,14 +170,14 @@ class BalanceMonitor {
             this.client.getEtherBalance(monitoredAddress),
             "ETH",
             "ether",
-            18
+            num => this.toBN(num)
           )
         });
       }
     }
   }
 
-  _createLowBalanceMrkdwn(bot, threshold, tokenBalance, tokenSymbol, tokenName) {
+  _createLowBalanceMrkdwn(bot, threshold, tokenBalance, tokenSymbol, tokenName, normalizationFunction) {
     return (
       bot.name +
       " (" +
@@ -162,29 +185,11 @@ class BalanceMonitor {
       ") " +
       tokenName +
       " balance is less than " +
-      this.formatDecimalString(threshold) +
+      this.formatDecimalString(normalizationFunction(threshold)) +
       " " +
       tokenSymbol +
       ". Current balance is " +
-      this.formatDecimalString(tokenBalance) +
-      " " +
-      tokenSymbol
-    );
-  }
-
-  _createLowBalanceMrkdwnCollateralCurrency(bot, threshold, tokenBalance, tokenSymbol, tokenName) {
-    return (
-      bot.name +
-      " (" +
-      createEtherscanLinkMarkdown(bot.address, this.empProps.networkId) +
-      ") " +
-      tokenName +
-      " balance is less than " +
-      this.formatDecimalStringCollateral(threshold) +
-      " " +
-      tokenSymbol +
-      ". Current balance is " +
-      this.formatDecimalStringCollateral(tokenBalance) +
+      this.formatDecimalString(normalizationFunction(tokenBalance)) +
       " " +
       tokenSymbol
     );

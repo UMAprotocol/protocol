@@ -22,10 +22,9 @@ class CRMonitor {
    *        logLevelOverrides: {crThreshold: "error"}       // Log level overrides
    *      };
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
-            collateralCurrencyDecimals: 18,
-            syntheticCurrencyDecimals: 18,
+   *      { collateralDecimals: 18,
+            syntheticDecimals: 18,
+            priceFeedDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
@@ -38,22 +37,13 @@ class CRMonitor {
     // Offchain price feed to compute the current collateralization ratio for the monitored positions.
     this.priceFeed = priceFeed;
 
-    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
-    this.empProps = empProps;
+    // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
+    // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
+    // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
+    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
-    this.convertCollateralToSynthetic = ConvertDecimals(
-      empProps.collateralCurrencyDecimals,
-      empProps.syntheticCurrencyDecimals,
-      this.web3
-    );
-
-    this.formatDecimalStringCollateral = createFormatFunction(
-      this.web3,
-      2,
-      4,
-      false,
-      empProps.collateralCurrencyDecimals
-    );
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Wallets to monitor collateralization ratio.
@@ -92,9 +82,34 @@ class CRMonitor {
 
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("priceIdentifier") &&
+            typeof x.priceIdentifier === "string" &&
+            Object.keys(x).includes("collateralDecimals") &&
+            typeof x.collateralDecimals === "number" &&
+            Object.keys(x).includes("syntheticDecimals") &&
+            typeof x.syntheticDecimals === "number" &&
+            Object.keys(x).includes("priceFeedDecimals") &&
+            typeof x.priceFeedDecimals === "number" &&
+            Object.keys(x).includes("networkId") &&
+            typeof x.networkId === "number"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+
+    this.fixedPointAdjustment = this.toBN(this.toWei("1"));
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
@@ -142,7 +157,7 @@ class CRMonitor {
         .toString();
 
       // If CR = null then there are no tokens outstanding and so dont push a notification.
-      const positionCR = this._calculatePositionCRPercent(backingCollateral, tokensOutstanding, price);
+      const positionCR = this._calculatePositionCR(backingCollateral, tokensOutstanding, price);
       if (positionCR == null) {
         continue;
       }
@@ -168,13 +183,13 @@ class CRMonitor {
           "% which is below the " +
           wallet.crAlert * 100 +
           "% threshold. Current value of " +
-          this.empProps.syntheticCurrencySymbol +
+          this.empProps.priceIdentifier +
           " is " +
-          this.formatDecimalString(price) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           ". The collateralization requirement is " +
           this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
           "%. Liquidation price: " +
-          this.formatDecimalString(liquidationPrice) +
+          this.formatDecimalString(liquidationPrice) + // Note that this does NOT use normalizePriceFeedDecimals as the value has been normalized from the _calculatePriceForCR equation.
           ".";
 
         this.logger[this.logOverrides.crThreshold || "warn"]({
@@ -200,26 +215,23 @@ class CRMonitor {
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = (collateral-withdrawalRequestAmount) / (tokensOutstanding * price)
-  _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
+  // This is cr = (collateral - withdrawalRequestAmount) / (tokensOutstanding * price)
+  _calculatePositionCR(collateral, tokensOutstanding, tokenPrice) {
     if (collateral == 0) {
       return 0;
     }
     if (tokensOutstanding == 0) {
       return null;
     }
-    return this.toBN(this.convertCollateralToSynthetic(collateral))
-      .mul(this.toBN(this.toWei("1")))
-      .mul(this.toBN(this.toWei("1")))
-      .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice)));
+    return this.normalizeCollateralDecimals(collateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(tokensOutstanding).mul(this.normalizePriceFeedDecimals(tokenPrice)));
   }
 
-  _calculatePriceForCR(collateral, tokensOutstanding, positionCR) {
-    return this.toBN(this.convertCollateralToSynthetic(collateral))
-      .mul(this.toBN(this.toWei("1")))
-      .mul(this.toBN(this.toWei("1")))
-      .div(this.toBN(tokensOutstanding))
-      .div(this.toBN(positionCR));
+  _calculatePriceForCR(collateral, tokensOutstanding, collateralRequirement) {
+    return this.normalizeCollateralDecimals(collateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(tokensOutstanding).mul(this.toBN(collateralRequirement)));
   }
 }
 

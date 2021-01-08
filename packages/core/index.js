@@ -107,9 +107,12 @@ function getAddressTest(contractName, networkId, version = "latest") {
     global.artifacts._provisioner._deploymentAddresses[contractName] &&
     artifacts._provisioner._networkConfig.chainId === networkId
   ) {
-    // In the hardhat case, there is no networks object, so we fall back to hardhat's global list of deployed addresses as long as hardhat's network id matches the one passed in.
+    // In the production hardhat case, there is no networks object, so we fall back to hardhat's global list of deployed addresses as long as hardhat's network id matches the one passed in.
     // Note: this is a bit hacky because it depends on internal hardhat details.
     return global.artifacts._provisioner._deploymentAddresses[contractName];
+  } else if (global.hardhatTestingAddresses[contractName]) {
+    // If running tests in hardhat, check if there is a testing address set.
+    return global.hardhatTestingAddresses[contractName];
   } else {
     throw new Error(`No address found for contract ${contractName} on network ${networkId}`);
   }

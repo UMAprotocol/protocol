@@ -109,7 +109,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback,
       config.twapLength,
       config.poolDecimals,
-      config.decimals // This defaults to 18 unless supplied by user
+      config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "basketspread") {
     const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds"];
