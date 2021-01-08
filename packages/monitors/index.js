@@ -80,20 +80,19 @@ async function run({
     const networker = new Networker(logger);
 
     // 0. Setup EMP and token instances to monitor.
-    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed] = await Promise.all([
+    const [networkId, latestBlock, tokenPriceFeed, medianizerPriceFeed] = await Promise.all([
       web3.eth.net.getId(),
       web3.eth.getBlock("latest"),
-      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig),
-      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig)
+      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig),
+      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig)
     ]);
 
     if (!medianizerPriceFeed || !tokenPriceFeed) {
       throw new Error("Price feed config is invalid");
     }
 
-    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     // Setup contract instances.
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
 
     const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
@@ -104,24 +103,19 @@ async function run({
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
-    const [
-      collateralCurrencySymbol,
-      syntheticCurrencySymbol,
-      collateralCurrencyDecimals,
-      syntheticCurrencyDecimals
-    ] = await Promise.all([
+    const [collateralSymbol, syntheticSymbol, collateralDecimals, syntheticDecimals] = await Promise.all([
       collateralToken.methods.symbol().call(),
       syntheticToken.methods.symbol().call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
-
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
-      collateralCurrencySymbol,
-      syntheticCurrencySymbol,
-      collateralCurrencyDecimals,
-      syntheticCurrencyDecimals,
+      collateralSymbol,
+      syntheticSymbol,
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
+      priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()), // medianized feed returns the expected market price.
       priceIdentifier: hexToUtf8(priceIdentifier),
       networkId
     };
@@ -188,6 +182,15 @@ async function run({
       empProps
     });
 
+    logger.debug({
+      at: "Monitor#index",
+      message: "Monitor initialized",
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
+      priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()),
+      tokenPriceFeedConfig,
+      medianizerPriceFeedConfig
+    });
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
@@ -208,7 +211,7 @@ async function run({
             contractMonitor.checkForNewDisputeEvents(),
             contractMonitor.checkForNewDisputeSettlementEvents(),
             contractMonitor.checkForNewSponsors(),
-            // 2.  Wallet Balance monitor. Check if the bot ballances have moved past thresholds.
+            // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
             balanceMonitor.checkBotBalances(),
             // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
             crMonitor.checkWalletCrRatio(),

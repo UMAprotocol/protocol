@@ -40,11 +40,11 @@ class SponsorReporter {
 
     // Define the table rows beforehand to re-use the variables.
     const rowNames = [
-      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
-      `Backing collateral(${this.empProps.collateralCurrencySymbol})`,
+      `Synthetic debt(${this.empProps.syntheticSymbol})`,
+      `Backing collateral(${this.empProps.collateralSymbol})`,
       "Position CR %",
-      `Synthetic balance(${this.empProps.syntheticCurrencySymbol})`,
-      `Collateral balance(${this.empProps.collateralCurrencySymbol})`,
+      `Synthetic balance(${this.empProps.syntheticSymbol})`,
+      `Collateral balance(${this.empProps.collateralSymbol})`,
       "ETH balance"
     ];
 
@@ -93,8 +93,8 @@ class SponsorReporter {
 
     // Define the table column headings before hand to re-use the variables.
     const colHeadings = [
-      `Synthetic debt(${this.empProps.syntheticCurrencySymbol})`,
-      `Backing collateral(${this.empProps.collateralCurrencySymbol})`,
+      `Synthetic debt(${this.empProps.syntheticSymbol})`,
+      `Backing collateral(${this.empProps.collateralSymbol})`,
       "Position CR %"
     ];
 
