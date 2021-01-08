@@ -3,6 +3,7 @@
 
 const { ConvertDecimals, createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
 
+// TODO: Rename "medianizerPriceFeed" ==> "pegPriceFeed" and "uniswapPriceFeed" ==> "syntheticPriceFeed"
 class SyntheticPegMonitor {
   /**
    * @notice Constructs new synthetic peg monitor module.
@@ -10,6 +11,8 @@ class SyntheticPegMonitor {
    * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
+   * @param {Object} denominatorPriceFeed Optional module that can be used to divide the price returned by the
+   * `medianizerPriceFeed` in order to "denominator" that price in a new currency.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults. Example:
   *      { deviationAlertThreshold:0.2,           // Threshold used to compare observed and expected token prices.
            volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
@@ -22,12 +25,13 @@ class SyntheticPegMonitor {
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
    */
-  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps }) {
+  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, denominatorPriceFeed, config, empProps }) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
     this.uniswapPriceFeed = uniswapPriceFeed;
     this.medianizerPriceFeed = medianizerPriceFeed;
+    this.denominatorPriceFeed = denominatorPriceFeed;
 
     this.web3 = web3;
 
@@ -111,7 +115,7 @@ class SyntheticPegMonitor {
   async checkPriceDeviation() {
     if (this.deviationAlertThreshold === 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
-    const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
+    let uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
@@ -122,6 +126,24 @@ class SyntheticPegMonitor {
         cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
       return;
+    }
+
+    // If config includes a `denominatorPriceFeed` then query its price. The peg deviation will compare:
+    // (syntheticTokenPrice / denominatorPrice) against (pegTokenPrice).
+    // If `denominatorPriceFeed` is undefined, then just compare:
+    // (syntheticTokenPrice) against (pegTokenPrice).
+    if (this.denominatorPriceFeed) {
+      const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+      // We need a "1" scaled in the same precision that the `denominatorPrice` is getting returned in, because
+      // we want to apply the transformation:
+      // - uniswapTokenPrice * denominatorPriceFeedScaledOne / denominatorPrice
+      // which ultimately should maintain the `uniswapTokenPrice`'s precision.
+      const denominatorPriceFeedScaledOne = ConvertDecimals(
+        0,
+        this.denominatorPriceFeed.getPriceFeedDecimals(),
+        this.web3
+      )("1");
+      uniswapTokenPrice = uniswapTokenPrice.mul(denominatorPriceFeedScaledOne).div(denominatorPrice);
     }
 
     this.logger.debug({

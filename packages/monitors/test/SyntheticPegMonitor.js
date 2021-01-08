@@ -32,6 +32,7 @@ contract("SyntheticPegMonitor", function() {
       let uniswapPriceFeedMock;
       let medianizerPriceFeedMock;
       let invalidPriceFeedMock;
+      let denominatorPriceFeedMock;
 
       let spy;
       let spyLogger;
@@ -45,9 +46,10 @@ contract("SyntheticPegMonitor", function() {
       beforeEach(async function() {
         convertPrice = Convert(testConfig.priceFeedDecimals);
 
-        uniswapPriceFeedMock = new PriceFeedMock();
-        medianizerPriceFeedMock = new PriceFeedMock();
-        invalidPriceFeedMock = new InvalidPriceFeedMock();
+        uniswapPriceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
+        medianizerPriceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
+        invalidPriceFeedMock = new InvalidPriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
+        denominatorPriceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
 
         empProps = {
           syntheticSymbol: "SYNTH",
@@ -179,6 +181,38 @@ contract("SyntheticPegMonitor", function() {
           uniswapPriceFeedMock.setCurrentPrice(convertPrice("1.25"));
           await syntheticPegMonitor.checkPriceDeviation();
           assert.equal(spy.callCount, 0); // There should be no messages sent.
+        });
+
+        it("Divides by denominator price feed", async function() {
+          // Create a new monitor with the denominatorPriceFeed set
+          syntheticPegMonitor = new SyntheticPegMonitor({
+            logger: spyLogger,
+            web3,
+            uniswapPriceFeed: uniswapPriceFeedMock,
+            medianizerPriceFeed: medianizerPriceFeedMock,
+            denominatorPriceFeed: denominatorPriceFeedMock,
+            config: monitorConfig,
+            empProps
+          });
+
+          // Denominator price set to 1, should produce 0 deviation.
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          denominatorPriceFeedMock.setCurrentPrice(convertPrice("1"));
+
+          // Check for price deviation from monitor module.
+          await syntheticPegMonitor.checkPriceDeviation();
+          assert.equal(spy.callCount, 0); // There should be no messages sent at this point.
+
+          // Setting denominator to 2 should produce -50% deviation because it divides the uniswap price by 2
+          denominatorPriceFeedMock.setCurrentPrice(convertPrice("2"));
+          await syntheticPegMonitor.checkPriceDeviation();
+          assert.equal(spy.callCount, 1); // There should be one message sent at this point.
+          assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+          assert.isTrue(lastSpyLogIncludes(spy, "0.50")); // uniswap price
+          assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
+          assert.isTrue(lastSpyLogIncludes(spy, "-50.00")); // percentage error
+          assert.equal(lastSpyLogLevel(spy), "warn");
         });
       });
 

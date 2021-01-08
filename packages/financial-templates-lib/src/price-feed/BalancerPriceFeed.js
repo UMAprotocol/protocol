@@ -18,7 +18,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     lookback,
     twapLength,
     poolDecimals = 18,
-    decimals = 18
+    priceFeedDecimals = 18
   ) {
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
@@ -63,7 +63,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
     // TODO: Should/Can we read in `poolDecimals` from this.contract?
     this.poolPrecision = poolDecimals;
-    this.decimals = decimals;
+    this.decimals = priceFeedDecimals;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
     // on the relationship between poolPrecision and the desired decimals.

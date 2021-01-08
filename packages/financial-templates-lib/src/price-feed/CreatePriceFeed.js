@@ -109,7 +109,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback,
       config.twapLength,
       config.poolDecimals,
-      config.decimals // This defaults to 18 unless supplied by user
+      config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "basketspread") {
     const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds"];
@@ -314,8 +314,8 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     defaultConfig
   });
 
-  // Infer lookback from liquidation liveness.
-  if (emp && defaultConfig) {
+  // Infer lookback from liquidation liveness if user does not explicitly set a lookback.
+  if (emp && defaultConfig && !defaultConfig.lookback) {
     const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }
