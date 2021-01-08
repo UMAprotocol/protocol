@@ -3,7 +3,7 @@
 require("dotenv").config();
 const retry = require("async-retry");
 
-const { Logger, waitForLogger, delay } = require("@uma/financial-templates-lib");
+const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
@@ -21,18 +21,14 @@ const { getWeb3 } = require("@uma/common");
  */
 async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout }) {
   try {
-    // Load unlocked web3 accounts and get the networkId.
     const [networkId] = await Promise.all([web3.eth.net.getId()]);
-
-    // Setup contract instances. NOTE that getAddress("OptimisticOracle", networkId) will resolve to null in tests.
-    const oracle = new web3.eth.Contract(getAbi("OptimisticOracle"), getAddress("OptimisticOracle", networkId));
-
+    const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
       message: "OO keeper started 🌊",
-      oracleAddress: oracle.address,
+      optimisticOracleAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout
@@ -40,14 +36,21 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     // TODO:
     // - Miscellaneous setup
-    // - Instantiate an OO client
-    // - Run proposer and/or disputer strategy
+    // - Construct OO Keeper bot
+    // - Set appropriate allowances
+
+    // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
+    // instance of the OO Keeper to respond to price requests and proposals.
+    const ooClient = new OptimisticOracleClient(logger, getAbi("OptimisticOracle"), web3, optimisticOracleAddress);
+    const gasEstimator = new GasEstimator(logger);
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async () => {
+          await gasEstimator.update();
           // Placeholder for looping logic that should be implemented in this bot in future PR's.
+          await ooClient.update();
           return;
         },
         {

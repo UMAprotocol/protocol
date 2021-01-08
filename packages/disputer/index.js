@@ -57,33 +57,32 @@ async function run({
     const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [priceIdentifier, collateralTokenAddress] = await Promise.all([
+    const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
-      emp.methods.collateralCurrency().call()
+      emp.methods.collateralCurrency().call(),
+      emp.methods.tokenCurrency().call()
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
-    const [currentAllowance, collateralCurrencyDecimals] = await Promise.all([
+    const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
+    const [currentAllowance, collateralTokenDecimals, syntheticTokenDecimals] = await Promise.all([
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
-      collateralToken.methods.decimals().call()
+      collateralToken.methods.decimals().call(),
+      syntheticToken.methods.decimals().call()
     ]);
 
-    // Price feed must use same # of decimals as collateral currency.
-    let customPricefeedConfig = {
-      ...priceFeedConfig,
-      decimals: collateralCurrencyDecimals
-    };
+    const priceFeed = await createReferencePriceFeedForEmp(
+      logger,
+      web3,
+      new Networker(logger),
+      getTime,
+      empAddress,
+      priceFeedConfig
+    );
 
-    const [priceFeed] = await Promise.all([
-      createReferencePriceFeedForEmp(logger, web3, new Networker(logger), getTime, empAddress, customPricefeedConfig)
-    ]);
     if (!priceFeed) {
       throw new Error("Price feed config is invalid");
     }
-    logger.debug({
-      at: "Disputer#index",
-      message: `Using an ${customPricefeedConfig.decimals} decimal price feed`
-    });
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
     const empProps = {
@@ -99,13 +98,22 @@ async function run({
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      priceFeedConfig: customPricefeedConfig,
+      priceFeedConfig,
       disputerConfig,
       disputerOverridePrice
     });
 
     // Client and dispute bot.
-    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
+    const empClient = new ExpiringMultiPartyClient(
+      logger,
+      getAbi("ExpiringMultiParty"),
+      web3,
+      empAddress,
+      collateralTokenDecimals,
+      syntheticTokenDecimals,
+      priceFeed.getPriceFeedDecimals()
+    );
+
     const gasEstimator = new GasEstimator(logger);
     const disputer = new Disputer({
       logger,
@@ -116,6 +124,15 @@ async function run({
       account: accounts[0],
       empProps,
       config: disputerConfig
+    });
+
+    logger.debug({
+      at: "Disputer#index",
+      message: "Disputer initialized",
+      collateralDecimals: Number(collateralTokenDecimals),
+      syntheticDecimals: Number(syntheticTokenDecimals),
+      priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
+      priceFeedConfig: priceFeedConfig
     });
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.

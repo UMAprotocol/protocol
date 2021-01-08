@@ -115,34 +115,45 @@ contract("index.js", function(accounts) {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Detects price feed decimals from collateral decimals", async function() {
+  it("Detects price feed, collateral and synthetic decimals", async function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
-    collateralToken = await Token.new("DAI8", "DAI8", 8, { from: contractCreator });
-    constructorParams = {
-      ...constructorParams,
-      collateralAddress: collateralToken.address
-    };
-    emp = await ExpiringMultiParty.new(constructorParams);
+    collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+    // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+    const decimalTestConstructorParams = JSON.parse(
+      JSON.stringify({
+        ...constructorParams,
+        collateralAddress: collateralToken.address,
+        tokenAddress: syntheticToken.address,
+        priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
+      })
+    );
+    emp = await ExpiringMultiParty.new(decimalTestConstructorParams);
     await syntheticToken.addMinter(emp.address);
     await syntheticToken.addBurner(emp.address);
 
+    // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
     await Poll.run({
       logger: spyLogger,
       web3,
       empAddress: emp.address,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig
+      errorRetriesTimeout
     });
 
-    // First log should include # of decimals
-    assert.isTrue(spyLogIncludes(spy, 0, "8"));
+    // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
+    // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+    // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
+    assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
   });
 
   it("Allowances are set", async function() {
