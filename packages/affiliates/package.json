@@ -28,6 +28,6 @@
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
     "test-truffle": "truffle test ./test/truffle/*.js test/truffle/liquidity-mining/*.js --network test && truffle test ./test/truffle/gas-rebate/*.js --network mainnet_mnemonic --migrations_directory migrations_null",
-    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic"
+    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic --exit"
   }
 }

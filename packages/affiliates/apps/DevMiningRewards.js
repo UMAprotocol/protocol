@@ -1,13 +1,13 @@
 // This file is meant to be run in the command line. It takes in a configuration to generate
 // final deployer reward output.
-// example: node apps/DeployerRewards ./config.example.js --network=mainnet_mnemonic >> output.json
+// example: node apps/DevMiningRewards ./config.example.js --network=mainnet_mnemonic >> output.json
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
 
 const Config = require("../libs/config");
-const { DeployerRewards } = require("../libs/affiliates");
+const { DevMining } = require("../libs/affiliates");
 const { Emp } = require("../libs/contracts");
 const Queries = require("../libs/bigquery");
 const Coingecko = require("../libs/coingecko");
@@ -31,7 +31,7 @@ async function App(config) {
   const coingecko = Coingecko();
   const synthPrices = SynthPrices({ web3 });
 
-  const rewards = DeployerRewards({
+  const rewards = DevMining({
     queries,
     empAbi,
     coingecko,

@@ -1,5 +1,5 @@
 module.exports = {
   // TODO: rename this to DevMining
-  DeployerRewards: require("./devmining"),
+  DevMining: require("./devmining"),
   DappMining: require("./dappmining")
 };
