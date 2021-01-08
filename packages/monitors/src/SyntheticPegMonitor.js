@@ -138,7 +138,7 @@ class SyntheticPegMonitor {
       // We need a "1" scaled in the same precision that the `denominatorPrice` is getting returned in, because
       // we want to apply the transformation:
       // - uniswapTokenPrice * denominatorPriceFeedScaledOne / denominatorPrice
-      // which ultimately maintains the `uniswapTokenPrice`'s precision.
+      // which ultimately should maintain the `uniswapTokenPrice`'s precision.
       const denominatorPriceFeedScaledOne = ConvertDecimals(
         0,
         this.denominatorPriceFeed.getPriceFeedDecimals(),
