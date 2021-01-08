@@ -230,9 +230,9 @@ async function run({
         async () => {
           // Update all client and price feeds.
           await Promise.all([
-            // empClient.update(),
-            // empEventClient.update(),
-            // tokenBalanceClient.update(),
+            empClient.update(),
+            empEventClient.update(),
+            tokenBalanceClient.update(),
             medianizerPriceFeed.update(),
             tokenPriceFeed.update(),
             denominatorPriceFeed && denominatorPriceFeed.update()
