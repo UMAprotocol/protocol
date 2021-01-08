@@ -2,12 +2,6 @@
 
 This package contains scripts that enable bots to be run in a serverless fashion.
 
-## Installing the package
-
-```bash
-yarn add @uma/serverless-orchestration
-```
-
 ## Orchestration scripts
 
 The two serverless orchestration scripts are:

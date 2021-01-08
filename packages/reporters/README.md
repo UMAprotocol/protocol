@@ -2,12 +2,6 @@
 
 This package contains two UMA reporter bot implementations: `GlobalSummaryReporter` and `SponsorReporter`.
 
-## Installing the package
-
-```bash
-yarn global add @uma/reporters
-```
-
 ## Reporters
 
 The two reporters available are:
