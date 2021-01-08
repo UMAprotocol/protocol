@@ -314,8 +314,8 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     defaultConfig
   });
 
-  // Infer lookback from liquidation liveness.
-  if (emp && defaultConfig) {
+  // Infer lookback from liquidation liveness if user does not explicitly set a lookback.
+  if (emp && defaultConfig && !defaultConfig.lookback) {
     const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }
