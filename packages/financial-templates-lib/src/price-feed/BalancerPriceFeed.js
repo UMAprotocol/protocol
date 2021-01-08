@@ -89,6 +89,10 @@ class BalancerPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
 
+  getEarliestTime() {
+    return this.earliestTime;
+  }
+
   getCurrentPrice() {
     let currentPrice;
     // If twap window is 0, then return last price
@@ -143,6 +147,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     await Promise.all(blocks.map(this.priceHistory.update));
 
     this.lastUpdateTime = currentTime;
+    this.earliestTime = this.blockHistory.earliest().timestamp;
   }
   // If priceHistory only encompasses 1 block, which happens if the `lookback` window is 0,
   // then this should return the last and only price.

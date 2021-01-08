@@ -38,6 +38,13 @@ class PriceFeedInterface {
     this._abstractFunctionCalled();
   }
 
+  // Returns the earliest time possible for a historical price query. This timestamp might still fail if passed into
+  // `getHistoricalPrice` but any timestamps earlier than it will definitely fail. This method can make clients more
+  // efficient by catching timestamps that are surely going to not have historical prices available..
+  getEarliestTime() {
+    this._abstractFunctionCalled();
+  }
+
   // Common function to throw an error if an interface method is called.
   _abstractFunctionCalled() {
     throw new Error("Abstract function called -- derived class should implement this function");

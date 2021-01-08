@@ -145,6 +145,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       });
   }
 
+  getEarliestTime() {
+    return this.earliestTime;
+  }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
@@ -178,6 +182,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
     // timestamp (because the close of that OHLC may be relevant).
     const earliestHistoricalTimestamp = Math.floor((currentTime - this.lookback) / this.ohlcPeriod) * this.ohlcPeriod;
+    this.earliestTime = earliestHistoricalTimestamp;
 
     // 1. Construct URLs.
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.

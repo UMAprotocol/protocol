@@ -215,6 +215,9 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
+
+    // This test creates price events across multiple blocks, make sure that the earliest block timestamp is expected.
+    assert.equal(uniswapPriceFeed.getEarliestTime(), uniswapPriceFeed.events[0].timestamp);
   });
 
   it("Historical TWAP too far back", async function() {

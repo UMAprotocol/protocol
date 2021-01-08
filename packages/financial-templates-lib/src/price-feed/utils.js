@@ -18,6 +18,10 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     return blocks[blocks.length - 1];
   }
 
+  function earliest() {
+    return blocks[0];
+  }
+
   // Used internally, but will insert a block into cache sorted by timestamp
   function insert(block) {
     const index = lodash.sortedIndexBy(blocks, block, "timestamp");
@@ -89,7 +93,8 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     has,
     insert,
     listBlocks,
-    latest
+    latest,
+    earliest
   };
 };
 

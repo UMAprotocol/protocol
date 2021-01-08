@@ -192,6 +192,9 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
     assert.equal(dexPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
+
+    // This test creates price events across multiple blocks, make sure that the earliest block timestamp is expected.
+    assert.equal(dexPriceFeed.getEarliestTime(), dexPriceFeed.blockHistory.earliest().timestamp);
   });
 
   it("Historical TWAP too far back", async function() {

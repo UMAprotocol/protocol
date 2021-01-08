@@ -51,19 +51,22 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.2")).div(toBN(10).pow(toBN(18 - precision))),
             200,
-            precision
+            precision,
+            1
           ),
           new PriceFeedMock(
             toBN(toWei("1.5")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
             55000,
-            precision
+            precision,
+            2
           ),
           new PriceFeedMock(
             toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             50,
-            precision
+            precision,
+            3
           )
         ],
         false
@@ -78,19 +81,22 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("1.1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.6")).div(toBN(10).pow(toBN(18 - precision))),
             200,
-            precision
+            precision,
+            4
           ),
           new PriceFeedMock(
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.8")).div(toBN(10).pow(toBN(18 - precision))),
             55000,
-            precision
+            precision,
+            5
           ),
           new PriceFeedMock(
             toBN(toWei("2.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2.2")).div(toBN(10).pow(toBN(18 - precision))),
             50,
-            precision
+            precision,
+            6
           )
         ],
         true
@@ -111,19 +117,22 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("1.1")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.6")).div(toBN(10).pow(toBN(18 - precision))),
             400,
-            precision
+            precision,
+            7
           ),
           new PriceFeedMock(
             toBN(toWei("1.2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             60000,
-            precision
+            precision,
+            8
           ),
           new PriceFeedMock(
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("66")).div(toBN(10).pow(toBN(18 - precision))),
             100,
-            precision
+            precision,
+            9
           )
         ],
         false
@@ -138,19 +147,22 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("0.9")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.25")).div(toBN(10).pow(toBN(18 - precision))),
             800,
-            precision
+            precision,
+            10
           ),
           new PriceFeedMock(
             toBN(toWei("1.3")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("0.75")).div(toBN(10).pow(toBN(18 - precision))),
             650000,
-            precision
+            precision,
+            11
           ),
           new PriceFeedMock(
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             200,
-            precision
+            precision,
+            12
           )
         ],
         true
@@ -170,13 +182,15 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("8")).div(toBN(10).pow(toBN(18 - precision))),
           6,
-          precision
+          precision,
+          13
         ),
         new PriceFeedMock(
           toBN(toWei("9")).div(toBN(10).pow(toBN(18 - precision))),
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
           7,
-          precision
+          precision,
+          14
         )
       ]);
       // Computes the median:
@@ -214,6 +228,9 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
+
+      // Should return the *maximum* earliestTime.
+      assert.equal(basketSpreadPriceFeed.getEarliestTime(), 14);
     });
     it("Custom price precision", async function() {
       // (same calculations and results as previous test, but precision should be different)

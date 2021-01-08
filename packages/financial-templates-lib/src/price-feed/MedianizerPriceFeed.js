@@ -85,6 +85,18 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
+  // Gets the latest, earliest time for all constituent price feeds, as this is first time
+  // that a historical price could be available.
+  getEarliestTime() {
+    const earliestTimes = this.priceFeeds.map(priceFeed => priceFeed.getEarliestTime());
+    if (earliestTimes.some(element => element === undefined || element === null)) {
+      return null;
+    }
+
+    // Take the most recent update time.
+    return Math.max(...earliestTimes);
+  }
+
   // Gets the decimals of the medianized price feeds. Errors out if any price feed had a different number of decimals.
   getPriceFeedDecimals() {
     const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());

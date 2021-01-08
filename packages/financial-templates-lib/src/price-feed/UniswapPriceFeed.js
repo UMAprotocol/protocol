@@ -49,6 +49,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
 
+  getEarliestTime() {
+    return this.earliestTime;
+  }
+
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
     return this.lastBlockPrice;
@@ -117,6 +121,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.currentTwap = this._computeTwap(this.events, currentTime - this.twapLength, currentTime);
 
     this.lastUpdateTime = currentTime;
+    this.earliestTime = this.events[0].timestamp;
   }
 
   _getPriceFromSyncEvent(event) {

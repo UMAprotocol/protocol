@@ -7,12 +7,13 @@ class PriceFeedMock extends PriceFeedInterface {
   // priceFeeds a list of priceFeeds to medianize. All elements must be of type PriceFeedInterface. Must be an array of
   // at least one element. Note that no decimals are included in this price feed. It simply stores the exact input number
   // provided by the test suite. Therefore, decimal conversion is expected to occur within the tests themselves.
-  constructor(currentPrice, historicalPrice, lastUpdateTime, priceFeedDecimals = 18) {
+  constructor(currentPrice, historicalPrice, lastUpdateTime, priceFeedDecimals = 18, earliestTime) {
     super();
     this.updateCalled = 0;
     this.currentPrice = currentPrice;
     this.historicalPrice = historicalPrice;
     this.lastUpdateTime = lastUpdateTime;
+    this.earliestTime = earliestTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.historicalPrices = [];
   }
@@ -42,6 +43,10 @@ class PriceFeedMock extends PriceFeedInterface {
     this.lastUpdateTime = lastUpdateTime;
   }
 
+  setEarliestTime(earliestTime) {
+    this.earliestTime = earliestTime;
+  }
+
   getCurrentPrice() {
     return this.currentPrice;
   }
@@ -57,6 +62,10 @@ class PriceFeedMock extends PriceFeedInterface {
 
   getLastUpdateTime() {
     return this.lastUpdateTime;
+  }
+
+  getEarliestTime() {
+    return this.earliestTime;
   }
 
   getPriceFeedDecimals() {

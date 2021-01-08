@@ -153,6 +153,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1000), undefined);
     assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), undefined);
+    assert.equal(cryptoWatchPriceFeed.getEarliestTime(), undefined);
   });
 
   it("Basic historical price", async function() {
@@ -187,14 +188,18 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), toWei("1.5"));
   });
 
-  it("Last update time", async function() {
+  it("Last update and earliest available time", async function() {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
     await cryptoWatchPriceFeed.update();
 
-    // Should return the mock time.
+    // Last update was the mock time.
     assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), mockTime);
+
+    // Earliest available timestamp is:
+    // Math.floor((mock time - lookback) / OHLC period) * OHLC period =
+    assert.equal(cryptoWatchPriceFeed.getEarliestTime(), Math.floor((mockTime - lookback) / 60) * 60);
   });
 
   it("No or bad response", async function() {

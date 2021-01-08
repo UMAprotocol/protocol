@@ -123,6 +123,18 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
+  // Gets the latest, earliest time for all constituent price feeds, as this is first time
+  // that a historical price could be available.
+  getEarliestTime() {
+    const earliestTimes = this.allPriceFeeds.map(priceFeed => priceFeed.getEarliestTime());
+    if (earliestTimes.some(element => element === undefined || element === null)) {
+      return null;
+    }
+
+    // Take the most recent update time.
+    return Math.max(...earliestTimes);
+  }
+
   getPriceFeedDecimals() {
     // Check that every price feeds decimals are the same.
     const priceFeedDecimals = this.allPriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
