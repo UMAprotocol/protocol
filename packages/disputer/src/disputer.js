@@ -106,7 +106,7 @@ class Disputer {
           liquidationTime,
           priceFeedEarliestTime: this.priceFeed.getEarliestTime()
         });
-        return false;
+        return;
       }
 
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
