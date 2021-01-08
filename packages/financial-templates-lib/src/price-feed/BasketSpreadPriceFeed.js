@@ -64,22 +64,12 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       return null;
     }
     const experimentalMean = this._computeMean(experimentalPrices);
-    this.logger.debug({
-      at: "BasketSpreadPriceFeed",
-      message: "Average of experimental prices",
-      mean: experimentalMean.toString()
-    });
 
     // Second, compute the average of the baseline pricefeeds.
     if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
       return null;
     }
     const baselineMean = this._computeMean(baselinePrices);
-    this.logger.debug({
-      at: "BasketSpreadPriceFeed",
-      message: "Average of baseline prices",
-      mean: baselineMean.toString()
-    });
 
     // All calculations within this if statement will produce unexpected results if any of the
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
@@ -89,11 +79,6 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     // TODO: Parameterize the lower (0) and upper (2) bounds, as well as allow for custom "spreadValue" formulas,
     // for example we might not want to have the spread centered around 1, like it is here:
     let spreadValue = experimentalMean.sub(baselineMean).add(this.convertPriceFeedDecimals("1"));
-    this.logger.debug({
-      at: "BasketSpreadPriceFeed",
-      message: "Basket spread value",
-      spreadValue: spreadValue.toString()
-    });
 
     // Ensure non-negativity
     if (spreadValue.lt(this.toBN("0"))) {
@@ -106,11 +91,6 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
 
     // Optionally divide by denominator pricefeed.
     if (!denominatorPrice) return spreadValue;
-    this.logger.debug({
-      at: "BasketSpreadPriceFeed",
-      message: "Denominator price",
-      denominatorPrice: denominatorPrice.toString()
-    });
     spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
 
     return spreadValue;

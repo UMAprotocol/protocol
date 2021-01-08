@@ -41,6 +41,7 @@ const { getWeb3 } = require("@uma/common");
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
+ * @param {Object} medianizerPriceFeedConfig Configuration to construct the denominator price feed object.
  * @return None or throws an Error.
  */
 async function run({
@@ -54,7 +55,8 @@ async function run({
   endingBlock,
   monitorConfig,
   tokenPriceFeedConfig,
-  medianizerPriceFeedConfig
+  medianizerPriceFeedConfig,
+  denominatorPriceFeedConfig
 }) {
   try {
     const { hexToUtf8 } = web3.utils;
@@ -72,7 +74,8 @@ async function run({
       endingBlock,
       monitorConfig,
       tokenPriceFeedConfig,
-      medianizerPriceFeedConfig
+      medianizerPriceFeedConfig,
+      denominatorPriceFeedConfig
     });
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -80,11 +83,13 @@ async function run({
     const networker = new Networker(logger);
 
     // 0. Setup EMP and token instances to monitor.
-    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed] = await Promise.all([
+    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
       web3.eth.net.getId(),
       web3.eth.getBlock("latest"),
       createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig),
-      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig)
+      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig),
+      denominatorPriceFeedConfig &&
+        createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, denominatorPriceFeedConfig)
     ]);
 
     if (!medianizerPriceFeed || !tokenPriceFeed) {
@@ -184,6 +189,7 @@ async function run({
       web3,
       uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
+      denominatorPriceFeed,
       config: monitorConfig,
       empProps
     });
@@ -198,7 +204,8 @@ async function run({
             empEventClient.update(),
             tokenBalanceClient.update(),
             medianizerPriceFeed.update(),
-            tokenPriceFeed.update()
+            tokenPriceFeed.update(),
+            denominatorPriceFeed && denominatorPriceFeed.update()
           ]);
 
           // Run all queries within the monitor bots modules.
@@ -261,6 +268,7 @@ async function Poll(callback) {
     // Deprecate UNISWAP_PRICE_FEED_CONFIG to favor TOKEN_PRICE_FEED_CONFIG, leaving in for compatibility.
     // If nothing defined, it will default to uniswap within createPriceFeed
     const tokenPriceFeedConfigEnv = process.env.TOKEN_PRICE_FEED_CONFIG || process.env.UNISWAP_PRICE_FEED_CONFIG;
+    const denominatorPriceFeedConfigEnv = process.env.TOKEN_DENOMINATOR_PRICE_FEED_CONFIG;
 
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
@@ -314,6 +322,7 @@ async function Poll(callback) {
       // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
       // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
       // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
+      denominatorPriceFeedConfig: denominatorPriceFeedConfigEnv ? JSON.parse(denominatorPriceFeedConfigEnv) : null,
       medianizerPriceFeedConfig: process.env.MEDIANIZER_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
         : null
