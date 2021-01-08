@@ -95,11 +95,27 @@ class Disputer {
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
     const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
+      // If liquidation time is before the earliest possible historical price, then we can skip this liquidation
+      // because we will not be able to get a historical price. If a dispute override price is provided then
+      // we can ignore this check.
+      let liquidationTime = parseInt(liquidation.liquidationTime.toString());
+      if (!disputerOverridePrice && liquidationTime < this.priceFeed.getEarliestTime()) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
+          liquidationTime,
+          priceFeedEarliestTime: this.priceFeed.getEarliestTime()
+        });
+        return false;
+      }
+
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
       const price = disputerOverridePrice
         ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()));
+        : this.priceFeed.getHistoricalPrice(liquidationTime);
       if (!price) {
+        // If liquidation time is within pricefeed's historical price window, then we should be able to grab it,
+        // otherwise throw a warning:
         this.logger.warn({
           at: "Disputer",
           message: "Cannot dispute: price feed returned invalid value"
@@ -108,7 +124,7 @@ class Disputer {
       } else {
         if (
           this.empClient.isDisputable(liquidation, price) &&
-          this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
+          this.empClient.getLastUpdateTime() >= liquidationTime + this.disputeDelay
         ) {
           this.logger.debug({
             at: "Disputer",
