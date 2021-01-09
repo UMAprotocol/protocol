@@ -46,7 +46,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.5"));
-    assert.equal(uniswapPriceFeed.getlastUpdateTime(), mockTime);
+    assert.equal(uniswapPriceFeed.getLastUpdateTime(), mockTime);
     assert.equal(uniswapPriceFeed.getLookback(), 3600);
   });
 
