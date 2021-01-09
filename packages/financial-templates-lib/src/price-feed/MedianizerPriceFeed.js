@@ -96,6 +96,15 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return priceFeedDecimals[0];
   }
 
+  // Returns the shortest lookback window of the constituent price feeds.
+  getLookback() {
+    const lookbacks = this.priceFeeds.map(priceFeed => priceFeed.getLookback());
+    if (lookbacks.some(element => element === undefined || element === null)) {
+      return null;
+    }
+    return Math.min(...lookbacks);
+  }
+
   // Updates all constituent price feeds.
   async update() {
     await Promise.all(this.priceFeeds.map(priceFeed => priceFeed.update()));

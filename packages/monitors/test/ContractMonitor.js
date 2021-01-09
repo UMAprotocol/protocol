@@ -271,7 +271,21 @@ contract("ContractMonitor.js", function(accounts) {
         await eventClient.update();
         priceFeedMock.setHistoricalPrice(convertPrice("1"));
 
+        // Liquidations before pricefeed's earliest timestamp are not considered:
+        const earliestLiquidationTime = (await web3.eth.getBlock(eventClient.getAllLiquidationEvents()[0].blockNumber))
+          .timestamp;
+        // Set earliest time to AFTER the liquidation time:
+        priceFeedMock.setEarliestTime(Number(earliestLiquidationTime) + 1);
+
         // Check for liquidation events
+        await contractMonitor.checkForNewLiquidations();
+        assert.equal(spy.getCalls().length, 0);
+
+        // Check for liquidation events which should now be captured since the liquidation time is equal to
+        // the earliest time. Note that we need to reset the internal `lastLiquidationBlockNumber` value so
+        // that we can "re-query" these events:
+        contractMonitor.lastLiquidationBlockNumber = 0;
+        priceFeedMock.setEarliestTime(Number(earliestLiquidationTime));
         await contractMonitor.checkForNewLiquidations();
 
         // Ensure that the spy correctly captured the liquidation events key information.

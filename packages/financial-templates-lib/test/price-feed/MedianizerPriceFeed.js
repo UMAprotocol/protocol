@@ -33,6 +33,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
+    assert.equal(medianizerPriceFeed.getLookback(), 3600);
   });
 
   it("Basic means", async function() {

@@ -49,6 +49,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
 
+  getLookback() {
+    return this.lookback;
+  }
+
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
     return this.lastBlockPrice;
