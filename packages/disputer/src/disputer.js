@@ -98,16 +98,15 @@ class Disputer {
       // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
       // because we will not be able to get a historical price. If a dispute override price is provided then
       // we can ignore this check.
-      let liquidationTime = parseInt(liquidation.liquidationTime.toString());
-      if (
-        !disputerOverridePrice &&
-        liquidationTime < this.priceFeed.getLastUpdateTime() - Number(this.priceFeed.getLookback())
-      ) {
+      const liquidationTime = parseInt(liquidation.liquidationTime.toString());
+      const historicalLookbackWindow =
+        Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
+      if (!disputerOverridePrice && liquidationTime < historicalLookbackWindow) {
         this.logger.debug({
           at: "Disputer",
           message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
-          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
+          historicalLookbackWindow
         });
         return;
       }
