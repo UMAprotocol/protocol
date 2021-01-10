@@ -64,7 +64,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
   getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return undefined;
+      return null;
     }
 
     // Set first price period in `historicalPrices` to first non-null price.

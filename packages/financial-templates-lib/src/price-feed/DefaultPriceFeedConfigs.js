@@ -265,12 +265,14 @@ const defaultConfigs = {
   BTCDOM: {
     type: "domfi",
     pair: "BTCDOM",
-    minTimeBetweenUpdates: 60
+    minTimeBetweenUpdates: 60,
+    lookback: 7200
   },
   ALTDOM: {
     type: "domfi",
     pair: "ALTDOM",
-    minTimeBetweenUpdates: 60
+    minTimeBetweenUpdates: 60,
+    lookback: 7200
   }
 };
 
