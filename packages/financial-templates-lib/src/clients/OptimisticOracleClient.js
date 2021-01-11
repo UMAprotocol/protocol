@@ -1,6 +1,6 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-const { OptimisticOracleRequestStatesEnum, averageBlockTimeSeconds } = require("@uma/common");
+const { averageBlockTimeSeconds } = require("@uma/common");
 const Promise = require("bluebird");
 
 class OptimisticOracleClient {
@@ -29,8 +29,10 @@ class OptimisticOracleClient {
     this.oracleAddress = oracleAddress;
 
     // Oracle Data structures & values to enable synchronous returns of the state seen by the client.
-    this.priceRequests = [];
-    this.priceProposals = [];
+    this.unproposedPriceRequests = [];
+    this.undisputedProposals = [];
+    this.expiredProposals = [];
+    this.settleableDisputes = [];
 
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
@@ -40,14 +42,19 @@ class OptimisticOracleClient {
     this.hexToUtf8 = this.web3.utils.hexToUtf8;
   }
 
-  // Returns an array of Price Request objects that have no proposals yet.
-  getAllPriceRequests() {
-    return this.priceRequests;
+  // Returns an array of Price Requests that have no proposals yet.
+  getUnproposedPriceRequests() {
+    return this.unproposedPriceRequests;
   }
 
-  // Returns an array of Price Request objects that someone has proposed a price for.
-  getAllPriceProposals() {
-    return this.priceProposals;
+  // Returns an array of Price Proposals that have not been disputed.
+  getUndisputedProposals() {
+    return this.undisputedProposals;
+  }
+
+  // Returns an array of expired Price Proposals that can be settled
+  getExpiredProposals() {
+    return this.expiredProposals;
   }
 
   // Returns an array of Price Request objects for each position that someone has proposed a price for and whose
@@ -63,6 +70,10 @@ class OptimisticOracleClient {
     return this.lastUpdateTimestamp;
   }
 
+  _getPriceRequestKey(reqEvent) {
+    return `${reqEvent.returnValues.requester}-${reqEvent.returnValues.identifier}-${reqEvent.returnValues.timestamp}-${reqEvent.returnValues.ancillaryData}`;
+  }
+
   async update() {
     // Determine earliest block to query events for based on lookback window:
     const [averageBlockTime, currentBlock] = await Promise.all([
@@ -73,53 +84,62 @@ class OptimisticOracleClient {
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
     // Fetch contract state variables in parallel.
-    const [requestEvents, currentTime] = await Promise.all([
+    const [requestEvents, proposalEvents, disputeEvents, currentTime] = await Promise.all([
       this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }),
+      this.oracle.getPastEvents("ProposePrice", { fromBlock: earliestBlockToQuery }),
+      this.oracle.getPastEvents("DisputePrice", { fromBlock: earliestBlockToQuery }),
       this.oracle.methods.getCurrentTime().call()
     ]);
 
-    // Fetch request states in parallel batches, 20 at a time, to be safe and not overload the web3 node.
-    const WEB3_CALLS_BATCH_SIZE = 150;
-
-    const [requestStates] = await Promise.all([
-      Promise.map(
-        requestEvents,
-        request =>
-          // Since we're making an async web3 call here, consider calling
-          // requests(web3.utils.soliditySha3(requester, id, timestamp, acData)) instead
-          // so we can grab more data including that relevant for proposals.
-          this.oracle.methods
-            .getState(
-              request.returnValues.requester,
-              request.returnValues.identifier,
-              request.returnValues.timestamp,
-              request.returnValues.ancillaryData ? request.returnValues.ancillaryData : "0x"
-            )
-            .call(),
-        {
-          concurrency: WEB3_CALLS_BATCH_SIZE
-        }
-      )
-    ]);
-
-    // Sort price requests based on state.
-    requestStates.map((state, index) => {
-      let requestData = {
-        requester: requestEvents[index].returnValues.requester,
-        identifier: this.hexToUtf8(requestEvents[index].returnValues.identifier),
-        timestamp: requestEvents[index].returnValues.timestamp,
-        currency: requestEvents[index].returnValues.currency,
-        reward: requestEvents[index].returnValues.reward,
-        finalFee: requestEvents[index].returnValues.finalFee
-      };
-      if (state === OptimisticOracleRequestStatesEnum.REQUESTED) {
-        this.priceRequests.push(requestData);
-      } else if (state === OptimisticOracleRequestStatesEnum.PROPOSED) {
-        // TODO: Add data specific for proposals,
-        // or alternatively search for ProposedPrice events.
-        this.priceProposals.push(requestData);
-      }
+    // Store price requests that have NOT been proposed to yet:
+    const unproposedPriceRequests = requestEvents.filter(event => {
+      const key = this._getPriceRequestKey(event);
+      const hasProposal = proposalEvents.find(proposalEvent => this._getPriceRequestKey(proposalEvent) === key);
+      return hasProposal === undefined;
     });
+    this.unproposedPriceRequests = unproposedPriceRequests.map(event => {
+      return {
+        requester: event.returnValues.requester,
+        identifier: this.hexToUtf8(event.returnValues.identifier),
+        timestamp: event.returnValues.timestamp,
+        currency: event.returnValues.currency,
+        reward: event.returnValues.reward,
+        finalFee: event.returnValues.finalFee
+      };
+    });
+
+    // Store proposals that have NOT been disputed:
+    let undisputedProposals = proposalEvents.filter(event => {
+      const key = this._getPriceRequestKey(event);
+      const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
+      return hasDispute === undefined;
+    });
+    undisputedProposals = undisputedProposals.map(event => {
+      return {
+        requester: event.returnValues.requester,
+        proposer: event.returnValues.proposer,
+        identifier: this.hexToUtf8(event.returnValues.identifier),
+        timestamp: event.returnValues.timestamp,
+        proposedPrice: event.returnValues.proposedPrice,
+        expirationTimestamp: event.returnValues.expirationTimestamp
+      };
+    });
+
+    // Filter proposals based on their expiration timestamp:
+    const isExpired = proposal => {
+      return Number(proposal.expirationTimestamp) <= Number(currentTime);
+    };
+    this.expiredProposals = undisputedProposals.filter(proposal => isExpired(proposal));
+    this.undisputedProposals = undisputedProposals.filter(proposal => !isExpired(proposal));
+
+    // Store disputes that can be settled:
+    // TODO: If we want to implement this method, then we need to make additional web3 calls
+    // to check if the DVM has resolved each dispute. We might not even want to have the OO settle
+    // any proposals/disputes.
+
+    // TODO:
+    // Determine which of the `undisputedProposals` can be disputed based on price feed information
+    // and the proposal's `proposedPrice`.
 
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({

@@ -92,7 +92,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes ancillaryData,
-        int256 proposedPrice
+        int256 proposedPrice,
+        uint256 expirationTimestamp
     );
     event DisputePrice(
         address indexed requester,
@@ -293,7 +294,15 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         // Event.
-        emit ProposePrice(requester, proposer, identifier, timestamp, ancillaryData, proposedPrice);
+        emit ProposePrice(
+            requester,
+            proposer,
+            identifier,
+            timestamp,
+            ancillaryData,
+            proposedPrice,
+            request.expirationTime
+        );
 
         // Callback.
         if (address(requester).isContract())

@@ -99,7 +99,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await client.update();
 
     // Initially, no price requests.
-    let result = client.getAllPriceRequests();
+    let result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
 
     // Request and update again.
@@ -107,7 +107,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await client.update();
 
     // Should have one price request.
-    result = client.getAllPriceRequests();
+    result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, [
       {
         requester: optimisticRequester.address,
@@ -125,31 +125,55 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await client.update();
 
     // Initially, no proposals.
-    let result = client.getAllPriceProposals();
+    let result = client.getUndisputedProposals();
     assert.deepStrictEqual(result, []);
 
     // Request and update again, should still show no proposals.
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await client.update();
-    result = client.getAllPriceProposals();
+    result = client.getUndisputedProposals();
     assert.deepStrictEqual(result, []);
 
-    // Make a proposal and update, should now show one proposal
+    // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
     await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+    const currentContractTime = await optimisticOracle.getCurrentTime();
     await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
       from: proposer
     });
 
     await client.update();
-    result = client.getAllPriceProposals();
+    result = client.getUndisputedProposals();
     assert.deepStrictEqual(result, [
       {
         requester: optimisticRequester.address,
+        proposer: proposer,
         identifier: hexToUtf8(identifier),
         timestamp: requestTime.toString(),
-        currency: collateral.address,
-        reward: "0",
-        finalFee
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
+      }
+    ]);
+    result = client.getUnproposedPriceRequests();
+    assert.deepStrictEqual(result, []);
+    result = client.getExpiredProposals();
+    assert.deepStrictEqual(result, []);
+
+    // Now, advance time so that the proposal expires and check that the client detects the new state:
+    await optimisticOracle.setCurrentTime((Number(currentContractTime) + liveness).toString());
+    await client.update();
+    result = client.getUndisputedProposals();
+    assert.deepStrictEqual(result, []);
+    result = client.getUnproposedPriceRequests();
+    assert.deepStrictEqual(result, []);
+    result = client.getExpiredProposals();
+    assert.deepStrictEqual(result, [
+      {
+        requester: optimisticRequester.address,
+        proposer: proposer,
+        identifier: hexToUtf8(identifier),
+        timestamp: requestTime.toString(),
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
       }
     ]);
   });
@@ -168,7 +192,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     // Request a price and check that the longer lookback client currently sees it
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await client.update();
-    let result = client.getAllPriceRequests();
+    let result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, [
       {
         requester: optimisticRequester.address,
@@ -186,7 +210,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await advanceBlockAndSetTime(web3, new Date().getTime());
 
     await clientShortLookback.update();
-    result = clientShortLookback.getAllPriceRequests();
+    result = clientShortLookback.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
   });
 });
