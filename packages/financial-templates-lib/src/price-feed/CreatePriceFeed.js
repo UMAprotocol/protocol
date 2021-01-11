@@ -4,6 +4,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
@@ -38,6 +39,31 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.ohlcPeriod // Defaults to 60 unless supplied.
+    );
+  } else if (config.type === "domfi") {
+    const requiredFields = ["pair", "lookback", "minTimeBetweenUpdates"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating DominationFinancePriceFeed",
+      config
+    });
+
+    return new DominationFinancePriceFeed(
+      logger,
+      web3,
+      config.pair,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.decimals, // This defaults to 18 unless supplied by user
+      config.tickPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];
