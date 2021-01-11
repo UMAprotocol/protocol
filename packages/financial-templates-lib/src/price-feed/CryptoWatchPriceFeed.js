@@ -149,6 +149,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
 
+  getLookback() {
+    return this.lookback;
+  }
+
   getPriceFeedDecimals() {
     return this.priceFeedDecimals;
   }

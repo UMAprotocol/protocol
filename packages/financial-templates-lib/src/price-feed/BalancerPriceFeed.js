@@ -89,6 +89,10 @@ class BalancerPriceFeed extends PriceFeedInterface {
     return this.lastUpdateTime;
   }
 
+  getLookback() {
+    return this.lookback;
+  }
+
   getCurrentPrice() {
     let currentPrice;
     // If twap window is 0, then return last price

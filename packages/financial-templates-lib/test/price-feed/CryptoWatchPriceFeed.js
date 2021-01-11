@@ -153,6 +153,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1000), undefined);
     assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), undefined);
+    assert.equal(cryptoWatchPriceFeed.getLookback(), 120);
   });
 
   it("Basic historical price", async function() {

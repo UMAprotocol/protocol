@@ -38,6 +38,11 @@ class PriceFeedInterface {
     this._abstractFunctionCalled();
   }
 
+  // Returns the lookback window for a historical price query. Timestamps before (currentTime - lookback) will fail if passed into
+  // `getHistoricalPrice`. This method can make clients more efficient by catching invalid historical timestamps early.
+  getLookback() {
+    this._abstractFunctionCalled();
+  }
   // Common function to throw an error if an interface method is called.
   _abstractFunctionCalled() {
     throw new Error("Abstract function called -- derived class should implement this function");

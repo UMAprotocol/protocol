@@ -271,7 +271,21 @@ contract("ContractMonitor.js", function(accounts) {
         await eventClient.update();
         priceFeedMock.setHistoricalPrice(convertPrice("1"));
 
+        // Liquidations before pricefeed's lookback window (lastUpdateTime - lookback) are not considered:
+        const earliestLiquidationTime = Number(
+          (await web3.eth.getBlock(eventClient.getAllLiquidationEvents()[0].blockNumber)).timestamp
+        );
+        priceFeedMock.setLastUpdateTime(earliestLiquidationTime + 2);
+        priceFeedMock.setLookback(1);
+
         // Check for liquidation events
+        await contractMonitor.checkForNewLiquidations();
+        assert.equal(spy.getCalls().length, 0);
+
+        // Check for liquidation events which should now be captured since the lookback now covers the liquidation time.
+        // Note that we need to reset the internal `lastLiquidationBlockNumber` value so that we can "re-query" these events:
+        contractMonitor.lastLiquidationBlockNumber = 0;
+        priceFeedMock.setLookback(2);
         await contractMonitor.checkForNewLiquidations();
 
         // Ensure that the spy correctly captured the liquidation events key information.

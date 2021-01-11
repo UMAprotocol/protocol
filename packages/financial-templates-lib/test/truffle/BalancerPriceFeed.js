@@ -48,6 +48,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.5"));
+    assert.equal(dexPriceFeed.getLastUpdateTime(), mockTime);
+    assert.equal(dexPriceFeed.getLookback(), 3600);
   });
 
   it("Correctly selects most recent price", async function() {
