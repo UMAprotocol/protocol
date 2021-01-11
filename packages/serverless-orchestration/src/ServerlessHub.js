@@ -40,7 +40,14 @@ const { Logger, delay } = require("@uma/financial-templates-lib");
 let logger;
 let spokeUrl;
 let customNodeUrl;
-let hubConfig = { configRetrieval: "localStorage", saveQueriedBlock: "localStorage", spokeRunner: "localStorage" };
+let hubConfig = {};
+
+const defaultHubConfig = {
+  configRetrieval: "localStorage",
+  saveQueriedBlock: "localStorage",
+  spokeRunner: "localStorage",
+  rejectSpokeDelay: 60 // 1 min.
+};
 
 hub.post("/", async (req, res) => {
   try {
@@ -50,6 +57,7 @@ hub.post("/", async (req, res) => {
       reqBody: req.body,
       hubConfig
     });
+
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
       throw new Error("Body missing json bucket or file parameters!");
@@ -73,13 +81,17 @@ hub.post("/", async (req, res) => {
     // in the next iteration when the hub is called again.
     await _saveQueriedBlockNumber(req.body.configFile, latestBlockNumber);
 
-    // Loop over all config objects in the config file and for each append a call promise to the promiseArray.
+    // Loop over all config objects in the config file and for each append a call promise to the promiseArray. Note
+    // that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an upper
+    // bound on how long each spoke can take to respond, acting as a timeout for each spoke call.
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
       const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
       botConfigs[botName] = botConfig;
-      promiseArray.push(_executeServerlessSpoke(spokeUrl, botConfig));
+      promiseArray.push(
+        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(hubConfig.rejectSpokeDelay)])
+      );
     }
     logger.debug({
       at: "ServerlessHub",
@@ -124,7 +136,12 @@ hub.post("/", async (req, res) => {
       });
       let rejectedRetryPromiseArray = [];
       retriedOutputs.forEach(botName => {
-        rejectedRetryPromiseArray.push(_executeServerlessSpoke(spokeUrl, botConfigs[botName]));
+        rejectedRetryPromiseArray.push(
+          Promise.race([
+            _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
+            _rejectAfterDelay(hubConfig.rejectSpokeDelay)
+          ])
+        );
       });
       const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
       rejectedRetryResults.forEach((result, index) => {
@@ -350,7 +367,13 @@ async function _postJson(url, body) {
 // Takes in a spokeResponse object for a given botKey and identifies if the response includes an error. If it does,
 // append the error information to the errorOutputs. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
-  if (
+  if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
+    errorOutputs[botKey] = {
+      status: "timeout",
+      message: spokeResponse.reason.message,
+      botIdentifier: botKey
+    };
+  } else if (
     spokeResponse.status == "rejected" ||
     (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||
     (spokeResponse.reason && spokeResponse.reason.code == "500")
@@ -374,6 +397,15 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
   }
 }
 
+// Returns a promise that is rejected after seconds delay. Used to limit how long a spoke can run for.
+const _rejectAfterDelay = seconds =>
+  new Promise((_, reject) => {
+    setTimeout(reject, seconds * 1000, {
+      status: "timeout",
+      message: `The spoke call took longer than ${seconds} seconds to reply`
+    });
+  });
+
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
   // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
@@ -387,7 +419,8 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
   logger = _Logger;
   spokeUrl = _spokeURL;
   customNodeUrl = _CustomNodeUrl;
-  if (_hubConfig) hubConfig = _hubConfig;
+  if (_hubConfig) hubConfig = { ...defaultHubConfig, ..._hubConfig };
+  else hubConfig = defaultHubConfig;
 
   return hub.listen(port, () => {
     logger.debug({

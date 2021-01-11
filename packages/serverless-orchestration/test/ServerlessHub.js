@@ -7,6 +7,9 @@ const request = require("supertest");
 const hub = require("../src/ServerlessHub");
 const spoke = require("../src/ServerlessSpoke");
 
+// Helper scripts to test different kind of rejection behaviou.
+const timeoutSpoke = require("../test-helpers/TimeoutSpokeMock.js");
+
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -242,6 +245,60 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(rejectedResponse.res.text.includes("rejected"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "rejected"));
+  });
+  it("ServerlessHub correctly deals with timeout spoke calls", async function() {
+    // valid config to send but set the spoke to be off-line.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        }
+      }
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const validBody = {
+      bucket: testBucket,
+      configFile: testConfigFile
+    };
+
+    // start the timoutSpokemock on a new port. Set the timeout for the response to be 5 seconds.
+    const timeoutSpokeInstance = await timeoutSpoke.Poll(8083, 5);
+
+    const testHubPort = 8084; // create a separate port to run this specific test on.
+    // Create a hub instance with invalid spoke port. This will force the spoke to reject
+    await hub.Poll(
+      hubSpyLogger, // injected spy logger
+      testHubPort, // port to run the hub for this test on
+      "http://localhost:8083", // URL to execute spokes on
+      web3.currentProvider.host, // custom node URL to enable the hub to query block numbers.
+      { rejectSpokeDelay: 1 }
+    );
+
+    // not a port the spoke is running on. will get rejected
+
+    const rejectedResponse = await sendHubRequest(validBody, testHubPort);
+
+    assert.equal(JSON.parse(rejectedResponse.res.text).output.retriedOutputs.length, 1); // There should be 1 retried output.
+    assert.isTrue(spyLogIncludes(hubSpy, -3, "One or more spoke calls were rejected - Retrying"));
+    assert.isTrue(spyLogIncludes(hubSpy, -3, "retriedOutputs"));
+    assert.equal(rejectedResponse.res.statusCode, 500); // error code
+    assert.isTrue(rejectedResponse.res.text.includes("Some spoke calls returned errors"));
+    assert.isTrue(rejectedResponse.res.text.includes("The spoke call took longer than 1 seconds to reply"));
+    assert.isTrue(rejectedResponse.res.text.includes("retriedOutputs"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
+
+    timeoutSpokeInstance.close();
   });
   it("ServerlessHub can correctly execute multiple bots in parallel", async function() {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
