@@ -143,6 +143,7 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.equal(priceFeed.getCurrentPrice(), undefined);
     assert.equal(priceFeed.getHistoricalPrice(1000), undefined);
     assert.equal(priceFeed.getLastUpdateTime(), undefined);
+    assert.equal(priceFeed.getLookback(), lookback);
   });
 
   it("Basic historical price", async function() {
