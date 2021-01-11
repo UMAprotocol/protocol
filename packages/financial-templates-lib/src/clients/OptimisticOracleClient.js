@@ -134,12 +134,7 @@ class OptimisticOracleClient {
 
     // Store disputes that can be settled:
     // TODO: If we want to implement this method, then we need to make additional web3 calls
-    // to check if the DVM has resolved each dispute. We might not even want to have the OO settle
-    // any proposals/disputes.
-
-    // TODO:
-    // Determine which of the `undisputedProposals` can be disputed based on price feed information
-    // and the proposal's `proposedPrice`.
+    // to check if the DVM has resolved each dispute.
 
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
