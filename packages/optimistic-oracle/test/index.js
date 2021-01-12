@@ -12,6 +12,7 @@ const { addGlobalHardhatTestingAddress } = require("@uma/common");
 const CONTRACT_VERSION = "latest";
 
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
 const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
 const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
 
@@ -26,14 +27,19 @@ contract("index.js", function() {
   let finder;
   let timer;
   let optimisticOracle;
+  let mockOracle;
 
   before(async function() {
     finder = await Finder.new();
     timer = await Timer.new();
+    mockOracle = await MockOracle.new(finder.address, timer.address);
 
     // Deploy a new OptimisticOracle.
     optimisticOracle = await OptimisticOracle.new("120", finder.address, timer.address);
+
+    // Set addresses in the global name space that the OO keeper's index.js needs to fetch:
     addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
+    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
   beforeEach(async function() {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
