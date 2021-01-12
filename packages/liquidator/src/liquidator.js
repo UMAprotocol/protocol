@@ -222,7 +222,8 @@ class Liquidator {
     // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
     const maxCollateralPerToken = this.toBN(scaledPrice)
       .mul(this.toBN(this.empCRRatio))
-      .div(this.toBN(this.toWei("1")));
+      .mul(this.empClient.getLatestCumulativeFundingRateMultiplier())
+      .div(this.toBN(this.toWei("1")).mul(this.toBN(this.toWei("1"))));
 
     this.logger.debug({
       at: "Liquidator",

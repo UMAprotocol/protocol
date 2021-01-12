@@ -24,7 +24,8 @@ class ExpiringMultiPartyClient {
     empAddress,
     collateralDecimals = 18,
     syntheticDecimals = 18,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
+    contractType
   ) {
     this.logger = logger;
     this.web3 = web3;
@@ -44,6 +45,9 @@ class ExpiringMultiPartyClient {
     this.syntheticDecimals = syntheticDecimals;
     this.priceFeedDecimals = priceFeedDecimals;
 
+    // Perpetual financial products require the latest fundingRate to correctly calculate fundingRate adjusted debt.
+    this.latestCumulativeFundingRateMultiplier;
+
     // Store the last on-chain time the clients were updated to inform price request information.
     this.lastUpdateTimestamp = 0;
 
@@ -57,6 +61,14 @@ class ExpiringMultiPartyClient {
     this.normalizeCollateralDecimals = ConvertDecimals(collateralDecimals, 18, this.web3);
     this.normalizeSyntheticDecimals = ConvertDecimals(syntheticDecimals, 18, this.web3);
     this.normalizePriceFeedDecimals = ConvertDecimals(priceFeedDecimals, 18, this.web3);
+
+    this.fixedPointAdjustment = this.toBN(this.toWei("1"));
+
+    if (contractType != "ExpiringMultiParty" && contractType != "Perpetual")
+      throw new Error(
+        `Invalid contract type provided: ${contractType}! The financial product client only supports ExpiringMultiParty or Perpetual`
+      );
+    this.contractType = contractType;
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -113,6 +125,10 @@ class ExpiringMultiPartyClient {
     return this.lastUpdateTimestamp;
   }
 
+  getLatestCumulativeFundingRateMultiplier() {
+    return this.latestCumulativeFundingRateMultiplier;
+  }
+
   async initialSetup() {
     const [collateralRequirement, liquidationLiveness, cumulativeFeeMultiplier] = await Promise.all([
       this.emp.methods.collateralRequirement().call(),
@@ -137,6 +153,14 @@ class ExpiringMultiPartyClient {
       this.emp.getPastEvents("LiquidationCreated", { fromBlock }),
       this.emp.methods.getCurrentTime().call()
     ]);
+
+    if (this.contractType == "Perpetual") {
+      this.latestCumulativeFundingRateMultiplier = this.toBN(
+        (await this.emp.methods.fundingRate().call()).cumulativeMultiplier.rawValue
+      );
+    } else {
+      this.latestCumulativeFundingRateMultiplier = this.fixedPointAdjustment;
+    }
 
     // Array of all sponsors, over all time. Can contain repeats for every `NewSponsor` event.
     const newSponsorAddresses = newSponsorEvents.map(e => e.returnValues.sponsor);
@@ -219,10 +243,13 @@ class ExpiringMultiPartyClient {
         sponsor: this.activeSponsors[index],
         withdrawalRequestPassTimestamp: position.withdrawalRequestPassTimestamp,
         withdrawalRequestAmount: position.withdrawalRequestAmount.toString(),
-        numTokens: position.tokensOutstanding.toString(),
-        amountCollateral: this.toBN(position.rawCollateral.toString())
+        numTokens: this.toBN(position.tokensOutstanding.toString()) // Apply the current funding rate to the sponsor debt.
+          .mul(this.latestCumulativeFundingRateMultiplier)
+          .div(this.fixedPointAdjustment)
+          .toString(),
+        amountCollateral: this.toBN(position.rawCollateral.toString()) // Apply the current outstanding fees to collateral.
           .mul(this.cumulativeFeeMultiplier)
-          .div(this.toBN(this.toWei("1")))
+          .div(this.fixedPointAdjustment)
           .toString(),
         hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
       };
@@ -247,12 +274,10 @@ class ExpiringMultiPartyClient {
     const normalizedAmountCollateral = this.normalizeCollateralDecimals(amountCollateral);
     const normalizedTokenRedemptionValue = this.normalizePriceFeedDecimals(tokenRedemptionValue);
 
-    const fixedPointAdjustment = this.toBN(this.toWei("1"));
-
     return normalizedNumTokens
       .mul(normalizedTokenRedemptionValue)
       .mul(this.collateralRequirement)
-      .gt(normalizedAmountCollateral.mul(fixedPointAdjustment).mul(fixedPointAdjustment));
+      .gt(normalizedAmountCollateral.mul(this.fixedPointAdjustment).mul(this.fixedPointAdjustment));
   }
 
   _isExpired(liquidation, currentTime) {

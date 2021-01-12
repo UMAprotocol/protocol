@@ -17,7 +17,7 @@ let runTestForContractVersion = function(supportedVersions) {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is any.
   if ([...SUPPORTED_CONTRACT_VERSIONS, "any"].filter(value => supportedVersions.includes(value)).length == 0) {
     throw new Error(
-      `Contract versioned specified ${supportedVersions} is not part of the supported contracts for this test`
+      `Contract versioned specified ${supportedVersions} is not part of the supported contracts for this test suit`
     );
   }
   // if the test supports "any" then it should not be skipped.
@@ -61,7 +61,10 @@ contract("Liquidator.js", function(accounts) {
   const contractCreator = accounts[4];
   const liquidityProvider = accounts[5];
 
+  const startTime = "15798990420";
+
   let store;
+  let optimisticOracle;
   let finder;
   let collateralToken;
   let configStore;
@@ -71,6 +74,7 @@ contract("Liquidator.js", function(accounts) {
   let mockOracle;
   let priceFeedMock;
   let identifierWhitelist;
+  let collateralWhitelist;
   let timer;
   let identifier;
   let fundingRateIdentifier;
@@ -89,6 +93,13 @@ contract("Liquidator.js", function(accounts) {
   let convertCollateral;
   let convertSynthetic;
   let convertPrice;
+
+  // Advances time by 10k seconds.
+  const _setFundingRateAndAdvanceTime = async fundingRate => {
+    const currentTime = (await emp.getCurrentTime()).toNumber();
+    await emp.proposeFundingRate({ rawValue: fundingRate }, currentTime);
+    await emp.setCurrentTime(currentTime + 10000);
+  };
 
   const _createConstructorParamsForContractVersion = async function(contractVersion, contractType) {
     let constructorParams = {
@@ -133,6 +144,19 @@ contract("Liquidator.js", function(accounts) {
       constructorParams.fundingRateIdentifier = fundingRateIdentifier;
       constructorParams.configStoreAddress = configStore.address;
       constructorParams.tokenScaling = { rawValue: toWei("1") };
+
+      const defaultLiveness = 7200;
+
+      optimisticOracle = await getTruffleContract("OptimisticOracle", web3, contractVersion).new(
+        defaultLiveness,
+        finder.address,
+        timer.address
+      );
+
+      await finder.changeImplementationAddress(
+        web3.utils.utf8ToHex(interfaceName.OptimisticOracle),
+        optimisticOracle.address
+      );
     }
 
     return constructorParams;
@@ -152,6 +176,7 @@ contract("Liquidator.js", function(accounts) {
         const financialContractInstance = getTruffleContract(currentTypeBeingTested, web3, contractVersionBeingTested);
         const Finder = getTruffleContract("Finder", web3, contractVersionBeingTested);
         const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersionBeingTested);
+        const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersionBeingTested);
         const MockOracle = getTruffleContract("MockOracle", web3, contractVersionBeingTested);
         const Token = getTruffleContract("ExpandedERC20", web3, contractVersionBeingTested);
         const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersionBeingTested);
@@ -176,7 +201,6 @@ contract("Liquidator.js", function(accounts) {
           });
 
           // Seed the sponsors accounts.
-          // 10 btc
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
           await collateralToken.mint(sponsor2, convertCollateral("100000"), { from: contractCreator });
           await collateralToken.mint(sponsor3, convertCollateral("100000"), { from: contractCreator });
@@ -198,9 +222,17 @@ contract("Liquidator.js", function(accounts) {
             web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
             identifierWhitelist.address
           );
+
+          collateralWhitelist = await AddressWhitelist.new();
+          await finder.changeImplementationAddress(
+            web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+            collateralWhitelist.address
+          );
+          await collateralWhitelist.addToWhitelist(collateralToken.address);
         });
 
         beforeEach(async function() {
+          await timer.setCurrentTime(startTime - 1);
           mockOracle = await MockOracle.new(finder.address, timer.address, {
             from: contractCreator
           });
@@ -232,6 +264,10 @@ contract("Liquidator.js", function(accounts) {
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidatorBot });
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidityProvider });
 
+          // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
+          await emp.setCurrentTime(startTime);
+          if (currentTypeBeingTested == "Perpetual") await emp.applyFundingRate();
+
           spy = sinon.spy();
 
           spyLogger = winston.createLogger({
@@ -247,7 +283,8 @@ contract("Liquidator.js", function(accounts) {
             emp.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
-            testConfig.priceFeedDecimals
+            testConfig.priceFeedDecimals,
+            currentTypeBeingTested
           );
           gasEstimator = new GasEstimator(spyLogger);
 
@@ -281,7 +318,7 @@ contract("Liquidator.js", function(accounts) {
             config: liquidatorConfig
           });
         });
-        (runTestForContractVersion(["any"]) ? it : () => {})(
+        (runTestForContractVersion(["any"]) ? it.only : () => {})(
           "Can correctly detect undercollateralized positions and liquidate them",
           async function() {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -351,7 +388,7 @@ contract("Liquidator.js", function(accounts) {
             priceFeedMock.setCurrentPrice(convertPrice("1.3"));
             await liquidator.update();
             await liquidator.liquidatePositions();
-            // assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
+            assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
             // Sponsor1 should be in a liquidation state with the bot as the liquidator.
             let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -1584,6 +1621,158 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(sponsor2Liquidations.length, 4);
               // show position has been fully liquidated
               assert.equal(sponsor2Positions.tokensOutstanding, "0");
+            }
+          );
+        });
+        describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
+          (runTestForContractVersion(["Perpetual-latest"]) ? it : () => {})(
+            "Can correctly detect invalid withdrawals and liquidate them",
+            async function() {
+              // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+              await emp.create(
+                { rawValue: convertCollateral("125") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor1 }
+              );
+
+              // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+              await emp.create(
+                { rawValue: convertCollateral("150") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor2 }
+              );
+
+              // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
+              await emp.create(
+                { rawValue: convertCollateral("175") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor3 }
+              );
+
+              // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+              await emp.create(
+                { rawValue: convertCollateral("1000") },
+                { rawValue: convertSynthetic("500") },
+                { from: liquidatorBot }
+              );
+
+              // Start with a mocked price of 1 usd per token.
+              // This puts both sponsors over collateralized so no liquidations should occur.
+              priceFeedMock.setCurrentPrice(convertPrice("1"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              // assert.equal(spy.callCount, 0); // No info level logs should be sent.
+
+              // There should be no liquidations created from any sponsor account
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
+
+              // Both token sponsors should still have their positions with full collateral.
+              assert.equal((await emp.getCollateral(sponsor1)).rawValue, convertCollateral("125"));
+              assert.equal((await emp.getCollateral(sponsor2)).rawValue, convertCollateral("150"));
+              assert.equal((await emp.getCollateral(sponsor3)).rawValue, convertCollateral("175"));
+
+              // Next, introduce some funding rate. Setting the funding rate multiplier to 1.04, results in modifying
+              // sponsor's debt. This becomes 100*1.04 = 104. All this debt, with a price of 1, both sponsors are
+              // still correctly capatalized with sponsor1 @ 125 / (104 * 1) = 1.202 & sponsor2 @ 150 / (104 * 1) = 1.44.
+              // So, if there is 150 collateral backing 105 token debt, with a collateral requirement of 1.2, then
+              // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
+              await _setFundingRateAndAdvanceTime(toWei("0.000004"));
+              await emp.applyFundingRate();
+              assert.equal((await emp.fundingRate()).cumulativeMultiplier.toString(), toWei("1.04"));
+
+              priceFeedMock.setCurrentPrice(convertPrice("1"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              assert.equal(spy.callCount, 0); // No info level logs should be sent as no liquidations yet.
+
+              // There should be no liquidations created from any sponsor account
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
+
+              // Both token sponsors should still have their positions with full collateral.
+              assert.equal((await emp.getCollateral(sponsor1)).rawValue, convertCollateral("125"));
+              assert.equal((await emp.getCollateral(sponsor2)).rawValue, convertCollateral("150"));
+              assert.equal((await emp.getCollateral(sponsor3)).rawValue, convertCollateral("175"));
+
+              // If either the price increase, funding ratemultiplier increase or the sponsors collateral decrease they
+              // will be at risk of being liquidated. Say that the funding rate has another 0.01 added to it. The cumulative
+              // funding rate will then be 1.04 * (1 + 0.000001 * 1000) = 1.0504. This will place sponsor1 underwater with
+              // a CR of 125 / (100 * 1.0504 * 1) = 1.19 (which is less than 1.2) and they should get liquidated by the bot.
+              await _setFundingRateAndAdvanceTime(toWei("0.000001"));
+              await emp.applyFundingRate();
+              assert.equal((await emp.fundingRate()).cumulativeMultiplier.toString(), toWei("1.0504"));
+
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              assert.equal(spy.callCount, 1); // There should be one log from the liquidation event.
+
+              // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
+              // amount of collateral minus the collateral withdrawn. 125 - 10 = 115
+              let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+              assert.equal(liquidationObject.sponsor, sponsor1);
+              assert.equal(liquidationObject.liquidator, liquidatorBot);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertCollateral("125"));
+              assert.equal(liquidationObject.lockedCollateral.rawValue, convertCollateral("125"));
+
+              // No other sponsors should have been liquidated
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
+
+              // Next, we can increase the price per token to force sponsor2 to become undercollateralized. At a price of 1.2
+              // sponsor2 will become just undercollateralized with the current cumulative funding rate multipler. Their
+              // CR can be found by: 150 / (100 * 1.0504 * 1.2) = 1.19  (which is less than 1.2). Sponsor 3 is still safe.
+              priceFeedMock.setCurrentPrice(convertPrice("1.2"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the second liquidation.
+
+              liquidationObject = (await emp.getLiquidations(sponsor2))[0];
+              assert.equal(liquidationObject.sponsor, sponsor2);
+              assert.equal(liquidationObject.liquidator, liquidatorBot);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertCollateral("150"));
+              assert.equal(liquidationObject.lockedCollateral.rawValue, convertCollateral("150"));
+
+              // Sponsor3 should not have been liquidated
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
+
+              // Advance the timer to the liquidation expiry.
+              const liquidationTime = liquidationObject.liquidationTime;
+              await emp.setCurrentTime(Number(liquidationTime) + 1000);
+
+              // Now that the liquidation has expired, the liquidator can withdraw rewards.
+              const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+              await liquidator.update();
+              await liquidator.withdrawRewards();
+
+              assert.equal(spy.callCount, 4); // 2 new info level events should be sent for withdrawing the two liquidations.
+
+              // Liquidator should have their collateral increased by Sponsor1 + Sponsor2's collateral
+              const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+              assert.equal(
+                toBN(collateralPreWithdraw)
+                  .add(toBN(convertCollateral("125")))
+                  .add(toBN(convertCollateral("150")))
+                  .toString(),
+                collateralPostWithdraw.toString()
+              );
+
+              // Liquidation data should have been deleted.
+              assert.deepStrictEqual(
+                (await emp.getLiquidations(sponsor1))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
+              assert.deepStrictEqual(
+                (await emp.getLiquidations(sponsor2))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
+
+              // The other two positions should not have any liquidations associated with them.
+              assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
             }
           );
         });
