@@ -70,14 +70,29 @@ function GetInputLength(abi) {
   };
 }
 
-const DecodeAttribution = abi => {
+// Given a transaction, decode the attribution tag from the function. By default only suppports create.
+const DecodeAttribution = (abi, name = "create") => {
   // convert bits to hex (div by 4) and add 2 for 0x
-  const inputLength = GetInputLength(abi)("create") / 4 + 2;
-  return createTransaction => {
-    assert(createTransaction.name == "create", "Only decodes create transactions");
+  const inputLength = GetInputLength(abi)(name) / 4 + 2;
+  return transaction => {
     // tagged transactions are assumed to exist when there is more data than the required inputLength
     // in this case we may return nothing if no tag was added
-    return createTransaction.input.slice(inputLength);
+    return transaction.input.slice(inputLength);
+  };
+};
+
+// appends attribiion tag to the data or input of a transaction
+const encodeAttribution = (data, tag) => {
+  assert(data, "requires data string");
+  assert(tag, "requires tag string");
+  return data.concat(web3.utils.toHex(tag).slice(2));
+};
+
+// Utility for encoding data for a transaction
+const EncodeCallData = abi => {
+  const contract = new web3.eth.Contract(abi);
+  return (name, ...args) => {
+    return contract.methods[name](...args).encodeABI();
   };
 };
 
@@ -144,9 +159,11 @@ module.exports = {
   DecodeLog,
   DecodeTransaction,
   DecodeAttribution,
+  encodeAttribution,
   Emp,
   Erc20,
   GetInputLength,
   toChecksumAddress,
-  isAddress
+  isAddress,
+  EncodeCallData
 };

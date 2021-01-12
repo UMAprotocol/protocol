@@ -53,6 +53,10 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     assert(addresses.has(user), "User does not exist");
     return addresses.get(user);
   }
+  function getAttribution(user, affiliate) {
+    affiliate = affiliate.toLowerCase();
+    return get(user)[affiliate.toLowerCase()] || "0";
+  }
   function getOrCreate(user) {
     user = user.toLowerCase();
     if (addresses.has(user)) return get(user);
@@ -68,11 +72,13 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     assert(affiliate, "requires affiliate");
     assert(amount, "requires amount");
     const data = getOrCreate(user);
+    affiliate = affiliate.toLowerCase();
     if (data[affiliate] == null) data[affiliate] = "0";
     data[affiliate] = (BigInt(data[affiliate]) + BigInt(amount)).toString();
     return set(user, data);
   }
   function calculateShare(user, affiliate) {
+    affiliate = affiliate.toLowerCase();
     const data = getOrCreate(user);
     if (data[affiliate] == null) return "0";
     const sum = Object.values(data).reduce((sum, val) => {
@@ -121,7 +127,8 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     calculateShare,
     snapshot,
     addresses,
-    forEach
+    forEach,
+    getAttribution
   };
 }
 

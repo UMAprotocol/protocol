@@ -119,8 +119,6 @@ function SynthPrices() {
 function Dataset(basePath, { queries, coingecko, synthPrices }) {
   assert(basePath, "requires dataset basePath");
   assert(queries, "requires queries");
-  assert(coingecko, "requires coingecko");
-  assert(synthPrices, "requires synthPrices");
 
   function blocks({ start, end, select = ["timestamp", "number"] }, path) {
     const fileName = Path.join(path, "blocks.csv");
@@ -166,6 +164,17 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
         .on("close", res);
     });
   }
+  function traces({ start, end, contract, select }, path) {
+    const fileName = Path.join(path, `traces_${contract}.txt`);
+    const writeStream = fs.createWriteStream(fileName);
+    const dataStream = queries.streamTracesByContract(contract, start, end, select);
+    return new Promise(res => {
+      Transactions()
+        .serialize(dataStream)
+        .pipe(writeStream)
+        .on("close", res);
+    });
+  }
   async function saveCoingeckoPrices({ start, end, contract, currency = "usd" }, path) {
     const fileName = Path.join(path, `coingecko_${contract}_${currency}.txt`);
     const prices = await coingecko.getHistoricContractPrices(contract, currency, start, end);
@@ -182,7 +191,9 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     fs.writeFileSync(fileName, JSON.stringify(object, null, 2));
   }
 
-  async function save(name, config) {
+  async function saveDevMining(name, config) {
+    assert(coingecko, "requires coingecko");
+    assert(synthPrices, "requires synthPrices");
     const { empCreator, empContracts, collateralTokens, start, end } = config;
     assert(empCreator, "requires empCreator address");
     assert(empContracts, "requires empContracts array");
@@ -204,8 +215,26 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     return path;
   }
 
+  async function saveDappMining(name, config) {
+    let { empAddress, startTime, endTime, firstEmpDate } = config;
+    firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
+    assert(empAddress, "requires emp address");
+    assert(startTime >= 0, "requires start time");
+    assert(endTime >= 0, "requires end time");
+    const path = Path.join(basePath, name);
+    await mkdirp(path);
+    await Promise.all([
+      blocks({ start: startTime, end: endTime }, path),
+      logs({ contract: empAddress, start: firstEmpDate, end: endTime }, path),
+      traces({ contract: empAddress, start: firstEmpDate, end: endTime }, path),
+      saveObject(config, "config", path)
+    ]);
+    return path;
+  }
+
   return {
-    save,
+    saveDevMining,
+    saveDappMining,
     utils: {
       blocks,
       logs,
@@ -294,13 +323,33 @@ function MockQueries(basePath) {
       .collect()
       .toPromise(Promise);
   }
+  function getBlocksAscending(start, count) {
+    return streamBlocks(start)
+      .take(count)
+      .collect()
+      .toPromise(Promise);
+  }
+  function getBlocksDescending(start, count) {
+    return streamBlocks(0, start)
+      .collect()
+      .map(x => x.reverse().slice(0, count))
+      .toPromise(Promise);
+  }
+  function streamTracesByContract(address) {
+    const path = Path.join(basePath, `traces_${address}.txt`);
+    const readStream = fs.createReadStream(path);
+    return Transactions().deserialize(readStream);
+  }
   return {
     streamLogsByContract,
     streamAllLogsByContract,
     getLogsByContract,
     getAllLogsByContract,
     streamBlocks,
-    getBlocks
+    getBlocks,
+    getBlocksAscending,
+    getBlocksDescending,
+    streamTracesByContract
   };
 }
 

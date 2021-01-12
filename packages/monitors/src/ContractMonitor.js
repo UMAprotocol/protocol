@@ -19,11 +19,12 @@ class ContractMonitor {
    *      { "monitoredLiquidators": ["0x1234","0x5678"],
    *        "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
-            collateralCurrencyDecimals: 18,
-            syntheticCurrencyDecimals: 18,
+   *      { collateralSymbol: "DAI",
+            syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
+            collateralDecimals: 18,
+            syntheticDecimals: 18,
+            priceFeedDecimals: 18,
             networkId:1 }
    * @param {Object} votingContract DVM to query price requests.
    */
@@ -47,22 +48,14 @@ class ContractMonitor {
     this.lastDisputeSettlementBlockNumber = 0;
     this.lastNewSponsorBlockNumber = 0;
 
-    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId
-    this.empProps = empProps;
+    // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
+    // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
+    // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
+    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
-    this.convertCollateralToSynthetic = ConvertDecimals(
-      empProps.collateralCurrencyDecimals,
-      empProps.syntheticCurrencyDecimals,
-      this.web3
-    );
-
-    this.formatDecimalStringCollateral = createFormatFunction(
-      this.web3,
-      2,
-      4,
-      false,
-      empProps.collateralCurrencyDecimals
-    );
+    // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Bot and ecosystem accounts to monitor, overridden by config parameter.
@@ -96,38 +89,39 @@ class ContractMonitor {
 
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
 
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("collateralSymbol") &&
+            typeof x.collateralSymbol === "string" &&
+            Object.keys(x).includes("syntheticSymbol") &&
+            typeof x.syntheticSymbol === "string" &&
+            Object.keys(x).includes("priceIdentifier") &&
+            typeof x.priceIdentifier === "string" &&
+            Object.keys(x).includes("collateralDecimals") &&
+            typeof x.collateralDecimals === "number" &&
+            Object.keys(x).includes("syntheticDecimals") &&
+            typeof x.syntheticDecimals === "number" &&
+            Object.keys(x).includes("priceFeedDecimals") &&
+            typeof x.priceFeedDecimals === "number" &&
+            Object.keys(x).includes("networkId") &&
+            typeof x.networkId === "number"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
-  }
 
-  // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
-    return this.toBN(this.convertCollateralToSynthetic(collateral))
-      .mul(this.toBN(this.toWei("1")))
-      .mul(this.toBN(this.toWei("1")))
-      .div(this.toBN(tokensOutstanding).mul(this.toBN(tokenPrice.toString())))
-      .muln(100);
-  }
-
-  // Calculate the maximum price at which this liquidation would be disputable using the `crRequirement`,
-  // `liquidatedCollateral` and the `liquidatedTokens`.
-  calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
-    const { toBN, toWei } = this.web3.utils;
-    return toBN(this.convertCollateralToSynthetic(liquidatedCollateral))
-      .mul(toBN(toWei("1")))
-      .div(toBN(liquidatedTokens))
-      .mul(toBN(toWei("1")))
-      .div(toBN(crRequirement));
-  }
-
-  getLastSeenBlockNumber(eventArray) {
-    if (eventArray.length == 0) {
-      return 0;
-    }
-    return eventArray[eventArray.length - 1].blockNumber;
+    this.fixedPointAdjustment = this.toBN(this.toWei("1"));
   }
 
   // Quries NewSponsor events since the latest query marked by `lastNewSponsorBlockNumber`.
@@ -157,13 +151,13 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.sponsor, this.empProps.networkId) +
         (isMonitoredBot ? " (Monitored liquidator or disputer bot)" : "") +
         " created " +
-        this.formatDecimalString(event.tokenAmount) +
+        this.formatDecimalString(this.normalizeSyntheticDecimals(event.tokenAmount)) +
         " " +
-        this.empProps.syntheticCurrencySymbol +
+        this.empProps.syntheticSymbol +
         " backed by " +
-        this.formatDecimalStringCollateral(event.collateralAmount) +
+        this.formatDecimalString(this.normalizeCollateralDecimals(event.collateralAmount)) +
         " " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
@@ -173,7 +167,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastNewSponsorBlockNumber = this.getLastSeenBlockNumber(latestNewSponsorEvents);
+    this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -194,17 +188,44 @@ class ContractMonitor {
 
     for (let event of newLiquidationEvents) {
       const liquidationTime = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      const historicalLookbackWindow =
+        Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
+
+      // If liquidation time is before the earliest possible historical price, then we can skip this liquidation
+      // because we will not be able to get a historical price.
+      if (liquidationTime < historicalLookbackWindow) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
+          liquidationTime,
+          historicalLookbackWindow
+        });
+        continue;
+      }
+
+      // If liquidation time is before historical lookback window, then we can skip this liquidation
+      // because we will not be able to get a historical price.
+      if (liquidationTime < this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
+          liquidationTime,
+          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
+        });
+        continue;
+      }
+
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
       let collateralizationString;
       let maxPriceToBeDisputableString;
       const crRequirement = await this.empContract.methods.collateralRequirement().call();
-      let crRequirementString = this.web3.utils.toBN(crRequirement).muln(100);
+      let crRequirementString = this.toBN(crRequirement).muln(100);
       if (price) {
         collateralizationString = this.formatDecimalString(
-          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
+          this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
         );
         maxPriceToBeDisputableString = this.formatDecimalString(
-          this.calculateDisputablePrice(crRequirement, event.liquidatedCollateral, event.tokensOutstanding)
+          this._calculateDisputablePrice(crRequirement, event.liquidatedCollateral, event.tokensOutstanding)
         );
       } else {
         this.logger.warn({
@@ -226,17 +247,17 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
-        this.formatDecimalStringCollateral(event.lockedCollateral) +
+        this.formatDecimalString(this.normalizeCollateralDecimals(event.lockedCollateral)) +
         " (liquidated collateral = " +
-        this.formatDecimalStringCollateral(event.liquidatedCollateral) +
+        this.formatDecimalString(this.normalizeCollateralDecimals(event.liquidatedCollateral)) +
         ") " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         " of sponsor " +
         createEtherscanLinkMarkdown(event.sponsor, this.empProps.networkId) +
         " collateral backing " +
-        this.formatDecimalString(event.tokensOutstanding) +
+        this.formatDecimalString(this.normalizeSyntheticDecimals(event.tokensOutstanding)) +
         " " +
-        this.empProps.syntheticCurrencySymbol +
+        this.empProps.syntheticSymbol +
         " tokens. ";
       // Add details about the liquidation price if historical data from the pricefeed is available.
       if (price) {
@@ -245,7 +266,7 @@ class ContractMonitor {
           collateralizationString +
           "%. " +
           "Using " +
-          this.formatDecimalString(price) + // price is scaled 1e18
+          this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           " as the estimated price at liquidation time. With a collateralization requirement of " +
           this.formatDecimalString(crRequirementString) +
           "%, this liquidation would be disputable at a price below " +
@@ -260,7 +281,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastLiquidationBlockNumber = this.getLastSeenBlockNumber(latestLiquidationEvents);
+    this.lastLiquidationBlockNumber = this._getLastSeenBlockNumber(latestLiquidationEvents);
   }
 
   async checkForNewDisputeEvents() {
@@ -286,9 +307,9 @@ class ContractMonitor {
         createEtherscanLinkMarkdown(event.liquidator, this.empProps.networkId) +
         (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " with a dispute bond of " +
-        this.formatDecimalStringCollateral(event.disputeBondAmount) +
+        this.formatDecimalString(this.normalizeCollateralDecimals(event.disputeBondAmount)) +
         " " +
-        this.empProps.collateralCurrencySymbol +
+        this.empProps.collateralSymbol +
         ". tx: " +
         createEtherscanLinkMarkdown(event.transactionHash, this.empProps.networkId);
 
@@ -298,7 +319,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeBlockNumber = this.getLastSeenBlockNumber(latestDisputeEvents);
+    this.lastDisputeBlockNumber = this._getLastSeenBlockNumber(latestDisputeEvents);
   }
 
   async checkForNewDisputeSettlementEvents() {
@@ -351,8 +372,8 @@ class ContractMonitor {
       if (resolvedPrice) {
         // NOTE: this will need to change back to formatDecimalString when the price feed is updated following
         // subsequent UMIPS.
-        mrkdwn += `The disputed liquidation price resolved to: ${this.formatDecimalStringCollateral(
-          resolvedPrice
+        mrkdwn += `The disputed liquidation price resolved to: ${this.formatDecimalString(
+          this.normalizePriceFeedDecimals(resolvedPrice)
         )}, which resulted in a ${event.disputeSucceeded ? "successful" : "failed"} dispute. `;
       } else {
         mrkdwn += `The disputed liquidation ${event.disputeSucceeded ? "succeeded" : "failed"}. `;
@@ -365,7 +386,32 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeSettlementBlockNumber = this.getLastSeenBlockNumber(latestDisputeSettlementEvents);
+    this.lastDisputeSettlementBlockNumber = this._getLastSeenBlockNumber(latestDisputeSettlementEvents);
+  }
+
+  // Calculate the collateralization Ratio from the collateral, token amount and token price.
+  // This is found using the following equation cr = [collateral / (tokensOutstanding * price)] * 100.
+  // The number returned is scaled by 1e18.
+  _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
+    return this.normalizeCollateralDecimals(collateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(tokensOutstanding).mul(this.normalizePriceFeedDecimals(tokenPrice)))
+      .muln(100);
+  }
+
+  // Calculate the maximum price at which this liquidation would be disputable. This is found using the following
+  // equation: liquidatedCollateral / (liquidatedTokens * crRequirement)
+  _calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
+    return this.normalizeCollateralDecimals(liquidatedCollateral)
+      .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
+      .div(this.normalizeSyntheticDecimals(liquidatedTokens).mul(this.toBN(crRequirement)));
+  }
+
+  _getLastSeenBlockNumber(eventArray) {
+    if (eventArray.length == 0) {
+      return 0;
+    }
+    return eventArray[eventArray.length - 1].blockNumber;
   }
 }
 

@@ -1,6 +1,6 @@
-// saves a dataset to a folder. Users a config file, see example in createdataset.example.js
+// saves a dev mining dataset to a folder. Uses a config file, see example in devmining-dataset.example.js
 // outputs a path for you to load the mocks from.
-// node apps/CreateDataSet.js ./createdataset.example.js --network=mainnet_mnemonic
+// node apps/CreateDevMiningDataSet.js ./createdataset.example.js --network=mainnet_mnemonic
 const { Dataset } = require("../libs/datasets");
 const Config = require("../libs/config");
 const { BigQuery } = require("@google-cloud/bigquery");
@@ -16,7 +16,7 @@ async function Run(config) {
   const coingecko = Coingecko();
   const synthPrices = SynthPrices({ web3 });
   const ds = Dataset(config.datasetPath || process.cwd(), { queries, coingecko, synthPrices });
-  return ds.save(config.name, config);
+  return ds.saveDevMining(config.name, config);
 }
 
 const config = Config();

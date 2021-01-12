@@ -55,8 +55,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
-      // returns price conversion to correct priceFeedDecimals as a big number
-      return this.toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
+      // returns price conversion to correct decimals as a big number.
+      // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
+      return this.toBN(parseFixed(number.toString().substring(0, priceFeedDecimals), priceFeedDecimals).toString());
     };
   }
 
@@ -66,7 +67,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return undefined;
+      return null;
     }
 
     // Set first price period in `historicalPricePeriods` to first non-null price.
@@ -146,6 +147,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getLastUpdateTime() {
     return this.lastUpdateTime;
+  }
+
+  getLookback() {
+    return this.lookback;
   }
 
   getPriceFeedDecimals() {

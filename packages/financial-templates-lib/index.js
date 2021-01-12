@@ -1,5 +1,6 @@
 module.exports = {
   ...require("./src/clients/ExpiringMultiPartyClient"),
+  ...require("./src/clients/OptimisticOracleClient"),
   ...require("./src/clients/ExpiringMultiPartyEventClient"),
   ...require("./src/clients/TokenBalanceClient"),
   ...require("./src/helpers/delay"),

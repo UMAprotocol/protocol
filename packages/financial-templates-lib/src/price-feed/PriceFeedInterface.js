@@ -32,6 +32,17 @@ class PriceFeedInterface {
     this._abstractFunctionCalled();
   }
 
+  // This returns the precision that prices are returned in. It is called by the Medianizer price feed to enforce that all
+  // of the pricefeeds are using the same precision.
+  getPriceFeedDecimals() {
+    this._abstractFunctionCalled();
+  }
+
+  // Returns the lookback window for a historical price query. Timestamps before (currentTime - lookback) will fail if passed into
+  // `getHistoricalPrice`. This method can make clients more efficient by catching invalid historical timestamps early.
+  getLookback() {
+    this._abstractFunctionCalled();
+  }
   // Common function to throw an error if an interface method is called.
   _abstractFunctionCalled() {
     throw new Error("Abstract function called -- derived class should implement this function");

@@ -4,6 +4,8 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
+const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 
@@ -37,6 +39,31 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.ohlcPeriod // Defaults to 60 unless supplied.
+    );
+  } else if (config.type === "domfi") {
+    const requiredFields = ["pair", "lookback", "minTimeBetweenUpdates"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating DominationFinancePriceFeed",
+      config
+    });
+
+    return new DominationFinancePriceFeed(
+      logger,
+      web3,
+      config.pair,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.decimals, // This defaults to 18 unless supplied by user
+      config.tickPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "uniswap") {
     const requiredFields = ["uniswapAddress", "twapLength", "lookback"];
@@ -76,33 +103,14 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    // Loop over all the price feeds to medianize.
-    const priceFeeds = [];
-    for (const medianizedFeedConfig of config.medianizedFeeds) {
-      // The medianized feeds should inherit config options from the parent config if it doesn't define those values
-      // itself.
-      // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
-      // on the nested config.
-      const combinedConfig = { ...config, type: undefined, ...medianizedFeedConfig };
-
-      const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
-
-      if (priceFeed === null) {
-        // If one of the nested feeds errored and returned null, just return null up the stack.
-        // Note: no need to log an error since the nested feed construction should have thrown it.
-        return null;
-      }
-
-      priceFeeds.push(priceFeed);
-    }
-
     logger.debug({
       at: "createPriceFeed",
       message: "Creating MedianizerPriceFeed",
       config
     });
 
-    return new MedianizerPriceFeed(priceFeeds);
+    // Loop over all the price feeds to medianize.
+    return await _createMedianizerPriceFeed(config);
   } else if (config.type === "balancer") {
     const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback", "twapLength"];
 
@@ -127,8 +135,31 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback,
       config.twapLength,
       config.poolDecimals,
-      config.decimals // This defaults to 18 unless supplied by user
+      config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
+  } else if (config.type === "basketspread") {
+    const requiredFields = ["baselinePriceFeeds", "experimentalPriceFeeds"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating Baskets of MedianizedPriceFeeds",
+      config
+    });
+
+    // Currently, this file assumes that the baskets are lists of medianizer price feeds, and that the
+    // denominator is a medianizer pricefeed.
+    // Future work would relax these constraint and allow for the baskets and denominator to be
+    // any type of price feed.
+    const experimentalPriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.experimentalPriceFeeds);
+    const baselinePriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.baselinePriceFeeds);
+    const denominatorPriceFeed =
+      config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
+
+    return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
   }
 
   logger.error({
@@ -138,6 +169,35 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   });
 
   return null;
+
+  // Internal helper methods:
+
+  // Returns a MedianizerPriceFeed
+  async function _createMedianizerPriceFeed(medianizerConfig) {
+    const priceFeedsToMedianize = [];
+    for (const _priceFeedConfig of medianizerConfig.medianizedFeeds) {
+      // The medianized feeds should inherit config options from the parent config if it doesn't define those values
+      // itself.
+      // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
+      // on the nested config.
+      const combinedConfig = { ...config, type: undefined, ..._priceFeedConfig };
+
+      const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
+
+      if (priceFeed === null) {
+        // If one of the nested feeds errored and returned null, just return null up the stack.
+        // Note: no need to log an error since the nested feed construction should have thrown it.
+        return null;
+      }
+
+      priceFeedsToMedianize.push(priceFeed);
+    }
+    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
+  }
+  // Returns an array or "basket" of MedianizerPriceFeeds
+  async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
+    return await Promise.all(medianizerConfigs.map(config => _createMedianizerPriceFeed(config)));
+  }
 }
 
 function isMissingField(config, requiredFields, logger) {
@@ -280,8 +340,8 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     defaultConfig
   });
 
-  // Infer lookback from liquidation liveness.
-  if (emp && defaultConfig) {
+  // Infer lookback from liquidation liveness if user does not explicitly set a lookback.
+  if (emp && defaultConfig && !defaultConfig.lookback) {
     const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }

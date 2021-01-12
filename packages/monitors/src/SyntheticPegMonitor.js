@@ -1,8 +1,9 @@
 // This module monitors the synthetic peg of a given expiring multiparty contract and reports when: 1) the synthetic is
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
-const { createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
+const { ConvertDecimals, createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
 
+// TODO: Rename "medianizerPriceFeed" ==> "pegPriceFeed" and "uniswapPriceFeed" ==> "syntheticPriceFeed"
 class SyntheticPegMonitor {
   /**
    * @notice Constructs new synthetic peg monitor module.
@@ -10,6 +11,8 @@ class SyntheticPegMonitor {
    * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
+   * @param {Object} denominatorPriceFeed Optional module that can be used to divide the price returned by the
+   * `medianizerPriceFeed` in order to "denominator" that price in a new currency.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults. Example:
   *      { deviationAlertThreshold:0.2,           // Threshold used to compare observed and expected token prices.
            volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
@@ -18,22 +21,21 @@ class SyntheticPegMonitor {
            logOverrides: {deviation: "error"}     // Log level overrides.
           }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
-   *      { collateralCurrencySymbol: "DAI",
-            syntheticCurrencySymbol:"ETHBTC",
+   *      { syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
-            networkId:1 }
+            priceFeedDecimals: 18, }
    */
-  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, config, empProps }) {
+  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, denominatorPriceFeed, config, empProps }) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
     this.uniswapPriceFeed = uniswapPriceFeed;
     this.medianizerPriceFeed = medianizerPriceFeed;
+    this.denominatorPriceFeed = denominatorPriceFeed;
 
     this.web3 = web3;
 
-    // Contract constants including collateralCurrencySymbol, syntheticCurrencySymbol, priceIdentifier and networkId.
-    this.empProps = empProps;
+    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
@@ -83,6 +85,26 @@ class SyntheticPegMonitor {
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+
+    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultEmpProps = {
+      empProps: {
+        value: {},
+        isValid: x => {
+          // The config must contain the following keys and types:
+          return (
+            Object.keys(x).includes("priceIdentifier") &&
+            typeof x.priceIdentifier === "string" &&
+            Object.keys(x).includes("syntheticSymbol") &&
+            typeof x.syntheticSymbol === "string" &&
+            Object.keys(x).includes("priceFeedDecimals") &&
+            typeof x.priceFeedDecimals === "number"
+          );
+        }
+      }
+    };
+    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
@@ -93,7 +115,7 @@ class SyntheticPegMonitor {
   async checkPriceDeviation() {
     if (this.deviationAlertThreshold === 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
-    const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
+    let uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
@@ -104,6 +126,24 @@ class SyntheticPegMonitor {
         cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
       });
       return;
+    }
+
+    // If config includes a `denominatorPriceFeed` then query its price. The peg deviation will compare:
+    // (syntheticTokenPrice / denominatorPrice) against (pegTokenPrice).
+    // If `denominatorPriceFeed` is undefined, then just compare:
+    // (syntheticTokenPrice) against (pegTokenPrice).
+    if (this.denominatorPriceFeed) {
+      const denominatorPrice = this.denominatorPriceFeed.getCurrentPrice();
+      // We need a "1" scaled in the same precision that the `denominatorPrice` is getting returned in, because
+      // we want to apply the transformation:
+      // - uniswapTokenPrice * denominatorPriceFeedScaledOne / denominatorPrice
+      // which ultimately should maintain the `uniswapTokenPrice`'s precision.
+      const denominatorPriceFeedScaledOne = ConvertDecimals(
+        0,
+        this.denominatorPriceFeed.getPriceFeedDecimals(),
+        this.web3
+      )("1");
+      uniswapTokenPrice = uniswapTokenPrice.mul(denominatorPriceFeedScaledOne).div(denominatorPrice);
     }
 
     this.logger.debug({
@@ -121,11 +161,11 @@ class SyntheticPegMonitor {
         message: "Synthetic off peg alert 😵",
         mrkdwn:
           "Synthetic token " +
-          this.empProps.syntheticCurrencySymbol +
+          this.empProps.syntheticSymbol +
           " is trading at " +
-          this.formatDecimalString(uniswapTokenPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(uniswapTokenPrice)) +
           " on Uniswap. Target price is " +
-          this.formatDecimalString(cryptoWatchTokenPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(cryptoWatchTokenPrice)) +
           ". Error of " +
           this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
           "%."
@@ -176,9 +216,9 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.empProps.priceIdentifier +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) + // Note no normalizePriceFeedDecimals as this is unitless
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
@@ -229,9 +269,9 @@ class SyntheticPegMonitor {
           "Latest updated " +
           this.empProps.priceIdentifier +
           " price is " +
-          this.formatDecimalString(pricefeedLatestPrice) +
+          this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
-          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) + // Note no normalizePriceFeedDecimals as this is unitless
           "% over the last " +
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
@@ -272,12 +312,14 @@ class SyntheticPegMonitor {
   // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
   // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
   // This is equivalent of a 20 percent deviation between the numbers.
-  // Note that this logger can return negative error if the deviation is in a negative direction.
+  // Note 1) this logger can return negative error if the deviation is in a negative direction. 2) Regarding scaling,
+  // prices can be scaled arbitrarily but this function always returns 1e18 scaled number as a deviation error is
+  // a unitless number.
   _calculateDeviationError(observedValue, expectedValue) {
-    return observedValue
-      .sub(expectedValue)
+    return this.normalizePriceFeedDecimals(observedValue)
+      .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division
-      .div(expectedValue);
+      .div(this.normalizePriceFeedDecimals(expectedValue));
   }
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past

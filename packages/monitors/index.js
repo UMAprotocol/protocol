@@ -41,6 +41,7 @@ const { getWeb3 } = require("@uma/common");
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
+ * @param {Object} medianizerPriceFeedConfig Configuration to construct the denominator price feed object.
  * @return None or throws an Error.
  */
 async function run({
@@ -54,7 +55,8 @@ async function run({
   endingBlock,
   monitorConfig,
   tokenPriceFeedConfig,
-  medianizerPriceFeedConfig
+  medianizerPriceFeedConfig,
+  denominatorPriceFeedConfig
 }) {
   try {
     const { hexToUtf8 } = web3.utils;
@@ -72,28 +74,57 @@ async function run({
       endingBlock,
       monitorConfig,
       tokenPriceFeedConfig,
-      medianizerPriceFeedConfig
+      medianizerPriceFeedConfig,
+      denominatorPriceFeedConfig
     });
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     const networker = new Networker(logger);
 
+    // We want to enforce that all pricefeeds return prices in the same precision, so we'll construct one price feed
+    // initially and grab its precision to pass into the other price feeds:
+    const medianizerPriceFeed = await createReferencePriceFeedForEmp(
+      logger,
+      web3,
+      networker,
+      getTime,
+      empAddress,
+      medianizerPriceFeedConfig
+    );
+    const priceFeedDecimals = medianizerPriceFeed.getPriceFeedDecimals();
+
     // 0. Setup EMP and token instances to monitor.
-    const [networkId, latestBlock, medianizerPriceFeed, tokenPriceFeed] = await Promise.all([
+    const [networkId, latestBlock, tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
       web3.eth.net.getId(),
       web3.eth.getBlock("latest"),
-      createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, medianizerPriceFeedConfig),
-      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, tokenPriceFeedConfig)
+      createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, {
+        ...tokenPriceFeedConfig,
+        priceFeedDecimals
+      }),
+      denominatorPriceFeedConfig &&
+        createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, {
+          ...denominatorPriceFeedConfig,
+          priceFeedDecimals
+        })
     ]);
+
+    // All of the pricefeeds should return prices in the same precision, including the denominator
+    // price feed if it exists.
+    if (
+      medianizerPriceFeed.getPriceFeedDecimals() !== tokenPriceFeed.getPriceFeedDecimals() &&
+      denominatorPriceFeed &&
+      medianizerPriceFeed.getPriceFeedDecimals() !== denominatorPriceFeed.getPriceFeedDecimals()
+    ) {
+      throw new Error("Pricefeed decimals are not uniform");
+    }
 
     if (!medianizerPriceFeed || !tokenPriceFeed) {
       throw new Error("Price feed config is invalid");
     }
 
-    // Setup contract instances. NOTE that getAddress("Voting", networkId) will resolve to null in tests.
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     // Setup contract instances.
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
 
     const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
@@ -104,24 +135,19 @@ async function run({
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
 
-    const [
-      collateralCurrencySymbol,
-      syntheticCurrencySymbol,
-      collateralCurrencyDecimals,
-      syntheticCurrencyDecimals
-    ] = await Promise.all([
+    const [collateralSymbol, syntheticSymbol, collateralDecimals, syntheticDecimals] = await Promise.all([
       collateralToken.methods.symbol().call(),
       syntheticToken.methods.symbol().call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
-
     // Generate EMP properties to inform monitor modules of important info like token symbols and price identifier.
     const empProps = {
-      collateralCurrencySymbol,
-      syntheticCurrencySymbol,
-      collateralCurrencyDecimals,
-      syntheticCurrencyDecimals,
+      collateralSymbol,
+      syntheticSymbol,
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
+      priceFeedDecimals,
       priceIdentifier: hexToUtf8(priceIdentifier),
       networkId
     };
@@ -184,10 +210,20 @@ async function run({
       web3,
       uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
+      denominatorPriceFeed,
       config: monitorConfig,
       empProps
     });
 
+    logger.debug({
+      at: "Monitor#index",
+      message: "Monitor initialized",
+      collateralDecimals: Number(collateralDecimals),
+      syntheticDecimals: Number(syntheticDecimals),
+      priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()),
+      tokenPriceFeedConfig,
+      medianizerPriceFeedConfig
+    });
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
@@ -198,7 +234,8 @@ async function run({
             empEventClient.update(),
             tokenBalanceClient.update(),
             medianizerPriceFeed.update(),
-            tokenPriceFeed.update()
+            tokenPriceFeed.update(),
+            denominatorPriceFeed && denominatorPriceFeed.update()
           ]);
 
           // Run all queries within the monitor bots modules.
@@ -208,7 +245,7 @@ async function run({
             contractMonitor.checkForNewDisputeEvents(),
             contractMonitor.checkForNewDisputeSettlementEvents(),
             contractMonitor.checkForNewSponsors(),
-            // 2.  Wallet Balance monitor. Check if the bot ballances have moved past thresholds.
+            // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
             balanceMonitor.checkBotBalances(),
             // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
             crMonitor.checkWalletCrRatio(),
@@ -261,6 +298,7 @@ async function Poll(callback) {
     // Deprecate UNISWAP_PRICE_FEED_CONFIG to favor TOKEN_PRICE_FEED_CONFIG, leaving in for compatibility.
     // If nothing defined, it will default to uniswap within createPriceFeed
     const tokenPriceFeedConfigEnv = process.env.TOKEN_PRICE_FEED_CONFIG || process.env.UNISWAP_PRICE_FEED_CONFIG;
+    const denominatorPriceFeedConfigEnv = process.env.TOKEN_DENOMINATOR_PRICE_FEED_CONFIG;
 
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
@@ -314,6 +352,7 @@ async function Poll(callback) {
       // Medianizer price feed averages over a set of different sources to get an average. Config defines the exchanges
       // to use. EG: {"type":"medianizer","pair":"ethbtc", "invertPrice":true, "lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[
       // {"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"}]}
+      denominatorPriceFeedConfig: denominatorPriceFeedConfigEnv ? JSON.parse(denominatorPriceFeedConfigEnv) : null,
       medianizerPriceFeedConfig: process.env.MEDIANIZER_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
         : null
