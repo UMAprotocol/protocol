@@ -2,6 +2,7 @@
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { computeTWAP } = require("./utils");
+const { ConvertDecimals } = require("@uma/common");
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new uniswap TWAP price feed object.
@@ -13,10 +14,22 @@ class UniswapPriceFeed extends PriceFeedInterface {
    * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
    * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
-   *      reserve1/reserve0 (false).
+   * @param {Integer} poolDecimals Precision that prices are reported in on-chain
+   * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in
    * @return None or throws an Error.
    */
-  constructor(logger, uniswapAbi, web3, uniswapAddress, twapLength, historicalLookback, getTime, invertPrice) {
+  constructor(
+    logger,
+    uniswapAbi,
+    web3,
+    uniswapAddress,
+    twapLength,
+    historicalLookback,
+    getTime,
+    invertPrice,
+    poolDecimals = 18,
+    priceFeedDecimals = 18
+  ) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -27,13 +40,21 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.historicalLookback = historicalLookback;
     this.invertPrice = invertPrice;
 
+    // TODO: Should/Can we read in `poolDecimals` from the this.uniswap?
+    this.poolPrecision = poolDecimals;
+    this.decimals = priceFeedDecimals;
+
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+
+    // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
+    // on the relationship between poolPrecision and the desired decimals.
+    this.convertDecimals = ConvertDecimals(this.poolPrecision, this.decimals, this.web3);
   }
 
   getCurrentPrice() {
-    return this.currentTwap;
+    return this.currentTwap && this.convertDecimals(this.currentTwap);
   }
 
   getHistoricalPrice(time) {
@@ -42,7 +63,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return this._computeTwap(this.events, time - this.twapLength, time);
+    const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
+    return historicalPrice && this.convertDecimals(historicalPrice);
   }
 
   getLastUpdateTime() {
@@ -55,11 +77,11 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
-    return this.lastBlockPrice;
+    return this.lastBlockPrice && this.convertDecimals(this.lastBlockPrice);
   }
 
   getPriceFeedDecimals() {
-    return 18;
+    return this.decimals;
   }
 
   async update() {

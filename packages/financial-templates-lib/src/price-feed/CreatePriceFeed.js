@@ -86,7 +86,9 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.twapLength,
       config.lookback,
       getTime,
-      config.invertPrice // Not checked in config because this parameter just defaults to false.
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.poolDecimals,
+      config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "medianizer") {
     const requiredFields = ["medianizedFeeds"];
