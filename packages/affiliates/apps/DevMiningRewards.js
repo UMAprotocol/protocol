@@ -15,9 +15,9 @@ const SynthPrices = require("../libs/synthPrices");
 const { getWeb3 } = require("@uma/common");
 
 // This is the main function which configures all data sources for the calculation.
-async function App(config) {
+async function App(config, env) {
   const web3 = getWeb3();
-  let { empWhitelist = [], startTime, endTime, totalRewards } = config;
+  let { empWhitelist = [], startTime, endTime, totalRewards, fallbackPrices } = config;
   assert(empWhitelist, "requires whitelist");
   assert(startTime, "requires startTime");
   assert(endTime, "requires endTime");
@@ -29,7 +29,7 @@ async function App(config) {
   const client = new BigQuery();
   const queries = Queries({ client });
   const coingecko = Coingecko();
-  const synthPrices = SynthPrices({ web3 });
+  const synthPrices = SynthPrices({ web3, apiKey: env.CRYPTOWATCH_KEY });
 
   const rewards = DevMining({
     queries,
@@ -43,6 +43,11 @@ async function App(config) {
     rewards.utils.validateEmpInput(empInput);
     // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
     return empInput.map(rewards.utils.toChecksumAddress);
+  });
+
+  fallbackPrices = fallbackPrices.map(([empAddress, price]) => {
+    // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
+    return [rewards.utils.toChecksumAddress(empAddress), price];
   });
 
   // get emp info
@@ -70,7 +75,8 @@ async function App(config) {
     collateralTokens,
     collateralTokenDecimals,
     syntheticTokens,
-    syntheticTokenDecimals
+    syntheticTokenDecimals,
+    fallbackPrices
   });
 
   return {
@@ -82,7 +88,7 @@ async function App(config) {
 
 const config = Config();
 
-App(config)
+App(config, process.env)
   .then(x => console.log(JSON.stringify(x, null, 2)))
   .catch(console.error)
   // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
