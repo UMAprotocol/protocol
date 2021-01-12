@@ -149,7 +149,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 }
         ]
       },
       {

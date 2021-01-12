@@ -117,8 +117,8 @@ contract("index.js", function(accounts) {
     defaultPriceFeedConfig = {
       type: "uniswap",
       uniswapAddress: uniswap.address,
-      twapLength: 1,
-      lookback: 1,
+      twapLength: 2,
+      lookback: 7200,
       getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
     };
 

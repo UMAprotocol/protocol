@@ -90,7 +90,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     const lookbackWindow = this.twapLength + this.historicalLookback;
     const latestBlockNumber = (await this.web3.eth.getBlock("latest")).number;
     const earliestBlockNumber = latestBlockNumber - Math.ceil(lookbackWindow / (await averageBlockTimeSeconds()));
-    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: earliestBlockNumber });
+    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(earliestBlockNumber, 0) });
 
     // If there are no prices, return null to allow the user to handle the absense of data.
     if (events.length === 0) {
