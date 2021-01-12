@@ -10,7 +10,7 @@
   They should also be in the present simple tense.
 
   Examples:
-  
+
   feat(dvm): adds a new function to compute voting rewards offchain
   fix(monitor): fixes broken link in liquidation log
   feat(voter-dapp): adds countdown timer component to the header
@@ -40,6 +40,11 @@ Briefly summarize what changes were made to accomplish the motivation above.
 **Details**
 
 This may be unnecessary for some PRs. Catch-all for detailed explanations about the implementation decisions and implications of the change.
+
+
+**Testing**
+
+Explain how you tested the changes in this pull request and how reviewers should test the changes.
 
 
 **Issue(s)**
