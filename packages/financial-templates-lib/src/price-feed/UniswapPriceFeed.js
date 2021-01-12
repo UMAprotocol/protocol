@@ -2,7 +2,7 @@
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { computeTWAP } = require("./utils");
-const { ConvertDecimals } = require("@uma/common");
+const { ConvertDecimals, averageBlockTimeSeconds } = require("@uma/common");
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new uniswap TWAP price feed object.
@@ -85,8 +85,12 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-    // TODO: optimize this call. This may be very slow or break if there are many transactions.
-    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: 0 });
+    // Approximate the first block from which we'll need price data from based on the
+    // lookback and twap length:
+    const lookbackWindow = this.twapLength + this.historicalLookback;
+    const latestBlockNumber = (await this.web3.eth.getBlock("latest")).number;
+    const earliestBlockNumber = latestBlockNumber - Math.ceil(lookbackWindow / (await averageBlockTimeSeconds()));
+    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: earliestBlockNumber });
 
     // If there are no prices, return null to allow the user to handle the absense of data.
     if (events.length === 0) {
@@ -115,7 +119,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // check enables us to support both types of getTime functions.
     const currentTime = this.getTime.constructor.name === "AsyncFunction" ? await this.getTime() : this.getTime();
 
-    const lookbackWindowStart = currentTime - (this.twapLength + this.historicalLookback);
+    const lookbackWindowStart = currentTime - lookbackWindow;
     let i = events.length;
     while (i !== 0) {
       const event = events[--i];

@@ -265,7 +265,6 @@ const defaultConfigs = {
       },
       {
         type: "medianizer",
-        computeMean: true,
         medianizedFeeds: [
           // BAC/DAI:
           { type: "uniswap", uniswapAddress: "0xd4405f0704621dbe9d4dea60e128e0c3b26bddbd", twapLength: 2 }
