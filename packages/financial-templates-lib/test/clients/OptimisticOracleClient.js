@@ -121,7 +121,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     assert.deepStrictEqual(result, []);
     result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
-    result = client.getExpiredProposals(proposer);
+    result = client.getSettleableProposals(proposer);
     assert.deepStrictEqual(result, []);
 
     // Request and update again, should show no proposals.
@@ -129,7 +129,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await client.update();
     result = client.getUndisputedProposals();
     assert.deepStrictEqual(result, []);
-    result = client.getExpiredProposals(proposer);
+    result = client.getSettleableProposals(proposer);
     assert.deepStrictEqual(result, []);
 
     // Should have one price request.
@@ -166,7 +166,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     ]);
     result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
-    result = client.getExpiredProposals(proposer);
+    result = client.getSettleableProposals(proposer);
     assert.deepStrictEqual(result, []);
 
     // Now, advance time so that the proposal expires and check that the client detects the new state:
@@ -176,10 +176,10 @@ contract("OptimisticOracleClient.js", function(accounts) {
     assert.deepStrictEqual(result, []);
     result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
-    // Note: `getExpiredProposals` only returns proposals where the `proposer` is involved
-    result = client.getExpiredProposals(rando);
+    // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
+    result = client.getSettleableProposals(rando);
     assert.deepStrictEqual(result, []);
-    result = client.getExpiredProposals(proposer);
+    result = client.getSettleableProposals(proposer);
     assert.deepStrictEqual(result, [
       {
         requester: optimisticRequester.address,

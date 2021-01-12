@@ -60,7 +60,7 @@ class OptimisticOracleClient {
 
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
-  getExpiredProposals(caller) {
+  getSettleableProposals(caller) {
     return this.expiredProposals.filter(event => {
       return event.proposer === caller;
     });
