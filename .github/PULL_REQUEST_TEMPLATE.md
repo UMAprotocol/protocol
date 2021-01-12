@@ -44,7 +44,7 @@ This may be unnecessary for some PRs. Catch-all for detailed explanations about 
 
 **Testing**
 
-Explain how you tested the changes in this pull request and how reviewers should test the changes.
+List the steps for reviewers to test the changes.
 
 
 **Issue(s)**
