@@ -124,8 +124,8 @@ contract("ServerlessHub.js", function(accounts) {
     defaultUniswapPricefeedConfig = {
       type: "uniswap",
       uniswapAddress: uniswap.address,
-      twapLength: 1,
-      lookback: 1
+      twapLength: 2,
+      lookback: 7200
     };
 
     // Set two uniswap prices to give it a little history.
