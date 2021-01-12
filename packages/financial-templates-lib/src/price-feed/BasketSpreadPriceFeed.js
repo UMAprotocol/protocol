@@ -112,6 +112,30 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
+  // Note: This method will fail if any constituent pricefeed has not implemented `getHistoricalPricePeriods`, which
+  // is basically every price feed except for the CryptoWatchPriceFeed.
+  getHistoricalPricePeriods() {
+    // Fetch all historical price data for all price feeds within the medianizer set.
+    const historicalPricePeriods = this.allPriceFeeds.map(priceFeed => priceFeed.getHistoricalPricePeriods());
+
+    let processedMedianHistoricalPricePeriods = [];
+
+    // For each discrete point in time within the set of price feeds iterate over and compute the median.
+    for (let pricePointIndex = 0; pricePointIndex < historicalPricePeriods[0].length; pricePointIndex++) {
+      // Create an array of prices at the pricePointIndex for each price feed. The median is taken over this set.
+      const periodPrices = historicalPricePeriods.map(historicalPrice => {
+        return historicalPrice[pricePointIndex]
+          ? historicalPrice[pricePointIndex].closePrice
+          : this.priceFeeds[0].toBN("0");
+      });
+      processedMedianHistoricalPricePeriods[pricePointIndex] = [
+        historicalPricePeriods[0][pricePointIndex].closeTime,
+        this.computeMean ? this._computeMean(periodPrices).toString() : this._computeMedian(periodPrices).toString()
+      ];
+    }
+    return processedMedianHistoricalPricePeriods;
+  }
+
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
     const lastUpdateTimes = this.allPriceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
