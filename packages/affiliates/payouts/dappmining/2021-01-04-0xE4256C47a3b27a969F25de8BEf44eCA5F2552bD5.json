@@ -1,0 +1,22 @@
+{
+  "config": {
+    "empAddress": "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
+    "startTime": 1609718400000,
+    "endTime": 1610323200000,
+    "totalRewards": 5881,
+    "whitelist": ["0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71"],
+    "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35"
+  },
+  "startBlock": {
+    "timestamp": 1609718420000,
+    "number": 11584641
+  },
+  "endBlock": {
+    "timestamp": 1610323184000,
+    "number": 11630233
+  },
+  "rewards": {
+    "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71": "0.652231569675522361",
+    "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35": "5880.347768430324471758"
+  }
+}
