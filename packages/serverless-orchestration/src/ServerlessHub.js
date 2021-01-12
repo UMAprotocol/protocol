@@ -90,7 +90,10 @@ hub.post("/", async (req, res) => {
       const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
       botConfigs[botName] = botConfig;
       promiseArray.push(
-        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(hubConfig.rejectSpokeDelay)])
+        Promise.race([
+          _executeServerlessSpoke(spokeUrl, botConfig),
+          _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName)
+        ])
       );
     }
     logger.debug({
@@ -139,7 +142,7 @@ hub.post("/", async (req, res) => {
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(hubConfig.rejectSpokeDelay)
+            _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName)
           ])
         );
       });
@@ -398,11 +401,12 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
 }
 
 // Returns a promise that is rejected after seconds delay. Used to limit how long a spoke can run for.
-const _rejectAfterDelay = seconds =>
+const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
   new Promise((_, reject) => {
     setTimeout(reject, seconds * 1000, {
       status: "timeout",
-      message: `The spoke call took longer than ${seconds} seconds to reply`
+      message: `The spoke call took longer than ${seconds} seconds to reply`,
+      childProcessIdentifier
     });
   });
 
