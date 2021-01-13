@@ -264,6 +264,8 @@ contract("Disputer.js", function(accounts) {
         // Try disputing before any mocked prices are set, simulating a situation where the pricefeed
         // fails to return a price. The disputer should emit a "warn" level log about each missing prices.
         await disputer.update();
+        const earliestLiquidationTime = Number(empClient.getUndisputedLiquidations()[0].liquidationTime);
+        priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
         await disputer.dispute();
         assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
 
@@ -281,6 +283,21 @@ contract("Disputer.js", function(accounts) {
 
         // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
         priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+
+        // Disputing a timestamp that is before the pricefeed's lookback window will do nothing and print no warnings:
+        // Set earliest timestamp to AFTER the liquidation:
+        priceFeedMock.setLastUpdateTime(earliestLiquidationTime + 2);
+        priceFeedMock.setLookback(1);
+        await disputer.update();
+        await disputer.dispute();
+        // There should be no liquidations created from any sponsor account
+        assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+        assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+        assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+        assert.equal(spy.callCount, 3); // No info level logs should be sent.
+
+        // Now, set lookback such that the liquidation timestamp is captured and the dispute should go through:
+        priceFeedMock.setLookback(2);
         await disputer.update();
         await disputer.dispute();
         assert.equal(spy.callCount, 5); // 2 info level logs should be sent at the conclusion of the disputes.
@@ -622,12 +639,17 @@ contract("Disputer.js", function(accounts) {
           // However, say disputer operator has provided an override price of 1.2 USD per token. This makes the liquidation
           // valid and the disputer should do nothing: 125/(100*1.2)=1.0
           await disputer.update();
+          const earliestLiquidationTime = Number(empClient.getUndisputedLiquidations()[0].liquidationTime);
+          priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
           await disputer.dispute(convertPrice("1.2"));
           assert.equal(spy.callCount, 0); // 0 info level logs should be sent as no dispute.
           assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
 
           // Next assume that the override price is in fact 1 USD per token. At this price point the liquidation is now
-          // invalid that the disputer should try dispute the tx.
+          // invalid that the disputer should try dispute the tx. This should work even if the liquidation timestamp is
+          // earlier than the price feed's earliest available timestamp:
+          priceFeedMock.setLastUpdateTime(earliestLiquidationTime + 2);
+          priceFeedMock.setLookback(1);
           await disputer.update();
           await disputer.dispute(convertPrice("1.0"));
           assert.equal(spy.callCount, 1); // 1 info level logs should be sent for the dispute

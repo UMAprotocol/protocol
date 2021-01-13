@@ -46,6 +46,8 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.5"));
+    assert.equal(uniswapPriceFeed.getLastUpdateTime(), mockTime);
+    assert.equal(uniswapPriceFeed.getLookback(), 3600);
   });
 
   it("Correctly selects most recent price", async function() {
@@ -242,6 +244,136 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2"));
+  });
+
+  describe("Can return non-18 precision prices", function() {
+    let scaleDownPriceFeed, scaleUpPriceFeed;
+    beforeEach(async function() {
+      // Here we specify that the pool is reporting a 6 decimal precision price, and we want prices in
+      // 12 decimals. This should scale up prices by 10e6.
+      scaleUpPriceFeed = new UniswapPriceFeed(
+        dummyLogger,
+        Uniswap.abi,
+        web3,
+        uniswapMock.address,
+        3600,
+        3600,
+        () => mockTime,
+        false,
+        6,
+        12
+      );
+      // Here we specify that the balancer pool is returning a 6 decimal precision price, and we want prices in
+      // 4 decimals. This should scale down prices by 10e2.
+      scaleDownPriceFeed = new UniswapPriceFeed(
+        dummyLogger,
+        Uniswap.abi,
+        web3,
+        uniswapMock.address,
+        3600,
+        3600,
+        () => mockTime,
+        false,
+        6,
+        4
+      );
+    });
+    it("Basic 2 price TWAP", async function() {
+      // Update the prices with a small amount of time between.
+      const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
+      await delay(1);
+      const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));
+
+      const getBlockTime = async result => {
+        return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
+      };
+
+      // Grab the exact blocktimes.
+      const time1 = await getBlockTime(result1);
+      const time2 = await getBlockTime(result2);
+      mockTime = time2 + 1;
+
+      // Allow the library to compute the TWAP.
+      await scaleUpPriceFeed.update();
+      await scaleDownPriceFeed.update();
+
+      const totalTime = mockTime - time1;
+      const weightedPrice1 = toBN(toWei("1")).muln(time2 - time1);
+      const weightedPrice2 = toBN(toWei("0.5")); // 0.5 * 1 second since the mockTime is one second past time2.
+
+      // Compare the scaled TWAPs.
+      assert.equal(
+        scaleUpPriceFeed.getCurrentPrice().toString(),
+        weightedPrice1
+          .add(weightedPrice2)
+          .divn(totalTime)
+          .muln(10 ** 6) // scale UP by 10e6
+          .toString()
+      );
+      assert.equal(
+        scaleDownPriceFeed.getCurrentPrice().toString(),
+        weightedPrice1
+          .add(weightedPrice2)
+          .divn(totalTime)
+          .divn(10 ** 2) // scale DOWN by 10e2
+          .toString()
+      );
+    });
+    it("Basic historical TWAP", async function() {
+      // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+      const currentTime = Math.round(new Date().getTime() / 1000);
+
+      // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
+      await mineTransactionsAtTime(
+        web3,
+        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))],
+        currentTime - 7200,
+        owner
+      );
+
+      // At an hour and a half ago, set the price to 90.
+      await mineTransactionsAtTime(
+        web3,
+        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))],
+        currentTime - 5400,
+        owner
+      );
+
+      // At an hour ago, set the price to 80.
+      await mineTransactionsAtTime(
+        web3,
+        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))],
+        currentTime - 3600,
+        owner
+      );
+
+      // At half an hour ago, set the price to 70.
+      await mineTransactionsAtTime(
+        web3,
+        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))],
+        currentTime - 1800,
+        owner
+      );
+
+      mockTime = currentTime;
+
+      await scaleDownPriceFeed.update();
+      await scaleUpPriceFeed.update();
+
+      // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
+      assert.equal(
+        scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        toBN(toWei("95"))
+          .muln(10 ** 6)
+          .toString()
+      );
+      assert.equal(
+        scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        toBN(toWei("95"))
+          .divn(10 ** 2)
+          .toString()
+      );
+    });
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.

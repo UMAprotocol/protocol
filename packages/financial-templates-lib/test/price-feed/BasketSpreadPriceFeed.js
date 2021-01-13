@@ -214,6 +214,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
+      assert.equal(basketSpreadPriceFeed.getLookback(), 3600);
     });
     it("Custom price precision", async function() {
       // (same calculations and results as previous test, but precision should be different)

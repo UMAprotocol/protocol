@@ -123,6 +123,15 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
+  // Returns the shortest lookback window of the constituent price feeds.
+  getLookback() {
+    const lookbacks = this.allPriceFeeds.map(priceFeed => priceFeed.getLookback());
+    if (lookbacks.some(element => element === undefined || element === null)) {
+      return null;
+    }
+    return Math.min(...lookbacks);
+  }
+
   getPriceFeedDecimals() {
     // Check that every price feeds decimals are the same.
     const priceFeedDecimals = this.allPriceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());

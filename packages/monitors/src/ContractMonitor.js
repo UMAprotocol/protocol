@@ -188,6 +188,33 @@ class ContractMonitor {
 
     for (let event of newLiquidationEvents) {
       const liquidationTime = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
+      const historicalLookbackWindow =
+        Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
+
+      // If liquidation time is before the earliest possible historical price, then we can skip this liquidation
+      // because we will not be able to get a historical price.
+      if (liquidationTime < historicalLookbackWindow) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
+          liquidationTime,
+          historicalLookbackWindow
+        });
+        continue;
+      }
+
+      // If liquidation time is before historical lookback window, then we can skip this liquidation
+      // because we will not be able to get a historical price.
+      if (liquidationTime < this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
+          liquidationTime,
+          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
+        });
+        continue;
+      }
+
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
       let collateralizationString;
       let maxPriceToBeDisputableString;

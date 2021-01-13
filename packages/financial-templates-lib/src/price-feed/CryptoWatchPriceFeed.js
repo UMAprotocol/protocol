@@ -67,7 +67,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return undefined;
+      return null;
     }
 
     // Set first price period in `historicalPricePeriods` to first non-null price.
@@ -147,6 +147,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getLastUpdateTime() {
     return this.lastUpdateTime;
+  }
+
+  getLookback() {
+    return this.lookback;
   }
 
   getPriceFeedDecimals() {

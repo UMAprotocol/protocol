@@ -42,7 +42,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
   }
 
   // Main call to update cache, will take care of fetching all blocks, caching and pruning cache.
-  async function update(lookback, now, bufferBlockLength = 50) {
+  async function update(lookback, now, bufferBlockPercent = 1.1) {
     assert(lookback >= 0, "requires lookback in seconds");
     assert(now >= 0, "requires current time");
 
@@ -56,7 +56,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     // to be negative.
     const earliestBlockHeight = Math.max(
       0,
-      latestBlockHeight - Math.floor(lookback / (await averageBlockTimeSeconds())) - bufferBlockLength
+      latestBlockHeight - Math.floor((bufferBlockPercent * lookback) / (await averageBlockTimeSeconds()))
     );
 
     // Push all getBlock() promises into an array to execute in parallel
