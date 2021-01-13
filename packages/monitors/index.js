@@ -172,7 +172,7 @@ async function run({
       logger,
       expiringMultiPartyEventClient: empEventClient,
       priceFeed: medianizerPriceFeed,
-      config: monitorConfig,
+      monitorConfig,
       empProps,
       voting
     });
@@ -189,7 +189,7 @@ async function run({
     const balanceMonitor = new BalanceMonitor({
       logger,
       tokenBalanceClient,
-      config: monitorConfig,
+      monitorConfig,
       empProps
     });
 
@@ -200,7 +200,7 @@ async function run({
       logger,
       expiringMultiPartyClient: empClient,
       priceFeed: medianizerPriceFeed,
-      config: monitorConfig,
+      monitorConfig,
       empProps
     });
 
@@ -211,7 +211,7 @@ async function run({
       uniswapPriceFeed: tokenPriceFeed,
       medianizerPriceFeed,
       denominatorPriceFeed,
-      config: monitorConfig,
+      monitorConfig,
       empProps
     });
 

@@ -15,7 +15,7 @@ class ContractMonitor {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} expiringMultiPartyEventClient Client used to query EMP events for contract state updates.
    * @param {Object} priceFeed Module used to query the current token price.
-   * @param {Object} config Object containing two arrays of monitored liquidator and disputer bots to inform logs Example:
+   * @param {Object} monitorConfig Object containing two arrays of monitored liquidator and disputer bots to inform logs Example:
    *      { "monitoredLiquidators": ["0x1234","0x5678"],
    *        "monitoredDisputers": ["0x1234","0x5678"] }
    * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
@@ -28,7 +28,7 @@ class ContractMonitor {
             networkId:1 }
    * @param {Object} votingContract DVM to query price requests.
    */
-  constructor({ logger, expiringMultiPartyEventClient, priceFeed, config, empProps, votingContract }) {
+  constructor({ logger, expiringMultiPartyEventClient, priceFeed, monitorConfig, empProps, votingContract }) {
     this.logger = logger;
 
     // Offchain price feed to get the price for liquidations.
@@ -58,7 +58,7 @@ class ContractMonitor {
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
-    // Bot and ecosystem accounts to monitor, overridden by config parameter.
+    // Bot and ecosystem accounts to monitor, overridden by monitorConfig parameter.
     const defaultConfig = {
       // By default monitor no liquidator bots (empty array).
       monitoredLiquidators: {
@@ -87,7 +87,7 @@ class ContractMonitor {
       }
     };
 
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
     // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
     const defaultEmpProps = {
@@ -114,7 +114,15 @@ class ContractMonitor {
         }
       }
     };
-    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+    Object.assign(
+      this,
+      createObjectFromDefaultProps(
+        {
+          empProps
+        },
+        defaultEmpProps
+      )
+    );
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;

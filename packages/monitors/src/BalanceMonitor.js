@@ -13,7 +13,7 @@ class BalanceMonitor {
    * @param {Object} tokenBalanceClient Client used to query token balances for monitored bots and wallets.
    * @param tokenBalanceClient Instance of the TokenBalanceClient from the `financial-templates lib.
    * which provides synchronous access to address balances for a given expiring multi party contract.
-   * @param {Object} config Object containing configuration for the balance monitor. Only option is a `botsToMonitor` 
+   * @param {Object} monitorConfig Object containing configuration for the balance monitor. Only option is a `botsToMonitor` 
    * which is defines an array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
    *      and`syntheticThreshold` must be given. Example:
    *      { botsToMonitor:[{ name: "Liquidator Bot",
@@ -31,7 +31,7 @@ class BalanceMonitor {
             syntheticDecimals: 18,
             networkId:1 }
    */
-  constructor({ logger, tokenBalanceClient, config, empProps }) {
+  constructor({ logger, tokenBalanceClient, monitorConfig, empProps }) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
@@ -80,9 +80,9 @@ class BalanceMonitor {
       }
     };
 
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
-    // Loop over all bots in the provided config and register them in the tokenBalanceClient. This will ensure that
+    // Loop over all bots in the provided monitorConfig and register them in the tokenBalanceClient. This will ensure that
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
     this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
 
