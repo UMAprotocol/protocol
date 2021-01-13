@@ -148,8 +148,8 @@ class OptimisticOracleClient {
     this.expiredProposals = undisputedProposals.filter(proposal => isExpired(proposal));
     this.undisputedProposals = undisputedProposals.filter(proposal => !isExpired(proposal));
 
-    // Store disputes that can be settled:
-    let resolvedPrices = await Promise.all(
+    // Store disputes that were resolved and can be settled:
+    let resolvedDisputeEvents = await Promise.all(
       disputeEvents.map(async disputeEvent => {
         try {
           // When someone disputes an OO proposal, the OO requests a price to the DVM with a re-formatted
@@ -179,11 +179,11 @@ class OptimisticOracleClient {
       })
     );
     // Remove undefined entries, marking disputes that did not have resolved prices
-    resolvedPrices = resolvedPrices.filter(event => event !== undefined);
+    resolvedDisputeEvents = resolvedDisputeEvents.filter(event => event !== undefined);
 
     // Filter out disputes that were already settled and reformat data.
-    resolvedPrices = await Promise.all(
-      resolvedPrices.map(async event => {
+    let unsettledResolvedDisputeEvents = await Promise.all(
+      resolvedDisputeEvents.map(async event => {
         const state = await this.oracle.methods
           .getState(
             event.returnValues.requester,
@@ -205,8 +205,8 @@ class OptimisticOracleClient {
         }
       })
     );
-    resolvedPrices = resolvedPrices.filter(event => event !== undefined);
-    this.settleableDisputes = resolvedPrices;
+    unsettledResolvedDisputeEvents = unsettledResolvedDisputeEvents.filter(event => event !== undefined);
+    this.settleableDisputes = unsettledResolvedDisputeEvents;
 
     // Determine which undisputed proposals SHOULD be disputed based on current prices:
     // TODO: This would involve having a pricefeed for each identifier. This logic might be
