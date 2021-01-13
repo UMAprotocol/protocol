@@ -172,21 +172,18 @@ class OptimisticOracleClient {
           );
           if (resolvedPrice !== null) {
             return disputeEvent;
-          } else {
-            return null;
           }
         } catch (error) {
-          return null;
+          // No resolved price available, do nothing.
         }
       })
     );
-    let disputesWithResolvedPrices = resolvedPrices.filter(resolvedPrice => {
-      return resolvedPrice !== null;
-    });
+    // Remove undefined entries, marking disputes that did not have resolved prices
+    resolvedPrices = resolvedPrices.filter(event => event !== undefined);
 
-    // Filter out disputes that were already settled
-    let disputeData = await Promise.all(
-      disputesWithResolvedPrices.map(async event => {
+    // Filter out disputes that were already settled and reformat data.
+    resolvedPrices = await Promise.all(
+      resolvedPrices.map(async event => {
         const state = await this.oracle.methods
           .getState(
             event.returnValues.requester,
@@ -195,29 +192,25 @@ class OptimisticOracleClient {
             event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x"
           )
           .call();
-        return {
-          ...event,
-          state
-        };
+
+        // For unsettled disputes, reformat the data:
+        if (state !== OptimisticOracleRequestStatesEnum.SETTLED) {
+          return {
+            requester: event.returnValues.requester,
+            proposer: event.returnValues.proposer,
+            disputer: event.returnValues.disputer,
+            identifier: this.hexToUtf8(event.returnValues.identifier),
+            timestamp: event.returnValues.timestamp
+          };
+        }
       })
     );
-
-    // Reset settleable disputes with clean state
-    this.settleableDisputes = [];
-    disputeData.map(async dispute => {
-      if (dispute.state !== OptimisticOracleRequestStatesEnum.SETTLED) {
-        this.settleableDisputes.push({
-          requester: dispute.returnValues.requester,
-          proposer: dispute.returnValues.proposer,
-          disputer: dispute.returnValues.disputer,
-          identifier: this.hexToUtf8(dispute.returnValues.identifier),
-          timestamp: dispute.returnValues.timestamp
-        });
-      }
-    });
+    resolvedPrices = resolvedPrices.filter(event => event !== undefined);
+    this.settleableDisputes = resolvedPrices;
 
     // Determine which undisputed proposals SHOULD be disputed based on current prices:
-    // TODO: This would involve having a pricefeed for each identifier
+    // TODO: This would involve having a pricefeed for each identifier. This logic might be
+    // better placed in the OO Keeper instead of the client.
 
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
