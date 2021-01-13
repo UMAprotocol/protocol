@@ -125,21 +125,22 @@ class OptimisticOracleClient {
     });
 
     // Store proposals that have NOT been disputed:
-    let undisputedProposals = proposalEvents.filter(event => {
-      const key = this._getPriceRequestKey(event);
-      const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
-      return hasDispute === undefined;
-    });
-    undisputedProposals = undisputedProposals.map(event => {
-      return {
-        requester: event.returnValues.requester,
-        proposer: event.returnValues.proposer,
-        identifier: this.hexToUtf8(event.returnValues.identifier),
-        timestamp: event.returnValues.timestamp,
-        proposedPrice: event.returnValues.proposedPrice,
-        expirationTimestamp: event.returnValues.expirationTimestamp
-      };
-    });
+    let undisputedProposals = proposalEvents
+      .filter(event => {
+        const key = this._getPriceRequestKey(event);
+        const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
+        return hasDispute === undefined;
+      })
+      .map(event => {
+        return {
+          requester: event.returnValues.requester,
+          proposer: event.returnValues.proposer,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          timestamp: event.returnValues.timestamp,
+          proposedPrice: event.returnValues.proposedPrice,
+          expirationTimestamp: event.returnValues.expirationTimestamp
+        };
+      });
 
     // Filter proposals based on their expiration timestamp:
     const isExpired = proposal => {
@@ -177,9 +178,8 @@ class OptimisticOracleClient {
           // No resolved price available, do nothing.
         }
       })
-    );
-    // Remove undefined entries, marking disputes that did not have resolved prices
-    resolvedDisputeEvents = resolvedDisputeEvents.filter(event => event !== undefined);
+      // Remove undefined entries, marking disputes that did not have resolved prices
+    ).filter(event => event !== undefined);
 
     // Filter out disputes that were already settled and reformat data.
     let unsettledResolvedDisputeEvents = await Promise.all(
@@ -204,8 +204,7 @@ class OptimisticOracleClient {
           };
         }
       })
-    );
-    unsettledResolvedDisputeEvents = unsettledResolvedDisputeEvents.filter(event => event !== undefined);
+    ).filter(event => event !== undefined);
     this.settleableDisputes = unsettledResolvedDisputeEvents;
 
     // Determine which undisputed proposals SHOULD be disputed based on current prices:
