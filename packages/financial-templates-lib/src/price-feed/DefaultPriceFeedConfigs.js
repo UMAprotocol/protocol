@@ -78,7 +78,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
@@ -86,7 +91,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
@@ -141,7 +151,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
@@ -149,7 +164,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
@@ -197,7 +217,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "ustusdt" }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
@@ -205,7 +230,12 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
