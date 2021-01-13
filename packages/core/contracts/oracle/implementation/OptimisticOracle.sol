@@ -293,7 +293,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
-        // Event.
         emit ProposePrice(
             requester,
             proposer,
@@ -386,7 +385,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.currency.safeTransfer(requester, refund);
         }
 
-        // Event.
         emit DisputePrice(requester, request.proposer, disputer, identifier, timestamp, ancillaryData);
 
         // Callback.
@@ -585,7 +583,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             revert("_settle: not settleable");
         }
 
-        // Event.
         emit Settle(
             requester,
             request.proposer,
