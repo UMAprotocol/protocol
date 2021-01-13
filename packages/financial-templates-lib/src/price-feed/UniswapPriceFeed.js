@@ -106,7 +106,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
       events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
     }
 
-    // If there are still no prices, return null to allow the user to handle the absense of data.
+    // If there are still no prices, return null to allow the user to handle the absence of data.
     if (events.length === 0) {
       this.currentTwap = null;
       this.lastBlockPrice = null;
