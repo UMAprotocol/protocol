@@ -5,6 +5,7 @@ const { toBN } = web3.utils;
 contract("Price Feed Utils", async function() {
   let blockHistory, priceHistory;
   const blockCount = 10;
+  const lookback = 7200;
 
   async function getPrice(number) {
     return number;
@@ -21,7 +22,7 @@ contract("Price Feed Utils", async function() {
   before(async function() {
     blockHistory = BlockHistory(getBlock);
     priceHistory = PriceHistory(getPrice);
-    await blockHistory.update(blockCount, blockCount);
+    await blockHistory.update(lookback, blockCount);
   });
   describe("BlockHistory", function() {
     it("listBlocks", async function() {

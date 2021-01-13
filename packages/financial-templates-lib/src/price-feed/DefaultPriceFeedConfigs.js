@@ -149,7 +149,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          { type: "cryptowatch", exchange: "uniswap-v2", pair: "busdusdt" }
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 }
         ]
       },
       {
@@ -249,6 +249,51 @@ const defaultConfigs = {
         { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
       ]
     }
+  },
+  "ELASTIC_STABLESPREAD/USDC": {
+    type: "basketspread",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "uniswap-v2", pair: "fraxusdc" }]
+      },
+      {
+        type: "medianizer",
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "uniswap-v2", pair: "esdusdc" }]
+      },
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          // BAC/DAI:
+          { type: "uniswap", uniswapAddress: "0xd4405f0704621dbe9d4dea60e128e0c3b26bddbd", twapLength: 2 }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ]
   },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
