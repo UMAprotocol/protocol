@@ -110,12 +110,6 @@ hub.post("/", async (req, res) => {
     // and importantly the full execution output which can be used in debugging.
     const results = await Promise.allSettled(promiseArray);
 
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Batch execution promise resolved",
-      results
-    });
-
     // Validate that the promises returned correctly. If any spokes rejected it is possible that it was due to a networking
     // or internal GCP error. Re-try these executions. If a response is code 500 or contains an error then log it as an error.
     let errorOutputs = {};
