@@ -60,18 +60,14 @@ class BalancerPriceFeed extends PriceFeedInterface {
       }
     });
 
-    // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
+    // poolDecimals represents the # of decimals that Balancer pool prices are returned in.
     // TODO: Should/Can we read in `poolDecimals` from this.contract?
-    this.poolPrecision = poolDecimals;
+    this.poolDecimals = poolDecimals;
     this.priceFeedDecimals = priceFeedDecimals;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
-    // on the relationship between poolPrecision and the desired decimals.
-    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(
-      this.poolPrecision,
-      this.priceFeedDecimals,
-      this.web3
-    );
+    // on the relationship between pool precision and the desired decimals.
+    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
   getHistoricalPrice(time) {

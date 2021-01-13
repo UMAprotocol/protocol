@@ -45,7 +45,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.bufferBlockPercent = 1.1;
 
     // TODO: Should/Can we read in `poolDecimals` from the this.uniswap?
-    this.poolPrecision = poolDecimals;
+    this.poolDecimals = poolDecimals;
     this.priceFeedDecimals = priceFeedDecimals;
 
     // Helper functions from web3.
@@ -53,12 +53,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.toWei = this.web3.utils.toWei;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
-    // on the relationship between poolPrecision and the desired decimals.
-    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(
-      this.poolPrecision,
-      this.priceFeedDecimals,
-      this.web3
-    );
+    // on the relationship between pool precision and the desired decimals.
+    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
   getCurrentPrice() {
