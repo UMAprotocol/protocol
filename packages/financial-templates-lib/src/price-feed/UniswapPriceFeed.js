@@ -39,6 +39,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
     this.invertPrice = invertPrice;
+    // The % of the lookback window (historicalLookback + twapLength) that we want to query for Uniswap
+    // Sync events. For example, 1.1 = 110% meaning that we'll look back 110% * (historicalLookback + twapLength)
+    // seconds, in blocks, for Sync events.
+    this.bufferBlockPercent = 1.1;
 
     // TODO: Should/Can we read in `poolDecimals` from the this.uniswap?
     this.poolPrecision = poolDecimals;
@@ -89,10 +93,20 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // lookback and twap length:
     const lookbackWindow = this.twapLength + this.historicalLookback;
     const latestBlockNumber = (await this.web3.eth.getBlock("latest")).number;
-    const earliestBlockNumber = latestBlockNumber - Math.ceil(lookbackWindow / (await averageBlockTimeSeconds()));
-    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(earliestBlockNumber, 0) });
+    // Add cushion in case `averageBlockTimeSeconds` overestimates the seconds per block:
+    const lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
+    const earliestBlockNumber = latestBlockNumber - lookbackBlocks;
+    let fromBlock = earliestBlockNumber;
+    let events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
 
-    // If there are no prices, return null to allow the user to handle the absense of data.
+    // For low-volume pools, it is possible that there are no Sync events within the lookback window.
+    // To cover these cases, we'll keep looking back until we find a window with a sync event.
+    while (fromBlock >= 0 && events.length === 0) {
+      fromBlock -= lookbackBlocks;
+      events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
+    }
+
+    // If there are still no prices, return null to allow the user to handle the absense of data.
     if (events.length === 0) {
       this.currentTwap = null;
       this.lastBlockPrice = null;
