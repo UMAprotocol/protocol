@@ -98,7 +98,8 @@ function _stripExecStdout(output) {
   // if the spoke was running a process that did not correctly generate a winston log. In this case simply return the stripped output.
   try {
     const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
-    return JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+    const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
+    return logsArray.map(logMessage => logMessage["message"]);
   } catch (error) {
     return _regexStrip(output).replace(/\r?\n|\r/g, " ");
   }

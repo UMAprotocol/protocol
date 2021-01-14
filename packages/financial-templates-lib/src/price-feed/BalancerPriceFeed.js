@@ -133,7 +133,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     const currentTime = await this.getTime();
     this.logger.debug({
       at: "BalancerPriceFeed",
-      message: "Updating",
+      message: "Updating BalancerPriceFeed",
       lastUpdateTimestamp: currentTime
     });
     let blocks = [];
