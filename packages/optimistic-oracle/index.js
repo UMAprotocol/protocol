@@ -23,6 +23,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
   try {
     const [networkId] = await Promise.all([web3.eth.net.getId()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
+    const votingAddress = getAddress("Voting", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -41,7 +42,14 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Keeper to respond to price requests and proposals.
-    const ooClient = new OptimisticOracleClient(logger, getAbi("OptimisticOracle"), web3, optimisticOracleAddress);
+    const ooClient = new OptimisticOracleClient(
+      logger,
+      getAbi("OptimisticOracle"),
+      getAbi("Voting"),
+      web3,
+      optimisticOracleAddress,
+      votingAddress
+    );
     const gasEstimator = new GasEstimator(logger);
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)

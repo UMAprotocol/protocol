@@ -92,7 +92,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes ancillaryData,
-        int256 proposedPrice
+        int256 proposedPrice,
+        uint256 expirationTimestamp
     );
     event DisputePrice(
         address indexed requester,
@@ -292,8 +293,15 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
-        // Event.
-        emit ProposePrice(requester, proposer, identifier, timestamp, ancillaryData, proposedPrice);
+        emit ProposePrice(
+            requester,
+            proposer,
+            identifier,
+            timestamp,
+            ancillaryData,
+            proposedPrice,
+            request.expirationTime
+        );
 
         // Callback.
         if (address(requester).isContract())
@@ -377,7 +385,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.currency.safeTransfer(requester, refund);
         }
 
-        // Event.
         emit DisputePrice(requester, request.proposer, disputer, identifier, timestamp, ancillaryData);
 
         // Callback.
@@ -576,7 +583,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             revert("_settle: not settleable");
         }
 
-        // Event.
         emit Settle(
             requester,
             request.proposer,
