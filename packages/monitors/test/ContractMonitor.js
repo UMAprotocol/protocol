@@ -179,7 +179,7 @@ contract("ContractMonitor.js", function(accounts) {
           logger: spyLogger,
           expiringMultiPartyEventClient: eventClient,
           priceFeed: priceFeedMock,
-          config: monitorConfig,
+          monitorConfig,
           empProps,
           votingContract: mockOracle
         });
@@ -484,7 +484,7 @@ contract("ContractMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyEventClient: eventClient,
             priceFeed: priceFeedMock,
-            config: invalidConfig1,
+            monitorConfig: invalidConfig1,
             empProps
           });
           errorThrown1 = false;
@@ -501,7 +501,7 @@ contract("ContractMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyEventClient: eventClient,
             priceFeed: priceFeedMock,
-            config: invalidConfig2,
+            monitorConfig: invalidConfig2,
             empProps
           });
           errorThrown2 = false;
@@ -519,7 +519,7 @@ contract("ContractMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyEventClient: eventClient,
             priceFeed: priceFeedMock,
-            config: monitorConfig, // valid config
+            monitorConfig, // valid config
             empProps
           });
           errorThrown3 = false;
@@ -538,7 +538,7 @@ contract("ContractMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyEventClient: eventClient,
             priceFeed: priceFeedMock,
-            config: emptyConfig,
+            monitorConfig: emptyConfig,
             empProps
           });
           await contractMonitor.checkForNewSponsors();

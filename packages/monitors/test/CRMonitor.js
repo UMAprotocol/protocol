@@ -186,7 +186,7 @@ contract("CRMonitor.js", function(accounts) {
           logger: spyLogger,
           expiringMultiPartyClient: empClient,
           priceFeed: priceFeedMock,
-          config: monitorConfig,
+          monitorConfig,
           empProps
         });
 
@@ -330,7 +330,7 @@ contract("CRMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
             priceFeed: priceFeedMock,
-            config: invalidMonitorConfig1,
+            monitorConfig: invalidMonitorConfig1,
             empProps
           });
           errorThrown1 = false;
@@ -358,7 +358,7 @@ contract("CRMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
             priceFeed: priceFeedMock,
-            config: invalidMonitorConfig2,
+            monitorConfig: invalidMonitorConfig2,
             empProps
           });
           errorThrown2 = false;
@@ -375,7 +375,7 @@ contract("CRMonitor.js", function(accounts) {
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
             priceFeed: priceFeedMock,
-            config: emptyConfig,
+            monitorConfig: emptyConfig,
             empProps
           });
           await crMonitor.checkWalletCrRatio();
@@ -391,7 +391,7 @@ contract("CRMonitor.js", function(accounts) {
           logger: spyLogger,
           expiringMultiPartyClient: empClient,
           priceFeed: priceFeedMock,
-          config: alertOverrideConfig,
+          monitorConfig: alertOverrideConfig,
           empProps
         });
 

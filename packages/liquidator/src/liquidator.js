@@ -18,12 +18,11 @@ class Liquidator {
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    * @param {Object} empProps Contains EMP contract state data. Expected:
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} [liquidatorConfig] Contains fields with which constructor will attempt to override defaults.
    */
   constructor({
     logger,
@@ -34,7 +33,7 @@ class Liquidator {
     priceFeed,
     account,
     empProps,
-    config
+    liquidatorConfig
   }) {
     this.logger = logger;
     this.account = account;
@@ -73,7 +72,7 @@ class Liquidator {
     this.GAS_LIMIT_BUFFER = 1.25;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
-    // values via the `config` input object. The `isValid` property is a function that should be called
+    // values via the `liquidatorConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
       crThreshold: {
@@ -139,7 +138,7 @@ class Liquidator {
     };
 
     // Validate and set config settings to class state.
-    const configWithDefaults = createObjectFromDefaultProps(config, defaultConfig);
+    const configWithDefaults = createObjectFromDefaultProps(liquidatorConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
 
     // generalize log emitter, use it to attach default data to all logs

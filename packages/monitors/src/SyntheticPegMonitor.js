@@ -13,7 +13,7 @@ class SyntheticPegMonitor {
    * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
    * @param {Object} denominatorPriceFeed Optional module that can be used to divide the price returned by the
    * `medianizerPriceFeed` in order to "denominator" that price in a new currency.
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults. Example:
+   * @param {Object} [monitorConfig] Contains fields with which constructor will attempt to override defaults. Example:
   *      { deviationAlertThreshold:0.2,           // Threshold used to compare observed and expected token prices.
            volatilityWindow: 600,                 // Length of time (in seconds) to snapshot volatility.
            pegVolatilityAlertThreshold: 0.2,      // Threshold for synthetic peg price volatility.
@@ -25,7 +25,7 @@ class SyntheticPegMonitor {
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
    */
-  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, denominatorPriceFeed, config, empProps }) {
+  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, denominatorPriceFeed, monitorConfig, empProps }) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
@@ -40,7 +40,7 @@ class SyntheticPegMonitor {
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
-    // values via the `config` input object. The `isValid` property is a function that should be called
+    // values via the `monitorConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean. If the associated price feed is missing
     // then the defaults to 0 thresholds. This will skip the check in the respective functions.
     const defaultConfig = {
@@ -84,7 +84,7 @@ class SyntheticPegMonitor {
         }
       }
     };
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
     // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
     const defaultEmpProps = {

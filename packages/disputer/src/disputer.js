@@ -15,7 +15,7 @@ class Disputer {
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} empProps Contains EMP contract state data. Expected:
    *      { priceIdentifier: hex("ETH/BTC") }
-   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} [disputerConfig] Contains fields with which constructor will attempt to override defaults.
    */
   constructor({
     logger,
@@ -25,7 +25,7 @@ class Disputer {
     priceFeed,
     account,
     empProps,
-    config
+    disputerConfig
   }) {
     this.logger = logger;
     this.account = account;
@@ -55,7 +55,7 @@ class Disputer {
     this.GAS_LIMIT_BUFFER = 1.25;
 
     // Default config settings. Disputer deployer can override these settings by passing in new
-    // values via the `config` input object. The `isValid` property is a function that should be called
+    // values via the `disputerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
       disputeDelay: {
@@ -76,7 +76,7 @@ class Disputer {
     };
 
     // Validate and set config settings to class state.
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    Object.assign(this, createObjectFromDefaultProps(disputerConfig, defaultConfig));
   }
 
   // Update the client and gasEstimator clients.
