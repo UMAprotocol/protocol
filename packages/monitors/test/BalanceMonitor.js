@@ -113,7 +113,7 @@ contract("BalanceMonitor.js", function(accounts) {
         balanceMonitor = new BalanceMonitor({
           logger: spyLogger,
           tokenBalanceClient,
-          config: monitorConfig,
+          monitorConfig,
           empProps
         });
 
@@ -294,7 +294,7 @@ contract("BalanceMonitor.js", function(accounts) {
           balanceMonitor = new BalanceMonitor({
             logger: spyLogger,
             tokenBalanceClient,
-            config: invalidMonitorConfig1,
+            monitorConfig: invalidMonitorConfig1,
             empProps
           });
           errorThrown1 = false;
@@ -323,7 +323,7 @@ contract("BalanceMonitor.js", function(accounts) {
           balanceMonitor = new BalanceMonitor({
             logger: spyLogger,
             tokenBalanceClient,
-            config: invalidMonitorConfig2,
+            monitorConfig: invalidMonitorConfig2,
             empProps
           });
           errorThrown2 = false;
@@ -339,7 +339,7 @@ contract("BalanceMonitor.js", function(accounts) {
           balanceMonitor = new BalanceMonitor({
             logger: spyLogger,
             tokenBalanceClient,
-            config: emptyConfig,
+            monitorConfig: emptyConfig,
             empProps
           });
           await balanceMonitor.checkBotBalances();
@@ -354,7 +354,7 @@ contract("BalanceMonitor.js", function(accounts) {
         balanceMonitor = new BalanceMonitor({
           logger: spyLogger,
           tokenBalanceClient,
-          config: alertOverrideConfig,
+          monitorConfig: alertOverrideConfig,
           empProps
         });
 
@@ -376,7 +376,7 @@ contract("BalanceMonitor.js", function(accounts) {
         balanceMonitor = new BalanceMonitor({
           logger: spyLogger,
           tokenBalanceClient,
-          config: alertOverrideConfig,
+          monitorConfig: alertOverrideConfig,
           empProps
         });
 
@@ -398,7 +398,7 @@ contract("BalanceMonitor.js", function(accounts) {
         balanceMonitor = new BalanceMonitor({
           logger: spyLogger,
           tokenBalanceClient,
-          config: alertOverrideConfig,
+          monitorConfig: alertOverrideConfig,
           empProps
         });
 

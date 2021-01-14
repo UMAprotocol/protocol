@@ -78,7 +78,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
-            config: monitorConfig,
+            monitorConfig,
             empProps
           });
         });
@@ -169,7 +169,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
-            config: monitorConfig,
+            monitorConfig,
             empProps
           });
 
@@ -191,7 +191,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             denominatorPriceFeed: denominatorPriceFeedMock,
-            config: monitorConfig,
+            monitorConfig,
             empProps
           });
 
@@ -232,7 +232,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
-            config: monitorConfig,
+            monitorConfig,
             empProps
           });
         });
@@ -373,7 +373,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: invalidPriceFeedMock,
             medianizerPriceFeed: invalidPriceFeedMock,
-            config: {},
+            monitorConfig: {},
             empProps
           });
 
@@ -444,7 +444,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
-            config: monitorConfig,
+            monitorConfig,
             empProps
           });
 
@@ -488,7 +488,7 @@ contract("SyntheticPegMonitor", function() {
               web3,
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
-              config: invalidConfig1,
+              monitorConfig: invalidConfig1,
               empProps
             });
             errorThrown1 = false;
@@ -511,7 +511,7 @@ contract("SyntheticPegMonitor", function() {
               web3,
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
-              config: invalidConfig2,
+              monitorConfig: invalidConfig2,
               empProps
             });
             errorThrown2 = false;
@@ -530,7 +530,7 @@ contract("SyntheticPegMonitor", function() {
               web3,
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
-              config: emptyConfig,
+              monitorConfig: emptyConfig,
               empProps
             });
             await syntheticPegMonitor.checkPriceDeviation();
@@ -552,7 +552,7 @@ contract("SyntheticPegMonitor", function() {
               web3,
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
-              config: invalidConfig,
+              monitorConfig: invalidConfig,
               empProps
             });
 
@@ -569,7 +569,7 @@ contract("SyntheticPegMonitor", function() {
             web3,
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
-            config: alertOverrideConfig,
+            monitorConfig: alertOverrideConfig,
             empProps
           });
 

@@ -28,7 +28,7 @@ class CRMonitor {
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor({ logger, expiringMultiPartyClient, priceFeed, config, empProps }) {
+  constructor({ logger, expiringMultiPartyClient, priceFeed, monitorConfig, empProps }) {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;
@@ -80,7 +80,7 @@ class CRMonitor {
       }
     };
 
-    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
     // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
     const defaultEmpProps = {
