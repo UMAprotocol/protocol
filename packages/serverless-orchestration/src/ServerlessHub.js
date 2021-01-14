@@ -46,7 +46,7 @@ const defaultHubConfig = {
   configRetrieval: "localStorage",
   saveQueriedBlock: "localStorage",
   spokeRunner: "localStorage",
-  rejectSpokeDelay: 60 // 1 min.
+  rejectSpokeDelay: 120 // 2 min.
 };
 
 hub.post("/", async (req, res) => {
