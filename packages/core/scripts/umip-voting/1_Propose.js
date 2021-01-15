@@ -11,7 +11,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
-const Umip15Upgrader = artifacts.require("Umip15Upgrader");
+const VotingUpgrader = artifacts.require("VotingUpgrader");
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
@@ -70,8 +70,8 @@ async function runExport() {
 
   console.log("Deployed voting contract:\t", newVoting.address);
 
-  console.log("3. DEPLOYED UMIP-15UPGRADER.sol");
-  const umip15Upgrader = await Umip15Upgrader.new(
+  console.log("3. DEPLOYED VotingUpgrader.sol");
+  const votingUpgrader = await VotingUpgrader.new(
     governor.address,
     existingVoting.address,
     newVoting.address,
@@ -81,7 +81,7 @@ async function runExport() {
     }
   );
 
-  console.log("Deployed UMIP-upgrader\t", umip15Upgrader.address);
+  console.log("Deployed VotingUpgrader\t", votingUpgrader.address);
 
   console.log("4. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNOR");
   await newVoting.transferOwnership(governor.address, { from: proposerWallet });
@@ -95,17 +95,17 @@ async function runExport() {
 
   console.log("5.a. Add minting roll to new voting contract:", addVotingAsTokenMinterTx);
 
-  const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(umip15Upgrader.address).encodeABI();
+  const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(votingUpgrader.address).encodeABI();
 
   console.log("5.b. Transfer finder ownership tx data:", transferFinderOwnershipTx);
 
   const transferExistingVotingOwnershipTx = existingVoting.contract.methods
-    .transferOwnership(umip15Upgrader.address)
+    .transferOwnership(votingUpgrader.address)
     .encodeABI();
 
   console.log("5.c. Transfer existing voting ownership tx data:", transferExistingVotingOwnershipTx);
 
-  const upgraderExecuteUpgradeTx = umip15Upgrader.contract.methods.upgrade().encodeABI();
+  const upgraderExecuteUpgradeTx = votingUpgrader.contract.methods.upgrade().encodeABI();
 
   console.log("5.d. Upgrader Execute Upgrade tx data:", upgraderExecuteUpgradeTx);
 
@@ -130,7 +130,7 @@ async function runExport() {
         data: transferExistingVotingOwnershipTx
       },
       {
-        to: umip15Upgrader.address,
+        to: votingUpgrader.address,
         value: 0,
         data: upgraderExecuteUpgradeTx
       }
