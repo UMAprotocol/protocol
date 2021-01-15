@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -20,6 +20,14 @@ const {
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
+
+const supportedContracts = [
+  { contractType: "ExpiringMultiParty", version: "1.2.0" },
+  { contractType: "ExpiringMultiParty", version: "1.2.1" },
+  { contractType: "ExpiringMultiParty", version: "1.2.2" },
+  { contractType: "ExpiringMultiParty", version: "latest" },
+  { contractType: "Perpetual", version: "latest" }
+];
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -53,7 +61,29 @@ async function run({
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Load unlocked web3 accounts and get the networkId.
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const [detectedContract, accounts, networkId] = await Promise.all([
+      findContractVersion(empAddress, web3),
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
+    ]);
+
+    console.log("detectedContract", detectedContract);
+    console.log("liquidatorConfig", liquidatorConfig);
+    // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
+    if (!liquidatorConfig) liquidatorConfig = {};
+    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
+    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract.contractType;
+    console.log("liquidatorConfig", liquidatorConfig);
+
+    // Check that the version and type is supported. Note if either is null this check will also catch it.
+    if (
+      supportedContracts.filter(
+        vo => vo.contractType == liquidatorConfig.contractType && vo.version == liquidatorConfig.contractVersion
+      ).length == 0
+    )
+      throw new Error(
+        `Contract version specified or inferred is not supported by this bot. Loaded contractVersion:${liquidatorConfig.contractVersion} & contractType:${liquidatorConfig.contractType} is not part of ${supportedContracts}`
+      );
 
     // Setup contract instances.
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
@@ -159,7 +189,8 @@ async function run({
       empAddress,
       collateralDecimals,
       syntheticDecimals,
-      priceFeed.getPriceFeedDecimals()
+      priceFeed.getPriceFeedDecimals(),
+      liquidatorConfig.contractType
     );
 
     const gasEstimator = new GasEstimator(logger);
@@ -305,14 +336,16 @@ async function Poll(callback) {
       priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
       // If there is a liquidator config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
       // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
-      // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+      // { "crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
       //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
-      //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
-      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
+      //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
+      //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
+      //   "contractVersion":"1.2.2"":"ExpiringMultiParty"} -> override the contract version the liquidator is pointing at.
+      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : {},
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
       liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE

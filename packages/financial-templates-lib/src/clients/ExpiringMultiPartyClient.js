@@ -25,7 +25,7 @@ class ExpiringMultiPartyClient {
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
-    contractType
+    contractType = "ExpiringMultiParty" // Default to EMP for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
     this.logger = logger;
     this.web3 = web3;
@@ -69,6 +69,10 @@ class ExpiringMultiPartyClient {
         `Invalid contract type provided: ${contractType}! The financial product client only supports ExpiringMultiParty or Perpetual`
       );
     this.contractType = contractType;
+  }
+
+  getContractType() {
+    return this.contractType;
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.

@@ -145,7 +145,7 @@ class Liquidator {
       contractVersion: {
         value: undefined,
         isValid: x => {
-          return x == "1.2.2" || x == "latest";
+          return x == "1.2.0" || "1.2.1" || "1.2.2" || x == "latest";
         }
       }
     };
@@ -229,6 +229,7 @@ class Liquidator {
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
+      latestCumulativeFundingRateMultiplier: this.empClient.getLatestCumulativeFundingRateMultiplier(),
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       empCRRatio: this.empCRRatio.toString(),
@@ -461,7 +462,7 @@ class Liquidator {
         message: "Withdrawing liquidation",
         liquidation: liquidation,
         amountWithdrawn:
-          this.contractVersion == "1.2.2"
+          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
             ? withdrawalCallResponse.rawValue.toString()
             : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig
@@ -536,7 +537,7 @@ class Liquidator {
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
         amountWithdrawn:
-          this.contractVersion == "1.2.2"
+          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
             ? withdrawalCallResponse.rawValue.toString()
             : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig,

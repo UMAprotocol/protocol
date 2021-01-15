@@ -7,18 +7,20 @@ const {
   addGlobalHardhatTestingAddress
 } = require("@uma/common");
 
+const { getTruffleContract } = require("@uma/core");
+
 // Script to test
 const Poll = require("../index.js");
 // Contracts and helpers
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const Token = artifacts.require("ExpandedERC20");
-const Timer = artifacts.require("Timer");
-const UniswapMock = artifacts.require("UniswapMock");
-const Store = artifacts.require("Store");
-const MockOracle = artifacts.require("MockOracle");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.2");
+const Finder = getTruffleContract("Finder", web3, "1.2.2");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.2.2");
+const SyntheticToken = getTruffleContract("SyntheticToken", web3, "1.2.2");
+const Token = getTruffleContract("ExpandedERC20", web3, "1.2.2");
+const Timer = getTruffleContract("Timer", web3, "1.2.2");
+const UniswapMock = getTruffleContract("UniswapMock", web3, "1.2.2");
+const Store = getTruffleContract("Store", web3, "1.2.2");
+const MockOracle = getTruffleContract("MockOracle", web3, "1.2.2");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
