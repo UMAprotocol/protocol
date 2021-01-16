@@ -17,7 +17,8 @@ const UMIP_PRECISION = {
   USDBTC: 8,
   USDETH: 5,
   BTCDOM: 2,
-  ALTDOM: 2
+  ALTDOM: 2,
+  BCHNBTC: 8
 };
 const DEFAULT_PRECISION = 5;
 
