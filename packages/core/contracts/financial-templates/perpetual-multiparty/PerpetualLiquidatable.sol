@@ -424,8 +424,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Calculate rewards as a function of the TRV.
         // Note1: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
-        // Note2: the tokenRedemptionValue uses the tokensOutstanding which was calculating using the funding rate at
-        // liquidation time from _getFundingRateAppliedTokenDebt.Therefore the TRV consideres the full debt value at that time.
+        // Note2: the tokenRedemptionValue uses the tokensOutstanding which was calculated using the funding rate at
+        // liquidation time from _getFundingRateAppliedTokenDebt. Therefore the TRV considers the full debt value at that time.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
         FixedPoint.Unsigned memory tokenRedemptionValue =
