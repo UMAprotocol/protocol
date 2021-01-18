@@ -352,8 +352,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     }
 
     /**
-     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond
-     * and pay a fixed final fee charged on each price request.
+     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond and pay a fixed final
+     // fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no other pending disputes.
      * This contract must be approved to spend at least the dispute bond amount of `collateralCurrency`. This dispute
      * bond amount is calculated from `disputeBondPercentage` times the collateral in the liquidation.
