@@ -1392,7 +1392,16 @@ contract("Liquidator.js", function(accounts) {
           await emp.setCurrentTime(nextTime);
           // running again, should have no change
           await liquidator.update();
+          const startingLogLength = spy.getCalls().length;
           await liquidator.liquidatePositions();
+          // Logger should emit a log specific about skipping this liquidation because the defense activation
+          // percent has not passed yet.
+          // No other logs should be emitted.
+          assert.equal(startingLogLength + 1, spy.getCalls().length);
+          assert.equal(spyLogLevel(spy, -1), "info");
+          assert.isTrue(
+            spyLogIncludes(spy, -1, "Withdrawal liveness has not passed WDF activation threshold, skipping")
+          );
 
           let sponsor2Liquidations = await emp.getLiquidations(sponsor2);
           sponsor2Positions = await emp.positions(sponsor2);

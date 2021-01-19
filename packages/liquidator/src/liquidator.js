@@ -265,9 +265,28 @@ class Liquidator {
         inputPrice: scaledPrice.toString()
       });
 
-      // we couldnt liquidate, this typically would only happen if our balance is 0
+      // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
+      // has not passed the WDF's activation threshold.
       // This gets logged as an event, see constructor
       if (!liquidationArgs) {
+        // If WDF is active but liveness hasn't passed activation %, then send customized log:
+        if (
+          this.defenseActivationPercent &&
+          !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
+        ) {
+          this.logger.info({
+            at: "Liquidator",
+            message: "Withdrawal liveness has not passed WDF activation threshold, skipping✋",
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position: position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            syntheticTokenBalance: syntheticTokenBalance.toString(),
+            currentBlockTime
+          });
+          continue;
+        }
         // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
         // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
         // client-side.

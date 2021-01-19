@@ -197,6 +197,18 @@ module.exports = (
     return 100 * (elapsed / duration);
   }
 
+  // Returns true if enough of the withdrawal liveness has passed that the WDF strategy can be activated.
+  function passedDefenseActivationPercent({ position, currentBlockTime }) {
+    return (
+      // this position has a withdraw pending
+      Number(position.withdrawalRequestPassTimestamp) != 0 &&
+      // withdraw has not passed liveness
+      Number(position.withdrawalRequestPassTimestamp) > currentBlockTime &&
+      withdrawProgressPercent(withdrawLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) >=
+        parseFloat(defenseActivationPercent)
+    );
+  }
+
   // Should we try to delay this withdrawal. Update this logic to change conditions to run delay strategy.
   function shouldLiquidateMinimum({ position, syntheticTokenBalance, currentBlockTime }) {
     assert(defenseActivationPercent >= 0, "requires defenseActivationPercent");
@@ -205,10 +217,6 @@ module.exports = (
     const empMinSponsorSize = toBN(minSponsorSize);
     currentBlockTime = Number(currentBlockTime);
 
-    // this position does not have a withdraw pending
-    if (Number(position.withdrawalRequestPassTimestamp) == 0) return false;
-    // withdraw has passed liveness
-    if (Number(position.withdrawalRequestPassTimestamp) <= currentBlockTime) return false;
     // our synthetic balance is less than the amount required to extend deadline
     if (syntheticTokenBalance.lt(empMinSponsorSize)) return false;
     // we have enough to fully liquidate position respecting WDF, so do not do the minimum
@@ -221,11 +229,7 @@ module.exports = (
     )
       return false;
     // liveness timer on withdraw has not passed time
-    if (
-      withdrawProgressPercent(withdrawLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) <
-      parseFloat(defenseActivationPercent)
-    )
-      return false;
+    if (!passedDefenseActivationPercent({ position, currentBlockTime })) return false;
     // all conditions passed and we should minimally liquidate to extend timer
     return true;
   }
@@ -249,6 +253,7 @@ module.exports = (
       shouldLiquidate,
       shouldLiquidateMinimum,
       createLiquidationParams,
+      passedDefenseActivationPercent,
       withdrawProgressPercent,
       calculateTokensToLiquidate
     }
