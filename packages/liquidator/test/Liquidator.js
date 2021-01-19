@@ -327,7 +327,7 @@ contract("Liquidator.js", function(accounts) {
             priceFeed: priceFeedMock,
             account: accounts[0],
             empProps,
-            config: liquidatorConfig
+            liquidatorConfig
           });
         });
         versionedIt(["any"])("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -815,7 +815,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               empProps,
-              config: liquidatorConfig
+              liquidatorConfig
             });
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.

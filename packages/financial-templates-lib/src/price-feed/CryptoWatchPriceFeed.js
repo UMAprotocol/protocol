@@ -174,7 +174,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.logger.debug({
       at: "CryptoWatchPriceFeed",
-      message: "Updating",
+      message: "Updating CryptoWatchPriceFeed",
       currentTime: currentTime,
       lastUpdateTimestamp: this.lastUpdateTime
     });

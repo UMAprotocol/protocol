@@ -60,14 +60,14 @@ class BalancerPriceFeed extends PriceFeedInterface {
       }
     });
 
-    // poolPrecision represents the # of decimals that Balancer pool prices are returned in.
+    // poolDecimals represents the # of decimals that Balancer pool prices are returned in.
     // TODO: Should/Can we read in `poolDecimals` from this.contract?
-    this.poolPrecision = poolDecimals;
-    this.decimals = priceFeedDecimals;
+    this.poolDecimals = poolDecimals;
+    this.priceFeedDecimals = priceFeedDecimals;
 
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
-    // on the relationship between poolPrecision and the desired decimals.
-    this.convertDecimals = ConvertDecimals(this.poolPrecision, this.decimals, this.web3);
+    // on the relationship between pool precision and the desired decimals.
+    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
   getHistoricalPrice(time) {
@@ -82,7 +82,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     } else {
       historicalPrice = this._computeTwap(time - this.twapLength, time);
     }
-    return historicalPrice && this.convertDecimals(historicalPrice);
+    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
   }
 
   getLastUpdateTime() {
@@ -101,13 +101,16 @@ class BalancerPriceFeed extends PriceFeedInterface {
     } else {
       currentPrice = this._computeTwap(this.lastUpdateTime - this.twapLength, this.lastUpdateTime);
     }
-    return currentPrice && this.convertDecimals(currentPrice);
+    return currentPrice && this.convertPoolDecimalsToPriceFeedDecimals(currentPrice);
   }
   // Not part of the price feed interface. Can be used to pull the balancer price at the most recent block.
   // If `time` is undefined, return latest block price.
   getSpotPrice(time) {
     if (!time) {
-      return this.priceHistory.currentPrice() && this.convertDecimals(this.priceHistory.currentPrice());
+      return (
+        this.priceHistory.currentPrice() &&
+        this.convertPoolDecimalsToPriceFeedDecimals(this.priceHistory.currentPrice())
+      );
     } else {
       // We want the block and price equal to or before this time
       const block = this.blockHistory.getClosestBefore(time);
@@ -115,19 +118,22 @@ class BalancerPriceFeed extends PriceFeedInterface {
       if (!this.priceHistory.has(block.timestamp)) {
         return null;
       }
-      return this.priceHistory.get(block.timestamp) && this.convertDecimals(this.priceHistory.get(block.timestamp));
+      return (
+        this.priceHistory.get(block.timestamp) &&
+        this.convertPoolDecimalsToPriceFeedDecimals(this.priceHistory.get(block.timestamp))
+      );
     }
   }
 
   getPriceFeedDecimals() {
-    return this.decimals;
+    return this.priceFeedDecimals;
   }
 
   async update() {
     const currentTime = await this.getTime();
     this.logger.debug({
       at: "BalancerPriceFeed",
-      message: "Updating",
+      message: "Updating BalancerPriceFeed",
       lastUpdateTimestamp: currentTime
     });
     let blocks = [];

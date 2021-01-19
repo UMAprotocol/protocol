@@ -2,6 +2,7 @@
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { computeTWAP } = require("./utils");
+const { ConvertDecimals, averageBlockTimeSeconds } = require("@uma/common");
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new uniswap TWAP price feed object.
@@ -13,10 +14,22 @@ class UniswapPriceFeed extends PriceFeedInterface {
    * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
    * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
-   *      reserve1/reserve0 (false).
+   * @param {Integer} poolDecimals Precision that prices are reported in on-chain
+   * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in
    * @return None or throws an Error.
    */
-  constructor(logger, uniswapAbi, web3, uniswapAddress, twapLength, historicalLookback, getTime, invertPrice) {
+  constructor(
+    logger,
+    uniswapAbi,
+    web3,
+    uniswapAddress,
+    twapLength,
+    historicalLookback,
+    getTime,
+    invertPrice,
+    poolDecimals = 18,
+    priceFeedDecimals = 18
+  ) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -26,14 +39,26 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
     this.invertPrice = invertPrice;
+    // The % of the lookback window (historicalLookback + twapLength) that we want to query for Uniswap
+    // Sync events. For example, 1.1 = 110% meaning that we'll look back 110% * (historicalLookback + twapLength)
+    // seconds, in blocks, for Sync events.
+    this.bufferBlockPercent = 1.1;
+
+    // TODO: Should/Can we read in `poolDecimals` from the this.uniswap?
+    this.poolDecimals = poolDecimals;
+    this.priceFeedDecimals = priceFeedDecimals;
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+
+    // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
+    // on the relationship between pool precision and the desired decimals.
+    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
   getCurrentPrice() {
-    return this.currentTwap;
+    return this.currentTwap && this.convertPoolDecimalsToPriceFeedDecimals(this.currentTwap);
   }
 
   getHistoricalPrice(time) {
@@ -42,7 +67,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return this._computeTwap(this.events, time - this.twapLength, time);
+    const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
+    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
   }
 
   getLastUpdateTime() {
@@ -55,18 +81,32 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
-    return this.lastBlockPrice;
+    return this.lastBlockPrice && this.convertPoolDecimalsToPriceFeedDecimals(this.lastBlockPrice);
   }
 
   getPriceFeedDecimals() {
-    return 18;
+    return this.priceFeedDecimals;
   }
 
   async update() {
-    // TODO: optimize this call. This may be very slow or break if there are many transactions.
-    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: 0 });
+    // Approximate the first block from which we'll need price data from based on the
+    // lookback and twap length:
+    const lookbackWindow = this.twapLength + this.historicalLookback;
+    const latestBlockNumber = (await this.web3.eth.getBlock("latest")).number;
+    // Add cushion in case `averageBlockTimeSeconds` overestimates the seconds per block:
+    const lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
+    const earliestBlockNumber = latestBlockNumber - lookbackBlocks;
+    let fromBlock = earliestBlockNumber;
+    let events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
 
-    // If there are no prices, return null to allow the user to handle the absense of data.
+    // For low-volume pools, it is possible that there are no Sync events within the lookback window.
+    // To cover these cases, we'll keep looking back until we find a window with a sync event.
+    while (fromBlock >= 0 && events.length === 0) {
+      fromBlock -= lookbackBlocks;
+      events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
+    }
+
+    // If there are still no prices, return null to allow the user to handle the absence of data.
     if (events.length === 0) {
       this.currentTwap = null;
       this.lastBlockPrice = null;
@@ -93,7 +133,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // check enables us to support both types of getTime functions.
     const currentTime = this.getTime.constructor.name === "AsyncFunction" ? await this.getTime() : this.getTime();
 
-    const lookbackWindowStart = currentTime - (this.twapLength + this.historicalLookback);
+    const lookbackWindowStart = currentTime - lookbackWindow;
     let i = events.length;
     while (i !== 0) {
       const event = events[--i];
