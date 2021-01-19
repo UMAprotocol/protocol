@@ -70,7 +70,6 @@ const defaultConfigs = {
   STABLESPREAD: {
     // This is alternatively known as "STABLESPREAD/ETH"
     type: "basketspread",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
@@ -143,7 +142,6 @@ const defaultConfigs = {
   },
   "STABLESPREAD/USDC": {
     type: "basketspread",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
@@ -209,7 +207,6 @@ const defaultConfigs = {
   },
   "STABLESPREAD/BTC": {
     type: "basketspread",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
@@ -282,7 +279,6 @@ const defaultConfigs = {
   },
   "ELASTIC_STABLESPREAD/USDC": {
     type: "basketspread",
-    lookback: 7200,
     minTimeBetweenUpdates: 60,
     experimentalPriceFeeds: [
       {
