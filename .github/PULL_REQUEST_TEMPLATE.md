@@ -44,7 +44,13 @@ This may be unnecessary for some PRs. Catch-all for detailed explanations about 
 
 **Testing**
 
-List the steps for reviewers to test the changes.
+Check a box to describe how you tested these changes and list the steps for reviewers to test.
+
+- [ ]  Ran end-to-end test, running the code as in production
+- [ ]  New unit tests created
+- [ ]  Existing tests adequate, no new tests required
+- [ ]  All existing tests pass
+- [ ]  Untested
 
 
 **Issue(s)**
