@@ -22,11 +22,11 @@ const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 const supportedContracts = [
-  { contractType: "ExpiringMultiParty", version: "1.2.0" },
-  { contractType: "ExpiringMultiParty", version: "1.2.1" },
-  { contractType: "ExpiringMultiParty", version: "1.2.2" },
-  { contractType: "ExpiringMultiParty", version: "latest" },
-  { contractType: "Perpetual", version: "latest" }
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
+  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
+  { contractType: "Perpetual", contractVersion: "latest" }
 ];
 
 /**
@@ -78,16 +78,16 @@ async function run({
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
       supportedContracts.filter(
-        vo => vo.contractType == liquidatorConfig.contractType && vo.version == liquidatorConfig.contractVersion
+        vo => vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
       ).length == 0
     )
       throw new Error(
         `Contract version specified or inferred is not supported by this bot. Loaded contractVersion:${liquidatorConfig.contractVersion} & contractType:${liquidatorConfig.contractType} is not part of ${supportedContracts}`
       );
 
-    // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
+    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty", liquidatorConfig.contractVersion), empAddress);
 
     // Returns whether the EMP has expired yet
     const checkIsExpiredPromise = async () => {
@@ -221,7 +221,8 @@ async function run({
       collateralDecimals: Number(collateralDecimals),
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig
+      priceFeedConfig,
+      liquidatorConfig
     });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate

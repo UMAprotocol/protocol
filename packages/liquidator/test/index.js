@@ -360,6 +360,32 @@ contract("index.js", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
     assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
   });
+  it("Correctly detects contract type and rejects unknown contract types", async function() {
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig
+    });
+
+    for (let i = 0; i < spy.callCount; i++) {
+      assert.notEqual(spyLogLevel(spy, i), "error");
+    }
+
+    // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
+    assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
+    assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+  });
   it("Correctly re-tries after failed execution loop", async function() {
     // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
     // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check

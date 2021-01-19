@@ -75,6 +75,7 @@ class Liquidator {
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
+    console.log("config within", config);
     const defaultConfig = {
       crThreshold: {
         // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
