@@ -34,6 +34,7 @@ contract("OptimisticOracle", function(accounts) {
   const reward = toWei("0.5");
   const finalFee = toWei("1");
   const halfDefaultBond = toWei("0.5"); // Default bond = final fee = 1e18.
+  const defaultBond = toWei("1");
   const totalDefaultBond = toWei("2"); // Total default bond = final fee + default bond = 2e18
   const customBond = toWei("5");
   const totalCustomBond = toWei("6");
@@ -153,6 +154,41 @@ contract("OptimisticOracle", function(accounts) {
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
     await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED);
     await verifyBalanceSum(optimisticOracle.address, reward);
+  });
+
+  it("Bond burned when final fee == 0", async function() {
+    // Set final fee and prep request.
+    await store.setFinalFee(collateral.address, { rawValue: "0" });
+    await collateral.transfer(optimisticRequester.address, reward);
+    await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
+    // Must set the bond because it defaults to the final fee, which is 0.
+    await optimisticRequester.setBond(identifier, requestTime, "0x", defaultBond);
+
+    // Note: defaultBond does _not_ include the final fee.
+    await collateral.approve(optimisticOracle.address, defaultBond, { from: proposer });
+    await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
+      from: proposer
+    });
+    await collateral.approve(optimisticOracle.address, defaultBond, { from: disputer });
+    await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
+      from: disputer
+    });
+
+    // Settle.
+    await pushPrice(correctPrice);
+    await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
+
+    // Proposer should net half of the disputer's bond and the reward.
+    await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond, reward);
+
+    // Disputer should have lost their default bond.
+    await verifyBalanceSum(disputer, initialUserBalance, `-${defaultBond}`);
+
+    // Contract should contain nothing.
+    await verifyBalanceSum(optimisticOracle.address);
+
+    // Store should have half of the bond (the "burned" portion), but no final fee.
+    await verifyBalanceSum(store.address, halfDefaultBond);
   });
 
   describe("hasPrice", function() {
@@ -623,6 +659,7 @@ contract("OptimisticOracle", function(accounts) {
     await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
     assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
   });
+
   it("Stress testing the size of ancillary data", async function() {
     const DATA_LIMIT_BYTES = 8192;
     let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
