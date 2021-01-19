@@ -60,6 +60,19 @@ class PriceFeedMock extends PriceFeedInterface {
     return this.historicalPrice;
   }
 
+  // Call `setDebugHistoricalData` to make this pricefeed simulate one that implements
+  // `debugHistoricalData`.
+  setDebugHistoricalData() {
+    this.shouldDebugHistoricalData = !this.shouldDebugHistoricalData;
+  }
+  debugHistoricalData(time) {
+    if (this.shouldDebugHistoricalData) {
+      return `Missing historical price for ${time}`;
+    } else {
+      throw new Error("By default: Not debugging historical data");
+    }
+  }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }

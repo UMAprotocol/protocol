@@ -14,6 +14,13 @@ class InvalidPriceFeedMock extends PriceFeedInterface {
   getHistoricalPrice() {
     return null;
   }
+  debugHistoricalData(time) {
+    if (time) {
+      return `Missing historical price for ${time}`;
+    } else {
+      throw new Error("Missing time");
+    }
+  }
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
