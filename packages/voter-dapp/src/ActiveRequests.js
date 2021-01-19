@@ -462,7 +462,6 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
 
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      console.log(decryptedCommits[index].price);
       const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
       currentVote = formatFixed(decryptedCommits[index].price, identifierPrecision);
     }
