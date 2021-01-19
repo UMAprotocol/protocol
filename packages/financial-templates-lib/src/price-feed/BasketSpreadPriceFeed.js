@@ -1,4 +1,5 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
+const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
@@ -110,6 +111,21 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
 
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+  }
+
+  debugHistoricalData(time) {
+    let buggyPriceFeeds = [];
+    this.allPriceFeeds.map(priceFeed => {
+      const hasPrice = priceFeed.getHistoricalPrice(time);
+      if (!hasPrice) {
+        if (priceFeed instanceof MedianizerPriceFeed) {
+          buggyPriceFeeds = buggyPriceFeeds.concat(priceFeed.debugHistoricalData(time));
+        } else {
+          buggyPriceFeeds.push("Unhandled type of pricefeed missing price");
+        }
+      }
+    });
+    return buggyPriceFeeds;
   }
 
   // Gets the *most recent* update time for all constituent price feeds.

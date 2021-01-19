@@ -187,7 +187,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Medianizer",
-        historicalTime: volData.errorData.latestTime,
+        errorInformation: volData.errorData,
         lookback: this.volatilityWindow
       });
       return;
@@ -240,7 +240,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Uniswap",
-        historicalTime: volData.errorData.latestTime,
+        errorInformation: volData.errorData,
         lookback: this.volatilityWindow
       });
       return;
@@ -289,9 +289,18 @@ class SyntheticPegMonitor {
     const latestTime = pricefeed.getLastUpdateTime();
     const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
     if (!volData) {
+      // If missing vol data, then the pricefeed is failing to return historical price data. Let's
+      // try querying the pricefeed to get more details about the problem:
+      let buggyPricefeeds;
+      try {
+        buggyPricefeeds = pricefeed.debugHistoricalData(latestTime);
+      } catch (err) {
+        // Some pricefeeds don't implement `debugHistoricalData` so we'll ignore errors.
+      }
       return {
         errorData: {
-          latestTime: latestTime ? latestTime : 0
+          latestTime: latestTime ? latestTime : 0,
+          buggyPricefeeds
         }
       };
     }

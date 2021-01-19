@@ -152,7 +152,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.events = events.slice(i);
 
     // Filter out events where price is null.
-    this.events = events.filter(e => e.price !== null);
+    this.events = this.events.filter(e => e.price !== null);
 
     // Price at the end of the most recent block.
     this.lastBlockPrice = this.events[this.events.length - 1].price;
