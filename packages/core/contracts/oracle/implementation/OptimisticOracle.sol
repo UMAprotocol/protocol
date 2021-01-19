@@ -364,9 +364,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         StoreInterface store = _getStore();
 
+        // Avoids stack too deep compilation error.
         {
-            // Avoids stack too deep error
-
             // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
             // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
             // party.
