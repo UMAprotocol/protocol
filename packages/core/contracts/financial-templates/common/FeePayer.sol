@@ -104,7 +104,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Fetch the regualar fees, late penalty and the max posible to pay given the current collateral within the contract.
+        // Fetch the regular fees, late penalty and the max possible to pay given the current collateral within the contract.
         (
             FixedPoint.Unsigned memory regularFee,
             FixedPoint.Unsigned memory latePenalty,
