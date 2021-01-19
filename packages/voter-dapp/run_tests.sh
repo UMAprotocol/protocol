@@ -16,7 +16,6 @@ echo '# 0/16. Prerequisites                                              #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 ## Will need to run some JS scripts from packages/core
-cd ../core
 
 # Prompt user to start Ganache in another window
 echo "- Have you started Ganache in a separate window at port 9545? Be sure to use the following mnemonic: \"candy maple cake sugar pudding cream honey rich smooth crumble sweet treat\" "
@@ -48,9 +47,9 @@ echo '#                                                                  #'
 echo '# 2/16. Submitting price requests                                  #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-yarn run truffle exec ./scripts/local/RequestOraclePrice.js --network test --identifier USDETH-Commit+Reveal --time 1570000000
-yarn run truffle exec ./scripts/local/RequestOraclePrice.js --network test --identifier USDETH-2key-Commit+Reveal --time 1570000000
-yarn run truffle exec ./scripts/local/ProposeAdmin.js --network test
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier USDETH-Commit+Reveal --time 1570000000
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier USDETH-2key-Commit+Reveal --time 1570000000
+yarn run truffle exec ../core/scripts/mainnet/ProposeAdmin.js --network test --prod
 echo "- ✅ Price requests submitted!"
 
 # Advance to next commit phase
@@ -59,7 +58,7 @@ echo '#                                                                  #'
 echo '# 3/16. Advancing to start of next voting round                    #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-yarn run truffle exec ./scripts/local/AdvanceToCommitPhase.js --network test
+yarn run truffle exec ../core/scripts/local/AdvanceToCommitPhase.js --network test
 echo "- ✅ Advanced to next commit phase!"
 
 # Prompt user to import account[0] from Ganache into Metamask
@@ -107,7 +106,7 @@ select yn in "Continue" "Help" "Exit"; do
     esac
 done
 echo "- Advancing to the Reveal phase of the current voting round"
-yarn run truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
+yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
 
 # Snapshot the current round
 echo -e '\n####################################################################'
@@ -139,7 +138,7 @@ select yn in "Continue" "Help" "Exit"; do
     esac
 done
 echo "- Advancing to the next Voting round"
-yarn run truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
+yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
 
 # Claim rewards
 echo -e '\n####################################################################'
@@ -201,7 +200,7 @@ select yn in "Continue" "Help" "Exit"; do
     esac
 done
 echo "- Advancing to the Reveal phase of the current voting round"
-yarn run truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
+yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
 
 # Snapshot the current round
 echo -e '\n####################################################################'
@@ -233,7 +232,7 @@ select yn in "Continue" "Help" "Exit"; do
     esac
 done
 echo "- Advancing to the next Voting round"
-yarn run truffle exec ./scripts/local/AdvanceToNextVotingPhase.js --network test
+yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
 
 # Claim rewards
 echo -e '\n####################################################################'

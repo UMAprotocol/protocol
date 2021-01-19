@@ -31,9 +31,6 @@ async function propose(callback) {
      *********************************/
     const signingAccount = (await web3.eth.getAccounts())[0];
     console.group(`Proposer account: ${signingAccount}`);
-    if (signingAccount !== "0x2bAaA41d155ad8a4126184950B31F50A1513cE25") {
-      throw new Error("Cannot propose admin votes from this account");
-    }
     console.groupEnd();
 
     /** *******************************
@@ -83,6 +80,7 @@ async function propose(callback) {
         .propose([
           {
             to: identifierWhitelist.address,
+            value: 0,
             data: proposedTx
           }
         ])
