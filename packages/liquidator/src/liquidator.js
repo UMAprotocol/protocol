@@ -279,7 +279,7 @@ class Liquidator {
             message: "Withdrawal liveness has not passed WDF activation threshold, skipping✋",
             sponsor: position.sponsor,
             inputPrice: scaledPrice.toString(),
-            position: position,
+            position,
             minLiquidationPrice: this.liquidationMinPrice,
             maxLiquidationPrice: maxCollateralPerToken.toString(),
             syntheticTokenBalance: syntheticTokenBalance.toString(),
