@@ -21,7 +21,7 @@ const {
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
-const supportedContracts = [
+const SUPPORTED_CONTRACT_VERSIONS = [
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
@@ -74,14 +74,14 @@ async function run({
 
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
-      supportedContracts.filter(
+      SUPPORTED_CONTRACT_VERSIONS.filter(
         vo => vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
       ).length == 0
     )
       throw new Error(
         `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
           liquidatorConfig.contractVersion
-        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(supportedContracts)}`
+        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.

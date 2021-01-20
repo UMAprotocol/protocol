@@ -324,7 +324,8 @@ contract("ServerlessHub.js", function(accounts) {
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
-          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+          PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+          LIQUIDATOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
         }
       },
       testServerlessDisputer: {
@@ -347,8 +348,9 @@ contract("ServerlessHub.js", function(accounts) {
     };
 
     const validResponse = await sendHubRequest(validBody);
-    assert.equal(validResponse.res.statusCode, 200); // no error code
     const responseObject = JSON.parse(validResponse.res.text); // extract json response
+    console.log("validResponse.res.text", validResponse);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
 
     // Check that the http response contains correct logs
     assert.equal(responseObject.message, "All calls returned correctly"); // Final text in monitor loop.
