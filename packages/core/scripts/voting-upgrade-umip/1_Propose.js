@@ -6,12 +6,13 @@
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
-const VotingToken = artifacts.require("VotingToken");
-const Governor = artifacts.require("Governor");
-const VotingUpgrader = artifacts.require("VotingUpgrader");
+const { getTruffleContract } = require("../../index");
+const Finder = getTruffleContract("Finder", web3, "1.1.0");
+const Registry = getTruffleContract("Registry", web3, "1.1.0");
+const Voting = getTruffleContract("Voting", web3, "1.1.0");
+const VotingToken = getTruffleContract("VotingToken", web3, "1.1.0");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
+const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "1.1.0");
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 

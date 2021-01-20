@@ -8,9 +8,10 @@
 const assert = require("assert").strict;
 const argv = require("minimist")(process.argv.slice(), { string: ["votingAddress"] });
 
-const Voting = artifacts.require("Voting");
-const Finder = artifacts.require("Finder");
-const Governor = artifacts.require("Governor");
+const { getTruffleContract } = require("../../index");
+const Finder = getTruffleContract("Finder", web3, "1.1.0");
+const Voting = getTruffleContract("Voting", web3, "1.1.0");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
 
 const { interfaceName } = require("@uma/common");
 
