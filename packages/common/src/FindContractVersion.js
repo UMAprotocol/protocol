@@ -13,7 +13,6 @@ async function findContractVersion(contractAddress, web3) {
   assert(contractAddress, "Contract Address Must be provided");
   const contractCode = await web3.eth.getCode(contractAddress);
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
-  console.log("Contract code hash", contractCodeHash);
   return versionMap[contractCodeHash] || {};
 }
 

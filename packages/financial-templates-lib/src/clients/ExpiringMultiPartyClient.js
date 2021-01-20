@@ -190,7 +190,7 @@ class ExpiringMultiPartyClient {
     // Array of all liquidated sponsors, over all time. Use a Set to ensure only contains unique elements.
     const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
 
-    // Fetch sponsor position & liquidation in parallel batches, 20 at a time, to be safe and not overload the web3 node.
+    // Fetch sponsor position & liquidation in parallel batches, 150 at a time, to be safe and not overload the web3 node.
     const WEB3_CALLS_BATCH_SIZE = 150;
     const [activePositions, allLiquidations] = await Promise.all([
       Promise.map(this.activeSponsors, address => this.emp.methods.positions(address).call(), {

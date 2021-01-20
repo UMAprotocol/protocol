@@ -1,22 +1,12 @@
 const { toWei, utf8ToHex, padRight } = web3.utils;
-const {
-  MAX_UINT_VAL,
-  ZERO_ADDRESS,
-  LiquidationStatesEnum,
-  interfaceName,
-  addGlobalHardhatTestingAddress
-} = require("@uma/common");
+const { MAX_UINT_VAL, ZERO_ADDRESS, interfaceName, addGlobalHardhatTestingAddress } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const Poll = require("../index.js");
 
-const SUPPORTED_CONTRACT_VERSIONS = [
-  "ExpiringMultiParty-1.2.2"
-  //  "ExpiringMultiParty-latest",
-  //   "Perpetual-latest"
-];
+const SUPPORTED_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 let collateralToken;
 let syntheticToken;
@@ -82,9 +72,8 @@ const _createConstructorParamsForContractVersion = async function(contractVersio
       timer.address
     );
 
-    fundingRateIdentifier = web3.utils.utf8ToHex(fundingRateIdentifier);
-    await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier);
-    constructorParams.fundingRateIdentifier = fundingRateIdentifier;
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(fundingRateIdentifier));
+    constructorParams.fundingRateIdentifier = web3.utils.utf8ToHex(fundingRateIdentifier);
     constructorParams.configStoreAddress = configStore.address;
     constructorParams.tokenScaling = { rawValue: toWei("1") };
 
@@ -278,7 +267,7 @@ contract("index.js", function(accounts) {
           assert.isTrue(spyLogIncludes(spy, -1, "EMP is shutdown, can only withdraw liquidator dispute rewards"));
       });
 
-      it("Post EMP expiry, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
+      it("Post EMP expiry or emergency shutdown, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
@@ -340,8 +329,9 @@ contract("index.js", function(accounts) {
           { from: liquidator }
         );
 
-        // Next, expire the contract.
-        await emp.setCurrentTime(await emp.expirationTimestamp());
+        // Next, expire or emergencyshutdown the contract.
+        if (currentTypeTested == "ExpiringMultiParty") await emp.setCurrentTime(await emp.expirationTimestamp());
+        if (currentTypeTested == "Perpetual") await emp.emergencyShutdown();
 
         // Dispute & push a dispute resolution price.
         await collateralToken.mint(disputer, toWei("13"), {
@@ -380,29 +370,14 @@ contract("index.js", function(accounts) {
           ],
           empClient.getUnderCollateralizedPositions(toWei("1"))
         );
-        assert.deepStrictEqual(
-          [
-            {
-              sponsor: sponsorOvercollateralized,
-              id: "0",
-              state: LiquidationStatesEnum.DISPUTE_SUCCEEDED,
-              numTokens: toWei("100"),
-              liquidatedCollateral: toWei("130"),
-              lockedCollateral: toWei("130"),
-              liquidationTime: liquidationTime.toString(),
-              liquidator: ZERO_ADDRESS,
-              disputer
-            }
-          ],
-          empClient.getDisputedLiquidations()
-        );
 
-        // 3 logs should be shown. First two are about the contract expiry, third one is for the withdrawn dispute rewards.
-        assert.equal(spy.getCalls().length, 3);
-        assert.isTrue(spyLogIncludes(spy, 0, "expired"));
-        assert.isTrue(spyLogIncludes(spy, 1, "expired"));
-        assert.isTrue(spyLogIncludes(spy, 2, "Liquidation withdrawn"));
-        assert.equal(spy.getCall(-1).lastArg.amount, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
+        // 4 logs should be shown. First two are about approval, one about contract expiry and the 4th is for the
+        // withdrawn dispute rewards.
+        assert.equal(spy.getCalls().length, 4);
+        if (currentTypeTested == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
+        if (currentTypeTested == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
+        assert.isTrue(spyLogIncludes(spy, -1, "Liquidation withdrawn"));
+        assert.equal(spy.getCall(-1).lastArg.amountWithdrawn, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
       });
 
       it("Allowances are set", async function() {

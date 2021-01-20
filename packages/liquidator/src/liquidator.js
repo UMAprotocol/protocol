@@ -74,7 +74,6 @@ class Liquidator {
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `liquidatorConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
-    console.log("config within", liquidatorConfig);
     const defaultConfig = {
       crThreshold: {
         // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
@@ -435,14 +434,12 @@ class Liquidator {
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
-        console.log("withdrawalCallResponse", withdrawalCallResponse);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
         if (revertWrapper(withdrawalCallResponse) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
-        console.log("error", error);
         this.logger.debug({
           at: "Liquidator",
           message: "No rewards to withdraw",

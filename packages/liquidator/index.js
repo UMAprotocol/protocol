@@ -67,13 +67,10 @@ async function run({
       web3.eth.net.getId()
     ]);
 
-    console.log("detectedContract", detectedContract);
-    console.log("liquidatorConfig", liquidatorConfig);
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
     if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
     if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract.contractType;
-    console.log("liquidatorConfig", liquidatorConfig);
 
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
@@ -189,7 +186,7 @@ async function run({
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(
       logger,
-      getAbi(liquidatorConfig.contractType),
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       web3,
       empAddress,
       collateralDecimals,
