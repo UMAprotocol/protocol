@@ -118,16 +118,16 @@ class Disputer {
       if (!price) {
         // If missing historical price, check if there are further debug logs available. This is useful especially
         // if the pricefeed aggregates pricefeeds, like a Medianizer or a BasketSpreadPriceFeed.
-        let buggyPricefeeds;
+        let priceFeedErrorDetails;
         try {
-          buggyPricefeeds = this.priceFeed.debugHistoricalData(liquidationTime);
+          priceFeedErrorDetails = this.priceFeed.debugHistoricalData(liquidationTime);
         } catch (err) {
           // Some pricefeeds don't implement `debugHistoricalData` so we'll ignore errors.
         }
         this.logger.warn({
           at: "Disputer",
           message: "Cannot dispute: price feed returned invalid value",
-          buggyPricefeeds
+          priceFeedErrorDetails
         });
         return false;
       } else {

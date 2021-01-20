@@ -291,16 +291,16 @@ class SyntheticPegMonitor {
     if (!volData) {
       // If missing vol data, then the pricefeed is failing to return historical price data. Let's
       // try querying the pricefeed to get more details about the problem:
-      let buggyPricefeeds;
+      let priceFeedErrorDetails;
       try {
-        buggyPricefeeds = pricefeed.debugHistoricalData(latestTime);
+        priceFeedErrorDetails = pricefeed.debugHistoricalData(latestTime);
       } catch (err) {
         // Some pricefeeds don't implement `debugHistoricalData` so we'll ignore errors.
       }
       return {
         errorData: {
           latestTime: latestTime ? latestTime : 0,
-          buggyPricefeeds
+          priceFeedErrorDetails
         }
       };
     }

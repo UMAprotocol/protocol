@@ -268,12 +268,12 @@ contract("Disputer.js", function(accounts) {
         priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
         await disputer.dispute();
         assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
-        assert.equal(spy.getCall(-1).lastArg.buggyPricefeeds, undefined);
+        assert.equal(spy.getCall(-1).lastArg.priceFeedErrorDetails, undefined);
         // This time, simulate what happens if the pricefeed implements `debugHistoricalData()`:
         priceFeedMock.setDebugHistoricalData();
         await disputer.dispute();
         assert.equal(
-          spy.getCall(-1).lastArg.buggyPricefeeds,
+          spy.getCall(-1).lastArg.priceFeedErrorDetails,
           `Missing historical price for ${earliestLiquidationTime}`
         );
         assert.equal(spy.callCount, 6);

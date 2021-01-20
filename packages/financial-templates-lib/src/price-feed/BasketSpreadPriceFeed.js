@@ -114,18 +114,19 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   debugHistoricalData(time) {
-    let buggyPriceFeeds = [];
+    let priceFeedErrorDetails = [];
     this.allPriceFeeds.map(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
         if (priceFeed instanceof MedianizerPriceFeed) {
-          buggyPriceFeeds = buggyPriceFeeds.concat(priceFeed.debugHistoricalData(time));
+          // MedianizerPriceFeed.debugHitoricalData returns an array of error details
+          priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
         } else {
-          buggyPriceFeeds.push("Unhandled type of pricefeed missing price");
+          priceFeedErrorDetails.push("Unhandled type of pricefeed missing price");
         }
       }
     });
-    return buggyPriceFeeds;
+    return priceFeedErrorDetails;
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
