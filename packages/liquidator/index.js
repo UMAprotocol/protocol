@@ -82,25 +82,34 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Loaded contractVersion:${liquidatorConfig.contractVersion} & contractType:${liquidatorConfig.contractType} is not part of ${supportedContracts}`
+        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
+          liquidatorConfig.contractVersion
+        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(supportedContracts)}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
     const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty", liquidatorConfig.contractVersion), empAddress);
+    const emp = new web3.eth.Contract(
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
+      empAddress
+    );
 
     // Returns whether the EMP has expired yet
-    const checkIsExpiredPromise = async () => {
-      const [expirationTimestamp, contractTimestamp] = await Promise.all([
-        emp.methods.expirationTimestamp().call(),
+    const checkIsExpiredOrShutdownPromise = async () => {
+      const [expirationOrShutdownTimestamp, contractTimestamp] = await Promise.all([
+        liquidatorConfig.contractType == "ExpiringMultiParty"
+          ? emp.methods.expirationTimestamp().call()
+          : emp.methods.emergencyShutdownTimestamp().call(),
         emp.methods.getCurrentTime().call()
       ]);
       // Check if EMP is expired.
-      if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
+      if (Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) && expirationOrShutdownTimestamp > 0) {
         logger.info({
           at: "Liquidator#index",
-          message: "EMP is expired, can only withdraw liquidator dispute rewards 🕰",
-          expirationTimestamp,
+          message: `EMP is ${
+            liquidatorConfig.contractType == "ExpiringMultiParty" ? "expired" : "shutdown"
+          }, can only withdraw liquidator dispute rewards 🕰`,
+          expirationOrShutdownTimestamp,
           contractTimestamp
         });
         return true;
@@ -116,7 +125,7 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      isExpired,
+
       withdrawLiveness
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
@@ -124,12 +133,8 @@ async function run({
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
-      checkIsExpiredPromise(),
       emp.methods.withdrawalLiveness().call()
     ]);
-
-    // Initial EMP expiry status
-    let IS_EXPIRED = isExpired;
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -184,7 +189,7 @@ async function run({
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(
       logger,
-      getAbi("ExpiringMultiParty"),
+      getAbi(liquidatorConfig.contractType),
       web3,
       empAddress,
       collateralDecimals,
@@ -228,43 +233,42 @@ async function run({
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
-    if (!IS_EXPIRED) {
-      if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited collateral tokens 💰",
-          collateralApprovalTx: collateralApprovalTx.transactionHash
-        });
-      }
-      if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-          syntheticApprovalTx: syntheticApprovalTx.transactionHash
-        });
-      }
+
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        syntheticApprovalTx: syntheticApprovalTx.transactionHash
+      });
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       // Check if EMP expired before running current iteration.
-      IS_EXPIRED = await checkIsExpiredPromise();
+      let isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
 
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          if (!IS_EXPIRED) {
+          if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
             const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();

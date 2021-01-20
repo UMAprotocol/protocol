@@ -254,7 +254,7 @@ class Liquidator {
         message: "Detected a liquidatable position",
         scaledPrice: scaledPrice.toString(),
         maxCollateralPerToken: maxCollateralPerToken.toString(),
-        position: JSON.stringify(position)
+        position: position
       });
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
@@ -422,7 +422,7 @@ class Liquidator {
       this.logger.debug({
         at: "Liquidator",
         message: "Detected a pending or expired liquidation",
-        liquidation: JSON.stringify(liquidation)
+        liquidation: liquidation
       });
 
       // Construct transaction.
@@ -435,12 +435,14 @@ class Liquidator {
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
+        console.log("withdrawalCallResponse", withdrawalCallResponse);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
         if (revertWrapper(withdrawalCallResponse) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
+        console.log("error", error);
         this.logger.debug({
           at: "Liquidator",
           message: "No rewards to withdraw",

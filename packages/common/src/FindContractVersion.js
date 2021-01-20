@@ -14,7 +14,7 @@ async function findContractVersion(contractAddress, web3) {
   const contractCode = await web3.eth.getCode(contractAddress);
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
   console.log("Contract code hash", contractCodeHash);
-  return versionMap[contractCodeHash];
+  return versionMap[contractCodeHash] || {};
 }
 
 const versionMap = {
@@ -23,15 +23,25 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
+  "0x91a7449c56a485be56bd91515dd5334b73d60371f970ea3750e146c25b65e5b7": {
+    // Main net 1.2.0
+    contractType: "ExpiringMultiParty",
+    contractVersion: "1.2.0"
+  },
   "0x7a52b6452a5f68e68a1bbebf66497019194a9fc9533457eeb92043e3d3bbae3b": {
     // 1.2.2 deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
-  "0x91a7449c56a485be56bd91515dd5334b73d60371f970ea3750e146c25b65e5b7": {
-    // Main net 1.2.0
+  "0xceb50964d61ef7233221e0f2f65557a50aa353f6aacee1654d63e0b30be5b98b": {
+    // 1.2.2 deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
-    contractVersion: "1.2.0"
+    contractVersion: "latest"
+  },
+  "0x8f6b71c0b374a9c4d177e37966af8150f0610e55ebf2955dc81a8a0d11ea9bbe": {
+    // 1.2.2 deployed from hardhat tests.
+    contractType: "Perpetual",
+    contractVersion: "latest"
   }
 };
 
