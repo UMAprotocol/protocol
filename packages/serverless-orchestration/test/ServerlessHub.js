@@ -348,11 +348,10 @@ contract("ServerlessHub.js", function(accounts) {
     };
 
     const validResponse = await sendHubRequest(validBody);
-    const responseObject = JSON.parse(validResponse.res.text); // extract json response
-    console.log("validResponse.res.text", validResponse);
     assert.equal(validResponse.res.statusCode, 200); // no error code
 
     // Check that the http response contains correct logs
+    const responseObject = JSON.parse(validResponse.res.text); // extract json response
     assert.equal(responseObject.message, "All calls returned correctly"); // Final text in monitor loop.
     assert.equal(Object.keys(responseObject.output.errorOutputs).length, 0); // should be no errors
     assert.equal(Object.keys(responseObject.output.validOutputs).length, 3); // should be 3 valid outputs
