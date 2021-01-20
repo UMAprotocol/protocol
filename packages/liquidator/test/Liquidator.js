@@ -434,7 +434,7 @@ contract("Liquidator.js", function(accounts) {
           await liquidator.liquidatePositions();
           assert.equal(spy.callCount, 2);
         });
-        versionedIt(["any"], true)("Can correctly detect invalid withdrawals and liquidate them", async function() {
+        versionedIt(["any"])("Can correctly detect invalid withdrawals and liquidate them", async function() {
           // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
           await emp.create(
             { rawValue: convertCollateral("125") },
