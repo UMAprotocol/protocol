@@ -228,10 +228,9 @@ module.exports = (
         .lt(empMinSponsorSize)
     )
       return false;
-    // liveness timer on withdraw has not passed time
-    if (!passedDefenseActivationPercent({ position, currentBlockTime })) return false;
-    // all conditions passed and we should minimally liquidate to extend timer
-    return true;
+    // all conditions passed and we should minimally liquidate to extend timer as long as the
+    // liveness timer on withdraw has passed the activation threshold.
+    return passedDefenseActivationPercent({ position, currentBlockTime });
   }
 
   // Any new constraints can be added here, but for now
