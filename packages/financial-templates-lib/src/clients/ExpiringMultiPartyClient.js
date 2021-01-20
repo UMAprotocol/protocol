@@ -158,7 +158,7 @@ class ExpiringMultiPartyClient {
       this.emp.methods.getCurrentTime().call()
     ]);
 
-    if (this.contractType == "Perpetual") {
+    if (this.contractType === "Perpetual") {
       this.latestCumulativeFundingRateMultiplier = this.toBN(
         (await this.emp.methods.fundingRate().call()).cumulativeMultiplier.rawValue
       );
