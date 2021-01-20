@@ -54,7 +54,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     this.priceFeeds.map(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
-        priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.getUuid()}`);
+        priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.uuid}`);
       }
     });
     return priceFeedErrorDetails;

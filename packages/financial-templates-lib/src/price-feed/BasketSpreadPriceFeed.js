@@ -123,7 +123,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
           // concat its error log array.
           priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
         } else {
-          priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.getUuid()}`);
+          priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.uuid}`);
         }
       }
     });
