@@ -1397,7 +1397,8 @@ contract("Liquidator.js", function(accounts) {
           // Logger should NOT emit a log specific about skipping this liquidation, because the defense activation
           // percent has not passed yet, because the start and end block window were NOT specified when creating
           // the liquidator.
-          // No other logs should be emitted.
+          // Importantly, No WARN or ERROR logs should be emitted about "missing" this liquidation because
+          // we are purposefully ignoring it.
           assert.equal(startingLogLength, spy.getCalls().length);
 
           let sponsor2Liquidations = await emp.getLiquidations(sponsor2);
