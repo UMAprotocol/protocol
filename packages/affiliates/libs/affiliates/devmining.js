@@ -61,16 +61,29 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     return Prices(result);
   }
 
+  // returns a price history where everything is "price" in USD. Reports this as a natural number, not scaled to eth
+  function getDefaultPriceHistory(price = 1) {
+    // this inserts a single price at time 1. All lookups will converge to 1 for any time.
+    return Prices([[1, Number(price)]]);
+  }
+
   // the fallback requires a different value calculation, so this is probably the cleanest way to "switch"
   // between value by and value by usd. The function to calculate value is passed along with the data.
-  async function getSyntheticPriceHistoryWithFallback(empAddress, start, end, syntheticAddress) {
+  async function getSyntheticPriceHistoryWithFallback(empAddress, start, end, syntheticAddress, fallbackPrice) {
+    // this will throw if the feed isnt available (among other errors probably)
     try {
-      // this will throw if the feed isnt available (among other errors probably)
       return [await getSyntheticPriceHistory(empAddress, start, end), calculateValue];
     } catch (err) {
-      // this will need to do a lookup based on synthetic token address not emp
-      return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
+      console.error(empAddress, "synthetic price failed", err);
     }
+    try {
+      return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
+    } catch (err) {
+      console.error(empAddress, "coingecko price failed", err);
+      if (!fallbackPrice) throw err;
+    }
+    console.error(empAddress, "using fallback price", fallbackPrice);
+    return [getDefaultPriceHistory(fallbackPrice), calculateValueFromUsd];
   }
 
   // Gets the value of synthetics in collateral currency.
@@ -125,7 +138,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
     );
     assert(
-      empValue.length == 2,
+      empValue.length === 2,
       "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
     );
     return empValue;
@@ -182,7 +195,11 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
           result.push([empAddress, value]);
         } catch (err) {
           // this error is ok, it means we have block history before the emp had any events. Locked value is 0 at this block.
-          result.push([empAddress, "0"]);
+          if (err.message.includes("history does not go back far enough") || err.message.includes("history is empty")) {
+            result.push([empAddress, "0"]);
+          } else {
+            throw err;
+          }
         }
         return result;
       }, []);
@@ -250,11 +267,14 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     collateralTokenDecimals = [],
     syntheticTokens = [],
     syntheticTokenDecimals = [],
-    snapshotSteps = 1
+    snapshotSteps = 1,
+    fallbackPrices = []
   }) {
     // API has changed, we need to validate input. Emps will be required to include payout address.
     // Want to give additional direction to user if this function is called directly.
     empWhitelist.forEach(validateEmpInput);
+
+    fallbackPrices = new Map(fallbackPrices);
 
     // query all required data ahead of calcuation
     const [
@@ -271,7 +291,13 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
         empWhitelist,
         // each empwhitelist contains, [empaddress,deployeraddres], so we only care about empaddress
         async ([empAddress], i) =>
-          await getSyntheticPriceHistoryWithFallback(empAddress, startTime, endTime, syntheticTokens[i])
+          await getSyntheticPriceHistoryWithFallback(
+            empAddress,
+            startTime,
+            endTime,
+            syntheticTokens[i],
+            fallbackPrices.get(empAddress)
+          )
       ),
       getBlocks(startTime, endTime),
       // Each empwhitelist contains, [empaddress,deployeraddres], balance histories expects array of just emp addresses
