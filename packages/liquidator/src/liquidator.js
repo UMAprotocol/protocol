@@ -22,6 +22,10 @@ class Liquidator {
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
+   * @param {Number} startingBlock Earliest block to query for contract events that the bot will log about. 
+   *      If "undefined", then the bot will not provide detailed logs about these contract events.
+   * @param {Number} endingBlock Latest block to query for contract events that the bot will log about. 
+   *      If "undefined", then the bot will not provide detailed logs about these contract events.
    * @param {Object} [liquidatorConfig] Contains fields with which constructor will attempt to override defaults.
    */
   constructor({
@@ -33,7 +37,9 @@ class Liquidator {
     priceFeed,
     account,
     empProps,
-    liquidatorConfig
+    liquidatorConfig,
+    startingBlock,
+    endingBlock
   }) {
     this.logger = logger;
     this.account = account;
@@ -70,6 +76,10 @@ class Liquidator {
 
     // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
     this.GAS_LIMIT_BUFFER = 1.25;
+
+    // Block window used to filter for contract events.
+    this.startingBlock = startingBlock;
+    this.endingBlock = endingBlock;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `liquidatorConfig` input object. The `isValid` property is a function that should be called
@@ -274,7 +284,19 @@ class Liquidator {
           this.defenseActivationPercent &&
           !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
         ) {
-          this.logger.info({
+          // If `startingBlock` and `endingBlock` are specified and the requested withdrawal was within the
+          // block window, then upgrade the log level:
+          let logLevel = "debug";
+          if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
+            const blockWindowHasRequestedWithdraw = await this.empContract.getPastEvents("RequestWithdrawal", {
+              fromBlock: this.startingBlock,
+              toBlock: this.endingBlock
+            });
+            if (blockWindowHasRequestedWithdraw) {
+              logLevel = "info";
+            }
+          }
+          this.logger[logLevel]({
             at: "Liquidator",
             message: "Withdrawal liveness has not passed WDF activation threshold, skipping😴",
             sponsor: position.sponsor,
