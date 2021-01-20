@@ -18,7 +18,7 @@ function getHardhatConfig(configOverrides) {
   // Hard hat plugins
   require("@nomiclabs/hardhat-truffle5");
   require("@nomiclabs/hardhat-etherscan");
-  // require("hardhat-gas-reporter");
+  require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
 
   // Solc version defined here so etherscan-verification has access to it
