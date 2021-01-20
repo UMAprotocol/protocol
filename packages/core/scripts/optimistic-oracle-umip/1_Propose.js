@@ -10,7 +10,7 @@ const { getTruffleContract } = require("../../index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
 const { RegistryRolesEnum, ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
