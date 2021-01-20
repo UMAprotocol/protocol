@@ -1,22 +1,16 @@
 const Finder = artifacts.require("Finder");
 const PerpetualCreator = artifacts.require("PerpetualCreator");
 const PerpetualLib = artifacts.require("PerpetualLib");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
-const TestnetERC20 = artifacts.require("TestnetERC20");
-const {
-  RegistryRolesEnum,
-  interfaceName,
-  getKeysForNetwork,
-  deploy,
-  enableControllableTiming
-} = require("@uma/common");
+const { RegistryRolesEnum, getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
+
+  const finder = await Finder.deployed();
 
   // .deployed() will fail if called on a network where the is no Timer (!controllableTiming).
   const timerAddress = controllableTiming
