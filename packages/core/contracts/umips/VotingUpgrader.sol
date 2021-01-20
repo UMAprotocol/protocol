@@ -11,7 +11,7 @@ import "../oracle/implementation/Voting.sol";
  * @dev Note: the complete upgrade process requires more than just the transactions in this contract. These are only
  * the ones that need to be performed atomically.
  */
-contract Umip15Upgrader {
+contract VotingUpgrader {
     // Existing governor is the only one who can initiate the upgrade.
     address public governor;
 

@@ -2,7 +2,7 @@
 // part of UMIP-15. It can be run on a local ganache fork of the main net or can be run directly on the main net to
 // execute the upgrade transactions. To run this on the localhost first fork main net into Ganache with the
 // proposerWallet unlocked as follows: ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as: yarn truffle exec ./scripts/UMIP-15/1_Propose.js --network mainnet-fork from core
+// Then execute the script as: yarn truffle exec ./scripts/voting-upgrade-umip/1_Propose.js --network mainnet-fork from core
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
@@ -25,7 +25,7 @@ async function runExport() {
     snapshot = await takeSnapshot(web3);
     snapshotId = snapshot["result"];
   }
-  console.log("Running UMIP-15 Upgrade🔥");
+  console.log("Running Voting Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
   const registry = await Registry.deployed();
