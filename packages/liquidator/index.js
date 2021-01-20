@@ -229,8 +229,6 @@ async function run({
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
-
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
       const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
