@@ -276,7 +276,7 @@ class Liquidator {
         ) {
           this.logger.info({
             at: "Liquidator",
-            message: "Withdrawal liveness has not passed WDF activation threshold, skipping✋",
+            message: "Withdrawal liveness has not passed WDF activation threshold, skipping😴",
             sponsor: position.sponsor,
             inputPrice: scaledPrice.toString(),
             position,
