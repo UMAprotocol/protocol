@@ -189,10 +189,6 @@ workflows:
   build_and_test:
     jobs:
       - checkout_and_install
-      - coverage:
-          context: api_keys
-          requires:
-            - checkout_and_install
       - slither
       - build:
           requires:
@@ -226,3 +222,17 @@ workflows:
           filters:
             branches:
               only: master
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - checkout_and_install
+      - coverage:
+          context: api_keys
+          requires:
+            - checkout_and_install
