@@ -439,6 +439,37 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
   });
+  it("Constituent price feeds return null", async function() {
+    const priceFeeds = [new PriceFeedMock()];
+    baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    denominatorPriceFeed = new MedianizerPriceFeed(priceFeeds);
+
+    basketSpreadPriceFeed = new BasketSpreadPriceFeed(
+      web3,
+      dummyLogger,
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
+      denominatorPriceFeed
+    );
+
+    // Should return null.
+    assert.equal(basketSpreadPriceFeed.getCurrentPrice(), null);
+
+    // Should return null since there was a null price output.
+    const arbitraryHistoricalTimestamp = 1000;
+    assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+
+    // Should return null.
+    assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
+
+    // Should be able to debug five historical price feeds with errors.
+    assert.equal(basketSpreadPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp).length, 5);
+    assert.equal(
+      basketSpreadPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp)[0],
+      "PriceFeed down with UUID: PriceFeedMock"
+    );
+  });
   it("Validates constituent price feed decimals", async function() {
     // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the
     // denominator price feed.

@@ -98,6 +98,7 @@ contract("MedianizerPriceFeed.js", function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
       new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
+      new PriceFeedMock(null, null, null),
       new PriceFeedMock(null, null, null)
     ];
 
@@ -112,6 +113,13 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return null since there was a null input.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
+
+    // Should be able to debug two historical price feeds with errors.
+    assert.equal(medianizerPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp).length, 2);
+    assert.equal(
+      medianizerPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp)[0],
+      "PriceFeed down with UUID: PriceFeedMock"
+    );
   });
 
   it("undefined inputs", async function() {

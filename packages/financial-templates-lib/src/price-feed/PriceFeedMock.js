@@ -16,6 +16,7 @@ class PriceFeedMock extends PriceFeedInterface {
     this.priceFeedDecimals = priceFeedDecimals;
     this.historicalPrices = [];
     this.lookback = lookback;
+    this.uuid = "PriceFeedMock";
   }
 
   setCurrentPrice(currentPrice) {
