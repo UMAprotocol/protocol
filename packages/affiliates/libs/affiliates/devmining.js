@@ -179,8 +179,14 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       const { timestamp, number } = block;
       const valueByEmp = empWhitelist.reduce((result, [empAddress], empIndex) => {
         try {
+          const { tokens, isExpired } = balanceHistories.get(empAddress).history.lookup(number);
+
+          // if EMP was expired this block, dont include it in further calculations.
+          if (isExpired) {
+            return result;
+          }
+
           const [syntheticTokenPrices, syntheticValueCalculation] = syntheticTokenPricesWithValueCalculation[empIndex];
-          const { tokens } = balanceHistories.get(empAddress).history.lookup(number);
           const [, closestCollateralPrice] = collateralTokenPrices[empIndex].closest(timestamp);
           const [, closestSyntheticPrice] = syntheticTokenPrices.closest(timestamp);
           const totalTokens = Object.values(tokens).reduce((result, value) => {

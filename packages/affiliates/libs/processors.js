@@ -47,7 +47,8 @@ function EmpBalancesHistory() {
         blockNumber: lastBlockNumber,
         blockTimestamp: event.blockTimestamp,
         tokens: balances.tokens.snapshot(),
-        collateral: balances.collateral.snapshot()
+        collateral: balances.collateral.snapshot(),
+        isExpired: balances.isExpired()
       });
       lastBlockNumber = blockNumber;
       lastBlockTimestamp = event.blockTimestamp;
@@ -62,7 +63,8 @@ function EmpBalancesHistory() {
       blockNumber: lastBlockNumber,
       blockTimestamp: lastBlockTimestamp,
       tokens: balances.tokens.snapshot(),
-      collateral: balances.collateral.snapshot()
+      collateral: balances.collateral.snapshot(),
+      isExpired: balances.isExpired()
     });
   }
 
@@ -80,6 +82,12 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
   // If not enabled expired emps may calculate larger totals overall than in actuality.
   collateral = collateral || Balances({ allowNegative: true });
   tokens = tokens || Balances({ allowNegative: true });
+
+  // Doesnt quite fit under umbrella of "balances" but this is the easiest place to set an expired flag.
+  let expired = false;
+  function isExpired() {
+    return expired;
+  }
 
   handlers = {
     RequestTransferPosition(/* oldSponsor*/) {
@@ -127,6 +135,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
       tokens.sub(sponsor, tokenAmount).toString();
     },
     ContractExpired(/* caller*/) {
+      expired = true;
       // nothing
     },
     // looking at the emp code, i think anyone can call this even if they never had a position
@@ -172,7 +181,8 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
   return {
     handleEvent,
     collateral,
-    tokens
+    tokens,
+    isExpired
   };
 }
 
