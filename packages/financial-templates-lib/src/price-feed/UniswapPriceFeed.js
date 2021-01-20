@@ -35,6 +35,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.web3 = web3;
 
     this.uniswap = new web3.eth.Contract(uniswapAbi, uniswapAddress);
+    this.uuid = `Uniswap-${uniswapAddress}`;
     this.twapLength = twapLength;
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;

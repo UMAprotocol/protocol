@@ -119,10 +119,11 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
         if (priceFeed instanceof MedianizerPriceFeed) {
-          // MedianizerPriceFeed.debugHitoricalData returns an array of error details
+          // MedianizerPriceFeed.debugHitoricalData returns an array of error details so we will
+          // concat its error log array.
           priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
         } else {
-          priceFeedErrorDetails.push("Unhandled type of pricefeed missing price");
+          priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.getUuid()}`);
         }
       }
     });

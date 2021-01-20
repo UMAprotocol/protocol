@@ -31,6 +31,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
 
     this.contract = new web3.eth.Contract(abi, address);
+    this.uuid = `Balancer-${address}`;
     this.currentPrice = null;
     this.lastUpdateTime = null;
     this.tokenIn = tokenIn;

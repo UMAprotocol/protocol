@@ -36,6 +36,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     this.pair = pair;
     this.lookback = lookback;
+    this.uuid = `DominationFinance-${pair}`;
     this.tickPeriod = tickPeriod;
     this.networker = networker;
     this.getTime = getTime;

@@ -43,6 +43,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.exchange = exchange;
     this.pair = pair;
     this.lookback = lookback;
+    this.uuid = `CryptoWatch-${exchange}-${pair}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;

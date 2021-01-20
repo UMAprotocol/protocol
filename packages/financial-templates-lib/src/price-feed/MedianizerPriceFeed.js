@@ -1,6 +1,4 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
-const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 // An implementation of PriceFeedInterface that medianizes other price feeds.
 class MedianizerPriceFeed extends PriceFeedInterface {
@@ -56,14 +54,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     this.priceFeeds.map(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
-        if (priceFeed instanceof CryptoWatchPriceFeed) {
-          priceFeedErrorDetails.push(`(CryptoWatch) ${priceFeed.exchange}-${priceFeed.pair}`);
-        } else if (priceFeed instanceof UniswapPriceFeed) {
-          priceFeedErrorDetails.push(`(Uniswap) ${priceFeed.uniswap.options.address}`);
-        } else {
-          // Unhandled type of pricefeed missing price
-          priceFeedErrorDetails.push("Unhandled type of pricefeed missing historical data");
-        }
+        priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.getUuid()}`);
       }
     });
     return priceFeedErrorDetails;
