@@ -36,11 +36,7 @@ const configs = [
 
 // These unit tests are re-run against the array of contract types and versions below. unit tests can choose which version
 // they support using the `versionedIt` syntax. Additional versions can be added, once an UMA release has been done.
-const SUPPORTED_CONTRACT_VERSIONS = [
-  // "ExpiringMultiParty-1.2.2"
-  "ExpiringMultiParty-latest"
-  // "Perpetual-latest"
-];
+const SUPPORTED_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 let currentTestIterationVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";
@@ -287,8 +283,8 @@ contract("Liquidator.js", function(accounts) {
           spy = sinon.spy();
 
           spyLogger = winston.createLogger({
-            level: "debug",
-            transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+            level: "info",
+            transports: [new SpyTransport({ level: "info" }, { spy: spy })]
           });
 
           // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
@@ -498,7 +494,6 @@ contract("Liquidator.js", function(accounts) {
           // Now that the liquidation has expired, the liquidator can withdraw rewards.
           const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
           await liquidator.update();
-          console.log("WITHDRAW NOW");
           await liquidator.withdrawRewards();
           // assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
 
