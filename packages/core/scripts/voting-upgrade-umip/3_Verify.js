@@ -2,22 +2,23 @@
 // assigned ownerships and roles. It can be run on the main net after the upgrade is completed
 // or on the local Ganache mainnet fork to validate the execution of the previous  two scripts.
 // This script does not need any wallets unlocked and does not make any on-chain state changes. It can be run as:
-// yarn truffle exec ./scripts/UMIP-15/3_Verify.js --network mainnet-fork --votingAddress 0x-new-voting-contract-address
+// yarn truffle exec ./scripts/voting-upgrade-umip/3_Verify.js --network mainnet-fork --votingAddress 0x-new-voting-contract-address
 // votingAddress is optional. If not included then the script will pull from the current truffle artifacts. This lets
 // you verify the output before running yarn load-addresses
 const assert = require("assert").strict;
 const argv = require("minimist")(process.argv.slice(), { string: ["votingAddress"] });
 
-const Voting = artifacts.require("Voting");
-const Finder = artifacts.require("Finder");
-const Governor = artifacts.require("Governor");
+const { getTruffleContract } = require("../../index");
+const Finder = getTruffleContract("Finder", web3, "1.1.0");
+const Voting = getTruffleContract("Voting", web3, "1.1.0");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
 
 const { interfaceName } = require("@uma/common");
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
 async function runExport() {
-  console.log("Running UMIP-15 Upgrade Verifier🔥");
+  console.log("Running Voting Upgrade Verifier🔥");
   let votingAddress = argv.votingAddress;
   if (!votingAddress) {
     throw new Error("No votingAddress paramter specified! Define the new voting contract.");
