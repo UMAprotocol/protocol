@@ -77,13 +77,14 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       console.error(empAddress, "synthetic price failed", err);
     }
     try {
+      if (fallbackPrice) {
+        console.error(empAddress, "using fallback price", fallbackPrice);
+        return [getDefaultPriceHistory(fallbackPrice), calculateValueFromUsd];
+      }
       return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
     } catch (err) {
       console.error(empAddress, "coingecko price failed", err);
-      if (!fallbackPrice) throw err;
     }
-    console.error(empAddress, "using fallback price", fallbackPrice);
-    return [getDefaultPriceHistory(fallbackPrice), calculateValueFromUsd];
   }
 
   // Gets the value of synthetics in collateral currency.
