@@ -1,8 +1,9 @@
-// This script generates and submits an identifier-add upgrade transaction to the DVM. It can be run on a local ganache
-// fork of the main net or can be run directly on the main net to execute the upgrade transactions.
-// To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
-// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
-// Then execute the script as: truffle exec ./scripts/optimistic-oracle-umip/1_Propose.js --network mainnet-fork --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS from core
+// This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM. It can be
+// run on a local ganache fork of the main net or can be run directly on the main net to execute the upgrade
+// transactions. To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows from core:
+// yarn ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
+// Then execute the script from core:
+// yarn truffle exec ./scripts/optimistic-oracle-umip/1_Propose.js --network mainnet-fork --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
 
 // Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../index");
