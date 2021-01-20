@@ -368,8 +368,9 @@ contract("FundingRateApplier", function(accounts) {
       assert.equal((await collateral.balanceOf(owner)).toString(), toWei("99.99"));
       assert.equal((await collateral.balanceOf(disputer)).toString(), toWei("99.99"));
 
-      // The optimistic oracle should be escrowing that money.
-      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("0.02"));
+      // The optimistic oracle should be escrowing all the money minus the burned portion (1/2 of the 0.01 bond), which
+      // is paid to the store on dispute.
+      assert.equal((await collateral.balanceOf(optimisticOracle.address)).toString(), toWei("0.015"));
 
       // Move time forward to where the proposal would have expired (if not disputed).
       currentTime += delay;
