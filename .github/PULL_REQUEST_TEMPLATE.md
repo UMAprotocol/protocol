@@ -10,7 +10,7 @@
   They should also be in the present simple tense.
 
   Examples:
-  
+
   feat(dvm): adds a new function to compute voting rewards offchain
   fix(monitor): fixes broken link in liquidation log
   feat(voter-dapp): adds countdown timer component to the header
@@ -40,6 +40,17 @@ Briefly summarize what changes were made to accomplish the motivation above.
 **Details**
 
 This may be unnecessary for some PRs. Catch-all for detailed explanations about the implementation decisions and implications of the change.
+
+
+**Testing**
+
+Check a box to describe how you tested these changes and list the steps for reviewers to test.
+
+- [ ]  Ran end-to-end test, running the code as in production
+- [ ]  New unit tests created
+- [ ]  Existing tests adequate, no new tests required
+- [ ]  All existing tests pass
+- [ ]  Untested
 
 
 **Issue(s)**
