@@ -767,7 +767,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 empProps,
-                config: liquidatorConfig
+                liquidatorConfig
               });
               errorThrown = false;
             } catch (err) {
@@ -792,7 +792,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 empProps,
-                config: liquidatorConfig
+                liquidatorConfig
               });
               errorThrown = false;
             } catch (err) {
@@ -887,7 +887,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 empProps,
-                config: liquidatorConfig
+                liquidatorConfig
               });
               errorThrown = false;
             } catch (err) {
@@ -1194,7 +1194,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 empProps,
-                config: liquidatorConfig
+                liquidatorConfig
               });
 
               // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
@@ -1297,7 +1297,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               empProps,
-              config: liquidatorConfig
+              liquidatorConfig
             });
             assert.ok(liquidator);
           });
@@ -1323,7 +1323,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 empProps,
-                config: liquidatorConfig
+                liquidatorConfig
               });
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await emp.create(
@@ -1435,7 +1435,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               empProps,
-              config: liquidatorConfig
+              liquidatorConfig
             });
             // sponsor1 creates a position with 120 units of collateral, creating 100 synthetic tokens.
             await emp.create(
@@ -1493,7 +1493,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               empProps,
-              config: liquidatorConfig
+              liquidatorConfig
             });
             await emp.create(
               { rawValue: convertCollateral("120") },
