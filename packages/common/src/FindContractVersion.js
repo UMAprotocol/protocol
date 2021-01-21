@@ -9,9 +9,10 @@ const assert = require("assert");
  */
 async function findContractVersion(contractAddress, web3) {
   assert(web3, "Web3 object must be provided");
-  assert(contractAddress, "Contract Address Must be provided");
+  assert(contractAddress, "Contract address must be provided");
   const contractCode = await web3.eth.getCode(contractAddress);
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
+  console.log("contractCodeHash", contractCodeHash);
   return versionMap[contractCodeHash] || {};
 }
 
@@ -31,12 +32,12 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
-  "0xceb50964d61ef7233221e0f2f65557a50aa353f6aacee1654d63e0b30be5b98b": {
+  "0x1f75b3ae77a4a3b91fefd81264ec94751dcceafb02d42d2250a209385cdee39a": {
     // latest ExpiringMultiParty deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
   },
-  "0x8f6b71c0b374a9c4d177e37966af8150f0610e55ebf2955dc81a8a0d11ea9bbe": {
+  "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
     // latest Perpetual deployed from hardhat tests.
     contractType: "Perpetual",
     contractVersion: "latest"
