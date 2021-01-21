@@ -134,6 +134,18 @@ class Liquidator {
           if (x === undefined) return true;
           return parseFloat(x) >= 0 && parseFloat(x) <= 100;
         }
+      },
+      contractType: {
+        value: undefined,
+        isValid: x => {
+          return x == "ExpiringMultiParty" || x == "Perpetual";
+        }
+      },
+      contractVersion: {
+        value: undefined,
+        isValid: x => {
+          return x == "1.2.0" || "1.2.1" || "1.2.2" || x == "latest";
+        }
       }
     };
 
@@ -209,12 +221,14 @@ class Liquidator {
     // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
     const maxCollateralPerToken = this.toBN(scaledPrice)
       .mul(this.toBN(this.empCRRatio))
-      .div(this.toBN(this.toWei("1")));
+      .mul(this.empClient.getLatestCumulativeFundingRateMultiplier())
+      .div(this.toBN(this.toWei("1")).mul(this.toBN(this.toWei("1"))));
 
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
+      latestCumulativeFundingRateMultiplier: this.empClient.getLatestCumulativeFundingRateMultiplier(),
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       empCRRatio: this.empCRRatio.toString(),
@@ -239,7 +253,7 @@ class Liquidator {
         message: "Detected a liquidatable position",
         scaledPrice: scaledPrice.toString(),
         maxCollateralPerToken: maxCollateralPerToken.toString(),
-        position: JSON.stringify(position)
+        position: position
       });
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
@@ -407,22 +421,22 @@ class Liquidator {
       this.logger.debug({
         at: "Liquidator",
         message: "Detected a pending or expired liquidation",
-        liquidation: JSON.stringify(liquidation)
+        liquidation: liquidation
       });
 
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawAmount, gasEstimation;
+      let withdrawalCallResponse, gasEstimation;
       try {
-        [withdrawAmount, gasEstimation] = await Promise.all([
+        [withdrawalCallResponse, gasEstimation] = await Promise.all([
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-        if (revertWrapper(withdrawAmount) === null) {
+        if (revertWrapper(withdrawalCallResponse) === null) {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -440,11 +454,16 @@ class Liquidator {
         gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
+      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        amountWithdrawn:
+          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
+            ? withdrawalCallResponse.rawValue.toString()
+            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig
       });
 
@@ -516,7 +535,10 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        amountWithdrawn:
+          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
+            ? withdrawalCallResponse.rawValue.toString()
+            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig,
         liquidationResult: logResult
       });
