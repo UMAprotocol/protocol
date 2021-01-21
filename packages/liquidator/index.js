@@ -94,17 +94,20 @@ async function run({
     // Returns whether the EMP has expired yet
     const checkIsExpiredOrShutdownPromise = async () => {
       const [expirationOrShutdownTimestamp, contractTimestamp] = await Promise.all([
-        liquidatorConfig.contractType == "ExpiringMultiParty"
+        liquidatorConfig.contractType === "ExpiringMultiParty"
           ? emp.methods.expirationTimestamp().call()
           : emp.methods.emergencyShutdownTimestamp().call(),
         emp.methods.getCurrentTime().call()
       ]);
       // Check if EMP is expired.
-      if (Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) && expirationOrShutdownTimestamp > 0) {
+      if (
+        Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) &&
+        Number(expirationOrShutdownTimestamp) > 0
+      ) {
         logger.info({
           at: "Liquidator#index",
           message: `EMP is ${
-            liquidatorConfig.contractType == "ExpiringMultiParty" ? "expired" : "shutdown"
+            liquidatorConfig.contractType === "ExpiringMultiParty" ? "expired" : "shutdown"
           }, can only withdraw liquidator dispute rewards 🕰`,
           expirationOrShutdownTimestamp,
           contractTimestamp

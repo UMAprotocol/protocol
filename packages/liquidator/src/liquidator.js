@@ -138,13 +138,13 @@ class Liquidator {
       contractType: {
         value: undefined,
         isValid: x => {
-          return x == "ExpiringMultiParty" || x == "Perpetual";
+          return x === "ExpiringMultiParty" || x === "Perpetual";
         }
       },
       contractVersion: {
         value: undefined,
         isValid: x => {
-          return x == "1.2.0" || "1.2.1" || "1.2.2" || x == "latest";
+          return x === "1.2.0" || "1.2.1" || "1.2.2" || x === "latest";
         }
       }
     };
@@ -158,7 +158,7 @@ class Liquidator {
       // would rather just throw here and let index.js capture and log, but
       // its currently not set up to add in the additional context for the error
       // so it has to be done here.
-      if (logger[severity] == null) {
+      if (logger[severity] === null) {
         return logger.error({
           at: "Liquidator",
           ...data,
@@ -461,7 +461,7 @@ class Liquidator {
         message: "Withdrawing liquidation",
         liquidation: liquidation,
         amountWithdrawn:
-          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
+          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
             ? withdrawalCallResponse.rawValue.toString()
             : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig
@@ -536,7 +536,7 @@ class Liquidator {
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
         amountWithdrawn:
-          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.0" || this.contractVersion == "1.2.2"
+          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
             ? withdrawalCallResponse.rawValue.toString()
             : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
         txnConfig,
