@@ -112,9 +112,11 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
+  // This function is expected to be called by a client of this pricefeed that wants to get more details
+  // about which constituent pricefeed is not returning historical price successfully.
   debugHistoricalData(time) {
     let priceFeedErrorDetails = "";
-    this.allPriceFeeds.map(priceFeed => {
+    this.allPriceFeeds.forEach(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
         // If the constituent price feed has implemented `debugHistoricalData(time)`, then concat
