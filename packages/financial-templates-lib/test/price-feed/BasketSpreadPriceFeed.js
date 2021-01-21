@@ -464,11 +464,12 @@ contract("BasketSpreadPriceFeed.js", function() {
     assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
 
     // Should be able to debug five historical price feeds with errors.
-    assert.equal(basketSpreadPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp).length, 5);
-    assert.equal(
-      basketSpreadPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp)[0],
-      "PriceFeed down with UUID: PriceFeedMock"
-    );
+    const errorString = `[Price unavailable @ ${arbitraryHistoricalTimestamp} for feed with uuid: PriceFeedMock]`;
+    let expectedErrorString = "";
+    for (let i = 0; i < 5; i++) {
+      expectedErrorString += errorString;
+    }
+    assert.equal(basketSpreadPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp), expectedErrorString);
   });
   it("Validates constituent price feed decimals", async function() {
     // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the

@@ -1,5 +1,4 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
@@ -114,16 +113,18 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   debugHistoricalData(time) {
-    let priceFeedErrorDetails = [];
+    let priceFeedErrorDetails = "";
     this.allPriceFeeds.map(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
-        if (priceFeed instanceof MedianizerPriceFeed) {
-          // MedianizerPriceFeed.debugHitoricalData returns an array of error details so we will
-          // concat its error log array.
+        // If the constituent price feed has implemented `debugHistoricalData(time)`, then concat
+        // the result of that function, otherwise create an error string for the price feed.
+        try {
           priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
-        } else {
-          priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.uuid}`);
+        } catch (err) {
+          priceFeedErrorDetails = priceFeedErrorDetails.concat(
+            `[Price unavailable @ ${time} for feed with uuid: ${priceFeed.uuid}]`
+          );
         }
       }
     });

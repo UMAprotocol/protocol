@@ -115,11 +115,12 @@ contract("MedianizerPriceFeed.js", function() {
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
 
     // Should be able to debug two historical price feeds with errors.
-    assert.equal(medianizerPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp).length, 2);
-    assert.equal(
-      medianizerPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp)[0],
-      "PriceFeed down with UUID: PriceFeedMock"
-    );
+    const errorString = `[Price unavailable @ ${arbitraryHistoricalTimestamp} for feed with uuid: PriceFeedMock]`;
+    let expectedErrorString = "";
+    for (let i = 0; i < 2; i++) {
+      expectedErrorString += errorString;
+    }
+    assert.equal(medianizerPriceFeed.debugHistoricalData(arbitraryHistoricalTimestamp), expectedErrorString);
   });
 
   it("undefined inputs", async function() {

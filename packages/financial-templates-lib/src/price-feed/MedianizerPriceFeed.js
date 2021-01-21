@@ -50,11 +50,19 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   }
 
   debugHistoricalData(time) {
-    let priceFeedErrorDetails = [];
+    let priceFeedErrorDetails = "";
     this.priceFeeds.map(priceFeed => {
       const hasPrice = priceFeed.getHistoricalPrice(time);
       if (!hasPrice) {
-        priceFeedErrorDetails.push(`PriceFeed down with UUID: ${priceFeed.uuid}`);
+        // If the constituent price feed has implemented `debugHistoricalData(time)`, then concat
+        // the result of that function, otherwise create an error string for the price feed.
+        try {
+          priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
+        } catch (err) {
+          priceFeedErrorDetails = priceFeedErrorDetails.concat(
+            `[Price unavailable @ ${time} for feed with uuid: ${priceFeed.uuid}]`
+          );
+        }
       }
     });
     return priceFeedErrorDetails;
