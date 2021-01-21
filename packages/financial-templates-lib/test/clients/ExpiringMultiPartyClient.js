@@ -127,7 +127,7 @@ const _createConstructorParamsForContractVersion = async function(contractVersio
       timer.address
     );
 
-    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDiNG_IDENTIFIER");
+    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier);
     constructorParams.fundingRateIdentifier = fundingRateIdentifier;
     constructorParams.configStoreAddress = configStore.address;
