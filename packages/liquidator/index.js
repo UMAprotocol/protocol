@@ -127,7 +127,7 @@ async function run({
     };
 
     // Add block window into `liquidatorConfig`
-    let overriddenLiquidatorConfig = {
+    liquidatorConfig = {
       ...liquidatorConfig,
       startingBlock,
       endingBlock
@@ -143,7 +143,7 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       priceFeedConfig,
-      liquidatorConfig: overriddenLiquidatorConfig,
+      liquidatorConfig,
       liquidatorOverridePrice
     });
 
@@ -192,7 +192,7 @@ async function run({
       priceFeed,
       account: accounts[0],
       empProps,
-      liquidatorConfig: overriddenLiquidatorConfig
+      liquidatorConfig
     });
 
     logger.debug({
