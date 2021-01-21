@@ -71,8 +71,6 @@ let convertCollateral;
 let convertSynthetic;
 let convertPrice;
 
-// Helper functions
-// TODO figure out the best pattern to refactor these into a library to make them re-usable in other tests.
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async fundingRate => {
   const currentTime = (await emp.getCurrentTime()).toNumber();

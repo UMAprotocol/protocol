@@ -2,7 +2,12 @@ const { toWei, toBN, utf8ToHex, padRight } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
-const { interfaceName, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const {
+  interfaceName,
+  MAX_UINT_VAL,
+  runTestForVersion,
+  createConstructorParamsForContractVersion
+} = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
@@ -38,7 +43,7 @@ let store;
 let timer;
 let collateralWhitelist;
 let constructorParams;
-let currentTestIterationVersion;
+let iterationTestVersion;
 
 // Js Objects, clients and helpers
 let client;
@@ -53,7 +58,6 @@ let optimisticOracle;
 let fundingRateIdentifier;
 
 // Helper functions
-// TODO figure out the best pattern to refactor these into a library to make them re-usable in other tests.
 const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
   await client.update();
   assert.deepStrictEqual(client.getAllSponsors().sort(), expectedSponsors.sort());
@@ -73,81 +77,9 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
-  if (shouldBeItOnly) return runTestForContractVersion(supportedVersions) ? it.only : () => {};
-  return runTestForContractVersion(supportedVersions) ? it : () => {};
-};
-
-const runTestForContractVersion = function(supportedVersions) {
-  // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is any.
-  if ([...SUPPORTED_CONTRACT_VERSIONS, "any"].filter(value => supportedVersions.includes(value)).length == 0) {
-    throw new Error(
-      `Contract versioned specified ${supportedVersions} is not part of the supported contracts for this test suit`
-    );
-  }
-  // Return if the `currentTestIterationVersion` is part of the supported versions includes any. Returning true
-  // means that test will be run. Else, if returned false, the test will be skipped.
-  return supportedVersions.includes(currentTestIterationVersion) || supportedVersions.includes("any");
-};
-
-const _createConstructorParamsForContractVersion = async function(contractVersion, contractType) {
-  let constructorParams = {
-    expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,
-    withdrawalLiveness: "1000",
-    collateralAddress: collateralToken.address,
-    tokenAddress: syntheticToken.address,
-    finderAddress: finder.address,
-    priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
-    liquidationLiveness: "1000",
-    collateralRequirement: { rawValue: toWei("1.5") },
-    disputeBondPercentage: { rawValue: toWei("0.1") },
-    sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    minSponsorTokens: { rawValue: convertSynthetic("5") },
-    timerAddress: timer.address,
-    excessTokenBeneficiary: store.address,
-    financialProductLibraryAddress: ZERO_ADDRESS
-  };
-
-  if (contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
-
-  if (contractType == "Perpetual") {
-    configStore = await getTruffleContract("ConfigStore", web3, contractVersion).new(
-      {
-        timelockLiveness: 86400, // 1 day
-        rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPercentage: { rawValue: "0" },
-        maxFundingRate: { rawValue: toWei("0.00001") },
-        minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
-      },
-      timer.address
-    );
-
-    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDiNG_IDENTIFIER");
-    await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier);
-    constructorParams.fundingRateIdentifier = fundingRateIdentifier;
-    constructorParams.configStoreAddress = configStore.address;
-    constructorParams.tokenScaling = { rawValue: toWei("1") };
-
-    const defaultLiveness = 7200;
-
-    optimisticOracle = await getTruffleContract("OptimisticOracle", web3, contractVersion).new(
-      defaultLiveness,
-      finder.address,
-      timer.address
-    );
-
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.address
-    );
-  }
-
-  return constructorParams;
+  if (shouldBeItOnly)
+    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -158,7 +90,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the currentVersionTested, type and version being tested
-    currentTestIterationVersion = contractVersion;
+    iterationTestVersion = contractVersion;
     const currentTypeTested = contractVersion.substring(0, contractVersion.indexOf("-"));
     const currentVersionTested = contractVersion.substring(contractVersion.indexOf("-") + 1, contractVersion.length);
 
@@ -173,11 +105,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, currentVersionTested);
     const Timer = getTruffleContract("Timer", web3, currentVersionTested);
     const Store = getTruffleContract("Store", web3, currentVersionTested);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, currentVersionTested);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, currentVersionTested);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion}`, function() {
         before(async function() {
           identifier = `${testConfig.tokenName}TEST`;
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
           convertSynthetic = Convert(testConfig.syntheticDecimals);
           convertPrice = Convert(testConfig.priceFeedDecimals);
@@ -222,7 +157,46 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
         beforeEach(async function() {
           await timer.setCurrentTime(startTime - 1);
-          constructorParams = await _createConstructorParamsForContractVersion(currentVersionTested, currentTypeTested);
+
+          // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
+          if (currentTypeTested == "Perpetual") {
+            configStore = await ConfigStore.new(
+              {
+                timelockLiveness: 86400, // 1 day
+                rewardRatePerSecond: { rawValue: "0" },
+                proposerBondPercentage: { rawValue: "0" },
+                maxFundingRate: { rawValue: toWei("0.00001") },
+                minFundingRate: { rawValue: toWei("-0.00001") },
+                proposalTimePastLimit: 0
+              },
+              timer.address
+            );
+
+            await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
+            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+            await finder.changeImplementationAddress(
+              utf8ToHex(interfaceName.OptimisticOracle),
+              optimisticOracle.address
+            );
+          }
+
+          constructorParams = await createConstructorParamsForContractVersion(
+            web3,
+            currentVersionTested,
+            currentTypeTested,
+            {
+              convertSynthetic,
+              finder,
+              collateralToken,
+              syntheticToken,
+              identifier,
+              fundingRateIdentifier,
+              timer,
+              store,
+              configStore: configStore || {} // if the contract type is not a perp this will be null.
+            },
+            { collateralRequirement: { rawValue: toWei("1.5") } } // these tests assume a CR of 1.5, not the 1.2 default.
+          );
 
           emp = await financialContractInstance.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
