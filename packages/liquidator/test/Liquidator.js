@@ -7,7 +7,8 @@ const {
   LiquidationStatesEnum,
   PostWithdrawLiquidationRewardsStatusTranslations,
   runTestForVersion,
-  createConstructorParamsForContractVersion
+  createConstructorParamsForContractVersion,
+  SUPPORTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -34,10 +35,6 @@ const configs = [
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
-
-// These unit tests are re-run against the array of contract types and versions below. unit tests can choose which version
-// they support using the `versionedIt` syntax. Additional versions can be added, once an UMA release has been done.
-const SUPPORTED_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";

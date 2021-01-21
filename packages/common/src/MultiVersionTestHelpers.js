@@ -3,14 +3,15 @@ const { toWei, utf8ToHex, padRight } = web3.utils;
 
 const { ZERO_ADDRESS } = require("./Constants");
 
-function testExporter(thisImported) {
-  console.log("this", thisImported);
-}
+// Contract versions used in unit tests to define supported versions.
+const SUPPORTED_TEST_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
-function versionedIt(supportedVersions, shouldBeItOnly = false) {
-  if (shouldBeItOnly) return runTestForVersion(supportedVersions) ? it.only : () => {};
-  return runTestForVersion(supportedVersions) ? it : () => {};
-}
+// Versions that production bots support.
+const SUPPORTED_CONTRACT_VERSIONS = [
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
+  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
+  { contractType: "Perpetual", contractVersion: "latest" }
+];
 
 function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, currentTestIterationVersion) {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is `any`.
@@ -88,8 +89,8 @@ async function createConstructorParamsForContractVersion(
 }
 
 module.exports = {
-  testExporter,
-  versionedIt,
   runTestForVersion,
-  createConstructorParamsForContractVersion
+  createConstructorParamsForContractVersion,
+  SUPPORTED_CONTRACT_VERSIONS,
+  SUPPORTED_TEST_CONTRACT_VERSIONS
 };
