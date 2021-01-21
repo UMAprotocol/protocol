@@ -126,6 +126,13 @@ async function run({
       withdrawLiveness
     };
 
+    // Add block window into `liquidatorConfig`
+    let overriddenLiquidatorConfig = {
+      ...liquidatorConfig,
+      startingBlock,
+      endingBlock
+    };
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -136,7 +143,7 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       priceFeedConfig,
-      liquidatorConfig,
+      liquidatorConfig: overriddenLiquidatorConfig,
       liquidatorOverridePrice
     });
 
@@ -185,9 +192,7 @@ async function run({
       priceFeed,
       account: accounts[0],
       empProps,
-      liquidatorConfig,
-      startingBlock,
-      endingBlock
+      liquidatorConfig: overriddenLiquidatorConfig
     });
 
     logger.debug({

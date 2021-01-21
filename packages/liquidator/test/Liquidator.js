@@ -1457,14 +1457,6 @@ contract("Liquidator.js", function(accounts) {
           assert.equal(sponsor2Positions.tokensOutstanding, "0");
         });
         it("logs about skipping liquidations because of the defense activation threshold are only emitted if the withdrawal took place within a specified block window", async () => {
-          const liquidatorConfig = {
-            // entire fund dedicated to strategy, allows 3 extensions
-            whaleDefenseFundWei: toBN(empProps.minSponsorSize)
-              .mul(toBN(10))
-              .toString(),
-            // will extend even if withdraw progress is 80% complete
-            defenseActivationPercent: 80
-          };
           const withdrawLiveness = empProps.withdrawLiveness.toNumber();
 
           await emp.create(
@@ -1489,6 +1481,16 @@ contract("Liquidator.js", function(accounts) {
           const endingBlock = (await web3.eth.getBlockNumber()) + 1;
 
           // Create a Liquidator bot with a start and end block specified
+          const liquidatorConfig = {
+            // entire fund dedicated to strategy, allows 3 extensions
+            whaleDefenseFundWei: toBN(empProps.minSponsorSize)
+              .mul(toBN(10))
+              .toString(),
+            // will extend even if withdraw progress is 80% complete
+            defenseActivationPercent: 80,
+            startingBlock,
+            endingBlock
+          };
           const liquidator = new Liquidator({
             logger: spyLogger,
             expiringMultiPartyClient: empClient,
