@@ -43,14 +43,14 @@ async function createConstructorParamsForContractVersion(
     "fundingRateIdentifier",
     "timer",
     "store",
-    "configStore",
-    "optimisticOracle"
+    "configStore"
   ];
 
+  // Check that each of the expected keys is present and not null.
   requiredContextObjects.forEach(expectedKey => {
     assert.isTrue(
-      Object.keys(contextObjects).includes(expectedKey),
-      `Provided context object is missing type ${expectedKey}`
+      contextObjects[expectedKey] && Object.keys(contextObjects).includes(expectedKey),
+      `Provided context object is missing type ${expectedKey} or is undefined`
     );
   });
 

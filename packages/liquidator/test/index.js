@@ -1,5 +1,10 @@
 const { toWei, utf8ToHex, padRight } = web3.utils;
-const { MAX_UINT_VAL, ZERO_ADDRESS, interfaceName, addGlobalHardhatTestingAddress } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  interfaceName,
+  addGlobalHardhatTestingAddress,
+  createConstructorParamsForContractVersion
+} = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
 
@@ -34,66 +39,6 @@ let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
-const _createConstructorParamsForContractVersion = async function(contractVersion, contractType) {
-  let constructorParams = {
-    expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100,
-    withdrawalLiveness: "1000",
-    collateralAddress: collateralToken.address,
-    tokenAddress: syntheticToken.address,
-    finderAddress: finder.address,
-    priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
-    liquidationLiveness: "1000",
-    collateralRequirement: { rawValue: toWei("1.2") },
-    disputeBondPercentage: { rawValue: toWei("0.1") },
-    sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    minSponsorTokens: { rawValue: toWei("5") },
-    timerAddress: timer.address,
-    excessTokenBeneficiary: store.address,
-    financialProductLibraryAddress: ZERO_ADDRESS
-  };
-
-  if (contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
-
-  if (contractType == "Perpetual") {
-    configStore = await getTruffleContract("ConfigStore", web3, contractVersion).new(
-      {
-        timelockLiveness: 86400, // 1 day
-        rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPercentage: { rawValue: "0" },
-        maxFundingRate: { rawValue: toWei("0.00001") },
-        minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
-      },
-      timer.address
-    );
-
-    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex(fundingRateIdentifier));
-    constructorParams.fundingRateIdentifier = web3.utils.utf8ToHex(fundingRateIdentifier);
-    constructorParams.configStoreAddress = configStore.address;
-    constructorParams.tokenScaling = { rawValue: toWei("1") };
-
-    const defaultLiveness = 7200;
-
-    optimisticOracle = await getTruffleContract("OptimisticOracle", web3, contractVersion).new(
-      defaultLiveness,
-      finder.address,
-      timer.address
-    );
-
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.address
-    );
-  }
-
-  return constructorParams;
-};
-
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
@@ -123,6 +68,9 @@ contract("index.js", function(accounts) {
     const Timer = getTruffleContract("Timer", web3, currentVersionTested);
     const UniswapMock = getTruffleContract("UniswapMock", web3, currentVersionTested);
     const Store = getTruffleContract("Store", web3, currentVersionTested);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, currentVersionTested);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, currentVersionTested);
+
     describe(`Smart contract version ${contractVersion}`, function() {
       before(async function() {
         finder = await Finder.new();
@@ -169,8 +117,41 @@ contract("index.js", function(accounts) {
         );
         await collateralWhitelist.addToWhitelist(collateralToken.address);
 
+        if (currentTypeTested == "Perpetual") {
+          configStore = await ConfigStore.new(
+            {
+              timelockLiveness: 86400, // 1 day
+              rewardRatePerSecond: { rawValue: "0" },
+              proposerBondPercentage: { rawValue: "0" },
+              maxFundingRate: { rawValue: toWei("0.00001") },
+              minFundingRate: { rawValue: toWei("-0.00001") },
+              proposalTimePastLimit: 0
+            },
+            timer.address
+          );
+
+          await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
+          optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+          await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+        }
         // Deploy a new expiring multi party OR perpetual.
-        constructorParams = await _createConstructorParamsForContractVersion(currentVersionTested, currentTypeTested);
+        constructorParams = await createConstructorParamsForContractVersion(
+          web3,
+          currentVersionTested,
+          currentTypeTested,
+          {
+            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            finder,
+            collateralToken,
+            syntheticToken,
+            identifier,
+            fundingRateIdentifier,
+            timer,
+            store,
+            configStore: configStore || {} // if the contract type is not a perp this will be null.
+          },
+          { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
+        );
         emp = await financialContractInstance.new(constructorParams);
         await syntheticToken.addMinter(emp.address);
         await syntheticToken.addBurner(emp.address);
