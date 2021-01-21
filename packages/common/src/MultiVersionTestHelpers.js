@@ -15,14 +15,26 @@ const SUPPORTED_CONTRACT_VERSIONS = [
 
 function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, currentTestIterationVersion) {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is `any`.
-  if ([...SUPPORTED_CONTRACT_VERSIONS, "any"].filter(value => supportedVersions.includes(value)).length == 0) {
+  let totalVersionOverlaps = 0;
+  let totalSupportedVersionOverlap = 0;
+  supportedVersions.forEach(supportedVersion => {
+    totalVersionOverlaps += [...SUPPORTED_CONTRACT_VERSIONS, { contractType: "any", contractVersion: "any" }].filter(
+      versionObject =>
+        versionObject.contractType == supportedVersion.contractType &&
+        versionObject.contractVersion == supportedVersion.contractVersion
+    ).length;
+    totalSupportedVersionOverlap +=
+      supportedVersion.contractType == currentTestIterationVersion.contractType &&
+      supportedVersion.contractVersion == currentTestIterationVersion.contractVersion;
+    totalSupportedVersionOverlap += supportedVersion.contractType == "any" && supportedVersion.contractVersion == "any";
+  });
+  if (totalVersionOverlaps == 0)
     throw new Error(
-      `Contract versioned specified ${supportedVersions} is not part of the supported contracts for this test suit`
+      `Contract version specified or inferred is not supported. Loaded/inferred contractVersion:${
+        supportedVersions.contractVersion
+      } & contractType:${supportedVersions.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
     );
-  }
-  // Return if the `currentTestIterationVersion` is part of the supported versions includes any. Returning true
-  // means that test will be run. Else, if returned false, the test will be skipped.
-  return supportedVersions.includes(currentTestIterationVersion) || supportedVersions.includes("any");
+  return totalSupportedVersionOverlap > 0;
 }
 
 async function createConstructorParamsForContractVersion(
