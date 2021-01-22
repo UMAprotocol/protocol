@@ -9,7 +9,7 @@
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'",
-    "test": "yarn test-concurrent && yarn test-no-concurrent",
+    "test": "lerna run --stream --concurrency=4 test",
     "test-no-concurrent": "lerna run --stream --concurrency=1 test --scope @uma/serverless-orchestration --scope @uma/affiliates",
     "test-concurrent": "lerna run --stream --concurrency=4 test --ignore serverless-orchestration --ignore affiliates",
     "test-fork": "lerna run --stream --concurrency=1 test-fork",
