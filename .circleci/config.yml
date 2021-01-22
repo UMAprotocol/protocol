@@ -233,6 +233,5 @@ workflows:
     jobs:
       - checkout_and_install
       - coverage:
-          context: api_keys
           requires:
             - checkout_and_install
