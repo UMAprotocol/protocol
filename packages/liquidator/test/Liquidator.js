@@ -1392,7 +1392,14 @@ contract("Liquidator.js", function(accounts) {
           await emp.setCurrentTime(nextTime);
           // running again, should have no change
           await liquidator.update();
+          const startingLogLength = spy.getCalls().length;
           await liquidator.liquidatePositions();
+          // Logger should NOT emit a log specific about skipping this liquidation, because the defense activation
+          // percent has not passed yet, because the start and end block window were NOT specified when creating
+          // the liquidator.
+          // Importantly, No WARN or ERROR logs should be emitted about "missing" this liquidation because
+          // we are purposefully ignoring it.
+          assert.equal(startingLogLength, spy.getCalls().length);
 
           let sponsor2Liquidations = await emp.getLiquidations(sponsor2);
           sponsor2Positions = await emp.positions(sponsor2);
@@ -1448,6 +1455,82 @@ contract("Liquidator.js", function(accounts) {
           assert.equal(sponsor2Liquidations.length, 4);
           // show position has been fully liquidated
           assert.equal(sponsor2Positions.tokensOutstanding, "0");
+        });
+        it("logs about skipping liquidations because of the defense activation threshold are only emitted if the withdrawal took place within a specified block window", async () => {
+          const withdrawLiveness = empProps.withdrawLiveness.toNumber();
+
+          await emp.create(
+            { rawValue: convertCollateral("120") },
+            { rawValue: convertSynthetic("100") },
+            { from: sponsor1 }
+          );
+          // we need to keep at least 50 tokens for the WDF so we can only partially liquidate sponsor1
+          await emp.create(
+            { rawValue: convertCollateral("1000") },
+            { rawValue: convertSynthetic("100") },
+            { from: liquidatorBot }
+          );
+
+          // Start with a mocked price of 1 usd per token.
+          // This puts sponsor1 over collateralized so no liquidations should occur.
+          priceFeedMock.setCurrentPrice(convertPrice("1"));
+
+          // sponsor is now under collateralized
+          const startingBlock = await web3.eth.getBlockNumber();
+          await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
+          const endingBlock = (await web3.eth.getBlockNumber()) + 1;
+
+          // Create a Liquidator bot with a start and end block specified
+          const liquidatorConfig = {
+            // entire fund dedicated to strategy, allows 3 extensions
+            whaleDefenseFundWei: toBN(empProps.minSponsorSize)
+              .mul(toBN(10))
+              .toString(),
+            // will extend even if withdraw progress is 80% complete
+            defenseActivationPercent: 80,
+            startingBlock,
+            endingBlock
+          };
+          const liquidator = new Liquidator({
+            logger: spyLogger,
+            expiringMultiPartyClient: empClient,
+            gasEstimator,
+            votingContract: mockOracle.contract,
+            syntheticToken: syntheticToken.contract,
+            priceFeed: priceFeedMock,
+            account: accounts[0],
+            empProps,
+            liquidatorConfig,
+            startingBlock,
+            endingBlock
+          });
+
+          // First, run the liquidator with no block window specified, this should NOT emit a log
+          // that the spyLogger can catch.
+          await liquidator.update();
+          await liquidator.liquidatePositions();
+
+          let sponsor1Liquidation = (await emp.getLiquidations(sponsor1))[0];
+          // 120 - 10 / 2 (half tokens liquidated)
+          assert.equal(sponsor1Liquidation.liquidatedCollateral, convertCollateral("55"));
+
+          // advance time to 50% of withdraw. This should not trigger extension until 80%
+          let sponsor1Positions = await emp.positions(sponsor1);
+          let nextTime = Math.ceil(Number(sponsor1Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5);
+
+          await emp.setCurrentTime(nextTime);
+          await liquidator.update();
+          const startingLogLength = spy.getCalls().length;
+          await liquidator.liquidatePositions();
+          assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
+          // Logger should emit a log specific about skipping this liquidation because the defense activation
+          // percent has not passed yet.
+          // No other logs should be emitted.
+          assert.equal(startingLogLength + 1, spy.getCalls().length);
+          assert.equal(spyLogLevel(spy, -1), "info");
+          assert.isTrue(
+            spyLogIncludes(spy, -1, "Withdrawal liveness has not passed WDF activation threshold, skipping")
+          );
         });
       });
     });
