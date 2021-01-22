@@ -134,6 +134,21 @@ class Liquidator {
           if (x === undefined) return true;
           return parseFloat(x) >= 0 && parseFloat(x) <= 100;
         }
+      },
+      // Start and end block define a window used to filter for contract events.
+      startingBlock: {
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return Number(x) >= 0;
+        }
+      },
+      endingBlock: {
+        value: undefined,
+        isValid: x => {
+          if (x === undefined) return true;
+          return Number(x) >= 0;
+        }
       }
     };
 
@@ -265,9 +280,40 @@ class Liquidator {
         inputPrice: scaledPrice.toString()
       });
 
-      // we couldnt liquidate, this typically would only happen if our balance is 0
+      // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
+      // has not passed the WDF's activation threshold.
       // This gets logged as an event, see constructor
       if (!liquidationArgs) {
+        // If WDF is active but liveness hasn't passed activation %, then send customized log:
+        if (
+          this.defenseActivationPercent &&
+          !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
+        ) {
+          // If `startingBlock` and `endingBlock` are specified and the requested withdrawal was within the
+          // block window, then upgrade the log level:
+          let logLevel = "debug";
+          if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
+            const blockWindowHasRequestedWithdraw = await this.empContract.getPastEvents("RequestWithdrawal", {
+              fromBlock: this.startingBlock,
+              toBlock: this.endingBlock
+            });
+            if (blockWindowHasRequestedWithdraw) {
+              logLevel = "info";
+            }
+          }
+          this.logger[logLevel]({
+            at: "Liquidator",
+            message: "Withdrawal liveness has not passed WDF activation threshold, skipping😴",
+            sponsor: position.sponsor,
+            inputPrice: scaledPrice.toString(),
+            position,
+            minLiquidationPrice: this.liquidationMinPrice,
+            maxLiquidationPrice: maxCollateralPerToken.toString(),
+            syntheticTokenBalance: syntheticTokenBalance.toString(),
+            currentBlockTime
+          });
+          continue;
+        }
         // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
         // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
         // client-side.

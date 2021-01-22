@@ -431,4 +431,36 @@ contract("index.js", function(accounts) {
       assert.notEqual(spyLogLevel(spy, i), "error");
     }
   });
+  it("Liquidator config packed correctly", async function() {
+    // We will also create a new spy logger, listening for debug events to validate the liquidatorConfig.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+
+    // We test that startingBlock and endingBlock params get packed into
+    // the liquidatorConfig correctly by the Liquidator bot.
+    const liquidatorConfig = {
+      whaleDefenseFundWei: "1000000",
+      defenseActivationPercent: 50
+    };
+    const startingBlock = 9;
+    const endingBlock = 10;
+    await Poll.run({
+      logger: spyLogger,
+      web3,
+      empAddress: emp.address,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig: defaultPriceFeedConfig,
+      liquidatorConfig,
+      startingBlock,
+      endingBlock
+    });
+
+    // First log should list the liquidatorConfig with the expected starting and ending block.
+    assert.equal(spy.getCall(0).lastArg.liquidatorConfig.startingBlock, startingBlock);
+    assert.equal(spy.getCall(0).lastArg.liquidatorConfig.endingBlock, endingBlock);
+  });
 });

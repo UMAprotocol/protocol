@@ -34,6 +34,8 @@ const { getWeb3 } = require("@uma/common");
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
+ * @param {Number} [startingBlock] Earliest block to query for contract events that the bot will log about.
+ * @param {Number} [endingBlock] Latest block to query for contract events that the bot will log about.
  * @return None or throws an Error.
  */
 async function run({
@@ -46,7 +48,9 @@ async function run({
   errorRetriesTimeout,
   priceFeedConfig,
   liquidatorConfig,
-  liquidatorOverridePrice
+  liquidatorOverridePrice,
+  startingBlock,
+  endingBlock
 }) {
   try {
     const { toBN } = web3.utils;
@@ -120,6 +124,13 @@ async function run({
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens,
       withdrawLiveness
+    };
+
+    // Add block window into `liquidatorConfig`
+    liquidatorConfig = {
+      ...liquidatorConfig,
+      startingBlock,
+      endingBlock
     };
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -315,7 +326,13 @@ async function Poll(callback) {
       liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
-      liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE
+      liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE,
+      // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If
+      // either startingBlock or endingBlock is not sent, then the bot will search for event.
+      startingBlock: process.env.STARTING_BLOCK_NUMBER,
+      // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
+      // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
+      endingBlock: process.env.ENDING_BLOCK_NUMBER
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
