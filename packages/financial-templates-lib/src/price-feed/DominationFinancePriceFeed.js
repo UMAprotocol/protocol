@@ -43,6 +43,8 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     this.invertPrice = invertPrice;
 
     this.toBN = this.web3.utils.toBN;
+
+    this.priceFeedDecimals = priceFeedDecimals;
     this.convertPriceFeedDecimals = number => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
