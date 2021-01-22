@@ -3,15 +3,14 @@ const {
   MAX_UINT_VAL,
   interfaceName,
   addGlobalHardhatTestingAddress,
-  createConstructorParamsForContractVersion
+  createConstructorParamsForContractVersion,
+  SUPPORTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const Poll = require("../index.js");
-
-const SUPPORTED_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 let collateralToken;
 let syntheticToken;

@@ -1,7 +1,3 @@
-// These unit tests are re-run against a set of contract types and versions specified by the SUPPORTED_CONTRACT_VERSIONS
-// variable imported from common. All parts of the UMA infrastructure that support multiple contract versions use this
-// to ensure that they are all compatible with the same set of versions.
-
 const { toWei, toBN, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
