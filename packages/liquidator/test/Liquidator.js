@@ -102,13 +102,9 @@ contract("Liquidator.js", function(accounts) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(
-      contractVersion.contractType,
-      web3,
-      contractVersion.contractVersion
-    );
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -219,8 +215,12 @@ contract("Liquidator.js", function(accounts) {
               configStore: configStore || {} // if the contract type is not a perp this will be null.
             }
           );
-          // Deploy a new expiring multi party
-          emp = await financialContractInstance.new(constructorParams);
+          // Deploy a new expiring multi party OR perpetual, depending on what the financialContract has been set to.
+          emp = await financialContract.new(constructorParams);
+          // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
+          await emp.setCurrentTime(startTime);
+          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
+
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -237,12 +237,6 @@ contract("Liquidator.js", function(accounts) {
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidatorBot });
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidityProvider });
 
-          // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-          await emp.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") {
-            await emp.applyFundingRate();
-          }
-
           spy = sinon.spy();
 
           spyLogger = winston.createLogger({
@@ -253,7 +247,7 @@ contract("Liquidator.js", function(accounts) {
           // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
           empClient = new ExpiringMultiPartyClient(
             spyLogger,
-            financialContractInstance.abi,
+            financialContract.abi,
             web3,
             emp.address,
             testConfig.collateralDecimals,
@@ -592,7 +586,7 @@ contract("Liquidator.js", function(accounts) {
             assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
 
             // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
-            // NOTE the check below has a bit of switching logic that is version specific.
+            // Note the check below has a bit of switching logic that is version specific to accommodate the change in withdrawal behaviour.
             assert.equal(
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
               PostWithdrawLiquidationRewardsStatusTranslations[
@@ -731,10 +725,7 @@ contract("Liquidator.js", function(accounts) {
             async function() {
               let errorThrown;
               try {
-                liquidatorConfig = {
-                  ...liquidatorConfig,
-                  crThreshold: 1
-                };
+                liquidatorConfig = { ...liquidatorConfig, crThreshold: 1 };
                 liquidator = new Liquidator({
                   logger: spyLogger,
                   expiringMultiPartyClient: empClient,
@@ -759,10 +750,7 @@ contract("Liquidator.js", function(accounts) {
             async function() {
               let errorThrown;
               try {
-                liquidatorConfig = {
-                  ...liquidatorConfig,
-                  crThreshold: -0.02
-                };
+                liquidatorConfig = { ...liquidatorConfig, crThreshold: -0.02 };
                 liquidator = new Liquidator({
                   logger: spyLogger,
                   expiringMultiPartyClient: empClient,
@@ -783,10 +771,7 @@ contract("Liquidator.js", function(accounts) {
           );
 
           versionedIt([{ contractType: "any", contractVersion: "any" }])("Sets `crThreshold` to 2%", async function() {
-            liquidatorConfig = {
-              ...liquidatorConfig,
-              crThreshold: 0.02
-            };
+            liquidatorConfig = { ...liquidatorConfig, crThreshold: 0.02 };
             liquidator = new Liquidator({
               logger: spyLogger,
               expiringMultiPartyClient: empClient,
@@ -1282,11 +1267,7 @@ contract("Liquidator.js", function(accounts) {
         });
         describe("enabling withdraw defense feature", () => {
           versionedIt([{ contractType: "any", contractVersion: "any" }])("should initialize when enabled", async () => {
-            liquidatorConfig = {
-              ...liquidatorConfig,
-              whaleDefenseFundWei: 1,
-              defenseActivationPercent: 50
-            };
+            liquidatorConfig = { ...liquidatorConfig, whaleDefenseFundWei: 1, defenseActivationPercent: 50 };
             const liquidator = new Liquidator({
               logger: spyLogger,
               expiringMultiPartyClient: empClient,
@@ -1308,11 +1289,7 @@ contract("Liquidator.js", function(accounts) {
               // so by setting `whaleDefenseFundWei = 1 wei`, we make the liquidator's entire `tokenBalance` available
               // to it. So in this test, the WDF is not triggered because the liquidator has enough available capital
               // to liquidate a full position.
-              liquidatorConfig = {
-                ...liquidatorConfig,
-                whaleDefenseFundWei: 1,
-                defenseActivationPercent: 50
-              };
+              liquidatorConfig = { ...liquidatorConfig, whaleDefenseFundWei: 1, defenseActivationPercent: 50 };
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 expiringMultiPartyClient: empClient,
