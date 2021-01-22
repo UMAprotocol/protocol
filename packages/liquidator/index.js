@@ -66,7 +66,6 @@ async function run({
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
-
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
     if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
