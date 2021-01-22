@@ -39,7 +39,7 @@
     "eslint-plugin-prettier": "^3.1.2",
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
-    "ganache-cli": "^6.10.2",
+    "ganache-cli": "^6.12.2",
     "husky": "^4.2.3",
     "lerna": "^3.22.1",
     "lint-staged": "^10.1.3",
@@ -50,6 +50,9 @@
     "secp256k1": "^3.7.1",
     "solidity-docgen": "^0.5.3",
     "truffle": "^5.1.33"
+  },
+  "resolutions": {
+    "sse4_crc32": "npm:@node-rs/crc32@1.0.0"
   },
   "bin": {
     "uma": "./cli/cli_entry.sh"
