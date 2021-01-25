@@ -1,0 +1,11 @@
+{
+    "extends": "@tsconfig/node14/tsconfig.json",
+    "include": [
+        "src/**/*",
+        "test/**/*",
+        "index.ts"
+    ],
+    "compilerOptions": {
+        "outDir": "build"
+      }
+}
