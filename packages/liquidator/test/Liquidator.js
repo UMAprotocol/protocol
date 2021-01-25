@@ -1660,7 +1660,7 @@ contract("Liquidator.js", function(accounts) {
         });
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
           versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
-            "Can correctly detect invalid withdrawals and liquidate them",
+            "Can correctly detect invalid positions and liquidate them",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await emp.create(
@@ -1733,7 +1733,7 @@ contract("Liquidator.js", function(accounts) {
 
               // If either the price increase, funding ratemultiplier increase or the sponsors collateral decrease they
               // will be at risk of being liquidated. Say that the funding rate has another 0.01 added to it. The cumulative
-              // funding rate will then be 1.04 * (1 + 0.000001 * 1000) = 1.0504. This will place sponsor1 underwater with
+              // funding rate will then be 1.04 * (1 + 0.000001 * 10000) = 1.0504. This will place sponsor1 underwater with
               // a CR of 125 / (100 * 1.0504 * 1) = 1.19 (which is less than 1.2) and they should get liquidated by the bot.
               await _setFundingRateAndAdvanceTime(toWei("0.000001"));
               await emp.applyFundingRate();
