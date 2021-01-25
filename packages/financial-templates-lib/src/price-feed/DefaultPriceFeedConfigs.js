@@ -351,6 +351,19 @@ const defaultConfigs = {
     pair: "ALTDOM",
     minTimeBetweenUpdates: 60,
     lookback: 7200
+  },
+  XAUUSD: {
+    type: "perlinx",
+    pair: "XAUUSD",
+    minTimeBetweenUpdates: 300,
+    lookback: 7200
+  },
+  XAUPERL: {
+    type: "perlinx",
+    pair: "XAUUSD",
+    convertToPerl: true,
+    minTimeBetweenUpdates: 300,
+    lookback: 7200
   }
 };
 
