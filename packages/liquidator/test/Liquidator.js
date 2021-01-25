@@ -1625,7 +1625,8 @@ contract("Liquidator.js", function(accounts) {
             const endingBlock = (await web3.eth.getBlockNumber()) + 1;
 
             // Create a Liquidator bot with a start and end block specified
-            const liquidatorConfig = {
+            liquidatorConfig = {
+              ...liquidatorConfig,
               // entire fund dedicated to strategy, allows 3 extensions
               whaleDefenseFundWei: toBN(empProps.minSponsorSize)
                 .mul(toBN(10))
