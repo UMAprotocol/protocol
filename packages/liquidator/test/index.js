@@ -51,26 +51,26 @@ contract("index.js", function(accounts) {
   const disputer = accounts[4];
 
   SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
-    // Store the currentVersionTested, type and version being tested
-    const currentTypeTested = contractVersion.substring(0, contractVersion.indexOf("-"));
-    const currentVersionTested = contractVersion.substring(contractVersion.indexOf("-") + 1, contractVersion.length);
-
     // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(currentTypeTested, web3, currentVersionTested);
-    const Finder = getTruffleContract("Finder", web3, currentVersionTested);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, currentVersionTested);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, currentVersionTested);
-    const MockOracle = getTruffleContract("MockOracle", web3, currentVersionTested);
-    const Token = getTruffleContract("ExpandedERC20", web3, currentVersionTested);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, currentVersionTested);
-    const Timer = getTruffleContract("Timer", web3, currentVersionTested);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, currentVersionTested);
-    const Store = getTruffleContract("Store", web3, currentVersionTested);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, currentVersionTested);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, currentVersionTested);
+    const financialContractInstance = getTruffleContract(
+      contractVersion.contractType,
+      web3,
+      contractVersion.contractVersion
+    );
+    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
+    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
+    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
+    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
+    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
+    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
+    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
+    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
+    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-    describe(`Smart contract version ${contractVersion}`, function() {
+    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
         finder = await Finder.new();
         // Create identifier whitelist and register the price tracking ticker with it.
@@ -116,7 +116,7 @@ contract("index.js", function(accounts) {
         );
         await collateralWhitelist.addToWhitelist(collateralToken.address);
 
-        if (currentTypeTested == "Perpetual") {
+        if (contractVersion.contractType == "Perpetual") {
           configStore = await ConfigStore.new(
             {
               timelockLiveness: 86400, // 1 day
@@ -136,8 +136,8 @@ contract("index.js", function(accounts) {
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
           web3,
-          currentVersionTested,
-          currentTypeTested,
+          contractVersion.contractVersion,
+          contractVersion.contractType,
           {
             convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
@@ -222,8 +222,9 @@ contract("index.js", function(accounts) {
           transports: [new SpyTransport({ level: "info" }, { spy: spy })]
         });
 
-        if (currentTypeTested == "ExpiringMultiParty") await emp.setCurrentTime(await emp.expirationTimestamp());
-        if (currentTypeTested == "Perpetual") await emp.emergencyShutdown();
+        if (contractVersion.contractType == "ExpiringMultiParty")
+          await emp.setCurrentTime(await emp.expirationTimestamp());
+        if (contractVersion.contractType == "Perpetual") await emp.emergencyShutdown();
 
         await Poll.run({
           logger: spyLogger,
@@ -241,9 +242,9 @@ contract("index.js", function(accounts) {
 
         // There should be 2 logs that communicates that contract has expired, and no logs about approvals.
         assert.equal(spy.getCalls().length, 3);
-        if (currentTypeTested == "ExpiringMultiParty")
+        if (contractVersion.contractType == "ExpiringMultiParty")
           assert.isTrue(spyLogIncludes(spy, -1, "EMP is expired, can only withdraw liquidator dispute rewards"));
-        if (currentTypeTested == "Perpetual")
+        if (contractVersion.contractType == "Perpetual")
           assert.isTrue(spyLogIncludes(spy, -1, "EMP is shutdown, can only withdraw liquidator dispute rewards"));
       });
 
@@ -310,8 +311,9 @@ contract("index.js", function(accounts) {
         );
 
         // Next, expire or emergencyshutdown the contract.
-        if (currentTypeTested == "ExpiringMultiParty") await emp.setCurrentTime(await emp.expirationTimestamp());
-        if (currentTypeTested == "Perpetual") await emp.emergencyShutdown();
+        if (contractVersion.contractType == "ExpiringMultiParty")
+          await emp.setCurrentTime(await emp.expirationTimestamp());
+        if (contractVersion.contractType == "Perpetual") await emp.emergencyShutdown();
 
         // Dispute & push a dispute resolution price.
         await collateralToken.mint(disputer, toWei("13"), {
@@ -354,8 +356,8 @@ contract("index.js", function(accounts) {
         // 4 logs should be shown. First two are about approval, one about contract expiry and the 4th is for the
         // withdrawn dispute rewards.
         assert.equal(spy.getCalls().length, 4);
-        if (currentTypeTested == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
-        if (currentTypeTested == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
+        if (contractVersion.contractType == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
+        if (contractVersion.contractType == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
         assert.isTrue(spyLogIncludes(spy, -1, "Liquidation withdrawn"));
         assert.equal(spy.getCall(-1).lastArg.amountWithdrawn, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
       });
@@ -425,8 +427,8 @@ contract("index.js", function(accounts) {
         }
 
         // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${currentVersionTested}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${currentTypeTested}"`));
+        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
 
         // Should produce an error on a contract type that is unknown. set the emp as the finder, for example
 
@@ -520,38 +522,39 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
-    });
-  });
-  it("Liquidator config packed correctly", async function() {
-    // We will also create a new spy logger, listening for debug events to validate the liquidatorConfig.
-    spyLogger = winston.createLogger({
-      level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
-    });
 
-    // We test that startingBlock and endingBlock params get packed into
-    // the liquidatorConfig correctly by the Liquidator bot.
-    const liquidatorConfig = {
-      whaleDefenseFundWei: "1000000",
-      defenseActivationPercent: 50
-    };
-    const startingBlock = 9;
-    const endingBlock = 10;
-    await Poll.run({
-      logger: spyLogger,
-      web3,
-      empAddress: emp.address,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig: defaultPriceFeedConfig,
-      liquidatorConfig,
-      startingBlock,
-      endingBlock
-    });
+      it("Liquidator config packed correctly", async function() {
+        // We will also create a new spy logger, listening for debug events to validate the liquidatorConfig.
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        });
 
-    // First log should list the liquidatorConfig with the expected starting and ending block.
-    assert.equal(spy.getCall(0).lastArg.liquidatorConfig.startingBlock, startingBlock);
-    assert.equal(spy.getCall(0).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // We test that startingBlock and endingBlock params get packed into
+        // the liquidatorConfig correctly by the Liquidator bot.
+        const liquidatorConfig = {
+          whaleDefenseFundWei: "1000000",
+          defenseActivationPercent: 50
+        };
+        const startingBlock = 9;
+        const endingBlock = 10;
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          empAddress: emp.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig,
+          liquidatorConfig,
+          startingBlock,
+          endingBlock
+        });
+
+        // First log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(0).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(0).lastArg.liquidatorConfig.endingBlock, endingBlock);
+      });
+    });
   });
 });
