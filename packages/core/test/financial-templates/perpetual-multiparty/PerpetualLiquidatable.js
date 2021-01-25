@@ -121,7 +121,7 @@ contract("PerpetualLiquidatable", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
-    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDNG_IDENTIFIER");
+    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER");
     await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier, {
       from: contractDeployer
     });
