@@ -39,7 +39,7 @@ For detailed information on how to initialize and interact with our smart contra
 
 ### Install dependencies 👷‍♂️
 
-You'll need to install a 12.x.x version of nodejs, since other versions will break certain dependencies. You will also need to install yarn. Assuming that's done, run `yarn` with no args:
+You'll need to install the long-term support version of nodejs, currently nodejs v14. You will also need to install yarn. Assuming that's done, run `yarn` with no args:
 
 ```
 yarn

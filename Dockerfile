@@ -19,7 +19,7 @@
 # To `docker run` with your locally built image, replace `umaprotocol/protocol` with <username>/<imagename>.
 
 # Fix node version due to high potential for incompatibilities.
-FROM node:12
+FROM node:lts
 
 # All source code and execution happens from the protocol directory.
 WORKDIR /protocol
