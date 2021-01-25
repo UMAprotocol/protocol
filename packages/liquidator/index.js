@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -20,6 +20,14 @@ const {
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
+
+const SUPPORTED_CONTRACT_VERSIONS = [
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
+  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
+  { contractType: "Perpetual", contractVersion: "latest" }
+];
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -57,24 +65,55 @@ async function run({
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Load unlocked web3 accounts and get the networkId.
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const [detectedContract, accounts, networkId] = await Promise.all([
+      findContractVersion(empAddress, web3),
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
+    ]);
 
-    // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
+    if (!liquidatorConfig) liquidatorConfig = {};
+    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
+    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract.contractType;
+
+    // Check that the version and type is supported. Note if either is null this check will also catch it.
+    if (
+      SUPPORTED_CONTRACT_VERSIONS.filter(
+        vo => vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
+      ).length == 0
+    )
+      throw new Error(
+        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
+          liquidatorConfig.contractVersion
+        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+      );
+
+    // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
+    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
+      empAddress
+    );
 
     // Returns whether the EMP has expired yet
-    const checkIsExpiredPromise = async () => {
-      const [expirationTimestamp, contractTimestamp] = await Promise.all([
-        emp.methods.expirationTimestamp().call(),
+    const checkIsExpiredOrShutdownPromise = async () => {
+      const [expirationOrShutdownTimestamp, contractTimestamp] = await Promise.all([
+        liquidatorConfig.contractType === "ExpiringMultiParty"
+          ? emp.methods.expirationTimestamp().call()
+          : emp.methods.emergencyShutdownTimestamp().call(),
         emp.methods.getCurrentTime().call()
       ]);
       // Check if EMP is expired.
-      if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
+      if (
+        Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) &&
+        Number(expirationOrShutdownTimestamp) > 0
+      ) {
         logger.info({
           at: "Liquidator#index",
-          message: "EMP is expired, can only withdraw liquidator dispute rewards 🕰",
-          expirationTimestamp,
+          message: `EMP is ${
+            liquidatorConfig.contractType === "ExpiringMultiParty" ? "expired" : "shutdown"
+          }, can only withdraw liquidator dispute rewards 🕰`,
+          expirationOrShutdownTimestamp,
           contractTimestamp
         });
         return true;
@@ -90,7 +129,7 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      isExpired,
+
       withdrawLiveness
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
@@ -98,12 +137,8 @@ async function run({
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
-      checkIsExpiredPromise(),
       emp.methods.withdrawalLiveness().call()
     ]);
-
-    // Initial EMP expiry status
-    let IS_EXPIRED = isExpired;
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -165,12 +200,13 @@ async function run({
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(
       logger,
-      getAbi("ExpiringMultiParty"),
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       web3,
       empAddress,
       collateralDecimals,
       syntheticDecimals,
-      priceFeed.getPriceFeedDecimals()
+      priceFeed.getPriceFeedDecimals(),
+      liquidatorConfig.contractType
     );
 
     const gasEstimator = new GasEstimator(logger);
@@ -201,49 +237,47 @@ async function run({
       collateralDecimals: Number(collateralDecimals),
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig
+      priceFeedConfig,
+      liquidatorConfig
     });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
-    if (!IS_EXPIRED) {
-      if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited collateral tokens 💰",
-          collateralApprovalTx: collateralApprovalTx.transactionHash
-        });
-      }
-      if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-          syntheticApprovalTx: syntheticApprovalTx.transactionHash
-        });
-      }
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        syntheticApprovalTx: syntheticApprovalTx.transactionHash
+      });
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       // Check if EMP expired before running current iteration.
-      IS_EXPIRED = await checkIsExpiredPromise();
+      let isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
 
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          if (!IS_EXPIRED) {
+          if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
             const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
@@ -316,14 +350,16 @@ async function Poll(callback) {
       priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
       // If there is a liquidator config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
       // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
-      // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+      // { "crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
       //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
-      //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
-      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
+      //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
+      //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
+      //   "contractVersion":"1.2.2"":"ExpiringMultiParty"} -> override the contract version the liquidator is pointing at.
+      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : {},
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
       liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE,

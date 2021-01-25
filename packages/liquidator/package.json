@@ -4,7 +4,7 @@
   "description": "UMA Liquidator",
   "dependencies": {
     "@uma/common": "^1.1.0",
-    "@uma/core": "npm:@uma/core@1.2.2",
+    "@uma/core": "1.2.2",
     "@uma/financial-templates-lib": "^1.2.0",
     "@umaprotocol/ynatm": "^0.0.1",
     "async-retry": "^1.3.1",
