@@ -289,7 +289,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
         }
       };
 
-      // Save and continue to lookup txn data for next event. Skip this reveal if it was already included as
+      // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
       // part of a batch transaction.
       if (!batchTxns[transactionReceipt.transactionHash]) {
         batchTxns[transactionReceipt.transactionHash] = true;
