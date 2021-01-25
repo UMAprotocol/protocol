@@ -102,13 +102,9 @@ contract("Liquidator.js", function(accounts) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(
-      contractVersion.contractType,
-      web3,
-      contractVersion.contractVersion
-    );
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -220,7 +216,7 @@ contract("Liquidator.js", function(accounts) {
             }
           );
           // Deploy a new expiring multi party
-          emp = await financialContractInstance.new(constructorParams);
+          emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -253,7 +249,7 @@ contract("Liquidator.js", function(accounts) {
           // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
           empClient = new ExpiringMultiPartyClient(
             spyLogger,
-            financialContractInstance.abi,
+            financialContract.abi,
             web3,
             emp.address,
             testConfig.collateralDecimals,

@@ -51,13 +51,9 @@ contract("index.js", function(accounts) {
   const disputer = accounts[4];
 
   SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(
-      contractVersion.contractType,
-      web3,
-      contractVersion.contractVersion
-    );
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -151,7 +147,7 @@ contract("index.js", function(accounts) {
           },
           { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
         );
-        emp = await financialContractInstance.new(constructorParams);
+        emp = await financialContract.new(constructorParams);
         await syntheticToken.addMinter(emp.address);
         await syntheticToken.addBurner(emp.address);
 
@@ -193,7 +189,7 @@ contract("index.js", function(accounts) {
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
           })
         );
-        emp = await financialContractInstance.new(decimalTestConstructorParams);
+        emp = await financialContract.new(decimalTestConstructorParams);
         await syntheticToken.addMinter(emp.address);
         await syntheticToken.addBurner(emp.address);
 
@@ -278,12 +274,7 @@ contract("index.js", function(accounts) {
           level: "info",
           transports: [new SpyTransport({ level: "info" }, { spy: empClientSpy })]
         });
-        const empClient = new ExpiringMultiPartyClient(
-          empClientSpyLogger,
-          financialContractInstance.abi,
-          web3,
-          emp.address
-        );
+        const empClient = new ExpiringMultiPartyClient(empClientSpyLogger, financialContract.abi, web3, emp.address);
         await empClient.update();
         assert.deepStrictEqual(
           [
