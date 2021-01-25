@@ -801,22 +801,23 @@ contract("Liquidator.js", function(accounts) {
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
             await emp.create(
-              { rawValue: convertCollateral("115") },
+              { rawValue: convertCollateral("120") },
               { rawValue: convertSynthetic("100") },
               { from: sponsor1 }
             );
 
-            // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+            // does not have enough to liquidate entire position
             await emp.create(
               { rawValue: convertCollateral("118") },
               { rawValue: convertSynthetic("100") },
               { from: sponsor2 }
             );
-
-            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+            // we have enough to fully liquidate one, then we have to extend the other
+            // wdf is 50, leaving 50 after first liquidation (200-100-50)
             await emp.create(
               { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("500") },
+              { rawValue: convertSynthetic("200") },
               { from: liquidatorBot }
             );
 
