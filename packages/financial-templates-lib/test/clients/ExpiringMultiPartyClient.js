@@ -89,13 +89,9 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(
-      contractVersion.contractType,
-      web3,
-      contractVersion.contractVersion
-    );
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -197,7 +193,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             { collateralRequirement: { rawValue: toWei("1.5") } } // these tests assume a CR of 1.5, not the 1.2 default.
           );
 
-          emp = await financialContractInstance.new(constructorParams);
+          emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -219,7 +215,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
           client = new ExpiringMultiPartyClient(
             dummyLogger,
-            financialContractInstance.abi,
+            financialContract.abi,
             web3,
             emp.address,
             testConfig.collateralDecimals,
@@ -757,7 +753,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             // ensures that packages that are yet to update.
             client = new ExpiringMultiPartyClient(
               dummyLogger,
-              financialContractInstance.abi,
+              financialContract.abi,
               web3,
               emp.address,
               testConfig.collateralDecimals,
@@ -774,7 +770,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             try {
               client = new ExpiringMultiPartyClient(
                 dummyLogger,
-                financialContractInstance.abi,
+                financialContract.abi,
                 web3,
                 emp.address,
                 testConfig.collateralDecimals,
@@ -790,7 +786,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             try {
               client = new ExpiringMultiPartyClient(
                 dummyLogger,
-                financialContractInstance.abi,
+                financialContract.abi,
                 web3,
                 emp.address,
                 testConfig.collateralDecimals,
