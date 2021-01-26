@@ -100,17 +100,17 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
     let blocks = {}; // Caches blocks (so we don't have to re-query timestamps).
-    let startBlock = Infinity; // Arbitrary initial value > 0.
+    let fromBlock = Infinity; // Arbitrary initial value > 0.
 
     // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
-    for (let i = 0; !(startBlock === 0 || events[0]?.timestamp <= earliestLookbackTime); i++) {
+    for (let i = 0; !(fromBlock === 0 || events[0]?.timestamp <= earliestLookbackTime); i++) {
       // Uses latest unless the events array already has data. If so, it only queries _before_ existing events.
-      const endBlock = events[0] ? events[0].blockNumber - 1 : "latest";
+      const toBlock = events[0] ? events[0].blockNumber - 1 : "latest";
 
       // By taking larger powers of 2, this doubles the lookback each time.
-      startBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
+      fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
 
-      const newEvents = await this._getSortedSyncEvents(startBlock, endBlock).then(newEvents => {
+      const newEvents = await this._getSortedSyncEvents(fromBlock, toBlock).then(newEvents => {
         // Grabs the timestamps for all blocks, but avoids re-querying by .then-ing any cached blocks.
         return Promise.all(
           newEvents.map(event => {
@@ -153,8 +153,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  async _getSortedSyncEvents(startBlock, endBlock) {
-    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: startBlock, toBlock: endBlock });
+  async _getSortedSyncEvents(fromBlock, toBlock) {
+    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: fromBlock, toBlock: toBlock });
     // Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
     events.sort((a, b) => {
       if (a.blockNumber !== b.blockNumber) {
