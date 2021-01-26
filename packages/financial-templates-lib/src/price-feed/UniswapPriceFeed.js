@@ -92,18 +92,45 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // Approximate the first block from which we'll need price data from based on the
     // lookback and twap length:
     const lookbackWindow = this.twapLength + this.historicalLookback;
+    const currentTime = await this.getTime();
+    const earliestLookbackTime = currentTime - lookbackWindow;
     const latestBlockNumber = (await this.web3.eth.getBlock("latest")).number;
-    // Add cushion in case `averageBlockTimeSeconds` overestimates the seconds per block:
-    const lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
-    const earliestBlockNumber = latestBlockNumber - lookbackBlocks;
-    let fromBlock = earliestBlockNumber;
-    let events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
+    // Add cushion in case `averageBlockTimeSeconds` underestimates the seconds per block:
+    let lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
 
-    // For low-volume pools, it is possible that there are no Sync events within the lookback window.
-    // To cover these cases, we'll keep looking back until we find a window with a sync event.
-    while (fromBlock >= 0 && events.length === 0) {
-      fromBlock -= lookbackBlocks;
-      events = await this.uniswap.getPastEvents("Sync", { fromBlock: Math.max(fromBlock, 0) });
+    let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
+    let blocks = {}; // Caches blocks (so we don't have to re-query timestamps).
+    let fromBlock = Infinity; // Arbitrary initial value > 0.
+
+    // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
+    for (let i = 0; !(fromBlock === 0 || events[0]?.timestamp <= earliestLookbackTime); i++) {
+      // Uses latest unless the events array already has data. If so, it only queries _before_ existing events.
+      const toBlock = events[0] ? events[0].blockNumber - 1 : "latest";
+
+      // By taking larger powers of 2, this doubles the lookback each time.
+      fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
+
+      const newEvents = await this._getSortedSyncEvents(fromBlock, toBlock).then(newEvents => {
+        // Grabs the timestamps for all blocks, but avoids re-querying by .then-ing any cached blocks.
+        return Promise.all(
+          newEvents.map(event => {
+            // If there is nothing in the cache for this block number, add a new promise that will resolve to the block.
+            if (!blocks[event.blockNumber]) {
+              blocks[event.blockNumber] = this.web3.eth.getBlock(event.blockNumber);
+            }
+
+            // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
+            return blocks[event.blockNumber].then(block => {
+              event.timestamp = block.timestamp;
+              event.price = this._getPriceFromSyncEvent(event);
+              return event;
+            });
+          })
+        );
+      });
+
+      // Adds newly queried events to the array.
+      events = [...newEvents, ...events];
     }
 
     // If there are still no prices, return null to allow the user to handle the absence of data.
@@ -114,6 +141,20 @@ class UniswapPriceFeed extends PriceFeedInterface {
       return;
     }
 
+    // Filter out events where price is null.
+    this.events = events.filter(e => e.price !== null);
+
+    // Price at the end of the most recent block.
+    this.lastBlockPrice = this.events[this.events.length - 1].price;
+
+    // Compute TWAP up to the current time.
+    this.currentTwap = this._computeTwap(this.events, currentTime - this.twapLength, currentTime);
+
+    this.lastUpdateTime = currentTime;
+  }
+
+  async _getSortedSyncEvents(fromBlock, toBlock) {
+    const events = await this.uniswap.getPastEvents("Sync", { fromBlock: fromBlock, toBlock: toBlock });
     // Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
     events.sort((a, b) => {
       if (a.blockNumber !== b.blockNumber) {
@@ -127,40 +168,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
       return a.logIndex - b.logIndex;
     });
 
-    // Search backwards through the array and grab block timestamps for everything in our lookback window.
-    // Get Time can either be a synchronous OR asynchronous function depending on how the UniswapPriceFeed is setup.
-    // Specifically, when tests are run using hardhat, we use the current block number as the getTimeFunction. This
-    // check enables us to support both types of getTime functions.
-    const currentTime = this.getTime.constructor.name === "AsyncFunction" ? await this.getTime() : this.getTime();
-
-    const lookbackWindowStart = currentTime - lookbackWindow;
-    let i = events.length;
-    while (i !== 0) {
-      const event = events[--i];
-      event.timestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
-
-      // @dev: _getPriceFromSyncEvent() will return null if the price cannot be calculated, which is possible
-      // if one of the reserve amounts is 0 for example.
-      event.price = this._getPriceFromSyncEvent(event);
-
-      if (event.timestamp <= lookbackWindowStart) {
-        break;
-      }
-    }
-
-    // Cut off all the events that were before the time we care about.
-    this.events = events.slice(i);
-
-    // Filter out events where price is null.
-    this.events = events.filter(e => e.price !== null);
-
-    // Price at the end of the most recent block.
-    this.lastBlockPrice = this.events[this.events.length - 1].price;
-
-    // Compute TWAP up to the current time.
-    this.currentTwap = this._computeTwap(this.events, currentTime - this.twapLength, currentTime);
-
-    this.lastUpdateTime = currentTime;
+    return events;
   }
 
   _getPriceFromSyncEvent(event) {
