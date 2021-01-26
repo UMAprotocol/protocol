@@ -8,7 +8,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -31,9 +31,9 @@ const { Liquidator } = require("../src/liquidator.js");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 }
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -82,8 +82,8 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
-    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
-  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 // allows this to be set to null without throwing.
@@ -98,7 +98,7 @@ contract("Liquidator.js", function(accounts) {
   const contractCreator = accounts[4];
   const liquidityProvider = accounts[5];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -113,8 +113,8 @@ contract("Liquidator.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -199,28 +199,19 @@ contract("Liquidator.js", function(accounts) {
             );
           }
 
-          const constructorParams = await createConstructorParamsForContractVersion(
-            web3,
-            contractVersion.contractVersion,
-            contractVersion.contractType,
-            {
-              convertSynthetic,
-              finder,
-              collateralToken,
-              syntheticToken,
-              identifier,
-              fundingRateIdentifier,
-              timer,
-              store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
-            }
-          );
-          // Deploy a new expiring multi party OR perpetual, depending on what the financialContract has been set to.
+          const constructorParams = await createConstructorParamsForContractVersion(contractVersion, {
+            convertSynthetic,
+            finder,
+            collateralToken,
+            syntheticToken,
+            identifier,
+            fundingRateIdentifier,
+            timer,
+            store,
+            configStore: configStore || {} // if the contract type is not a perp this will be null.
+          });
+          // Deploy a new expiring multi party
           emp = await financialContract.new(constructorParams);
-          // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-          await emp.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
-
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -1582,82 +1573,86 @@ contract("Liquidator.js", function(accounts) {
             }
           );
         });
-        it("logs about skipping liquidations because of the defense activation threshold are only emitted if the withdrawal took place within a specified block window", async () => {
-          const withdrawLiveness = empProps.withdrawLiveness.toNumber();
+        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          "logs about skipping liquidations because of the defense activation threshold are only emitted if the withdrawal took place within a specified block window",
+          async () => {
+            const withdrawLiveness = empProps.withdrawLiveness.toNumber();
 
-          await emp.create(
-            { rawValue: convertCollateral("120") },
-            { rawValue: convertSynthetic("100") },
-            { from: sponsor1 }
-          );
-          // we need to keep at least 50 tokens for the WDF so we can only partially liquidate sponsor1
-          await emp.create(
-            { rawValue: convertCollateral("1000") },
-            { rawValue: convertSynthetic("100") },
-            { from: liquidatorBot }
-          );
+            await emp.create(
+              { rawValue: convertCollateral("120") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
+            // we need to keep at least 50 tokens for the WDF so we can only partially liquidate sponsor1
+            await emp.create(
+              { rawValue: convertCollateral("1000") },
+              { rawValue: convertSynthetic("100") },
+              { from: liquidatorBot }
+            );
 
-          // Start with a mocked price of 1 usd per token.
-          // This puts sponsor1 over collateralized so no liquidations should occur.
-          priceFeedMock.setCurrentPrice(convertPrice("1"));
+            // Start with a mocked price of 1 usd per token.
+            // This puts sponsor1 over collateralized so no liquidations should occur.
+            priceFeedMock.setCurrentPrice(convertPrice("1"));
 
-          // sponsor is now under collateralized
-          const startingBlock = await web3.eth.getBlockNumber();
-          await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
-          const endingBlock = (await web3.eth.getBlockNumber()) + 1;
+            // sponsor is now under collateralized
+            const startingBlock = await web3.eth.getBlockNumber();
+            await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
+            const endingBlock = (await web3.eth.getBlockNumber()) + 1;
 
-          // Create a Liquidator bot with a start and end block specified
-          const liquidatorConfig = {
-            // entire fund dedicated to strategy, allows 3 extensions
-            whaleDefenseFundWei: toBN(empProps.minSponsorSize)
-              .mul(toBN(10))
-              .toString(),
-            // will extend even if withdraw progress is 80% complete
-            defenseActivationPercent: 80,
-            startingBlock,
-            endingBlock
-          };
-          const liquidator = new Liquidator({
-            logger: spyLogger,
-            expiringMultiPartyClient: empClient,
-            gasEstimator,
-            votingContract: mockOracle.contract,
-            syntheticToken: syntheticToken.contract,
-            priceFeed: priceFeedMock,
-            account: accounts[0],
-            empProps,
-            liquidatorConfig,
-            startingBlock,
-            endingBlock
-          });
+            // Create a Liquidator bot with a start and end block specified
+            liquidatorConfig = {
+              ...liquidatorConfig,
+              // entire fund dedicated to strategy, allows 3 extensions
+              whaleDefenseFundWei: toBN(empProps.minSponsorSize)
+                .mul(toBN(10))
+                .toString(),
+              // will extend even if withdraw progress is 80% complete
+              defenseActivationPercent: 80,
+              startingBlock,
+              endingBlock
+            };
+            const liquidator = new Liquidator({
+              logger: spyLogger,
+              expiringMultiPartyClient: empClient,
+              gasEstimator,
+              votingContract: mockOracle.contract,
+              syntheticToken: syntheticToken.contract,
+              priceFeed: priceFeedMock,
+              account: accounts[0],
+              empProps,
+              liquidatorConfig,
+              startingBlock,
+              endingBlock
+            });
 
-          // First, run the liquidator with no block window specified, this should NOT emit a log
-          // that the spyLogger can catch.
-          await liquidator.update();
-          await liquidator.liquidatePositions();
+            // First, run the liquidator with no block window specified, this should NOT emit a log
+            // that the spyLogger can catch.
+            await liquidator.update();
+            await liquidator.liquidatePositions();
 
-          let sponsor1Liquidation = (await emp.getLiquidations(sponsor1))[0];
-          // 120 - 10 / 2 (half tokens liquidated)
-          assert.equal(sponsor1Liquidation.liquidatedCollateral, convertCollateral("55"));
+            let sponsor1Liquidation = (await emp.getLiquidations(sponsor1))[0];
+            // 120 - 10 / 2 (half tokens liquidated)
+            assert.equal(sponsor1Liquidation.liquidatedCollateral, convertCollateral("55"));
 
-          // advance time to 50% of withdraw. This should not trigger extension until 80%
-          let sponsor1Positions = await emp.positions(sponsor1);
-          let nextTime = Math.ceil(Number(sponsor1Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5);
+            // advance time to 50% of withdraw. This should not trigger extension until 80%
+            let sponsor1Positions = await emp.positions(sponsor1);
+            let nextTime = Math.ceil(Number(sponsor1Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5);
 
-          await emp.setCurrentTime(nextTime);
-          await liquidator.update();
-          const startingLogLength = spy.getCalls().length;
-          await liquidator.liquidatePositions();
-          assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
-          // Logger should emit a log specific about skipping this liquidation because the defense activation
-          // percent has not passed yet.
-          // No other logs should be emitted.
-          assert.equal(startingLogLength + 1, spy.getCalls().length);
-          assert.equal(spyLogLevel(spy, -1), "info");
-          assert.isTrue(
-            spyLogIncludes(spy, -1, "Withdrawal liveness has not passed WDF activation threshold, skipping")
-          );
-        });
+            await emp.setCurrentTime(nextTime);
+            await liquidator.update();
+            const startingLogLength = spy.getCalls().length;
+            await liquidator.liquidatePositions();
+            assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
+            // Logger should emit a log specific about skipping this liquidation because the defense activation
+            // percent has not passed yet.
+            // No other logs should be emitted.
+            assert.equal(startingLogLength + 1, spy.getCalls().length);
+            assert.equal(spyLogLevel(spy, -1), "info");
+            assert.isTrue(
+              spyLogIncludes(spy, -1, "Withdrawal liveness has not passed WDF activation threshold, skipping")
+            );
+          }
+        );
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
           versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
             "Can correctly detect invalid positions and liquidate them",
