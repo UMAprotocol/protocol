@@ -514,6 +514,7 @@ contract("index.js", function(accounts) {
 
       it("Liquidator config packed correctly", async function() {
         // We will also create a new spy logger, listening for debug events to validate the liquidatorConfig.
+        spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
@@ -540,9 +541,9 @@ contract("index.js", function(accounts) {
           endingBlock
         });
 
-        // First log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(0).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(0).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // 3rd log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });
