@@ -36,38 +36,19 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Takes the median of all of the constituent price feeds' historical prices.
   getHistoricalPrice(time, verbose = false) {
-    const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time, verbose));
-
-    if (historicalPrices.some(element => element === undefined || element === null)) {
-      return null;
+    let historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time, verbose));
+    const missingPrice = historicalPrices.find(priceDetails => !priceDetails[0]);
+    if (missingPrice) {
+      return [null, `MedianizerPriceFeed: Missing historical price: ${missingPrice[1]}`];
+    } else {
+      historicalPrices = historicalPrices.map(prices => prices[0]);
     }
 
     if (this.computeMean) {
-      return this._computeMean(historicalPrices);
+      return [this._computeMean(historicalPrices), null];
     } else {
-      return this._computeMedian(historicalPrices);
+      return [this._computeMedian(historicalPrices), null];
     }
-  }
-
-  // This function is expected to be called by a client of this pricefeed that wants to get more details
-  // about which constituent pricefeed is not returning historical price successfully.
-  debugHistoricalData(time) {
-    let priceFeedErrorDetails = "";
-    this.priceFeeds.forEach(priceFeed => {
-      const hasPrice = priceFeed.getHistoricalPrice(time);
-      if (!hasPrice) {
-        // If the constituent price feed has implemented `debugHistoricalData(time)`, then concat
-        // the result of that function, otherwise create an error string for the price feed.
-        try {
-          priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
-        } catch (err) {
-          priceFeedErrorDetails = priceFeedErrorDetails.concat(
-            `[Price unavailable @ ${time} for feed with uuid: ${priceFeed.uuid}]`
-          );
-        }
-      }
-    });
-    return priceFeedErrorDetails;
   }
 
   // Note: This method will fail if one of the pricefeeds has not implemented `getHistoricalPricePeriods`, which

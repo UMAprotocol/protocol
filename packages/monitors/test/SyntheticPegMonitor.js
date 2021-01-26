@@ -395,13 +395,13 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
           assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
-          assert.isTrue(lastSpyLogIncludes(spy, "Missing historical price for 999")); // Additional historical pricefeed logs sent
+          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
 
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
           assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
-          assert.isTrue(lastSpyLogIncludes(spy, "Missing historical price for 999")); // Additional historical pricefeed logs sent
+          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
         });
 
         it("Stress testing with a lot of historical price data points", async function() {

@@ -83,7 +83,12 @@ class BalancerPriceFeed extends PriceFeedInterface {
     } else {
       historicalPrice = this._computeTwap(time - this.twapLength, time);
     }
-    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+
+    if (historicalPrice) {
+      return [this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice), null];
+    } else {
+      return [null, `${this.uuid} missing historical price @ time ${time}`];
+    }
   }
 
   getLastUpdateTime() {

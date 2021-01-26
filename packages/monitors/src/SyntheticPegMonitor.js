@@ -291,12 +291,7 @@ class SyntheticPegMonitor {
     if (!volData) {
       // If missing vol data, then the pricefeed is failing to return historical price data. Let's
       // try querying the pricefeed to get more details about the problem:
-      let priceFeedErrorDetails;
-      try {
-        priceFeedErrorDetails = pricefeed.debugHistoricalData(latestTime);
-      } catch (err) {
-        // Some pricefeeds don't implement `debugHistoricalData` so we'll ignore errors.
-      }
+      let priceFeedErrorDetails = pricefeed.getHistoricalPrice(latestTime)[1];
       return {
         errorData: {
           latestTime: latestTime ? latestTime : 0,
@@ -308,7 +303,7 @@ class SyntheticPegMonitor {
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
     // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
     // `currentTime` differs from `lastUpdateTime`.
-    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
+    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime)[0];
 
     return {
       pricefeedVolatility: volData.volatility,
@@ -342,7 +337,7 @@ class SyntheticPegMonitor {
     // Iterate over all time series values to fine the maximum and minimum values.
     for (let i = 0; i < lookback; i++) {
       const timestamp = mostRecentTime - i;
-      const _price = pricefeed.getHistoricalPrice(timestamp);
+      const _price = pricefeed.getHistoricalPrice(timestamp)[0];
       if (!_price) {
         continue;
       }

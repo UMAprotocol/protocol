@@ -57,24 +57,16 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // (avg(experimental) - avg(baseline) + 1) / denominator
   _getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice) {
     // Compute experimental basket mean.
-    if (
-      experimentalPrices.length === 0 ||
-      experimentalPrices.some(element => element === undefined || element === null)
-    ) {
-      return null;
-    }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
-    if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
-      return null;
-    }
     const baselineMean = this._computeMean(baselinePrices);
 
     // All calculations within this if statement will produce unexpected results if any of the
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
     // the one that this.convertPriceFeedDecimals() uses.
-    if (!baselineMean || !experimentalMean) return null;
+    if (!baselineMean || !experimentalMean)
+      return [null, "BasketSpreadPriceFeed: missing baselineMean or experimentalMean"];
 
     // TODO: Parameterize the lower (0) and upper (2) bounds, as well as allow for custom "spreadValue" formulas,
     // for example we might not want to have the spread centered around 1, like it is here:
@@ -90,10 +82,10 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
 
     // Optionally divide by denominator pricefeed.
-    if (!denominatorPrice) return spreadValue;
+    if (!denominatorPrice) return [spreadValue, null];
     spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
 
-    return spreadValue;
+    return [spreadValue, null];
   }
 
   getCurrentPrice() {
@@ -105,32 +97,28 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPrice(time) {
-    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
-
+    let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
+    const missingExperimentalPrice = experimentalPrices.find(priceDetails => !priceDetails[0]);
+    if (missingExperimentalPrice) {
+      return [null, `BasketSpreadPriceFeed: Missing experimental basket price: ${missingExperimentalPrice[1]}`];
+    } else {
+      experimentalPrices = experimentalPrices.map(prices => prices[0]);
+    }
+    let baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
+    const missingBaselinePrice = baselinePrices.find(priceDetails => !priceDetails[0]);
+    if (missingBaselinePrice) {
+      return [null, `BasketSpreadPriceFeed: Missing baseline basket price: ${missingBaselinePrice[1]}`];
+    } else {
+      baselinePrices = baselinePrices.map(prices => prices[0]);
+    }
+    let denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time)[0];
+    if (this.denominatorPriceFeed && !denominatorPrice) {
+      return [
+        null,
+        `BasketSpreadPriceFeed: Missing denominator price: ${this.denominatorPriceFeed.getHistoricalPrice(time)[1]}`
+      ];
+    }
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
-  }
-
-  // This function is expected to be called by a client of this pricefeed that wants to get more details
-  // about which constituent pricefeed is not returning historical price successfully.
-  debugHistoricalData(time) {
-    let priceFeedErrorDetails = "";
-    this.allPriceFeeds.forEach(priceFeed => {
-      const hasPrice = priceFeed.getHistoricalPrice(time);
-      if (!hasPrice) {
-        // If the constituent price feed has implemented `debugHistoricalData(time)`, then concat
-        // the result of that function, otherwise create an error string for the price feed.
-        try {
-          priceFeedErrorDetails = priceFeedErrorDetails.concat(priceFeed.debugHistoricalData(time));
-        } catch (err) {
-          priceFeedErrorDetails = priceFeedErrorDetails.concat(
-            `[Price unavailable @ ${time} for feed with uuid: ${priceFeed.uuid}]`
-          );
-        }
-      }
-    });
-    return priceFeedErrorDetails;
   }
 
   // Gets the *most recent* update time for all constituent price feeds.

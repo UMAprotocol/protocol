@@ -114,16 +114,11 @@ class Disputer {
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
       const price = disputerOverridePrice
         ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(liquidationTime);
+        : this.priceFeed.getHistoricalPrice(liquidationTime)[0];
       if (!price) {
-        // If missing historical price, check if there are further debug logs available. This is useful especially
+        // If missing historical price, check if there are further error logs available. This is useful especially
         // if the pricefeed aggregates pricefeeds, like a Medianizer or a BasketSpreadPriceFeed.
-        let priceFeedErrorDetails;
-        try {
-          priceFeedErrorDetails = this.priceFeed.debugHistoricalData(liquidationTime);
-        } catch (err) {
-          // Some pricefeeds don't implement `debugHistoricalData` so we'll ignore errors.
-        }
+        let priceFeedErrorDetails = this.priceFeed.getHistoricalPrice(liquidationTime)[1];
         this.logger.warn({
           at: "Disputer",
           message: "Cannot dispute: price feed returned invalid value",

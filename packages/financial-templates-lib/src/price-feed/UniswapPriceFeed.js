@@ -69,7 +69,11 @@ class UniswapPriceFeed extends PriceFeedInterface {
     }
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
-    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    if (historicalPrice) {
+      return [this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice), null];
+    } else {
+      return [null, `${this.uuid} missing historical price @ time ${time}`];
+    }
   }
 
   getLastUpdateTime() {
