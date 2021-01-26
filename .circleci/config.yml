@@ -118,7 +118,7 @@ jobs:
             mkdir truffle_workaround
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
-            yarn run test
+            yarn run test-concurrent
   coverage:
     docker:
       - image: circleci/node:12
