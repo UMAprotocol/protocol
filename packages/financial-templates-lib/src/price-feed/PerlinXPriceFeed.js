@@ -202,10 +202,17 @@ class PerlinXPriceFeed extends PriceFeedInterface {
 
         // 4. Parse results.
         // Looks for current PERL price if this.convertToPerl has been set
+        let perlPerUsd = 0;
         if (this.convertToPerl) {
-            // const perlPriceUrl =
-            //     `https://api.cryptowat.ch/markets/binance/${this.pair}/price` +
-            //     (this.apiKey ? `?apikey=${this.apiKey}` : "");
+            const perlPriceUrl = `https://api.cryptowat.ch/markets/binance/perlusdt/price?apikey=${this.cryptowatchApiKey}`;
+            const perlPriceResponse = await this.networker.getJson(perlPriceUrl);
+            if (!perlPriceResponse || !priceResponse.result || !priceResponse.result.price) {
+                throw new Error(`🚨Could not parse PERL price result from url ${perlPriceUrl}: ${JSON.stringify(perlPriceResponse)}`);
+            }
+            perlPerUsd = (1 / priceResponse.result.price);
+            if (perlPerUsd === 0) {
+                throw new Error(`🚨 PERL price should not be zero`);
+            }
         }
 
         // Return data structure:
@@ -219,7 +226,7 @@ class PerlinXPriceFeed extends PriceFeedInterface {
         //     "open": 1863.54, 
         //     "request_time": "Mon, 25 Jan 2021 13:13:41 GMT"
         //  }
-        const newPrice = this.convertPriceFeedDecimals(priceResponse.close);
+        const newPrice = this.convertPriceFeedDecimals(this.convertToPerl ? (priceResponse.close * perlPerUsd) : priceResponse.close);
 
         // Return data structure:
         // {
@@ -241,10 +248,9 @@ class PerlinXPriceFeed extends PriceFeedInterface {
             .map(row => ({
                 openTime: Math.floor((new Date(row.date).valueOf() / 1000) - (this.periods * 60)),
                 closeTime: Math.floor(new Date(row.date).valueOf() / 1000),
-                openPrice: this.convertPriceFeedDecimals(row.open),
-                closePrice: this.convertPriceFeedDecimals(row.close)
+                openPrice: this.convertPriceFeedDecimals(this.convertToPerl ? (row.open * perlPerUsd) : row.open),
+                closePrice: this.convertPriceFeedDecimals(this.convertToPerl ? (row.close * perlPerUsd) : row.close)
             }))
-
 
         // 5. Store results.
         this.currentPrice = newPrice;
@@ -268,9 +274,6 @@ class PerlinXPriceFeed extends PriceFeedInterface {
         }
     }
 
-    _convertUSDtoPERL(amount) {
-
-    }
 }
 
 module.exports = {
