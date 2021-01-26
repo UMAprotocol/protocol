@@ -57,9 +57,18 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // (avg(experimental) - avg(baseline) + 1) / denominator
   _getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice) {
     // Compute experimental basket mean.
+    if (
+      experimentalPrices.length === 0 ||
+      experimentalPrices.some(element => element === undefined || element === null)
+    ) {
+      return [null, "BasketSpreadPriceFeed: Missing unknown experimental basket price"];
+    }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
+    if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
+      return [null, "BasketSpreadPriceFeed: Missing unknown baseline basket price"];
+    }
     const baselineMean = this._computeMean(baselinePrices);
 
     // All calculations within this if statement will produce unexpected results if any of the
@@ -93,10 +102,12 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
 
-    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice)[0];
   }
 
   getHistoricalPrice(time) {
+    // TODO: Currently this returns the error string of the FIRST pricefeed missing a historical,
+    // this should ideally concatenate the error strings of ALL pricefeeds missing historicals.
     let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
     const missingExperimentalPrice = experimentalPrices.find(priceDetails => !priceDetails[0]);
     if (missingExperimentalPrice) {
