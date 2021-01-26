@@ -8,7 +8,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -31,9 +31,9 @@ const { Liquidator } = require("../src/liquidator.js");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 }
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -82,8 +82,8 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
-    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
-  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 // allows this to be set to null without throwing.
@@ -98,7 +98,7 @@ contract("Liquidator.js", function(accounts) {
   const contractCreator = accounts[4];
   const liquidityProvider = accounts[5];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -113,8 +113,8 @@ contract("Liquidator.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -199,22 +199,17 @@ contract("Liquidator.js", function(accounts) {
             );
           }
 
-          const constructorParams = await createConstructorParamsForContractVersion(
-            web3,
-            contractVersion.contractVersion,
-            contractVersion.contractType,
-            {
-              convertSynthetic,
-              finder,
-              collateralToken,
-              syntheticToken,
-              identifier,
-              fundingRateIdentifier,
-              timer,
-              store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
-            }
-          );
+          const constructorParams = await createConstructorParamsForContractVersion(contractVersion, {
+            convertSynthetic,
+            finder,
+            collateralToken,
+            syntheticToken,
+            identifier,
+            fundingRateIdentifier,
+            timer,
+            store,
+            configStore: configStore || {} // if the contract type is not a perp this will be null.
+          });
           // Deploy a new expiring multi party
           emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
@@ -797,23 +792,22 @@ contract("Liquidator.js", function(accounts) {
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
             await emp.create(
-              { rawValue: convertCollateral("120") },
+              { rawValue: convertCollateral("115") },
               { rawValue: convertSynthetic("100") },
               { from: sponsor1 }
             );
 
-            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            // does not have enough to liquidate entire position
+            // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
             await emp.create(
               { rawValue: convertCollateral("118") },
               { rawValue: convertSynthetic("100") },
               { from: sponsor2 }
             );
-            // we have enough to fully liquidate one, then we have to extend the other
-            // wdf is 50, leaving 50 after first liquidation (200-100-50)
+
+            // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
             await emp.create(
               { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("200") },
+              { rawValue: convertSynthetic("500") },
               { from: liquidatorBot }
             );
 
@@ -1629,7 +1623,8 @@ contract("Liquidator.js", function(accounts) {
             const endingBlock = (await web3.eth.getBlockNumber()) + 1;
 
             // Create a Liquidator bot with a start and end block specified
-            const liquidatorConfig = {
+            liquidatorConfig = {
+              ...liquidatorConfig,
               // entire fund dedicated to strategy, allows 3 extensions
               whaleDefenseFundWei: toBN(empProps.minSponsorSize)
                 .mul(toBN(10))

@@ -4,7 +4,7 @@ const {
   interfaceName,
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
@@ -50,7 +50,7 @@ contract("index.js", function(accounts) {
   const liquidator = contractCreator;
   const disputer = accounts[4];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
     const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
@@ -131,9 +131,7 @@ contract("index.js", function(accounts) {
         }
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
-          web3,
-          contractVersion.contractVersion,
-          contractVersion.contractType,
+          contractVersion,
           {
             convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,

@@ -7,7 +7,7 @@ const {
   MAX_UINT_VAL,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -75,8 +75,8 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
-    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
-  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -85,7 +85,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0];
   const sponsor2 = accounts[1];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -176,9 +176,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           }
 
           constructorParams = await createConstructorParamsForContractVersion(
-            web3,
-            contractVersion.contractVersion,
-            contractVersion.contractType,
+            contractVersion,
             {
               convertSynthetic,
               finder,
