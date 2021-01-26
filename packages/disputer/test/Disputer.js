@@ -9,7 +9,7 @@ const {
   ZERO_ADDRESS,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS,
+  TESTED_CONTRACT_VERSIONS,
   parseFixed
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
@@ -77,8 +77,8 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
-    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
-  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
@@ -92,7 +92,7 @@ contract("Disputer.js", function(accounts) {
   const contractCreator = accounts[5];
   const rando = accounts[6];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -107,8 +107,8 @@ contract("Disputer.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -191,22 +191,17 @@ contract("Disputer.js", function(accounts) {
             );
           }
 
-          constructorParams = await createConstructorParamsForContractVersion(
-            web3,
-            contractVersion.contractVersion,
-            contractVersion.contractType,
-            {
-              convertSynthetic,
-              finder,
-              collateralToken,
-              syntheticToken,
-              identifier,
-              fundingRateIdentifier,
-              timer,
-              store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
-            }
-          );
+          constructorParams = await createConstructorParamsForContractVersion(contractVersion, {
+            convertSynthetic,
+            finder,
+            collateralToken,
+            syntheticToken,
+            identifier,
+            fundingRateIdentifier,
+            timer,
+            store,
+            configStore: configStore || {} // if the contract type is not a perp this will be null.
+          });
 
           await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
             from: accounts[0]
