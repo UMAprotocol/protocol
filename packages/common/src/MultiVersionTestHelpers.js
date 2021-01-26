@@ -1,9 +1,6 @@
 const web3 = require("web3");
 const { toWei, utf8ToHex, padRight } = web3.utils;
-
 const { ZERO_ADDRESS } = require("./Constants");
-
-// Contract versions used in unit tests to define supported versions.
 
 // Versions that production bots support.
 const SUPPORTED_CONTRACT_VERSIONS = [
