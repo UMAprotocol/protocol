@@ -27,12 +27,11 @@ async function getMedianHistoricalPrice(callback) {
     // If user did not specify an identifier, provide a default value.
     let queryIdentifier;
     if (!argv.identifier) {
-      queryIdentifier = "eth/btc";
+      queryIdentifier = "ETH/BTC";
       console.log(`Optional '--identifier' flag not specified, defaulting to: ${queryIdentifier}`);
     } else {
       queryIdentifier = argv.identifier;
     }
-    queryIdentifier = queryIdentifier.toUpperCase();
 
     // Function to get the current time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
