@@ -85,7 +85,7 @@ async function createConstructorParamsForContractVersion(
 
   // Check that each of the expected keys is present and not null.
   requiredContextObjects.forEach(expectedKey => {
-    assert.isTrue(
+    assert(
       contextObjects[expectedKey] && Object.keys(contextObjects).includes(expectedKey),
       `Provided context object is missing type ${expectedKey} or is undefined`
     );
