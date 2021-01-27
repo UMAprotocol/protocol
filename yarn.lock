@@ -15951,6 +15951,37 @@ mocha@8.0.1:
     yargs-parser "13.1.2"
     yargs-unparser "1.6.0"
 
+mocha@8.1.2:
+  version "8.1.2"
+  resolved "https://registry.yarnpkg.com/mocha/-/mocha-8.1.2.tgz#d67fad13300e4f5cd48135a935ea566f96caf827"
+  integrity sha512-I8FRAcuACNMLQn3lS4qeWLxXqLvGf6r2CaLstDpZmMUUSmvW6Cnm1AuHxgbc7ctZVRcfwspCRbDHymPsi3dkJw==
+  dependencies:
+    ansi-colors "4.1.1"
+    browser-stdout "1.3.1"
+    chokidar "3.4.2"
+    debug "4.1.1"
+    diff "4.0.2"
+    escape-string-regexp "4.0.0"
+    find-up "5.0.0"
+    glob "7.1.6"
+    growl "1.10.5"
+    he "1.2.0"
+    js-yaml "3.14.0"
+    log-symbols "4.0.0"
+    minimatch "3.0.4"
+    ms "2.1.2"
+    object.assign "4.1.0"
+    promise.allsettled "1.0.2"
+    serialize-javascript "4.0.0"
+    strip-json-comments "3.0.1"
+    supports-color "7.1.0"
+    which "2.0.2"
+    wide-align "1.1.3"
+    workerpool "6.0.0"
+    yargs "13.3.2"
+    yargs-parser "13.1.2"
+    yargs-unparser "1.6.1"
+
 mocha@^7.1.1, mocha@^7.1.2:
   version "7.2.0"
   resolved "https://registry.yarnpkg.com/mocha/-/mocha-7.2.0.tgz#01cc227b00d875ab1eed03a75106689cfed5a604"
@@ -21955,6 +21986,15 @@ truffle@^5.1.16, truffle@^5.1.33, truffle@^5.1.35, truffle@^5.1.37:
   dependencies:
     app-module-path "^2.2.0"
     mocha "8.0.1"
+    original-require "1.0.1"
+
+truffle@^5.1.63:
+  version "5.1.63"
+  resolved "https://registry.yarnpkg.com/truffle/-/truffle-5.1.63.tgz#1c0f809002752abfff1e087a92482c3bc4242860"
+  integrity sha512-gqji8h0nnZ8AGaFqLaRCVECdP2k52H/V1TtjO9v4oLwSfXo5iO1V2+9yBo2NaQQZc3q6vSgZXlcIFEoneKAswQ==
+  dependencies:
+    app-module-path "^2.2.0"
+    mocha "8.1.2"
     original-require "1.0.1"
 
 ts-invariant@^0.4.4:
