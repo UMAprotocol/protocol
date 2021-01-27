@@ -178,7 +178,7 @@ class ContractMonitor {
     this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
   }
 
-  // Queries disputable liquidations and disputes any that were incorrectly liquidated.
+  // Queries new liquidation events and log them.
   async checkForNewLiquidations() {
     this.logger.debug({
       at: "ContractMonitor",
@@ -199,53 +199,39 @@ class ContractMonitor {
       const historicalLookbackWindow =
         Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
 
-      // If liquidation time is before the earliest possible historical price, then we can skip this liquidation
-      // because we will not be able to get a historical price.
+      // If liquidation time is before the earliest possible historical price then we cant get the historical price.
+      // However, we still want to log information about the liquidation.
+      let sponsorCR, maxPriceToBeDisputable, price, crRequirement;
       if (liquidationTime < historicalLookbackWindow) {
-        this.logger.debug({
-          at: "Disputer",
+        this.logger.warn({
+          at: "ContractMonitor",
           message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
           historicalLookbackWindow
         });
-        continue;
-      }
-
-      // If liquidation time is before historical lookback window, then we can skip this liquidation
-      // because we will not be able to get a historical price.
-      if (liquidationTime < this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()) {
-        this.logger.debug({
-          at: "Disputer",
-          message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
-          liquidationTime,
-          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
-        });
-        continue;
-      }
-
-      const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
-      let collateralizationString;
-      let maxPriceToBeDisputableString;
-      const crRequirement = await this.empContract.methods.collateralRequirement().call();
-      let crRequirementString = this.toBN(crRequirement).muln(100);
-      if (price) {
-        collateralizationString = this.formatDecimalString(
-          this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
-        );
-        maxPriceToBeDisputableString = this.formatDecimalString(
-          this._calculateDisputablePrice(crRequirement, event.liquidatedCollateral, event.tokensOutstanding)
-        );
       } else {
-        this.logger.warn({
-          at: "ContractMonitor",
-          message: "Could not get historical price for liquidation",
-          price,
-          liquidationTime: liquidationTime.toString()
-        });
-        collateralizationString = "[Invalid]";
-        maxPriceToBeDisputableString = "[Invalid]";
-      }
+        price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
+        crRequirement = await this.empContract.methods.collateralRequirement().call();
+        // Note: the liquidated collateral below considers the applied funding rate in the case of a perpetual contract.
+        if (price) {
+          sponsorCR = this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price);
 
+          maxPriceToBeDisputable = this._calculateDisputablePrice(
+            crRequirement,
+            event.liquidatedCollateral,
+            event.tokensOutstanding
+          );
+        } else {
+          this.logger.warn({
+            at: "ContractMonitor",
+            message: "Could not get historical price for liquidation",
+            price,
+            liquidationTime: liquidationTime.toString()
+          });
+          sponsorCR = "[Invalid]";
+          maxPriceToBeDisputable = "[Invalid]";
+        }
+      }
       // Sample message:
       // Liquidation alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated liquidation for for [x][collateral currency] (liquidated collateral = [y]) of sponsor collateral
@@ -271,14 +257,14 @@ class ContractMonitor {
       if (price) {
         mrkdwn +=
           "Sponsor collateralization was " +
-          collateralizationString +
+          this.formatDecimalString(sponsorCR) +
           "%. " +
           "Using " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           " as the estimated price at liquidation time. With a collateralization requirement of " +
-          this.formatDecimalString(crRequirementString) +
+          this.formatDecimalString(this.toBN(crRequirement).muln(100)) +
           "%, this liquidation would be disputable at a price below " +
-          maxPriceToBeDisputableString +
+          this.formatDecimalString(maxPriceToBeDisputable) +
           ". ";
       }
       // Add etherscan link.
@@ -345,15 +331,15 @@ class ContractMonitor {
     );
 
     for (let event of newDisputeSettlementEvents) {
-      let resolvedPrice;
+      let resolvedPrice, liquidationEvent, liquidationTimestamp;
       try {
-        // Query resolved price for dispute price request. Note that this will return nothing if the
-        // disputed liquidation's block timestamp is not equal to the timestamp of the price request. This could be the
-        // the case if the EMP contract is using the Timer contract for example.
-        const liquidationEvent = this.empEventClient
+        // Query resolved price for dispute price request. Note that this will return nothing if the disputed
+        // liquidation's block timestamp is not equal to the timestamp of the price request. This could be the the case
+        // if the EMP contract is using the Timer contract for example.
+        liquidationEvent = this.empEventClient
           .getAllLiquidationEvents()
           .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
-        const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
+        liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
 
         resolvedPrice = revertWrapper(
           await this.votingContract.getPrice(this.utf8ToHex(this.empProps.priceIdentifier), liquidationTimestamp, {
@@ -361,7 +347,13 @@ class ContractMonitor {
           })
         );
       } catch (error) {
-        // No price or matching liquidation available.
+        this.logger.info({
+          at: "ContractMonitor",
+          message: "A dispute settlement event was found but no matching price or liquidation is availabl.",
+          resolvedPrice,
+          liquidationEvent,
+          liquidationTimestamp
+        });
       }
 
       // Sample message:
