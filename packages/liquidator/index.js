@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -20,14 +20,6 @@ const {
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
-
-const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
-];
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -62,6 +54,21 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.

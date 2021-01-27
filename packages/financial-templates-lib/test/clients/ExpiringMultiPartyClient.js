@@ -7,7 +7,7 @@ const {
   MAX_UINT_VAL,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -75,8 +75,8 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
-    return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
-  return runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -85,17 +85,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0];
   const sponsor2 = accounts[1];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(
-      contractVersion.contractType,
-      web3,
-      contractVersion.contractVersion
-    );
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -180,9 +176,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           }
 
           constructorParams = await createConstructorParamsForContractVersion(
-            web3,
-            contractVersion.contractVersion,
-            contractVersion.contractType,
+            contractVersion,
             {
               convertSynthetic,
               finder,
@@ -197,7 +191,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             { collateralRequirement: { rawValue: toWei("1.5") } } // these tests assume a CR of 1.5, not the 1.2 default.
           );
 
-          emp = await financialContractInstance.new(constructorParams);
+          emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -219,7 +213,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
           client = new ExpiringMultiPartyClient(
             dummyLogger,
-            financialContractInstance.abi,
+            financialContract.abi,
             web3,
             emp.address,
             testConfig.collateralDecimals,
@@ -757,7 +751,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             // ensures that packages that are yet to update.
             client = new ExpiringMultiPartyClient(
               dummyLogger,
-              financialContractInstance.abi,
+              financialContract.abi,
               web3,
               emp.address,
               testConfig.collateralDecimals,
@@ -774,7 +768,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             try {
               client = new ExpiringMultiPartyClient(
                 dummyLogger,
-                financialContractInstance.abi,
+                financialContract.abi,
                 web3,
                 emp.address,
                 testConfig.collateralDecimals,
@@ -790,7 +784,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             try {
               client = new ExpiringMultiPartyClient(
                 dummyLogger,
-                financialContractInstance.abi,
+                financialContract.abi,
                 web3,
                 emp.address,
                 testConfig.collateralDecimals,

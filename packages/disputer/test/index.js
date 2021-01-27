@@ -56,8 +56,8 @@ contract("index.js", function(accounts) {
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
     describe(`Smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
@@ -121,9 +121,7 @@ contract("index.js", function(accounts) {
 
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
-          web3,
-          contractVersion.contractVersion,
-          contractVersion.contractType,
+          contractVersion,
           {
             convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
@@ -226,6 +224,49 @@ contract("index.js", function(accounts) {
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
+      });
+      it("Correctly detects contract type and rejects unknown contract types", async function() {
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        });
+
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          empAddress: emp.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig
+        });
+
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+
+        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+
+        // Should produce an error on a contract type that is unknown. set the emp as the finder, for example
+        let didThrowError = false;
+        try {
+          await Poll.run({
+            logger: spyLogger,
+            web3,
+            empAddress: finder.address,
+            pollingDelay,
+            errorRetries,
+            errorRetriesTimeout,
+            priceFeedConfig: defaultPriceFeedConfig
+          });
+        } catch (error) {
+          didThrowError = true;
+        }
+
+        assert.isTrue(didThrowError);
       });
       it("Correctly re-tries after failed execution loop", async function() {
         // To validate re-try logic this test needs to get the dispute bot to throw within the main while loop. This is

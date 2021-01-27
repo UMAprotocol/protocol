@@ -1,18 +1,33 @@
 const web3 = require("web3");
 const { toWei, utf8ToHex, padRight } = web3.utils;
-
 const { ZERO_ADDRESS } = require("./Constants");
-
-// Contract versions used in unit tests to define supported versions.
-const SUPPORTED_TEST_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 // Versions that production bots support.
 const SUPPORTED_CONTRACT_VERSIONS = [
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
   { contractType: "ExpiringMultiParty", contractVersion: "latest" },
   { contractType: "Perpetual", contractVersion: "latest" }
 ];
 
+// Versions that unit tests will test against. Note that there is no need to re-test anything less than 1.2.2 as
+// functionally therese versions are identical to 1.2.2.
+const TESTED_CONTRACT_VERSIONS = [
+  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
+  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
+  { contractType: "Perpetual", contractVersion: "latest" }
+];
+
+/**
+ * Used in conjunction with versionedIt within tests, this method will return true if the currentTestIterationVersion
+ * is part of the SUPPORTED_CONTRACT_VERSIONS and supportedVersions (or is any), else returns false.
+ * @param {Object} supportedVersions array of supported contract types & versions for a given test.
+ * @param {Object} SUPPORTED_CONTRACT_VERSIONS array of supported contract types & versions for all tests within a test file.
+ * @param {Object} currentTestIterationVersion object containing the current contract type & version for the current test.
+ * @returns {bool} true of the current test iteration version is part of & supportedVersions & SUPPORTED_CONTRACT_VERSIONS
+ * or any, false otherwise.
+ */
 function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, currentTestIterationVersion) {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is `any`.
   let totalVersionOverlaps = 0;
@@ -37,16 +52,24 @@ function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, curre
   return totalSupportedVersionOverlap > 0;
 }
 
+/**
+ * Used in unit tests that test multiple smart contract versions at the same time, this method will create constructor
+ * parameters in accordance with the contract version and execution context.
+ * @param {Object} contractVersion object containing the contractVersion and Type to be used with the constructor params
+ * @param {Object} contextObjects object containing nested objects which provide context on the creation of the constructor
+ * params. Note each key type defined in the requiredContextObjects must be provided to correctly use this method.
+ * @param {Object} overrideConstructorParams optional override for the constructor params generated.
+ * @returns {Object} version compatible constructor parameters.
+ */
 async function createConstructorParamsForContractVersion(
-  web3,
   contractVersion,
-  contractType,
   contextObjects,
   overrideConstructorParams = {}
 ) {
-  assert(web3, "Web3 object must be provided");
-  assert(contractVersion, "contractVersion must be provided");
-  assert(contractType, "contractVersion must be provided");
+  assert(
+    contractVersion && contractVersion.contractVersion && contractVersion.contractType,
+    "contractVersion must be provided, containing both a contract version and type"
+  );
   const requiredContextObjects = [
     "convertSynthetic",
     "finder",
@@ -85,13 +108,13 @@ async function createConstructorParamsForContractVersion(
     financialProductLibraryAddress: ZERO_ADDRESS
   };
 
-  if (contractVersion == "1.2.2") {
+  if (contractVersion.contractVersion == "1.2.2") {
     constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
     constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
     constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
   }
 
-  if (contractType == "Perpetual") {
+  if (contractVersion.contractType == "Perpetual") {
     constructorParams.fundingRateIdentifier = padRight(utf8ToHex(contextObjects.fundingRateIdentifier), 64);
     constructorParams.configStoreAddress = contextObjects.configStore.address;
     constructorParams.tokenScaling = { rawValue: toWei("1") };
@@ -104,5 +127,5 @@ module.exports = {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   SUPPORTED_CONTRACT_VERSIONS,
-  SUPPORTED_TEST_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 };
