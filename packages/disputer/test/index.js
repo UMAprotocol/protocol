@@ -277,7 +277,6 @@ contract("index.js", function(accounts) {
             }
           });
         } catch (error) {
-          console.log("error", error);
           errorThrown = true;
         }
 

@@ -76,9 +76,11 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
-          disputerConfig.contractVersion
-        } & contractType:${disputerConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        `Contract version specified or inferred is not supported by this bot. Disputer config:${JSON.stringify(
+          disputerConfig
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} are not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
       );
 
     // Setup contract instances.
