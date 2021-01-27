@@ -64,6 +64,20 @@ async function run({
     const { toBN } = web3.utils;
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(empAddress, web3),
@@ -82,9 +96,11 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
-          liquidatorConfig.contractVersion
-        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        `Contract version specified or inferred is not supported by this bot. Liquidator config:${JSON.stringify(
+          liquidatorConfig
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} is not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
@@ -166,20 +182,6 @@ async function run({
       startingBlock,
       endingBlock
     };
-
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const priceFeed = await createReferencePriceFeedForEmp(
