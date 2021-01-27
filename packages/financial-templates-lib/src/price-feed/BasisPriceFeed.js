@@ -74,16 +74,16 @@ class BasisPriceFeed extends PriceFeedInterface {
 
     if (!spotMean || !futureMean) return null;
 
-    let spreadValue = futureMean.sub(spotMean).div(spotMean).mul(this.convertPriceFeedDecimals("100"));
+    let spreadValue = futureMean.sub(spotMean).div(spotMean).add(this.convertPriceFeedDecimals("1")).mul(this.convertPriceFeedDecimals("100"));
     
     // Min + Max for clamping
     let lowerBound = this.toBN(this.lowerBoundSpread);
     let upperBound = this.toBN(this.upperBoundSpread);
     
-    if (spreadValue.lt(lowerBound) {
+    if (spreadValue.lt(lowerBound)) {
       spreadValue = lowerBound;
     }
-    else if (spreadValue.gt(upperBound) {
+    else if (spreadValue.gt(upperBound)) {
       spreadValue = upperBound;
     }
     return spreadValue;
