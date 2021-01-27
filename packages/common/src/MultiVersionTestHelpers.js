@@ -1,4 +1,6 @@
 const web3 = require("web3");
+const lodash = require("lodash");
+
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const { ZERO_ADDRESS } = require("./Constants");
 
@@ -30,26 +32,25 @@ const TESTED_CONTRACT_VERSIONS = [
  */
 function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, currentTestIterationVersion) {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is `any`.
-  let totalVersionOverlaps = 0;
-  let totalSupportedVersionOverlap = 0;
-  supportedVersions.forEach(supportedVersion => {
-    totalVersionOverlaps += [...SUPPORTED_CONTRACT_VERSIONS, { contractType: "any", contractVersion: "any" }].filter(
-      versionObject =>
-        versionObject.contractType == supportedVersion.contractType &&
-        versionObject.contractVersion == supportedVersion.contractVersion
-    ).length;
-    totalSupportedVersionOverlap +=
-      supportedVersion.contractType == currentTestIterationVersion.contractType &&
-      supportedVersion.contractVersion == currentTestIterationVersion.contractVersion;
-    totalSupportedVersionOverlap += supportedVersion.contractType == "any" && supportedVersion.contractVersion == "any";
-  });
-  if (totalVersionOverlaps == 0)
-    throw new Error(
-      `Contract version specified or inferred is not supported. Loaded/inferred contractVersion:${
-        supportedVersions.contractVersion
-      } & contractType:${supportedVersions.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
-    );
-  return totalSupportedVersionOverlap > 0;
+  const supportedVersionOverlap = lodash.intersectionBy(
+    supportedVersions,
+    [...SUPPORTED_CONTRACT_VERSIONS, { contractType: "any", contractVersion: "any" }],
+    version => [version.contractType, version.contractVersion].join(",")
+  );
+  assert(
+    supportedVersionOverlap.length > 0,
+    `Contract version specified in the test is not supported. Specified version${JSON.stringify(
+      supportedVersions
+    )} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+  );
+
+  // Check if the current currentTestIterationVersion is part of the supportedVersions for the specific test.
+  const testSupportedVersionOverlap = lodash.intersectionBy(
+    supportedVersions,
+    [currentTestIterationVersion, { contractType: "any", contractVersion: "any" }],
+    version => [version.contractType, version.contractVersion].join(",")
+  );
+  return testSupportedVersionOverlap.length > 0;
 }
 
 /**
