@@ -54,8 +54,21 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Disputer#index",
+      message: "Disputer started🔎",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      disputerConfig,
+      disputerOverridePrice
+    });
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
@@ -120,20 +133,6 @@ async function run({
       priceIdentifier: priceIdentifier
     };
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Disputer#index",
-      message: "Disputer started🔎",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      disputerConfig,
-      disputerOverridePrice
-    });
-
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(
       logger,
@@ -163,7 +162,8 @@ async function run({
       collateralDecimals: Number(collateralDecimals),
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig
+      priceFeedConfig,
+      disputerConfig
     });
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.

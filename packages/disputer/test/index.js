@@ -5,7 +5,7 @@ const {
   interfaceName,
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -43,7 +43,7 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-te
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
     // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
     const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
