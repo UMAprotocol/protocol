@@ -54,21 +54,6 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
-
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.

@@ -31,9 +31,9 @@ const { Liquidator } = require("../src/liquidator.js");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 }
-  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -767,8 +767,18 @@ contract("Liquidator.js", function(accounts) {
               gasEstimator,
               votingContract: mockOracle.contract,
               syntheticToken: syntheticToken.contract,
-              account: accounts[0]
+              priceFeed: priceFeedMock,
+              account: accounts[0],
+              empProps,
+              liquidatorConfig
             });
+
+            // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+            await emp.create(
+              { rawValue: convertCollateral("115") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
 
             // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
             await emp.create(
