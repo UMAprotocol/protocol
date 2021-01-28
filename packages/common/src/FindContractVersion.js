@@ -3,16 +3,33 @@ const assert = require("assert");
 /**
  * Get the version and type of a financial contract deployed using the official UMA contract factories.
  * Note: all inputs and outputs are expressed as fixed-point (scaled by 1e18) BNs.
- * @param {Object} web3 instance
+ * @param {Object} web3 instance. This is passed in to re-use the calling context & network of the entry point.
  * @param {string} contractAddress address of the contract in question
  * @return {Object} contract name & version
  */
 async function findContractVersion(contractAddress, web3) {
   assert(web3, "Web3 object must be provided");
   assert(contractAddress, "Contract address must be provided");
-  const contractCode = await web3.eth.getCode(contractAddress);
+
+  // Note: there is an unknown issue in web3.js that means that the `getCode` syntax does not function correctly in
+  // production. However, ethers has proven to work correctly in production. The code below is a patch to still enable
+  // this module to work while we find a better long term solution for the web3.js issue. If running within unit tests
+  // then the web3.js version is required as it is scope according to the unit test.
+  let contractCode;
+  if (require("minimist")(process.argv.slice())?.network?.includes("mainnet")) {
+    const providers = require("ethers").providers;
+    const { getNodeUrl } = require("./TruffleConfig");
+    const argv = require("minimist")(process.argv.slice());
+
+    const provider = new providers.JsonRpcProvider(getNodeUrl(argv.network || "test"));
+    contractCode = await provider.getCode(contractAddress);
+  } else {
+    contractCode = await web3.eth.getCode(contractAddress);
+  }
+
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
-  return versionMap[contractCodeHash] || {};
+
+  versionMap[contractCodeHash] || { contractAddress, contractCodeHash, contractCode: contractCode.substring(0, 1000) };
 }
 
 const versionMap = {
