@@ -53,7 +53,7 @@
   "scripts": {
     "test": "yarn mocha-test && yarn hardhat-test && yarn truffle-test",
     "truffle-test": "truffle test ./truffle-test/*",
-    "hardhat-test": "node --max-old-space-size=1024 $(yarn bin hardhat) test",
+    "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",

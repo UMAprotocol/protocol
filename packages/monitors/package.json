@@ -30,7 +30,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "hardhat test"
+    "test": "hardhat test --network hardhat"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

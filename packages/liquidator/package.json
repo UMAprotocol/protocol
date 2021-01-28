@@ -31,9 +31,10 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "hardhat test && yarn mocha",
+    "test": "yarn mocha-test && yarn hardhat-test",
+    "hardhat-test": "hardhat test --network hardhat",
+    "mocha-test": "mocha mocha-test",
     "test-log": "truffle test ./test/*.js --network=test logInTest",
-    "mocha": "mocha mocha-test",
     "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
   },
   "bugs": {
