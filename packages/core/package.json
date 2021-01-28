@@ -8,7 +8,8 @@
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
     "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
     "@uma/core-1-2-1": "npm:@uma/core@1.2.1",
-    "@uma/core-1-2-2": "npm:@uma/core@1.2.2"
+    "@uma/core-1-2-2": "npm:@uma/core@1.2.2",
+    "hardhat": "^2.0.4"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
