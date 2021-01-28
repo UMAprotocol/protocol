@@ -2,7 +2,13 @@ const { toWei, toBN, utf8ToHex, padRight } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
 
-const { interfaceName, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const {
+  interfaceName,
+  MAX_UINT_VAL,
+  runTestForVersion,
+  createConstructorParamsForContractVersion,
+  TESTED_CONTRACT_VERSIONS
+} = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
@@ -17,10 +23,6 @@ const configs = [
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
-
-// These unit tests are re-run against the array of contract types and versions below. unit tests can choose which version
-// they support using the `versionedIt` syntax. Additional versions can be added, once an UMA release has been done.
-const SUPPORTED_CONTRACT_VERSIONS = ["ExpiringMultiParty-1.2.2", "ExpiringMultiParty-latest", "Perpetual-latest"];
 
 const startTime = "15798990420";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -38,7 +40,7 @@ let store;
 let timer;
 let collateralWhitelist;
 let constructorParams;
-let currentTestIterationVersion;
+let iterationTestVersion;
 
 // Js Objects, clients and helpers
 let client;
@@ -53,7 +55,6 @@ let optimisticOracle;
 let fundingRateIdentifier;
 
 // Helper functions
-// TODO figure out the best pattern to refactor these into a library to make them re-usable in other tests.
 const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
   await client.update();
   assert.deepStrictEqual(client.getAllSponsors().sort(), expectedSponsors.sort());
@@ -73,81 +74,9 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
-  if (shouldBeItOnly) return runTestForContractVersion(supportedVersions) ? it.only : () => {};
-  return runTestForContractVersion(supportedVersions) ? it : () => {};
-};
-
-const runTestForContractVersion = function(supportedVersions) {
-  // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is any.
-  if ([...SUPPORTED_CONTRACT_VERSIONS, "any"].filter(value => supportedVersions.includes(value)).length == 0) {
-    throw new Error(
-      `Contract versioned specified ${supportedVersions} is not part of the supported contracts for this test suit`
-    );
-  }
-  // Return if the `currentTestIterationVersion` is part of the supported versions includes any. Returning true
-  // means that test will be run. Else, if returned false, the test will be skipped.
-  return supportedVersions.includes(currentTestIterationVersion) || supportedVersions.includes("any");
-};
-
-const _createConstructorParamsForContractVersion = async function(contractVersion, contractType) {
-  let constructorParams = {
-    expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100000,
-    withdrawalLiveness: "1000",
-    collateralAddress: collateralToken.address,
-    tokenAddress: syntheticToken.address,
-    finderAddress: finder.address,
-    priceFeedIdentifier: padRight(utf8ToHex(identifier), 64),
-    liquidationLiveness: "1000",
-    collateralRequirement: { rawValue: toWei("1.5") },
-    disputeBondPercentage: { rawValue: toWei("0.1") },
-    sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    minSponsorTokens: { rawValue: convertSynthetic("5") },
-    timerAddress: timer.address,
-    excessTokenBeneficiary: store.address,
-    financialProductLibraryAddress: ZERO_ADDRESS
-  };
-
-  if (contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
-
-  if (contractType == "Perpetual") {
-    configStore = await getTruffleContract("ConfigStore", web3, contractVersion).new(
-      {
-        timelockLiveness: 86400, // 1 day
-        rewardRatePerSecond: { rawValue: "0" },
-        proposerBondPercentage: { rawValue: "0" },
-        maxFundingRate: { rawValue: toWei("0.00001") },
-        minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
-      },
-      timer.address
-    );
-
-    fundingRateIdentifier = web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER");
-    await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifier);
-    constructorParams.fundingRateIdentifier = fundingRateIdentifier;
-    constructorParams.configStoreAddress = configStore.address;
-    constructorParams.tokenScaling = { rawValue: toWei("1") };
-
-    const defaultLiveness = 7200;
-
-    optimisticOracle = await getTruffleContract("OptimisticOracle", web3, contractVersion).new(
-      defaultLiveness,
-      finder.address,
-      timer.address
-    );
-
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.address
-    );
-  }
-
-  return constructorParams;
+  if (shouldBeItOnly)
+    return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
+  return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
@@ -156,28 +85,29 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0];
   const sponsor2 = accounts[1];
 
-  SUPPORTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
-    // Store the currentVersionTested, type and version being tested
-    currentTestIterationVersion = contractVersion;
-    const currentTypeTested = contractVersion.substring(0, contractVersion.indexOf("-"));
-    const currentVersionTested = contractVersion.substring(contractVersion.indexOf("-") + 1, contractVersion.length);
+  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+    // Store the contractVersion.contractVersion, type and version being tested
+    iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContractInstance is either an emp or the perp depending
+    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
     // on the current iteration version.
-    const financialContractInstance = getTruffleContract(currentTypeTested, web3, currentVersionTested);
-    const Finder = getTruffleContract("Finder", web3, currentVersionTested);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, currentVersionTested);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, currentVersionTested);
-    const MockOracle = getTruffleContract("MockOracle", web3, currentVersionTested);
-    const Token = getTruffleContract("ExpandedERC20", web3, currentVersionTested);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, currentVersionTested);
-    const Timer = getTruffleContract("Timer", web3, currentVersionTested);
-    const Store = getTruffleContract("Store", web3, currentVersionTested);
+    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
+    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
+    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
+    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
+    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
+    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
+    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
+    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion}`, function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
         before(async function() {
           identifier = `${testConfig.tokenName}TEST`;
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
           convertSynthetic = Convert(testConfig.syntheticDecimals);
           convertPrice = Convert(testConfig.priceFeedDecimals);
@@ -222,9 +152,46 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
         beforeEach(async function() {
           await timer.setCurrentTime(startTime - 1);
-          constructorParams = await _createConstructorParamsForContractVersion(currentVersionTested, currentTypeTested);
 
-          emp = await financialContractInstance.new(constructorParams);
+          // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
+          if (contractVersion.contractType == "Perpetual") {
+            configStore = await ConfigStore.new(
+              {
+                timelockLiveness: 86400, // 1 day
+                rewardRatePerSecond: { rawValue: "0" },
+                proposerBondPercentage: { rawValue: "0" },
+                maxFundingRate: { rawValue: toWei("0.00001") },
+                minFundingRate: { rawValue: toWei("-0.00001") },
+                proposalTimePastLimit: 0
+              },
+              timer.address
+            );
+
+            await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
+            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+            await finder.changeImplementationAddress(
+              utf8ToHex(interfaceName.OptimisticOracle),
+              optimisticOracle.address
+            );
+          }
+
+          constructorParams = await createConstructorParamsForContractVersion(
+            contractVersion,
+            {
+              convertSynthetic,
+              finder,
+              collateralToken,
+              syntheticToken,
+              identifier,
+              fundingRateIdentifier,
+              timer,
+              store,
+              configStore: configStore || {} // if the contract type is not a perp this will be null.
+            },
+            { collateralRequirement: { rawValue: toWei("1.5") } } // these tests assume a CR of 1.5, not the 1.2 default.
+          );
+
+          emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);
 
@@ -235,7 +202,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await emp.setCurrentTime(startTime);
-          if (currentTypeTested == "Perpetual") await emp.applyFundingRate();
+          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
 
           // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
           // DummyLogger will not print anything to console as only capture `info` level events.
@@ -246,16 +213,16 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
           client = new ExpiringMultiPartyClient(
             dummyLogger,
-            financialContractInstance.abi,
+            financialContract.abi,
             web3,
             emp.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
-            currentTypeTested // either ExpiringMultiParty OR Perpetual depending on the test
+            contractVersion.contractType // either ExpiringMultiParty OR Perpetual depending on the test
           );
         });
-        versionedIt(["any"])("Returns all positions", async function() {
+        versionedIt([{ contractType: "any", contractVersion: "any" }])("Returns all positions", async function() {
           // Create a position and check that it is detected correctly from the client.
           await emp.create(
             { rawValue: convertCollateral("10") },
@@ -488,291 +455,303 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           );
         });
 
-        versionedIt(["any"])("Returns undercollateralized positions", async function() {
-          await emp.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("100") },
-            { from: sponsor1 }
-          );
-          await emp.create(
-            { rawValue: convertCollateral("1500") },
-            { rawValue: convertSynthetic("100") },
-            { from: sponsor2 }
-          );
+        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          "Returns undercollateralized positions",
+          async function() {
+            await emp.create(
+              { rawValue: convertCollateral("150") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
+            await emp.create(
+              { rawValue: convertCollateral("1500") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor2 }
+            );
 
-          await client.update();
-          // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
-          assert.deepStrictEqual([], client.getUnderCollateralizedPositions(convertPrice("1")));
-          // Undercollateralized at a price just above 1.
-          assert.deepStrictEqual(
-            [
-              {
-                sponsor: sponsor1,
-                numTokens: convertSynthetic("100"),
-                amountCollateral: convertCollateral("150"),
-                hasPendingWithdrawal: false,
-                withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
-            ],
-            client.getUnderCollateralizedPositions(convertPrice("1.00000001"))
-          );
+            await client.update();
+            // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
+            assert.deepStrictEqual([], client.getUnderCollateralizedPositions(convertPrice("1")));
+            // Undercollateralized at a price just above 1.
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  numTokens: convertSynthetic("100"),
+                  amountCollateral: convertCollateral("150"),
+                  hasPendingWithdrawal: false,
+                  withdrawalRequestPassTimestamp: "0",
+                  withdrawalRequestAmount: "0"
+                }
+              ],
+              client.getUnderCollateralizedPositions(convertPrice("1.00000001"))
+            );
 
-          // After submitting a withdraw request that brings the position below the CR ratio the client should detect this.
-          // Withdrawing just 1 wei of collateral will place the position below the CR ratio.
-          await emp.requestWithdrawal({ rawValue: convertCollateral("1") }, { from: sponsor1 });
+            // After submitting a withdraw request that brings the position below the CR ratio the client should detect this.
+            // Withdrawing just 1 wei of collateral will place the position below the CR ratio.
+            await emp.requestWithdrawal({ rawValue: convertCollateral("1") }, { from: sponsor1 });
 
-          await client.update();
-          // Update client to get withdrawal information.
-          const currentTime = Number(await emp.getCurrentTime());
-          assert.deepStrictEqual(
-            [
-              {
-                sponsor: sponsor1,
-                numTokens: convertSynthetic("100"),
-                amountCollateral: convertCollateral("150"),
-                hasPendingWithdrawal: true,
-                withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
-                withdrawalRequestAmount: convertCollateral("1")
-              }
-            ],
-            client.getUnderCollateralizedPositions(convertPrice("1"))
-          );
-        });
+            await client.update();
+            // Update client to get withdrawal information.
+            const currentTime = Number(await emp.getCurrentTime());
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  numTokens: convertSynthetic("100"),
+                  amountCollateral: convertCollateral("150"),
+                  hasPendingWithdrawal: true,
+                  withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
+                  withdrawalRequestAmount: convertCollateral("1")
+                }
+              ],
+              client.getUnderCollateralizedPositions(convertPrice("1"))
+            );
+          }
+        );
 
-        versionedIt(["any"])("Returns undisputed liquidations", async function() {
-          const liquidator = sponsor2;
+        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          "Returns undisputed liquidations",
+          async function() {
+            const liquidator = sponsor2;
 
-          await emp.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("100") },
-            { from: sponsor1 }
-          );
-          await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-            from: sponsor1
-          });
-
-          // Create a new liquidation for account[0]'s position.
-          const { liquidationId } = await emp.createLiquidation.call(
-            sponsor1,
-            { rawValue: "0" },
-            { rawValue: toWei("9999999") },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            {
-              from: liquidator
-            }
-          );
-          await emp.createLiquidation(
-            sponsor1,
-            { rawValue: "0" },
-            { rawValue: toWei("9999999") },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            { from: liquidator }
-          );
-          await client.update();
-
-          const liquidations = client.getUndisputedLiquidations();
-          // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
-          // above `1`.
-          assert.isTrue(client.isDisputable(liquidations[0], convertPrice("1")));
-          assert.isFalse(client.isDisputable(liquidations[0], convertPrice("1.00000001")));
-
-          // Dispute the liquidation and make sure it no longer shows up in the list.
-          // We need to advance the Oracle time forward to make `requestPrice` work.
-          await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
-          await emp.dispute(liquidationId.toString(), sponsor1, {
-            from: sponsor1
-          });
-          await client.update();
-
-          // The disputed liquidation should no longer show up as undisputed.
-          assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
-        });
-
-        versionedIt(["any"])("Returns expired liquidations", async function() {
-          const liquidator = sponsor2;
-
-          await emp.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("100") },
-            { from: sponsor1 }
-          );
-          await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-            from: sponsor1
-          });
-          await emp.requestWithdrawal(
-            {
-              rawValue: convertCollateral("10")
-            },
-            {
+            await emp.create(
+              { rawValue: convertCollateral("150") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
               from: sponsor1
-            }
-          );
+            });
 
-          // Create a new liquidation for account[0]'s position.
-          await emp.createLiquidation.call(
-            sponsor1,
-            { rawValue: "0" },
-            { rawValue: toWei("9999999") },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            {
-              from: liquidator
-            }
-          );
-          await emp.createLiquidation(
-            sponsor1,
-            { rawValue: "0" },
-            { rawValue: toWei("9999999") },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            {
-              from: liquidator
-            }
-          );
-          await client.update();
-
-          const liquidations = client.getUndisputedLiquidations();
-          const liquidationTime = liquidations[0].liquidationTime;
-          assert.deepStrictEqual(
-            [
+            // Create a new liquidation for account[0]'s position.
+            const { liquidationId } = await emp.createLiquidation.call(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
               {
-                sponsor: sponsor1,
-                id: "0",
-                state: "1",
-                liquidationTime: liquidationTime,
-                numTokens: convertSynthetic("100"),
-                liquidatedCollateral: convertCollateral("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
-                lockedCollateral: convertCollateral("150"),
-                liquidator: liquidator,
-                disputer: zeroAddress
+                from: liquidator
               }
-            ],
-            liquidations
-          );
-          assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
+            );
+            await emp.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: liquidator }
+            );
+            await client.update();
 
-          // Move EMP time to the liquidation's expiry.
-          const liquidationLiveness = 1000;
-          await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
-          await client.update();
+            const liquidations = client.getUndisputedLiquidations();
+            // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
+            // above `1`.
+            assert.isTrue(client.isDisputable(liquidations[0], convertPrice("1")));
+            assert.isFalse(client.isDisputable(liquidations[0], convertPrice("1.00000001")));
 
-          // The liquidation is registered by the EMP client as expired.
-          assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
-          const expiredLiquidations = client.getExpiredLiquidations();
-          assert.deepStrictEqual(
-            [
-              {
-                sponsor: sponsor1,
-                id: "0",
-                state: "1",
-                liquidationTime: liquidationTime,
-                numTokens: convertSynthetic("100"),
-                liquidatedCollateral: convertCollateral("140"),
-                lockedCollateral: convertCollateral("150"),
-                liquidator: liquidator,
-                disputer: zeroAddress
-              }
-            ],
-            expiredLiquidations
-          );
-
-          // Withdraw from the expired liquidation and check that the liquidation is deleted.
-          await emp.withdrawLiquidation("0", sponsor1, {
-            from: liquidator
-          });
-          await client.update();
-          assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
-        });
-
-        versionedIt(["any"])("Returns disputed liquidations", async function() {
-          const liquidator = sponsor2;
-
-          await emp.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("100") },
-            {
+            // Dispute the liquidation and make sure it no longer shows up in the list.
+            // We need to advance the Oracle time forward to make `requestPrice` work.
+            await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
+            await emp.dispute(liquidationId.toString(), sponsor1, {
               from: sponsor1
-            }
-          );
-          await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-            from: sponsor1
-          });
+            });
+            await client.update();
 
-          // Create a new liquidation for account[0]'s position.
-          const { liquidationId } = await emp.createLiquidation.call(
-            sponsor1,
-            { rawValue: "0" },
-            {
-              rawValue: toWei("9999999")
-            },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            { from: liquidator }
-          );
-          await emp.createLiquidation(
-            sponsor1,
-            { rawValue: "0" },
-            { rawValue: toWei("9999999") },
-            { rawValue: toWei("100") },
-            unreachableDeadline,
-            { from: liquidator }
-          );
-          await client.update();
-          const liquidations = client.getUndisputedLiquidations();
-          const liquidationTime = liquidations[0].liquidationTime;
+            // The disputed liquidation should no longer show up as undisputed.
+            assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+          }
+        );
 
-          // There should be no disputed liquidations initially.
-          assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          "Returns expired liquidations",
+          async function() {
+            const liquidator = sponsor2;
 
-          // Dispute the liquidation and make sure it no longer shows up in the list.
-          // We need to advance the Oracle time forward to make `requestPrice` work.
-          await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
-          await emp.dispute(liquidationId.toString(), sponsor1, {
-            from: sponsor1
-          });
-          await client.update();
-
-          // The disputed liquidation should no longer show up as undisputed.
-          assert.deepStrictEqual(
-            [
+            await emp.create(
+              { rawValue: convertCollateral("150") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
+              from: sponsor1
+            });
+            await emp.requestWithdrawal(
               {
-                sponsor: sponsor1,
-                id: "0",
-                state: "2",
-                liquidationTime: liquidationTime,
-                numTokens: convertSynthetic("100"),
-                liquidatedCollateral: convertCollateral("150"),
-                lockedCollateral: convertCollateral("150"),
-                liquidator: liquidator,
-                disputer: sponsor1
+                rawValue: convertCollateral("10")
+              },
+              {
+                from: sponsor1
               }
-            ],
-            client.getDisputedLiquidations().sort()
-          );
-          assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+            );
 
-          // Force a price such that the dispute fails, and then
-          // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
-          const disputePrice = convertPrice("1.6");
-          await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
-          await emp.withdrawLiquidation("0", sponsor1, {
-            from: liquidator
-          });
-          await client.update();
-          assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
-        });
+            // Create a new liquidation for account[0]'s position.
+            await emp.createLiquidation.call(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              {
+                from: liquidator
+              }
+            );
+            await emp.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              {
+                from: liquidator
+              }
+            );
+            await client.update();
 
-        versionedIt(["ExpiringMultiParty-latest"])(
+            const liquidations = client.getUndisputedLiquidations();
+            const liquidationTime = liquidations[0].liquidationTime;
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "1",
+                  liquidationTime: liquidationTime,
+                  numTokens: convertSynthetic("100"),
+                  liquidatedCollateral: convertCollateral("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: liquidator,
+                  disputer: zeroAddress
+                }
+              ],
+              liquidations
+            );
+            assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
+
+            // Move EMP time to the liquidation's expiry.
+            const liquidationLiveness = 1000;
+            await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+            await client.update();
+
+            // The liquidation is registered by the EMP client as expired.
+            assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+            const expiredLiquidations = client.getExpiredLiquidations();
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "1",
+                  liquidationTime: liquidationTime,
+                  numTokens: convertSynthetic("100"),
+                  liquidatedCollateral: convertCollateral("140"),
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: liquidator,
+                  disputer: zeroAddress
+                }
+              ],
+              expiredLiquidations
+            );
+
+            // Withdraw from the expired liquidation and check that the liquidation is deleted.
+            await emp.withdrawLiquidation("0", sponsor1, {
+              from: liquidator
+            });
+            await client.update();
+            assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
+          }
+        );
+
+        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          "Returns disputed liquidations",
+          async function() {
+            const liquidator = sponsor2;
+
+            await emp.create(
+              { rawValue: convertCollateral("150") },
+              { rawValue: convertSynthetic("100") },
+              {
+                from: sponsor1
+              }
+            );
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
+              from: sponsor1
+            });
+
+            // Create a new liquidation for account[0]'s position.
+            const { liquidationId } = await emp.createLiquidation.call(
+              sponsor1,
+              { rawValue: "0" },
+              {
+                rawValue: toWei("9999999")
+              },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: liquidator }
+            );
+            await emp.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: liquidator }
+            );
+            await client.update();
+            const liquidations = client.getUndisputedLiquidations();
+            const liquidationTime = liquidations[0].liquidationTime;
+
+            // There should be no disputed liquidations initially.
+            assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+
+            // Dispute the liquidation and make sure it no longer shows up in the list.
+            // We need to advance the Oracle time forward to make `requestPrice` work.
+            await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
+            await emp.dispute(liquidationId.toString(), sponsor1, {
+              from: sponsor1
+            });
+            await client.update();
+
+            // The disputed liquidation should no longer show up as undisputed.
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "2",
+                  liquidationTime: liquidationTime,
+                  numTokens: convertSynthetic("100"),
+                  liquidatedCollateral: convertCollateral("150"),
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: liquidator,
+                  disputer: sponsor1
+                }
+              ],
+              client.getDisputedLiquidations().sort()
+            );
+            assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+
+            // Force a price such that the dispute fails, and then
+            // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
+            const disputePrice = convertPrice("1.6");
+            await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
+            await emp.withdrawLiquidation("0", sponsor1, {
+              from: liquidator
+            });
+            await client.update();
+            assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+          }
+        );
+
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
           async function() {
             // The constructor of the EMP client does not contain any type. It should therefore default to the EMP which
             // ensures that packages that are yet to update.
             client = new ExpiringMultiPartyClient(
               dummyLogger,
-              financialContractInstance.abi,
+              financialContract.abi,
               web3,
               emp.address,
               testConfig.collateralDecimals,
@@ -782,41 +761,44 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             assert.equal(client.getContractType(), "ExpiringMultiParty");
           }
         );
-        versionedIt(["ExpiringMultiParty-latest"])("Correctly rejects invalid contract types", async function() {
-          let didThrow = false;
-          try {
-            client = new ExpiringMultiPartyClient(
-              dummyLogger,
-              financialContractInstance.abi,
-              web3,
-              emp.address,
-              testConfig.collateralDecimals,
-              testConfig.syntheticDecimals,
-              testConfig.priceFeedDecimals,
-              "ExpiringMultiPartyV2" // some contract name that does not exist
-            );
-          } catch (error) {
-            didThrow = true;
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
+          "Correctly rejects invalid contract types",
+          async function() {
+            let didThrow = false;
+            try {
+              client = new ExpiringMultiPartyClient(
+                dummyLogger,
+                financialContract.abi,
+                web3,
+                emp.address,
+                testConfig.collateralDecimals,
+                testConfig.syntheticDecimals,
+                testConfig.priceFeedDecimals,
+                "ExpiringMultiPartyV2" // some contract name that does not exist
+              );
+            } catch (error) {
+              didThrow = true;
+            }
+            assert.isTrue(didThrow);
+            didThrow = false;
+            try {
+              client = new ExpiringMultiPartyClient(
+                dummyLogger,
+                financialContract.abi,
+                web3,
+                emp.address,
+                testConfig.collateralDecimals,
+                testConfig.syntheticDecimals,
+                testConfig.priceFeedDecimals,
+                null // some contract name that does not exist
+              );
+            } catch (error) {
+              didThrow = true;
+            }
+            assert.isTrue(didThrow);
           }
-          assert.isTrue(didThrow);
-          didThrow = false;
-          try {
-            client = new ExpiringMultiPartyClient(
-              dummyLogger,
-              financialContractInstance.abi,
-              web3,
-              emp.address,
-              testConfig.collateralDecimals,
-              testConfig.syntheticDecimals,
-              testConfig.priceFeedDecimals,
-              null // some contract name that does not exist
-            );
-          } catch (error) {
-            didThrow = true;
-          }
-          assert.isTrue(didThrow);
-        });
-        versionedIt(["Perpetual-latest"])(
+        );
+        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
           "Fetches funding rate from the perpetual contract and correctly applies it to token debt",
           async function() {
             // Create a position and check that it is detected correctly from the client.
@@ -879,7 +861,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
             );
           }
         );
-        versionedIt(["Perpetual-latest"])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
           "Correctly applies funding rate to token debt. Liquidatable and disputable position are updated accordingly",
           async function() {
             await emp.create(
