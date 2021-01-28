@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -20,14 +20,6 @@ const {
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
-
-const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
-];
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -62,6 +54,21 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Load unlocked web3 accounts and get the networkId.
@@ -70,7 +77,6 @@ async function run({
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
-
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
     if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
@@ -83,9 +89,9 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
-          liquidatorConfig.contractVersion
-        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        `Contract version specified or inferred is not supported by this bot. Provided/inferred config: ${JSON.stringify(
+          liquidatorConfig
+        )}. is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
@@ -167,20 +173,6 @@ async function run({
       startingBlock,
       endingBlock
     };
-
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const priceFeed = await createReferencePriceFeedForEmp(
