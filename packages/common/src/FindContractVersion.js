@@ -30,7 +30,9 @@ async function findContractVersion(contractAddress, web3) {
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
 
   // Return the version from the versionMap OR details on the address,hash & code to help debug a mismatch.
-  versionMap[contractCodeHash] || { contractAddress, contractCodeHash, contractCode: contractCode.substring(0, 1000) };
+  return (
+    versionMap[contractCodeHash] || { contractAddress, contractCodeHash, contractCode: contractCode.substring(0, 1000) }
+  );
 }
 
 const versionMap = {
