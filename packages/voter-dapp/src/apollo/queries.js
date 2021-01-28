@@ -4,6 +4,9 @@ export const PRICE_REQUEST_VOTING_DATA = gql`
   query priceRequestRounds {
     priceRequestRounds {
       id
+      identifier {
+        id
+      }
       roundId
       time
       totalSupplyAtSnapshot

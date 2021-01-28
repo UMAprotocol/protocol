@@ -31,9 +31,9 @@ const { Liquidator } = require("../src/liquidator.js");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 }
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -227,6 +227,10 @@ contract("Liquidator.js", function(accounts) {
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: sponsor3 });
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidatorBot });
           await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidityProvider });
+
+          // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
+          await emp.setCurrentTime(startTime);
+          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
 
           spy = sinon.spy();
 
@@ -743,12 +747,6 @@ contract("Liquidator.js", function(accounts) {
               try {
                 liquidatorConfig = { ...liquidatorConfig, crThreshold: -0.02 };
                 liquidator = new Liquidator({
-                  logger: spyLogger,
-                  expiringMultiPartyClient: empClient,
-                  gasEstimator,
-                  votingContract: mockOracle.contract,
-                  syntheticToken: syntheticToken.contract,
-                  priceFeed: priceFeedMock,
                   account: accounts[0],
                   empProps,
                   liquidatorConfig
@@ -769,18 +767,8 @@ contract("Liquidator.js", function(accounts) {
               gasEstimator,
               votingContract: mockOracle.contract,
               syntheticToken: syntheticToken.contract,
-              priceFeed: priceFeedMock,
-              account: accounts[0],
-              empProps,
-              liquidatorConfig
+              account: accounts[0]
             });
-
-            // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-            await emp.create(
-              { rawValue: convertCollateral("115") },
-              { rawValue: convertSynthetic("100") },
-              { from: sponsor1 }
-            );
 
             // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
             await emp.create(
