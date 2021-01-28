@@ -191,17 +191,21 @@ contract("Disputer.js", function(accounts) {
             );
           }
 
-          constructorParams = await createConstructorParamsForContractVersion(contractVersion, {
-            convertSynthetic,
-            finder,
-            collateralToken,
-            syntheticToken,
-            identifier,
-            fundingRateIdentifier,
-            timer,
-            store,
-            configStore: configStore || {} // if the contract type is not a perp this will be null.
-          });
+          constructorParams = await createConstructorParamsForContractVersion(
+            contractVersion,
+            {
+              convertSynthetic,
+              finder,
+              collateralToken,
+              syntheticToken,
+              identifier,
+              fundingRateIdentifier,
+              timer,
+              store,
+              configStore: configStore || {} // if the contract type is not a perp this will be null.
+            },
+            { minSponsorTokens: { rawValue: convertSynthetic("1") } } // these tests assume a min sponsor size of 1, not 5 as default
+          );
 
           await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
             from: accounts[0]
