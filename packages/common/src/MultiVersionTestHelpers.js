@@ -103,7 +103,7 @@ async function createConstructorParamsForContractVersion(
     disputeBondPercentage: { rawValue: toWei("0.1") },
     sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
     disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    minSponsorTokens: { rawValue: contextObjects.convertSynthetic("1") },
+    minSponsorTokens: { rawValue: contextObjects.convertSynthetic("5") },
     timerAddress: contextObjects.timer.address,
     excessTokenBeneficiary: contextObjects.store.address,
     financialProductLibraryAddress: ZERO_ADDRESS
