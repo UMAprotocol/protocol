@@ -133,7 +133,8 @@ async function run({
       empAddress,
       collateralDecimals,
       syntheticDecimals,
-      priceFeed.getPriceFeedDecimals()
+      priceFeed.getPriceFeedDecimals(),
+      disputerConfig.contractType
     );
 
     const gasEstimator = new GasEstimator(logger);
