@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -21,14 +21,6 @@ const {
 // Truffle contracts.
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
-
-const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
-];
 
 /**
  * @notice Continuously attempts to dispute liquidations in the EMP contract.
