@@ -66,10 +66,6 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
-            - v7-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
