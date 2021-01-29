@@ -16,15 +16,17 @@ async function findContractVersion(contractAddress, web3) {
   // this module to work while we find a better long term solution for the web3.js issue. If running within unit tests
   // then the web3.js version is required as it is scope according to the unit test.
   let contractCode;
-  if (require("minimist")(process.argv.slice())?.network?.includes("mainnet")) {
+  if (global.web3) {
+    // This is run inside of truffle or hardhat test.
+    contractCode = await web3.eth.getCode(contractAddress);
+  } else {
+    // This is run literally anywhere else.
     const providers = require("ethers").providers;
     const { getNodeUrl } = require("./TruffleConfig");
     const argv = require("minimist")(process.argv.slice());
 
     const provider = new providers.JsonRpcProvider(getNodeUrl(argv.network));
     contractCode = await provider.getCode(contractAddress);
-  } else {
-    contractCode = await web3.eth.getCode(contractAddress);
   }
 
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
