@@ -66,6 +66,10 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      # - restore_cache:
+      #     keys:
+      #       - v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
+      #       - v7-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -81,10 +85,10 @@ jobs:
       - run:
           name: Install Dependencies
           command: sudo npm install -g yarn && npx lerna bootstrap -- --frozen-lockfile
-      - save_cache:
-          key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
-          paths:
-            - node_modules
+      # - save_cache:
+      #     key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
+      #     paths:
+      #       - node_modules
       - run:
           name: Slither
           command: ./ci/run_slither.sh
