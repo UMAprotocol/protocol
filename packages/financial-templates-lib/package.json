@@ -25,6 +25,7 @@
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
+  "types": "dist/index.d.ts",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
@@ -34,10 +35,12 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "files": [
-    "/src/**/*.js"
+    "/src/**/*.js",
+    "/dist/**/*"
   ],
   "scripts": {
-    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* && truffle test ./test/truffle/*"
+    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* && truffle test ./test/truffle/*",
+    "build": "tsc"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

@@ -5,6 +5,10 @@
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
+  "browser": {
+    "./index.js": "./browser.js"
+  },
+  "dist": "./dist/index.d.ts",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
@@ -15,13 +19,14 @@
   },
   "scripts": {
     "test": "echo \"No tests configured\"",
-    "build-types": "tsc index.js src/**/*.js --declaration --allowJs --emitDeclarationOnly --outDir types"
+    "build": "tsc"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
   },
   "files": [
-    "/src/**/*.js"
+    "/src/**/*.js",
+    "/dist/**/*"
   ],
   "dependencies": {
     "@ethersproject/bignumber": "^5.0.5",

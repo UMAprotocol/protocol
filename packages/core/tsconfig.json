@@ -1,11 +1,10 @@
 {
-    "extends": "@tsconfig/node14/tsconfig.json",
-    "include": [
-        "src/**/*",
-        "test/**/*",
-        "index.ts"
-    ],
-    "compilerOptions": {
-        "outDir": "build"
-      }
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["index.js"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "allowJs": true
+  }
 }
