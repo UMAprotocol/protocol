@@ -16,5 +16,7 @@ module.exports = {
   ...require("./src/SolidityTestUtils"),
   ...require("./src/TimeUtils"),
   ...require("./src/VotingUtils"),
-  ...require("./src/PriceIdentifierUtils")
+  ...require("./src/PriceIdentifierUtils"),
+  ...require("./src/FindContractVersion"),
+  ...require("./src/MultiVersionTestHelpers.js")
 };
