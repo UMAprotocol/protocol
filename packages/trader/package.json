@@ -27,9 +27,9 @@
   ],
   "bin": "dist/index.js",
   "types": "dist/index.d.ts",
-  "main": "build/index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc -p tsconfig-build.json",
     "test": "hardhat test",
     "test-log": "truffle test ./test/*.js --network=test logInTest"
   },

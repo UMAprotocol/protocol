@@ -5,6 +5,7 @@ modules
 public
 ui
 build
+dist
 artifacts
 cache
 .github

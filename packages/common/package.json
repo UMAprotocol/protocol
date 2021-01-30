@@ -8,7 +8,7 @@
   "browser": {
     "./index.js": "./browser.js"
   },
-  "dist": "./dist/index.d.ts",
+  "types": "./dist/index.d.ts",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
