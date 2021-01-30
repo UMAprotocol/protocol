@@ -3,7 +3,7 @@ config();
 import retry from "async-retry";
 import { TraderConfig } from "./TraderConfig";
 
-export async function run() {
+export async function run(): Promise<void> {
   // Config Processing
   const config = new TraderConfig(process.env);
   await retry(
