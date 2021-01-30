@@ -32,7 +32,7 @@
   "bin": "index.js",
   "scripts": {
     "test": "yarn mocha-test && yarn hardhat-test",
-    "hardhat-test": "hardhat test --network hardhat",
+    "hardhat-test": "hardhat test",
     "mocha-test": "mocha mocha-test",
     "test-log": "truffle test ./test/*.js --network=test logInTest",
     "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
