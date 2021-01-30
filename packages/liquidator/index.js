@@ -79,8 +79,8 @@ async function run({
     ]);
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
-    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
-    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract.contractType;
+    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract?.contractVersion;
+    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract?.contractType;
 
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
@@ -89,9 +89,11 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Provided/inferred config: ${JSON.stringify(
+        `Contract version specified or inferred is not supported by this bot. Liquidator config:${JSON.stringify(
           liquidatorConfig
-        )}. is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} is not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
@@ -350,7 +352,7 @@ async function Poll(callback) {
       //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
       //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
       //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
-      //   "contractVersion":"1.2.2"":"ExpiringMultiParty"} -> override the contract version the liquidator is pointing at.
+      //   "contractVersion":"1.2.2"} -> override the contract version the liquidator is pointing at.
       liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : {},
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
