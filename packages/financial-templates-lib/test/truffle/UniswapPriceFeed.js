@@ -219,12 +219,22 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime)[0].toString(), toWei("75"));
   });
 
-  it("Historical TWAP too far back", async function() {
+  it("Historical time earlier than TWAP window", async function() {
     const currentTime = Math.round(new Date().getTime() / 1000);
     mockTime = currentTime;
+
+    // Set a price within the TWAP window so that if the historical time requested were within
+    // the window, then there wouldn't be an error.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+      currentTime - 3600,
+      owner
+    );
     await uniswapPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
+    assert.notEqual(uniswapPriceFeed.getHistoricalPrice(currentTime - 3599)[0], null);
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601)[0], null);
   });
 
