@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
@@ -19,7 +19,7 @@ jobs:
             - ~/.ssh
   build:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -34,7 +34,7 @@ jobs:
             - ~/.ssh
   lint:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -44,7 +44,7 @@ jobs:
           command: ./ci/lint.sh
   docs:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -94,10 +94,11 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
+    resource_class: large
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
@@ -117,10 +118,10 @@ jobs:
             mkdir truffle_workaround
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
-            yarn run test
+            yarn run test-concurrent
   coverage:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
@@ -133,7 +134,7 @@ jobs:
           path: packages/core/coverage
   dapp_build:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -150,7 +151,7 @@ jobs:
           destination: voter-dapp-build
   deploy_to_staging:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -169,7 +170,7 @@ jobs:
           command: ./ci/deploy_to_staging.sh
   publish:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - add_ssh_keys:
@@ -189,10 +190,6 @@ workflows:
   build_and_test:
     jobs:
       - checkout_and_install
-      - coverage:
-          context: api_keys
-          requires:
-            - checkout_and_install
       - slither
       - build:
           requires:
@@ -226,3 +223,16 @@ workflows:
           filters:
             branches:
               only: master
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - checkout_and_install
+      - coverage:
+          requires:
+            - checkout_and_install

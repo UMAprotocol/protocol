@@ -17,7 +17,8 @@ const UMIP_PRECISION = {
   USDBTC: 8,
   USDETH: 5,
   BTCDOM: 2,
-  ALTDOM: 2
+  ALTDOM: 2,
+  BCHNBTC: 8
 };
 const DEFAULT_PRECISION = 5;
 
@@ -26,12 +27,11 @@ async function getMedianHistoricalPrice(callback) {
     // If user did not specify an identifier, provide a default value.
     let queryIdentifier;
     if (!argv.identifier) {
-      queryIdentifier = "eth/btc";
+      queryIdentifier = "ETH/BTC";
       console.log(`Optional '--identifier' flag not specified, defaulting to: ${queryIdentifier}`);
     } else {
       queryIdentifier = argv.identifier;
     }
-    queryIdentifier = queryIdentifier.toUpperCase();
 
     // Function to get the current time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -43,6 +43,7 @@ async function getMedianHistoricalPrice(callback) {
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back.
       lookback: 345600,
+      priceFeedDecimals: 18, // Ensure all prices come out as 18-decimal denominated so the fromWei conversion works at the end.
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
       ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
     };
