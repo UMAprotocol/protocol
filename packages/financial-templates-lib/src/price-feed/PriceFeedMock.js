@@ -53,6 +53,8 @@ class PriceFeedMock extends PriceFeedInterface {
   }
 
   getHistoricalPrice(time) {
+    // To implement the PriceFeedInterface properly, this method must either return a valid price
+    // or throw.
     if (!this.historicalPrice && !this.historicalPrices) {
       throw new Error("PriceFeedMock expected error thrown");
     } else {
