@@ -31,7 +31,9 @@
     "truffle": "^5.1.16",
     "truffle-assertions": "^0.9.2",
     "truffle-deploy-registry": "^0.5.1",
-    "web3": "1.2.11"
+    "web3": "1.2.11",
+    "highland": "^2.13.5",
+    "@google-cloud/bigquery": "^5.3.0"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
