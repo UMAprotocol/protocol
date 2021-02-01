@@ -4,7 +4,7 @@
  *
  * @dev Prequisites: before running, you will need to set a GOOGLE_APPLICATIONS_CREDENTIALS environment variable for a service account.
  * @dev This service account will need GCP admin or BigQuery permissions. This guide provides further instructions: https://cloud.google.com/docs/authentication/getting-started
- * @dev How to run: yarn truffle exec ./scripts/local/getGasEthHistoricalPrice.js --network mainnet_mnemonic --time 1612137600
+ * @dev How to run: yarn truffle exec ./scripts/local/getGasEthHistoricalPrice.js --network mainnet_mnemonic --time 1612137600 --identifier GASETH-TWAP-1Mx1M
  */
 const { BigQuery } = require("@google-cloud/bigquery");
 const highland = require("highland");
@@ -12,6 +12,7 @@ const moment = require("moment");
 const { fromWei } = web3.utils;
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
 const { createQuery } = require("./GasEthQuery");
+const BigNumber = require("bignumber.js");
 
 const client = new BigQuery();
 const dateFormat = "YYYY-MM-DD HH:mm:ss";
@@ -41,7 +42,8 @@ async function getGasEthHistoricalPrice(callback) {
     } else {
       queryTime = argv.time;
     }
-    console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
+    let loggedTime = new Date(queryTime * 1000).toUTCString();
+    console.log(`⏰ Fetching nearest prices for the timestamp: ${loggedTime}`);
 
     queryTime = new Date(queryTime * 1000);
     // Using moment package to convert queryTime to a usable BQ UTC format.
@@ -50,8 +52,13 @@ async function getGasEthHistoricalPrice(callback) {
       .format(dateFormat);
 
     // Subtracting 30 days from the current time to give the earlier time bound.
-    let earlierTimeBound = moment(queryTime)
-      .subtract(30, "days")
+    let earlierTimeBound = moment(queryTime).subtract(30, "days");
+
+    // Creates format that is easier to read for loggin
+    let earlierLoggingTime = new Date(earlierTimeBound).toUTCString();
+
+    // Creates BQ acceptable time format
+    earlierTimeBound = moment(earlierTimeBound)
       .utc()
       .format(dateFormat);
 
@@ -72,9 +79,9 @@ async function getGasEthHistoricalPrice(callback) {
 
     console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
     console.log(
-      `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
-        precisionToUse
-      )}`
+      `\n💹 ${queryIdentifier} price for 30 days between ${earlierLoggingTime} and ${loggedTime} = ${BigNumber(
+        fromWei(queryPrice.toString())
+      ).toFixed(precisionToUse)}`
     );
   } catch (err) {
     callback(err);
