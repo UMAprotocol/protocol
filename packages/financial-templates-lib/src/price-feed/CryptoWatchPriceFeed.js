@@ -68,7 +68,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return [null, `${this.uuid}: undefined lastUpdateTime`];
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     // Set first price period in `historicalPricePeriods` to first non-null price.
@@ -82,13 +82,13 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // If there are no valid price periods, return null.
     if (!firstPricePeriod) {
-      return [null, `${this.uuid}: no valid price periods`];
+      throw new Error(`${this.uuid}: no valid price periods`);
     }
 
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < firstPricePeriod.openTime) {
-      return [null, `${this.uuid}: time ${time} is before firstPricePeriod.openTime`];
+      throw new Error(`${this.uuid}: time ${time} is before firstPricePeriod.openTime`);
     }
 
     // historicalPricePeriods are ordered from oldest to newest.
@@ -114,7 +114,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         );
         console.groupEnd();
       }
-      return [returnPrice, null];
+      return returnPrice;
     }
 
     returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
@@ -132,7 +132,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       );
       console.groupEnd();
     }
-    return [returnPrice, null];
+    return returnPrice;
   }
 
   getHistoricalPricePeriods() {

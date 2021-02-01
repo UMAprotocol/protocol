@@ -67,7 +67,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
   getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return [null, `${this.uuid}: undefined lastUpdateTime`];
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     // Set first price period in `historicalPrices` to first non-null price.
@@ -81,13 +81,13 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // If there are no valid price periods, return null.
     if (!firstEntry) {
-      return [null, `${this.uuid}: no valid price periods`];
+      throw new Error(`${this.uuid}: no valid price periods`);
     }
 
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < firstEntry.openTime) {
-      return [null, `${this.uuid}: time ${time} is before firstEntry.openTime`];
+      throw new Error(`${this.uuid}: time ${time} is before firstEntry.openTime`);
     }
 
     // `historicalPrices` are ordered from oldest to newest.
@@ -111,7 +111,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
         );
         console.groupEnd();
       }
-      return [returnPrice, null];
+      return returnPrice;
     }
 
     returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
@@ -127,7 +127,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       console.log("- Note that you might need to invert the prices for certain identifiers.");
       console.groupEnd();
     }
-    return [returnPrice, null];
+    return returnPrice;
   }
 
   getHistoricalPricePeriods() {
