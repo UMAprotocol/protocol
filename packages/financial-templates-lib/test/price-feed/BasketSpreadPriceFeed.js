@@ -462,24 +462,6 @@ contract("BasketSpreadPriceFeed.js", function() {
       basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp);
     } catch (err) {
       // Error messages should reflect a missing price
-      assert.equal(err[0][0].message, "Missing historical price");
-      assert.equal(err[1][0].message, "Missing historical price");
-      assert.equal(err[2][0].message, "Missing historical price");
-      assert.equal(err[3][0].message, "Missing historical price");
-      assert.equal(err[4][0].message, "Missing historical price");
-      assert.equal(err.length, 5);
-    }
-
-    // Should return null.
-    assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
-
-    // Now, instead of returning null, make the constituent price feed throw an error, which
-    // should bubble up by the BasketSpreadPriceFeed.
-    priceFeeds[0].setHistoricalPriceReturnError();
-    try {
-      basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp);
-    } catch (err) {
-      // All error message should bubble up the price feed's error
       assert.equal(err[0][0].message, "PriceFeedMock expected error thrown");
       assert.equal(err[1][0].message, "PriceFeedMock expected error thrown");
       assert.equal(err[2][0].message, "PriceFeedMock expected error thrown");
@@ -487,6 +469,9 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(err[4][0].message, "PriceFeedMock expected error thrown");
       assert.equal(err.length, 5);
     }
+
+    // Should return null.
+    assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
   });
   it("Validates constituent price feed decimals", async function() {
     // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the

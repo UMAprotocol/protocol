@@ -350,7 +350,7 @@ class SyntheticPegMonitor {
       let _price;
       try {
         _price = pricefeed.getHistoricalPrice(timestamp);
-        if (!_price) throw new Error("Missing historical price");
+        if (!_price) throw new Error("Missing historical price, skipping");
       } catch (err) {
         continue;
       }

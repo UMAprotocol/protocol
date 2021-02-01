@@ -52,12 +52,8 @@ class PriceFeedMock extends PriceFeedInterface {
     return this.currentPrice;
   }
 
-  // If this.historicalPriceReturnError is True, then `getHistoricalPrice` will throw an Error.
-  setHistoricalPriceReturnError() {
-    this.historicalPriceReturnError = !this.historicalPriceReturnError;
-  }
   getHistoricalPrice(time) {
-    if (this.historicalPriceReturnError) {
+    if (!this.historicalPrice && !this.historicalPrices) {
       throw new Error("PriceFeedMock expected error thrown");
     } else {
       // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked

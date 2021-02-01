@@ -113,18 +113,14 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     let errors = [];
     let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => {
       try {
-        let hasPrice = priceFeed.getHistoricalPrice(time);
-        if (!hasPrice) throw new Error("Missing historical price from experimental basket");
-        return hasPrice;
+        return priceFeed.getHistoricalPrice(time);
       } catch (err) {
         errors.push(err);
       }
     });
     let baselinePrices = this.baselinePriceFeeds.map(priceFeed => {
       try {
-        let hasPrice = priceFeed.getHistoricalPrice(time);
-        if (!hasPrice) throw new Error("Missing historical price from baseline basket");
-        return hasPrice;
+        return priceFeed.getHistoricalPrice(time);
       } catch (err) {
         errors.push(err);
       }
@@ -133,7 +129,6 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     if (this.denominatorPriceFeed) {
       try {
         denominatorPrice = this.denominatorPriceFeed.getHistoricalPrice(time);
-        if (!denominatorPrice) throw new Error("Missing historical denominator price");
       } catch (err) {
         errors.push(err);
       }

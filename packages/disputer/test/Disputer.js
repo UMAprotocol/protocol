@@ -268,18 +268,7 @@ contract("Disputer.js", function(accounts) {
         priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
         await disputer.dispute();
         assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
-        assert.equal(
-          spy.getCall(-1).lastArg.error,
-          `Missing historical price for liquidation time ${earliestLiquidationTime}`
-        );
-        // This time, simulate what happens if the pricefeed throws an error during the `getHistoricalPrice`
-        // call
-        priceFeedMock.setHistoricalPriceReturnError();
-        await disputer.dispute();
         assert.equal(spy.getCall(-1).lastArg.error, "PriceFeedMock expected error thrown");
-        assert.equal(spy.callCount, 6);
-        // Reset the pricefeed such that it no longer throws
-        priceFeedMock.setHistoricalPriceReturnError();
 
         // Start with a mocked price of 1.75 usd per token.
         // This makes all sponsors undercollateralized, meaning no disputes are issued.
@@ -291,7 +280,7 @@ contract("Disputer.js", function(accounts) {
         assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
-        assert.equal(spy.callCount, 6); // No info level logs should be sent.
+        assert.equal(spy.callCount, 3); // No info level logs should be sent.
 
         // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
         priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
@@ -306,13 +295,13 @@ contract("Disputer.js", function(accounts) {
         assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
-        assert.equal(spy.callCount, 6); // No info level logs should be sent.
+        assert.equal(spy.callCount, 3); // No info level logs should be sent.
 
         // Now, set lookback such that the liquidation timestamp is captured and the dispute should go through:
         priceFeedMock.setLookback(2);
         await disputer.update();
         await disputer.dispute();
-        assert.equal(spy.callCount, 8); // 2 info level logs should be sent at the conclusion of the disputes.
+        assert.equal(spy.callCount, 5); // 2 info level logs should be sent at the conclusion of the disputes.
 
         // Sponsor2 and sponsor3 should be disputed.
         assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);

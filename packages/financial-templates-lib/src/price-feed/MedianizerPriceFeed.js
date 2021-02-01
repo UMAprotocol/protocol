@@ -39,15 +39,13 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     let errors = [];
     let historicalPrices = this.priceFeeds.map(priceFeed => {
       try {
-        let hasPrice = priceFeed.getHistoricalPrice(time, verbose);
-        if (!hasPrice) throw new Error("Missing historical price");
-        return hasPrice;
+        return priceFeed.getHistoricalPrice(time, verbose);
       } catch (err) {
         errors.push(err);
       }
     });
 
-    if (errors.length > 0) {
+    if (errors.length > 0 || historicalPrices.length === 0) {
       throw errors;
     } else {
       if (this.computeMean) {

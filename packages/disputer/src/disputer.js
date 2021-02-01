@@ -118,7 +118,6 @@ class Disputer {
       } else {
         try {
           price = this.priceFeed.getHistoricalPrice(liquidationTime);
-          if (!price) throw new Error(`Missing historical price for liquidation time ${liquidationTime}`);
         } catch (error) {
           this.logger.warn({
             at: "Disputer",
