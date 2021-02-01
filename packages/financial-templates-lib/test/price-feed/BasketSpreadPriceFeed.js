@@ -439,7 +439,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
   });
-  it("Constituent price feeds return null", async function() {
+  it("Constituent price feeds fail to return price", async function() {
     const priceFeeds = [new PriceFeedMock()];
     baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
     experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];

@@ -94,7 +94,7 @@ contract("MedianizerPriceFeed.js", function() {
     assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
-  it("sub-pricefeeds either return null or throw an error", async function() {
+  it("sub-pricefeeds fail to return price", async function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
       new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
