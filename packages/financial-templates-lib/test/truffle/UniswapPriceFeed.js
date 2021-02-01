@@ -155,6 +155,51 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
 
+  it("One event within window, several before", async function() {
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Set prices before the T-3600 window; only the most recent one should be counted.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("4"))],
+      currentTime - 7300,
+      owner
+    );
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("2"))],
+      currentTime - 7200,
+      owner
+    );
+
+    // Set a price within the T-3600 window
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+      currentTime - 1800,
+      owner
+    );
+
+    // Prices after the TWAP window should be ignored.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("8"))],
+      currentTime + 1,
+      owner
+    );
+
+    mockTime = currentTime;
+    await uniswapPriceFeed.update();
+
+    // The TWAP price should be the TWAP of the last price before the TWAP window and the single price
+    // within the window:
+    // - latest price before TWAP window: 2
+    // - single price exactly 50% through the window: 1
+    // - TWAP: 2 * 0.5 + 1 * 0.5 = 1.5
+    assert.equal(uniswapPriceFeed.getCurrentPrice(), toWei("1.5"));
+  });
+
   it("Basic historical TWAP", async function() {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
