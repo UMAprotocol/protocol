@@ -65,14 +65,14 @@ class UniswapPriceFeed extends PriceFeedInterface {
   getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.historicalLookback) {
       // Requesting an historical TWAP earlier than the lookback.
-      return [null, `${this.uuid} time ${time} is earlier than TWAP window`];
+      throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
     }
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
     if (historicalPrice) {
-      return [this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice), null];
+      return this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
     } else {
-      return [null, `${this.uuid} missing historical price @ time ${time}`];
+      throw new Error(`${this.uuid} missing historical price @ time ${time}`);
     }
   }
 

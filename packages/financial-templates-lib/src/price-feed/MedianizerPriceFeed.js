@@ -36,20 +36,25 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Takes the median of all of the constituent price feeds' historical prices.
   getHistoricalPrice(time, verbose = false) {
-    // TODO: Currently this returns the error string of the FIRST pricefeed missing a historical,
-    // this should ideally concatenate the error strings of ALL pricefeeds missing historicals.
-    let historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time, verbose));
-    const missingPrice = historicalPrices.find(priceDetails => !priceDetails[0]);
-    if (missingPrice) {
-      return [null, `MedianizerPriceFeed: Missing historical price: ${missingPrice[1]}`];
-    } else {
-      historicalPrices = historicalPrices.map(prices => prices[0]);
-    }
+    let errors = [];
+    let historicalPrices = this.priceFeeds.map(priceFeed => {
+      try {
+        let hasPrice = priceFeed.getHistoricalPrice(time, verbose);
+        if (!hasPrice) throw new Error("Missing historical price");
+        return hasPrice;
+      } catch (err) {
+        errors.push(err);
+      }
+    });
 
-    if (this.computeMean) {
-      return [this._computeMean(historicalPrices), null];
+    if (errors.length > 0) {
+      throw errors;
     } else {
-      return [this._computeMedian(historicalPrices), null];
+      if (this.computeMean) {
+        return this._computeMean(historicalPrices);
+      } else {
+        return this._computeMedian(historicalPrices);
+      }
     }
   }
 

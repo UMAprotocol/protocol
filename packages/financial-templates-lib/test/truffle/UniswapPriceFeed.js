@@ -249,19 +249,19 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapPriceFeed.update();
 
     // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3600)[0].toString(), toWei("95"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("95"));
 
     // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 2700)[0].toString(), toWei("90"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("90"));
 
     // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 1800)[0].toString(), toWei("85"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("85"));
 
     // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 900)[0].toString(), toWei("80"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("80"));
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime)[0].toString(), toWei("75"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
   });
 
   it("Historical time earlier than TWAP window", async function() {
@@ -278,9 +278,9 @@ contract("UniswapPriceFeed.js", function(accounts) {
     );
     await uniswapPriceFeed.update();
 
-    // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
-    assert.notEqual(uniswapPriceFeed.getHistoricalPrice(currentTime - 3599)[0], null);
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601)[0], null);
+    // The TWAP lookback is 1 hour (3600 seconds). The price feed should throw if we attempt to go any further back than that.
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
+    assert.throws(() => uniswapPriceFeed.getHistoricalPrice(currentTime - 3601));
   });
 
   it("Invert price", async function() {
@@ -417,13 +417,13 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
       assert.equal(
-        scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600)[0].toString(),
+        scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
         toBN(toWei("95"))
           .muln(10 ** 6)
           .toString()
       );
       assert.equal(
-        scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600)[0].toString(),
+        scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
         toBN(toWei("95"))
           .divn(10 ** 2)
           .toString()
@@ -431,7 +431,6 @@ contract("UniswapPriceFeed.js", function(accounts) {
     });
   });
   // TODO: add the following TWAP tests using simulated block times:
-  // - Some events pre TWAP window, some inside window.
   // - Some events post TWAP window, some inside window.
   // - Complex (5+ value) TWAP with events overlapping on both sides of the window.
 

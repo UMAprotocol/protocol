@@ -29,7 +29,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the median historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], toWei("25"));
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("25"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -51,7 +51,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the mean historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], toWei("31"));
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -74,7 +74,7 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the average of 58 and 45 since there are an even number of elements.
     // Note: because we're using mocks, the timestamp doesn't matter.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], toWei("51.5"));
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
   });
 
   it("Even count means", async function() {
@@ -91,10 +91,10 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the mean, which is not neccessarily the average of 3 and 2.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), toWei("2.5"));
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], toWei("55"));
+    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
-  it("null inputs", async function() {
+  it("sub-pricefeeds either return null or throw an error", async function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
       new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
@@ -107,20 +107,28 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was a null price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was a null price output.
+    // Should throw an error for each null price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], null);
+    try {
+      medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp);
+    } catch (err) {
+      assert.equal(err.length, 2);
+    }
+    assert.throws(() => medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp));
 
     // Should return null since there was a null input.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
 
-    // Should be able to debug two historical price feeds with errors.
-    // Note: Call `setHistoricalPriceReturnError` to make the PriceFeedMock return an error string, which we can use
-    // to test that the BasketSpreadPriceFeed is reading correctly.
+    // Make one of the pricefeeds throw an error and make sure the error gets bubbled up.
     priceFeeds[1].setHistoricalPriceReturnError();
-    const errorString = "MedianizerPriceFeed: Missing historical price: PriceFeedMock expected error thrown";
-    let expectedErrorString = errorString;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[1], expectedErrorString);
+    try {
+      medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp);
+    } catch (err) {
+      // First error message should bubble up the price feed's error
+      assert.equal(err[0].message, "PriceFeedMock expected error thrown");
+      // Second error message should be generic about a null price
+      assert.equal(err[1].message, "Missing historical price");
+    }
   });
 
   it("undefined inputs", async function() {
@@ -135,9 +143,9 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was an undefined price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was an undefined price output.
+    // Should throw since there was an undefined price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp)[0], null);
+    assert.throws(() => medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp));
 
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
