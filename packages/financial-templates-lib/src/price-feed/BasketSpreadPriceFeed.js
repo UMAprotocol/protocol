@@ -110,6 +110,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPrice(time) {
+    // If failure to fetch any constituent historical prices, then throw
+    // array of errors.
     let errors = [];
     let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => {
       try {
