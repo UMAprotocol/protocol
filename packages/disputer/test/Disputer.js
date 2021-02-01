@@ -270,13 +270,13 @@ contract("Disputer.js", function(accounts) {
         assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
         assert.equal(
           spy.getCall(-1).lastArg.error,
-          `Error: Missing historical price for liquidation time ${earliestLiquidationTime}`
+          `Missing historical price for liquidation time ${earliestLiquidationTime}`
         );
         // This time, simulate what happens if the pricefeed throws an error during the `getHistoricalPrice`
         // call
         priceFeedMock.setHistoricalPriceReturnError();
         await disputer.dispute();
-        assert.equal(spy.getCall(-1).lastArg.error, "Error: PriceFeedMock expected error thrown");
+        assert.equal(spy.getCall(-1).lastArg.error, "PriceFeedMock expected error thrown");
         assert.equal(spy.callCount, 6);
         // Reset the pricefeed such that it no longer throws
         priceFeedMock.setHistoricalPriceReturnError();
