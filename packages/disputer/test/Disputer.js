@@ -268,13 +268,17 @@ contract("Disputer.js", function(accounts) {
         priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
         await disputer.dispute();
         assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
-        assert.equal(spy.getCall(-1).lastArg.priceFeedErrorDetails, undefined);
-        // This time, simulate what happens if the pricefeed cannot successfully return a historical price:
+        assert.equal(
+          spy.getCall(-1).lastArg.error,
+          `Error: Missing historical price for liquidation time ${earliestLiquidationTime}`
+        );
+        // This time, simulate what happens if the pricefeed throws an error during the `getHistoricalPrice`
+        // call
         priceFeedMock.setHistoricalPriceReturnError();
         await disputer.dispute();
-        assert.equal(spy.getCall(-1).lastArg.priceFeedErrorDetails, "PriceFeedMock expected error thrown");
+        assert.equal(spy.getCall(-1).lastArg.error, "Error: PriceFeedMock expected error thrown");
         assert.equal(spy.callCount, 6);
-        // Reset the pricefeed such that it no longer fails to return historical prices.
+        // Reset the pricefeed such that it no longer throws
         priceFeedMock.setHistoricalPriceReturnError();
 
         // Start with a mocked price of 1.75 usd per token.

@@ -223,7 +223,12 @@ class ContractMonitor {
         continue;
       }
 
-      const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()))[0];
+      let price;
+      try {
+        price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
+      } catch (err) {
+        // Do nothing and catch missing price below:
+      }
       let collateralizationString;
       let maxPriceToBeDisputableString;
       const crRequirement = await this.empContract.methods.collateralRequirement().call();

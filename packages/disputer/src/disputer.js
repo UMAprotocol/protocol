@@ -112,34 +112,37 @@ class Disputer {
       }
 
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-      const price = disputerOverridePrice
-        ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(liquidationTime)[0];
-      if (!price) {
-        // If missing historical price, check if there are further error logs available. This is useful especially
-        // if the pricefeed aggregates pricefeeds, like a Medianizer or a BasketSpreadPriceFeed.
-        let priceFeedErrorDetails = this.priceFeed.getHistoricalPrice(liquidationTime)[1];
-        this.logger.warn({
-          at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value",
-          priceFeedErrorDetails
-        });
-        return false;
+      let price;
+      if (disputerOverridePrice) {
+        price = this.toBN(disputerOverridePrice);
       } else {
-        if (
-          this.empClient.isDisputable(liquidation, price) &&
-          this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-        ) {
-          this.logger.debug({
+        try {
+          price = this.priceFeed.getHistoricalPrice(liquidationTime);
+          if (!price) throw new Error(`Missing historical price for liquidation time ${liquidationTime}`);
+        } catch (error) {
+          this.logger.warn({
             at: "Disputer",
-            message: "Detected a disputable liquidation",
-            price: price.toString(),
-            liquidation: JSON.stringify(liquidation)
+            message: "Cannot dispute: price feed returned invalid value",
+            error
           });
-          return true;
-        } else {
           return false;
         }
+      }
+
+      // Price is available, use it to determine if the liquidation is disputable
+      if (
+        this.empClient.isDisputable(liquidation, price) &&
+        this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+      ) {
+        this.logger.debug({
+          at: "Disputer",
+          message: "Detected a disputable liquidation",
+          price: price.toString(),
+          liquidation: JSON.stringify(liquidation)
+        });
+        return true;
+      } else {
+        return false;
       }
     });
 
