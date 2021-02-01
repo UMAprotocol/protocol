@@ -61,13 +61,13 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       experimentalPrices.length === 0 ||
       experimentalPrices.some(element => element === undefined || element === null)
     ) {
-      return [null, "BasketSpreadPriceFeed: Missing unknown experimental basket price"];
+      throw new Error("BasketSpreadPriceFeed: Missing unknown experimental basket price");
     }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
     if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
-      return [null, "BasketSpreadPriceFeed: Missing unknown baseline basket price"];
+      throw new Error("BasketSpreadPriceFeed: Missing unknown baseline basket price");
     }
     const baselineMean = this._computeMean(baselinePrices);
 
@@ -75,7 +75,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
     // the one that this.convertPriceFeedDecimals() uses.
     if (!baselineMean || !experimentalMean)
-      return [null, "BasketSpreadPriceFeed: missing baselineMean or experimentalMean"];
+      throw new Error("BasketSpreadPriceFeed: missing baselineMean or experimentalMean");
 
     // TODO: Parameterize the lower (0) and upper (2) bounds, as well as allow for custom "spreadValue" formulas,
     // for example we might not want to have the spread centered around 1, like it is here:
@@ -91,10 +91,10 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
 
     // Optionally divide by denominator pricefeed.
-    if (!denominatorPrice) return [spreadValue, null];
+    if (!denominatorPrice) return spreadValue;
     spreadValue = spreadValue.mul(this.convertPriceFeedDecimals("1")).div(denominatorPrice);
 
-    return [spreadValue, null];
+    return spreadValue;
   }
 
   getCurrentPrice() {
@@ -102,34 +102,48 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
 
-    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice)[0];
+    try {
+      return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    } catch (err) {
+      return null;
+    }
   }
 
   getHistoricalPrice(time) {
-    // TODO: Currently this returns the error string of the FIRST pricefeed missing a historical,
-    // this should ideally concatenate the error strings of ALL pricefeeds missing historicals.
-    let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const missingExperimentalPrice = experimentalPrices.find(priceDetails => !priceDetails[0]);
-    if (missingExperimentalPrice) {
-      return [null, `BasketSpreadPriceFeed: Missing experimental basket price: ${missingExperimentalPrice[1]}`];
+    let errors = [];
+    let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => {
+      try {
+        let hasPrice = priceFeed.getHistoricalPrice(time);
+        if (!hasPrice) throw new Error("Missing historical price from experimental basket");
+        return hasPrice;
+      } catch (err) {
+        errors.push(err);
+      }
+    });
+    let baselinePrices = this.baselinePriceFeeds.map(priceFeed => {
+      try {
+        let hasPrice = priceFeed.getHistoricalPrice(time);
+        if (!hasPrice) throw new Error("Missing historical price from baseline basket");
+        return hasPrice;
+      } catch (err) {
+        errors.push(err);
+      }
+    });
+    let denominatorPrice;
+    if (this.denominatorPriceFeed) {
+      try {
+        denominatorPrice = this.denominatorPriceFeed.getHistoricalPrice(time);
+        if (!denominatorPrice) throw new Error("Missing historical denominator price");
+      } catch (err) {
+        errors.push(err);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw errors;
     } else {
-      experimentalPrices = experimentalPrices.map(prices => prices[0]);
+      return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
     }
-    let baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const missingBaselinePrice = baselinePrices.find(priceDetails => !priceDetails[0]);
-    if (missingBaselinePrice) {
-      return [null, `BasketSpreadPriceFeed: Missing baseline basket price: ${missingBaselinePrice[1]}`];
-    } else {
-      baselinePrices = baselinePrices.map(prices => prices[0]);
-    }
-    let denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time)[0];
-    if (this.denominatorPriceFeed && !denominatorPrice) {
-      return [
-        null,
-        `BasketSpreadPriceFeed: Missing denominator price: ${this.denominatorPriceFeed.getHistoricalPrice(time)[1]}`
-      ];
-    }
-    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
