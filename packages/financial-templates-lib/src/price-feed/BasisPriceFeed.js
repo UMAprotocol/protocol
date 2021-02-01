@@ -16,7 +16,15 @@ class BasisPriceFeed extends PriceFeedInterface {
    * @param {Number} lowerBoundSpread lower bound that the resultant value can take on
    * @param {Number} upperBoundSpread upper bound that the resultant value can take on
    */
-  constructor(web3, logger, spotPriceFeeds, futurePriceFeeds, denominatorPriceFeed, lowerBoundSpread, upperBoundSpread) {
+  constructor(
+    web3,
+    logger,
+    spotPriceFeeds,
+    futurePriceFeeds,
+    denominatorPriceFeed,
+    lowerBoundSpread,
+    upperBoundSpread
+  ) {
     super();
 
     if (spotPriceFeeds.length === 0 || futurePriceFeeds.length === 0) {
@@ -56,12 +64,9 @@ class BasisPriceFeed extends PriceFeedInterface {
   // Given lists of future and spot prices, and a denominator price,
   // return the spread price, which is:
   // (avg(future) - avg(spot) + 1) / denominator
-  _getSpreadFromBasketPrices(futurePrices, spotPrices, denominatorPrice) {
+  _getSpreadFromBasketPrices(futurePrices, spotPrices) {
     // Compute future basket mean.
-    if (
-      futurePrices.length === 0 ||
-      futurePrices.some(element => element === undefined || element === null)
-    ) {
+    if (futurePrices.length === 0 || futurePrices.some(element => element === undefined || element === null)) {
       return null;
     }
     const futureMean = this._computeMean(futurePrices);
@@ -74,16 +79,19 @@ class BasisPriceFeed extends PriceFeedInterface {
 
     if (!spotMean || !futureMean) return null;
 
-    let spreadValue = futureMean.sub(spotMean).div(spotMean).add(this.convertPriceFeedDecimals("1")).mul(this.convertPriceFeedDecimals("100"));
-    
+    let spreadValue = futureMean
+      .sub(spotMean)
+      .div(spotMean)
+      .add(this.convertPriceFeedDecimals("1"))
+      .mul(this.convertPriceFeedDecimals("100"));
+
     // Min + Max for clamping
     let lowerBound = this.toBN(this.lowerBoundSpread);
     let upperBound = this.toBN(this.upperBoundSpread);
-    
+
     if (spreadValue.lt(lowerBound)) {
       spreadValue = lowerBound;
-    }
-    else if (spreadValue.gt(upperBound)) {
+    } else if (spreadValue.gt(upperBound)) {
       spreadValue = upperBound;
     }
     return spreadValue;
@@ -155,4 +163,3 @@ class BasisPriceFeed extends PriceFeedInterface {
 module.exports = {
   BasisPriceFeed
 };
-
