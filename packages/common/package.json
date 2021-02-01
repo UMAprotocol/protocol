@@ -5,6 +5,10 @@
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
+  "browser": {
+    "./index.js": "./browser.js"
+  },
+  "types": "./dist/index.d.ts",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
@@ -14,13 +18,15 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests configured\""
+    "test": "echo \"No tests configured\"",
+    "build": "tsc"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
   },
   "files": [
-    "/src/**/*.js"
+    "/src/**/*.js",
+    "/dist/**/*"
   ],
   "dependencies": {
     "@ethersproject/bignumber": "^5.0.5",
@@ -44,5 +50,11 @@
     "solidity-coverage": "^0.7.13",
     "truffle-deploy-registry": "^0.5.1",
     "web3": "1.2.11"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.3",
+    "@tsconfig/node14": "^1.0.0",
+    "@types/ethereum-protocol": "^1.0.0",
+    "@types/mocha": "^5.2.7"
   }
 }
