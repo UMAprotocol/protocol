@@ -188,7 +188,6 @@ class SyntheticPegMonitor {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
-        pricefeed: "Medianizer",
         error,
         lookback: this.volatilityWindow
       });
@@ -243,7 +242,6 @@ class SyntheticPegMonitor {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
-        pricefeed: "Uniswap",
         error,
         lookback: this.volatilityWindow
       });
