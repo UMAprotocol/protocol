@@ -13,14 +13,7 @@ class BasisPriceFeed extends PriceFeedInterface {
    * @param {Number} lowerBound lower bound that the resultant value can take on
    * @param {Number} upperBound upper bound that the resultant value can take on
    */
-  constructor(
-    web3,
-    logger,
-    spotPriceFeeds,
-    futurePriceFeeds,
-    lowerBound,
-    upperBound
-  ) {
+  constructor(web3, logger, spotPriceFeeds, futurePriceFeeds, lowerBound, upperBound) {
     super();
 
     if (spotPriceFeeds.length === 0 || futurePriceFeeds.length === 0) {
@@ -73,7 +66,7 @@ class BasisPriceFeed extends PriceFeedInterface {
 
     if (spotMean.eq(this.toBN("0"))) return this.convertPriceFeedDecimals("100");
 
-    let spreadValue = (((futureMean.sub(spotMean)/spotMean) + 1) * 100).toFixed(this.decimals);
+    let spreadValue = ((futureMean.sub(spotMean) / spotMean + 1) * 100).toFixed(this.decimals);
 
     spreadValue = this.convertPriceFeedDecimals(spreadValue);
 

@@ -25,14 +25,7 @@ contract("BasisPriceFeed.js", function() {
     futurePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
     spotPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
 
-    basisPriceFeed = new BasisPriceFeed(
-      web3,
-      dummyLogger,
-      futurePriceFeeds,
-      spotPriceFeeds,
-      lowerBound,
-      upperBound
-    );
+    basisPriceFeed = new BasisPriceFeed(web3, dummyLogger, futurePriceFeeds, spotPriceFeeds, lowerBound, upperBound);
 
     await basisPriceFeed.update();
 
@@ -353,4 +346,3 @@ contract("BasisPriceFeed.js", function() {
     });
   });
 });
-
