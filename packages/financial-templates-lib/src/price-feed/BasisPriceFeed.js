@@ -10,20 +10,16 @@ class BasisPriceFeed extends PriceFeedInterface {
    *      Must be an array of at least one element.
    * @param {List} futurePriceFeed The spot list of priceFeeds to compute the average of. All elements must be of type PriceFeedInterface.
    *      Must be an array of at least one element.
-   * @param {Object?} denominatorPriceFeed We optionally divide the price spread between the spot and future baskets by this denominator price
-   *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basket spread in terms
-   *      of ETH-USD.
-   * @param {Number} lowerBoundSpread lower bound that the resultant value can take on
-   * @param {Number} upperBoundSpread upper bound that the resultant value can take on
+   * @param {Number} lowerBound lower bound that the resultant value can take on
+   * @param {Number} upperBound upper bound that the resultant value can take on
    */
   constructor(
     web3,
     logger,
     spotPriceFeeds,
     futurePriceFeeds,
-    denominatorPriceFeed,
-    lowerBoundSpread,
-    upperBoundSpread
+    lowerBound,
+    upperBound
   ) {
     super();
 
@@ -33,16 +29,12 @@ class BasisPriceFeed extends PriceFeedInterface {
 
     this.spotPriceFeeds = spotPriceFeeds;
     this.futurePriceFeeds = futurePriceFeeds;
-    this.denominatorPriceFeed = denominatorPriceFeed;
 
-    this.lowerBoundSpread = lowerBoundSpread;
-    this.upperBoundSpread = upperBoundSpread;
+    this.lowerBound = lowerBound;
+    this.upperBound = upperBound;
 
     // For convenience, concatenate all constituent price feeds.
     this.allPriceFeeds = this.spotPriceFeeds.concat(this.futurePriceFeeds);
-    if (this.denominatorPriceFeed) {
-      this.allPriceFeeds = this.allPriceFeeds.concat(this.denominatorPriceFeed);
-    }
 
     // Helper modules.
     this.web3 = web3;
@@ -61,9 +53,9 @@ class BasisPriceFeed extends PriceFeedInterface {
     };
   }
 
-  // Given lists of future and spot prices, and a denominator price,
+  // Given lists of future and spot prices
   // return the spread price, which is:
-  // (avg(future) - avg(spot) + 1) / denominator
+  // 100 ((avg(future) - avg(spot))/(avg(spot)) + 1)
   _getSpreadFromBasketPrices(futurePrices, spotPrices) {
     // Compute future basket mean.
     if (futurePrices.length === 0 || futurePrices.some(element => element === undefined || element === null)) {
@@ -79,15 +71,15 @@ class BasisPriceFeed extends PriceFeedInterface {
 
     if (!spotMean || !futureMean) return null;
 
-    let spreadValue = futureMean
-      .sub(spotMean)
-      .div(spotMean)
-      .add(this.convertPriceFeedDecimals("1"))
-      .mul(this.convertPriceFeedDecimals("100"));
+    if (spotMean.eq(this.toBN("0"))) return this.convertPriceFeedDecimals("100");
+
+    let spreadValue = (((futureMean.sub(spotMean)/spotMean) + 1) * 100).toFixed(this.decimals);
+
+    spreadValue = this.convertPriceFeedDecimals(spreadValue);
 
     // Min + Max for clamping
-    let lowerBound = this.toBN(this.lowerBoundSpread);
-    let upperBound = this.toBN(this.upperBoundSpread);
+    let lowerBound = this.convertPriceFeedDecimals(this.lowerBound);
+    let upperBound = this.convertPriceFeedDecimals(this.upperBound);
 
     if (spreadValue.lt(lowerBound)) {
       spreadValue = lowerBound;
@@ -100,17 +92,15 @@ class BasisPriceFeed extends PriceFeedInterface {
   getCurrentPrice() {
     const futurePrices = this.futurePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     const spotPrices = this.spotPriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
-    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
 
-    return this._getSpreadFromBasketPrices(futurePrices, spotPrices, denominatorPrice);
+    return this._getSpreadFromBasketPrices(futurePrices, spotPrices);
   }
 
   getHistoricalPrice(time) {
     const futurePrices = this.futurePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
     const spotPrices = this.spotPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
 
-    return this._getSpreadFromBasketPrices(futurePrices, spotPrices, denominatorPrice);
+    return this._getSpreadFromBasketPrices(futurePrices, spotPrices);
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
