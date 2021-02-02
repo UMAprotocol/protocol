@@ -4,6 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = require("@uma/financial-templates-lib");
+const { OptimisticOracleKeeper } = require("./src/keeper");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
@@ -21,7 +22,7 @@ const { getWeb3 } = require("@uma/common");
  */
 async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout }) {
   try {
-    const [networkId] = await Promise.all([web3.eth.net.getId()]);
+    const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
     const votingAddress = getAddress("Voting", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -51,14 +52,21 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       votingAddress
     );
     const gasEstimator = new GasEstimator(logger);
+    const ooKeeper = new OptimisticOracleKeeper({
+      logger,
+      optimisticOracleClient: ooClient,
+      gasEstimator,
+      account: accounts[0]
+    });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async () => {
-          await gasEstimator.update();
-          // Placeholder for looping logic that should be implemented in this bot in future PR's.
-          await ooClient.update();
+          await ooKeeper.update();
+          // await ooKeeper.sendProposals();
+          // await ooKeeper.sendDisputes();
+          // await ooKeeper.settleRequests();
           return;
         },
         {
