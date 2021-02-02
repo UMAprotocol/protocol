@@ -290,7 +290,7 @@ class SyntheticPegMonitor {
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
-    let volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
 
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
     // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
