@@ -2,7 +2,7 @@
 // 0) Start ganache (testnet or mainnet-fork doesn't matter, this test does not send any txns):
 //     - ganache-cli -p 9545 -e 10000000000 -l 9000000
 // 1) Truffle test:
-//     - yarn truffle test ./packages/core/scripts/gas-rebate/test.js
+//     - yarn truffle test ./packages/affiliates/test/truffle/gas-rebate/VoterGasRebate.js
 
 const Main = require("../../../gas-rebate/VoterGasRebate");
 

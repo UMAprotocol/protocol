@@ -363,16 +363,21 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         StoreInterface store = _getStore();
-        if (finalFee > 0) {
+
+        // Avoids stack too deep compilation error.
+        {
             // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
             // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
             // party.
             uint256 burnedBond = _computeBurnedBond(request);
 
-            // Pay the final fee and the burned bond to the store.
+            // The total fee is the burned bond and the final fee added together.
             uint256 totalFee = finalFee.add(burnedBond);
-            request.currency.safeIncreaseAllowance(address(store), totalFee);
-            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+
+            if (totalFee > 0) {
+                request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+            }
         }
 
         _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));

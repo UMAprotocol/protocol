@@ -6,9 +6,12 @@ import "../oracle/implementation/Constants.sol";
 import "../oracle/implementation/Voting.sol";
 
 /**
- * @title A contract to track a whitelist of addresses.
+ * @title A contract that executes a short series of upgrade calls that must be performed atomically as a part of the
+ * upgrade process for Voting.sol.
+ * @dev Note: the complete upgrade process requires more than just the transactions in this contract. These are only
+ * the ones that need to be performed atomically.
  */
-contract Umip15Upgrader {
+contract VotingUpgrader {
     // Existing governor is the only one who can initiate the upgrade.
     address public governor;
 
@@ -23,6 +26,13 @@ contract Umip15Upgrader {
     // Addresses to upgrade.
     address public newVoting;
 
+    /**
+     * @notice Removes an address from the whitelist.
+     * @param _governor the Governor contract address.
+     * @param _existingVoting the current/existing Voting contract address.
+     * @param _newVoting the new Voting deployment address.
+     * @param _finder the Finder contract address.
+     */
     constructor(
         address _governor,
         address _existingVoting,
@@ -35,6 +45,11 @@ contract Umip15Upgrader {
         finder = Finder(_finder);
     }
 
+    /**
+     * @notice Performs the atomic portion of the upgrade process.
+     * @dev This method updates the Voting address in the finder, sets the old voting contract to migrated state, and
+     * returns ownership of the existing Voting contract and Finder back to the Governor.
+     */
     function upgrade() external {
         require(msg.sender == governor, "Upgrade can only be initiated by the existing governor.");
 

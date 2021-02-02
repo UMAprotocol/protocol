@@ -82,7 +82,10 @@ function getDataForTimestamp(dayData, timestamp) {
   return sortedDayData[sortedDayData.length - 1];
 }
 async function parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput, debug = false }) {
+  // Any entries in `revealVotersToRebate` will result in an UMA rebate.
   const revealVotersToRebate = {};
+  // Store transaction hashes so that we can prevent duplicate rebates for different Reveals within the same batch transaction.
+  const batchTxns = {};
 
   let progressBarReveal;
   if (!debug) {
@@ -145,8 +148,12 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
       );
     }
 
-    // Save and continue to lookup txn data for next event.
-    revealVotersToRebate[key] = val;
+    // Save and continue to lookup txn data for next event. Skip this reveal if it was already included as
+    // part of a batch transaction.
+    if (!batchTxns[transactionReceipt.transactionHash]) {
+      batchTxns[transactionReceipt.transactionHash] = true;
+      revealVotersToRebate[key] = val;
+    }
 
     if (progressBarReveal) {
       progressBarReveal.update(i + 1);
@@ -238,7 +245,10 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 const UMA_DEV_ACCOUNT = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d";
 
 async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug = false }) {
+  // Any entries in `rewardedVotersToRebate` will result in an UMA rebate.
   const rewardedVotersToRebate = {};
+  // Store transaction hashes so that we can prevent duplicate rebates for different Reveals within the same batch transaction.
+  const batchTxns = {};
 
   let progressBarClaim;
   if (!debug) {
@@ -279,7 +289,12 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
         }
       };
 
-      rewardedVotersToRebate[key] = val;
+      // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
+      // part of a batch transaction.
+      if (!batchTxns[transactionReceipt.transactionHash]) {
+        batchTxns[transactionReceipt.transactionHash] = true;
+        rewardedVotersToRebate[key] = val;
+      }
     }
 
     if (progressBarClaim) {
