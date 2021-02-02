@@ -119,7 +119,7 @@ class Disputer {
             price = this.toBN(disputerOverridePrice);
           } else {
             try {
-              price = this.priceFeed.getHistoricalPrice(liquidationTime);
+              price = await this.priceFeed.getHistoricalPrice(liquidationTime);
             } catch (error) {
               this.logger.error({
                 at: "Disputer",
