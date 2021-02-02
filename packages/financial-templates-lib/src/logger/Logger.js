@@ -51,14 +51,10 @@ function errorStackTracerFormatter(logEntry) {
 // of the error stacks recursively. i.e. `error` is in the shape:
 // [[Error, Error], [Error], [Error, Error]]
 function handleRecursiveErrorArray(error) {
-  // If error has a `stack` param, then no need to recurse anymore:
-  if (error.stack) return error.stack;
-
-  let results = [];
-  error.forEach(_error => {
-    results.push(handleRecursiveErrorArray(_error));
-  });
-  return results;
+  // If error is not an array, then just return the stack for there is no need to recurse further.
+  if (!Array.isArray(error)) return error.stack;
+  // Recursively add all errors to an array and flatten the output.
+  return error.map(handleRecursiveErrorArray).flat();
 }
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
