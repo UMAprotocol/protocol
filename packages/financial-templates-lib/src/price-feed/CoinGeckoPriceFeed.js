@@ -41,6 +41,13 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     this.priceFeedDecimals = priceFeedDecimals;
 
     this.priceHistory = []; // array of { time: number, price: BN }
+
+    this.convertPriceFeedDecimals = number => {
+      // Converts price result to wei
+      // returns price conversion to correct decimals as a big number.
+      // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
+      return this.toBN(parseFixed(number.toString().substring(0, priceFeedDecimals), priceFeedDecimals).toString());
+    };
   }
 
   async update() {
@@ -86,7 +93,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     //     "<currency>": <price>
     //   }
     // }
-    const newPrice = this._convertPriceFeedDecimals(response[this.contractAddress][this.currency]);
+    const newPrice = this.convertPriceFeedDecimals(response[this.contractAddress][this.currency]);
 
     // 5. Store results.
     this.currentPrice = newPrice;
@@ -133,19 +140,10 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     return this.lookback;
   }
 
-  _convertPriceFeedDecimals(number) {
-    // Converts price result to wei
-    // returns price conversion to correct decimals as a big number.
-    // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
-    return this.web3.utils.toBN(
-      parseFixed(number.toString().substring(0, this.priceFeedDecimals), this.priceFeedDecimals).toString()
-    );
-  }
-
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this._convertPriceFeedDecimals("1")
-        .mul(this._convertPriceFeedDecimals("1"))
+      return this.convertPriceFeedDecimals("1")
+        .mul(this.convertPriceFeedDecimals("1"))
         .div(priceBN);
     } else {
       return undefined;
