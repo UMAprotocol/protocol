@@ -5,6 +5,7 @@ const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
+const { BasisPriceFeed } = require("./BasisPriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
@@ -162,6 +163,26 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
+  } else if (config.type === "basis") {
+    const requiredFields = ["spotPriceFeeds", "futuresPriceFeeds", "lowerBound", "upperBound"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating Baskets of MedianizedPriceFeeds",
+      config
+    });
+
+    // Currently, this file assumes that the baskets are lists of medianizer price feeds
+    // Future work would relax these constraint and allow for the baskets and denominator to be
+    // any type of price feed.
+    const spotPriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.spotPriceFeeds);
+    const futuresPriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.futuresPriceFeeds);
+
+    return new BasisPriceFeed(web3, logger, spotPriceFeeds, futuresPriceFeeds, config.lowerBound, config.upperBound);
   }
 
   logger.error({
