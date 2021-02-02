@@ -288,46 +288,34 @@ const defaultConfigs = {
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "btcusd" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "btcusd" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "btcusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "btcusdc" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "btcusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "btcusdc" }]
       }
     ],
     futuresPriceFeeds: [
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" }]
       }
     ],
     lowerBound: 75.0,
@@ -341,46 +329,34 @@ const defaultConfigs = {
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "ethusd" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "ethusd" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "ethusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "ethusdc" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "ethusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "ethusdc" }]
       }
     ],
     futuresPriceFeeds: [
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" }]
       }
     ],
     lowerBound: 75.0,
@@ -394,46 +370,34 @@ const defaultConfigs = {
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "btcusd" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "btcusd" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "btcusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "btcusdc" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "btcusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "btcusdc" }]
       }
     ],
     futuresPriceFeeds: [
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" }]
       }
     ],
     lowerBound: 75.0,
@@ -447,46 +411,34 @@ const defaultConfigs = {
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "ethusd" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "ethusd" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "ethusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "ethusdc" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "ethusdc" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "ethusdc" }]
       }
     ],
     futuresPriceFeeds: [
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" }]
       },
       {
         type: "medianizer",
         computeMean: true,
-        medianizedFeeds: [
-          { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" }
-        ]
+        medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" }]
       }
     ],
     lowerBound: 75.0,
