@@ -47,7 +47,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       }
     });
 
-    if (errors.length > 0 || historicalPrices.length === 0) {
+    if (errors.length > 0) {
       throw errors;
     } else {
       if (this.computeMean) {

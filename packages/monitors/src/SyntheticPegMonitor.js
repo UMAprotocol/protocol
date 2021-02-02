@@ -287,20 +287,15 @@ class SyntheticPegMonitor {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
-    const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
-    if (!volData) {
-      // If missing vol data, then the pricefeed is failing to return historical price data. Let's
-      // try catching the pricefeed's error to get more details about the problem:
-      let priceFeedErrorDetails;
-      try {
-        pricefeed.getHistoricalPrice(latestTime);
-      } catch (err) {
-        priceFeedErrorDetails = err.message;
-      }
+    let volData;
+    try {
+      // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
+      volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    } catch (err) {
       return {
         errorData: {
           latestTime: latestTime ? latestTime : 0,
-          priceFeedErrorDetails
+          priceFeedErrorDetails: err.message
         }
       };
     }
@@ -345,13 +340,17 @@ class SyntheticPegMonitor {
     let maxTimestamp = 0,
       minTimestamp = 0;
     // Iterate over all time series values to fine the maximum and minimum values.
+    // Note: Save last pricefeed error in order to provide more detailed explanation
+    // if price feed fails to return a historical price.
+    let lastPriceFeedError;
     for (let i = 0; i < lookback; i++) {
       const timestamp = mostRecentTime - i;
       let _price;
       try {
         _price = pricefeed.getHistoricalPrice(timestamp);
-        if (!_price) throw new Error("Missing historical price, skipping");
+        if (!_price) continue;
       } catch (err) {
+        lastPriceFeedError = err;
         continue;
       }
 
@@ -373,8 +372,14 @@ class SyntheticPegMonitor {
       }
     }
 
-    // If there are no valid prices in the time window from `mostRecentTime` to `mostRecentTime - lookback`, return null.
-    if (!min || !max) return null;
+    // If there are no valid prices in the time window from `mostRecentTime` to `mostRecentTime - lookback`, throw.
+    if (!min || !max) {
+      if (lastPriceFeedError) {
+        throw lastPriceFeedError;
+      } else {
+        throw new Error("No min or max within lookback window");
+      }
+    }
 
     // If maxTimestamp < minTimestamp then positive volatility. If minTimestamp < maxTimestamp then negative volatility.
     // Note:this inequality intuitively feels backwards. This is because the for loop above itterates from the current

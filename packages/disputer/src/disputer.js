@@ -119,7 +119,7 @@ class Disputer {
         try {
           price = this.priceFeed.getHistoricalPrice(liquidationTime);
         } catch (error) {
-          this.logger.warn({
+          this.logger.error({
             at: "Disputer",
             message: "Cannot dispute: price feed returned invalid value",
             error: error.message
