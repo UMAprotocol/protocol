@@ -180,14 +180,16 @@ class SyntheticPegMonitor {
     if (this.pegVolatilityAlertThreshold === 0) return; // Exit early if not monitoring peg volatility.
     const pricefeed = this.medianizerPriceFeed;
 
-    const volData = await this._checkPricefeedVolatility(pricefeed);
-
-    if (Object.keys(volData).includes("errorData")) {
+    // _checkPricefeedVolatility either returns successfully or throws
+    let volData;
+    try {
+      volData = await this._checkPricefeedVolatility(pricefeed);
+    } catch (error) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Medianizer",
-        errorInformation: volData.errorData,
+        error,
         lookback: this.volatilityWindow
       });
       return;
@@ -233,14 +235,16 @@ class SyntheticPegMonitor {
     if (this.syntheticVolatilityAlertThreshold === 0) return; // Exit early if not monitoring synthetic volatility.
     const pricefeed = this.uniswapPriceFeed;
 
-    const volData = await this._checkPricefeedVolatility(pricefeed);
-
-    if (Object.keys(volData).includes("errorData")) {
+    // _checkPricefeedVolatility either returns successfully or throws
+    let volData;
+    try {
+      volData = await this._checkPricefeedVolatility(pricefeed);
+    } catch (error) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         pricefeed: "Uniswap",
-        errorInformation: volData.errorData,
+        error,
         lookback: this.volatilityWindow
       });
       return;
@@ -287,28 +291,13 @@ class SyntheticPegMonitor {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
-    let volData;
-    try {
-      // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
-      volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
-    } catch (err) {
-      return {
-        errorData: {
-          latestTime: latestTime ? latestTime : 0,
-          priceFeedErrorDetails: err.message
-        }
-      };
-    }
+    // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
+    let volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
 
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
     // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
     // `currentTime` differs from `lastUpdateTime`.
-    let pricefeedLatestPrice;
-    try {
-      pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
-    } catch (err) {
-      // Do nothing.
-    }
+    let pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
 
     return {
       pricefeedVolatility: volData.volatility,
