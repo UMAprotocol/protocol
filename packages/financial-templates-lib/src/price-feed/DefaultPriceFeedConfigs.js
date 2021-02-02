@@ -280,6 +280,218 @@ const defaultConfigs = {
       ]
     }
   },
+  "[BTC-BASIS-3M]/USDC": {
+    type: "basis",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    spotPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "btcusd" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "btcusdc" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "btcusdc" }
+        ]
+      }
+    ],
+    futuresPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" }
+        ]
+      }
+    ],
+    lowerBound: 75.0,
+    upperBound: 125.0
+  },
+  "[ETH-BASIS-3M]/USDC": {
+    type: "basis",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    spotPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "ethusd" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "ethusdc" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "ethusdc" }
+        ]
+      }
+    ],
+    futuresPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" }
+        ]
+      }
+    ],
+    lowerBound: 75.0,
+    upperBound: 125.0
+  },
+  "[BTC-BASIS-6M]/USDC": {
+    type: "basis",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    spotPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "btcusd" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "btcusdc" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "btcusdc" }
+        ]
+      }
+    ],
+    futuresPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" }
+        ]
+      }
+    ],
+    lowerBound: 75.0,
+    upperBound: 125.0
+  },
+  "[ETH-BASIS-6M]/USDC": {
+    type: "basis",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    spotPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "ethusd" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "ethusdc" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "ethusdc" }
+        ]
+      }
+    ],
+    futuresPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" }
+        ]
+      }
+    ],
+    lowerBound: 75.0,
+    upperBound: 125.0
+  },
   "ELASTIC_STABLESPREAD/USDC": {
     type: "basketspread",
     lookback: 7200,
