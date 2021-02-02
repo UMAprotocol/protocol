@@ -295,7 +295,7 @@ class SyntheticPegMonitor {
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
     // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
     // `currentTime` differs from `lastUpdateTime`.
-    let pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
+    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
 
     return {
       pricefeedVolatility: volData.volatility,
