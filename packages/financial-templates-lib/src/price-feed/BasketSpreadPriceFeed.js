@@ -135,6 +135,27 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
+  // Note: This method will arbitrarily fail if the first baseline pricefeed has not implemented `getHistoricalPricePeriods`
+  getHistoricalPricePeriods() {
+    // Arbitrarily use the first baseline pricefeed's price periods as the index for price periods to return.
+    // This function is hacky and makes an assumption that the baseline pricefeed is a Medianizer and therefore
+    // returns price periods as [time, price].
+    const pricePeriods = this.baselinePriceFeeds[0].getHistoricalPricePeriods();
+
+    return pricePeriods.map(_pricePeriod => {
+      let timestamp = _pricePeriod[0];
+      // If we can fetch historical price for this timestamp we'll add it to the price periods array.
+      this.getHistoricalPrice(timestamp)
+        .then(price => {
+          // Add [time, price] entry to price periods array
+          return [timestamp, price];
+        })
+        .catch(() => {
+          // Ignore errors
+        });
+    });
+  }
+
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
     const lastUpdateTimes = this.allPriceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());

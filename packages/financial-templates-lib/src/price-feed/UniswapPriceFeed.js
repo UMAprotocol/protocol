@@ -72,6 +72,15 @@ class UniswapPriceFeed extends PriceFeedInterface {
     }
   }
 
+  getHistoricalPricePeriods() {
+    return this.events.map(event => {
+      return [
+        event.timestamp, // time
+        event.price
+      ];
+    });
+  }
+
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
