@@ -94,7 +94,7 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = (
+    const disputableLiquidationsWithPrices = (
       await Promise.all(
         undisputedLiquidations.map(async liquidation => {
           // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
@@ -126,12 +126,11 @@ class Disputer {
                 message: "Cannot dispute: price feed returned invalid value",
                 error: error.message
               });
-              return null;
             }
           }
-
           // Price is available, use it to determine if the liquidation is disputable
           if (
+            price &&
             this.empClient.isDisputable(liquidation, price) &&
             this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
           ) {
@@ -141,15 +140,16 @@ class Disputer {
               price: price.toString(),
               liquidation: JSON.stringify(liquidation)
             });
-            return liquidation;
-          } else {
-            return null;
+
+            return { ...liquidation, price };
           }
+
+          return null;
         })
       )
     ).filter(liquidation => liquidation !== null);
 
-    if (disputeableLiquidations.length === 0) {
+    if (disputableLiquidationsWithPrices.length === 0) {
       this.logger.debug({
         at: "Disputer",
         message: "No disputable liquidations"
@@ -157,7 +157,7 @@ class Disputer {
       return;
     }
 
-    for (const disputeableLiquidation of disputeableLiquidations) {
+    for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
       // Create the transaction.
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
@@ -187,8 +187,7 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
-      const inputPrice = (await this.priceFeed.getHistoricalPrice(disputeTime)).toString();
+      const inputPrice = disputeableLiquidation.price;
 
       this.logger.debug({
         at: "Disputer",
