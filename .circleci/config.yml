@@ -60,38 +60,6 @@ jobs:
           command: ./scripts/build_docs_site.sh
       - store_artifacts:
           path: build/site
-  slither:
-    docker:
-      - image: trailofbits/eth-security-toolbox
-    working_directory: ~/protocol
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
-            - v7-sec-toolbox-deps-
-      - run:
-          name: Install node and NPM
-          command: ./ci/install_node_npm.sh
-      - run:
-          name: Change user
-          command: sudo su ethsec
-      - run:
-          name: Reclaim ownership
-          command: sudo chown -R $(whoami) ~/.npm ~/.config
-      - run:
-          name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
-      - run:
-          name: Install Dependencies
-          command: sudo npm install -g yarn && npx lerna bootstrap -- --frozen-lockfile
-      - save_cache:
-          key: v7-sec-toolbox-deps-{{ checksum "yarn.lock" }}
-          paths:
-            - node_modules
-      - run:
-          name: Slither
-          command: ./ci/run_slither.sh
   test:
     docker:
       - image: circleci/node:lts
@@ -190,7 +158,6 @@ workflows:
   build_and_test:
     jobs:
       - checkout_and_install
-      - slither
       - build:
           requires:
             - checkout_and_install
