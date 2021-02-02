@@ -104,10 +104,14 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }
 
-  getHistoricalPrice(time) {
-    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
+  async getHistoricalPrice(time) {
+    const experimentalPrices = await Promise.all(
+      this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time))
+    );
+    const baselinePrices = await Promise.all(
+      this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time))
+    );
+    const denominatorPrice = this.denominatorPriceFeed && (await this.denominatorPriceFeed.getHistoricalPrice(time));
 
     return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
   }

@@ -94,50 +94,52 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
-      // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
-      // because we will not be able to get a historical price. If a dispute override price is provided then
-      // we can ignore this check.
-      const liquidationTime = parseInt(liquidation.liquidationTime.toString());
-      const historicalLookbackWindow =
-        Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
-      if (!disputerOverridePrice && liquidationTime < historicalLookbackWindow) {
-        this.logger.debug({
-          at: "Disputer",
-          message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
-          liquidationTime,
-          historicalLookbackWindow
-        });
-        return;
-      }
-
-      // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-      const price = disputerOverridePrice
-        ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(liquidationTime);
-      if (!price) {
-        this.logger.warn({
-          at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value"
-        });
-        return false;
-      } else {
-        if (
-          this.empClient.isDisputable(liquidation, price) &&
-          this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-        ) {
+    const disputeableLiquidations = await Promise.all(
+      undisputedLiquidations.map(async liquidation => {
+        // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
+        // because we will not be able to get a historical price. If a dispute override price is provided then
+        // we can ignore this check.
+        const liquidationTime = parseInt(liquidation.liquidationTime.toString());
+        const historicalLookbackWindow =
+          Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
+        if (!disputerOverridePrice && liquidationTime < historicalLookbackWindow) {
           this.logger.debug({
             at: "Disputer",
-            message: "Detected a disputable liquidation",
-            price: price.toString(),
-            liquidation: JSON.stringify(liquidation)
+            message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
+            liquidationTime,
+            historicalLookbackWindow
           });
-          return true;
-        } else {
-          return false;
+          return null;
         }
-      }
-    });
+
+        // If an override is provided, use that price. Else, get the historic price at the liquidation time.
+        const price = disputerOverridePrice
+          ? this.toBN(disputerOverridePrice)
+          : await this.priceFeed.getHistoricalPrice(liquidationTime);
+        if (!price) {
+          this.logger.warn({
+            at: "Disputer",
+            message: "Cannot dispute: price feed returned invalid value"
+          });
+          return null;
+        } else {
+          if (
+            this.empClient.isDisputable(liquidation, price) &&
+            this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+          ) {
+            this.logger.debug({
+              at: "Disputer",
+              message: "Detected a disputable liquidation",
+              price: price.toString(),
+              liquidation: JSON.stringify(liquidation)
+            });
+            return liquidation;
+          } else {
+            return null;
+          }
+        }
+      })
+    ).filter(liquidation => liquidation !== null);
 
     if (disputeableLiquidations.length === 0) {
       this.logger.debug({
@@ -178,7 +180,7 @@ class Disputer {
       };
 
       const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
-      const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
+      const inputPrice = (await this.priceFeed.getHistoricalPrice(disputeTime)).toString();
 
       this.logger.debug({
         at: "Disputer",

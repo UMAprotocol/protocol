@@ -408,13 +408,13 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
       assert.equal(
-        scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
         toBN(toWei("95"))
           .muln(10 ** 6)
           .toString()
       );
       assert.equal(
-        scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
         toBN(toWei("95"))
           .divn(10 ** 2)
           .toString()

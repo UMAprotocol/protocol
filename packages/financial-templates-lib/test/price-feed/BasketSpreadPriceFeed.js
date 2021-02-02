@@ -228,7 +228,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       );
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("0.125"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
@@ -249,7 +249,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       );
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("1.25"))
           .div(toBN(10).pow(toBN(18 - 6)))
           .toString()
@@ -429,7 +429,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("0.2"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()

@@ -9,7 +9,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Instance used for Web3 utilities and conversions.
    * @param {String} pair Representation of the pair the price feed is tracking.
    *    The string should be the representation used by the DomFi API to identify this pair.
-   * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
+   * @param {Integer} lookback How far in the past the historical prices will be available using await  getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the Unix timestamp in seconds.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
@@ -64,7 +64,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time, verbose = false) {
+  async getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
       return null;
     }

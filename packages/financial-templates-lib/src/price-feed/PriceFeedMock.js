@@ -23,7 +23,7 @@ class PriceFeedMock extends PriceFeedInterface {
     this.currentPrice = currentPrice ? toBN(currentPrice) : currentPrice;
   }
 
-  // Store an array of historical prices [{timestamp, price}] so that getHistoricalPrice can return
+  // Store an array of historical prices [{timestamp, price}] so that await  getHistoricalPrice can return
   // a price for a specific timestamp if found in this array.
   setHistoricalPrices(historicalPrices) {
     historicalPrices.forEach(_price => {
@@ -51,7 +51,7 @@ class PriceFeedMock extends PriceFeedInterface {
     return this.currentPrice;
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked
     // historical price.
     if (time in this.historicalPrices) {

@@ -70,7 +70,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.lookback) {
       // Requesting an historical TWAP earlier than the lookback.
       return null;

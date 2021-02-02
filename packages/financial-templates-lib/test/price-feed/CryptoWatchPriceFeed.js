@@ -107,7 +107,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     // During period 1.
     assert.equal(
       // Should be equal to: toWei(1/1.1)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).toString(),
+      await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376340).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.1")))
@@ -118,7 +118,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     // During period 2.
     assert.equal(
       // Should be equal to: toWei(1/1.2)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).toString(),
+      await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376405).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.2")))
@@ -129,7 +129,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     // During period 3.
     assert.equal(
       // Should be equal to: toWei(1/1.3)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).toString(),
+      await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.3")))
@@ -140,7 +140,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     // After period 3 should return the most recent price.
     assert.equal(
       // Should be equal to: toWei(1/1.5)
-      invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521),
+      await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.5")))
