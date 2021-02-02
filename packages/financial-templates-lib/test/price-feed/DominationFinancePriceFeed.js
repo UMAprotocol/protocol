@@ -100,7 +100,7 @@ contract("DominationFinancePriceFeed.js", function() {
     // During period 1.
     assert.equal(
       // Should be equal to: toWei(1/1.1)
-      await invertedPriceFeed.getHistoricalPrice(earliestTick).toString(),
+      (await invertedPriceFeed.getHistoricalPrice(earliestTick)).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.1")))
@@ -111,7 +111,7 @@ contract("DominationFinancePriceFeed.js", function() {
     // During period 2.
     assert.equal(
       // Should be equal to: toWei(1/1.2)
-      await invertedPriceFeed.getHistoricalPrice(historicalResponse.data.rows[1][0] + 5).toString(),
+      (await invertedPriceFeed.getHistoricalPrice(historicalResponse.data.rows[1][0] + 5)).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.2")))
@@ -122,7 +122,7 @@ contract("DominationFinancePriceFeed.js", function() {
     // During period 3.
     assert.equal(
       // Should be equal to: toWei(1/1.3)
-      await invertedPriceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 5).toString(),
+      (await invertedPriceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 5)).toString(),
       toBN(toWei("1"))
         .mul(toBN(toWei("1")))
         .div(toBN(toWei("1.3")))
@@ -166,16 +166,19 @@ contract("DominationFinancePriceFeed.js", function() {
     );
 
     // During period 1.
-    assert.equal(await priceFeed.getHistoricalPrice(historicalResponse.data.rows[0][0] + 5).toString(), toWei("1.1"));
+    assert.equal((await priceFeed.getHistoricalPrice(historicalResponse.data.rows[0][0] + 5)).toString(), toWei("1.1"));
 
     // During period 2.
-    assert.equal(await priceFeed.getHistoricalPrice(historicalResponse.data.rows[1][0] + 5).toString(), toWei("1.2"));
+    assert.equal((await priceFeed.getHistoricalPrice(historicalResponse.data.rows[1][0] + 5)).toString(), toWei("1.2"));
 
     // During period 3.
-    assert.equal(await priceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 5).toString(), toWei("1.3"));
+    assert.equal((await priceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 5)).toString(), toWei("1.3"));
 
     // After period 3 should return the most recent price.
-    assert.equal(await priceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 90).toString(), toWei("1.5"));
+    assert.equal(
+      (await priceFeed.getHistoricalPrice(historicalResponse.data.rows[2][0] + 90)).toString(),
+      toWei("1.5")
+    );
   });
 
   it("Basic current price", async function() {
