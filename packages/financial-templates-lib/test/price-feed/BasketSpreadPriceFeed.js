@@ -210,7 +210,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // - Denominator price: 10
       // ===> Spread price divided by denominator: 0.125
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.125"));
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.125"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
@@ -325,7 +325,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return 0 for historical price as well (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
@@ -338,7 +338,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
@@ -409,7 +409,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.2"));
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.2"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);

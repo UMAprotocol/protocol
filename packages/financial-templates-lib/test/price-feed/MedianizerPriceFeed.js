@@ -29,7 +29,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the median historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("25"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("25"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -51,7 +51,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the mean historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -74,7 +74,7 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the average of 58 and 45 since there are an even number of elements.
     // Note: because we're using mocks, the timestamp doesn't matter.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
   });
 
   it("Even count means", async function() {
@@ -91,7 +91,7 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the mean, which is not neccessarily the average of 3 and 2.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), toWei("2.5"));
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
   it("null inputs", async function() {
@@ -108,7 +108,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return null since there was a null price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
 
     // Should return null since there was a null input.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
@@ -128,7 +128,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return null since there was an undefined price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
 
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
