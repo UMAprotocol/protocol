@@ -113,30 +113,36 @@ class Disputer {
         }
 
         // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-        const price = disputerOverridePrice
-          ? this.toBN(disputerOverridePrice)
-          : await this.priceFeed.getHistoricalPrice(liquidationTime);
-        if (!price) {
-          this.logger.warn({
-            at: "Disputer",
-            message: "Cannot dispute: price feed returned invalid value"
-          });
-          return null;
+        let price;
+        if (disputerOverridePrice) {
+          price = this.toBN(disputerOverridePrice);
         } else {
-          if (
-            this.empClient.isDisputable(liquidation, price) &&
-            this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-          ) {
-            this.logger.debug({
+          try {
+            price = this.priceFeed.getHistoricalPrice(liquidationTime);
+          } catch (error) {
+            this.logger.error({
               at: "Disputer",
-              message: "Detected a disputable liquidation",
-              price: price.toString(),
-              liquidation: JSON.stringify(liquidation)
+              message: "Cannot dispute: price feed returned invalid value",
+              error: error.message
             });
-            return liquidation;
-          } else {
             return null;
           }
+        }
+
+        // Price is available, use it to determine if the liquidation is disputable
+        if (
+          this.empClient.isDisputable(liquidation, price) &&
+          this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+        ) {
+          this.logger.debug({
+            at: "Disputer",
+            message: "Detected a disputable liquidation",
+            price: price.toString(),
+            liquidation: JSON.stringify(liquidation)
+          });
+          return liquidation;
+        } else {
+          return null;
         }
       })
     ).filter(liquidation => liquidation !== null);

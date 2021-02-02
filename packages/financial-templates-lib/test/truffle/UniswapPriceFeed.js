@@ -155,6 +155,51 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
 
+  it("One event within window, several before", async function() {
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Set prices before the T-3600 window; only the most recent one should be counted.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("4"))],
+      currentTime - 7300,
+      owner
+    );
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("2"))],
+      currentTime - 7200,
+      owner
+    );
+
+    // Set a price within the T-3600 window
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+      currentTime - 1800,
+      owner
+    );
+
+    // Prices after the TWAP window should be ignored.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("8"))],
+      currentTime + 1,
+      owner
+    );
+
+    mockTime = currentTime;
+    await uniswapPriceFeed.update();
+
+    // The TWAP price should be the TWAP of the last price before the TWAP window and the single price
+    // within the window:
+    // - latest price before TWAP window: 2
+    // - single price exactly 50% through the window: 1
+    // - TWAP: 2 * 0.5 + 1 * 0.5 = 1.5
+    assert.equal(uniswapPriceFeed.getCurrentPrice(), toWei("1.5"));
+  });
+
   it("Basic historical TWAP", async function() {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
@@ -219,13 +264,23 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
   });
 
-  it("Historical TWAP too far back", async function() {
+  it("Historical time earlier than TWAP window", async function() {
     const currentTime = Math.round(new Date().getTime() / 1000);
     mockTime = currentTime;
+
+    // Set a price within the TWAP window so that if the historical time requested were within
+    // the window, then there wouldn't be an error.
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+      currentTime - 3600,
+      owner
+    );
     await uniswapPriceFeed.update();
 
-    // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
-    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601), null);
+    // The TWAP lookback is 1 hour (3600 seconds). The price feed should throw if we attempt to go any further back than that.
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
+    assert.throws(() => uniswapPriceFeed.getHistoricalPrice(currentTime - 3601));
   });
 
   it("Invert price", async function() {
@@ -376,7 +431,6 @@ contract("UniswapPriceFeed.js", function(accounts) {
     });
   });
   // TODO: add the following TWAP tests using simulated block times:
-  // - Some events pre TWAP window, some inside window.
   // - Some events post TWAP window, some inside window.
   // - Complex (5+ value) TWAP with events overlapping on both sides of the window.
 

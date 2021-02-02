@@ -94,10 +94,11 @@ contract("MedianizerPriceFeed.js", function() {
     assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
-  it("null inputs", async function() {
+  it("sub-pricefeeds fail to return price", async function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
       new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
+      new PriceFeedMock(null, null, null),
       new PriceFeedMock(null, null, null)
     ];
 
@@ -106,9 +107,16 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was a null price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was a null price output.
+    // Should throw an error for each null price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).then(
+      () => assert.fail(),
+      err => {
+        assert.equal(err[0].message, "PriceFeedMock expected error thrown");
+        assert.equal(err[1].message, "PriceFeedMock expected error thrown");
+        assert.equal(err.length, 2);
+      }
+    );
 
     // Should return null since there was a null input.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
@@ -126,9 +134,9 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was an undefined price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was an undefined price output.
+    // Should throw since there was an undefined price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).catch(() => assert.fail());
 
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);

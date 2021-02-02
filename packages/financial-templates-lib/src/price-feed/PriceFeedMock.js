@@ -16,6 +16,7 @@ class PriceFeedMock extends PriceFeedInterface {
     this.priceFeedDecimals = priceFeedDecimals;
     this.historicalPrices = [];
     this.lookback = lookback;
+    this.uuid = "PriceFeedMock";
   }
 
   setCurrentPrice(currentPrice) {
@@ -52,12 +53,19 @@ class PriceFeedMock extends PriceFeedInterface {
   }
 
   async getHistoricalPrice(time) {
-    // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked
-    // historical price.
-    if (time in this.historicalPrices) {
-      return this.historicalPrices[time];
+    // To implement the PriceFeedInterface properly, this method must either return a valid price
+    // or throw.
+    if (!this.historicalPrice && !(time in this.historicalPrices)) {
+      throw new Error("PriceFeedMock expected error thrown");
+    } else {
+      // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked
+      // historical price.
+      if (time in this.historicalPrices) {
+        return this.historicalPrices[time];
+      } else {
+        return this.historicalPrice;
+      }
     }
-    return this.historicalPrice;
   }
 
   getLastUpdateTime() {
