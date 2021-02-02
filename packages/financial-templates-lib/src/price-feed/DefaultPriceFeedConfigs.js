@@ -361,6 +361,24 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
+  },
+  DAIPHP: {
+    type: "medianizer",
+    computeMean: true,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      {
+        type: "coinmarketcap",
+        symbol: "DAI",
+        convert: "PHP"
+      },
+      {
+        type: "coingecko",
+        contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+        currency: "php"
+      }
+    ]
   }
 };
 
