@@ -35,6 +35,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.web3 = web3;
 
     this.uniswap = new web3.eth.Contract(uniswapAbi, uniswapAddress);
+    this.uuid = `Uniswap-${uniswapAddress}`;
     this.twapLength = twapLength;
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
@@ -64,11 +65,15 @@ class UniswapPriceFeed extends PriceFeedInterface {
   getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.historicalLookback) {
       // Requesting an historical TWAP earlier than the lookback.
-      return null;
+      throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
     }
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
-    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    if (historicalPrice) {
+      return this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    } else {
+      throw new Error(`${this.uuid} missing historical price @ time ${time}`);
+    }
   }
 
   getLastUpdateTime() {

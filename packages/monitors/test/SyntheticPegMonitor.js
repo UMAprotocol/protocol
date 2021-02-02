@@ -280,11 +280,10 @@ contract("SyntheticPegMonitor", function() {
           );
 
           // Test when volatility window captures only one historical price. The last update time is 200,
-          // so this should read the volatility from no timestamps. This should return null.
+          // so this should read the volatility from no timestamps. This should throw.
           medianizerPriceFeedMock.setLastUpdateTime(200);
-          assert.equal(
-            syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow),
-            null
+          assert.throws(() =>
+            syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow)
           );
 
           // Test when volatility window is smaller than the amount of historical prices. The last update time is 106,
@@ -368,6 +367,7 @@ contract("SyntheticPegMonitor", function() {
         });
 
         it("Sends detailed error message when missing volatility data", async function() {
+          // Test that the SyntheticPegMonitor correctly bubbles up PriceFeed errors.
           syntheticPegMonitor = new SyntheticPegMonitor({
             logger: spyLogger,
             web3,
@@ -395,11 +395,13 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
           assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
+          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
 
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
           assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
+          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
         });
 
         it("Stress testing with a lot of historical price data points", async function() {
