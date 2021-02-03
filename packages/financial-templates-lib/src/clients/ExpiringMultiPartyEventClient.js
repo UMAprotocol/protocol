@@ -12,7 +12,15 @@ class ExpiringMultiPartyEventClient {
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress, startingBlockNumber = 0, endingBlockNumber = null) {
+  constructor(
+    logger,
+    empAbi,
+    web3,
+    empAddress,
+    startingBlockNumber = 0,
+    endingBlockNumber = null,
+    contractType = "ExpiringMultiParty" // Default to EMP for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+  ) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -40,6 +48,12 @@ class ExpiringMultiPartyEventClient {
     // Last block number to end the searching for events at.
     this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
+
+    if (contractType != "ExpiringMultiParty" && contractType != "Perpetual")
+      throw new Error(
+        `Invalid contract type provided: ${contractType}! The financial product client only supports ExpiringMultiParty or Perpetual`
+      );
+    this.contractType = contractType;
   }
   // Delete all events within the client
   async clearState() {
@@ -152,7 +166,9 @@ class ExpiringMultiPartyEventClient {
       this.emp.getPastEvents("RegularFeesPaid", blockSearchConfig),
       this.emp.getPastEvents("FinalFeesPaid", blockSearchConfig),
       this.emp.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
-      this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+      this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
+        ? this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+        : this.emp.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -288,6 +304,7 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Settle expired position events.
+
     for (let event of settleExpiredPositionEventsObj) {
       this.settleExpiredPositionEvents.push({
         transactionHash: event.transactionHash,
