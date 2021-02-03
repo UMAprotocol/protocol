@@ -162,6 +162,9 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     LiquidationDisputed(/* caller, originalExpirationTimestamp, shutdownTimestamp*/) {
       // nothing
     },
+    DisputeSettled() {
+      // nothing
+    },
     FinalFeesPaid() {
       // nothing
     },
