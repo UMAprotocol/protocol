@@ -158,7 +158,6 @@ contract("Disputer.js", function(accounts) {
           );
           await collateralWhitelist.addToWhitelist(collateralToken.address);
         });
-
         beforeEach(async function() {
           await timer.setCurrentTime(startTime - 1);
           mockOracle = await MockOracle.new(finder.address, timer.address, {

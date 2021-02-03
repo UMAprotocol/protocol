@@ -106,7 +106,9 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
+    // Push disputable liquidations along with their dispute prices to this array.
+    let disputableLiquidationsWithPrices = [];
+    undisputedLiquidations.map(liquidation => {
       // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
       // because we will not be able to get a historical price. If a dispute override price is provided then
       // we can ignore this check.
@@ -124,16 +126,23 @@ class Disputer {
       }
 
       // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-      const price = disputerOverridePrice
-        ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(liquidationTime);
-      if (!price) {
-        this.logger.warn({
-          at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value"
-        });
-        return false;
+      let price;
+      if (disputerOverridePrice) {
+        price = this.toBN(disputerOverridePrice);
       } else {
+        try {
+          price = this.priceFeed.getHistoricalPrice(liquidationTime);
+        } catch (error) {
+          this.logger.error({
+            at: "Disputer",
+            message: "Cannot dispute: price feed returned invalid value",
+            error
+          });
+        }
+      }
+
+      if (price) {
+        // Price is available, use it to determine if the liquidation is disputable
         if (
           this.empClient.isDisputable(liquidation, price) &&
           this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
@@ -144,14 +153,14 @@ class Disputer {
             price: price.toString(),
             liquidation: JSON.stringify(liquidation)
           });
-          return true;
-        } else {
-          return false;
+
+          // Cache this disputable liquidation along with the price.
+          disputableLiquidationsWithPrices.push({ liquidation, price });
         }
       }
     });
 
-    if (disputeableLiquidations.length === 0) {
+    if (disputableLiquidationsWithPrices.length === 0) {
       this.logger.debug({
         at: "Disputer",
         message: "No disputable liquidations"
@@ -159,9 +168,10 @@ class Disputer {
       return;
     }
 
-    for (const disputeableLiquidation of disputeableLiquidations) {
+    for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
+      const liquidation = disputeableLiquidation.liquidation;
       // Create the transaction.
-      const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      const dispute = this.empContract.methods.dispute(liquidation.id, liquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       let totalPaid, gasEstimation;
@@ -175,8 +185,8 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
           disputer: this.account,
-          sponsor: disputeableLiquidation.sponsor,
-          liquidation: disputeableLiquidation,
+          sponsor: liquidation.sponsor,
+          liquidation,
           totalPaid,
           error
         });
@@ -189,13 +199,12 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
-      const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
+      const inputPrice = disputeableLiquidation.price;
 
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
+        liquidation,
         inputPrice,
         txnConfig
       });
@@ -223,7 +232,7 @@ class Disputer {
       this.logger.info({
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",
-        liquidation: disputeableLiquidation,
+        liquidation,
         inputPrice,
         txnConfig,
         disputeResult: logResult
