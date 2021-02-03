@@ -54,7 +54,7 @@ async function getGasEthHistoricalPrice(callback) {
     // Subtracting 30 days from the current time to give the earlier time bound.
     let earlierTimeBound = moment(queryTime).subtract(30, "days");
 
-    // Creates format that is easier to read for loggin
+    // Creates format that is easier to read for logging
     let earlierLoggingTime = new Date(earlierTimeBound).toUTCString();
 
     // Creates BQ acceptable time format
