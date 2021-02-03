@@ -1,5 +1,6 @@
 node_modules
 build
+dist
 bridge.log
 package-lock.json
 .coverage_contracts

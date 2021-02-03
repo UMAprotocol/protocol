@@ -22,10 +22,7 @@ async function findContractVersion(contractAddress, web3) {
   } else {
     // This is run literally anywhere else.
     const providers = require("ethers").providers;
-    const { getNodeUrl } = require("./TruffleConfig");
-    const argv = require("minimist")(process.argv.slice());
-
-    const provider = new providers.JsonRpcProvider(getNodeUrl(argv.network));
+    const provider = new providers.Web3Provider(web3.currentProvider);
     contractCode = await provider.getCode(contractAddress);
   }
 
