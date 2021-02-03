@@ -206,19 +206,19 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("95"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(), toWei("95"));
 
     // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("90"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 2700)).toString(), toWei("90"));
 
     // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("85"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 1800)).toString(), toWei("85"));
 
     // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("80"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 900)).toString(), toWei("80"));
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime)).toString(), toWei("75"));
   });
 
   it("Historical time earlier than TWAP window", async function() {
@@ -231,8 +231,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 3601));
+    assert.equal(await dexPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3601).catch(() => true));
   });
   it("TWAP length of 0 returns non-TWAP'd current and historical prices", async function() {
     dexPriceFeed = new BalancerPriceFeed(
@@ -262,8 +262,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("80"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("70"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(), toWei("80"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 1800)).toString(), toWei("70"));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -295,10 +295,10 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 3600));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 2700));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 1800));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 900));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3600).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 2700).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 1800).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 900).catch(() => true));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -330,10 +330,10 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 3600));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 2700));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 1800));
-    assert.throws(() => dexPriceFeed.getHistoricalPrice(currentTime - 900));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3600).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 2700).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 1800).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 900).catch(() => true));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -438,13 +438,13 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
       assert.equal(
-        await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        (await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
         toBN(toWei("95"))
           .muln(10 ** 6)
           .toString()
       );
       assert.equal(
-        await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        (await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
         toBN(toWei("95"))
           .divn(10 ** 2)
           .toString()

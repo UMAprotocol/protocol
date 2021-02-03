@@ -102,10 +102,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     await invertedCryptoWatchPriceFeed.update();
 
     // Before period 1 should fail.
-    await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376339).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376339).catch(() => true));
 
     // During period 1.
     assert.equal(
@@ -154,10 +151,7 @@ contract("CryptoWatchPriceFeed.js", function() {
 
   it("No update", async function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
-    await cryptoWatchPriceFeed.getHistoricalPrice(1000).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), undefined);
     assert.equal(cryptoWatchPriceFeed.getLookback(), 120);
   });
@@ -169,10 +163,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     await cryptoWatchPriceFeed.update();
 
     // Before period 1 should fail.
-    await cryptoWatchPriceFeed.getHistoricalPrice(1588376339).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376339).catch(() => true));
 
     // During period 1.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376340)).toString(), toWei("1.1"));
@@ -227,15 +218,9 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.isTrue(await invertedCryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
-    await cryptoWatchPriceFeed.getHistoricalPrice(1588376515).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
     assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
-    await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
 
     // Bad historical ohlc response.
     networker.getJsonReturns = [
@@ -252,10 +237,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.isTrue(await cryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
-    await cryptoWatchPriceFeed.getHistoricalPrice(1588376515).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
 
     // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
     networker.getJsonReturns = [
@@ -272,10 +254,7 @@ contract("CryptoWatchPriceFeed.js", function() {
     assert.isTrue(await invertedCryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(invertedCryptoWatchPriceFeed.getCurrentPrice(), undefined);
-    await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
   });
 
   it("Update frequency", async function() {

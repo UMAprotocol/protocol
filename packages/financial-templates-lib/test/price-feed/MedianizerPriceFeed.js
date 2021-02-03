@@ -136,10 +136,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should throw since there was an undefined price output.
     const arbitraryHistoricalTimestamp = 1000;
-    await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).catch(() => true));
 
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);

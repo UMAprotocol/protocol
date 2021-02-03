@@ -92,10 +92,7 @@ contract("DominationFinancePriceFeed.js", function() {
 
     // Before period 1 should return fail.
     assert.equal(earliestTick, historicalResponse.data.rows[0][0]);
-    await invertedPriceFeed.getHistoricalPrice(earliestTick - 15).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedPriceFeed.getHistoricalPrice(earliestTick - 15).catch(() => true));
 
     // During period 1.
     assert.equal(
@@ -144,10 +141,7 @@ contract("DominationFinancePriceFeed.js", function() {
 
   it("No update", async function() {
     assert.equal(priceFeed.getCurrentPrice(), undefined);
-    await priceFeed.getHistoricalPrice(1000).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await priceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(priceFeed.getLastUpdateTime(), undefined);
     assert.equal(priceFeed.getLookback(), lookback);
   });
@@ -160,10 +154,7 @@ contract("DominationFinancePriceFeed.js", function() {
 
     // Before period 1 should fail.
     assert.equal(earliestTick, historicalResponse.data.rows[0][0]);
-    await priceFeed.getHistoricalPrice(earliestTick - 15).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await priceFeed.getHistoricalPrice(earliestTick - 15).catch(() => true));
 
     // During period 1.
     assert.equal((await priceFeed.getHistoricalPrice(historicalResponse.data.rows[0][0] + 5)).toString(), toWei("1.1"));
@@ -220,15 +211,9 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.isTrue(await invertedPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(priceFeed.getCurrentPrice(), undefined);
-    await priceFeed.getHistoricalPrice(earliestTick).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await priceFeed.getHistoricalPrice(earliestTick).catch(() => true));
     assert.equal(invertedPriceFeed.getCurrentPrice(), undefined);
-    await invertedPriceFeed.getHistoricalPrice(earliestTick).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedPriceFeed.getHistoricalPrice(earliestTick).catch(() => true));
 
     // Bad historical ohlc response.
     networker.getJsonReturns = [
@@ -244,10 +229,7 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.isTrue(await priceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(priceFeed.getCurrentPrice(), undefined);
-    await priceFeed.getHistoricalPrice(earliestTick).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await priceFeed.getHistoricalPrice(earliestTick).catch(() => true));
 
     // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
     networker.getJsonReturns = [
@@ -263,10 +245,7 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.isTrue(await invertedPriceFeed.update().catch(() => true), "Update didn't throw");
 
     assert.equal(invertedPriceFeed.getCurrentPrice(), undefined);
-    await invertedPriceFeed.getHistoricalPrice(earliestTick).then(
-      () => assert.fail(),
-      () => {}
-    );
+    assert.isTrue(await invertedPriceFeed.getHistoricalPrice(earliestTick).catch(() => true));
   });
 
   it("Update frequency", async function() {
