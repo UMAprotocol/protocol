@@ -907,7 +907,7 @@ contract("Disputer.js", function(accounts) {
 
                 assert.equal(spy.callCount, 4); // 2 new info level events should be sent for withdrawing the two liquidations.
 
-                // Liquidator should have their collateral increased from the two rewards.
+                // Disputer should have their collateral increased from the two rewards.
                 const collateralPostWithdraw = await collateralToken.balanceOf(disputeBot);
                 assert.isTrue(collateralPostWithdraw.gt(collateralPreWithdraw));
 
