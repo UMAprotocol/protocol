@@ -85,7 +85,6 @@ async function run({
       web3.eth.net.getId(),
       web3.eth.getBlock("latest")
     ]);
-    console.log("detectedContract", detectedContract);
 
     // Append the contract version and type to the monitorConfig, if the monitorConfig does not already contain one.
     if (!monitorConfig) monitorConfig = {};
