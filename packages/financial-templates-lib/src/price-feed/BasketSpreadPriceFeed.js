@@ -109,31 +109,23 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
-    let errors = [];
-    let experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => {
-      try {
-        return priceFeed.getHistoricalPrice(time);
-      } catch (err) {
-        errors.push(err);
-      }
-    });
-    let baselinePrices = this.baselinePriceFeeds.map(priceFeed => {
-      try {
-        return priceFeed.getHistoricalPrice(time);
-      } catch (err) {
-        errors.push(err);
-      }
-    });
+    const errors = [];
+    const experimentalPrices = await Promise.all(
+      this.experimentalPriceFeeds.map(priceFeed => {
+        return priceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
+      })
+    );
+    const baselinePrices = await Promise.all(
+      this.baselinePriceFeeds.map(priceFeed => {
+        return priceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
+      })
+    );
     let denominatorPrice;
     if (this.denominatorPriceFeed) {
-      try {
-        denominatorPrice = this.denominatorPriceFeed.getHistoricalPrice(time);
-      } catch (err) {
-        errors.push(err);
-      }
+      denominatorPrice = await this.denominatorPriceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
     }
 
     if (errors.length > 0) {

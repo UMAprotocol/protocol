@@ -66,7 +66,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time, verbose = false) {
+  async getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }

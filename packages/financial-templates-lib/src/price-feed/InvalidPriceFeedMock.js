@@ -11,7 +11,7 @@ class InvalidPriceFeedMock extends PriceFeedInterface {
     this.currentPrice = null;
     this.lastUpdateTime = null;
   }
-  getHistoricalPrice() {
+  async getHistoricalPrice() {
     throw new Error("InvalidPriceFeedMock: expected missing historical price");
   }
   getLastUpdateTime() {
