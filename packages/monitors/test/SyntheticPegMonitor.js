@@ -282,8 +282,10 @@ contract("SyntheticPegMonitor", function() {
           // Test when volatility window captures only one historical price. The last update time is 200,
           // so this should read the volatility from no timestamps. This should throw.
           medianizerPriceFeedMock.setLastUpdateTime(200);
-          assert.throws(() =>
-            syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow)
+          assert.isTrue(
+            await syntheticPegMonitor
+              ._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow)
+              .catch(() => true)
           );
 
           // Test when volatility window is smaller than the amount of historical prices. The last update time is 106,
