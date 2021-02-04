@@ -784,7 +784,6 @@ contract PricelessPositionManager is FeePayer {
     }
 
     function _getFinancialContractsAdminAddress() internal view returns (address) {
-        return address(0);
         return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
