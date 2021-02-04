@@ -103,7 +103,6 @@ async function run({
           monitorConfig
         )}. is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
       );
-    console.log("PAASWD", monitorConfig);
     // Setup contract instances.
     const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
     const emp = new web3.eth.Contract(getAbi(monitorConfig.contractType, monitorConfig.contractVersion), empAddress);
