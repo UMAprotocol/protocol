@@ -1,0 +1,24 @@
+{
+  "config": {
+    "name": "YD-BTC-MAR21",
+    "weekNumber": 3,
+    "empAddress": "0x1c3f1A342c8D9591D9759220d114C685FD1cF6b8",
+    "totalRewards": 5440,
+    "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+    "whitelist": ["0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71"],
+    "startTime": 1611615600000,
+    "endTime": 1612220400000
+  },
+  "startBlock": {
+    "timestamp": 1611615615000,
+    "number": 11727740
+  },
+  "endBlock": {
+    "timestamp": 1612220393000,
+    "number": 11773173
+  },
+  "rewards": {
+    "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71": "0.84817639551207776",
+    "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35": "5439.1518236044879168"
+  }
+}

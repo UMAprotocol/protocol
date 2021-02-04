@@ -11,7 +11,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} uniswapAddress Ethereum address of the Uniswap market the price feed is monitoring.
    * @param {Integer} twapLength Duration of the time weighted average computation used by the price feed.
-   * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
+   * @param {Integer} historicalLookback How far in the past historical prices will be available using await  getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
    * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
    * @param {Integer} poolDecimals Precision that prices are reported in on-chain
@@ -35,6 +35,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.web3 = web3;
 
     this.uniswap = new web3.eth.Contract(uniswapAbi, uniswapAddress);
+    this.uuid = `Uniswap-${uniswapAddress}`;
     this.twapLength = twapLength;
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
@@ -61,14 +62,18 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return this.currentTwap && this.convertPoolDecimalsToPriceFeedDecimals(this.currentTwap);
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.historicalLookback) {
       // Requesting an historical TWAP earlier than the lookback.
-      return null;
+      throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
     }
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
-    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    if (historicalPrice) {
+      return this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    } else {
+      throw new Error(`${this.uuid} missing historical price @ time ${time}`);
+    }
   }
 
   getLastUpdateTime() {

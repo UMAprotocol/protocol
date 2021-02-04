@@ -42,9 +42,19 @@ async function waitForLogger(logger) {
 // If the log entry contains an error then extract the stack trace as the error message.
 function errorStackTracerFormatter(logEntry) {
   if (logEntry.error) {
-    logEntry.error = logEntry.error.stack;
+    logEntry.error = handleRecursiveErrorArray(logEntry.error);
   }
   return logEntry;
+}
+
+// Handle case where `error` is an array of errors and we want to display all
+// of the error stacks recursively. i.e. `error` is in the shape:
+// [[Error, Error], [Error], [Error, Error]]
+function handleRecursiveErrorArray(error) {
+  // If error is not an array, then just return the stack for there is no need to recurse further.
+  if (!Array.isArray(error)) return error.stack;
+  // Recursively add all errors to an array and flatten the output.
+  return error.map(handleRecursiveErrorArray).flat();
 }
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.

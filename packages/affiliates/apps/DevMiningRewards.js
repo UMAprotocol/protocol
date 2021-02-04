@@ -42,7 +42,8 @@ async function App(config, env) {
   empWhitelist = empWhitelist.map(empInput => {
     rewards.utils.validateEmpInput(empInput);
     // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
-    return empInput.map(rewards.utils.toChecksumAddress);
+    // Allow for non standard payout address at empInput[1] since this has no impact on processing.
+    return [rewards.utils.toChecksumAddress(empInput[0]), empInput[1]];
   });
 
   fallbackPrices = fallbackPrices.map(([empAddress, price]) => {
