@@ -262,9 +262,9 @@ contract("SyntheticPegMonitor", function() {
           // and the volatility should be (3 / 10 = 0.3) or 30%. Note that the output is scaled according to toWei (1e18).// This is because a volitility is a unitless number and is scaled independently of the price scalling.
           medianizerPriceFeedMock.setLastUpdateTime(103);
           assert.equal(
-            syntheticPegMonitor
-              ._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow)
-              .volatility.toString(),
+            (
+              await syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow)
+            ).volatility.toString(),
             toBN(toWei("0.3")).toString()
           );
 
@@ -273,17 +273,19 @@ contract("SyntheticPegMonitor", function() {
           // and the volatility should be 0%.
           medianizerPriceFeedMock.setLastUpdateTime(100);
           assert.equal(
-            syntheticPegMonitor
-              ._calculateHistoricalVolatility(medianizerPriceFeedMock, 100, volatilityWindow)
-              .volatility.toString(),
+            (
+              await syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 100, volatilityWindow)
+            ).volatility.toString(),
             "0"
           );
 
           // Test when volatility window captures only one historical price. The last update time is 200,
           // so this should read the volatility from no timestamps. This should throw.
           medianizerPriceFeedMock.setLastUpdateTime(200);
-          assert.throws(() =>
-            syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow)
+          assert.isTrue(
+            await syntheticPegMonitor
+              ._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow)
+              .catch(() => true)
           );
 
           // Test when volatility window is smaller than the amount of historical prices. The last update time is 106,
@@ -291,9 +293,9 @@ contract("SyntheticPegMonitor", function() {
           // and the volatility should be (4 / 12 = 0.3333) or 33%.
           medianizerPriceFeedMock.setLastUpdateTime(107);
           assert.equal(
-            syntheticPegMonitor
-              ._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow)
-              .volatility.toString(),
+            (
+              await syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow)
+            ).volatility.toString(),
             toBN(toWei("0.333333333333333333")).toString() // 18 3's is max that can be represented with Wei.
           );
         });
@@ -393,15 +395,13 @@ contract("SyntheticPegMonitor", function() {
 
           await syntheticPegMonitor.checkPegVolatility();
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
-          assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
-          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
+          assert.ok(spy.getCall(-1).lastArg.error); // error logs should not be undefined.
 
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.isTrue(lastSpyLogIncludes(spy, "missing historical price data"));
-          assert.isTrue(lastSpyLogIncludes(spy, "999")); // historical time for which we cannot retrieve price data for
           assert.isTrue(lastSpyLogIncludes(spy, "600")); // lookback window for which we cannot retrieve price data for
-          assert.isTrue(lastSpyLogIncludes(spy, "InvalidPriceFeedMock: expected missing historical price")); // Additional historical pricefeed logs sent
+          assert.ok(spy.getCall(-1).lastArg.error); // error logs should not be undefined.
         });
 
         it("Stress testing with a lot of historical price data points", async function() {

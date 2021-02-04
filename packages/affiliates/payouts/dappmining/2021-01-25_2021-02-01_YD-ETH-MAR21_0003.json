@@ -1,0 +1,24 @@
+{
+  "config": {
+    "name": "YD-ETH-MAR21",
+    "weekNumber": 3,
+    "empAddress": "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
+    "totalRewards": 4248,
+    "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+    "whitelist": ["0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71"],
+    "startTime": 1611615600000,
+    "endTime": 1612220400000
+  },
+  "startBlock": {
+    "timestamp": 1611615615000,
+    "number": 11727740
+  },
+  "endBlock": {
+    "timestamp": 1612220393000,
+    "number": 11773173
+  },
+  "rewards": {
+    "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71": "43.020152623358950896",
+    "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35": "4204.979847376641044856"
+  }
+}

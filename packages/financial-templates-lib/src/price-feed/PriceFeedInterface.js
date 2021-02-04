@@ -21,7 +21,7 @@ class PriceFeedInterface {
   // throw. If the historical price could not be computed for any other reason, this method
   // should throw.
   // Note: derived classes *must* override this method.
-  getHistoricalPrice(/* time */) {
+  async getHistoricalPrice(/* time */) {
     this._abstractFunctionCalled();
   }
 
