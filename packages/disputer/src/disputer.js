@@ -124,7 +124,7 @@ class Disputer {
               this.logger.error({
                 at: "Disputer",
                 message: "Cannot dispute: price feed returned invalid value",
-                error: error.message
+                error
               });
             }
           }
