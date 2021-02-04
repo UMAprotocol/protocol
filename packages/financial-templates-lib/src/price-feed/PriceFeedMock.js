@@ -1,5 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { toBN } = require("web3").utils;
+const { parseFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that medianizes other price feeds.
 class PriceFeedMock extends PriceFeedInterface {
@@ -17,11 +18,17 @@ class PriceFeedMock extends PriceFeedInterface {
     this.historicalPrices = [];
     this.lookback = lookback;
     this.uuid = "PriceFeedMock";
+
+    this.convertDecimals = number => {
+      // Converts price result to wei
+      // returns price conversion to correct decimals as a big number
+      return toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
+    };
   }
 
   setCurrentPrice(currentPrice) {
     // allows this to be set to null without throwing.
-    this.currentPrice = currentPrice ? toBN(currentPrice) : currentPrice;
+    this.currentPrice = currentPrice ? this.convertDecimals(currentPrice) : currentPrice;
   }
 
   // Store an array of historical prices [{timestamp, price}] so that getHistoricalPrice can return
@@ -32,12 +39,12 @@ class PriceFeedMock extends PriceFeedInterface {
         throw "Invalid historical price => [{timestamp, price}]";
       }
       // allows this to be set to null without throwing.
-      this.historicalPrices[_price.timestamp] = _price.price ? toBN(_price.price) : _price.price;
+      this.historicalPrices[_price.timestamp] = _price.price ? this.convertDecimals(_price.price) : _price.price;
     });
   }
 
   setHistoricalPrice(historicalPrice) {
-    this.historicalPrice = historicalPrice;
+    this.historicalPrice = historicalPrice ? this.convertDecimals(historicalPrice) : historicalPrice;
   }
 
   setLastUpdateTime(lastUpdateTime) {

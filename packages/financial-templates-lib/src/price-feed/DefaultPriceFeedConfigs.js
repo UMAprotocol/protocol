@@ -361,6 +361,16 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
+  },
+  // The following identifiers are used only in local testing environments
+  TEST8DECIMALS: {
+    type: "test"
+  },
+  TEST6DECIMALS: {
+    type: "test"
+  },
+  TEST18DECIMALS: {
+    type: "test"
   }
 };
 

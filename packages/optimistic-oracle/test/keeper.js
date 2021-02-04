@@ -55,7 +55,18 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
   const finalFee = toWei("1");
   const totalDefaultBond = toWei("2"); // 2x final fee
   const correctPrice = toWei("-17");
-  const identifier = web3.utils.utf8ToHex("Test Identifier");
+
+  // These identifiers are special test ones that are mapped to certain `priceFeedDecimal`
+  // configurations used to construct pricefeeds. For example, "TEST8DECIMALS" will construct
+  // a pricefeed that returns prices in 8 decimals. This is useful for testing that a bot is
+  // constructing the right type of pricefeed by default. This mapping is stored in @uma/common/PriceIdentifierUtils.js
+  const identifier = web3.utils.utf8ToHex("TEST8DECIMALS");
+
+  const identifiersToTest = [
+    web3.utils.utf8ToHex("TEST8DECIMALS"),
+    web3.utils.utf8ToHex("TEST6DECIMALS"),
+    web3.utils.utf8ToHex("TEST18DECIMALS")
+  ];
 
   const pushPrice = async price => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
@@ -66,9 +77,11 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
     finder = await Finder.new();
     timer = await Timer.new();
 
-    // Whitelist an initial identifier we can use to make default price requests.
+    // Whitelist test identifiers we can use to make default price requests.
     identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(identifier);
+    identifiersToTest.forEach(async identifier => {
+      await identifierWhitelist.addSupportedIdentifier(identifier);
+    });
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
     collateralWhitelist = await AddressWhitelist.new();
@@ -120,15 +133,24 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
 
     gasEstimator = new GasEstimator(dummyLogger);
 
+    let defaultPriceFeedConfig = {
+      lookback: 100, // Request time is 10 secs behind now, so 100 lookback will cover it.
+      currentPrice: "1", // Mocked current price. This will be scaled to the identifier's precision.
+      historicalPrice: "2" // Mocked historical price. This will be scaled to the identifier's precision.
+    };
     keeper = new OptimisticOracleKeeper({
       logger: dummyLogger,
       optimisticOracleClient: client,
       gasEstimator,
-      account: botRunner
+      account: botRunner,
+      defaultPriceFeedConfig
     });
 
-    // Make a new price request.
-    await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
+    // Make a new price request for each identifier, each of which should cause the keeper bot to
+    // construct a pricefeed with a new precision.
+    identifiersToTest.forEach(async identifier => {
+      await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
+    });
   });
 
   it("Can send proposals to new price requests", async function() {
@@ -138,66 +160,23 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
     result = client.getSettleableProposals(proposer);
     assert.deepStrictEqual(result, []);
 
-    // Should have one price request.
-    result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, [
-      {
+    // Should have one price request for each identifier.
+    let expectedResults = [];
+    identifiersToTest.forEach(identifier => {
+      expectedResults.push({
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
         finalFee
-      }
-    ]);
-
-    // Now: Execute `sendProposals()` and test that the bot correctly respodns to these price proposals
-
-    // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
-    await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-    const currentContractTime = await optimisticOracle.getCurrentTime();
-    await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
-      from: proposer
+      });
     });
-
-    await client.update();
-    result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, [
-      {
-        requester: optimisticRequester.address,
-        proposer: proposer,
-        identifier: hexToUtf8(identifier),
-        timestamp: requestTime.toString(),
-        proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
-      }
-    ]);
     result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
-    result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, []);
+    assert.deepStrictEqual(result, expectedResults);
 
-    // Now, advance time so that the proposal expires and check that the client detects the new state:
-    await optimisticOracle.setCurrentTime((Number(currentContractTime) + liveness).toString());
-    await client.update();
-    result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, []);
-    result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
-    // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
-    result = client.getSettleableProposals(rando);
-    assert.deepStrictEqual(result, []);
-    result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, [
-      {
-        requester: optimisticRequester.address,
-        proposer: proposer,
-        identifier: hexToUtf8(identifier),
-        timestamp: requestTime.toString(),
-        proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
-      }
-    ]);
+    // Now: Execute `sendProposals()` and test that the bot correctly responds to these price proposals
+    await keeper.sendProposals();
   });
 
   it("Can send disputes to proposals", async function() {

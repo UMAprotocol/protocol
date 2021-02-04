@@ -52,11 +52,20 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       votingAddress
     );
     const gasEstimator = new GasEstimator(logger);
+
+    // Construct default price feed config passed to all pricefeeds constructed by the keeper.
+    // The keeper needs to query prices for any identifier approved to use the Optimistic Oracle,
+    // so a new pricefeed is constructed for each identifier. This `defaultPriceFeedConfig` contains
+    // properties that are shared across all of these new pricefeeds.
+    const defaultPriceFeedConfig = {
+      lookback: 7200 // Should we pass in this object and/or its properties as input into the `run()` method?
+    };
     const ooKeeper = new OptimisticOracleKeeper({
       logger,
       optimisticOracleClient: ooClient,
       gasEstimator,
-      account: accounts[0]
+      account: accounts[0],
+      defaultPriceFeedConfig
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)

@@ -11,7 +11,11 @@ const IDENTIFIER_NON_18_PRECISION = {
   "STABLESPREAD/BTC": 8,
   "ELASTIC_STABLESPREAD/USDC": 6,
   BCHNBTC: 8,
-  AMPLUSD: 6
+  AMPLUSD: 6,
+  // The following identifiers are used in local test environemnts only:
+  TEST8DECIMALS: 8,
+  TEST6DECIMALS: 6,
+  TEST18DECIMALS: 18
 };
 
 const getPrecisionForIdentifier = identifier => {
