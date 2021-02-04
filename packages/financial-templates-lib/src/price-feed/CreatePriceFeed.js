@@ -6,7 +6,7 @@ const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
-const { PriceFeedMock } = require("./PriceFeedMock");
+const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 
@@ -172,11 +172,11 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     logger.debug({
       at: "createPriceFeed",
-      message: "Creating PriceFeedMock",
+      message: "Creating PriceFeedMockScaled",
       config
     });
 
-    let newPriceFeed = new PriceFeedMock(
+    let newPriceFeed = new PriceFeedMockScaled(
       config.currentPrice,
       config.historicalPrice,
       null,
