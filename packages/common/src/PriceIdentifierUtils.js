@@ -12,7 +12,7 @@ const IDENTIFIER_NON_18_PRECISION = {
   "ELASTIC_STABLESPREAD/USDC": 6,
   BCHNBTC: 8,
   AMPLUSD: 6,
-  // The following identifiers are used in local test environemnts only:
+  // The following identifiers are used in local test environments only:
   TEST8DECIMALS: 8,
   TEST6DECIMALS: 6,
   TEST18DECIMALS: 18

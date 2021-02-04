@@ -362,7 +362,8 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
-  // The following identifiers are used only in local testing environments
+  // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
+  // default price feed config.
   TEST8DECIMALS: {
     type: "test"
   },

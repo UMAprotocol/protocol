@@ -50,7 +50,8 @@ class OptimisticOracleKeeper {
       this.logger.debug({
         at: "OptimisticOracleKeeper",
         message: "Created pricefeed configuration for identifier",
-        defaultPriceFeedConfig: this.priceFeedConfig
+        defaultPriceFeedConfig: this.priceFeedConfig,
+        priceRequest
       });
 
       // Create a new pricefeed for this identifier. We might consider caching these price requests
@@ -64,8 +65,17 @@ class OptimisticOracleKeeper {
         priceFeedConfig,
         priceRequest.identifier
       );
+      // Pricefeed is either constructed correctly or is null.
+      if (!priceFeed) {
+        this.logger.error({
+          at: "OptimisticOracleKeeper",
+          message: "Failed to construct a PriceFeed for price request",
+          priceRequest
+        });
+        return;
+      }
 
-      // Get a proposal price
+      // With pricefeed successfully constructed, get a proposal price
       await priceFeed.update();
       const proposalPrice = priceFeed.getHistoricalPrice(priceRequest.timestamp);
       console.log(proposalPrice.toString());
@@ -73,8 +83,6 @@ class OptimisticOracleKeeper {
 
     // Grab unproposed price requests
     // For each request:
-    // - Create a pricefeed for identifier
-    // - Get proposal price
     // - Send proposal
   }
 
