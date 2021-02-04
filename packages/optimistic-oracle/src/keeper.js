@@ -1,5 +1,6 @@
 const { Networker, createReferencePriceFeedForEmp } = require("@uma/financial-templates-lib");
-const { getPrecisionForIdentifier } = require("@uma/common");
+const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const { getAbi } = require("@uma/core");
 
 class OptimisticOracleKeeper {
   /**
@@ -9,8 +10,9 @@ class OptimisticOracleKeeper {
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} defaultPriceFeedConfig Default configuration to construct all price feed objects.
+   * @param {Object} [ooKeeperConfig] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig }) {
+  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig, ooKeeperConfig }) {
     this.logger = logger;
     this.account = account;
     this.optimisticOracleClient = optimisticOracleClient;
@@ -20,7 +22,10 @@ class OptimisticOracleKeeper {
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
 
-    this.ooContract = this.optimisticOracleClient.emp;
+    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+    this.GAS_LIMIT_BUFFER = 1.25;
+
+    this.ooContract = this.optimisticOracleClient.oracle;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -28,6 +33,24 @@ class OptimisticOracleKeeper {
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
+    this.hexToUtf8 = this.web3.utils.hexToUtf8;
+
+    // Default config settings. Liquidator deployer can override these settings by passing in new
+    // values via the `ooKeeperConfig` input object. The `isValid` property is a function that should be called
+    // before resetting any config settings. `isValid` must return a Boolean.
+    const defaultConfig = {
+      txnGasLimit: {
+        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
+        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
+        isValid: x => {
+          return x >= 6000000 && x < 15000000;
+        }
+      }
+    };
+
+    // Validate and set config settings to class state.
+    const configWithDefaults = createObjectFromDefaultProps(ooKeeperConfig, defaultConfig);
+    Object.assign(this, configWithDefaults);
   }
 
   async update() {
@@ -40,7 +63,7 @@ class OptimisticOracleKeeper {
       message: "Checking for unproposed price requsts to send proposals for"
     });
 
-    this.optimisticOracleClient.getUnproposedPriceRequests().map(async priceRequest => {
+    for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
       // Construct pricefeed config for this identifier. We start with the `defaultPriceFeedConfig`
       // properties and add custom properties for this specific identifier such as precision.
       let priceFeedConfig = {
@@ -72,18 +95,116 @@ class OptimisticOracleKeeper {
           message: "Failed to construct a PriceFeed for price request",
           priceRequest
         });
-        return;
+        continue;
       }
 
       // With pricefeed successfully constructed, get a proposal price
       await priceFeed.update();
-      const proposalPrice = priceFeed.getHistoricalPrice(priceRequest.timestamp);
-      console.log(proposalPrice.toString());
-    });
+      let proposalPrice;
+      try {
+        proposalPrice = (await priceFeed.getHistoricalPrice(priceRequest.timestamp)).toString();
+      } catch (error) {
+        this.logger.error({
+          at: "OptimisticOracleKeeper",
+          message: "Failed to query historical price for price request",
+          priceRequest,
+          error
+        });
+        continue;
+      }
 
-    // Grab unproposed price requests
-    // For each request:
-    // - Send proposal
+      // The OO requires approval to transfer the proposed price request's collateral currency in order to post a bond.
+      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
+      const [currentCollateralAllowance] = await Promise.all([
+        collateralToken.methods.allowance(this.account, this.ooContract.options.address).call()
+      ]);
+      if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
+        const collateralApprovalTx = await collateralToken.methods
+          .approve(this.ooContract.options.address, MAX_UINT_VAL)
+          .send({
+            from: this.account,
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          });
+        this.logger.info({
+          at: "OptimisticOracle#Keeper",
+          message: "Approved OO to transfer unlimited collateral tokens 💰",
+          currency: collateralToken.options.address,
+          collateralApprovalTx: collateralApprovalTx.transactionHash
+        });
+      }
+
+      // Create the transaction.
+      const proposal = this.ooContract.methods.proposePrice(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        "0x", // Ancillary data
+        proposalPrice
+      );
+
+      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      let proposalBond, gasEstimation;
+      try {
+        [proposalBond, gasEstimation] = await Promise.all([
+          proposal.call({ from: this.account }),
+          proposal.estimateGas({ from: this.account })
+        ]);
+      } catch (error) {
+        this.logger.error({
+          at: "OptimisticOracle#Keeper",
+          message: "Cannot propose price: not enough collateral (or large enough approval)✋",
+          proposer: this.account,
+          proposalBond,
+          priceRequest,
+          error
+        });
+        continue;
+      }
+      const txnConfig = {
+        from: this.account,
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      };
+
+      this.logger.debug({
+        at: "OptimisticOracle#Keeper",
+        message: "Proposing new price",
+        priceRequest,
+        proposalPrice,
+        txnConfig
+      });
+
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await proposal.send(txnConfig);
+      } catch (error) {
+        this.logger.error({
+          at: "OptimisticOracle#Keeper",
+          message: "Failed to propose price🚨",
+          error
+        });
+        continue;
+      }
+      const logResult = {
+        tx: receipt.transactionHash,
+        requester: receipt.events.ProposePrice.returnValues.requester,
+        proposer: receipt.events.ProposePrice.returnValues.proposer,
+        identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
+        timestamp: receipt.events.ProposePrice.returnValues.timestamp,
+        proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
+        expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp
+      };
+      this.logger.info({
+        at: "OptimisticOracle#Keeper",
+        message: "Proposed price!👮‍♂️",
+        priceRequest,
+        proposalPrice,
+        txnConfig,
+        proposalResult: logResult
+      });
+    }
   }
 
   async sendDisputes() {
