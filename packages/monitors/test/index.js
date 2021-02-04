@@ -264,8 +264,6 @@ contract("index.js", function(accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
         });
 
-        console.log("finder.address", finder.address);
-
         let didThrowError = false;
         let errorString;
         try {
@@ -283,7 +281,6 @@ contract("index.js", function(accounts) {
             medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
           });
         } catch (error) {
-          console.log("error", error);
           errorString = error.toString();
           didThrowError = true;
         }
