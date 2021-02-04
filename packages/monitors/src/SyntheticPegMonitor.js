@@ -289,13 +289,15 @@ class SyntheticPegMonitor {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
+
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
-    const volData = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    const volData = await this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
 
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
     // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
     // `currentTime` differs from `lastUpdateTime`.
-    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
+
+    const pricefeedLatestPrice = await pricefeed.getHistoricalPrice(latestTime);
 
     return {
       pricefeedVolatility: volData.volatility,
@@ -320,7 +322,7 @@ class SyntheticPegMonitor {
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
   // until `mostRecentTime`. Returns volatility as (max - min)/min %. Also Identifies the direction volatility movement.
-  _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
+  async _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
     let min, max;
 
     // Store the timestamp of the max and min value to infer the direction of the movement over the interval.
@@ -334,7 +336,7 @@ class SyntheticPegMonitor {
       const timestamp = mostRecentTime - i;
       let _price;
       try {
-        _price = pricefeed.getHistoricalPrice(timestamp);
+        _price = await pricefeed.getHistoricalPrice(timestamp);
         if (!_price) continue;
       } catch (err) {
         lastPriceFeedError = err;
