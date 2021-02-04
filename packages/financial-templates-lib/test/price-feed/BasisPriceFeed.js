@@ -165,7 +165,7 @@ contract("BasisPriceFeed.js", function() {
 
       // Historical price calculation (because we're using mocks, the timestamp doesn't matter).:
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("200"));
+      assert.equal(await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("200"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basisPriceFeed.getLastUpdateTime(), 650000);
@@ -183,7 +183,7 @@ contract("BasisPriceFeed.js", function() {
       );
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("200"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
@@ -241,7 +241,7 @@ contract("BasisPriceFeed.js", function() {
 
       // Should return 0 for historical price as well (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("70"));
+      assert.equal(await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("70"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basisPriceFeed.getLastUpdateTime(), 400);
@@ -259,7 +259,7 @@ contract("BasisPriceFeed.js", function() {
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("70"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
@@ -316,7 +316,7 @@ contract("BasisPriceFeed.js", function() {
 
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("130"));
+      assert.equal(await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("130"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basisPriceFeed.getLastUpdateTime(), 400);
@@ -335,7 +335,7 @@ contract("BasisPriceFeed.js", function() {
       // (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basisPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("130"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
