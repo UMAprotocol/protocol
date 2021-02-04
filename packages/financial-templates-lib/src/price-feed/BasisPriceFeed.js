@@ -89,10 +89,15 @@ class BasisPriceFeed extends PriceFeedInterface {
     return this._getSpreadFromBasketPrices(futurePrices, spotPrices);
   }
 
-  getHistoricalPrice(time) {
-    const futurePrices = this.futurePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const spotPrices = this.spotPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-
+  async getHistoricalPrice(time) {
+    const errors = [];
+    const futurePrices = await Promise.all(this.futurePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time).catch(err => errors.push(err))));
+    const spotPrices = await Promise.all(this.spotPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time).catch(err => errors.push(err))));
+    
+    if (errors.length > 0) {
+      throw errors;
+    }
+    
     return this._getSpreadFromBasketPrices(futurePrices, spotPrices);
   }
 
