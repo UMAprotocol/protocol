@@ -213,6 +213,20 @@ class Liquidator {
       at: "Liquidator",
       message: "Checking for liquidatable positions and preforming liquidations"
     });
+    if (
+      maxTokensToLiquidateWei &&
+      this.whaleDefenseFundWei &&
+      this.toBN(this.whaleDefenseFundWei).gte(this.toBN(maxTokensToLiquidateWei))
+    ) {
+      this.logger.info({
+        at: "Liquidator",
+        message:
+          "The whale defense fund reserve amount is greater than the liquidators synthetic balance. This might result in unintended consequences. Consider changing this param or adding more synthetics.",
+        botTokenBalance: maxTokensToLiquidateWei.toString(),
+        whaleDefenseFundWei: this.whaleDefenseFundWei.toString()
+      });
+    }
+
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice
       ? this.toBN(liquidatorOverridePrice.toString())
@@ -294,9 +308,8 @@ class Liquidator {
         inputPrice: scaledPrice.toString()
       });
 
-      // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
-      // has not passed the WDF's activation threshold.
-      // This gets logged as an event, see constructor
+      // We couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
+      // has not passed the WDF's activation threshold. This gets logged as an event, see constructor.
       if (!liquidationArgs) {
         // If WDF is active but liveness hasn't passed activation %, then send customized log:
         if (

@@ -1595,6 +1595,46 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(sponsor2Positions.tokensOutstanding, "0");
             }
           );
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+            "Illogical WDF configuration should correctly warn the user",
+            async () => {
+              liquidatorConfig = {
+                ...liquidatorConfig,
+                whaleDefenseFundWei: toWei("100"),
+                defenseActivationPercent: 80
+              };
+
+              const liquidator = new Liquidator({
+                logger: spyLogger,
+                expiringMultiPartyClient: empClient,
+                gasEstimator,
+                votingContract: mockOracle.contract,
+                syntheticToken: syntheticToken.contract,
+                priceFeed: priceFeedMock,
+                account: accounts[0],
+                empProps,
+                liquidatorConfig
+              });
+
+              await emp.create(
+                { rawValue: convertCollateral("1000") },
+                { rawValue: convertSynthetic("90") },
+                { from: liquidatorBot }
+              );
+              priceFeedMock.setCurrentPrice(convertPrice("1"));
+
+              await liquidator.update();
+              // the input amount define here is less than the WDF & is equal to the sponsor token balance.
+              await liquidator.liquidatePositions(convertSynthetic("90"));
+              assert.isTrue(
+                spyLogIncludes(
+                  spy,
+                  0,
+                  "The whale defense fund reserve amount is greater than the liquidators synthetic balance"
+                )
+              );
+            }
+          );
         });
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "logs about skipping liquidations because of the defense activation threshold are only emitted if the withdrawal took place within a specified block window",

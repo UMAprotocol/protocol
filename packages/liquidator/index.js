@@ -265,7 +265,7 @@ async function run({
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       // Check if EMP expired before running current iteration.
-      let isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
+      const isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
 
       await retry(
         async () => {
