@@ -142,9 +142,8 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(position, "requires position");
 
-    // whale fund enabled AND withdrawal request is still live and therefore can be extended
-    let withdrawRequestPending = hasWithdrawRequestPending({ position, currentBlockTime });
-    if (whaleDefenseFundWei && toBN(whaleDefenseFundWei).gt(toBN("0")) && withdrawRequestPending) {
+    // whale fund enabled, check if withdraw liveness can be extended with a min liquidation
+    if (whaleDefenseFundWei && toBN(whaleDefenseFundWei).gt(toBN("0"))) {
       // we should only liquidate the minimum here to extend withdraw
       if (
         shouldLiquidateMinimum({
@@ -176,12 +175,12 @@ module.exports = (
       }
     }
 
-    // calculate tokens to liquidate respecting all constraints
+    // WDF strategy not activated, calculate tokens to liquidate respecting all constraints
     const tokensToLiquidate = calculateTokensToLiquidate({
       syntheticTokenBalance,
       positionTokens: position.numTokens,
       maxTokensToLiquidateWei,
-      withdrawRequestPending
+      withdrawRequestPending: hasWithdrawRequestPending({ position, currentBlockTime })
     });
 
     // check if we should try to liquidate this position
