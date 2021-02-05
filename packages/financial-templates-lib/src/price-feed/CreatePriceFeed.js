@@ -176,17 +176,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config
     });
 
-    let newPriceFeed = new PriceFeedMockScaled(
+    return new PriceFeedMockScaled(
       config.currentPrice,
       config.historicalPrice,
       null,
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
     );
-    // These methods set the current price and historical price to the specified precision.
-    newPriceFeed.setCurrentPrice(config.currentPrice);
-    newPriceFeed.setHistoricalPrice(config.historicalPrice);
-    return newPriceFeed;
   }
 
   logger.error({

@@ -7,8 +7,6 @@ class PriceFeedMockScaled extends PriceFeedInterface {
   constructor(currentPrice, historicalPrice, lastUpdateTime, priceFeedDecimals = 18, lookback = 3600) {
     super();
     this.updateCalled = 0;
-    this.currentPrice = currentPrice;
-    this.historicalPrice = historicalPrice;
     this.lastUpdateTime = lastUpdateTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.historicalPrices = [];
@@ -20,6 +18,10 @@ class PriceFeedMockScaled extends PriceFeedInterface {
       // returns price conversion to correct decimals as a big number
       return toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
     };
+
+    // Initialize state prices using specified precision
+    this.setCurrentPrice(currentPrice);
+    this.setHistoricalPrice(historicalPrice);
   }
 
   setCurrentPrice(currentPrice) {
