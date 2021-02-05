@@ -36,11 +36,6 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       errorRetriesTimeout
     });
 
-    // TODO:
-    // - Miscellaneous setup
-    // - Construct OO Keeper bot
-    // - Set appropriate allowances
-
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Keeper to respond to price requests and proposals.
     const ooClient = new OptimisticOracleClient(
@@ -73,7 +68,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       await retry(
         async () => {
           await ooKeeper.update();
-          // await ooKeeper.sendProposals();
+          await ooKeeper.sendProposals();
           // await ooKeeper.sendDisputes();
           // await ooKeeper.settleRequests();
           return;
@@ -123,7 +118,12 @@ async function Poll(callback) {
       // Default to 3 re-tries on error within the execution loop.
       errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
       // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10
+      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
+      // If there is an optimistic oracle config, add it. Else, set to null. Example config:
+      // {
+      //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
+      //  }
+      ooKeeperConfig: process.env.OOKEEPER_CONFIG ? JSON.parse(process.env.OOKEEPER_CONFIG) : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

@@ -372,6 +372,9 @@ const defaultConfigs = {
   },
   TEST18DECIMALS: {
     type: "test"
+  },
+  INVALID: {
+    type: "invalid"
   }
 };
 

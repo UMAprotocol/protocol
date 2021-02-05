@@ -7,6 +7,7 @@ const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
+const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 
@@ -183,6 +184,14 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
     );
+  } else if (config.type === "invalid") {
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating InvalidPriceFeed",
+      config
+    });
+
+    return new InvalidPriceFeedMock();
   }
 
   logger.error({

@@ -208,16 +208,11 @@ class OptimisticOracleKeeper {
   }
 
   async sendDisputes() {
-    this.logger.debug({
-      at: "OptimisticOracleKeeper",
-      message: "Checking for disputable proposals to dispute"
-    });
+    // TODO
+  }
 
-    // Grab undisputed price request proposals
-    // For each request:
-    // - Create a pricefeed for identifier
-    // - Get disputable price
-    // - Send proposal
+  async settleRequests() {
+    // TODO
   }
 }
 
