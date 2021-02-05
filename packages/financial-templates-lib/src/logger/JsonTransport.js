@@ -12,17 +12,13 @@ function createJsonTransport() {
       printf(info => {
         let { timestamp, level, error, ...args } = info;
         if (error) {
-          // If there is an error then convert it from a Javascript error object into a json object. Json.stringify is
-          // used to remove the javascript error notation with message and sack and convert it to a key-value paired object.
-          error = JSON.parse(
-            JSON.stringify(
-              error
-                .replace(/\r?\n|\r/g, "")
-                .replace(/\s\s+/g, " ") // Remove tabbed chars.
-                .replace(/\\"/g, ""), // Remove escaped quotes.
-              Object.getOwnPropertyNames(error) // Turn the json object into a parsable structure.
-            )
-          );
+          // If there is an error then strip out all punctuation to make it easily consumable by GCP within a log json
+          // object. Note this error object is assumed to be a string, converted within Logger.js that uses this transport.
+          error = error
+            .toString()
+            .replace(/\r?\n|\r/g, "")
+            .replace(/\s\s+/g, " ") // Remove tabbed chars.
+            .replace(/\\"/g, ""); // Remove escaped quotes.
 
           info = { timestamp, level, error, ...args };
         }
