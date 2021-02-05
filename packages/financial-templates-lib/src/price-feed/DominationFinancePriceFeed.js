@@ -9,7 +9,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Instance used for Web3 utilities and conversions.
    * @param {String} pair Representation of the pair the price feed is tracking.
    *    The string should be the representation used by the DomFi API to identify this pair.
-   * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
+   * @param {Integer} lookback How far in the past the historical prices will be available using await  getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the Unix timestamp in seconds.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
@@ -36,6 +36,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     this.pair = pair;
     this.lookback = lookback;
+    this.uuid = `DominationFinance-${pair}`;
     this.tickPeriod = tickPeriod;
     this.networker = networker;
     this.getTime = getTime;
@@ -64,9 +65,9 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time, verbose = false) {
+  async getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return null;
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     // Set first price period in `historicalPrices` to first non-null price.
@@ -80,13 +81,13 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // If there are no valid price periods, return null.
     if (!firstEntry) {
-      return null;
+      throw new Error(`${this.uuid}: no valid price periods`);
     }
 
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < firstEntry.openTime) {
-      return null;
+      throw new Error(`${this.uuid}: time ${time} is before firstEntry.openTime`);
     }
 
     // `historicalPrices` are ordered from oldest to newest.
@@ -97,8 +98,9 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // If there is no match, that means that the time was past the last data point.
     // In this case, the best match for this price is the current price.
+    let returnPrice;
     if (match === undefined) {
-      let returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+      returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
         const priceDisplay = this.convertPriceFeedDecimals(returnPrice.toString());
 
@@ -109,10 +111,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
         );
         console.groupEnd();
       }
-      return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+      return returnPrice;
     }
 
-    let returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
+    returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
     if (verbose) {
       console.group(`\n(${this.pair}) Historical Prices @ ${match.closeTime}`);
       console.log(`- ✅ Price: ${this.convertPriceFeedDecimals(returnPrice.toString())}`);

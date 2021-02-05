@@ -18,7 +18,8 @@ const UMIP_PRECISION = {
   USDETH: 5,
   BTCDOM: 2,
   ALTDOM: 2,
-  BCHNBTC: 8
+  BCHNBTC: 8,
+  "GASETH-TWAP-1Mx1M": 18
 };
 const DEFAULT_PRECISION = 5;
 
@@ -75,7 +76,7 @@ async function getMedianHistoricalPrice(callback) {
 
     // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
-    const queryPrice = medianizerPriceFeed.getHistoricalPrice(queryTime, true);
+    const queryPrice = await medianizerPriceFeed.getHistoricalPrice(queryTime, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
     console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
     console.log(

@@ -267,7 +267,8 @@ contract("Disputer.js", function(accounts) {
         const earliestLiquidationTime = Number(empClient.getUndisputedLiquidations()[0].liquidationTime);
         priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
         await disputer.dispute();
-        assert.equal(spy.callCount, 3); // 3 warn level logs should be sent for 3 missing prices
+        assert.equal(spy.callCount, 3); // 3 error level logs should be sent for 3 missing prices
+        assert.ok(spy.getCall(-1).lastArg.error); // error param should not be undefined.
 
         // Start with a mocked price of 1.75 usd per token.
         // This makes all sponsors undercollateralized, meaning no disputes are issued.

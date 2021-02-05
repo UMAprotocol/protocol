@@ -16,6 +16,18 @@ module.exports = {
     "mocha/no-exclusive-tests": "error",
     "no-console": 0
   },
+  overrides: [
+    {
+      files: "*.ts",
+      parser: "@typescript-eslint/parser",
+      extends: [
+        "plugin:prettier/recommended",
+        "eslint:recommended",
+        "plugin:@typescript-eslint/eslint-recommended",
+        "plugin:@typescript-eslint/recommended"
+      ]
+    }
+  ],
   settings: {
     "mocha/additionalTestFunctions": ["describeModule"]
   },

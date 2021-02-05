@@ -31,6 +31,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
 
     this.contract = new web3.eth.Contract(abi, address);
+    this.uuid = `Balancer-${address}`;
     this.currentPrice = null;
     this.lastUpdateTime = null;
     this.tokenIn = tokenIn;
@@ -70,10 +71,10 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.lookback) {
       // Requesting an historical TWAP earlier than the lookback.
-      return null;
+      throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
     }
 
     let historicalPrice;
@@ -82,7 +83,12 @@ class BalancerPriceFeed extends PriceFeedInterface {
     } else {
       historicalPrice = this._computeTwap(time - this.twapLength, time);
     }
-    return historicalPrice && this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+
+    if (historicalPrice) {
+      return this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+    } else {
+      throw new Error(`${this.uuid} missing historical price @ time ${time}`);
+    }
   }
 
   getLastUpdateTime() {
