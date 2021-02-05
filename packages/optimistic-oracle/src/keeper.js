@@ -227,7 +227,7 @@ class OptimisticOracleKeeper {
       };
       this.logger.info({
         at: "OptimisticOracle#Keeper",
-        message: "Proposed price!👮‍♂️",
+        message: "Proposed price!💍",
         priceRequest,
         proposalPrice,
         txnConfig,
