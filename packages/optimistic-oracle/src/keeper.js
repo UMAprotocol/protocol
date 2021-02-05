@@ -27,6 +27,9 @@ class OptimisticOracleKeeper {
 
     this.ooContract = this.optimisticOracleClient.oracle;
 
+    // Cached mapping of identifiers to pricefeed classes
+    this.priceFeedCache = {};
+
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
     this.toBN = this.web3.utils.toBN;
@@ -55,8 +58,77 @@ class OptimisticOracleKeeper {
 
   async update() {
     await Promise.all([this.optimisticOracleClient.update(), this.gasEstimator.update()]);
+
+    // Increase allowances for all relevant collateral currencies.
+    // TODO: Consider whether this should happen in a separate function (i.e. `setAllowances`) or within
+    // the `sendProposals()` method.
+    await this._setAllowances();
   }
 
+  // Sets allowances for all collateral currencies used in unproposed price requests
+  async _setAllowances() {
+    // TODO: Should we do this also for currencies from undisputedProposals?
+    for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
+      // The OO requires approval to transfer the proposed price request's collateral currency in order to post a bond.
+      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
+      const [currentCollateralAllowance] = await Promise.all([
+        collateralToken.methods.allowance(this.account, this.ooContract.options.address).call()
+      ]);
+      if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
+        const collateralApprovalTx = await collateralToken.methods
+          .approve(this.ooContract.options.address, MAX_UINT_VAL)
+          .send({
+            from: this.account,
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          });
+        this.logger.info({
+          at: "OptimisticOracle#Keeper",
+          message: "Approved OO to transfer unlimited collateral tokens 💰",
+          currency: collateralToken.options.address,
+          collateralApprovalTx: collateralApprovalTx.transactionHash
+        });
+      }
+    }
+  }
+
+  // Create the pricefeed for a specific identifier and save it to the state, or
+  // return the saved pricefeed if already constructed.
+  async _createOrGetCachedPriceFeed(identifier) {
+    // First check for cached pricefeed for this identifier and return it if exists:
+    let priceFeed = this.priceFeedCache[identifier];
+    if (priceFeed) return priceFeed;
+
+    // No cached pricefeed found for this identifier. Create a new one.
+    // First, construct the  cofig for this identifier. We start with the `defaultPriceFeedConfig`
+    // properties and add custom properties for this specific identifier such as precision.
+    let priceFeedConfig = {
+      ...this.defaultPriceFeedConfig,
+      priceFeedDecimals: getPrecisionForIdentifier(identifier)
+    };
+    this.logger.debug({
+      at: "OptimisticOracleKeeper",
+      message: "Created pricefeed configuration for identifier",
+      defaultPriceFeedConfig: this.priceFeedConfig,
+      identifier
+    });
+
+    // Create a new pricefeed for this identifier. We might consider caching these price requests
+    // for re-use if any requests use the same identifier.
+    let newPriceFeed = await createReferencePriceFeedForEmp(
+      this.logger,
+      this.web3,
+      new Networker(this.logger),
+      () => Math.round(new Date().getTime() / 1000),
+      null, // No EMP Address needed since we're passing identifier explicitly
+      priceFeedConfig,
+      identifier
+    );
+    this.priceFeedCache[identifier] = newPriceFeed;
+    return newPriceFeed;
+  }
+
+  // Submit proposals to unproposed price requests.
   async sendProposals() {
     this.logger.debug({
       at: "OptimisticOracleKeeper",
@@ -64,30 +136,8 @@ class OptimisticOracleKeeper {
     });
 
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
-      // Construct pricefeed config for this identifier. We start with the `defaultPriceFeedConfig`
-      // properties and add custom properties for this specific identifier such as precision.
-      let priceFeedConfig = {
-        ...this.defaultPriceFeedConfig,
-        priceFeedDecimals: getPrecisionForIdentifier(priceRequest.identifier)
-      };
-      this.logger.debug({
-        at: "OptimisticOracleKeeper",
-        message: "Created pricefeed configuration for identifier",
-        defaultPriceFeedConfig: this.priceFeedConfig,
-        priceRequest
-      });
+      let priceFeed = await this._createOrGetCachedPriceFeed(priceRequest.identifier);
 
-      // Create a new pricefeed for this identifier. We might consider caching these price requests
-      // for re-use if any requests use the same identifier.
-      let priceFeed = await createReferencePriceFeedForEmp(
-        this.logger,
-        this.web3,
-        new Networker(this.logger),
-        () => Math.round(new Date().getTime() / 1000),
-        null, // No EMP Address needed since we're passing identifier explicitly
-        priceFeedConfig,
-        priceRequest.identifier
-      );
       // Pricefeed is either constructed correctly or is null.
       if (!priceFeed) {
         this.logger.error({
@@ -111,27 +161,6 @@ class OptimisticOracleKeeper {
           error
         });
         continue;
-      }
-
-      // The OO requires approval to transfer the proposed price request's collateral currency in order to post a bond.
-      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-      const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
-      const [currentCollateralAllowance] = await Promise.all([
-        collateralToken.methods.allowance(this.account, this.ooContract.options.address).call()
-      ]);
-      if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
-        const collateralApprovalTx = await collateralToken.methods
-          .approve(this.ooContract.options.address, MAX_UINT_VAL)
-          .send({
-            from: this.account,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          });
-        this.logger.info({
-          at: "OptimisticOracle#Keeper",
-          message: "Approved OO to transfer unlimited collateral tokens 💰",
-          currency: collateralToken.options.address,
-          collateralApprovalTx: collateralApprovalTx.transactionHash
-        });
       }
 
       // Create the transaction.

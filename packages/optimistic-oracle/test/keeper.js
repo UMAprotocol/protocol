@@ -8,7 +8,8 @@ const {
   GasEstimator,
   SpyTransport,
   lastSpyLogLevel,
-  spyLogIncludes
+  spyLogIncludes,
+  PriceFeedMockScaled
 } = require("@uma/financial-templates-lib");
 const { OptimisticOracleKeeper } = require("../src/keeper");
 const { interfaceName, getPrecisionForIdentifier, OptimisticOracleRequestStatesEnum } = require("@uma/common");
@@ -170,6 +171,20 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       await keeper.update();
     });
 
+    it("_setAllowances", async function() {
+      // Calling it once should set allowances
+      await keeper._setAllowances();
+
+      // Check for the successful INFO log emitted by the keeper.
+      assert.equal(lastSpyLogLevel(spy), "info");
+      assert.isTrue(spyLogIncludes(spy, -1, "Approved OO to transfer unlimited collateral tokens"));
+      const totalCalls = spy.callCount;
+
+      // Calling it again should skip setting allowances.
+      await keeper._setAllowances();
+      assert.equal(totalCalls, spy.callCount);
+    });
+
     it("Can send proposals to new price requests", async function() {
       // Should have one price request for each identifier.
       let expectedResults = [];
@@ -197,6 +212,11 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       // Check for the successful INFO log emitted by the keeper.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
+
+      // After one run, the pricefeed classes should all be cached in the keerp bot's state:
+      for (let i = 0; i < identifiersToTest.length; i++) {
+        assert.isTrue(keeper.priceFeedCache[web3.utils.hexToUtf8(identifiersToTest[i])] instanceof PriceFeedMockScaled);
+      }
     });
   });
 
