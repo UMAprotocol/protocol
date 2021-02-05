@@ -105,12 +105,6 @@ module.exports = (
     // Available capital calculates the max we can currently spend.
     // If there is NO withdrawal request pending (or the request has expired liveness), then
     // we'll ignore the WDF constraint and just liquidate with max funds.
-    // let availableCapital;
-    if (withdrawRequestPending) {
-      //   availableCapital = BN.max(toBN(0), syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)))
-    } else {
-      //   availableCapital = syntheticTokenBalance
-    }
     let availableCapital = withdrawRequestPending
       ? BN.max(toBN(0), syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)))
       : syntheticTokenBalance;
