@@ -218,6 +218,29 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
         assert.isTrue(keeper.priceFeedCache[web3.utils.hexToUtf8(identifiersToTest[i])] instanceof PriceFeedMockScaled);
       }
     });
+
+    it("Submitting another price request for already used identifier uses cached price feed", async function() {
+      // Submit another price request (with a different timestamp) for an identifier that is already used.
+      await optimisticRequester.requestPrice(
+        identifiersToTest[0],
+        requestTime + 1,
+        "0x",
+        collateralCurrenciesForIdentifier[0].address,
+        0
+      );
+      // Update the keeper since the OO state has changed
+      await keeper.update();
+
+      // Submit all of the proposals now for all pending price requests.
+      await keeper.sendProposals();
+
+      // There should be one call for each unique collateral currency and one for each price request.
+      const expectedCallCount = collateralCurrenciesForIdentifier.length + identifiersToTest.length + 1;
+      assert.equal(expectedCallCount, spy.callCount);
+
+      // Check that only 1 price feed is cached for each unique identifier.
+      assert.equal(Object.keys(keeper.priceFeedCache).length, identifiersToTest.length);
+    });
   });
 
   it("Skip price requests with identifiers that keeper cannot construct a price feed for", async function() {
