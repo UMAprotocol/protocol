@@ -20,8 +20,8 @@ const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMul
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
@@ -131,6 +131,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
               finder = await Finder.new();
               timer = await Timer.new();
+
               store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
               await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
 
@@ -524,8 +525,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 assert.deepStrictEqual([], client.getAllRegularFeeEvents());
 
                 // Set fees to 1% per second and advance 1 second.
-                await store.setFixedOracleFeePerSecondPerPfc({ rawValue: convertSynthetic("0.01") });
-                await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
+                await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
+                await timer.setCurrentTime((await store.getCurrentTime()).toNumber() + 1);
                 const regularFeeTxObj1 = await emp.payRegularFees();
 
                 await client.update();
@@ -581,7 +582,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 await emp.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("1") },
                   unreachableDeadline,
                   { from: liquidator }
@@ -629,7 +630,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 const txObject1 = await emp.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("100") },
                   unreachableDeadline,
                   { from: liquidator }
@@ -664,7 +665,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 const txObject2 = await emp.createLiquidation(
                   sponsor2,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("100") },
                   unreachableDeadline,
                   { from: liquidator }
@@ -694,7 +695,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               await emp.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertSynthetic("99999") },
+                { rawValue: convertPrice("99999") },
                 { rawValue: convertSynthetic("100") },
                 unreachableDeadline,
                 { from: liquidator }
@@ -735,7 +736,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 await emp.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("100") },
                   unreachableDeadline,
                   { from: liquidator }
@@ -753,7 +754,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
                 // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
                 // disputed liquidation.
-                const disputePrice = convertSynthetic("1.6");
+                const disputePrice = convertPrice("1.6");
                 await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
                 const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -792,7 +793,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 await emp.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("100") },
                   unreachableDeadline,
                   { from: liquidator }
@@ -903,7 +904,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 await emp.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertSynthetic("99999") },
+                  { rawValue: convertPrice("99999") },
                   { rawValue: convertSynthetic("100") },
                   unreachableDeadline,
                   { from: liquidator }

@@ -314,7 +314,7 @@ class ExpiringMultiPartyEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         caller: event.returnValues.caller,
-        // TODO: refactor this method to use > syntax for versions. this will require a bit of an overhall to enable version comparison.
+        // TODO: refactor this method to use > syntax for versions. this will require a bit of an overhaul to enable version comparison.
         withdrawalAmount:
           this.contractVersion == "1.2.0" || this.contractVersion == "1.2.1" || this.contractVersion == "1.2.2"
             ? event.returnValues.withdrawalAmount
