@@ -9,6 +9,7 @@ the process works smoothly and your contributions can be merged as quickly and e
 - If you are a maintainer and your review is requested, you are expected to either provide a review within 1 business
   day (in your time zone) or reassign the review to another maintainer.
 - The same expectations apply for follow-up reviews where your review is re-requested after an update has been made.
+- See [MAINTAINING.md](./MAINTAINING.md) for information about the responsibilities of the on-duty maintainer.
 
 ## Communication
 
