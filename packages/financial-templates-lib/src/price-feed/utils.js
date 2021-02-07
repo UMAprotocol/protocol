@@ -168,7 +168,12 @@ exports.PriceHistory = (getPrice, prices = {}) => {
   };
 };
 
-// A simple class-like structure to find blocks by timestamp, but keep a cache to optimize the search.
+/**
+ * @notice Constructs the BlockFinder, which is a simple class-like object to find blocks by timestamp, but keeps a
+ *      cache to optimize the search.
+ * @param {Function} requestBlock async function, like web3.eth.getBlock that returns a block for a particular block
+ *      number or returns the latest block if no argument is provided. Blocks returned must have a `number` and
+ */
 exports.BlockFinder = (requestBlock, blocks = []) => {
   // Grabs the most recent block and caches it.
   async function getLatestBlock() {
@@ -214,8 +219,10 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     }
   }
 
-  // Gets the latest block with a timestamp <= the provided timestamp.
-  // Throws if the timestamp is after the latest block or before the 0th block.
+  /**
+   * @notice Gets the latest block whose timestamp is <= the provided timestamp.
+   * @param {number} timestamp timestamp to search.
+   */
   async function getBlockForTimestamp(timestamp) {
     // If the last block we have stored is too early, grab the latest block.
     if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {
