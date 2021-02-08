@@ -221,7 +221,7 @@ class Liquidator {
       this.logger.info({
         at: "Liquidator",
         message:
-          "The whale defense fund reserve amount is greater than the liquidators synthetic balance. This might result in unintended consequences. Consider changing this param or adding more synthetics.",
+          "The whale defense fund reserve amount is greater than the liquidators synthetic balance. This might result in skipped liquidations. Consider reducing this threshold or adding more synthetics.",
         botTokenBalance: maxTokensToLiquidateWei.toString(),
         whaleDefenseFundWei: this.whaleDefenseFundWei.toString()
       });
