@@ -46,7 +46,7 @@ const defaultHubConfig = {
   configRetrieval: "localStorage",
   saveQueriedBlock: "localStorage",
   spokeRunner: "localStorage",
-  rejectSpokeDelay: 120 // 2 min.
+  rejectSpokeDelay: 60 // 2 min.
 };
 
 hub.post("/", async (req, res) => {
@@ -186,7 +186,7 @@ hub.post("/", async (req, res) => {
               spokeName: spokeName,
               errorReported: errorOutput.errorOutputs[spokeName].execResponse
                 ? errorOutput.errorOutputs[spokeName].execResponse.stderr
-                : JSON.stringify(errorOutput.errorOutputs[spokeName])
+                : errorOutput.errorOutputs[spokeName]
             };
           } catch (err) {
             // `errorMessages` is in an unexpected JSON shape.
