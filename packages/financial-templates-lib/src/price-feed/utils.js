@@ -213,7 +213,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     const blockPercentile = (timestamp - startBlock.timestamp) / totalTimeDifference;
     const estimatedBlock = startBlock.number + Math.round(blockPercentile * totalBlockDistance);
 
-    // Clamp is just ensures the estimated block is strictly greater than the start block and strictly less than the end block.
+    // Clamp ensures the estimated block is strictly greater than the start block and strictly less than the end block.
     const newBlock = await getBlock(lodash.clamp(estimatedBlock, startBlock.number + 1, endBlock.number - 1));
 
     // Depending on whether the new block is below or above the timestamp, narrow the search space accordingly.
