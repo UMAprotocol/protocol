@@ -192,8 +192,11 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     return block;
   }
 
+  // Return the latest block, between startBlock and endBlock, whose timestamp is <= timestamp.
   // Effectively, this is an interpolation search algorithm to minimize block requests.
   async function findBlock(startBlock, endBlock, timestamp) {
+    assert(endBlock.number !== startBlock.number, "startBlock cannot equal endBlock");
+
     // In the case of equality, the endBlock is expected to be passed as the one whose timestamp === the requested
     // timestamp.
     if (endBlock.timestamp === timestamp) return endBlock;
