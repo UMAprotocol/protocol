@@ -335,7 +335,7 @@ async function Poll(callback) {
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
       errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
-      // Default to 10 seconds in between error re-tries.
+      // Default to 1 seconds in between error re-tries.
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
       // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
       // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
