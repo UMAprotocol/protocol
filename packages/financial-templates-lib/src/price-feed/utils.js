@@ -175,6 +175,7 @@ exports.PriceHistory = (getPrice, prices = {}) => {
  *      number or returns the latest block if no argument is provided. Blocks returned must have a `number` and
  */
 exports.BlockFinder = (requestBlock, blocks = []) => {
+  assert(requestBlock, "requestBlock function must be provided");
   // Grabs the most recent block and caches it.
   async function getLatestBlock() {
     const block = await requestBlock();
@@ -233,6 +234,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
    * @param {number} timestamp timestamp to search.
    */
   async function getBlockForTimestamp(timestamp) {
+    assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
     // If the last block we have stored is too early, grab the latest block.
     if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {
       const block = await getLatestBlock();
