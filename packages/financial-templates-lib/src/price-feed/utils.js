@@ -197,8 +197,6 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
   // Effectively, this is an interpolation search algorithm to minimize block requests.
   // Note: startBlock and endBlock _must_ be different blocks.
   async function findBlock(startBlock, endBlock, timestamp) {
-    assert(endBlock.number !== startBlock.number, "startBlock cannot equal endBlock");
-
     // In the case of equality, the endBlock is expected to be passed as the one whose timestamp === the requested
     // timestamp.
     if (endBlock.timestamp === timestamp) return endBlock;
@@ -207,6 +205,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     // timestamp to be <= the requested timestamp.
     if (endBlock.number === startBlock.number + 1) return startBlock;
 
+    assert(endBlock.number !== startBlock.number, "startBlock cannot equal endBlock");
     assert(
       timestamp < endBlock.timestamp && timestamp > startBlock.timestamp,
       "timestamp not in between start and end blocks"
