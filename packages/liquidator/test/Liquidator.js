@@ -1633,7 +1633,7 @@ contract("Liquidator.js", function(accounts) {
               // does not have enough to liquidate entire position
               await emp.create(
                 { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("90") },
+                { rawValue: convertSynthetic("70") },
                 { from: liquidatorBot }
               );
 
@@ -1644,14 +1644,27 @@ contract("Liquidator.js", function(accounts) {
               await liquidator.liquidatePositions();
 
               // There should be exactly one liquidation in sponsor1's account that used the entire
-              // liquidator bot's balance of 90 tokens.
+              // liquidator bot's balance of 70 tokens.
               let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-              assert.equal(liquidationObject.sponsor, sponsor1);
               assert.equal(liquidationObject.liquidator, liquidatorBot);
-              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-              // 90/100 tokens were liquidated, equivalent to 0.9 * 120 = 108 collateral.
-              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("108"));
-              assert.equal(liquidationObject.lockedCollateral, convertCollateral("108"));
+              // 70/100 tokens were liquidated, using the liquidator's full balance
+              assert.equal(liquidationObject.tokensOutstanding.rawValue, convertSynthetic("70"));
+
+              // Now make a withdrawal request and check that the bot activates its WDF strat
+              // and only liquidates the minimum. Create 30 more tokens with which to liquidate,
+              // and check that the bot only uses the minimum amount.
+              await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
+              await emp.create(
+                { rawValue: convertCollateral("1000") },
+                { rawValue: convertSynthetic("30") },
+                { from: liquidatorBot }
+              );
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              liquidationObject = (await emp.getLiquidations(sponsor1))[1];
+              assert.equal(liquidationObject.liquidator, liquidatorBot);
+              // The minimum of 5 tokens should have been liquidated.
+              assert.equal(liquidationObject.tokensOutstanding.rawValue, convertSynthetic("5"));
             }
           );
         });
