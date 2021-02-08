@@ -142,7 +142,7 @@ hub.post("/", async (req, res) => {
       });
       const rejectedRetryResults = await Promise.allSettled(rejectedRetryPromiseArray);
       rejectedRetryResults.forEach((result, index) => {
-        _processSpokeResponse(Object.keys(configObject)[index], result, validOutputs, errorOutputs);
+        _processSpokeResponse(retriedOutputs[index], result, validOutputs, errorOutputs);
       });
     }
     // If there are any error outputs(from the original loop or from re-tried calls) then throw.

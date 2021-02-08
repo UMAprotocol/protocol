@@ -274,6 +274,7 @@ async function run({
           message: "End of serverless execution loop - terminating process"
         });
         await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
       logger.debug({
@@ -306,10 +307,10 @@ async function Poll(callback) {
       empAddress: process.env.EMP_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
-      // Default to 5 re-tries on error within the execution loop.
-      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
-      // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10,
+      // Default to 3 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
+      // Default to 1 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
       // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
       // set then default to null which indicates that the bot should start at the current block number.
       startingBlock: process.env.STARTING_BLOCK_NUMBER,
