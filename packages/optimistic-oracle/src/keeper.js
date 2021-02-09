@@ -100,7 +100,7 @@ class OptimisticOracleKeeper {
     if (priceFeed) return priceFeed;
 
     // No cached pricefeed found for this identifier. Create a new one.
-    // First, construct the  cofig for this identifier. We start with the `defaultPriceFeedConfig`
+    // First, construct the config for this identifier. We start with the `defaultPriceFeedConfig`
     // properties and add custom properties for this specific identifier such as precision.
     let priceFeedConfig = {
       ...this.defaultPriceFeedConfig,
@@ -132,7 +132,7 @@ class OptimisticOracleKeeper {
   async sendProposals() {
     this.logger.debug({
       at: "OptimisticOracleKeeper",
-      message: "Checking for unproposed price requsts to send proposals for"
+      message: "Checking for unproposed price requests to send proposals for"
     });
 
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
@@ -168,7 +168,7 @@ class OptimisticOracleKeeper {
         priceRequest.requester,
         this.utf8ToHex(priceRequest.identifier),
         priceRequest.timestamp,
-        "0x", // Ancillary data
+        priceRequest.ancillaryData,
         proposalPrice
       );
 
@@ -221,6 +221,7 @@ class OptimisticOracleKeeper {
         requester: receipt.events.ProposePrice.returnValues.requester,
         proposer: receipt.events.ProposePrice.returnValues.proposer,
         identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
+        ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData,
         timestamp: receipt.events.ProposePrice.returnValues.timestamp,
         proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
         expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp

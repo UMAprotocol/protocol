@@ -140,6 +140,10 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
   });
 
   describe("Valid price identifiers", function() {
+    // Test with non-default ancillary data to simulate EMP's and Perp's using tokenAddress for this field
+    const DATA_LIMIT_BYTES = 16;
+    let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+
     beforeEach(async function() {
       // Make a new price request for each identifier, each of which should cause the keeper bot to
       // construct a pricefeed with a new precision.
@@ -147,7 +151,7 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
         await optimisticRequester.requestPrice(
           identifiersToTest[i],
           requestTime,
-          "0x",
+          ancillaryData,
           collateralCurrenciesForIdentifier[i].address,
           0
         );
@@ -192,6 +196,7 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
         expectedResults.push({
           requester: optimisticRequester.address,
           identifier: hexToUtf8(identifiersToTest[i]),
+          ancillaryData,
           timestamp: requestTime.toString(),
           currency: collateralCurrenciesForIdentifier[i].address,
           reward: "0",
@@ -206,14 +211,14 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
 
       // Check that the onchain requests have been proposed to.
       for (let i = 0; i < identifiersToTest.length; i++) {
-        await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i]);
+        await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryData);
       }
 
       // Check for the successful INFO log emitted by the keeper.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
 
-      // After one run, the pricefeed classes should all be cached in the keerp bot's state:
+      // After one run, the pricefeed classes should all be cached in the keeper bot's state:
       for (let i = 0; i < identifiersToTest.length; i++) {
         assert.isTrue(keeper.priceFeedCache[web3.utils.hexToUtf8(identifiersToTest[i])] instanceof PriceFeedMockScaled);
       }
@@ -273,7 +278,7 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
   });
 
   it("Skip price requests with historical prices that keeper fails to fetch", async function() {
-    // Request a valid identifier but set an invalid price feed config.
+    // Request a valid identifier that is getting bad data from the data source.
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
     const invalidPriceFeedIdentifier = web3.utils.utf8ToHex("INVALID");
     await identifierWhitelist.addSupportedIdentifier(invalidPriceFeedIdentifier);
