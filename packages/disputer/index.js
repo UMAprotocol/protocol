@@ -178,6 +178,7 @@ async function run({
           message: "End of serverless execution loop - terminating process"
         });
         await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
       logger.debug({
@@ -207,10 +208,10 @@ async function Poll(callback) {
       empAddress: process.env.EMP_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
-      // Default to 5 re-tries on error within the execution loop.
-      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
-      // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10,
+      // Default to 3 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
+      // Default to 1 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 1,
       // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
       // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
       // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
