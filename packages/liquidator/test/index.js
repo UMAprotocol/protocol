@@ -24,11 +24,8 @@ let identifierWhitelist;
 let configStore;
 let collateralWhitelist;
 let optimisticOracle;
-
 let defaultPriceFeedConfig;
-
 let constructorParams;
-
 let spy;
 let spyLogger;
 

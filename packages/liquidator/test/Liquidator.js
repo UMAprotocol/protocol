@@ -230,9 +230,7 @@ contract("Liquidator.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await emp.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") {
-            await emp.applyFundingRate();
-          }
+          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
 
           spy = sinon.spy();
 
@@ -583,7 +581,7 @@ contract("Liquidator.js", function(accounts) {
             assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
 
             // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
-            // NOTE the check below has a bit of switching logic that is version specific.
+            // Note the check below has a bit of switching logic that is version specific to accommodate the change in withdrawal behaviour.
             assert.equal(
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
               PostWithdrawLiquidationRewardsStatusTranslations[
@@ -722,10 +720,7 @@ contract("Liquidator.js", function(accounts) {
             async function() {
               let errorThrown;
               try {
-                liquidatorConfig = {
-                  ...liquidatorConfig,
-                  crThreshold: 1
-                };
+                liquidatorConfig = { ...liquidatorConfig, crThreshold: 1 };
                 liquidator = new Liquidator({
                   logger: spyLogger,
                   expiringMultiPartyClient: empClient,
@@ -750,17 +745,8 @@ contract("Liquidator.js", function(accounts) {
             async function() {
               let errorThrown;
               try {
-                liquidatorConfig = {
-                  ...liquidatorConfig,
-                  crThreshold: -0.02
-                };
+                liquidatorConfig = { ...liquidatorConfig, crThreshold: -0.02 };
                 liquidator = new Liquidator({
-                  logger: spyLogger,
-                  expiringMultiPartyClient: empClient,
-                  gasEstimator,
-                  votingContract: mockOracle.contract,
-                  syntheticToken: syntheticToken.contract,
-                  priceFeed: priceFeedMock,
                   account: accounts[0],
                   empProps,
                   liquidatorConfig
@@ -774,10 +760,7 @@ contract("Liquidator.js", function(accounts) {
           );
 
           versionedIt([{ contractType: "any", contractVersion: "any" }])("Sets `crThreshold` to 2%", async function() {
-            liquidatorConfig = {
-              ...liquidatorConfig,
-              crThreshold: 0.02
-            };
+            liquidatorConfig = { ...liquidatorConfig, crThreshold: 0.02 };
             liquidator = new Liquidator({
               logger: spyLogger,
               expiringMultiPartyClient: empClient,
@@ -1273,11 +1256,7 @@ contract("Liquidator.js", function(accounts) {
         });
         describe("enabling withdraw defense feature", () => {
           versionedIt([{ contractType: "any", contractVersion: "any" }])("should initialize when enabled", async () => {
-            liquidatorConfig = {
-              ...liquidatorConfig,
-              whaleDefenseFundWei: 1,
-              defenseActivationPercent: 50
-            };
+            liquidatorConfig = { ...liquidatorConfig, whaleDefenseFundWei: 1, defenseActivationPercent: 50 };
             const liquidator = new Liquidator({
               logger: spyLogger,
               expiringMultiPartyClient: empClient,
@@ -1299,11 +1278,7 @@ contract("Liquidator.js", function(accounts) {
               // so by setting `whaleDefenseFundWei = 1 wei`, we make the liquidator's entire `tokenBalance` available
               // to it. So in this test, the WDF is not triggered because the liquidator has enough available capital
               // to liquidate a full position.
-              liquidatorConfig = {
-                ...liquidatorConfig,
-                whaleDefenseFundWei: 1,
-                defenseActivationPercent: 50
-              };
+              liquidatorConfig = { ...liquidatorConfig, whaleDefenseFundWei: 1, defenseActivationPercent: 50 };
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 expiringMultiPartyClient: empClient,
@@ -1678,7 +1653,7 @@ contract("Liquidator.js", function(accounts) {
         );
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
           versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
-            "Can correctly detect invalid withdrawals and liquidate them",
+            "Can correctly detect invalid positions and liquidate them",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await emp.create(
@@ -1751,7 +1726,7 @@ contract("Liquidator.js", function(accounts) {
 
               // If either the price increase, funding ratemultiplier increase or the sponsors collateral decrease they
               // will be at risk of being liquidated. Say that the funding rate has another 0.01 added to it. The cumulative
-              // funding rate will then be 1.04 * (1 + 0.000001 * 1000) = 1.0504. This will place sponsor1 underwater with
+              // funding rate will then be 1.04 * (1 + 0.000001 * 10000) = 1.0504. This will place sponsor1 underwater with
               // a CR of 125 / (100 * 1.0504 * 1) = 1.19 (which is less than 1.2) and they should get liquidated by the bot.
               await _setFundingRateAndAdvanceTime(toWei("0.000001"));
               await emp.applyFundingRate();

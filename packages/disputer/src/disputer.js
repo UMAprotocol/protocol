@@ -72,6 +72,18 @@ class Disputer {
         isValid: x => {
           return x >= 6000000 && x < 15000000;
         }
+      },
+      contractType: {
+        value: undefined,
+        isValid: x => {
+          return x === "ExpiringMultiParty" || x === "Perpetual";
+        }
+      },
+      contractVersion: {
+        value: undefined,
+        isValid: x => {
+          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "latest";
+        }
       }
     };
 
@@ -259,15 +271,24 @@ class Disputer {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawAmount, gasEstimation;
+      let withdrawalCallResponse, paidToDisputer, gasEstimation;
       try {
-        [withdrawAmount, gasEstimation] = await Promise.all([
+        [withdrawalCallResponse, gasEstimation] = await Promise.all([
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-        if (revertWrapper(withdrawAmount) === null) {
+
+        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+        // In later versions it returns an object containing all payouts.
+        paidToDisputer =
+          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
+            ? withdrawalCallResponse.rawValue.toString()
+            : withdrawalCallResponse.paidToDisputer.rawValue.toString();
+
+        // If the call would revert OR the disputer would get nothing for withdrawing then throw and continue.
+        if (revertWrapper(withdrawalCallResponse) === null || paidToDisputer === "0") {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -289,7 +310,7 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToDisputer,
         txnConfig
       });
 
@@ -332,7 +353,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToDisputer,
         txnConfig,
         liquidationResult: logResult
       });

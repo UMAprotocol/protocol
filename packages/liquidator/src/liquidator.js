@@ -495,6 +495,13 @@ class Liquidator {
         continue;
       }
 
+      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      const amountWithdrawn =
+        this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
+          ? withdrawalCallResponse.rawValue.toString()
+          : withdrawalCallResponse.payToLiquidator.rawValue.toString();
+
       const txnConfig = {
         from: this.account,
         gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
@@ -506,10 +513,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amountWithdrawn:
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
+        amountWithdrawn,
         txnConfig
       });
 
@@ -581,10 +585,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amountWithdrawn:
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
+        amountWithdrawn,
         txnConfig,
         liquidationResult: logResult
       });

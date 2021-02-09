@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -46,26 +46,62 @@ async function run({
 }) {
   try {
     const { toBN } = web3.utils;
-
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Disputer#index",
+      message: "Disputer started🔎",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      disputerConfig,
+      disputerOverridePrice
+    });
+
     // Load unlocked web3 accounts and get the networkId.
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const [detectedContract, accounts, networkId] = await Promise.all([
+      findContractVersion(empAddress, web3),
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
+    ]);
+
+    // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
+    if (!disputerConfig) disputerConfig = {};
+    if (!disputerConfig.contractVersion) disputerConfig.contractVersion = detectedContract.contractVersion;
+    if (!disputerConfig.contractType) disputerConfig.contractType = detectedContract.contractType;
+
+    // Check that the version and type is supported. Note if either is null this check will also catch it.
+    if (
+      SUPPORTED_CONTRACT_VERSIONS.filter(
+        vo => vo.contractType == disputerConfig.contractType && vo.contractVersion == disputerConfig.contractVersion
+      ).length == 0
+    )
+      throw new Error(
+        `Contract version specified or inferred is not supported by this bot. Disputer config:${JSON.stringify(
+          disputerConfig
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} are not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
+      );
 
     // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(getAbi(disputerConfig.contractType, disputerConfig.contractVersion), empAddress);
 
     // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
-      emp.methods.priceIdentifier().call(),
+    const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call()
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
+    const [priceIdentifier, currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
+      emp.methods.priceIdentifier().call(),
       collateralToken.methods.allowance(accounts[0], empAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
@@ -89,29 +125,16 @@ async function run({
       priceIdentifier: priceIdentifier
     };
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Disputer#index",
-      message: "Disputer started🔎",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      disputerConfig,
-      disputerOverridePrice
-    });
-
     // Client and dispute bot.
     const empClient = new ExpiringMultiPartyClient(
       logger,
-      getAbi("ExpiringMultiParty"),
+      getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
       web3,
       empAddress,
       collateralDecimals,
       syntheticDecimals,
-      priceFeed.getPriceFeedDecimals()
+      priceFeed.getPriceFeedDecimals(),
+      disputerConfig.contractType
     );
 
     const gasEstimator = new GasEstimator(logger);
@@ -123,7 +146,7 @@ async function run({
       priceFeed,
       account: accounts[0],
       empProps,
-      config: disputerConfig
+      disputerConfig
     });
 
     logger.debug({
@@ -132,7 +155,8 @@ async function run({
       collateralDecimals: Number(collateralDecimals),
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig: priceFeedConfig
+      priceFeedConfig,
+      disputerConfig
     });
 
     // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
@@ -219,7 +243,11 @@ async function Poll(callback) {
       // {"type":"cryptowatch","exchange":"binance"}]}
       priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
       // If there is a disputer config, add it. Else, set to null. This config contains disputeDelay and txnGasLimit. EG:
-      // {"disputeDelay":60,"txnGasLimit":9000000}
+      // {"disputeDelay":60, -> delay in seconds from detecting a disputable position to actually sending the dispute.
+      // "txnGasLimit":9000000 -> gas limit for sent transactions.
+      // "contractType":"ExpiringMultiParty", -> override the kind of contract the disputer is pointing at.
+      // "contractVersion":"ExpiringMultiParty"} -> override the contract version the disputer is pointing at.
+      // }
       disputerConfig: process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null,
       // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
       // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
