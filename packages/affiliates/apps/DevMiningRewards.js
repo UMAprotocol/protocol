@@ -5,6 +5,7 @@ const assert = require("assert");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
+const highland = require('highland')
 
 const Config = require("../libs/config");
 const { DevMining } = require("../libs/affiliates");
@@ -87,10 +88,25 @@ async function App(config, env) {
   };
 }
 
-const config = Config();
+// const config = Config();
 
-App(config, process.env)
-  .then(x => console.log(JSON.stringify(x, null, 2)))
-  .catch(console.error)
-  // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
-  .finally(() => process.exit());
+highland(process.stdin)
+  .reduce('',(result,str)=>{
+    return result + str
+  })
+  .map(x=>JSON.parse(x))
+  .map(config=>App(config,process.env))
+  .flatMap(highland)
+  .errors((err,next)=>{
+    console.error(err)
+  })
+  .each(x=>{
+    console.log(JSON.stringify(x, null, 2))
+    process.exit()
+  })
+
+// App(config, process.env)
+//   .then(x => console.log(JSON.stringify(x, null, 2)))
+//   .catch(console.error)
+//   // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
+//   .finally(() => process.exit());
