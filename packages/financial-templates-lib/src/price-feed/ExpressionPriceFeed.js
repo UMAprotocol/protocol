@@ -81,7 +81,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     const decimalsValue = decimalArray[0];
     assert(decimalsValue, "Invalid decimals value");
     assert(
-      decimalArray.every(decimals => decimals === decimalArray[0]),
+      decimalArray.every(decimals => decimals === decimalsValue),
       "Constituent price feeds do not have matching decimals"
     );
     return decimalsValue;
