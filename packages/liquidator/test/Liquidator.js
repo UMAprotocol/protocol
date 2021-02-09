@@ -210,7 +210,8 @@ contract("Liquidator.js", function(accounts) {
             store,
             configStore: configStore || {} // if the contract type is not a perp this will be null.
           });
-          // Deploy a new expiring multi party
+
+          // Deploy a new expiring multi party OR perpetual, depending on the test version.
           emp = await financialContract.new(constructorParams);
           await syntheticToken.addMinter(emp.address);
           await syntheticToken.addBurner(emp.address);

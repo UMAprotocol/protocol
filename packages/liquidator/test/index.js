@@ -9,6 +9,11 @@ const {
 
 const { getTruffleContract } = require("@uma/core");
 
+// Custom winston transport module to monitor winston log outputs
+const winston = require("winston");
+const sinon = require("sinon");
+const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
+
 // Script to test
 const Poll = require("../index.js");
 
@@ -34,11 +39,6 @@ let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
-
-// Custom winston transport module to monitor winston log outputs
-const winston = require("winston");
-const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -386,7 +386,7 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
+        // To verify contract type detection is correct for a standard feed, check the third log to see it matches expected.
         assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
         assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
         assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
@@ -415,10 +415,16 @@ contract("index.js", function(accounts) {
         // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
         assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
         assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
-
+      });
+      it("Correctly rejects unknown contract types", async function() {
         // Should produce an error on a contract type that is unknown. set the emp as the finder, for example
-
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        });
         let didThrowError = false;
+        let errorString;
         try {
           await Poll.run({
             logger: spyLogger,
@@ -431,9 +437,11 @@ contract("index.js", function(accounts) {
           });
         } catch (error) {
           didThrowError = true;
+          errorString = error.toString();
         }
 
         assert.isTrue(didThrowError);
+        assert.isTrue(errorString.includes("Contract version specified or inferred is not supported by this bot"));
       });
       it("Correctly re-tries after failed execution loop", async function() {
         // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
