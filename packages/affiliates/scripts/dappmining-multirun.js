@@ -7,7 +7,7 @@ function periodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-D
   }
 }
 
-const weekNumber = 3
+const weekNumber = 4
 const period = periodFromWeek(weekNumber)
 const configs = [
   {
