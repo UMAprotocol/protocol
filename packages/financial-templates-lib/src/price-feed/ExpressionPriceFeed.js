@@ -2,10 +2,7 @@ const assert = require("assert");
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const Web3 = require("web3");
 const { create, all } = require("mathjs");
-const math = create(all, {
-  number: "BigNumber",
-  precision: 100
-});
+const math = create(all, { number: "BigNumber", precision: 100 });
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
