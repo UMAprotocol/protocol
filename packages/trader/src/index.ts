@@ -8,7 +8,7 @@ export async function run(): Promise<void> {
   const config = new TraderConfig(process.env);
   await retry(
     async () => {
-      console.log(config.empAddress);
+      // Trading logic here.
     },
     {
       retries: 3,
