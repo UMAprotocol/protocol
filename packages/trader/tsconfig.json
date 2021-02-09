@@ -1,8 +1,10 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["src/**/*.ts"],
+  "include": ["test/**/*.ts", "hardhat.config.ts"],
   "compilerOptions": {
-    "outDir": "build",
-    "declaration": true
-  }
+    "outDir": "build"
+  },
+  "references": [
+    { "path": "./src/" }
+]
 }
