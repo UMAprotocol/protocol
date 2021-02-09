@@ -21,9 +21,10 @@ function template({contractName,contractAddress,startTime,endTime, whitelist, we
 `
 Run dapp mining rewards for [${contractName}](${eslink(contractAddress)}) week ${weekNumber + 1} from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}).
 
-Use whitelisted addresses:
-${whitelist.map(addr=>{
-  return `  - [${addr}](${eslink(addr)})`
+Name | Tagged Address
+-- | -- 
+${whitelist.map(data=>{
+  return data.join(' | ')
 }).join('\n')}
 `
     }
@@ -71,15 +72,16 @@ function periodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-D
   }
 }
 
-const weekNumber = 3
+const weekNumber = 4
 const period = periodFromWeek(weekNumber)
 const configs = [
   {
     contractName:'YD-ETH-MAR21',
     contractAddress:'0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5',
     whitelist:[
-      '0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35',
-      '0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71',
+      ['UMA (default)','0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35'],
+      ['OpenDAO','0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71'],
+      ['MakeShift Finance','0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9'],
     ],
     ...period,
   },
@@ -87,16 +89,17 @@ const configs = [
     contractName:'YD-BTC-MAR21',
     contractAddress:'0x1c3f1A342c8D9591D9759220d114C685FD1cF6b8',
     whitelist:[
-      '0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71',
-      '0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35',
+      ['UMA (default)','0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35'],
+      ['OpenDAO','0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71'],
+      ['MakeShift Finance','0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9'],
     ],
     ...period,
   }
 
 ]
 Promise.map(configs,config=>{
-  return template(config)
-  // return rungh(config)
+  // return template(config)
+  return rungh(config)
 }).then(console.log)
 
 // console.log(templates.dappmining(config))

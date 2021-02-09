@@ -1,15 +1,35 @@
-require('dotenv').config()
+// collection of functions to compose a automation pipeline
 const highland = require('highland')
 const moment = require('moment')
 const { Octokit } = require("@octokit/rest");
 
-
 function eslink(addr){
   return `https://etherscan.io/address/${addr}`
 }
+
 function mdlink(text,link){
   return `[${text}](${link})`
 }
+
+function dappMiningTemplate({contractName,contractAddress,startTime,endTime, whitelist, weekNumber}){
+    const startDate = moment(startTime).utc().format('YYYY/MM/DD')
+    const endDate = moment(endTime).utc().format('YYYY/MM/DD')
+    const startDateTime = moment(startTime).format('YYYY/MM/DD HH:mm')
+    const endDateTime = moment(endTime).format('YYYY/MM/DD HH:mm')
+    return {
+      title:`Run Dapp Mining rewards for ${contractName} week ${weekNumber + 1} between ${startDate} and ${endDate}`,
+      body:
+`
+Run dapp mining rewards for ${mdlink(contractName,eslink(contractAddress)} week ${weekNumber + 1} from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}).
+
+Use whitelisted addresses:
+${whitelist.map(addr=>{
+  return `  - ${mdlink(addr,eslink(addr))}`
+}).join('\n')}
+`
+    }
+}
+
 function devMiningTemplate({empWhitelist,startTime,endTime,totalRewards,fallbackPrices,details}){
     const startDate = moment(startTime).utc().format('YYYY/MM/DD')
     const endDate = moment(endTime).utc().format('YYYY/MM/DD')
@@ -36,15 +56,17 @@ ${fallbackPrices.map(pair=>{
 `
 
     }
-
 }
 
-async function rungh(markdown){
-  const { data } = await octokit.request("/user");
+async function createGithubIssue({auth,owner='UMAprotocol',repo='protocol',...rest}={}){
+  assert(auth,'requires github auth credentials')
+  const octokit = new Octokit({
+    auth: process.env.github,
+  });
   return octokit.issues.create({
-    owner:'UMAprotocol',
-    repo:'protocol',
-    ...markdown,
+    owner,
+    repo,
+    ...rest,
   })
 }
 
@@ -53,7 +75,7 @@ function whitelistFromDetails(details){
     return [detail.empAddress,detail.payoutAddress]
   })
 }
-function generateFullConfig(details){
+function generateConfig(details){
   const startTime=moment("2021-02-01 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()
   const endTime=moment(startTime).add(7,'days').valueOf()
   const empWhitelist = whitelistFromDetails(details)
@@ -82,17 +104,29 @@ function generateMarkdownConfig(details){
   }
 }
 
-highland(process.stdin)
+function dappMiningPeriodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()){
+  return {
+    weekNumber,
+    startTime:moment(first).add(weekNumber,'weeks').valueOf(),
+    endTime:moment(first).add(weekNumber + 1,'weeks').valueOf(),
+  }
+}
+function devMiningPeriodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()){
+}
+
+function makeUnixPipe(through,stdin=process.stdin){
+ return highland(stdin)
   .reduce('',(result,str)=>{
     return result + str
   })
   .map(x=>JSON.parse(x))
-  .map(generateMarkdownConfig)
-  .map(devMiningTemplate)
-  .map(rungh)
-  .flatMap(highland)
-  .each(result=>{
-    console.log(result)
-  })
+  .through(through)
+  .map(x=>JSON.stringify(x,null,2))
+  .toPromise(Promise)
+}
 
-
+module.exports = {
+  makeUnixPipe,
+  generateMarkdownConfig,
+  generateConfig,
+}
