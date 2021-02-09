@@ -2,17 +2,17 @@ const { Networker, createReferencePriceFeedForEmp } = require("@uma/financial-te
 const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
-class OptimisticOracleKeeper {
+class OptimisticOracleProposer {
   /**
-   * @notice Constructs new OO Keeper bot.
+   * @notice Constructs new OO Proposer bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} optimisticOracleClient Module used to query OO information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} defaultPriceFeedConfig Default configuration to construct all price feed objects.
-   * @param {Object} [ooKeeperConfig] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} [ooProposerConfig] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig, ooKeeperConfig }) {
+  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig, ooProposerConfig }) {
     this.logger = logger;
     this.account = account;
     this.optimisticOracleClient = optimisticOracleClient;
@@ -39,7 +39,7 @@ class OptimisticOracleKeeper {
     this.hexToUtf8 = this.web3.utils.hexToUtf8;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
-    // values via the `ooKeeperConfig` input object. The `isValid` property is a function that should be called
+    // values via the `ooProposerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
       txnGasLimit: {
@@ -52,7 +52,7 @@ class OptimisticOracleKeeper {
     };
 
     // Validate and set config settings to class state.
-    const configWithDefaults = createObjectFromDefaultProps(ooKeeperConfig, defaultConfig);
+    const configWithDefaults = createObjectFromDefaultProps(ooProposerConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
   }
 
@@ -83,7 +83,7 @@ class OptimisticOracleKeeper {
             gasPrice: this.gasEstimator.getCurrentFastPrice()
           });
         this.logger.info({
-          at: "OptimisticOracle#Keeper",
+          at: "OptimisticOracle#Proposer",
           message: "Approved OO to transfer unlimited collateral tokens 💰",
           currency: collateralToken.options.address,
           collateralApprovalTx: collateralApprovalTx.transactionHash
@@ -107,7 +107,7 @@ class OptimisticOracleKeeper {
       priceFeedDecimals: getPrecisionForIdentifier(identifier)
     };
     this.logger.debug({
-      at: "OptimisticOracleKeeper",
+      at: "OptimisticOracleProposer",
       message: "Created pricefeed configuration for identifier",
       defaultPriceFeedConfig: this.priceFeedConfig,
       identifier
@@ -131,7 +131,7 @@ class OptimisticOracleKeeper {
   // Submit proposals to unproposed price requests.
   async sendProposals() {
     this.logger.debug({
-      at: "OptimisticOracleKeeper",
+      at: "OptimisticOracleProposer",
       message: "Checking for unproposed price requests to send proposals for"
     });
 
@@ -141,7 +141,7 @@ class OptimisticOracleKeeper {
       // Pricefeed is either constructed correctly or is null.
       if (!priceFeed) {
         this.logger.error({
-          at: "OptimisticOracleKeeper",
+          at: "OptimisticOracleProposer",
           message: "Failed to construct a PriceFeed for price request",
           priceRequest
         });
@@ -155,7 +155,7 @@ class OptimisticOracleKeeper {
         proposalPrice = (await priceFeed.getHistoricalPrice(priceRequest.timestamp)).toString();
       } catch (error) {
         this.logger.error({
-          at: "OptimisticOracleKeeper",
+          at: "OptimisticOracleProposer",
           message: "Failed to query historical price for price request",
           priceRequest,
           error
@@ -181,7 +181,7 @@ class OptimisticOracleKeeper {
         ]);
       } catch (error) {
         this.logger.error({
-          at: "OptimisticOracle#Keeper",
+          at: "OptimisticOracle#Proposer",
           message: "Cannot propose price: not enough collateral (or large enough approval)✋",
           proposer: this.account,
           proposalBond,
@@ -197,7 +197,7 @@ class OptimisticOracleKeeper {
       };
 
       this.logger.debug({
-        at: "OptimisticOracle#Keeper",
+        at: "OptimisticOracle#Proposer",
         message: "Proposing new price",
         priceRequest,
         proposalPrice,
@@ -210,7 +210,7 @@ class OptimisticOracleKeeper {
         receipt = await proposal.send(txnConfig);
       } catch (error) {
         this.logger.error({
-          at: "OptimisticOracle#Keeper",
+          at: "OptimisticOracle#Proposer",
           message: "Failed to propose price🚨",
           error
         });
@@ -227,7 +227,7 @@ class OptimisticOracleKeeper {
         expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp
       };
       this.logger.info({
-        at: "OptimisticOracle#Keeper",
+        at: "OptimisticOracle#Proposer",
         message: "Proposed price!💍",
         priceRequest,
         proposalPrice,
@@ -247,5 +247,5 @@ class OptimisticOracleKeeper {
 }
 
 module.exports = {
-  OptimisticOracleKeeper
+  OptimisticOracleProposer
 };

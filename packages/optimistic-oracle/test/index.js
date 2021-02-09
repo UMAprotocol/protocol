@@ -37,7 +37,7 @@ contract("index.js", function() {
     // Deploy a new OptimisticOracle.
     optimisticOracle = await OptimisticOracle.new("120", finder.address, timer.address);
 
-    // Set addresses in the global name space that the OO keeper's index.js needs to fetch:
+    // Set addresses in the global name space that the OO proposer's index.js needs to fetch:
     addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
     addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
@@ -70,9 +70,9 @@ contract("index.js", function() {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
     }
 
-    // The first log should indicate that the OO-Keeper runner started successfully
+    // The first log should indicate that the OO-Proposer runner started successfully
     // and auto detected the OO's deployed address.
-    assert.isTrue(spyLogIncludes(spy, 0, "OO keeper started"));
+    assert.isTrue(spyLogIncludes(spy, 0, "OO proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });

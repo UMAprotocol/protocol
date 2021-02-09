@@ -11,7 +11,7 @@ const {
   spyLogIncludes,
   PriceFeedMockScaled
 } = require("@uma/financial-templates-lib");
-const { OptimisticOracleKeeper } = require("../src/keeper");
+const { OptimisticOracleProposer } = require("../src/proposer");
 const { interfaceName, getPrecisionForIdentifier, OptimisticOracleRequestStatesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -27,7 +27,7 @@ const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
 const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
 
-contract("OptimisticOracle: keeper.js", function(accounts) {
+contract("OptimisticOracle: proposer.js", function(accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
   const disputer = accounts[3];
@@ -45,7 +45,7 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
   // Offchain infra
   let client;
   let gasEstimator;
-  let keeper;
+  let proposer;
   let spyLogger;
   let mockOracle;
   let spy;
@@ -100,7 +100,7 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
 
   beforeEach(async function() {
     // Create and save a new collateral token for each request so we can test
-    // that keeper can use different currencies for each request to post bonds.
+    // that proposer can use different currencies for each request to post bonds.
     collateralCurrenciesForIdentifier = [];
     for (let i = 0; i < identifiersToTest.length; i++) {
       let collateral = await Token.new("Wrapped Ether", "WETH", getPrecisionForIdentifier(identifiersToTest[i]));
@@ -157,13 +157,13 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
         );
       }
 
-      // Construct OO Keeper using a valid default price feed config containing any additional properties
+      // Construct OO Proposer using a valid default price feed config containing any additional properties
       // not set in DefaultPriceFeedConfig
       let defaultPriceFeedConfig = {
         currentPrice: "1", // Mocked current price. This will be scaled to the identifier's precision.
         historicalPrice: "2" // Mocked historical price. This will be scaled to the identifier's precision.
       };
-      keeper = new OptimisticOracleKeeper({
+      proposer = new OptimisticOracleProposer({
         logger: spyLogger,
         optimisticOracleClient: client,
         gasEstimator,
@@ -172,20 +172,20 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       });
 
       // Update the bot to read the new OO state.
-      await keeper.update();
+      await proposer.update();
     });
 
     it("_setAllowances", async function() {
       // Calling it once should set allowances
-      await keeper._setAllowances();
+      await proposer._setAllowances();
 
-      // Check for the successful INFO log emitted by the keeper.
+      // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Approved OO to transfer unlimited collateral tokens"));
       const totalCalls = spy.callCount;
 
       // Calling it again should skip setting allowances.
-      await keeper._setAllowances();
+      await proposer._setAllowances();
       assert.equal(totalCalls, spy.callCount);
     });
 
@@ -207,20 +207,22 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       assert.deepStrictEqual(result, expectedResults);
 
       // Now: Execute `sendProposals()` and test that the bot correctly responds to these price proposals
-      await keeper.sendProposals();
+      await proposer.sendProposals();
 
       // Check that the onchain requests have been proposed to.
       for (let i = 0; i < identifiersToTest.length; i++) {
         await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryData);
       }
 
-      // Check for the successful INFO log emitted by the keeper.
+      // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
 
-      // After one run, the pricefeed classes should all be cached in the keeper bot's state:
+      // After one run, the pricefeed classes should all be cached in the proposer bot's state:
       for (let i = 0; i < identifiersToTest.length; i++) {
-        assert.isTrue(keeper.priceFeedCache[web3.utils.hexToUtf8(identifiersToTest[i])] instanceof PriceFeedMockScaled);
+        assert.isTrue(
+          proposer.priceFeedCache[web3.utils.hexToUtf8(identifiersToTest[i])] instanceof PriceFeedMockScaled
+        );
       }
     });
 
@@ -233,22 +235,22 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
         collateralCurrenciesForIdentifier[0].address,
         0
       );
-      // Update the keeper since the OO state has changed
-      await keeper.update();
+      // Update the proposer since the OO state has changed
+      await proposer.update();
 
       // Submit all of the proposals now for all pending price requests.
-      await keeper.sendProposals();
+      await proposer.sendProposals();
 
       // There should be one call for each unique collateral currency and one for each price request.
       const expectedCallCount = collateralCurrenciesForIdentifier.length + identifiersToTest.length + 1;
       assert.equal(expectedCallCount, spy.callCount);
 
       // Check that only 1 price feed is cached for each unique identifier.
-      assert.equal(Object.keys(keeper.priceFeedCache).length, identifiersToTest.length);
+      assert.equal(Object.keys(proposer.priceFeedCache).length, identifiersToTest.length);
     });
   });
 
-  it("Skip price requests with identifiers that keeper cannot construct a price feed for", async function() {
+  it("Skip price requests with identifiers that proposer cannot construct a price feed for", async function() {
     // Request a valid identifier but set an invalid price feed config:
     await optimisticRequester.requestPrice(
       identifiersToTest[0],
@@ -258,26 +260,26 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       0
     );
 
-    // This pricefeed config will cause the Keeper to fail to construct a price feed because the
+    // This pricefeed config will cause the proposer to fail to construct a price feed because the
     // PriceFeedMock type requires a `currentPrice` and a `historicalPrice` to be specified, which are missing
     // here (and also not included in the DefaultPriceFeedConfig for the tested identifiers).
     let invalidPriceFeedConfig = {};
-    keeper = new OptimisticOracleKeeper({
+    proposer = new OptimisticOracleProposer({
       logger: spyLogger,
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
       defaultPriceFeedConfig: invalidPriceFeedConfig
     });
-    await keeper.update();
-    await keeper.sendProposals();
+    await proposer.update();
+    await proposer.sendProposals();
 
-    // Check for the specific failure log emitted by the keeper.
+    // Check for the specific failure log emitted by the proposer.
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to construct a PriceFeed for price request"));
   });
 
-  it("Skip price requests with historical prices that keeper fails to fetch", async function() {
+  it("Skip price requests with historical prices that proposer fails to fetch", async function() {
     // Request a valid identifier that is getting bad data from the data source.
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
     const invalidPriceFeedIdentifier = web3.utils.utf8ToHex("INVALID");
@@ -290,16 +292,16 @@ contract("OptimisticOracle: keeper.js", function(accounts) {
       // collateral token doesn't matter as the error should log before its used
       0
     );
-    keeper = new OptimisticOracleKeeper({
+    proposer = new OptimisticOracleProposer({
       logger: spyLogger,
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner
     });
-    await keeper.update();
-    await keeper.sendProposals();
+    await proposer.update();
+    await proposer.sendProposals();
 
-    // Check for the specific failure log emitted by the keeper.
+    // Check for the specific failure log emitted by the proposer.
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query historical price for price request"));
   });

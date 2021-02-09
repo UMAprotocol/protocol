@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = require("@uma/financial-templates-lib");
-const { OptimisticOracleKeeper } = require("./src/keeper");
+const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
@@ -29,7 +29,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
-      message: "OO keeper started 🌊",
+      message: "OO proposer started 🌊",
       optimisticOracleAddress,
       pollingDelay,
       errorRetries,
@@ -37,8 +37,8 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
-    // instance of the OO Keeper to respond to price requests and proposals.
-    const ooClient = new OptimisticOracleClient(
+    // instance of the OO Proposer to respond to price requests and proposals.
+    const optimisticOracleClient = new OptimisticOracleClient(
       logger,
       getAbi("OptimisticOracle"),
       getAbi("Voting"),
@@ -48,16 +48,16 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     );
     const gasEstimator = new GasEstimator(logger);
 
-    // Construct default price feed config passed to all pricefeeds constructed by the keeper.
-    // The keeper needs to query prices for any identifier approved to use the Optimistic Oracle,
+    // Construct default price feed config passed to all pricefeeds constructed by the proposer.
+    // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `defaultPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
     const defaultPriceFeedConfig = {
       lookback: 7200 // Should we pass in this object and/or its properties as input into the `run()` method?
     };
-    const ooKeeper = new OptimisticOracleKeeper({
+    const ooProposer = new OptimisticOracleProposer({
       logger,
-      optimisticOracleClient: ooClient,
+      optimisticOracleClient,
       gasEstimator,
       account: accounts[0],
       defaultPriceFeedConfig
@@ -67,10 +67,10 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     for (;;) {
       await retry(
         async () => {
-          await ooKeeper.update();
-          await ooKeeper.sendProposals();
-          // await ooKeeper.sendDisputes();
-          // await ooKeeper.settleRequests();
+          await ooProposer.update();
+          await ooProposer.sendProposals();
+          // await ooProposer.sendDisputes();
+          // await ooProposer.settleRequests();
           return;
         },
         {
@@ -123,14 +123,14 @@ async function Poll(callback) {
       // {
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
-      ooKeeperConfig: process.env.OOKEEPER_CONFIG ? JSON.parse(process.env.OOKEEPER_CONFIG) : {}
+      ooProposerConfig: process.env.OOPROPOSER_CONFIG ? JSON.parse(process.env.OOPROPOSER_CONFIG) : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
   } catch (error) {
     Logger.error({
       at: "OptimisticOracle#index",
-      message: "OO keeper execution error🚨",
+      message: "OO proposer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error
     });
     await waitForLogger(Logger);
