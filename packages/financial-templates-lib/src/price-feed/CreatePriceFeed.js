@@ -192,8 +192,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   // Returns an ExpressionPriceFeed.
   async function _createExpressionPriceFeed(expressionConfig) {
     // Build list of configs that could be used in the expression including default price feed configs and customFeeds
-    // that the user has provided inside the ExpressionPriceFeed config. Tranform keys by stripping "/" since that
-    // would be interpreted as division.
+    // that the user has provided inside the ExpressionPriceFeed config. Note: default configs are overriden by
+    // customFeeds with the same name. Tranform keys by stripping "/" since that would be interpreted as division.
     const allConfigs = Object.fromEntries(
       Object.entries({ ...defaultConfigs, ...expressionConfig.customFeeds }).map(([key, value]) => {
         return [key.replace("/", ""), value];
@@ -201,8 +201,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     );
 
     // This call chain:
-    // 1. Parses the expression tree into "nodes"
-    // 2. Filters for "symbol" nodes, which would be price feed identifiers in our case.
+    // 1. Parses the expression into an expression tree of nodes.
+    // 2. Filters for "symbol" nodes, which would be price feed identifiers in this case.
     // 3. Extract the name property for each of these symbol nodes
     // 4. Puts it all in a set to dedupe repeated symbols.
     const symbols = new Set(
