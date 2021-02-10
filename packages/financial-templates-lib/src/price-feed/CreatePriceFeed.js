@@ -241,7 +241,7 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
   return {};
 }
 
-async function createBalancerPriceFeedForFinancialContractIdentifier(
+async function createBalancerPriceFeedForFinancialContractI(
   logger,
   web3,
   networker,
@@ -251,7 +251,7 @@ async function createBalancerPriceFeedForFinancialContractIdentifier(
 ) {
   assert(
     financialContractAddress,
-    "createBalancerPriceFeedForFinancialContractIdentifier: Must pass in an `financialContractAddress`"
+    "createBalancerPriceFeedForFinancialContractI: Must pass in an `financialContractAddress`"
   );
   const financialContract = getFinancialContractIdentifierAtAddress(web3, financialContractAddress);
   const balancerTokenIn = await financialContract.methods.tokenCurrency().call();
@@ -314,7 +314,7 @@ async function createUniswapPriceFeedForFinancialContract(
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
 }
 
-function createTokenPriceFeedForFinancialContractIdentifier(
+function createTokenPriceFeedForFinancialContract(
   logger,
   web3,
   networker,
@@ -332,7 +332,7 @@ function createTokenPriceFeedForFinancialContractIdentifier(
       config
     );
   } else if (config.type == "balancer") {
-    return createBalancerPriceFeedForFinancialContractIdentifier(
+    return createBalancerPriceFeedForFinancialContractI(
       logger,
       web3,
       networker,
@@ -445,8 +445,8 @@ function getFinancialContractIdentifierAtAddress(web3, financialContractAddress)
 module.exports = {
   createPriceFeed,
   createUniswapPriceFeedForFinancialContract,
-  createBalancerPriceFeedForFinancialContractIdentifier,
+  createBalancerPriceFeedForFinancialContractI,
   createReferencePriceFeedForFinancialContract,
-  createTokenPriceFeedForFinancialContractIdentifier,
+  createTokenPriceFeedForFinancialContract,
   getUniswapPairDetails
 };

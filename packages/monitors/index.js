@@ -11,7 +11,7 @@ const {
   Networker,
   Logger,
   createReferencePriceFeedForFinancialContract,
-  createTokenPriceFeedForFinancialContractIdentifier,
+  createTokenPriceFeedForFinancialContract,
   waitForLogger,
   delay
 } = require("@uma/financial-templates-lib");
@@ -125,7 +125,7 @@ async function run({
 
     // 0. Setup Financial Contract and token instances to monitor.
     const [tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
-      createTokenPriceFeedForFinancialContractIdentifier(logger, web3, networker, getTime, financialContractAddress, {
+      createTokenPriceFeedForFinancialContract(logger, web3, networker, getTime, financialContractAddress, {
         ...tokenPriceFeedConfig,
         priceFeedDecimals
       }),

@@ -19,7 +19,7 @@ const {
   createPriceFeed,
   createReferencePriceFeedForFinancialContract,
   createUniswapPriceFeedForFinancialContract,
-  createTokenPriceFeedForFinancialContractIdentifier
+  createTokenPriceFeedForFinancialContract
 } = require("../../src/price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
@@ -558,7 +558,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const financialContract = await ExpiringMultiParty.new(constructorParams);
 
-    const balancerFeed = await createTokenPriceFeedForFinancialContractIdentifier(
+    const balancerFeed = await createTokenPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
@@ -600,7 +600,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const financialContract = await ExpiringMultiParty.new(constructorParams);
 
-    const uniswapFeed = await createTokenPriceFeedForFinancialContractIdentifier(
+    const uniswapFeed = await createTokenPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
@@ -636,7 +636,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const financialContract = await ExpiringMultiParty.new(constructorParams);
 
     // If `config` is undefined or ommitted (and set to its default value), this should return a Medianizer Price Feed
-    let medianizerFeed = await createTokenPriceFeedForFinancialContractIdentifier(
+    let medianizerFeed = await createTokenPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
@@ -644,7 +644,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialContract.address
     );
     assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
-    medianizerFeed = await createTokenPriceFeedForFinancialContractIdentifier(
+    medianizerFeed = await createTokenPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
