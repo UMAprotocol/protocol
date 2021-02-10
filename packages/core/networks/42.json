@@ -53,14 +53,26 @@
   },
   {
     "contractName": "Voting",
-    "address": "0x03fe668862a0BFa9d3706A0ebA18007464343FdD"
+    "address": "0x08f5728338de40a7b6fc35d30b0ca7cc622be6f3"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x4107851478431d4f0462d145888772329a2dD208"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0x7E617335cbe37110691bE81b5B498B7Fa81FB7B2"
+    "address": "0x89a469720D45ed82181cd6d5558d6E87855e9E96"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0x1082C1878FAeAC03310468A379cf4D159939FA42"
+    "address": "0x9a689BfD9f3a963b20d5ba4Ed7ed0b7bE16CfCcB"
+  },
+  {
+    "contractName": "PerpetualLib",
+    "address": "0x1Bd1eBD8E11D0a92954bF8fE255035d489041a5F"
+  },
+  {
+    "contractName": "PerpetualCreator",
+    "address": "0x211aAB73C56fef9314fB0889e4f045B5F27cDB3F"
   }
 ]
