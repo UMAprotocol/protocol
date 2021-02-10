@@ -1,5 +1,5 @@
 /**
- * @notice The purpose of this script is to deploy an ExpiringMultiParty financial template.
+ * @notice The purpose of this script is to deploy a Perpetual financial template.
  * @dev If you are deploying to a local testnet, set the `--test` flag value to `true` in order to whitelist
  * the collateral currency, approve the pricefeed identifier, use the `MockOracle` contract as the `Oracle` linked
  * with the financial contract, creates an initial sponsor position at the minimum collateralization ratio allowed,
@@ -7,19 +7,11 @@
  * to be used when testing out the sponsor CLI locally. The Sponsor CLI assumes `accounts[0]` to be the default
  * sponsor account.
  * @dev Flags:
- * - "test": {*Boolean=false} Set to true to complete DVM-related prerequisites before a new EMP can be deployed,
+ * - "test": {*Boolean=false} Set to true to complete DVM-related prerequisites before a new Perpetual can be deployed,
  *           and use the MockOracle as the DVM.
- * - "identifier": {*String="ETH/BTC"} Customize the price identifier for the EMP.
- * @dev Other helpful scripts to run after this one are:
- * - `./AdvanceEMP.js`: advances EMP time forward, which is useful when testing withdrawal and liquidation requests.
- * - `./LiquidateEMP.js`: liquidates the sponsor's position with `accounts[1]` as the liquidator.
- * - `./DisputeEMP.js`: disputes the default sponsor's liquidations using `accounts[0]` as the disputer.
- * - `./WithdrawLiquidationEMP.js`: withdraws liquidations from `accounts[1]`, i.e. the liquidator. Withdrawing
- *    liquidations as the sponsor can be done via the CLI.
- * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
+ * - "identifier": {*String="ETH/BTC"} Customize the price identifier for the Perpetual.
  *
- *
- * Example: $(npm bin)/truffle exec ./packages/core/scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion latest
+ * Example: $(npm bin)/truffle exec ./packages/core/scripts/local/DeployPerpetual.js --network test --test true --identifier ETH/BTC --cversion latest
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("@uma/common");
@@ -31,9 +23,8 @@ const argv = require("minimist")(process.argv.slice(), {
 const abiVersion = argv.cversion || "latest"; // Default to most recent mainnet deployment, latest.
 
 // Deployed contract ABI's and addresses we need to fetch.
-const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, abiVersion);
-const ExpiringMultiPartyLib = getTruffleContract("ExpiringMultiPartyLib", web3, abiVersion);
+const PerpetualCreator = getTruffleContract("PerpetualCreator", web3, abiVersion);
+const Perpetual = getTruffleContract("Perpetual", web3, abiVersion);
 const Finder = getTruffleContract("Finder", web3, abiVersion);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, abiVersion);
 const MockOracle = getTruffleContract("MockOracle", web3, abiVersion);
@@ -50,14 +41,13 @@ const isUsingWeth = identifier => {
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const deployEMP = async callback => {
+const deployPerpetual = async callback => {
   try {
     const accounts = await web3.eth.getAccounts();
     const deployer = accounts[0];
-    const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    const perpetualCreator = await PerpetualCreator.deployed();
     const finder = await Finder.deployed();
     const tokenFactory = await TokenFactory.deployed();
-    const expiringMultiPartyLib = await ExpiringMultiPartyLib.deployed();
     console.log("TokenFactory:", tokenFactory.address);
 
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
@@ -68,6 +58,12 @@ const deployEMP = async callback => {
       await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
       console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
     }
+
+    const fundingRateIdentifierBase = argv.fundingRateIdentifier ? argv.identifier : "ETHUSD";
+    const fundingRateIdentifier = utf8ToHex(fundingRateIdentifierBase);
+
+    const maxFundingRate = toWei("0.00001");
+    const minFundingRate = toWei("-0.00001");
 
     // This subs in WETH where necessary.
     const TokenContract = isUsingWeth(identifierBase) ? WETH9 : TestnetERC20;
@@ -93,45 +89,72 @@ const deployEMP = async callback => {
       console.log("Whitelisted collateral currency");
     }
 
-    // Create a new EMP
+    // Create a new Perpetual
     const constructorParams = {
-      expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
-      syntheticSymbol: "uUSDrBTC-OCT",
+      fundingRateIdentifier: fundingRateIdentifier,
+      syntheticName: "New Perpetual Contract Test",
+      syntheticSymbol: "NEW-PERP-TEST",
       collateralRequirement: { rawValue: toWei("1.35") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
       minSponsorTokens: { rawValue: toWei("100") },
-      liquidationLiveness: 7200,
+      tokenScaling: { rawValue: toWei("1") },
       withdrawalLiveness: 7200,
-      financialProductLibraryAddress: expiringMultiPartyLib.address
+      liquidationLiveness: 7200
     };
 
-    let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
-    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
-    const emp = await ExpiringMultiParty.at(_emp);
-    const tokenAddress = await emp.tokenCurrency();
+    const configSettings = {
+      rewardRatePerSecond: { rawValue: "0" },
+      proposerBondPercentage: { rawValue: "0" },
+      timelockLiveness: 86400, // 1 day
+      maxFundingRate: { rawValue: maxFundingRate },
+      minFundingRate: { rawValue: minFundingRate },
+      proposalTimePastLimit: 0
+    };
 
-    const empConstructorParams = {
+    let _perpetual = await perpetualCreator.createPerpetual.call(constructorParams, configSettings, { from: deployer });
+    await perpetualCreator.createPerpetual(constructorParams, configSettings, { from: deployer });
+    const perpetual = await Perpetual.at(_perpetual);
+    const tokenAddress = await perpetual.tokenCurrency();
+    const configStoreAddress = await perpetual.configStore();
+    const timerAddress = await perpetualCreator.timerAddress();
+
+    const perpetualConstructorParams = {
       ...constructorParams,
       tokenAddress,
+      configStoreAddress,
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress()
+      timerAddress
     };
 
-    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
-      empConstructorParams
+    const configStoreConstructorParams = {
+      ...configSettings
+    };
+
+    const encodedParameters = web3.eth.abi.encodeParameters(getAbi("Perpetual", abiVersion)[0].inputs, [
+      perpetualConstructorParams
     ]);
-    console.log("Encoded EMP Parameters", encodedParameters);
+    console.log("Encoded Perpetual Parameters", encodedParameters);
 
     // Done!
-    console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
+    console.log(`Created a new Perpetual @ ${perpetual.address} with the configuration:`);
     console.log(`Deployer address @ ${deployer}`);
     console.table(constructorParams);
+
+    const encodedConfigStoreParameters = web3.eth.abi.encodeParameters(getAbi("ConfigStore", abiVersion)[0].inputs, [
+      configStoreConstructorParams,
+      timerAddress
+    ]);
+    console.log("Encoded Config Store Parameters", encodedConfigStoreParameters);
+
+    // Done!
+    console.log(`Created a new Config Store @ ${configStoreAddress} with the configuration:`);
+    console.log(`Deployer address @ ${deployer}`);
+    console.table(configSettings);
 
     if (argv.test) {
       const initialSponsor = accounts[1];
@@ -154,8 +177,8 @@ const deployEMP = async callback => {
       console.log("Minted account 1 1200 collateral tokens and account 0 1,000,000 collateral tokens");
 
       // Create the in initial position.
-      await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
-      await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
+      await collateralToken.approve(perpetual.address, toWei("1200"), { from: initialSponsor });
+      await perpetual.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
       console.log(
         "Created an initial position with 1.2 collateral tokens for each synthetic token for the sponsor:",
         initialSponsor
@@ -169,4 +192,4 @@ const deployEMP = async callback => {
   callback();
 };
 
-module.exports = deployEMP;
+module.exports = deployPerpetual;
