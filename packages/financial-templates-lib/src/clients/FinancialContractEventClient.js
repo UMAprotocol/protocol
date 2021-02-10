@@ -177,7 +177,7 @@ class FinancialContractEventClient {
       this.financialContract.getPastEvents("RegularFeesPaid", blockSearchConfig),
       this.financialContract.getPastEvents("FinalFeesPaid", blockSearchConfig),
       this.financialContract.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
-      this.contractType == "ExpiringMultiParty" // If the contract is an Financial Contract then find the SettleExpiredPosition events.
+      this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
         ? this.financialContract.getPastEvents("SettleExpiredPosition", blockSearchConfig)
         : this.financialContract.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
     ]);
