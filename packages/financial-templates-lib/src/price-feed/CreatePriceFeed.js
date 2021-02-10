@@ -261,7 +261,7 @@ async function createBalancerPriceFeedForFinancialContractIdentifier(
   return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, twapLength, ...config });
 }
 
-async function createUniswapPriceFeedForFinancialContractIdentifier(
+async function createUniswapPriceFeedForFinancialContract(
   logger,
   web3,
   networker,
@@ -270,7 +270,7 @@ async function createUniswapPriceFeedForFinancialContractIdentifier(
   config
 ) {
   if (!financialContractAddress) {
-    throw new Error("createUniswapPriceFeedForFinancialContractIdentifier: Must pass in an `financialContractAddress`");
+    throw new Error("createUniswapPriceFeedForFinancialContract: Must pass in an `financialContractAddress`");
   }
 
   const financialContract = getFinancialContractIdentifierAtAddress(web3, financialContractAddress);
@@ -304,7 +304,7 @@ async function createUniswapPriceFeedForFinancialContractIdentifier(
   const userConfig = config || {};
 
   logger.debug({
-    at: "createUniswapPriceFeedForFinancialContractIdentifier",
+    at: "createUniswapPriceFeedForFinancialContract",
     message: "Inferred default config from identifier or Financial Contract address",
     financialContractAddress,
     defaultConfig,
@@ -341,7 +341,7 @@ function createTokenPriceFeedForFinancialContractIdentifier(
       config
     );
   } else {
-    return createUniswapPriceFeedForFinancialContractIdentifier(
+    return createUniswapPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
@@ -444,7 +444,7 @@ function getFinancialContractIdentifierAtAddress(web3, financialContractAddress)
 
 module.exports = {
   createPriceFeed,
-  createUniswapPriceFeedForFinancialContractIdentifier,
+  createUniswapPriceFeedForFinancialContract,
   createBalancerPriceFeedForFinancialContractIdentifier,
   createReferencePriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContractIdentifier,

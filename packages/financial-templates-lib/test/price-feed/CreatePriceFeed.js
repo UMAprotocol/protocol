@@ -18,7 +18,7 @@ const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 const {
   createPriceFeed,
   createReferencePriceFeedForFinancialContract,
-  createUniswapPriceFeedForFinancialContractIdentifier,
+  createUniswapPriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContractIdentifier
 } = require("../../src/price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
@@ -448,7 +448,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     web3.eth.net.getId = async () => 1;
 
     const twapLength = 100;
-    const priceFeed = await createUniswapPriceFeedForFinancialContractIdentifier(
+    const priceFeed = await createUniswapPriceFeedForFinancialContract(
       logger,
       web3,
       networker,
@@ -496,13 +496,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     try {
       // Creation should fail because this test network has no deployed uniswap contract and UNISWAP_ADDRESS isn't
       // provided in the environment.
-      await createUniswapPriceFeedForFinancialContractIdentifier(
-        logger,
-        web3,
-        networker,
-        getTime,
-        financialContract.address
-      );
+      await createUniswapPriceFeedForFinancialContract(logger, web3, networker, getTime, financialContract.address);
     } catch (error) {
       didThrow = true;
     }

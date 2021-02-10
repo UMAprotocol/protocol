@@ -276,7 +276,7 @@ contract("index.js", function(accounts) {
         // when running any specific calls on the contracts. To do this we can create an Financial Contract that is only the PricelessPositionManager
         // and excludes any liquidation logic. As a result, calling `getLiquidations` in the Financial Contract contract will error out.
 
-        // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContractIdentifier`
+        // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContract`
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
 
         const PricelessPositionManager = await getTruffleContract("PricelessPositionManager", web3, "1.2.2");
