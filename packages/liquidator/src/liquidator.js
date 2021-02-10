@@ -120,14 +120,6 @@ class Liquidator {
           return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
         }
       },
-      whaleDefenseFundWei: {
-        // by default make this disabled
-        value: undefined,
-        isValid: x => {
-          if (x === undefined) return true;
-          return this.toBN(x).gte(this.toBN("0"));
-        }
-      },
       defenseActivationPercent: {
         value: undefined,
         isValid: x => {
