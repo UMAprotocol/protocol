@@ -81,9 +81,10 @@ describe("LiquidatorStrategy", () => {
     let result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 10,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
-    // should respsect position size
+    // should respect position size
     assert.equal(result.toString(), "10");
 
     strat = Strategy(
@@ -97,10 +98,22 @@ describe("LiquidatorStrategy", () => {
       syntheticTokenBalance: 100,
       positionTokens: 10,
       whaleDefenseFundWei: 95,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
-    // should respsect financialContract min sponsor size
+    // should respect financialContract min sponsor size
     assert.equal(result.toString(), "0");
+
+    // If you set `withdrawRequestPending` to false, then the `whaleDefenseFundWei` is ignored
+    // and the max balance is used (taking into consideration min sponsor size)
+    result = strat.utils.calculateTokensToLiquidate({
+      syntheticTokenBalance: 100,
+      positionTokens: 10,
+      whaleDefenseFundWei: 95,
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: false
+    });
+    assert.equal(result.toString(), "10");
 
     strat = Strategy(
       {
@@ -114,7 +127,8 @@ describe("LiquidatorStrategy", () => {
       syntheticTokenBalance: 100,
       positionTokens: 50,
       whaleDefenseFundWei: 60,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
     // should respsect wdf reserve value
     assert.equal(result.toString(), "40");
@@ -122,7 +136,8 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 8,
       positionTokens: 10,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
     // should respsect financialContract min sponsor size
     assert.equal(result.toString(), "0");
@@ -139,7 +154,8 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 1000,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
     // should respect our balance and whale defense fund
     assert.equal(result.toString(), "5");
@@ -156,7 +172,8 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 101,
-      maxTokensToLiquidateWei: "1000"
+      maxTokensToLiquidateWei: "1000",
+      withdrawRequestPending: true
     });
     // should respsect empminsponsor size
     assert.equal(result.toString(), "1");
@@ -164,7 +181,8 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 1000,
       positionTokens: 10000,
-      maxTokensToLiquidateWei: "100"
+      maxTokensToLiquidateWei: "100",
+      withdrawRequestPending: true
     });
     // should respect max to liquidate
     assert.equal(result.toString(), "100");
