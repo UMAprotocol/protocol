@@ -204,18 +204,20 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     // 1. Parses the expression into an expression tree of nodes.
     // 2. Filters for "symbol" nodes, which would be price feed identifiers in this case.
     // 3. Extract the name property for each of these symbol nodes
-    // 4. Puts it all in a set to dedupe repeated symbols.
-    const symbols = new Set(
-      parse(expressionConfig.expression)
-        .filter(node => node.isSymbolNode)
-        .map(node => node.name)
+    // 4. Puts it all in a set and converts back to an array to dedupe any repeated values.
+    const symbols = Array.from(
+      new Set(
+        parse(expressionConfig.expression)
+          .filter(node => node.isSymbolNode)
+          .map(node => node.name)
+      )
     );
 
     // This is a complicated looking map that maps each symbol into an entry in an object with its value the price
     // feed created from the mapped config in allConfigs.
     const priceFeedMap = Object.fromEntries(
       await Promise.all(
-        symbols.values().map(async symbol => {
+        symbols.map(async symbol => {
           const config = allConfigs[symbol];
 
           // If there is no config for this symbol, insert null and send an error.
