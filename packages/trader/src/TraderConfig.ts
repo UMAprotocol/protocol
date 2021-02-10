@@ -6,11 +6,11 @@ export interface ProcessEnv {
 }
 
 export class TraderConfig {
-  readonly empAddress: string;
+  readonly financialContractAddress: string;
 
   constructor(env: ProcessEnv) {
     const { EMP_ADDRESS } = env;
     assert(EMP_ADDRESS, "EMP_ADDRESS required");
-    this.empAddress = Web3.utils.toChecksumAddress(EMP_ADDRESS);
+    this.financialContractAddress = Web3.utils.toChecksumAddress(EMP_ADDRESS);
   }
 }

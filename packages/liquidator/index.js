@@ -318,7 +318,7 @@ async function Poll(callback) {
   try {
     if (!process.env.EMP_ADDRESS && !process.env.FINANCIAL_CONTRACT_ADDRESS) {
       throw new Error(
-        "Bad environment variables! Specify an EMP_ADDRESS of FINANCIAL_CONTRACT_ADDRESS for the location of the financial contract the bot is expected to interact with."
+        "Bad environment variables! Specify an EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS for the location of the financial contract the bot is expected to interact with."
       );
     }
 
