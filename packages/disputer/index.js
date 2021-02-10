@@ -9,13 +9,13 @@ const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = requi
 // JS libs
 const { Disputer } = require("./src/disputer");
 const {
-  ExpiringMultiPartyClient,
+  FinancialContractClient,
   GasEstimator,
   Logger,
   Networker,
   delay,
   waitForLogger,
-  createReferencePriceFeedForEmp
+  createReferencePriceFeedForFinancialContract
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
@@ -23,9 +23,9 @@ const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
- * @notice Continuously attempts to dispute liquidations in the EMP contract.
+ * @notice Continuously attempts to dispute liquidations in the Financial Contract contract.
  * @param {Object} logger Module responsible for sending logs.
- * @param {String} address Contract address of the EMP.
+ * @param {String} address Contract address of the Financial Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
@@ -36,7 +36,7 @@ const { getWeb3 } = require("@uma/common");
 async function run({
   logger,
   web3,
-  empAddress,
+  financialContractAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -53,7 +53,7 @@ async function run({
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Disputer#index",
       message: "Disputer started🔎",
-      empAddress,
+      financialContractAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -64,7 +64,7 @@ async function run({
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
-      findContractVersion(empAddress, web3),
+      findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
@@ -90,29 +90,32 @@ async function run({
 
     // Setup contract instances.
     const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi(disputerConfig.contractType, disputerConfig.contractVersion), empAddress);
+    const financialContract = new web3.eth.Contract(
+      getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
+      financialContractAddress
+    );
 
-    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
-      emp.methods.collateralCurrency().call(),
-      emp.methods.tokenCurrency().call()
+      financialContract.methods.collateralCurrency().call(),
+      financialContract.methods.tokenCurrency().call()
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
     const [priceIdentifier, currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
-      emp.methods.priceIdentifier().call(),
-      collateralToken.methods.allowance(accounts[0], empAddress).call(),
+      financialContract.methods.priceIdentifier().call(),
+      collateralToken.methods.allowance(accounts[0], financialContractAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
 
-    const priceFeed = await createReferencePriceFeedForEmp(
+    const priceFeed = await createReferencePriceFeedForFinancialContract(
       logger,
       web3,
       new Networker(logger),
       getTime,
-      empAddress,
+      financialContractAddress,
       priceFeedConfig
     );
 
@@ -120,17 +123,17 @@ async function run({
       throw new Error("Price feed config is invalid");
     }
 
-    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
-    const empProps = {
+    // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
+    const financialContractProps = {
       priceIdentifier: priceIdentifier
     };
 
     // Client and dispute bot.
-    const empClient = new ExpiringMultiPartyClient(
+    const financialContractClient = new FinancialContractClient(
       logger,
       getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
       web3,
-      empAddress,
+      financialContractAddress,
       collateralDecimals,
       syntheticDecimals,
       priceFeed.getPriceFeedDecimals(),
@@ -140,12 +143,12 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     const disputer = new Disputer({
       logger,
-      expiringMultiPartyClient: empClient,
+      financialContractClient,
       votingContract: voting,
       gasEstimator,
       priceFeed,
       account: accounts[0],
-      empProps,
+      financialContractProps,
       disputerConfig
     });
 
@@ -159,17 +162,17 @@ async function run({
       disputerConfig
     });
 
-    // The EMP requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
+    // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+      const collateralApprovalTx = await collateralToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Disputer#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
@@ -220,16 +223,16 @@ async function run({
 
 async function Poll(callback) {
   try {
-    if (!process.env.EMP_ADDRESS) {
+    if (!process.env.EMP_ADDRESS && !process.env.FINANCIAL_CONTRACT_ADDRESS) {
       throw new Error(
-        "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables."
+        "Bad environment variables! Specify an EMP_ADDRESS of FINANCIAL_CONTRACT_ADDRESS for the location of the financial contract the bot is expected to interact with."
       );
     }
 
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
-      empAddress: process.env.EMP_ADDRESS,
+      financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.

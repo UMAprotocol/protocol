@@ -24,14 +24,14 @@ class BalanceMonitor {
    *      ..],
    *        logOverrides: {syntheticThreshold: "error", collateralThreshold: "error", ethThreshold: "error"}
    *      }
-   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   * @param {Object} financialContractProps Configuration object used to inform logs of key Financial Contract information. Example:
    *      { collateralSymbol: "DAI",
             syntheticSymbol:"ETHBTC",
             collateralDecimals: 18,
             syntheticDecimals: 18,
             networkId:1 }
    */
-  constructor({ logger, tokenBalanceClient, monitorConfig, empProps }) {
+  constructor({ logger, tokenBalanceClient, monitorConfig, financialContractProps }) {
     this.logger = logger;
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
@@ -86,9 +86,9 @@ class BalanceMonitor {
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
     this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
 
-    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
-    const defaultEmpProps = {
-      empProps: {
+    // Validate the financialContractProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultFinancialContractProps = {
+      financialContractProps: {
         value: {},
         isValid: x => {
           // The config must contain the following keys and types:
@@ -107,10 +107,10 @@ class BalanceMonitor {
         }
       }
     };
-    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+    Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
-    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
-    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
+    this.normalizeCollateralDecimals = ConvertDecimals(financialContractProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(financialContractProps.syntheticDecimals, 18, this.web3);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
@@ -140,7 +140,7 @@ class BalanceMonitor {
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(monitoredAddress),
-            this.empProps.collateralSymbol,
+            this.financialContractProps.collateralSymbol,
             "collateral",
             this.normalizeCollateralDecimals
           )
@@ -154,7 +154,7 @@ class BalanceMonitor {
             bot,
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(monitoredAddress),
-            this.empProps.syntheticSymbol,
+            this.financialContractProps.syntheticSymbol,
             "synthetic",
             this.normalizeSyntheticDecimals
           )
@@ -181,7 +181,7 @@ class BalanceMonitor {
     return (
       bot.name +
       " (" +
-      createEtherscanLinkMarkdown(bot.address, this.empProps.networkId) +
+      createEtherscanLinkMarkdown(bot.address, this.financialContractProps.networkId) +
       ") " +
       tokenName +
       " balance is less than " +

@@ -13,7 +13,7 @@ const {
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
-const { ExpiringMultiPartyEventClient } = require("../../src/clients/ExpiringMultiPartyEventClient");
+const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
 // 1) matching 18 & 18 for collateral for most token types with normal tokens.
@@ -31,7 +31,7 @@ const unreachableDeadline = MAX_UINT_VAL;
 // Common contract objects.
 let collateralToken;
 let syntheticToken;
-let emp;
+let financialContract;
 let mockOracle;
 let identifierWhitelist;
 let identifier;
@@ -73,7 +73,7 @@ const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-contract("ExpiringMultiPartyEventClient.js", function(accounts) {
+contract("FinancialContractEventClient.js", function(accounts) {
   for (let tokenConfig of configs) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function() {
       const tokenSponsor = accounts[0];
@@ -86,9 +86,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         // Store the contractVersion.contractVersion, type and version being tested
         iterationTestVersion = contractVersion;
 
-        // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
-        // on the current iteration version.
-        const financialContract = getTruffleContract(
+        // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
+        // Perpetual perp depending on the current iteration version.
+        const FinancialContract = getTruffleContract(
           contractVersion.contractType,
           web3,
           contractVersion.contractVersion
@@ -208,55 +208,69 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 }
               );
 
-              emp = await financialContract.new(constructorParams);
+              financialContract = await FinancialContract.new(constructorParams);
 
-              await syntheticToken.addMinter(emp.address);
-              await syntheticToken.addBurner(emp.address);
+              await syntheticToken.addMinter(financialContract.address);
+              await syntheticToken.addBurner(financialContract.address);
 
-              // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
+              // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
               dummyLogger = winston.createLogger({
                 level: "info",
                 transports: [new winston.transports.Console()]
               });
 
               // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-              await emp.setCurrentTime(startTime);
-              if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
+              await financialContract.setCurrentTime(startTime);
+              if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
-              client = new ExpiringMultiPartyEventClient(
+              client = new FinancialContractEventClient(
                 dummyLogger,
                 financialContract.abi,
                 web3,
-                emp.address,
+                financialContract.address,
                 0, // startingBlockNumber
                 null, // endingBlockNumber
                 contractVersion.contractType,
                 contractVersion.contractVersion
               );
-              await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: sponsor1 });
-              await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: sponsor2 });
-              await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: sponsor3 });
+              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
+                from: sponsor1
+              });
+              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
+                from: sponsor2
+              });
+              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
+                from: sponsor3
+              });
 
-              syntheticToken = await Token.at(await emp.tokenCurrency());
-              await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: sponsor1 });
-              await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: sponsor2 });
+              syntheticToken = await Token.at(await financialContract.tokenCurrency());
+              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+                from: sponsor1
+              });
+              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+                from: sponsor2
+              });
 
               // Create two positions
-              newSponsorTxObj1 = await emp.create(
+              newSponsorTxObj1 = await financialContract.create(
                 { rawValue: convertCollateral("10") },
                 { rawValue: convertSynthetic("50") },
                 { from: sponsor1 }
               );
-              newSponsorTxObj2 = await emp.create(
+              newSponsorTxObj2 = await financialContract.create(
                 { rawValue: convertCollateral("100") },
                 { rawValue: convertSynthetic("45") },
                 { from: sponsor2 }
               );
 
               // Seed the liquidator position
-              await collateralToken.approve(emp.address, convertCollateral("1000000"), { from: liquidator });
-              await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: liquidator });
-              newSponsorTxObj3 = await emp.create(
+              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
+                from: liquidator
+              });
+              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+                from: liquidator
+              });
+              newSponsorTxObj3 = await financialContract.create(
                 { rawValue: convertCollateral("500") },
                 { rawValue: convertSynthetic("200") },
                 { from: liquidator }
@@ -303,7 +317,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Correctly adds only new events after last query
-                const newSponsorTxObj4 = await emp.create(
+                const newSponsorTxObj4 = await financialContract.create(
                   { rawValue: convertCollateral("10") },
                   { rawValue: convertSynthetic("1") },
                   { from: sponsor3 }
@@ -364,7 +378,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               );
 
               // Correctly adds only new events after last query
-              const newSponsorTxObj4 = await emp.create(
+              const newSponsorTxObj4 = await financialContract.create(
                 { rawValue: convertCollateral("10") },
                 { rawValue: convertSynthetic("1") },
                 { from: sponsor3 }
@@ -393,7 +407,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               // State is empty before update().
               assert.deepStrictEqual([], client.getAllDepositEvents());
 
-              const depositTxObj1 = await emp.deposit({ rawValue: convertCollateral("5") }, { from: sponsor1 });
+              const depositTxObj1 = await financialContract.deposit(
+                { rawValue: convertCollateral("5") },
+                { from: sponsor1 }
+              );
 
               await client.update();
 
@@ -411,7 +428,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               );
 
               // Correctly adds only new events after last query
-              const depositTxObj2 = await emp.deposit({ rawValue: convertCollateral("3") }, { from: sponsor2 });
+              const depositTxObj2 = await financialContract.deposit(
+                { rawValue: convertCollateral("3") },
+                { from: sponsor2 }
+              );
               await client.clearState();
               await client.update();
 
@@ -436,7 +456,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               assert.deepStrictEqual([], client.getAllWithdrawEvents());
 
               // GCR is ~2.0, so sponsor2 and liquidator should be able to withdraw small amounts while keeping their CR above GCR.
-              const withdrawTxObj1 = await emp.withdraw({ rawValue: convertCollateral("1") }, { from: liquidator });
+              const withdrawTxObj1 = await financialContract.withdraw(
+                { rawValue: convertCollateral("1") },
+                { from: liquidator }
+              );
 
               await client.update();
 
@@ -454,7 +477,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               );
 
               // Correctly adds only new events after last query
-              const withdrawTxObj2 = await emp.withdraw({ rawValue: convertCollateral("2") }, { from: sponsor2 });
+              const withdrawTxObj2 = await financialContract.withdraw(
+                { rawValue: convertCollateral("2") },
+                { from: sponsor2 }
+              );
               await client.clearState();
               await client.update();
 
@@ -479,7 +505,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               assert.deepStrictEqual([], client.getAllRedeemEvents());
 
               // Redeem from liquidator who has many more than the min token amount
-              const redeemTxObj1 = await emp.redeem({ rawValue: convertSynthetic("1") }, { from: liquidator });
+              const redeemTxObj1 = await financialContract.redeem(
+                { rawValue: convertSynthetic("1") },
+                { from: liquidator }
+              );
 
               await client.update();
 
@@ -498,7 +527,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               );
 
               // Correctly adds only new events after last query
-              const redeemTxObj2 = await emp.redeem({ rawValue: convertSynthetic("1") }, { from: sponsor1 });
+              const redeemTxObj2 = await financialContract.redeem(
+                { rawValue: convertSynthetic("1") },
+                { from: sponsor1 }
+              );
               await client.clearState();
               await client.update();
 
@@ -527,7 +559,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 // Set fees to 1% per second and advance 1 second.
                 await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
                 await timer.setCurrentTime((await store.getCurrentTime()).toNumber() + 1);
-                const regularFeeTxObj1 = await emp.payRegularFees();
+                const regularFeeTxObj1 = await financialContract.payRegularFees();
 
                 await client.update();
 
@@ -548,7 +580,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 // Correctly adds only new events after last query.
                 // 1% of (610-6.1) = 603.9 is 6.039
                 await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
-                const regularFeeTxObj2 = await emp.payRegularFees();
+                const regularFeeTxObj2 = await financialContract.payRegularFees();
                 await client.clearState();
                 await client.update();
 
@@ -579,7 +611,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 assert.deepStrictEqual([], client.getAllFinalFeeEvents());
 
                 await store.setFinalFee(collateralToken.address, { rawValue: convertCollateral("1") });
-                await emp.createLiquidation(
+                await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -589,7 +621,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Compare with expected processed event objects.
-                const finalFeeTxObj1 = await emp.dispute("0", sponsor1, { from: sponsor2 });
+                const finalFeeTxObj1 = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
                 await client.update();
                 assert.deepStrictEqual(
                   [
@@ -603,8 +635,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Correctly adds only new events after last query.
-                await timer.setCurrentTime(await emp.expirationTimestamp());
-                const finalFeeTxObj2 = await emp.expire();
+                await timer.setCurrentTime(await financialContract.expirationTimestamp());
+                const finalFeeTxObj2 = await financialContract.expire();
                 await client.clearState();
                 await client.update();
                 assert.deepStrictEqual(
@@ -627,7 +659,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               "Return Liquidation Events",
               async function() {
                 // Create liquidation to liquidate sponsor2 from sponsor1
-                const txObject1 = await emp.createLiquidation(
+                const txObject1 = await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -662,7 +694,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Correctly adds a second event after creating a new liquidation
-                const txObject2 = await emp.createLiquidation(
+                const txObject2 = await financialContract.createLiquidation(
                   sponsor2,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -692,7 +724,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Dispute Events", async function() {
               // Create liquidation to liquidate sponsor2 from sponsor1
-              await emp.createLiquidation(
+              await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
                 { rawValue: convertPrice("99999") },
@@ -701,7 +733,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 { from: liquidator }
               );
 
-              const txObject = await emp.dispute("0", sponsor1, { from: sponsor2 });
+              const txObject = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
               // Update the client and check it has the dispute event stored correctly
               await client.clearState();
@@ -732,8 +764,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               "Return Dispute Settlement Events",
               async function() {
                 // Create liquidation to liquidate sponsor2 from sponsor1
-                const liquidationTime = (await emp.getCurrentTime()).toNumber();
-                await emp.createLiquidation(
+                const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
+                await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -743,21 +775,21 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await emp.dispute("0", sponsor1, {
+                await financialContract.dispute("0", sponsor1, {
                   from: sponsor2
                 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
                 await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-                await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+                await financialContract.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
                 // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
                 // disputed liquidation.
                 const disputePrice = convertPrice("1.6");
                 await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
-                const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+                const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
                 await client.clearState();
 
                 // State is empty before update().
@@ -789,8 +821,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
               "Return Liquidation Withdrawn Events",
               async function() {
                 // Create liquidation to liquidate sponsor1
-                const liquidationTime = (await emp.getCurrentTime()).toNumber();
-                await emp.createLiquidation(
+                const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
+                await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -800,21 +832,21 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await emp.dispute("0", sponsor1, {
+                await financialContract.dispute("0", sponsor1, {
                   from: sponsor2
                 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
                 await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-                await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+                await financialContract.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
                 // Force a price such that the dispute succeeds, and then withdraw from the successfully
                 // disputed liquidation.
                 const disputePrice = convertPrice("0.1");
                 await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
-                const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+                const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
                 await client.clearState();
 
                 // State is empty before update().
@@ -855,9 +887,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                   tokenSponsor
                 );
 
-                await emp.expire();
+                await financialContract.expire();
                 await mockOracle.pushPrice(utf8ToHex(identifier), expirationTime.toString(), convertPrice("0.2"));
-                const txObject = await emp.settleExpired({ from: sponsor1 });
+                const txObject = await financialContract.settleExpired({ from: sponsor1 });
 
                 await client.update();
 
@@ -876,7 +908,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
                 );
 
                 // Correctly adds only new events after last query.
-                const txObject2 = await emp.settleExpired({ from: sponsor2 });
+                const txObject2 = await financialContract.settleExpired({ from: sponsor2 });
                 await client.clearState();
                 await client.update();
                 assert.deepStrictEqual(
@@ -897,11 +929,11 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Starting client at an offset block number",
               async function() {
-                // Init the EMP event client with an offset block number. If the current block number is used then all log events
+                // Init the Financial Contract event client with an offset block number. If the current block number is used then all log events
                 // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 
                 // Create liquidation (in the past)
-                await emp.createLiquidation(
+                await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
                   { rawValue: convertPrice("99999") },
@@ -912,11 +944,11 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
                 // Start the liquidator bot from current time stamp (liquidation in the past)
                 const currentBlockNumber = await web3.eth.getBlockNumber();
-                const offSetClient = new ExpiringMultiPartyEventClient(
+                const offSetClient = new FinancialContractEventClient(
                   dummyLogger,
                   financialContract.abi,
                   web3,
-                  emp.address,
+                  financialContract.address,
                   currentBlockNumber + 1, // Start the bot one block after the liquidation event
                   null, // ending block number
                   contractVersion.contractType,

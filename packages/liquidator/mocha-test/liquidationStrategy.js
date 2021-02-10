@@ -99,7 +99,7 @@ describe("LiquidatorStrategy", () => {
       whaleDefenseFundWei: 95,
       maxTokensToLiquidateWei: "1000"
     });
-    // should respsect emp min sponsor size
+    // should respsect financialContract min sponsor size
     assert.equal(result.toString(), "0");
 
     strat = Strategy(
@@ -124,7 +124,7 @@ describe("LiquidatorStrategy", () => {
       positionTokens: 10,
       maxTokensToLiquidateWei: "1000"
     });
-    // should respsect emp min sponsor size
+    // should respsect financialContract min sponsor size
     assert.equal(result.toString(), "0");
 
     strat = Strategy(
@@ -278,7 +278,7 @@ describe("LiquidatorStrategy", () => {
       position,
       syntheticTokenBalance: parseInt(position.numTokens),
       currentBlockTime: 500,
-      empMinSponsorSize: 10,
+      financialContractMinSponsorSize: 10,
       maxCollateralPerToken: "0",
       maxTokensToLiquidateWei: "100"
     });
@@ -288,7 +288,7 @@ describe("LiquidatorStrategy", () => {
     assert(result[3].rawValue, config.minSponsorSize);
     result = strat.processPosition({
       position,
-      empMinSponsorSize: "10",
+      financialContractMinSponsorSize: "10",
       syntheticTokenBalance: parseInt(position.numTokens) * 10,
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
@@ -298,7 +298,7 @@ describe("LiquidatorStrategy", () => {
     // should not produce result
     result = strat.processPosition({
       position,
-      empMinSponsorSize: "10",
+      financialContractMinSponsorSize: "10",
       syntheticTokenBalance: "0",
       currentBlockTime: 500,
       maxCollateralPerToken: "0",

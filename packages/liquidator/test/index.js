@@ -12,14 +12,14 @@ const { getTruffleContract } = require("@uma/core");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes, ExpiringMultiPartyClient } = require("@uma/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = require("@uma/financial-templates-lib");
 
 // Script to test
 const Poll = require("../index.js");
 
 let collateralToken;
 let syntheticToken;
-let emp;
+let financialContract;
 let uniswap;
 let store;
 let timer;
@@ -48,9 +48,9 @@ contract("index.js", function(accounts) {
   const disputer = accounts[4];
 
   TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
-    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
-    // on the current iteration version.
-    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    // Import the tested versions of contracts. Note that financialContract is either an ExpiringMultiParty or the perp
+    // depending on the current iteration version.
+    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -142,11 +142,11 @@ contract("index.js", function(accounts) {
           },
           { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
         );
-        emp = await financialContract.new(constructorParams);
-        await syntheticToken.addMinter(emp.address);
-        await syntheticToken.addBurner(emp.address);
+        financialContract = await FinancialContract.new(constructorParams);
+        await syntheticToken.addMinter(financialContract.address);
+        await syntheticToken.addBurner(financialContract.address);
 
-        syntheticToken = await Token.at(await emp.tokenCurrency());
+        syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
         uniswap = await UniswapMock.new();
 
@@ -184,15 +184,15 @@ contract("index.js", function(accounts) {
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
           })
         );
-        emp = await financialContract.new(decimalTestConstructorParams);
-        await syntheticToken.addMinter(emp.address);
-        await syntheticToken.addBurner(emp.address);
+        financialContract = await FinancialContract.new(decimalTestConstructorParams);
+        await syntheticToken.addMinter(financialContract.address);
+        await syntheticToken.addBurner(financialContract.address);
 
         // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout
@@ -206,7 +206,7 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
       });
 
-      it("EMP is expired or emergency shutdown, liquidator exits early without throwing", async function() {
+      it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function() {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
@@ -214,13 +214,13 @@ contract("index.js", function(accounts) {
         });
 
         if (contractVersion.contractType == "ExpiringMultiParty")
-          await emp.setCurrentTime(await emp.expirationTimestamp());
-        if (contractVersion.contractType == "Perpetual") await emp.emergencyShutdown();
+          await financialContract.setCurrentTime(await financialContract.expirationTimestamp());
+        if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
 
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -234,12 +234,16 @@ contract("index.js", function(accounts) {
         // There should be 2 logs that communicates that contract has expired, and no logs about approvals.
         assert.equal(spy.getCalls().length, 3);
         if (contractVersion.contractType == "ExpiringMultiParty")
-          assert.isTrue(spyLogIncludes(spy, -1, "EMP is expired, can only withdraw liquidator dispute rewards"));
+          assert.isTrue(
+            spyLogIncludes(spy, -1, "Financial Contract is expired, can only withdraw liquidator dispute rewards")
+          );
         if (contractVersion.contractType == "Perpetual")
-          assert.isTrue(spyLogIncludes(spy, -1, "EMP is shutdown, can only withdraw liquidator dispute rewards"));
+          assert.isTrue(
+            spyLogIncludes(spy, -1, "Financial Contract is shutdown, can only withdraw liquidator dispute rewards")
+          );
       });
 
-      it("Post EMP expiry or emergency shutdown, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
+      it("Post Financial Contract expiry or emergency shutdown, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
@@ -254,14 +258,22 @@ contract("index.js", function(accounts) {
         });
         await collateralToken.mint(sponsorUndercollateralized, toWei("110"), { from: contractCreator });
         await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
-        await collateralToken.approve(emp.address, toWei("110"), { from: sponsorUndercollateralized });
-        await collateralToken.approve(emp.address, toWei("130"), { from: sponsorOvercollateralized });
-        await emp.create({ rawValue: toWei("110") }, { rawValue: toWei("100") }, { from: sponsorUndercollateralized });
-        await emp.create({ rawValue: toWei("130") }, { rawValue: toWei("100") }, { from: sponsorOvercollateralized });
+        await collateralToken.approve(financialContract.address, toWei("110"), { from: sponsorUndercollateralized });
+        await collateralToken.approve(financialContract.address, toWei("130"), { from: sponsorOvercollateralized });
+        await financialContract.create(
+          { rawValue: toWei("110") },
+          { rawValue: toWei("100") },
+          { from: sponsorUndercollateralized }
+        );
+        await financialContract.create(
+          { rawValue: toWei("130") },
+          { rawValue: toWei("100") },
+          { from: sponsorOvercollateralized }
+        );
 
         // Send liquidator enough synthetic to liquidate one position.
         await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsorOvercollateralized });
-        await syntheticToken.approve(emp.address, toWei("100"), { from: liquidator });
+        await syntheticToken.approve(financialContract.address, toWei("100"), { from: liquidator });
 
         // Check that the liquidator is correctly detecting the undercollateralized position
         const empClientSpy = sinon.spy();
@@ -269,8 +281,13 @@ contract("index.js", function(accounts) {
           level: "info",
           transports: [new SpyTransport({ level: "info" }, { spy: empClientSpy })]
         });
-        const empClient = new ExpiringMultiPartyClient(empClientSpyLogger, financialContract.abi, web3, emp.address);
-        await empClient.update();
+        const financialContractClient = new FinancialContractClient(
+          empClientSpyLogger,
+          financialContract.abi,
+          web3,
+          financialContract.address
+        );
+        await financialContractClient.update();
         assert.deepStrictEqual(
           [
             {
@@ -282,12 +299,12 @@ contract("index.js", function(accounts) {
               withdrawalRequestAmount: "0"
             }
           ],
-          empClient.getUnderCollateralizedPositions(toWei("1"))
+          financialContractClient.getUnderCollateralizedPositions(toWei("1"))
         );
 
         // Liquidate the over collateralized position and dispute the liquidation.
-        const liquidationTime = await emp.getCurrentTime();
-        await emp.createLiquidation(
+        const liquidationTime = await financialContract.getCurrentTime();
+        await financialContract.createLiquidation(
           sponsorOvercollateralized,
           { rawValue: toWei("1.3") },
           { rawValue: toWei("1.3") },
@@ -298,15 +315,15 @@ contract("index.js", function(accounts) {
 
         // Next, expire or emergencyshutdown the contract.
         if (contractVersion.contractType == "ExpiringMultiParty")
-          await emp.setCurrentTime(await emp.expirationTimestamp());
-        if (contractVersion.contractType == "Perpetual") await emp.emergencyShutdown();
+          await financialContract.setCurrentTime(await financialContract.expirationTimestamp());
+        if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
 
         // Dispute & push a dispute resolution price.
         await collateralToken.mint(disputer, toWei("13"), {
           from: contractCreator
         });
-        await collateralToken.approve(emp.address, toWei("13"), { from: disputer });
-        await emp.dispute(0, sponsorOvercollateralized, {
+        await collateralToken.approve(financialContract.address, toWei("13"), { from: disputer });
+        await financialContract.dispute(0, sponsorOvercollateralized, {
           from: disputer
         });
         await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"));
@@ -316,15 +333,15 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig
         });
 
-        // EMP client should still detect an undercollateralized position and one disputed liquidation with some unwithdrawn rewards.
-        await empClient.update();
+        // Financial Contract client should still detect an undercollateralized position and one disputed liquidation with some unwithdrawn rewards.
+        await financialContractClient.update();
         assert.deepStrictEqual(
           [
             {
@@ -336,7 +353,7 @@ contract("index.js", function(accounts) {
               withdrawalRequestAmount: "0"
             }
           ],
-          empClient.getUnderCollateralizedPositions(toWei("1"))
+          financialContractClient.getUnderCollateralizedPositions(toWei("1"))
         );
 
         // 4 logs should be shown. First two are about approval, one about contract expiry and the 4th is for the
@@ -352,16 +369,16 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig
         });
 
-        const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
+        const collateralAllowance = await collateralToken.allowance(contractCreator, financialContract.address);
         assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
-        const syntheticAllowance = await syntheticToken.allowance(contractCreator, emp.address);
+        const syntheticAllowance = await syntheticToken.allowance(contractCreator, financialContract.address);
         assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
       });
 
@@ -375,7 +392,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -401,7 +418,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -417,7 +434,7 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
       });
       it("Correctly rejects unknown contract types", async function() {
-        // Should produce an error on a contract type that is unknown. set the emp as the finder, for example
+        // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
@@ -429,7 +446,7 @@ contract("index.js", function(accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            empAddress: finder.address,
+            financialContractAddress: finder.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -469,7 +486,7 @@ contract("index.js", function(accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            empAddress: emp.address,
+            financialContractAddress: financialContract.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -492,7 +509,7 @@ contract("index.js", function(accounts) {
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }
 
-        assert.equal(reTryCounts.empStateUpdates, 4); // Initial loop and each 3 re-try should update the EMP state. Expect 4 logs.
+        assert.equal(reTryCounts.empStateUpdates, 4); // Initial loop and each 3 re-try should update the Financial Contract state. Expect 4 logs.
         assert.equal(reTryCounts.checkingForLiquidatable, 4); // Initial loop and 3 re-try should check for liquidable positions. Expect 4 logs.
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
@@ -505,7 +522,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -536,7 +553,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,

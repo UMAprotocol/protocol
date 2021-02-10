@@ -11,8 +11,8 @@ const assert = require("assert");
  * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
  * of time after this time has passed
  * @property {number} config.withdrawLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
- * withdraw liveness duration, set by emp contract.
- * @property {number} config.minSponsorSize - Emp minimum sponsor position size in tokens.
+ * withdraw liveness duration, set by financialContract contract.
+ * @property {number} config.minSponsorSize - FinancialContractAddress minimum sponsor position size in tokens.
  * Example:
  * {
  *   whaleDefenseFundWei: '10000000000000000000',
@@ -48,7 +48,7 @@ module.exports = (
     liquidationDeadline = 300,
     // the amount of time with which to reset the slow withdraw timer
     withdrawLiveness,
-    // emp contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
+    // financialContract contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
     // resetting timer
     minSponsorSize
   } = {},
@@ -74,7 +74,7 @@ module.exports = (
   whaleDefenseFundWei && assert(withdrawLiveness > 0, "requires withdrawLiveness");
 
   // Function which packs the arguments for a liquidation.
-  // returns parameters for empContract.methods.createLiquidation
+  // returns parameters for financialContract.methods.createLiquidation
   function createLiquidationParams({ sponsor, tokensToLiquidate, currentBlockTime, maxCollateralPerToken }) {
     assert(sponsor, "requires sponsor to liquidate");
     assert(tokensToLiquidate, "requires tokenToLiquidate");
@@ -154,7 +154,7 @@ module.exports = (
           currentBlockTime,
           ...logInfo
         });
-        // this assume empMinSponsorSize will always be <= maxTokensToLiquidate
+        // this assume financialContractMinSponsorSize will always be <= maxTokensToLiquidate
         return createLiquidationParams({
           sponsor: position.sponsor,
           // Only liquidating the minimum size to extend withdraw
@@ -214,18 +214,18 @@ module.exports = (
     assert(defenseActivationPercent >= 0, "requires defenseActivationPercent");
     assert(withdrawLiveness > 0, "requires withdrawLiveness");
     syntheticTokenBalance = toBN(syntheticTokenBalance);
-    const empMinSponsorSize = toBN(minSponsorSize);
+    const financialContractMinSponsorSize = toBN(minSponsorSize);
     currentBlockTime = Number(currentBlockTime);
 
     // our synthetic balance is less than the amount required to extend deadline
-    if (syntheticTokenBalance.lt(empMinSponsorSize)) return false;
+    if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
     // we have enough to fully liquidate position respecting WDF, so do not do the minimum
     if (syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)).gte(toBN(position.numTokens))) return false;
-    // position cant go below the minimum emp sponsor size
+    // position cant go below the minimum financialContract sponsor size
     if (
       toBN(position.numTokens)
-        .sub(empMinSponsorSize)
-        .lt(empMinSponsorSize)
+        .sub(financialContractMinSponsorSize)
+        .lt(financialContractMinSponsorSize)
     )
       return false;
     // all conditions passed and we should minimally liquidate to extend timer as long as the

@@ -14,7 +14,7 @@ const Poll = require("../index.js");
 
 let collateralToken;
 let syntheticToken;
-let emp;
+let financialContract;
 let uniswap;
 let store;
 let timer;
@@ -44,9 +44,9 @@ contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
-    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
-    // on the current iteration version.
-    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or the
+    // perp depending on the current iteration version.
+    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -135,9 +135,9 @@ contract("index.js", function(accounts) {
           },
           { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
         );
-        emp = await financialContract.new(constructorParams);
-        await syntheticToken.addMinter(emp.address);
-        await syntheticToken.addBurner(emp.address);
+        financialContract = await FinancialContract.new(constructorParams);
+        await syntheticToken.addMinter(financialContract.address);
+        await syntheticToken.addBurner(financialContract.address);
 
         uniswap = await UniswapMock.new();
 
@@ -173,15 +173,15 @@ contract("index.js", function(accounts) {
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
           })
         );
-        emp = await financialContract.new(decimalTestConstructorParams);
-        await syntheticToken.addMinter(emp.address);
-        await syntheticToken.addBurner(emp.address);
+        financialContract = await FinancialContract.new(decimalTestConstructorParams);
+        await syntheticToken.addMinter(financialContract.address);
+        await syntheticToken.addBurner(financialContract.address);
 
         // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout
@@ -199,14 +199,14 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig
         });
 
-        const collateralAllowance = await collateralToken.allowance(contractCreator, emp.address);
+        const collateralAllowance = await collateralToken.allowance(contractCreator, financialContract.address);
         assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
       });
 
@@ -214,7 +214,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -235,7 +235,7 @@ contract("index.js", function(accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          empAddress: emp.address,
+          financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -250,13 +250,13 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
         assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
 
-        // Should produce an error on a contract type that is unknown. set the emp as the finder, for example
+        // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         let didThrowError = false;
         try {
           await Poll.run({
             logger: spyLogger,
             web3,
-            empAddress: finder.address,
+            financialContractAddress: finder.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -272,16 +272,16 @@ contract("index.js", function(accounts) {
         // To validate re-try logic this test needs to get the dispute bot to throw within the main while loop. This is
         // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the
         // while loop it should never throw errors as it gracefully falls over with situations like timed out API calls.
-        // One way to induce an error is to give the bot an EMP contract that can get through the initial checks but fails
-        // when running any specific calls on the contracts. To do this we can create an EMP that is only the PricelessPositionManager
-        // and excludes any liquidation logic. As a result, calling `getLiquidations` in the EMP contract will error out.
+        // One way to induce an error is to give the bot an Financial Contract contract that can get through the initial checks but fails
+        // when running any specific calls on the contracts. To do this we can create an Financial Contract that is only the PricelessPositionManager
+        // and excludes any liquidation logic. As a result, calling `getLiquidations` in the Financial Contract contract will error out.
 
-        // Need to give an unknown identifier to get past the `createReferencePriceFeedForEmp` & `createUniswapPriceFeedForEmp`
+        // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContractIdentifier`
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
 
         const PricelessPositionManager = await getTruffleContract("PricelessPositionManager", web3, "1.2.2");
 
-        const invalidEMP = await PricelessPositionManager.new(
+        const invalidFinancialContract = await PricelessPositionManager.new(
           constructorParams.expirationTimestamp,
           constructorParams.withdrawalLiveness,
           constructorParams.collateralAddress,
@@ -306,7 +306,7 @@ contract("index.js", function(accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            empAddress: invalidEMP.address,
+            financialContractAddress: invalidFinancialContract.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,

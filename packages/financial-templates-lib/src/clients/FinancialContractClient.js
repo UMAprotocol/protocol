@@ -3,38 +3,38 @@
 
 const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
 const Promise = require("bluebird");
-class ExpiringMultiPartyClient {
+class FinancialContractClient {
   /**
-   * @notice Constructs new ExpiringMultiPartyClient.
+   * @notice Constructs new FinancialContractClient.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
+   * @param {Object} financialContractAbi truffle ABI object to create a contract instance of the financial contract.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
-   * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the current network.
    * @param {Number} collateralDecimals Number of decimals within the collateral currency.
    * @param {Number} syntheticDecimals Number of decimals within the synthetic currency.
    * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
-   * EMPS this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new EMPs this has been
+   * Financial Contracts this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new Financial Contracts this has been
    * updated to always use 18 decimals, irrespective of the collateral type for consistency.
    * @return None or throws an Error.
    */
   constructor(
     logger,
-    empAbi,
+    financialContractAbi,
     web3,
-    empAddress,
+    financialContractAddress,
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
-    contractType = "ExpiringMultiParty" // Default to EMP for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractType = "ExpiringMultiParty" // Default to Financial Contract for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
     this.logger = logger;
     this.web3 = web3;
 
-    // EMP contract
-    this.emp = new web3.eth.Contract(empAbi, empAddress);
-    this.empAddress = empAddress;
+    // Financial Contract contract
+    this.financialContract = new web3.eth.Contract(financialContractAbi, financialContractAddress);
+    this.financialContractAddress = financialContractAddress;
 
-    // EMP Data structures & values to enable synchronous returns of the emp state seen by the client.
+    // Financial Contract Data structures & values to enable synchronous returns of the financialContract state seen by the client.
     this.activeSponsors = [];
     this.positions = [];
     this.undisputedLiquidations = [];
@@ -135,9 +135,9 @@ class ExpiringMultiPartyClient {
 
   async initialSetup() {
     const [collateralRequirement, liquidationLiveness, cumulativeFeeMultiplier] = await Promise.all([
-      this.emp.methods.collateralRequirement().call(),
-      this.emp.methods.liquidationLiveness().call(),
-      this.emp.methods.cumulativeFeeMultiplier().call()
+      this.financialContract.methods.collateralRequirement().call(),
+      this.financialContract.methods.liquidationLiveness().call(),
+      this.financialContract.methods.cumulativeFeeMultiplier().call()
     ]);
     this.collateralRequirement = this.toBN(collateralRequirement.toString());
     this.liquidationLiveness = Number(liquidationLiveness);
@@ -152,15 +152,15 @@ class ExpiringMultiPartyClient {
     // Fetch contract state variables in parallel.
     const fromBlock = await getFromBlock(this.web3);
     const [newSponsorEvents, endedSponsorEvents, liquidationCreatedEvents, currentTime] = await Promise.all([
-      this.emp.getPastEvents("NewSponsor", { fromBlock }),
-      this.emp.getPastEvents("EndedSponsorPosition", { fromBlock }),
-      this.emp.getPastEvents("LiquidationCreated", { fromBlock }),
-      this.emp.methods.getCurrentTime().call()
+      this.financialContract.getPastEvents("NewSponsor", { fromBlock }),
+      this.financialContract.getPastEvents("EndedSponsorPosition", { fromBlock }),
+      this.financialContract.getPastEvents("LiquidationCreated", { fromBlock }),
+      this.financialContract.methods.getCurrentTime().call()
     ]);
 
     if (this.contractType === "Perpetual") {
       this.latestCumulativeFundingRateMultiplier = this.toBN(
-        (await this.emp.methods.fundingRate().call()).cumulativeMultiplier.rawValue
+        (await this.financialContract.methods.fundingRate().call()).cumulativeMultiplier.rawValue
       );
     } else {
       this.latestCumulativeFundingRateMultiplier = this.fixedPointAdjustment;
@@ -193,10 +193,10 @@ class ExpiringMultiPartyClient {
     // Fetch sponsor position & liquidation in parallel batches, 150 at a time, to be safe and not overload the web3 node.
     const WEB3_CALLS_BATCH_SIZE = 150;
     const [activePositions, allLiquidations] = await Promise.all([
-      Promise.map(this.activeSponsors, address => this.emp.methods.positions(address).call(), {
+      Promise.map(this.activeSponsors, address => this.financialContract.methods.positions(address).call(), {
         concurrency: WEB3_CALLS_BATCH_SIZE
       }),
-      Promise.map(liquidatedSponsors, address => this.emp.methods.getLiquidations(address).call(), {
+      Promise.map(liquidatedSponsors, address => this.financialContract.methods.getLiquidations(address).call(), {
         concurrency: WEB3_CALLS_BATCH_SIZE
       })
     ]);
@@ -260,7 +260,7 @@ class ExpiringMultiPartyClient {
     });
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
-      at: "ExpiringMultiPartyClient",
+      at: "FinancialContractClient",
       message: "Expiring multi party state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
@@ -293,4 +293,4 @@ class ExpiringMultiPartyClient {
   }
 }
 
-module.exports = { ExpiringMultiPartyClient };
+module.exports = { FinancialContractClient };
