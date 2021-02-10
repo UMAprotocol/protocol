@@ -61,20 +61,21 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       experimentalPrices.length === 0 ||
       experimentalPrices.some(element => element === undefined || element === null)
     ) {
-      return null;
+      throw new Error("BasketSpreadPriceFeed: Missing unknown experimental basket price");
     }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
     if (baselinePrices.length === 0 || baselinePrices.some(element => element === undefined || element === null)) {
-      return null;
+      throw new Error("BasketSpreadPriceFeed: Missing unknown baseline basket price");
     }
     const baselineMean = this._computeMean(baselinePrices);
 
     // All calculations within this if statement will produce unexpected results if any of the
     // experimental mean, baseline mean, or denominator price are NOT in the same precision as
     // the one that this.convertPriceFeedDecimals() uses.
-    if (!baselineMean || !experimentalMean) return null;
+    if (!baselineMean || !experimentalMean)
+      throw new Error("BasketSpreadPriceFeed: missing baselineMean or experimentalMean");
 
     // TODO: Parameterize the lower (0) and upper (2) bounds, as well as allow for custom "spreadValue" formulas,
     // for example we might not want to have the spread centered around 1, like it is here:
@@ -101,15 +102,37 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
 
-    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    try {
+      return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    } catch (err) {
+      return null;
+    }
   }
 
-  getHistoricalPrice(time) {
-    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
-    const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getHistoricalPrice(time);
+  async getHistoricalPrice(time) {
+    // If failure to fetch any constituent historical prices, then throw
+    // array of errors.
+    const errors = [];
+    const experimentalPrices = await Promise.all(
+      this.experimentalPriceFeeds.map(priceFeed => {
+        return priceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
+      })
+    );
+    const baselinePrices = await Promise.all(
+      this.baselinePriceFeeds.map(priceFeed => {
+        return priceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
+      })
+    );
+    let denominatorPrice;
+    if (this.denominatorPriceFeed) {
+      denominatorPrice = await this.denominatorPriceFeed.getHistoricalPrice(time).catch(err => errors.push(err));
+    }
 
-    return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    if (errors.length > 0) {
+      throw errors;
+    } else {
+      return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
+    }
   }
 
   // Gets the *most recent* update time for all constituent price feeds.

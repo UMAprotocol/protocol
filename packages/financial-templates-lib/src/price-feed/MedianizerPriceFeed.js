@@ -35,17 +35,24 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   }
 
   // Takes the median of all of the constituent price feeds' historical prices.
-  getHistoricalPrice(time, verbose = false) {
-    const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time, verbose));
+  async getHistoricalPrice(time, verbose = false) {
+    // If failure to fetch any constituent historical prices, then throw
+    // array of errors.
+    let errors = [];
+    let historicalPrices = await Promise.all(
+      this.priceFeeds.map(priceFeed => {
+        return priceFeed.getHistoricalPrice(time, verbose).catch(err => errors.push(err));
+      })
+    );
 
-    if (historicalPrices.some(element => element === undefined || element === null)) {
-      return null;
-    }
-
-    if (this.computeMean) {
-      return this._computeMean(historicalPrices);
+    if (errors.length > 0) {
+      throw errors;
     } else {
-      return this._computeMedian(historicalPrices);
+      if (this.computeMean) {
+        return this._computeMean(historicalPrices);
+      } else {
+        return this._computeMedian(historicalPrices);
+      }
     }
   }
 

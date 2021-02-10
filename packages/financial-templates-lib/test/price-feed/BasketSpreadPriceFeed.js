@@ -210,7 +210,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // - Denominator price: 10
       // ===> Spread price divided by denominator: 0.125
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.125"));
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.125"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
@@ -228,7 +228,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       );
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("0.125"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
@@ -249,7 +249,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       );
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("1.25"))
           .div(toBN(10).pow(toBN(18 - 6)))
           .toString()
@@ -325,7 +325,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return 0 for historical price as well (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
@@ -338,7 +338,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), "0");
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
@@ -409,7 +409,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
       // Should return the same for historical price (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
-      assert.equal(basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.2"));
+      assert.equal(await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("0.2"));
 
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
@@ -429,7 +429,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // (because we're using mocks, the timestamp doesn't matter).
       const arbitraryHistoricalTimestamp = 1000;
       assert.equal(
-        basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
+        await basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp),
         toBN(toWei("0.2"))
           .div(toBN(10).pow(toBN(18 - 8)))
           .toString()
@@ -438,6 +438,40 @@ contract("BasketSpreadPriceFeed.js", function() {
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
+  });
+  it("Constituent price feeds fail to return price", async function() {
+    const priceFeeds = [new PriceFeedMock()];
+    baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
+    denominatorPriceFeed = new MedianizerPriceFeed(priceFeeds);
+
+    basketSpreadPriceFeed = new BasketSpreadPriceFeed(
+      web3,
+      dummyLogger,
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
+      denominatorPriceFeed
+    );
+
+    // Should return null.
+    assert.equal(basketSpreadPriceFeed.getCurrentPrice(), null);
+
+    // Should throw an error for each null price output.
+    const arbitraryHistoricalTimestamp = 1000;
+    try {
+      basketSpreadPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp);
+    } catch (err) {
+      // Error messages should reflect a missing price
+      assert.equal(err[0][0].message, "PriceFeedMock expected error thrown");
+      assert.equal(err[1][0].message, "PriceFeedMock expected error thrown");
+      assert.equal(err[2][0].message, "PriceFeedMock expected error thrown");
+      assert.equal(err[3][0].message, "PriceFeedMock expected error thrown");
+      assert.equal(err[4][0].message, "PriceFeedMock expected error thrown");
+      assert.equal(err.length, 5);
+    }
+
+    // Should return null.
+    assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
   });
   it("Validates constituent price feed decimals", async function() {
     // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the

@@ -90,17 +90,27 @@ module.exports = (
   }
 
   // use in the case of a non whale defense liquidation
-  // Similar to the logic that already exists, but takes into account more information
-  function calculateTokensToLiquidate({ syntheticTokenBalance, positionTokens, maxTokensToLiquidateWei }) {
+  // Similar to the logic that already exists, but takes into account more information.
+  function calculateTokensToLiquidate({
+    syntheticTokenBalance,
+    positionTokens,
+    maxTokensToLiquidateWei,
+    withdrawRequestPending
+  }) {
     positionTokens = toBN(positionTokens);
     syntheticTokenBalance = toBN(syntheticTokenBalance);
 
     if (positionTokens.lte(0)) return toBN(0);
 
-    // available capital calculates the max we can currently spend
-    let availableCapital = BN.max(toBN(0), syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)));
-    // let availableCapital = syntheticTokenBalance
-    if (maxTokensToLiquidateWei) availableCapital = BN.min(toBN(maxTokensToLiquidateWei), availableCapital);
+    // Available capital calculates the max we can currently spend.
+    // If there is NO withdrawal request pending (or the request has expired liveness), then
+    // we'll ignore the WDF constraint and just liquidate with max funds.
+    let availableCapital = withdrawRequestPending
+      ? BN.max(toBN(0), syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)))
+      : syntheticTokenBalance;
+    if (maxTokensToLiquidateWei) {
+      availableCapital = BN.min(toBN(maxTokensToLiquidateWei), availableCapital);
+    }
 
     // we have enough capital to fully liquidate positon
     if (availableCapital.gte(positionTokens)) {
@@ -132,7 +142,7 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(position, "requires position");
 
-    // whale fund enabled
+    // whale fund enabled, check if withdraw liveness can be extended with a min liquidation
     if (whaleDefenseFundWei && toBN(whaleDefenseFundWei).gt(toBN("0"))) {
       // we should only liquidate the minimum here to extend withdraw
       if (
@@ -165,11 +175,12 @@ module.exports = (
       }
     }
 
-    // calculate tokens to liquidate respecting all constraints
+    // WDF strategy not activated, calculate tokens to liquidate respecting all constraints
     const tokensToLiquidate = calculateTokensToLiquidate({
       syntheticTokenBalance,
       positionTokens: position.numTokens,
-      maxTokensToLiquidateWei
+      maxTokensToLiquidateWei,
+      withdrawRequestPending: hasWithdrawRequestPending({ position, currentBlockTime })
     });
 
     // check if we should try to liquidate this position
@@ -197,13 +208,18 @@ module.exports = (
     return 100 * (elapsed / duration);
   }
 
-  // Returns true if enough of the withdrawal liveness has passed that the WDF strategy can be activated.
-  function passedDefenseActivationPercent({ position, currentBlockTime }) {
+  function hasWithdrawRequestPending({ position, currentBlockTime }) {
     return (
       // this position has a withdraw pending
       Number(position.withdrawalRequestPassTimestamp) != 0 &&
       // withdraw has not passed liveness
-      Number(position.withdrawalRequestPassTimestamp) > currentBlockTime &&
+      Number(position.withdrawalRequestPassTimestamp) > currentBlockTime
+    );
+  }
+  // Returns true if enough of the withdrawal liveness has passed that the WDF strategy can be activated.
+  function passedDefenseActivationPercent({ position, currentBlockTime }) {
+    return (
+      hasWithdrawRequestPending({ position, currentBlockTime }) &&
       withdrawProgressPercent(withdrawLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) >=
         parseFloat(defenseActivationPercent)
     );

@@ -131,7 +131,8 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -169,7 +170,8 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         // missing EMP_ADDRESS. Should error before entering main while loop.
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
+        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig, // invalid config that should generate an error
+        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -188,7 +190,8 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -207,7 +210,8 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: "0x0000000000000000000000000000000000000000", // Invalid address that should generate an error
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig
+        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
 

@@ -29,7 +29,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the median historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("25"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("25"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -51,7 +51,7 @@ contract("MedianizerPriceFeed.js", function() {
 
     // Should return the mean historical price (because we're using mocks, the timestamp doesn't matter).
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("31"));
 
     // Should return the *maximum* lastUpdatedTime.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), 50000);
@@ -74,7 +74,7 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the average of 58 and 45 since there are an even number of elements.
     // Note: because we're using mocks, the timestamp doesn't matter.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("51.5"));
   });
 
   it("Even count means", async function() {
@@ -91,13 +91,14 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return the mean, which is not neccessarily the average of 3 and 2.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), toWei("2.5"));
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
+    assert.equal(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("55"));
   });
 
-  it("null inputs", async function() {
+  it("sub-pricefeeds fail to return price", async function() {
     const priceFeeds = [
       //                currentPrice      historicalPrice    lastUpdatedTime
       new PriceFeedMock(toBN(toWei("1")), toBN(toWei("17")), 100),
+      new PriceFeedMock(null, null, null),
       new PriceFeedMock(null, null, null)
     ];
 
@@ -106,9 +107,16 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was a null price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was a null price output.
+    // Should throw an error for each null price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).then(
+      () => assert.fail(),
+      err => {
+        assert.equal(err[0].message, "PriceFeedMock expected error thrown");
+        assert.equal(err[1].message, "PriceFeedMock expected error thrown");
+        assert.equal(err.length, 2);
+      }
+    );
 
     // Should return null since there was a null input.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);
@@ -126,9 +134,9 @@ contract("MedianizerPriceFeed.js", function() {
     // Should return null since there was an undefined price output.
     assert.equal(medianizerPriceFeed.getCurrentPrice(), null);
 
-    // Should return null since there was an undefined price output.
+    // Should throw since there was an undefined price output.
     const arbitraryHistoricalTimestamp = 1000;
-    assert.equal(medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp), null);
+    assert.isTrue(await medianizerPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).catch(() => true));
 
     // Should return null since there was an undefined output.
     assert.equal(medianizerPriceFeed.getLastUpdateTime(), null);

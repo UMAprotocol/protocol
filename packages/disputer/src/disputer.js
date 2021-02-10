@@ -72,6 +72,18 @@ class Disputer {
         isValid: x => {
           return x >= 6000000 && x < 15000000;
         }
+      },
+      contractType: {
+        value: undefined,
+        isValid: x => {
+          return x === "ExpiringMultiParty" || x === "Perpetual";
+        }
+      },
+      contractVersion: {
+        value: undefined,
+        isValid: x => {
+          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "latest";
+        }
       }
     };
 
@@ -94,52 +106,62 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => {
-      // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
-      // because we will not be able to get a historical price. If a dispute override price is provided then
-      // we can ignore this check.
-      const liquidationTime = parseInt(liquidation.liquidationTime.toString());
-      const historicalLookbackWindow =
-        Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
-      if (!disputerOverridePrice && liquidationTime < historicalLookbackWindow) {
-        this.logger.debug({
-          at: "Disputer",
-          message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
-          liquidationTime,
-          historicalLookbackWindow
-        });
-        return;
-      }
+    const disputableLiquidationsWithPrices = (
+      await Promise.all(
+        undisputedLiquidations.map(async liquidation => {
+          // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
+          // because we will not be able to get a historical price. If a dispute override price is provided then
+          // we can ignore this check.
+          const liquidationTime = parseInt(liquidation.liquidationTime.toString());
+          const historicalLookbackWindow =
+            Number(this.priceFeed.getLastUpdateTime()) - Number(this.priceFeed.getLookback());
+          if (!disputerOverridePrice && liquidationTime < historicalLookbackWindow) {
+            this.logger.debug({
+              at: "Disputer",
+              message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
+              liquidationTime,
+              historicalLookbackWindow
+            });
+            return null;
+          }
 
-      // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-      const price = disputerOverridePrice
-        ? this.toBN(disputerOverridePrice)
-        : this.priceFeed.getHistoricalPrice(liquidationTime);
-      if (!price) {
-        this.logger.warn({
-          at: "Disputer",
-          message: "Cannot dispute: price feed returned invalid value"
-        });
-        return false;
-      } else {
-        if (
-          this.empClient.isDisputable(liquidation, price) &&
-          this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-        ) {
-          this.logger.debug({
-            at: "Disputer",
-            message: "Detected a disputable liquidation",
-            price: price.toString(),
-            liquidation: JSON.stringify(liquidation)
-          });
-          return true;
-        } else {
-          return false;
-        }
-      }
-    });
+          // If an override is provided, use that price. Else, get the historic price at the liquidation time.
+          let price;
+          if (disputerOverridePrice) {
+            price = this.toBN(disputerOverridePrice);
+          } else {
+            try {
+              price = await this.priceFeed.getHistoricalPrice(liquidationTime);
+            } catch (error) {
+              this.logger.error({
+                at: "Disputer",
+                message: "Cannot dispute: price feed returned invalid value",
+                error
+              });
+            }
+          }
+          // Price is available, use it to determine if the liquidation is disputable
+          if (
+            price &&
+            this.empClient.isDisputable(liquidation, price) &&
+            this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+          ) {
+            this.logger.debug({
+              at: "Disputer",
+              message: "Detected a disputable liquidation",
+              price: price.toString(),
+              liquidation: JSON.stringify(liquidation)
+            });
 
-    if (disputeableLiquidations.length === 0) {
+            return { ...liquidation, price };
+          }
+
+          return null;
+        })
+      )
+    ).filter(liquidation => liquidation !== null);
+
+    if (disputableLiquidationsWithPrices.length === 0) {
       this.logger.debug({
         at: "Disputer",
         message: "No disputable liquidations"
@@ -147,7 +169,7 @@ class Disputer {
       return;
     }
 
-    for (const disputeableLiquidation of disputeableLiquidations) {
+    for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
       // Create the transaction.
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
@@ -177,8 +199,7 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
-      const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
+      const inputPrice = disputeableLiquidation.price;
 
       this.logger.debug({
         at: "Disputer",
@@ -250,15 +271,24 @@ class Disputer {
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawAmount, gasEstimation;
+      let withdrawalCallResponse, paidToDisputer, gasEstimation;
       try {
-        [withdrawAmount, gasEstimation] = await Promise.all([
+        [withdrawalCallResponse, gasEstimation] = await Promise.all([
           withdraw.call({ from: this.account }),
           withdraw.estimateGas({ from: this.account })
         ]);
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-        if (revertWrapper(withdrawAmount) === null) {
+
+        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+        // In later versions it returns an object containing all payouts.
+        paidToDisputer =
+          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
+            ? withdrawalCallResponse.rawValue.toString()
+            : withdrawalCallResponse.paidToDisputer.rawValue.toString();
+
+        // If the call would revert OR the disputer would get nothing for withdrawing then throw and continue.
+        if (revertWrapper(withdrawalCallResponse) === null || paidToDisputer === "0") {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
@@ -280,7 +310,7 @@ class Disputer {
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToDisputer,
         txnConfig
       });
 
@@ -323,7 +353,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: withdrawAmount.rawValue.toString(),
+        paidToDisputer,
         txnConfig,
         liquidationResult: logResult
       });
