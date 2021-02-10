@@ -23,7 +23,7 @@ The three clients available are:
    ratios. To understand how to interact with the client, see the class documentation
    [here](./src/clients/FinancialContractClient.js).
 
-1. The `FinancialContractEventClient` can be used to access historical events that were emitted by an Financial Contract. To
+1. The `FinancialContractEventClient` can be used to access historical events that were emitted by a Financial Contract. To
    understand how to interact with the client, see the class documentation
    [here](./src/clients/FinancialContractEventClient.js).
 

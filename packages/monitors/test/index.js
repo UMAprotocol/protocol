@@ -293,8 +293,8 @@ contract("index.js", function(accounts) {
         // To validate re-try logic this test needs to get the monitor bot to throw within the main while loop. This is
         // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the
         // while loop it should never throw errors as it gracefully falls over with situations like timed out API calls.
-        // One way to induce an error is to give the bot an Financial Contract contract that can get through the initial checks but fails
-        // when running any specific calls on the contracts. To do this we can create an Financial Contract that is only the financialContract
+        // One way to induce an error is to give the bot a Financial Contract contract that can get through the initial checks but fails
+        // when running any specific calls on the contracts. To do this we can create a Financial Contract that is only the financialContract
         // and excludes any liquidation logic. As a result, calling `getLiquidations` in the Financial Contract contract will error out.
 
         // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContract`
