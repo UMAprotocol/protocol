@@ -87,7 +87,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
         iterationTestVersion = contractVersion;
 
         // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
-        // Perpetual perp depending on the current iteration version.
+        // Perpetual depending on the current iteration version.
         const FinancialContract = getTruffleContract(
           contractVersion.contractType,
           web3,
