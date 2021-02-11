@@ -261,7 +261,7 @@ class FinancialContractClient {
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
       at: "FinancialContractClient",
-      message: "Expiring multi party state updated",
+      message: "Financial Contract state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   }

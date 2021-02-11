@@ -1,4 +1,4 @@
-// This module monitors Expiring Multi Party contracts and produce logs when: 1) new sponsors are detected,
+// This module monitors Financial Contract contracts and produce logs when: 1) new sponsors are detected,
 // 2) liquidations are submitted, 3) liquidations are disputed or 4) disputes are resolved.
 
 const {

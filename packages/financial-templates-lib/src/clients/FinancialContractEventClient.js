@@ -5,7 +5,7 @@ class FinancialContractEventClient {
   /**
    * @notice Constructs new FinancialContractEventClient.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} financialContractAbi Expiring Multi Party truffle ABI object to create a contract instance.
+   * @param {Object} financialContractAbi Financial Contract truffle ABI object to create a contract instance.
    * @param {Object} web3 Web3 provider from truffle instance.
    * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the current network.
    * @param {Integer} startingBlockNumber Offset block number to index events from.
@@ -340,7 +340,7 @@ class FinancialContractEventClient {
 
     this.logger.debug({
       at: "FinancialContractEventClient",
-      message: "Expiring multi party event state updated",
+      message: "Financial Contract event state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   }

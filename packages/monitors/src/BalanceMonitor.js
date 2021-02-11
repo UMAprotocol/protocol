@@ -12,7 +12,7 @@ class BalanceMonitor {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} tokenBalanceClient Client used to query token balances for monitored bots and wallets.
    * @param tokenBalanceClient Instance of the TokenBalanceClient from the `financial-templates lib.
-   * which provides synchronous access to address balances for a given expiring multi party contract.
+   * which provides synchronous access to address balances for a given Financial Contract contract.
    * @param {Object} monitorConfig Object containing configuration for the balance monitor. Only option is a `botsToMonitor` 
    * which is defines an array of bot objects to monitor. Each bot's `botName` `address`, `CollateralThreshold`
    *      and`syntheticThreshold` must be given. Example:
