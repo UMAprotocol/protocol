@@ -54,4 +54,5 @@ const decodeTransactionData = function(callback) {
   callback();
 };
 
+decodeTransactionData.run = _decodeData;
 module.exports = decodeTransactionData;
