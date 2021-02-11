@@ -19,7 +19,7 @@ class FinancialContractEventClient {
     financialContractAddress,
     startingBlockNumber = 0,
     endingBlockNumber = null,
-    contractType = "ExpiringMultiParty", // Default to Financial Contract for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractType = "ExpiringMultiParty", // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
     contractVersion = "1.2.2"
   ) {
     this.logger = logger;

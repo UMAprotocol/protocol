@@ -25,7 +25,7 @@ class FinancialContractClient {
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
-    contractType = "ExpiringMultiParty" // Default to Financial Contract for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractType = "ExpiringMultiParty" // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
     this.logger = logger;
     this.web3 = web3;
