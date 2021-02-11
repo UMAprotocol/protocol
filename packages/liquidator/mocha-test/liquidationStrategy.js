@@ -124,8 +124,8 @@ describe("LiquidatorStrategy", () => {
     assert.equal(result[1].rawValue, "0");
     assert.equal(result[2].rawValue, params.maxCollateralPerToken);
     assert.equal(result[3].rawValue, params.tokensToLiquidate);
-    // curren blocktime=100 plus default liquidationDeadline=300
-    assert(result[4], 400);
+    // current blocktime=100 plus default liquidationDeadline=300
+    assert.equal(result[4], 400);
   });
   it("calculateTokensToLiquidate", () => {
     const config = {
@@ -276,14 +276,14 @@ describe("LiquidatorStrategy", () => {
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    assert(result[3].rawValue, "100");
+    assert.equal(result[3].rawValue, "100");
     result = strat.processPosition({
       position: positionWithPendingWithdrawal,
       syntheticTokenBalance: "100",
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    assert(result[3].rawValue, "100");
+    assert.equal(result[3].rawValue, "100");
 
     // Cases where WDF is active:
     config = {
@@ -306,7 +306,7 @@ describe("LiquidatorStrategy", () => {
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    assert(result[3].rawValue, "100");
+    assert.equal(result[3].rawValue, "100");
     // - Pending withdrawal:
     //    - Can liquidate full position
     result = strat.processPosition({
@@ -315,7 +315,7 @@ describe("LiquidatorStrategy", () => {
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    assert(result[3].rawValue, config.numTokens);
+    assert.equal(result[3].rawValue, position.numTokens);
     //    - Cannot liquidate full position, not passed WDF activation %
     result = strat.processPosition({
       position: positionWithPendingWithdrawal,
@@ -332,7 +332,7 @@ describe("LiquidatorStrategy", () => {
       maxCollateralPerToken: "0"
     });
     assert.equal(eventlist.length, 1);
-    assert(result[3].rawValue, config.minSponsorSize);
+    assert.equal(result[3].rawValue, config.minSponsorSize);
     events.removeAllListeners("log");
     //    - Cannot liquidate full position, passed WDF activation %, can't liquidate min
     result = strat.processPosition({
@@ -353,6 +353,6 @@ describe("LiquidatorStrategy", () => {
       maxCollateralPerToken: "0",
       maxTokensToLiquidateWei: "100"
     });
-    assert(result[3].rawValue, "100");
+    assert.equal(result[3].rawValue, "100");
   });
 });
