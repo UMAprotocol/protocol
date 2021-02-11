@@ -1,9 +1,10 @@
 // This grabs the latest state from dev mining. Outputs it into a format which can be used in multiple ways.
 // Can be used to generate issue in github, or dev mining configuration, or updating dev mining status github.
-// This Requires ENV vars and a user with access to our private dev mining spreadsheet
+// This Requires ENV vars or .env file and a user with access to our private dev mining spreadsheet
 // GOOGLE_CREDENTIALS - set up sheet api https://developers.google.com/sheets/api/quickstart/nodejs
 // SHEET_ID - the sheet ID in the url to the dev mining sheet
 // GOOGLE_TOKEN_PATH - oath2 will need to save a token to your drive. Recommend /tmp/google_token
+// Run script: node apps/GetSheetDevminingStatus
 require("dotenv").config();
 const assert = require("assert");
 const fs = require("fs");
@@ -13,6 +14,20 @@ const web3 = require("web3");
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
+const EMP_ENABLED_STATE = '1';
+// Hardcodes columns and names based on the shape of the current dev mining sheet. May want this as config in future.
+const SHEET_COLUMNS = [
+  // Name of prop in final object, column number in sheet and optional mapping function for value
+  ["name", 0],
+  ["identifier", 1],
+  ["payoutAddress", 2, parseAddress],
+  ["empAddress", 4, parseAddressFromEtherscan],
+  ["enabled", 5, isEnabled]
+];
+
+function getRangeString(rows=100,tab='Developer Mining'){
+  return `${tab}!1:${rows}`
+}
 
 // GDrive Specific: have to use oauth credentials.
 async function auth(credentials) {
@@ -43,7 +58,7 @@ async function getNewToken(oAuth2Client) {
   return oAuth2Client.getToken(code);
 }
 
-// This assumes URL in teh format https://etherscan.io/address/0xd81028a6fbaaaf604316f330b20d24bfbfd14478
+// This assumes URL in the format https://etherscan.io/address/0xd81028a6fbaaaf604316f330b20d24bfbfd14478
 // Which could be quite fragile, but works for now.
 function parseAddressFromEtherscan(url) {
   const addr = url.split("/")[4];
@@ -56,19 +71,12 @@ function parseAddress(addr) {
 }
 
 // Assumes dev mining status column === 1 for active emp
-function isEnabled(enabled) {
-  return enabled == "1";
+function isEnabled(enabled,enabledState=EMP_ENABLED_STATE) {
+  return enabled == enabledState;
 }
 
 // Parses the raw data from sheet
-function parseSheet(sheet) {
-  // Hardcodes columns and names based on the shape of the current dev mining sheet
-  let columns = [
-    ["name", 1],
-    ["payoutAddress", 16, parseAddress],
-    ["empAddress", 20, parseAddressFromEtherscan],
-    ["enabled", 31, isEnabled]
-  ];
+function parseSheet(sheet,columns=SHEET_COLUMNS) {
   return sheet.values.reduce((result, row) => {
     const parsed = columns.reduce((result, [name, index, map]) => {
       try {
@@ -107,7 +115,7 @@ async function run() {
   const request = {
     spreadsheetId: process.env.SHEET_ID,
     // / Get 100 rows. Skips first row which is header info.
-    range: "1:100"
+    range: getRangeString(100)
   };
   const result = await sheets.spreadsheets.values.get(request);
   return filterActive(parseSheet(result.data));
