@@ -30,7 +30,7 @@ ${whitelist.map(addr=>{
     }
 }
 
-function devMiningTemplate({empWhitelist,startTime,endTime,totalRewards,fallbackPrices,details}){
+function devMiningTemplate({empWhitelist,startTime,endTime,totalRewards,fallbackPrices,details,weekNumber}){
     const startDate = moment(startTime).utc().format('YYYY/MM/DD')
     const endDate = moment(endTime).utc().format('YYYY/MM/DD')
     const startDateTime = moment(startTime).format('YYYY/MM/DD HH:mm')
@@ -104,14 +104,34 @@ function generateMarkdownConfig(details){
   }
 }
 
-function dappMiningPeriodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()){
+function miningPeriodByWeek(weekNumber=0,first){
   return {
     weekNumber,
     startTime:moment(first).add(weekNumber,'weeks').valueOf(),
     endTime:moment(first).add(weekNumber + 1,'weeks').valueOf(),
   }
 }
-function devMiningPeriodFromWeek(weekNumber=0,first=moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()){
+function dappMiningPeriodByWeek(weekNumber){
+  return miningPeriodByWeek(weekNumber,moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf())
+}
+function devMiningPeriodByWeek(weekNumber=0,first=moment("2020-11-2 23:00", "YYYY-MM-DD  HH:mm Z").valueOf()){
+  return {
+    weekNumber,
+    startTime:moment(first).add(weekNumber,'weeks').valueOf(),
+    endTime:moment(first).add(weekNumber + 1,'weeks').valueOf(),
+  }
+}
+
+function makeDappMiningFilename(config){
+  const {startTime,endTime,name,weekNumber} = config
+  const format = 'YYYY-MM-DD'
+  const fn = [moment(startTime).format(format),moment(endTime).format(format),name,weekNumber.toString().padStart(4,'0'),].join('_')
+  return [fn,'json'].join('.')
+}
+
+async function saveToDisk(fn,result){
+  fs.writeFileSync(Path.join(process.cwd(),fn),JSON.stringify(result,null,2))
+  return result
 }
 
 function makeUnixPipe(through,stdin=process.stdin){
