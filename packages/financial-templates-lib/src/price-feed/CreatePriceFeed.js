@@ -245,7 +245,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     // Return null if any of the price feeds in the map are null (meaning there was an error).
     if (Object.values(priceFeedMap).some(priceFeed => priceFeed === null)) return null;
 
-    return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression);
+    return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression, expressionConfig.priceFeedDecimals);
   }
 
   // Returns a MedianizerPriceFeed

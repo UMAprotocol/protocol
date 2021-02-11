@@ -38,10 +38,24 @@ function escapeSpecialCharacters(input) {
 // in these expressions. Ex: "USDETH * COMPUSD". Users can also comfigure custom price feeds in their configuration
 // with custom symbols. Ex: "USDETH * COMPUSD * MY_CUSTOM_FEED".
 class ExpressionPriceFeed extends PriceFeedInterface {
-  constructor(priceFeedMap, expression) {
+  /**
+   * @notice Constructs the DominationFinancePriceFeed.
+   * @param {Object} priceFeedMap an object mapping from price feed names to the price feed objects.
+   *                 Ex:
+   *                 {
+   *                   "USDETH": ETHBTC_PRICE_FEED_INSTANCE,
+   *                   "COMPUSD": COMPUSD_PRICE_FEED_INSTANCE
+   *                 }
+   * @param {string} expression a string expression that uses price feeds in the priceFeedMap to compute a price.
+   *                 Note: all symbols used in this expression must be defined in the price feed map.
+   *                 Ex: "(USDETH + COMPUSD) / COMPUSD"
+   * @param {number} decimals decimals to use in the price output.
+   */
+  constructor(priceFeedMap, expression, decimals = 18) {
     super();
     this.expressionCode = math.parse(expression).compile();
     this.priceFeedMap = priceFeedMap;
+    this.decimals = decimals;
   }
 
   async getHistoricalPrice(time) {
@@ -50,7 +64,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     await Promise.all(
       Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
         const price = await pf.getHistoricalPrice(time).catch(err => errors.push(err));
-        historicalPrices[name] = this._convertToDecimal(price);
+        historicalPrices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
       })
     );
 
@@ -88,11 +102,11 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   getCurrentPrice() {
     const prices = {};
     const errors = [];
-    Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
+    Object.entries(this.priceFeedMap).map(([name, pf]) => {
       try {
         const price = pf.getCurrentPrice();
         assert(price !== undefined && price !== null, "Valid price must be returned");
-        prices[name] = this._convertToDecimal(price);
+        prices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
       } catch (err) {
         errors.push(err);
       }
@@ -104,14 +118,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   }
 
   getPriceFeedDecimals() {
-    const decimalArray = Object.values(this.priceFeedMap).map(pf => pf.getPriceFeedDecimals());
-    const decimalsValue = decimalArray[0];
-    assert(decimalsValue, "Invalid decimals value");
-    assert(
-      decimalArray.every(decimals => decimals === decimalsValue),
-      "Constituent price feeds do not have matching decimals"
-    );
-    return decimalsValue;
+    return this.decimals;
   }
 
   async update() {
@@ -120,15 +127,15 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   }
 
   // Takes a BN fixed point number and converts it to a math.bignumber decimal number that the math library can handle.
-  _convertToDecimal(price) {
-    const decimals = math.bignumber(this.getPriceFeedDecimals());
+  _convertToDecimal(price, inputDecimals) {
+    const decimals = math.bignumber(inputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
     return math.bignumber(price.toString()).div(decimalsMultiplier);
   }
 
   // Takes a math.bignumber number and converts it to a fixed point number that's expected outside this library.
-  _convertToFixed(price) {
-    const decimals = math.bignumber(this.getPriceFeedDecimals());
+  _convertToFixed(price, outputDecimals) {
+    const decimals = math.bignumber(outputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
     return Web3.utils.toBN(
       price
