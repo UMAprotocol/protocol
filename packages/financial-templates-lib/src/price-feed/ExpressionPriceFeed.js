@@ -7,6 +7,8 @@ const { create, all } = require("mathjs");
 const math = create(all, { number: "BigNumber", precision: 100 });
 const nativeIsAlpha = math.parse.isAlpha;
 const allowedSpecialCharacters = Array.from("[]/ -");
+
+// Modifies math.js's function to determine whether a character is allowed in a symbol name.
 math.parse.isAlpha = function(c, cPrev, cNext) {
   // This character is the escape and the next is the special character.
   const isValidEscapeChar = c === "\\" && allowedSpecialCharacters.includes(cNext);
@@ -17,6 +19,9 @@ math.parse.isAlpha = function(c, cPrev, cNext) {
   return nativeIsAlpha(c, cPrev, cNext) || isValidEscapeChar || isSpecialChar;
 };
 
+// This escapes all the special characters (defined in the allowedSpecialCharacters array) in a string.
+// For example (note that "\\" is the js representation for a single literal backslash)
+// "ab/c d [e]" -> "ab\\/c\\ d\\[e\\]"
 function escapeSpecialCharacters(input) {
   return Array.from(input)
     .map((char, index, array) => {
@@ -29,9 +34,9 @@ function escapeSpecialCharacters(input) {
     .join("");
 }
 
-// Gets balancer spot and historical prices. This price feed assumes that it is returning
-// prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
-// if the user specifies that the Balancer contract is returning non-18 decimal precision prices.
+// Allows users to combine other price feeds using "expressions" with the price feed identifiers being the symbols
+// in these expressions. Ex: "USDETH * COMPUSD". Users can also comfigure custom price feeds in their configuration
+// with custom symbols. Ex: "USDETH * COMPUSD * MY_CUSTOM_FEED".
 class ExpressionPriceFeed extends PriceFeedInterface {
   constructor(priceFeedMap, expression) {
     super();
