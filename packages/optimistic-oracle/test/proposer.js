@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, soliditySha3 } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -140,14 +140,17 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   });
 
   describe("Valid price identifiers", function() {
-    // Test with non-default ancillary data to simulate EMP's and Perp's using tokenAddress for this field
-    const DATA_LIMIT_BYTES = 16;
-    let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+    // Test using packed token address as ancillary data to better simulate what will
+    // happen with financial contracts
+    let ancillaryDataAddresses = [];
 
     beforeEach(async function() {
       // Make a new price request for each identifier, each of which should cause the keeper bot to
       // construct a pricefeed with a new precision.
       for (let i = 0; i < identifiersToTest.length; i++) {
+        let ancillaryData = soliditySha3({ t: "address", v: collateralCurrenciesForIdentifier[i].address });
+        ancillaryDataAddresses[i] = ancillaryData;
+
         await optimisticRequester.requestPrice(
           identifiersToTest[i],
           requestTime,
@@ -196,7 +199,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
         expectedResults.push({
           requester: optimisticRequester.address,
           identifier: hexToUtf8(identifiersToTest[i]),
-          ancillaryData,
+          ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
           currency: collateralCurrenciesForIdentifier[i].address,
           reward: "0",
@@ -211,7 +214,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Check that the onchain requests have been proposed to.
       for (let i = 0; i < identifiersToTest.length; i++) {
-        await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryData);
+        await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryDataAddresses[i]);
       }
 
       // Check for the successful INFO log emitted by the proposer.
