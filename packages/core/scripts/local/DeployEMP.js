@@ -42,6 +42,7 @@ const WETH9 = getTruffleContract("WETH9", web3, abiVersion);
 const Timer = getTruffleContract("Timer", web3, abiVersion);
 const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
+const Store = getTruffleContract("Store", web3, abiVersion);
 
 const isUsingWeth = identifier => {
   return identifier.toUpperCase().endsWith("ETH");
@@ -56,6 +57,7 @@ const deployEMP = async callback => {
     const deployer = accounts[0];
     const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     const finder = await Finder.deployed();
+    const store = await Store.deployed();
     const tokenFactory = await TokenFactory.deployed();
     const expiringMultiPartyLib = await ExpiringMultiPartyLib.deployed();
     console.log("TokenFactory:", tokenFactory.address);
@@ -93,35 +95,64 @@ const deployEMP = async callback => {
       console.log("Whitelisted collateral currency");
     }
 
+    let constructorParams;
     // Create a new EMP
-    const constructorParams = {
-      expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
-      collateralAddress: collateralToken.address,
-      priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
-      syntheticSymbol: "uUSDrBTC-OCT",
-      collateralRequirement: { rawValue: toWei("1.35") },
-      disputeBondPercentage: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
-      disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
-      minSponsorTokens: { rawValue: toWei("100") },
-      liquidationLiveness: 7200,
-      withdrawalLiveness: 7200,
-      financialProductLibraryAddress: expiringMultiPartyLib.address
-    };
+    if (abiVersion <= 1.22) {
+      constructorParams = {
+        expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
+        collateralAddress: collateralToken.address,
+        priceFeedIdentifier: priceFeedIdentifier,
+        syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
+        syntheticSymbol: "uUSDrBTC-OCT",
+        collateralRequirement: { rawValue: toWei("1.35") },
+        disputeBondPercentage: { rawValue: toWei("0.1") },
+        sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
+        disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
+        minSponsorTokens: { rawValue: toWei("100") },
+        liquidationLiveness: 7200,
+        withdrawalLiveness: 7200,
+        excessTokenBeneficiary: store.address
+      };
+    } else {
+      constructorParams = {
+        expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
+        collateralAddress: collateralToken.address,
+        priceFeedIdentifier: priceFeedIdentifier,
+        syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
+        syntheticSymbol: "uUSDrBTC-OCT",
+        collateralRequirement: { rawValue: toWei("1.35") },
+        disputeBondPercentage: { rawValue: toWei("0.1") },
+        sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
+        disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
+        minSponsorTokens: { rawValue: toWei("100") },
+        liquidationLiveness: 7200,
+        withdrawalLiveness: 7200,
+        financialProductLibraryAddress: expiringMultiPartyLib.address
+      };
+    }
 
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     const emp = await ExpiringMultiParty.at(_emp);
     const tokenAddress = await emp.tokenCurrency();
 
-    const empConstructorParams = {
-      ...constructorParams,
-      tokenAddress,
-      finderAddress: finder.address,
-      tokenFactoryAddress: tokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress()
-    };
+    let empConstructorParams;
+    if (abiVersion <= 1.22) {
+      empConstructorParams = {
+        ...constructorParams,
+        finderAddress: finder.address,
+        tokenFactoryAddress: tokenFactory.address,
+        timerAddress: await expiringMultiPartyCreator.timerAddress()
+      };
+    } else {
+      empConstructorParams = {
+        ...constructorParams,
+        tokenAddress,
+        finderAddress: finder.address,
+        tokenFactoryAddress: tokenFactory.address,
+        timerAddress: await expiringMultiPartyCreator.timerAddress()
+      };
+    }
 
     const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
       empConstructorParams
