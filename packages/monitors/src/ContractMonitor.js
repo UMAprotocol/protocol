@@ -178,7 +178,7 @@ class ContractMonitor {
     this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
   }
 
-  // Queries disputable liquidations and disputes any that were incorrectly liquidated.
+  // Queries new liquidation events and log them.
   async checkForNewLiquidations() {
     this.logger.debug({
       at: "ContractMonitor",
@@ -203,7 +203,7 @@ class ContractMonitor {
       // because we will not be able to get a historical price.
       if (liquidationTime < historicalLookbackWindow) {
         this.logger.debug({
-          at: "Disputer",
+          at: "ContractMonitor",
           message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
           historicalLookbackWindow
@@ -215,7 +215,7 @@ class ContractMonitor {
       // because we will not be able to get a historical price.
       if (liquidationTime < this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()) {
         this.logger.debug({
-          at: "Disputer",
+          at: "ContractMonitor",
           message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
           priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
@@ -230,6 +230,7 @@ class ContractMonitor {
       let maxPriceToBeDisputableString;
       const crRequirement = await this.empContract.methods.collateralRequirement().call();
       let crRequirementString = this.toBN(crRequirement).muln(100);
+      // Note: the liquidated collateral below considers the applied funding rate in the case of a perpetual contract.
       if (price) {
         collateralizationString = this.formatDecimalString(
           this._calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
@@ -347,15 +348,15 @@ class ContractMonitor {
     );
 
     for (let event of newDisputeSettlementEvents) {
-      let resolvedPrice;
+      let resolvedPrice, liquidationEvent, liquidationTimestamp;
       try {
         // Query resolved price for dispute price request. Note that this will return nothing if the
         // disputed liquidation's block timestamp is not equal to the timestamp of the price request. This could be the
         // the case if the EMP contract is using the Timer contract for example.
-        const liquidationEvent = this.empEventClient
+        liquidationEvent = this.empEventClient
           .getAllLiquidationEvents()
           .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
-        const liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
+        liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
 
         resolvedPrice = revertWrapper(
           await this.votingContract.getPrice(this.utf8ToHex(this.empProps.priceIdentifier), liquidationTimestamp, {
@@ -364,6 +365,13 @@ class ContractMonitor {
         );
       } catch (error) {
         // No price or matching liquidation available.
+        this.logger.info({
+          at: "ContractMonitor",
+          message: "A dispute settlement event was found but no matching price or liquidation is available",
+          resolvedPrice,
+          liquidationEvent,
+          liquidationTimestamp
+        });
       }
 
       // Sample message:
@@ -402,6 +410,7 @@ class ContractMonitor {
   // Calculate the collateralization Ratio from the collateral, token amount and token price.
   // This is found using the following equation cr = [collateral / (tokensOutstanding * price)] * 100.
   // The number returned is scaled by 1e18.
+  // Note: this does not need to consider the funding rate for perpetuals as this is within the liquidated collateral.
   _calculatePositionCRPercent(collateral, tokensOutstanding, tokenPrice) {
     return this.normalizeCollateralDecimals(collateral)
       .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))
@@ -411,6 +420,7 @@ class ContractMonitor {
 
   // Calculate the maximum price at which this liquidation would be disputable. This is found using the following
   // equation: liquidatedCollateral / (liquidatedTokens * crRequirement)
+  // Note: this does not need to consider the funding rate for perpetuals as this is within the liquidated collateral.
   _calculateDisputablePrice(crRequirement, liquidatedCollateral, liquidatedTokens) {
     return this.normalizeCollateralDecimals(liquidatedCollateral)
       .mul(this.fixedPointAdjustment.mul(this.fixedPointAdjustment))

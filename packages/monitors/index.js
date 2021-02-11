@@ -24,7 +24,7 @@ const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -80,6 +80,32 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    const [detectedContract, networkId, latestBlock] = await Promise.all([
+      findContractVersion(empAddress, web3),
+      web3.eth.net.getId(),
+      web3.eth.getBlock("latest")
+    ]);
+
+    // Append the contract version and type to the monitorConfig, if the monitorConfig does not already contain one.
+    if (!monitorConfig) monitorConfig = {};
+    if (!monitorConfig.contractVersion) monitorConfig.contractVersion = detectedContract.contractVersion;
+    if (!monitorConfig.contractType) monitorConfig.contractType = detectedContract.contractType;
+
+    // Check that the version and type is supported. Note if either is null this check will also catch it.
+    if (
+      SUPPORTED_CONTRACT_VERSIONS.filter(
+        vo => vo.contractType == monitorConfig.contractType && vo.contractVersion == monitorConfig.contractVersion
+      ).length == 0
+    )
+      throw new Error(
+        `Contract version specified or inferred is not supported by this bot. Provided/inferred config: ${JSON.stringify(
+          monitorConfig
+        )}. is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+      );
+    // Setup contract instances.
+    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(getAbi(monitorConfig.contractType, monitorConfig.contractVersion), empAddress);
+
     const networker = new Networker(logger);
 
     // We want to enforce that all pricefeeds return prices in the same precision, so we'll construct one price feed
@@ -95,9 +121,7 @@ async function run({
     const priceFeedDecimals = medianizerPriceFeed.getPriceFeedDecimals();
 
     // 0. Setup EMP and token instances to monitor.
-    const [networkId, latestBlock, tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
-      web3.eth.net.getId(),
-      web3.eth.getBlock("latest"),
+    const [tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
       createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, {
         ...tokenPriceFeedConfig,
         priceFeedDecimals
@@ -122,10 +146,6 @@ async function run({
     if (!medianizerPriceFeed || !tokenPriceFeed) {
       throw new Error("Price feed config is invalid");
     }
-
-    // Setup contract instances.
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
 
     const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       emp.methods.priceIdentifier().call(),
@@ -161,11 +181,12 @@ async function run({
 
     const empEventClient = new ExpiringMultiPartyEventClient(
       logger,
-      getAbi("ExpiringMultiParty"),
+      getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
       web3,
       empAddress,
       eventsFromBlockNumber,
-      endingBlock
+      endingBlock,
+      monitorConfig.contractType
     );
 
     const contractMonitor = new ContractMonitor({
@@ -194,7 +215,16 @@ async function run({
     });
 
     // 3. Collateralization Ratio monitor.
-    const empClient = new ExpiringMultiPartyClient(logger, getAbi("ExpiringMultiParty"), web3, empAddress);
+    const empClient = new ExpiringMultiPartyClient(
+      logger,
+      getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
+      web3,
+      empAddress,
+      collateralDecimals,
+      syntheticDecimals,
+      medianizerPriceFeed.getPriceFeedDecimals(),
+      monitorConfig.contractType
+    );
 
     const crMonitor = new CRMonitor({
       logger,
@@ -222,7 +252,8 @@ async function run({
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()),
       tokenPriceFeedConfig,
-      medianizerPriceFeedConfig
+      medianizerPriceFeedConfig,
+      monitorConfig
     });
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
@@ -274,6 +305,7 @@ async function run({
           message: "End of serverless execution loop - terminating process"
         });
         await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
       logger.debug({
@@ -306,10 +338,10 @@ async function Poll(callback) {
       empAddress: process.env.EMP_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
-      // Default to 5 re-tries on error within the execution loop.
-      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
-      // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES__TIMEOUT ? Number(process.env.ERROR_RETRIES__TIMEOUT) : 10,
+      // Default to 3 re-tries on error within the execution loop.
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
+      // Default to 1 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
       // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If not
       // set then default to null which indicates that the bot should start at the current block number.
       startingBlock: process.env.STARTING_BLOCK_NUMBER,
@@ -343,7 +375,7 @@ async function Poll(callback) {
       //       "newPositionCreated":"debug"                  // ContractMonitor new position created.
       //   }
       // }
-      monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : null,
+      monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : {},
       // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
       // uniswap market. EG: {"type":"uniswap","twapLength":2,"lookback":7200,"invertPrice":true "uniswapAddress":"0x1234"}
       // Requires the address of the balancer pool where price is available.
