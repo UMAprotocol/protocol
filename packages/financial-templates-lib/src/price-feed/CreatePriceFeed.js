@@ -1,6 +1,5 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
-const { parse } = require("mathjs");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
@@ -9,7 +8,7 @@ const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
-const { ExpressionPriceFeed } = require("./ExpressionPriceFeed");
+const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
@@ -193,10 +192,10 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   async function _createExpressionPriceFeed(expressionConfig) {
     // Build list of configs that could be used in the expression including default price feed configs and customFeeds
     // that the user has provided inside the ExpressionPriceFeed config. Note: default configs are overriden by
-    // customFeeds with the same name. Tranform keys by stripping "/" since that would be interpreted as division.
+    // customFeeds with the same name. Tranform keys by escaping any special characters in the identifier names..
     const allConfigs = Object.fromEntries(
       Object.entries({ ...defaultConfigs, ...expressionConfig.customFeeds }).map(([key, value]) => {
-        return [key.replace("/", ""), value];
+        return [escapeSpecialCharacters(key), value];
       })
     );
 
@@ -207,7 +206,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     // 4. Puts it all in a set and converts back to an array to dedupe any repeated values.
     const symbols = Array.from(
       new Set(
-        parse(expressionConfig.expression)
+        math
+          .parse(expressionConfig.expression)
           .filter(node => node.isSymbolNode)
           .map(node => node.name)
       )

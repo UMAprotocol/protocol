@@ -793,7 +793,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const config = {
       type: "expression",
       lookback,
-      expression: "USDETH + ETHBTC"
+      expression: "USDETH + ETH\\/BTC"
     };
 
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);

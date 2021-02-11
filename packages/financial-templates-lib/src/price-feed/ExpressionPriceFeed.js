@@ -2,7 +2,32 @@ const assert = require("assert");
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const Web3 = require("web3");
 const { create, all } = require("mathjs");
+
+// Customize math (will be exported for other modules to use).
 const math = create(all, { number: "BigNumber", precision: 100 });
+const nativeIsAlpha = math.parse.isAlpha;
+const allowedSpecialCharacters = Array.from("[]/ -");
+math.parse.isAlpha = function(c, cPrev, cNext) {
+  // This character is the escape and the next is the special character.
+  const isValidEscapeChar = c === "\\" && allowedSpecialCharacters.includes(cNext);
+
+  // This character is the special character and the previous is the escape.
+  const isSpecialChar = cPrev === "\\" && allowedSpecialCharacters.includes(c);
+
+  return nativeIsAlpha(c, cPrev, cNext) || isValidEscapeChar || isSpecialChar;
+};
+
+function escapeSpecialCharacters(input) {
+  return Array.from(input)
+    .map((char, index, array) => {
+      if (allowedSpecialCharacters.includes(char) && array[index - 1] !== "\\") {
+        return `\\${char}`;
+      } else {
+        return char;
+      }
+    })
+    .join("");
+}
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
@@ -110,5 +135,8 @@ class ExpressionPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  ExpressionPriceFeed
+  ExpressionPriceFeed,
+  math,
+  allowedSpecialCharacters,
+  escapeSpecialCharacters
 };

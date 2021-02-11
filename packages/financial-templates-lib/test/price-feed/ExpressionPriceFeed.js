@@ -1,6 +1,5 @@
 const { toWei, toBN } = web3.utils;
-
-const { ExpressionPriceFeed } = require("../../src/price-feed/ExpressionPriceFeed");
+const { ExpressionPriceFeed, escapeSpecialCharacters, math } = require("../../src/price-feed/ExpressionPriceFeed");
 const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
 
 contract("ExpressionPriceFeed.js", function() {
@@ -137,5 +136,28 @@ contract("ExpressionPriceFeed.js", function() {
 
     const invalidExpressionPriceFeed = new ExpressionPriceFeed(inValidDecimalsPriceFeeds, "ETHUSD * BTCUSD * COMPUSD");
     assert.throws(() => invalidExpressionPriceFeed.getPriceFeedDecimals());
+  });
+
+  describe("Expression parsing with escaped characters", async function() {
+    it("Escapes characters correctly", async function() {
+      assert.equal(escapeSpecialCharacters("USD-[bwBTC/ETH SLP]"), "USD\\-\\[bwBTC\\/ETH\\ SLP\\]");
+      assert.equal(escapeSpecialCharacters("-/][a--]rr]"), "\\-\\/\\]\\[a\\-\\-\\]rr\\]");
+    });
+
+    it("Processes escaped expressions correctly", async function() {
+      const escapedSymbol = "\\[1\\/\\-2\\]\\ \\-\\ 17";
+      assert.equal(math.evaluate(`${escapedSymbol} - 2 * ${escapedSymbol}`, { [escapedSymbol]: 5 }).toString(), "-5");
+
+      const unescapedSymbol = "USD-[bwBTC/ETH SLP]";
+      assert.equal(
+        math
+          .evaluate(`${escapeSpecialCharacters(unescapedSymbol)} - ${escapedSymbol}`, {
+            [escapedSymbol]: 10,
+            [escapeSpecialCharacters(unescapedSymbol)]: 15
+          })
+          .toString(),
+        "5"
+      );
+    });
   });
 });
