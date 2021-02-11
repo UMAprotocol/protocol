@@ -72,7 +72,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
       throw errors;
     }
 
-    return this._convertToFixed(this.expressionCode.evaluate(historicalPrices));
+    return this._convertToFixed(this.expressionCode.evaluate(historicalPrices), this.getPriceFeedDecimals());
   }
 
   getLastUpdateTime() {
@@ -114,7 +114,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
 
     if (errors.length > 0) return null;
 
-    return this._convertToFixed(this.expressionCode.evaluate(prices));
+    return this._convertToFixed(this.expressionCode.evaluate(prices), this.getPriceFeedDecimals());
   }
 
   getPriceFeedDecimals() {
@@ -137,12 +137,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   _convertToFixed(price, outputDecimals) {
     const decimals = math.bignumber(outputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
-    return Web3.utils.toBN(
-      price
-        .mul(decimalsMultiplier)
-        .round()
-        .toString()
-    );
+    return Web3.utils.toBN(math.format(price.mul(decimalsMultiplier).round(), { notation: "fixed" }));
   }
 }
 

@@ -114,28 +114,61 @@ contract("ExpressionPriceFeed.js", function() {
     // Should return null since there was an undefined output.
     assert.equal(expressionPriceFeed.getLastUpdateTime(), null);
   });
-
-  it("Validates feeds decimals correctly", async function() {
-    const validDecimalsPriceFeeds = {
+  it("Simple decimal conversion", async function() {
+    const priceFeedDecimalsMatching = {
       //                        currentPrice      historicalPrice    lastUpdatedTime   decimals
-      ETHUSD: new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
-      BTCUSD: new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18, 4000),
-      COMPUSD: new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 18, 50000)
+      ETHUSD: new PriceFeedMock(toBN("1"), toBN("25626"), 100, 1)
     };
 
-    const validExpressionPriceFeed = new ExpressionPriceFeed(validDecimalsPriceFeeds, "ETHUSD * BTCUSD * COMPUSD");
-    assert.equal(validExpressionPriceFeed.getPriceFeedDecimals(), 18);
+    const expressionPriceFeed = new ExpressionPriceFeed(priceFeedDecimalsMatching, "ETHUSD", 18);
 
-    // Create three feeds, one with a diffrent number of decimals. Medianizer should reject this when checking the decimals.
-    const inValidDecimalsPriceFeeds = {
+    assert.equal(expressionPriceFeed.getCurrentPrice().toString(), toWei("0.1"));
+    assert.equal((await expressionPriceFeed.getHistoricalPrice(1000)).toString(), toWei("2562.6"));
+  });
+
+  it("Complex decimal conversion math", async function() {
+    // The first price feed matches all the input decimals.
+    // Note: these values are tailored to match the price feeds below.
+    const priceFeedDecimalsMatching = {
       //                        currentPrice      historicalPrice    lastUpdatedTime   decimals
-      ETHUSD: new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
-      BTCUSD: new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18),
-      COMPUSD: new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 17)
+      ETHUSD: new PriceFeedMock(toBN(toWei(".01")), toBN(toWei(".25")), 100, 16),
+      BTCUSD: new PriceFeedMock(toBN(toWei(".02")), toBN(toWei(".57")), 50000, 16, 4000),
+      COMPUSD: new PriceFeedMock(toBN(toWei(".09")), toBN(toWei(".1")), 25, 16, 50000)
     };
 
-    const invalidExpressionPriceFeed = new ExpressionPriceFeed(inValidDecimalsPriceFeeds, "ETHUSD * BTCUSD * COMPUSD");
-    assert.throws(() => invalidExpressionPriceFeed.getPriceFeedDecimals());
+    const expressionPriceFeedMatching = new ExpressionPriceFeed(
+      priceFeedDecimalsMatching,
+      "ETHUSD * BTCUSD * COMPUSD",
+      16
+    );
+    assert.equal(expressionPriceFeedMatching.getPriceFeedDecimals(), 16);
+
+    // Create three feeds, one with a diffrent number of decimals. Expression feed should correctly convert these to the provided decimals.
+    const priceFeedDecimalsNotMatching = {
+      //                        currentPrice      historicalPrice    lastUpdatedTime   decimals
+      ETHUSD: new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
+      BTCUSD: new PriceFeedMock(toBN("20"), toBN("570"), 50000, 1),
+      COMPUSD: new PriceFeedMock(toBN(toWei(".9")), toBN(toWei("1")), 25, 17)
+    };
+
+    const expressionPriceFeedNotMatching = new ExpressionPriceFeed(
+      priceFeedDecimalsNotMatching,
+      "ETHUSD * BTCUSD * COMPUSD",
+      16
+    );
+    assert.equal(expressionPriceFeedNotMatching.getPriceFeedDecimals(), 16);
+
+    // Ensure price feeds have exactly the same outputs despite having inputs of different decimal values.
+    await expressionPriceFeedMatching.update();
+    await expressionPriceFeedNotMatching.update();
+    assert.equal(
+      expressionPriceFeedNotMatching.getCurrentPrice().toString(),
+      expressionPriceFeedMatching.getCurrentPrice().toString()
+    );
+    assert.equal(
+      (await expressionPriceFeedNotMatching.getHistoricalPrice(50)).toString(),
+      (await expressionPriceFeedMatching.getHistoricalPrice(50)).toString()
+    );
   });
 
   describe("Expression parsing with escaped characters", async function() {
