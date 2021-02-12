@@ -282,12 +282,6 @@ describe("LiquidatorStrategy", () => {
       minSponsorSize: 10
     };
     strat = Strategy(config, { toBN, BN }, (...args) => events.emit("log", ...args));
-    const eventlist = [];
-    events.on("log", (severity, data) => {
-      // listen for WDF alert logs
-      assert(data.message.includes("extending withdraw deadline"));
-      eventlist.push({ severity, data });
-    });
     // - No pending withdrawal
     //    - Liquidate using full balance
     result = strat.processPosition({
@@ -315,6 +309,13 @@ describe("LiquidatorStrategy", () => {
     });
     assert(!result);
     //    - Cannot liquidate full position, passed WDF activation %
+    //      Note: This should log a WDF alert
+    const eventlist = [];
+    events.on("log", (severity, data) => {
+      // listen for WDF alert logs
+      assert(data.message.includes("extending withdraw deadline"));
+      eventlist.push({ severity, data });
+    });
     result = strat.processPosition({
       position: positionWithPendingWithdrawal,
       syntheticTokenBalance: "1000",

@@ -195,6 +195,7 @@ module.exports = (
           message: "Liquidator bot skipping liquidation, withdrawal liveness has not passed WDF activation threshold😴",
           position,
           currentBlockTime,
+          withdrawLiveness,
           defenseActivationPercent,
           ...logInfo
         });
