@@ -92,9 +92,9 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "defipulsetvl") {
-    const requiredFields = ["lookback", "minTimeBetweenUpdates"];
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey"];
 
-    if (isMissingField(config, config.apiKey, requiredFields, logger)) {
+    if (isMissingField(config, requiredFields, logger)) {
       return null;
     }
 

@@ -20,10 +20,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     super();
     this.logger = logger;
     this.web3 = web3;
-
     this.apiKey = apiKey;
-    assert(apiKey, "requires apiKey for Defi Pulse");
-
     this.lookback = lookback;
     this.networker = networker;
     this.getTime = getTime;
@@ -41,7 +38,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
 
   async getHistoricalPrice(time) {
     if (this.lastUpdateTime === undefined) {
-      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
+      throw new Error("undefined lastUpdateTime");
     }
 
     let closestTime = { timestamp: 0, tvlUSD: 0 };
