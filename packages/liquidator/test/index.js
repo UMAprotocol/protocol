@@ -504,7 +504,7 @@ contract("index.js", function(accounts) {
           executionLoopErrors: 0
         };
         for (let i = 0; i < spy.callCount; i++) {
-          if (spyLogIncludes(spy, i, "Expiring multi party state updated")) reTryCounts.empStateUpdates += 1;
+          if (spyLogIncludes(spy, i, "Financial Contract state updated")) reTryCounts.empStateUpdates += 1;
           if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }
