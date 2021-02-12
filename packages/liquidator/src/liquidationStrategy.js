@@ -61,7 +61,7 @@ module.exports = (
   assert(BN, "requires BN");
 
   // these variables are optional and are only checked if WDF is activated
-  const wdfActive = !isNaN(defenseActivationPercent) && defenseActivationPercent > 0;
+  const wdfActive = typeof defenseActivationPercent === "number" && defenseActivationPercent > 0;
   if (wdfActive) {
     assert(defenseActivationPercent <= 100, "Requires defenseActivationPercent to bet set between (0, 100]");
     assert(withdrawLiveness > 0, "requires withdrawLiveness");
@@ -168,15 +168,15 @@ module.exports = (
       // 4) Do nothing.
     }
 
-    // check if we should try to liquidate this position
-    if (shouldLiquidate({ tokensToLiquidate })) {
-      // We should liquidate the entire position using our capital - wdf
+    if (toBN(tokensToLiquidate).gt(toBN(0))) {
       return createLiquidationParams({
         sponsor: position.sponsor,
         tokensToLiquidate,
         currentBlockTime,
         maxCollateralPerToken
       });
+    } else {
+      return null;
     }
   }
 
@@ -234,23 +234,12 @@ module.exports = (
     return true;
   }
 
-  // Any new constraints can be added here, but for now
-  // only dont liquidate if the amount to liquidate is <=0
-  function shouldLiquidate({ tokensToLiquidate }) {
-    tokensToLiquidate = toBN(tokensToLiquidate);
-    // nothing to liquidate
-    if (tokensToLiquidate.lte(toBN(0))) return false;
-    // any other conditions we do try to liquidate
-    return true;
-  }
-
   return {
     // Main function
     processPosition,
     // Utility calls exposed for testing or other use
     // Not really needed outside this module
     utils: {
-      shouldLiquidate,
       canLiquidateFully,
       canLiquidateMinimum,
       createLiquidationParams,

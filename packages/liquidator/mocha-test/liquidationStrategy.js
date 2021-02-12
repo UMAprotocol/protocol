@@ -196,16 +196,6 @@ describe("LiquidatorStrategy", () => {
     // position has 0 tokens, no error thrown
     assert.equal(result.toString(), "0");
   });
-  it("shouldLiquidate", () => {
-    const config = {
-      minSponsorSize: "10"
-    };
-    let strat = Strategy(config, { toBN, BN });
-    let result = strat.utils.shouldLiquidate({ tokensToLiquidate: "100000" });
-    assert(result);
-    result = strat.utils.shouldLiquidate({ tokensToLiquidate: "0" });
-    assert(!result);
-  });
   it("canLiquidateMinimum", () => {
     const config = {
       minSponsorSize: "10"
