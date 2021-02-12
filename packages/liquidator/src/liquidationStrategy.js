@@ -115,7 +115,9 @@ module.exports = (
   }
 
   // Call this with only undercollateralized position
-  // SyntheticTokenBalance should be passed in respecting maxTokensToLiquidate
+  // SyntheticTokenBalance should be passed in respecting maxTokensToLiquidate.
+  // Responsible for emitting customized logs since its already parsing
+  // whether a liquidation is valid to send and for how many tokens.
   function processPosition({
     position,
     syntheticTokenBalance,
@@ -123,9 +125,19 @@ module.exports = (
     maxCollateralPerToken,
     // mandated token to liquidate amount, an override
     maxTokensToLiquidateWei,
+    shouldEmitWDFSkipLogs,
     ...logInfo
   }) {
-    assert(syntheticTokenBalance, "requires syntheticTokenBalance");
+    if (!syntheticTokenBalance || toBN(syntheticTokenBalance).lte(toBN(0))) {
+      emit("error", {
+        message: "Zero liquidation balance🤬",
+        position,
+        syntheticTokenBalance: syntheticTokenBalance.toString(),
+        maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
+        ...logInfo
+      });
+      return;
+    }
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(position, "requires position");
 
@@ -156,7 +168,7 @@ module.exports = (
       // 3) If WDF is active and withdraw has passed WDF activation percentage, then submit min liquidation
       emit("info", {
         message: "Liquidator bot is extending withdraw deadline, funds may need to be added to liquidate full position",
-        position: position,
+        position,
         maxLiquidationPrice: maxCollateralPerToken.toString(),
         syntheticTokenBalance: syntheticTokenBalance.toString(),
         maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
@@ -164,19 +176,60 @@ module.exports = (
         ...logInfo
       });
       tokensToLiquidate = minSponsorSize;
-    } else {
-      // 4) Do nothing.
     }
 
-    if (toBN(tokensToLiquidate).gt(toBN(0))) {
+    // If tokensToLiquidate is 0 at this point, determine why and send a customized log,
+    // and return undefined.
+    if (toBN(tokensToLiquidate).lte(toBN(0))) {
+      // Case 1: WDF is active but liveness threshold has not passed yet
+      if (
+        wdfActive &&
+        hasWithdrawRequestPending({ position, currentBlockTime }) &&
+        !passedDefenseActivationPercent({ position, currentBlockTime })
+      ) {
+        // If requested withdrawal was within the block window, then upgrade the log level.
+        // This makes it possible to emit only one log about skipping a liquidation
+        // due to the WDF activation threshold not being passed.
+        let logLevel = shouldEmitWDFSkipLogs ? "info" : "debug";
+        emit(logLevel, {
+          message: "Liquidator bot skipping liquidation, withdrawal liveness has not passed WDF activation threshold😴",
+          position,
+          currentBlockTime,
+          defenseActivationPercent,
+          ...logInfo
+        });
+      }
+      // Case 2: Liquidator doesn't have enough balance to liquidate the minimum sponsor size
+      else if (!canLiquidateMinimum({ position, syntheticTokenBalance })) {
+        console.log("test");
+        emit("error", {
+          message: "Insufficient balance to liquidate the minimum sponsor size✋",
+          position,
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
+          currentBlockTime,
+          ...logInfo
+        });
+      }
+      // Case 3: Unknown
+      else {
+        emit("error", {
+          message: "Unknown reason why liquidation is being skipped, should investigate🙃",
+          position,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
+          currentBlockTime,
+          ...logInfo
+        });
+      }
+    } else {
       return createLiquidationParams({
         sponsor: position.sponsor,
         tokensToLiquidate,
         currentBlockTime,
         maxCollateralPerToken
       });
-    } else {
-      return null;
     }
   }
 

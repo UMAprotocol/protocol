@@ -1086,7 +1086,6 @@ contract("Liquidator.js", function(accounts) {
                 await liquidator.update();
                 await liquidator.liquidatePositions(amountToLiquidate);
                 assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 successful, 2 partial, and 1 failed liquidations.
-                assert.equal(spy.getCall(-1).lastArg.tokensToLiquidate, "0");
 
                 // Check logs are emitted correctly. Partial liquidations should emit an "error"-level alert before a normal liquidation "info"-level alert.
                 assert.equal(spy.callCount, 5); // 2 info + 3 error level events should be sent at the conclusion of the 2 liquidations, including 2 partials, and 1 failed attempt to liquidate 0 tokens.
@@ -1529,9 +1528,7 @@ contract("Liquidator.js", function(accounts) {
             // No other logs should be emitted.
             assert.equal(startingLogLength + 1, spy.getCalls().length);
             assert.equal(spyLogLevel(spy, -1), "info");
-            assert.isTrue(
-              spyLogIncludes(spy, -1, "Withdrawal liveness has not passed WDF activation threshold, skipping")
-            );
+            assert.isTrue(spyLogIncludes(spy, -1, "liveness has not passed WDF activation threshold"));
           }
         );
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
