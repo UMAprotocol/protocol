@@ -189,7 +189,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       networker,
       getTime,
       config.minTimeBetweenUpdates,
-      config.priceFeedDecimals // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.ohlcPeriod
     );
   } else if (config.type === "test") {
     const requiredFields = ["currentPrice", "historicalPrice"];
