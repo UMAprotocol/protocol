@@ -125,19 +125,9 @@ module.exports = (
     maxCollateralPerToken,
     // mandated token to liquidate amount, an override
     maxTokensToLiquidateWei,
-    shouldEmitWDFSkipLogs,
     ...logInfo
   }) {
-    if (!syntheticTokenBalance || toBN(syntheticTokenBalance).lte(toBN(0))) {
-      emit("error", {
-        message: "Zero liquidation balance🤬",
-        position,
-        syntheticTokenBalance: syntheticTokenBalance.toString(),
-        maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
-        ...logInfo
-      });
-      return;
-    }
+    assert(syntheticTokenBalance, "requires syntheticTokenBalance");
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(position, "requires position");
 
@@ -187,11 +177,7 @@ module.exports = (
         hasWithdrawRequestPending({ position, currentBlockTime }) &&
         !passedDefenseActivationPercent({ position, currentBlockTime })
       ) {
-        // If requested withdrawal was within the block window, then upgrade the log level.
-        // This makes it possible to emit only one log about skipping a liquidation
-        // due to the WDF activation threshold not being passed.
-        let logLevel = shouldEmitWDFSkipLogs ? "info" : "debug";
-        emit(logLevel, {
+        emit("debug", {
           message: "Liquidator bot skipping liquidation, withdrawal liveness has not passed WDF activation threshold😴",
           position,
           currentBlockTime,
@@ -202,7 +188,6 @@ module.exports = (
       }
       // Case 2: Liquidator doesn't have enough balance to liquidate the minimum sponsor size
       else if (!canLiquidateMinimum({ position, syntheticTokenBalance })) {
-        console.log("test");
         emit("error", {
           message: "Insufficient balance to liquidate the minimum sponsor size✋",
           position,
