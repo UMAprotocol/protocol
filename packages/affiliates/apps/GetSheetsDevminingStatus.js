@@ -14,7 +14,7 @@ const web3 = require("web3");
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"];
-const EMP_ENABLED_STATE = '1';
+const EMP_ENABLED_STATE = "1";
 // Hardcodes columns and names based on the shape of the current dev mining sheet. May want this as config in future.
 const SHEET_COLUMNS = [
   // Name of prop in final object, column number in sheet and optional mapping function for value
@@ -25,8 +25,8 @@ const SHEET_COLUMNS = [
   ["enabled", 5, isEnabled]
 ];
 
-function getRangeString(rows=100,tab='Developer Mining'){
-  return `${tab}!1:${rows}`
+function getRangeString(rows = 100, tab = "Developer Mining") {
+  return `${tab}!1:${rows}`;
 }
 
 // GDrive Specific: have to use oauth credentials.
@@ -71,12 +71,12 @@ function parseAddress(addr) {
 }
 
 // Assumes dev mining status column === 1 for active emp
-function isEnabled(enabled,enabledState=EMP_ENABLED_STATE) {
+function isEnabled(enabled, enabledState = EMP_ENABLED_STATE) {
   return enabled == enabledState;
 }
 
 // Parses the raw data from sheet
-function parseSheet(sheet,columns=SHEET_COLUMNS) {
+function parseSheet(sheet, columns = SHEET_COLUMNS) {
   return sheet.values.reduce((result, row) => {
     const parsed = columns.reduce((result, [name, index, map]) => {
       try {
