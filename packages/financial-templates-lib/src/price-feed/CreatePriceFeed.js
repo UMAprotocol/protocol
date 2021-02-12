@@ -6,6 +6,8 @@ const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
+const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
+const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
@@ -63,7 +65,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       getTime,
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.decimals, // This defaults to 18 unless supplied by user
+      config.priceFeedDecimals, // This defaults to 18 unless supplied by user
       config.tickPeriod // Defaults to 60 unless supplied.
     );
   } else if (config.type === "uniswap") {
@@ -163,6 +165,32 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
+  } else if (config.type === "test") {
+    const requiredFields = ["currentPrice", "historicalPrice"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating PriceFeedMockScaled",
+      config
+    });
+
+    return new PriceFeedMockScaled(
+      config.currentPrice,
+      config.historicalPrice,
+      null,
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.lookback
+    );
+  } else if (config.type === "invalid") {
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating InvalidPriceFeed",
+      config
+    });
+
+    return new InvalidPriceFeedMock();
   } else if (config.type === "expression") {
     const requiredFields = ["expression"];
     if (isMissingField(config, requiredFields, logger)) {

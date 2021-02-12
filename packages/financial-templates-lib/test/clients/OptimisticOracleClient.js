@@ -138,6 +138,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
       {
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
+        ancillaryData: "0x",
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
@@ -159,6 +160,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         requester: optimisticRequester.address,
         proposer: proposer,
         identifier: hexToUtf8(identifier),
+        ancillaryData: "0x",
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
@@ -185,6 +187,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         requester: optimisticRequester.address,
         proposer: proposer,
         identifier: hexToUtf8(identifier),
+        ancillaryData: "0x",
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
@@ -235,6 +238,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         proposer: proposer,
         disputer: disputer,
         identifier: hexToUtf8(identifier),
+        ancillaryData: "0x",
         timestamp: requestTime.toString()
       }
     ]);
@@ -267,6 +271,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
       {
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
+        ancillaryData: "0x",
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",

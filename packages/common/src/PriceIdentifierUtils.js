@@ -21,7 +21,10 @@ const IDENTIFIER_NON_18_PRECISION = {
   "COMPUSDC-APR-MAR28/USDC": 6,
   DSDUSD: 6,
   DEFI_PULSE_TOTAL_TVL: 6,
-  SUSHIUNI_TVL: 6
+  SUSHIUNI_TVL: 6,
+  // The following identifiers are used in local test environments only:
+  TEST8DECIMALS: 8,
+  TEST6DECIMALS: 6
 };
 
 const getPrecisionForIdentifier = identifier => {
