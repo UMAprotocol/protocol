@@ -352,6 +352,16 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     lookback: 7200
   },
+  AMPLUSD: {
+    type: "medianizer",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "ftx", pair: "amplusdt" },
+      { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
+      { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
+    ]
+  },
   XAUUSD: {
     type: "perlinx",
     pair: "XAUUSD",
