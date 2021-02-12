@@ -109,16 +109,16 @@ contract("TraderMadePriceFeed.js", function() {
 
     const expectOhlcHourlyPrices = [
       {
-        closeTime: 1611637200,
-        openTime: 1611633600
+        closeTime: 1611608400,
+        openTime: 1611604800
       },
       {
-        closeTime: 1611640800,
-        openTime: 1611637200
+        closeTime: 1611612000,
+        openTime: 1611608400
       },
       {
-        closeTime: 1611644400,
-        openTime: 1611640800
+        closeTime: 1611615600,
+        openTime: 1611612000
       }
     ];
     const actualOhlcHourlyPrices = traderMadePriceFeed.getHistoricalPricePeriods();
