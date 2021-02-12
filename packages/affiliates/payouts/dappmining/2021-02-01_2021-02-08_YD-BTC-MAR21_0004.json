@@ -5,10 +5,7 @@
     "empAddress": "0x1c3f1A342c8D9591D9759220d114C685FD1cF6b8",
     "totalRewards": 4595,
     "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
-    "whitelist": [
-      "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71",
-      "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9"
-    ],
+    "whitelist": ["0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71", "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9"],
     "startTime": 1612220400000,
     "endTime": 1612825200000
   },
