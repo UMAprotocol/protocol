@@ -8,6 +8,7 @@ const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
+const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
@@ -162,6 +163,19 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
+  } else if (config.type === "expression") {
+    const requiredFields = ["expression"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating ExpressionPriceFeed",
+      config
+    });
+
+    return await _createExpressionPriceFeed(config);
   }
 
   logger.error({
@@ -173,6 +187,66 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   return null;
 
   // Internal helper methods:
+
+  // Returns an ExpressionPriceFeed.
+  async function _createExpressionPriceFeed(expressionConfig) {
+    // Build list of configs that could be used in the expression including default price feed configs and customFeeds
+    // that the user has provided inside the ExpressionPriceFeed config. Note: default configs are overriden by
+    // customFeeds with the same name. Tranform keys by escaping any special characters in the identifier names..
+    const allConfigs = Object.fromEntries(
+      Object.entries({ ...defaultConfigs, ...expressionConfig.customFeeds }).map(([key, value]) => {
+        return [escapeSpecialCharacters(key), value];
+      })
+    );
+
+    // This call chain:
+    // 1. Parses the expression into an expression tree of nodes.
+    // 2. Filters for "symbol" nodes, which would be price feed identifiers in this case.
+    // 3. Extract the name property for each of these symbol nodes
+    // 4. Puts it all in a set and converts back to an array to dedupe any repeated values.
+    const symbols = Array.from(
+      new Set(
+        math
+          .parse(expressionConfig.expression)
+          .filter(node => node.isSymbolNode)
+          .map(node => node.name)
+      )
+    );
+
+    // This is a complicated looking map that maps each symbol into an entry in an object with its value the price
+    // feed created from the mapped config in allConfigs.
+    const priceFeedMap = Object.fromEntries(
+      await Promise.all(
+        symbols.map(async symbol => {
+          const config = allConfigs[symbol];
+
+          // If there is no config for this symbol, insert null and send an error.
+          if (!config) {
+            logger.error({
+              at: "_createExpressionPriceFeed",
+              message: `No price feed config found for symbol: ${symbol} 🚨`,
+              expressionConfig
+            });
+            return [symbol, null];
+          }
+
+          // These configs will inherit the expression config values (except type), but prefer the individual config's
+          // value when present.
+          const combinedConfig = { ...expressionConfig, type: undefined, ...config };
+
+          // If this returns null, just return upstream since the error has already been logged and the null will be
+          // detected upstream.
+          const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
+          return [symbol, priceFeed];
+        })
+      )
+    );
+
+    // Return null if any of the price feeds in the map are null (meaning there was an error).
+    if (Object.values(priceFeedMap).some(priceFeed => priceFeed === null)) return null;
+
+    return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression, expressionConfig.priceFeedDecimals);
+  }
 
   // Returns a MedianizerPriceFeed
   async function _createMedianizerPriceFeed(medianizerConfig) {
@@ -196,6 +270,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     }
     return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
   }
+
   // Returns an array or "basket" of MedianizerPriceFeeds
   async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
     return await Promise.all(medianizerConfigs.map(config => _createMedianizerPriceFeed(config)));
