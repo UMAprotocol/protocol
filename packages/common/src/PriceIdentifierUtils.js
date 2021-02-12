@@ -7,7 +7,6 @@ const IDENTIFIER_BLACKLIST = {
 // not on this list are assumed to resolve to 18 decimals.
 const IDENTIFIER_NON_18_PRECISION = {
   USDBTC: 8,
-  DEFI_PULSE_TOTAL_TVL: 6,
   "STABLESPREAD/USDC": 6,
   "STABLESPREAD/BTC": 8,
   "ELASTIC_STABLESPREAD/USDC": 6,
