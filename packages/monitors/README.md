@@ -1,6 +1,6 @@
 # @uma/monitors
 
-This package contains four UMA monitor bot implementations: `BalanceMonitor`, `ContractMonitor`, `CRMonitor`, and `SyntheticPegMonitor`. The monitor bots are used to monitor the UMA ecosystem for key events. They have a number of monitor modules built into them that enable real time reporting on key events for a given Financial Contract contract.
+This package contains four UMA monitor bot implementations: `BalanceMonitor`, `ContractMonitor`, `CRMonitor`, and `SyntheticPegMonitor`. The monitor bots are used to monitor the UMA ecosystem for key events. They have a number of monitor modules built into them that enable real time reporting on key events for a given Financial Contract.
 
 For more information about running a monitor bot, see the [docs](https://docs.umaproject.org/developers/bots).
 
