@@ -117,6 +117,7 @@ class CRMonitor {
     if (this.walletsToMonitor.length == 0) return; // If there are no wallets to monitor exit early
     // yield the price feed at the current time.
     const price = this.priceFeed.getCurrentPrice();
+    const latestCumulativeFundingRateMultiplier = this.empClient.getLatestCumulativeFundingRateMultiplier();
 
     if (!price) {
       this.logger.warn({
@@ -142,6 +143,8 @@ class CRMonitor {
         continue;
       }
 
+      // Note the collateral amount below already considers the latestCumulativeFundingRateMultiplier from the client.
+      // No additional calculation should be required as a result.
       const collateral = positionInformation.amountCollateral;
       const withdrawalRequestAmount = positionInformation.withdrawalRequestAmount;
       const tokensOutstanding = positionInformation.numTokens;
@@ -190,7 +193,9 @@ class CRMonitor {
           this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
           "%. Liquidation price: " +
           this.formatDecimalString(liquidationPrice) + // Note that this does NOT use normalizePriceFeedDecimals as the value has been normalized from the _calculatePriceForCR equation.
-          ".";
+          ". The latest cumulative funding rate multiplier is " +
+          this.formatDecimalString(latestCumulativeFundingRateMultiplier);
+        +".";
 
         this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
@@ -235,6 +240,4 @@ class CRMonitor {
   }
 }
 
-module.exports = {
-  CRMonitor
-};
+module.exports = { CRMonitor };

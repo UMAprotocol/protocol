@@ -293,6 +293,4 @@ class ExpiringMultiPartyClient {
   }
 }
 
-module.exports = {
-  ExpiringMultiPartyClient
-};
+module.exports = { ExpiringMultiPartyClient };

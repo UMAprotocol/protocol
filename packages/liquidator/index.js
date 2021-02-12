@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion } = require("@uma/common");
+const { getWeb3, MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -19,15 +19,6 @@ const {
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
-
-const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
-];
 
 /**
  * @notice Continuously attempts to liquidate positions in the EMP contract.
@@ -64,17 +55,30 @@ async function run({
     const { toBN } = web3.utils;
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(empAddress, web3),
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
-
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
-    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract.contractVersion;
-    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract.contractType;
+    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract?.contractVersion;
+    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract?.contractType;
 
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
@@ -83,9 +87,11 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Loaded/inferred contractVersion:${
-          liquidatorConfig.contractVersion
-        } & contractType:${liquidatorConfig.contractType} is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        `Contract version specified or inferred is not supported by this bot. Liquidator config:${JSON.stringify(
+          liquidatorConfig
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} is not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
@@ -167,20 +173,6 @@ async function run({
       startingBlock,
       endingBlock
     };
-
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const priceFeed = await createReferencePriceFeedForEmp(
@@ -306,6 +298,7 @@ async function run({
           message: "End of serverless execution loop - terminating process"
         });
         await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
       logger.debug({
@@ -339,9 +332,9 @@ async function Poll(callback) {
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
-      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
-      // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
+      // Default to 1 seconds in between error re-tries.
+      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
       // Read price feed configuration from an environment variable. This can be a crypto watch, medianizer or uniswap
       // price feed Config defines the exchanges to use. If not provided then the bot will try and infer a price feed
       // from the EMP_ADDRESS. EG with medianizer: {"type":"medianizer","pair":"ethbtc",
@@ -358,7 +351,7 @@ async function Poll(callback) {
       //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
       //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
       //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
-      //   "contractVersion":"1.2.2"":"ExpiringMultiParty"} -> override the contract version the liquidator is pointing at.
+      //   "contractVersion":"1.2.2"} -> override the contract version the liquidator is pointing at.
       liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : {},
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.

@@ -298,7 +298,8 @@ class Liquidator {
       // has not passed the WDF's activation threshold.
       // This gets logged as an event, see constructor
       if (!liquidationArgs) {
-        // If WDF is active but liveness hasn't passed activation %, then send customized log:
+        // If WDF is active, withdrawal request is active but has NOT expired yet,
+        // and liveness hasn't passed activation % then send customized log:
         if (
           this.defenseActivationPercent &&
           !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
@@ -328,12 +329,11 @@ class Liquidator {
           });
           continue;
         }
-        // the bot cannot liquidate the full position size, but the full position size is at the minimum sponsor threshold. Therefore, the
-        // bot can liquidate 0 tokens. The smart contracts should disallow this, but a/o June 2020 this behavior is allowed so we should block it
-        // client-side.
+        // the bot has 0 balance.
         this.logger.error({
           at: "Liquidator",
-          message: "Position size is equal to the minimum: not enough synthetic to initiate full liquidation✋",
+          message:
+            "Zero liquidation balance. If bot has balance, then it likely does not have enough balance to fully liquidate the position, which is equal to the minimum sponsor size✋",
           sponsor: position.sponsor,
           inputPrice: scaledPrice.toString(),
           position: position,
@@ -495,6 +495,13 @@ class Liquidator {
         continue;
       }
 
+      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      const amountWithdrawn =
+        this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
+          ? withdrawalCallResponse.rawValue.toString()
+          : withdrawalCallResponse.payToLiquidator.rawValue.toString();
+
       const txnConfig = {
         from: this.account,
         gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
@@ -506,10 +513,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amountWithdrawn:
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
+        amountWithdrawn,
         txnConfig
       });
 
@@ -581,10 +585,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amountWithdrawn:
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.payToLiquidator.rawValue.toString(),
+        amountWithdrawn,
         txnConfig,
         liquidationResult: logResult
       });

@@ -6,6 +6,9 @@ const { parseFixed } = require("@uma/common");
 // Script to test
 const { BalanceMonitor } = require("../src/BalanceMonitor");
 
+// Note: these unit tests (and the associated BalanceMonitor module) are independent of the financial contract that
+// issued them. This means that they dont need to have any perpetual specific unit tests.
+
 // Helper client script and custom winston transport module to monitor winston log outputs
 const {
   TokenBalanceClient,

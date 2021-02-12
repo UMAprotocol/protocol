@@ -43,6 +43,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.exchange = exchange;
     this.pair = pair;
     this.lookback = lookback;
+    this.uuid = `CryptoWatch-${exchange}-${pair}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -65,9 +66,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time, verbose = false) {
+  async getHistoricalPrice(time, verbose = false) {
     if (this.lastUpdateTime === undefined) {
-      return null;
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     // Set first price period in `historicalPricePeriods` to first non-null price.
@@ -81,13 +82,13 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // If there are no valid price periods, return null.
     if (!firstPricePeriod) {
-      return null;
+      throw new Error(`${this.uuid}: no valid price periods`);
     }
 
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < firstPricePeriod.openTime) {
-      return null;
+      throw new Error(`${this.uuid}: time ${time} is before firstPricePeriod.openTime`);
     }
 
     // historicalPricePeriods are ordered from oldest to newest.
@@ -98,8 +99,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // If there is no match, that means that the time was past the last data point.
     // In this case, the best match for this price is the current price.
+    let returnPrice;
     if (match === undefined) {
-      let returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+      returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
         console.group(`\n(${this.exchange}:${this.pair}) No OHLC available @ ${time}`);
         console.log(
@@ -112,10 +114,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         );
         console.groupEnd();
       }
-      return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+      return returnPrice;
     }
 
-    let returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+    returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
     if (verbose) {
       console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${match.closeTime}`);
       console.log(`- ✅ Open Price:${this.web3.utils.fromWei(returnPrice.toString())}`);

@@ -157,6 +157,31 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
   });
 
+  it("One event within window, several before", async function() {
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Set prices before the T-3600 window; only the most recent one should be counted.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("4"))], currentTime - 7300, owner);
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("2"))], currentTime - 7200, owner);
+
+    // Set a price within the T-3600 window
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("1"))], currentTime - 1800, owner);
+
+    // Prices after the TWAP window should be ignored.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("8"))], currentTime + 1, owner);
+
+    mockTime = currentTime;
+    await dexPriceFeed.update();
+
+    // The TWAP price should be the TWAP of the last price before the TWAP window and the single price
+    // within the window:
+    // - latest price before TWAP window: 2
+    // - single price exactly 50% through the window: 1
+    // - TWAP: 2 * 0.5 + 1 * 0.5 = 1.5
+    assert.equal(dexPriceFeed.getCurrentPrice(), toWei("1.5"));
+  });
+
   it("Basic historical TWAP", async function() {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
@@ -181,28 +206,33 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("95"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(), toWei("95"));
 
     // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("90"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 2700)).toString(), toWei("90"));
 
     // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("85"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 1800)).toString(), toWei("85"));
 
     // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("80"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 900)).toString(), toWei("80"));
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime)).toString(), toWei("75"));
   });
 
-  it("Historical TWAP too far back", async function() {
+  it("Historical time earlier than TWAP window", async function() {
     const currentTime = Math.round(new Date().getTime() / 1000);
     mockTime = currentTime;
+
+    // Set a price within the TWAP window so that if the historical time requested were within
+    // the window, then there wouldn't be an error.
+    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("1"))], currentTime - 3600, owner);
     await dexPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3601), null);
+    assert.equal(await dexPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3601).catch(() => true));
   });
   it("TWAP length of 0 returns non-TWAP'd current and historical prices", async function() {
     dexPriceFeed = new BalancerPriceFeed(
@@ -232,8 +262,8 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("80"));
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("70"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(), toWei("80"));
+    assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime - 1800)).toString(), toWei("70"));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -265,10 +295,10 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3600).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 2700).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 1800).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 900).catch(() => true));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -300,10 +330,10 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexPriceFeed.update();
 
     // Historical prices should be equal to latest price at timestamp
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 3600), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 2700), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 1800), null);
-    assert.equal(dexPriceFeed.getHistoricalPrice(currentTime - 900), null);
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3600).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 2700).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 1800).catch(() => true));
+    assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 900).catch(() => true));
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
@@ -408,13 +438,13 @@ contract("BalancerPriceFeed.js", function(accounts) {
 
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
       assert.equal(
-        scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        (await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
         toBN(toWei("95"))
           .muln(10 ** 6)
           .toString()
       );
       assert.equal(
-        scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600).toString(),
+        (await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
         toBN(toWei("95"))
           .divn(10 ** 2)
           .toString()
@@ -422,7 +452,6 @@ contract("BalancerPriceFeed.js", function(accounts) {
     });
   });
   // TODO: add the following TWAP tests using simulated block times:
-  // - Some events pre TWAP window, some inside window.
   // - Some events post TWAP window, some inside window.
   // - Complex (5+ value) TWAP with events overlapping on both sides of the window.
 

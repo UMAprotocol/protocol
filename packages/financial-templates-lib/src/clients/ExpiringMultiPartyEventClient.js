@@ -12,7 +12,16 @@ class ExpiringMultiPartyEventClient {
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
    */
-  constructor(logger, empAbi, web3, empAddress, startingBlockNumber = 0, endingBlockNumber = null) {
+  constructor(
+    logger,
+    empAbi,
+    web3,
+    empAddress,
+    startingBlockNumber = 0,
+    endingBlockNumber = null,
+    contractType = "ExpiringMultiParty", // Default to EMP for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractVersion = "1.2.2"
+  ) {
     this.logger = logger;
     this.web3 = web3;
 
@@ -40,6 +49,22 @@ class ExpiringMultiPartyEventClient {
     // Last block number to end the searching for events at.
     this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
+
+    if (contractType !== "ExpiringMultiParty" && contractType !== "Perpetual")
+      throw new Error(
+        `Invalid contract type provided: ${contractType}! The financial product client only supports ExpiringMultiParty or Perpetual`
+      );
+    this.contractType = contractType;
+    if (
+      contractVersion !== "1.2.0" &&
+      contractVersion !== "1.2.1" &&
+      contractVersion !== "1.2.2" &&
+      contractVersion !== "latest"
+    )
+      throw new Error(
+        `Invalid contract version provided: ${contractVersion}! The financial product client only supports 1.2.0, 1.2.1, 1.2.2 or latest`
+      );
+    this.contractVersion = contractVersion;
   }
   // Delete all events within the client
   async clearState() {
@@ -152,7 +177,9 @@ class ExpiringMultiPartyEventClient {
       this.emp.getPastEvents("RegularFeesPaid", blockSearchConfig),
       this.emp.getPastEvents("FinalFeesPaid", blockSearchConfig),
       this.emp.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
-      this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+      this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
+        ? this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+        : this.emp.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -277,17 +304,27 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Liquidation withdrawn events.
+    // Note that depending on the contract version the returned events structure is changed. Versions 1.2.2 and
+    // below return the "withdrawalAmount" for each caller of the function. After 1.2.2 only one call is needed
+    // to withdraw all rewards and so the method returns far more information. Also note that right now no client
+    // implementers fully use these events. FOr now this is left as simple and light weight as possible and might
+    // need to be updated in future if we need access to more event info.
     for (let event of liquidationWithdrawnEventsObj) {
       this.liquidationWithdrawnEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         caller: event.returnValues.caller,
-        withdrawalAmount: event.returnValues.withdrawalAmount,
+        // TODO: refactor this method to use > syntax for versions. this will require a bit of an overhaul to enable version comparison.
+        withdrawalAmount:
+          this.contractVersion == "1.2.0" || this.contractVersion == "1.2.1" || this.contractVersion == "1.2.2"
+            ? event.returnValues.withdrawalAmount
+            : event.returnValues.paidToLiquidator,
         liquidationStatus: event.returnValues.liquidationStatus
       });
     }
 
     // Settle expired position events.
+
     for (let event of settleExpiredPositionEventsObj) {
       this.settleExpiredPositionEvents.push({
         transactionHash: event.transactionHash,
