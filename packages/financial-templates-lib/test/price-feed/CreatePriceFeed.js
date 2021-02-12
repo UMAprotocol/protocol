@@ -27,7 +27,9 @@ const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { SpyTransport } = require("../../src/logger/SpyTransport");
 const winston = require("winston");
+const sinon = require("sinon");
 
 const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
@@ -41,6 +43,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   let timer;
   let finder;
   let identifierWhitelist;
+  let spy;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -63,8 +66,11 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   beforeEach(async function() {
     networker = new NetworkerMock();
+    spy = sinon.spy();
+
     logger = winston.createLogger({
-      silent: true
+      level: "info",
+      transports: [new SpyTransport({ level: "error" }, { spy: spy })]
     });
   });
 
@@ -711,6 +717,121 @@ contract("CreatePriceFeed.js", function(accounts) {
     const medianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.equal(medianizerFeed, null);
+  });
+
+  it("ExpressionPriceFeed: invalid config, no expression", async function() {
+    const config = {
+      type: "expression"
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(expressionPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
+  });
+
+  it("ExpressionPriceFeed: invalid config, symbol not found", async function() {
+    const config = {
+      type: "expression",
+      expression: "mysymbol * 2"
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(expressionPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
+  });
+
+  it("ExpressionPriceFeed: customFeeds", async function() {
+    const config = {
+      type: "expression",
+      expression: "mysymbol * 2",
+      customFeeds: {
+        mysymbol: {
+          type: "cryptowatch",
+          apiKey,
+          exchange,
+          pair,
+          lookback,
+          minTimeBetweenUpdates
+        }
+      }
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(expressionPriceFeed);
+    assert.exists(expressionPriceFeed.priceFeedMap["mysymbol"]);
+  });
+
+  it("ExpressionPriceFeed: inherited config", async function() {
+    const config = {
+      type: "expression",
+      expression: "mysymbol * 2",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      customFeeds: {
+        mysymbol: {
+          type: "cryptowatch"
+        }
+      }
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(expressionPriceFeed);
+    assert.exists(expressionPriceFeed.priceFeedMap["mysymbol"]);
+    assert.equal(expressionPriceFeed.priceFeedMap["mysymbol"].lookback, lookback);
+  });
+
+  it("ExpressionPriceFeed: invalid config, no expression", async function() {
+    const config = {
+      type: "expression"
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(expressionPriceFeed);
+  });
+
+  it("ExpressionPriceFeed: can find default price feeds", async function() {
+    const config = {
+      type: "expression",
+      lookback,
+      expression: "USDETH + ETH\\/BTC"
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(expressionPriceFeed);
+  });
+
+  it("ExpressionPriceFeed: invalid config in customFeeds is ignored if unused", async function() {
+    const config = {
+      type: "expression",
+      expression: "2 + 5",
+      customFeeds: {
+        ETHBTC: {} // Invalid because it has no type.
+      }
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(expressionPriceFeed);
+  });
+
+  it("ExpressionPriceFeed: constant expression", async function() {
+    const config = {
+      type: "expression",
+      expression: "1 + 2"
+    };
+
+    const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(expressionPriceFeed);
   });
 
   it("Default reference price feed", async function() {
