@@ -117,6 +117,7 @@ class OptimisticOracleClient {
       return {
         requester: event.returnValues.requester,
         identifier: this.hexToUtf8(event.returnValues.identifier),
+        ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         timestamp: event.returnValues.timestamp,
         currency: event.returnValues.currency,
         reward: event.returnValues.reward,
@@ -136,6 +137,7 @@ class OptimisticOracleClient {
           requester: event.returnValues.requester,
           proposer: event.returnValues.proposer,
           identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
           timestamp: event.returnValues.timestamp,
           proposedPrice: event.returnValues.proposedPrice,
           expirationTimestamp: event.returnValues.expirationTimestamp
@@ -200,6 +202,7 @@ class OptimisticOracleClient {
             proposer: event.returnValues.proposer,
             disputer: event.returnValues.disputer,
             identifier: this.hexToUtf8(event.returnValues.identifier),
+            ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
             timestamp: event.returnValues.timestamp
           };
         }

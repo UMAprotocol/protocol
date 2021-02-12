@@ -5,15 +5,17 @@
   "license": "MIT",
   "dependencies": {
     "@google-cloud/bigquery": "^5.3.0",
-    "@uma/core": "npm:@uma/core@1.2.0",
     "@uma/common": "^1.1.0",
+    "@uma/core": "npm:@uma/core@1.2.0",
     "@uma/financial-templates-lib": "^1.1.0",
     "cli-progress": "^3.8.2",
     "ethers": "^5.0.17",
+    "googleapis": "39",
     "highland": "^2.13.5",
     "lodash": "^4.17.20",
     "mkdirp": "^1.0.4",
-    "moment": "^2.29.1"
+    "moment": "^2.29.1",
+    "prompt": "^1.1.0"
   },
   "devDependencies": {
     "mocha": "^8.2.0",
