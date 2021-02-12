@@ -27,7 +27,9 @@ const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { SpyTransport } = require("../../src/logger/SpyTransport");
 const winston = require("winston");
+const sinon = require("sinon");
 
 const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
 
@@ -41,6 +43,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   let timer;
   let finder;
   let identifierWhitelist;
+  let spy;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -63,8 +66,11 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   beforeEach(async function() {
     networker = new NetworkerMock();
+    spy = sinon.spy();
+
     logger = winston.createLogger({
-      silent: true
+      level: "info",
+      transports: [new SpyTransport({ level: "error" }, { spy: spy })]
     });
   });
 
@@ -721,6 +727,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isNull(expressionPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
   });
 
   it("ExpressionPriceFeed: invalid config, symbol not found", async function() {
@@ -732,6 +739,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isNull(expressionPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
   });
 
   it("ExpressionPriceFeed: customFeeds", async function() {

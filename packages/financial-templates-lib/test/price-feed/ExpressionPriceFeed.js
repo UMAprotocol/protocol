@@ -18,14 +18,19 @@ contract("ExpressionPriceFeed.js", function() {
   });
 
   it("Basic expression", async function() {
+    // Note: the third price feed's name is meant to be a complex name with many special characters to demonstrate
+    // that it works.
     const priceFeedMap = {
       //                        currentPrice      historicalPrice    lastUpdatedTime   decimals   lookback
       ETHUSD: new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18, 500),
       BTCUSD: new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18, 4000),
-      COMPUSD: new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 18, 50000)
+      "USD\\-\\[bwBTC\\/ETH\\ SLP\\]": new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 18, 50000)
     };
 
-    const expressionPriceFeed = new ExpressionPriceFeed(priceFeedMap, "ETHUSD + BTCUSD + COMPUSD");
+    const expressionPriceFeed = new ExpressionPriceFeed(
+      priceFeedMap,
+      "ETHUSD + BTCUSD + USD\\-\\[bwBTC\\/ETH\\ SLP\\]"
+    );
 
     // Should return the sum of the current prices.
     assert.equal(expressionPriceFeed.getCurrentPrice(), toWei("12"));
