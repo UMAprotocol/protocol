@@ -153,7 +153,7 @@ module.exports = (
       passedDefenseActivationPercent({ position, currentBlockTime }) &&
       canLiquidateMinimum({ position, syntheticTokenBalance })
     ) {
-      // 3) If WDF is active and withdraw has passed liveness, then submit min liquidation
+      // 3) If WDF is active and withdraw has passed WDF activation percentage, then submit min liquidation
       emit("info", {
         message: "Liquidator bot is extending withdraw deadline, funds may need to be added to liquidate full position",
         position: position,
