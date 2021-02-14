@@ -340,6 +340,11 @@ const defaultConfigs = {
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
     twapLength: 7200
   },
+  "COMPUSDC-APR-MAR28/USDC": {
+    type: "uniswap",
+    uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
+    twapLength: 7200
+  },
   BTCDOM: {
     type: "domfi",
     pair: "BTCDOM",
