@@ -362,7 +362,7 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
-  DAIPHP: {
+  PHPDAI: {
     type: "medianizer",
     computeMean: true,
     lookback: 7200,
@@ -371,12 +371,14 @@ const defaultConfigs = {
       {
         type: "coinmarketcap",
         symbol: "DAI",
-        convert: "PHP"
+        convert: "PHP",
+        invertPrice: true
       },
       {
         type: "coingecko",
         contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
-        currency: "php"
+        currency: "php",
+        invertPrice: true
       }
     ]
   },
