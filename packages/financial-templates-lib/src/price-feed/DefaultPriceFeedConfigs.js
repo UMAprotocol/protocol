@@ -379,6 +379,24 @@ const defaultConfigs = {
         currency: "php"
       }
     ]
+  },
+  // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
+  // default price feed config.
+  TEST8DECIMALS: {
+    // This type should map to the PriceFeedMock in `CreatePriceFeed`
+    type: "test"
+  },
+  TEST6DECIMALS: {
+    // This type should map to the PriceFeedMock in `CreatePriceFeed`
+    type: "test"
+  },
+  TEST18DECIMALS: {
+    // This type should map to the PriceFeedMock in `CreatePriceFeed`
+    type: "test"
+  },
+  INVALID: {
+    // This type should map to the InvalidPriceFeedMock in `CreatePriceFeed`
+    type: "invalid"
   }
 };
 

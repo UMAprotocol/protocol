@@ -11,8 +11,10 @@
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
+    "mathjs": "^9.2.0",
     "minimist": "^1.2.0",
     "node-fetch": "^2.6.0",
+    "moment": "^2.29.1",
     "node-pagerduty": "^1.2.0",
     "winston": "^3.2.1",
     "winston-transport": "^4.3.0"
