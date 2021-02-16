@@ -1,6 +1,9 @@
 const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
+const { parseFixed } = require("@uma/common");
+
+const Convert = decimals => number => parseFixed(number.toString().substring(0, decimals), decimals).toString();
 
 contract("CoinMarketCapPriceFeed.js", function() {
   let coinMarketCapPriceFeed;
@@ -218,9 +221,6 @@ contract("CoinMarketCapPriceFeed.js", function() {
     const invertedPrice = toBN(toWei("1"))
       .mul(toBN(toWei("1")))
       .div(toBN(toWei(`${mockPrice}`)))
-      // we need this last division to convert final result to correct decimals
-      // in this case its from 18 decimals to 10 decimals.
-      // .div(toBN("10").pow(toBN(18 - 10)))
       .toString();
 
     const price = cmcInvertedPriceFeed.getCurrentPrice();
@@ -228,6 +228,57 @@ contract("CoinMarketCapPriceFeed.js", function() {
 
     const historicalPrice = cmcInvertedPriceFeed.getHistoricalPrice(mockTime);
     assert.equal(historicalPrice.toString(), invertedPrice);
+  });
+
+  it("Can handle non-18 decimal place precision", async function() {
+    // non-18 decimal price feed setup
+    const expectedPrice = 48.216239;
+    const expectedResponse = {
+      data: {
+        [symbol]: {
+          quote: {
+            [convert]: {
+              price: expectedPrice
+            }
+          }
+        }
+      }
+    };
+
+    networker = new NetworkerMock();
+    mockTime = new Date().getTime();
+
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: [new winston.transports.Console()]
+    });
+
+    const cgSixDecimalPriceFeed = new CoinMarketCapPriceFeed(
+      dummyLogger,
+      web3,
+      apiKey,
+      symbol,
+      convert,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      6 // e.g. USDC
+    );
+
+    // Here comes the actual tests
+    networker.getJsonReturns = [expectedResponse];
+
+    await cgSixDecimalPriceFeed.update();
+
+    const sixDecimalPrice = Convert(6)(expectedPrice);
+
+    const price = cgSixDecimalPriceFeed.getCurrentPrice();
+    assert.equal(price.toString(), sixDecimalPrice);
+
+    const historicalPrice = cgSixDecimalPriceFeed.getHistoricalPrice(mockTime);
+    assert.equal(historicalPrice.toString(), sixDecimalPrice);
   });
 
   it("Produces correct url if apiKey is present", async function() {
