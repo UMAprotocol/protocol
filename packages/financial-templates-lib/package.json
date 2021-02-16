@@ -14,6 +14,7 @@
     "mathjs": "^9.2.0",
     "minimist": "^1.2.0",
     "node-fetch": "^2.6.0",
+    "moment": "^2.29.1",
     "node-pagerduty": "^1.2.0",
     "winston": "^3.2.1",
     "winston-transport": "^4.3.0"

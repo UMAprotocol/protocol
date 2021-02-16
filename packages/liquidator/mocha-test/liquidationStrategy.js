@@ -8,15 +8,16 @@ const Strategy = require("../src/liquidationStrategy");
 const events = new Events();
 describe("LiquidatorStrategy", () => {
   it("should init", () => {
+    // Default config without WDF activated:
     const config = {
       minSponsorSize: 10
     };
     let strat = Strategy(config, { toBN, BN });
-
     assert(strat);
+
+    // Activating WDF:
     strat = Strategy(
       {
-        whaleDefenseFundWei: 1000,
         defenseActivationPercent: 50,
         withdrawLiveness: 1000,
         minSponsorSize: 10
@@ -50,6 +51,62 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.withdrawProgressPercent(1000, 2000, 1500);
     assert.equal(result.toFixed(2), "50.00");
   });
+  it("hasWithdrawRequestPending", () => {
+    const config = {
+      minSponsorSize: 10
+    };
+    let strat = Strategy(config, { toBN, BN });
+
+    // Withdraw pending
+    let result = strat.utils.hasWithdrawRequestPending({
+      position: { withdrawalRequestPassTimestamp: 11 },
+      currentBlockTime: 10
+    });
+    assert(result);
+    // No withdraw pending
+    result = strat.utils.hasWithdrawRequestPending({
+      position: { withdrawalRequestPassTimestamp: 0 },
+      currentBlockTime: 10
+    });
+    assert(!result);
+    // Withdraw expired
+    result = strat.utils.hasWithdrawRequestPending({
+      position: { withdrawalRequestPassTimestamp: 9 },
+      currentBlockTime: 10
+    });
+    assert(!result);
+  });
+  it("passedDefenseActivationPercent", () => {
+    let config = {
+      minSponsorSize: 10,
+      defenseActivationPercent: 80,
+      withdrawLiveness: 100
+    };
+    let strat = Strategy(config, { toBN, BN });
+
+    // Withdrawal request expires at 1000, liveness = 100,
+    // current block = 900, defense activation = 0%
+    // ==> FALSE
+    let result = strat.utils.passedDefenseActivationPercent({
+      position: { withdrawalRequestPassTimestamp: 1000 },
+      currentBlockTime: 900
+    });
+    assert(!result);
+    // current block = 950, defense activation = 50%
+    // ==> FALSE
+    result = strat.utils.passedDefenseActivationPercent({
+      position: { withdrawalRequestPassTimestamp: 1000 },
+      currentBlockTime: 950
+    });
+    assert(!result);
+    // current block = 980, defense activation = 80%
+    // ==> TRUE
+    result = strat.utils.passedDefenseActivationPercent({
+      position: { withdrawalRequestPassTimestamp: 1000 },
+      currentBlockTime: 980
+    });
+    assert(result);
+  });
   it("createLiquidationParams", () => {
     const config = {
       minSponsorSize: 10
@@ -67,13 +124,12 @@ describe("LiquidatorStrategy", () => {
     assert.equal(result[1].rawValue, "0");
     assert.equal(result[2].rawValue, params.maxCollateralPerToken);
     assert.equal(result[3].rawValue, params.tokensToLiquidate);
-    // curren blocktime=100 plus default liquidationDeadline=300
-    assert(result[4], 400);
+    // current blocktime=100 plus default liquidationDeadline=300
+    assert.equal(result[4], 400);
   });
   it("calculateTokensToLiquidate", () => {
     const config = {
       minSponsorSize: 10,
-      whaleDefenseFundWei: "10",
       defenseActivationPercent: 50,
       withdrawLiveness: 1000
     };
@@ -81,99 +137,45 @@ describe("LiquidatorStrategy", () => {
     let result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 10,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
+      maxTokensToLiquidateWei: "1000"
     });
     // should respect position size
     assert.equal(result.toString(), "10");
 
-    strat = Strategy(
-      {
-        ...config,
-        whaleDefenseFundWei: "95"
-      },
-      { toBN, BN }
-    );
     result = strat.utils.calculateTokensToLiquidate({
-      syntheticTokenBalance: 100,
+      syntheticTokenBalance: 8,
       positionTokens: 10,
-      whaleDefenseFundWei: 95,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
+      maxTokensToLiquidateWei: "1000"
     });
     // should respect emp min sponsor size
     assert.equal(result.toString(), "0");
 
-    // If you set `withdrawRequestPending` to false, then the `whaleDefenseFundWei` is ignored
-    // and the max balance is used (taking into consideration min sponsor size)
-    result = strat.utils.calculateTokensToLiquidate({
-      syntheticTokenBalance: 100,
-      positionTokens: 10,
-      whaleDefenseFundWei: 95,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: false
-    });
-    assert.equal(result.toString(), "10");
-
     strat = Strategy(
       {
         ...config,
-        whaleDefenseFundWei: "60"
-      },
-      { toBN, BN }
-    );
-
-    result = strat.utils.calculateTokensToLiquidate({
-      syntheticTokenBalance: 100,
-      positionTokens: 50,
-      whaleDefenseFundWei: 60,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
-    });
-    // should respsect wdf reserve value
-    assert.equal(result.toString(), "40");
-
-    result = strat.utils.calculateTokensToLiquidate({
-      syntheticTokenBalance: 8,
-      positionTokens: 10,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
-    });
-    // should respsect emp min sponsor size
-    assert.equal(result.toString(), "0");
-
-    strat = Strategy(
-      {
-        ...config,
-        whaleDefenseFundWei: "95",
         minSponsorSize: 900
       },
       { toBN, BN }
     );
-
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 1000,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
+      maxTokensToLiquidateWei: "1000"
     });
-    // should respect our balance and whale defense fund
-    assert.equal(result.toString(), "5");
+    // should respect our balance
+    assert.equal(result.toString(), "100");
 
     strat = Strategy(
       {
         ...config,
-        whaleDefenseFundWei: "95",
         minSponsorSize: 100
       },
       { toBN, BN }
     );
-
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 100,
       positionTokens: 101,
-      maxTokensToLiquidateWei: "1000",
-      withdrawRequestPending: true
+      maxTokensToLiquidateWei: "1000"
     });
     // should respsect empminsponsor size
     assert.equal(result.toString(), "1");
@@ -181,147 +183,167 @@ describe("LiquidatorStrategy", () => {
     result = strat.utils.calculateTokensToLiquidate({
       syntheticTokenBalance: 1000,
       positionTokens: 10000,
-      maxTokensToLiquidateWei: "100",
-      withdrawRequestPending: true
+      maxTokensToLiquidateWei: "100"
     });
     // should respect max to liquidate
     assert.equal(result.toString(), "100");
+
+    result = strat.utils.calculateTokensToLiquidate({
+      syntheticTokenBalance: 100,
+      positionTokens: 0,
+      maxTokensToLiquidateWei: "1000"
+    });
+    // position has 0 tokens, no error thrown
+    assert.equal(result.toString(), "0");
   });
-  it("shouldLiquidate", () => {
+  it("canLiquidateMinimum", () => {
     const config = {
       minSponsorSize: "10"
     };
     let strat = Strategy(config, { toBN, BN });
-    let result = strat.utils.shouldLiquidate({ tokensToLiquidate: "100000" });
+    // Balance > minimum && (position.numTokens - minimum >= minimum)
+    let result = strat.utils.canLiquidateMinimum({
+      position: { numTokens: "20" },
+      syntheticTokenBalance: "11"
+    });
     assert(result);
-    result = strat.utils.shouldLiquidate({ tokensToLiquidate: "0" });
+    // Balance > minimum && !(position.numTokens - minimum >= minimum)
+    result = strat.utils.canLiquidateMinimum({
+      position: { numTokens: "19" },
+      syntheticTokenBalance: "11"
+    });
+    assert(!result);
+    // Balance < minimum
+    result = strat.utils.canLiquidateMinimum({
+      position: { numTokens: "20" },
+      syntheticTokenBalance: "9"
+    });
     assert(!result);
   });
-  it("shouldLiquidateMinimum", () => {
+  it("canLiquidateFully", () => {
     const config = {
-      defenseActivationPercent: 50,
-      minSponsorSize: "10",
-      withdrawLiveness: 1000
+      minSponsorSize: "10"
     };
     let strat = Strategy(config, { toBN, BN });
-    const position = {
-      withdrawalRequestPassTimestamp: 1000,
-      numTokens: "100"
-    };
-    let result = strat.utils.shouldLiquidateMinimum({
-      position,
-      syntheticTokenBalance: "50",
-      currentBlockTime: 500
+    // Balance >= position size
+    let result = strat.utils.canLiquidateFully({
+      position: { numTokens: "20" },
+      syntheticTokenBalance: "20"
     });
     assert(result);
-    result = strat.utils.shouldLiquidateMinimum({
-      position,
-      // our token balance is high enough to liquidate full position
-      // so this should not active minimum
-      syntheticTokenBalance: "100",
-      currentBlockTime: 500
+    result = strat.utils.canLiquidateFully({
+      position: { numTokens: "19" },
+      syntheticTokenBalance: "20"
     });
-    assert(!result);
-    result = strat.utils.shouldLiquidateMinimum({
-      position,
-      syntheticTokenBalance: "50",
-      // sponsor has not passed the withdraw liveness % complete to liquidate
-      currentBlockTime: 0
-    });
-    assert(!result);
-    result = strat.utils.shouldLiquidateMinimum({
-      position,
-      syntheticTokenBalance: "50",
-      // withdraw has passed liveness
-      currentBlockTime: 1000
+    assert(result);
+    // Balance < position size
+    result = strat.utils.canLiquidateFully({
+      position: { numTokens: "21" },
+      syntheticTokenBalance: "20"
     });
     assert(!result);
   });
   it("processPosition", () => {
-    const config = {
-      whaleDefenseFundWei: "100",
+    let config = {
+      minSponsorSize: 10
+    };
+    let strat = Strategy(config, { toBN, BN });
+    let position = {
+      numTokens: "10000",
+      sponsor: "0x1234"
+    };
+    let positionWithPendingWithdrawal = {
+      ...position,
+      withdrawalRequestPassTimestamp: 1000
+    };
+    let result;
+
+    // Cases where WDF is not active:
+    // - Always liquidate using fully balance
+    result = strat.processPosition({
+      position,
+      syntheticTokenBalance: "100",
+      currentBlockTime: 500,
+      maxCollateralPerToken: "0"
+    });
+    assert.equal(result[3].rawValue, "100");
+    result = strat.processPosition({
+      position: positionWithPendingWithdrawal,
+      syntheticTokenBalance: "100",
+      currentBlockTime: 500,
+      maxCollateralPerToken: "0"
+    });
+    assert.equal(result[3].rawValue, "100");
+
+    // Cases where WDF is active:
+    config = {
       defenseActivationPercent: 50,
       withdrawLiveness: 1000,
       minSponsorSize: 10
     };
-    let strat = Strategy(config, { toBN, BN }, (...args) => events.emit("log", ...args));
-    const position = {
-      withdrawalRequestPassTimestamp: 1000,
-      numTokens: "10000",
-      sponsor: "0x1234"
-    };
-    // listen for logs
+    strat = Strategy(config, { toBN, BN }, (...args) => events.emit("log", ...args));
+    // - No pending withdrawal
+    //    - Liquidate using full balance
+    result = strat.processPosition({
+      position,
+      syntheticTokenBalance: "100",
+      currentBlockTime: 500,
+      maxCollateralPerToken: "0"
+    });
+    assert.equal(result[3].rawValue, "100");
+    // - Pending withdrawal:
+    //    - Can liquidate full position
+    result = strat.processPosition({
+      position: positionWithPendingWithdrawal,
+      syntheticTokenBalance: "10000",
+      currentBlockTime: 500,
+      maxCollateralPerToken: "0"
+    });
+    assert.equal(result[3].rawValue, position.numTokens);
+    //    - Cannot liquidate full position, not passed WDF activation %
+    result = strat.processPosition({
+      position: positionWithPendingWithdrawal,
+      syntheticTokenBalance: "1000",
+      currentBlockTime: 400,
+      maxCollateralPerToken: "0"
+    });
+    assert(!result);
+    //    - Cannot liquidate full position, passed WDF activation %
+    //      Note: This should log a WDF alert
     const eventlist = [];
     events.on("log", (severity, data) => {
+      // listen for WDF alert logs
       assert(data.message.includes("extending withdraw deadline"));
       eventlist.push({ severity, data });
     });
-    // this should activate wdf
-    let result = strat.processPosition({
-      position,
+    result = strat.processPosition({
+      position: positionWithPendingWithdrawal,
       syntheticTokenBalance: "1000",
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    // expect 1 log notifying user of wdf
     assert.equal(eventlist.length, 1);
-    // This should liquidate entire position
-    assert(result[3].rawValue, config.minSponsorSize);
+    assert.equal(result[3].rawValue, config.minSponsorSize);
     events.removeAllListeners("log");
-
+    //    - Cannot liquidate full position, passed WDF activation %, can't liquidate min
     result = strat.processPosition({
-      position,
-      // we have enough to cover full position + wdf
-      syntheticTokenBalance: parseInt(position.numTokens) + parseInt(config.whaleDefenseFundWei),
+      position: positionWithPendingWithdrawal,
+      syntheticTokenBalance: "9",
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    // should liquidate entire position
-    assert(result[3].rawValue, position.numTokens);
+    assert(!result);
 
-    // This should liquidate position but maintain wdf
-    assert(result[3].rawValue, config.minSponsorSize);
+    // Edge cases:
+    // - Respects maxTokensToLiquidateWei
     result = strat.processPosition({
-      position,
-      // we have enough to cover full position + wdf
-      syntheticTokenBalance: parseInt(position.numTokens),
-      currentBlockTime: 500,
-      maxCollateralPerToken: "0"
-    });
-    assert(result[3].rawValue, parseInt(position.numTokens) - parseInt(config.whaleDefenseFundWei));
-
-    // This should respect maxTokensToLiquidate
-    assert(result[3].rawValue, config.minSponsorSize);
-    result = strat.processPosition({
-      position,
+      position: positionWithPendingWithdrawal,
       syntheticTokenBalance: parseInt(position.numTokens),
       currentBlockTime: 500,
       empMinSponsorSize: 10,
       maxCollateralPerToken: "0",
       maxTokensToLiquidateWei: "100"
     });
-    assert(result[3].rawValue, "100");
-
-    // This should process entire position
-    assert(result[3].rawValue, config.minSponsorSize);
-    result = strat.processPosition({
-      position,
-      empMinSponsorSize: "10",
-      syntheticTokenBalance: parseInt(position.numTokens) * 10,
-      currentBlockTime: 500,
-      maxCollateralPerToken: "0"
-    });
-    assert(result[3].rawValue, position.numTokens);
-
-    // should not produce result
-    result = strat.processPosition({
-      position,
-      empMinSponsorSize: "10",
-      syntheticTokenBalance: "0",
-      currentBlockTime: 500,
-      maxCollateralPerToken: "0",
-      maxTokensToLiquidateWei: "100"
-    });
-    assert(!result);
+    assert.equal(result[3].rawValue, "100");
   });
 });
