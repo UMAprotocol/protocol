@@ -289,14 +289,24 @@ const defaultConfigs = {
         type: "medianizer",
         medianizedFeeds: [
           // FRAX/USDC:
-          { type: "uniswap", uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d", twapLength: 2 }
+          {
+            type: "uniswap",
+            uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
         type: "medianizer",
         medianizedFeeds: [
           // ESD/USDC:
-          { type: "uniswap", uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9", twapLength: 2 }
+          {
+            type: "uniswap",
+            uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
+            twapLength: 2,
+            poolDecimals: 6
+          }
         ]
       },
       {
