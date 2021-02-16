@@ -1,5 +1,11 @@
 const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const {
+  getPrecisionForIdentifier,
+  createObjectFromDefaultProps,
+  MAX_UINT_VAL,
+  formatFixed,
+  parseFixed
+} = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class OptimisticOracleProposer {
@@ -47,6 +53,16 @@ class OptimisticOracleProposer {
         value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
         isValid: x => {
           return x >= 6000000 && x < 15000000;
+        }
+      },
+      disputePricePrecisionOfError: {
+        // `disputePricePrecisionOfError`: Proposal prices that do not equal the dispute price
+        //                                 up to this decimal precision will be disputed.
+        // Notes:
+        // - Should be configured differently for each identifier based on UMIP specification.
+        value: 6,
+        isValid: x => {
+          return x >= 0;
         }
       }
     };
@@ -214,12 +230,21 @@ class OptimisticOracleProposer {
         continue;
       }
 
-      // If proposal price is not equal to the dispute price, then
+      // If proposal price is not equal to the dispute price up to specified precision of error, then
       // prepare dispute.
-      // TODO: Implement dispute buffer feature to only dispute if proposal and dispute price
-      // differ using some margin of error. For example, we could define a variable `proposalErrorPrecision`
-      // and set it to 5, to only send disputes if prices differ after rounding to 5 decimals of precision.
-      let isPriceDisputable = !this.toBN(disputePrice).eq(this.toBN(proposalPrice));
+      const _roundHistoricalPriceToPrecision = _price => {
+        // First convert historical price (in Wei) to float (using pricefeed's precision),
+        // then round to desired precision,
+        // and finally convert back into Wei.
+        let weiToFloat = formatFixed(_price, priceFeed.getPriceFeedDecimals());
+        let roundedWei = parseFloat(weiToFloat).toFixed(this.disputePricePrecisionOfError);
+        let roundedFloatToWei = parseFixed(roundedWei.toString(), priceFeed.getPriceFeedDecimals());
+        return roundedFloatToWei.toString();
+      };
+
+      let roundedDisputePrice = _roundHistoricalPriceToPrecision(disputePrice);
+      let roundedProposalPrice = _roundHistoricalPriceToPrecision(proposalPrice);
+      let isPriceDisputable = !this.toBN(roundedDisputePrice).eq(this.toBN(roundedProposalPrice));
       if (isPriceDisputable) {
         // Create the transaction.
         const dispute = this.ooContract.methods.disputePrice(
@@ -258,8 +283,8 @@ class OptimisticOracleProposer {
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputing proposal",
           priceRequest,
-          proposalPrice,
-          disputePrice,
+          roundedProposalPrice,
+          roundedDisputePrice,
           txnConfig
         });
 
@@ -289,7 +314,8 @@ class OptimisticOracleProposer {
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputed proposal!⛑",
           priceRequest,
-          disputePrice,
+          roundedProposalPrice,
+          roundedDisputePrice,
           txnConfig,
           disputeResult: logResult
         });
