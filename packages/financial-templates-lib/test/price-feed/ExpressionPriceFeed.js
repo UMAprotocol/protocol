@@ -176,6 +176,45 @@ contract("ExpressionPriceFeed.js", function() {
     );
   });
 
+  it("Multiline expression", async function() {
+    const priceFeedMap = {
+      //                        currentPrice      historicalPrice    lastUpdatedTime   decimals
+      ETHUSD: new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100, 18),
+      BTCUSD: new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000, 18),
+      COMPUSD: new PriceFeedMock(toBN(toWei("9")), toBN(toWei("10")), 25, 18)
+    };
+
+    const multiLineExpressions = [
+      `
+      ETHCOMPSUM = ETHUSD + COMPUSD;
+      BTCCOMPSUM = BTCUSD + COMPUSD;
+      ETHCOMPSUM * BTCCOMPSUM / 7.321
+      `,
+      `
+      ETHCOMPSUM = ETHUSD + COMPUSD
+      BTCCOMPSUM = BTCUSD + COMPUSD
+      ETHCOMPSUM * BTCCOMPSUM / 7.321
+      `,
+      "ETHCOMPSUM = ETHUSD + COMPUSD; BTCCOMPSUM = BTCUSD + COMPUSD; ETHCOMPSUM * BTCCOMPSUM / 7.321",
+      "ETHCOMPSUM = ETHUSD + COMPUSD\n BTCCOMPSUM = BTCUSD + COMPUSD\n ETHCOMPSUM * BTCCOMPSUM / 7.321"
+    ];
+
+    const priceFeeds = multiLineExpressions.map(expression => new ExpressionPriceFeed(priceFeedMap, expression));
+
+    // All of the different multiline expressions should return the same thing.
+    // (1 + 9) * (2 + 9) / 7.321 = 15.025269771889086190 (rounded to 18 decimals).
+    priceFeeds.forEach(pf => assert.equal(pf.getCurrentPrice(), toWei("15.025269771889086190")));
+
+    // Should return the summed historical price (because we're using mocks, the timestamp doesn't matter).
+    const arbitraryHistoricalTimestamp = 1000;
+    // (25 + 10) * (57 + 10) / 7.321 = 320.311432864362791968 (rounded to 18 decimals).
+    await Promise.all(
+      priceFeeds.map(async pf =>
+        assert.equal(await pf.getHistoricalPrice(arbitraryHistoricalTimestamp), toWei("320.311432864362791968"))
+      )
+    );
+  });
+
   describe("Expression parsing with escaped characters", async function() {
     it("Escapes characters correctly", async function() {
       assert.equal(escapeSpecialCharacters("USD-[bwBTC/ETH SLP]"), "USD\\-\\[bwBTC\\/ETH\\ SLP\\]");
