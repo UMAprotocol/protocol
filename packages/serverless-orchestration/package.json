@@ -8,6 +8,9 @@
     "@uma/financial-templates-lib": "^1.2.0"
   },
   "devDependencies": {
+    "@google-cloud/datastore": "^6.0.0",
+    "@google-cloud/storage": "^2.4.2",
+    "google-auth-library": "^6.0.2",
     "@awaitjs/express": "^0.3.0",
     "@openzeppelin/contracts": "3.0.0",
     "chai": "^4.2.0",
