@@ -301,55 +301,7 @@ class Liquidator {
 
       // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
       // has not passed the WDF's activation threshold.
-      // This gets logged as an event, see constructor
-      if (!liquidationArgs) {
-        // If WDF is active, withdrawal request is active but has NOT expired yet,
-        // and liveness hasn't passed activation % then send customized log:
-        if (
-          this.defenseActivationPercent &&
-          !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
-        ) {
-          // If `startingBlock` and `endingBlock` are specified and the requested withdrawal was within the
-          // block window, then upgrade the log level:
-          let logLevel = "debug";
-          if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
-            const blockWindowHasRequestedWithdraw = await this.financialContract.getPastEvents("RequestWithdrawal", {
-              fromBlock: this.startingBlock,
-              toBlock: this.endingBlock
-            });
-            if (blockWindowHasRequestedWithdraw) {
-              logLevel = "info";
-            }
-          }
-          this.logger[logLevel]({
-            at: "Liquidator",
-            message: "Withdrawal liveness has not passed WDF activation threshold, skipping😴",
-            sponsor: position.sponsor,
-            inputPrice: scaledPrice.toString(),
-            position,
-            minLiquidationPrice: this.liquidationMinPrice,
-            maxLiquidationPrice: maxCollateralPerToken.toString(),
-            syntheticTokenBalance: syntheticTokenBalance.toString(),
-            currentBlockTime
-          });
-          continue;
-        }
-        // the bot has 0 balance.
-        this.logger.error({
-          at: "Liquidator",
-          message:
-            "Zero liquidation balance. If bot has balance, then it likely does not have enough balance to fully liquidate the position, which is equal to the minimum sponsor size✋",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: "0",
-          syntheticTokenBalance: syntheticTokenBalance.toString(),
-          error: new Error("Refusing to liquidate 0 tokens")
-        });
-        continue;
-      }
+      if (!liquidationArgs) continue;
 
       // pulls the tokens to liquidate parameter out of the liquidation arguments
       const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);
