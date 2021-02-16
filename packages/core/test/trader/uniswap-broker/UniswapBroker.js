@@ -8,9 +8,9 @@ const Token = getTruffleContract("ExpandedERC20", web3);
 const WETH9 = getTruffleContract("WETH9", web3);
 
 // Helper Contracts
-const UniswapV2Factory = require("./uniswap-contract-bytecode/UniswapV2Factory.json");
-const IUniswapV2Pair = require("./uniswap-contract-bytecode/IUniswapV2Pair.json");
-const UniswapV2Router02 = require("./uniswap-contract-bytecode/UniswapV2Router02.json");
+const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
+const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
+const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 
 let tokenA;
 let tokenB;
@@ -139,7 +139,7 @@ contract("UniswapBroker", function(accounts) {
     assert.equal(Number((await getPoolSpotPrice()).toString()).toFixed(0), "1000");
   });
 
-  it.only("Broker can correctly trade the price down to a desired price", async function() {
+  it("Broker can correctly trade the price down to a desired price", async function() {
     // Say that someone comes and trades in size against the pool, trading a large amount of tokenA for tokenB,
     // increasing the token price to something off peg. We will compte that the price changes as expected. Say a trade of
     // 1000000000 token A for token B. Based on the pool size, the resultant price will be 1209.6700 (see logic below for calc).
