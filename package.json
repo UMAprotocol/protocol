@@ -57,9 +57,6 @@
   "resolutions": {
     "sse4_crc32": "npm:@node-rs/crc32@1.0.0"
   },
-  "bin": {
-    "uma": "./cli/cli_entry.sh"
-  },
   "husky": {
     "hooks": {
       "pre-commit": "echo '🕺 Running eslint on staged files' && lint-staged --allow-empty && echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
