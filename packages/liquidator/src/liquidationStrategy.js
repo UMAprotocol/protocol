@@ -8,9 +8,9 @@ const assert = require("assert");
  * extended. This activates the Whale Defense strategy if it is > 0.
  * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
  * of time after this time has passed
- * @property {number} config.withdrawLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
+ * @property {number} config.withdrawLiveness - Optional unless defenseActivationPercent is enabled. The positions
  * withdraw liveness duration, set by financialContract contract.
- * @property {number} config.minSponsorSize - FinancialContractAddress minimum sponsor position size in tokens.
+ * @property {number} config.minSponsorSize - financialContract minimum sponsor position size in tokens.
  * Example:
  * {
  *   defenseActivationPercent: 80,
@@ -196,11 +196,15 @@ module.exports = (
           currentBlockTime,
           ...logInfo
         });
-        // this assume financialContractMinSponsorSize will always be <= maxTokensToLiquidate
-        return createLiquidationParams({
-          sponsor: position.sponsor,
-          // Only liquidating the minimum size to extend withdraw
-          tokensToLiquidate: minSponsorSize,
+      }
+      // Case 3: Unknown
+      else {
+        emit("error", {
+          message: "Unknown reason why liquidation is being skipped, should investigate🙃",
+          position,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
           currentBlockTime,
           ...logInfo
         });
@@ -254,13 +258,10 @@ module.exports = (
   function canLiquidateMinimum({ position, syntheticTokenBalance }) {
     syntheticTokenBalance = toBN(syntheticTokenBalance);
     const financialContractMinSponsorSize = toBN(minSponsorSize);
-    currentBlockTime = Number(currentBlockTime);
 
     // our synthetic balance is less than the amount required to extend deadline
     if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
-    // we have enough to fully liquidate position respecting WDF, so do not do the minimum
-    if (syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)).gte(toBN(position.numTokens))) return false;
-    // position cant go below the minimum financialContract sponsor size
+    // position cant go below the minimum emp sponsor size
     if (
       toBN(position.numTokens)
         .sub(financialContractMinSponsorSize)
