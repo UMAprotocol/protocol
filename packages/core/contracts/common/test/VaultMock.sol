@@ -9,11 +9,11 @@ import "../interfaces/VaultInterface.sol";
 abstract contract VaultMock is VaultInterface {
     uint256 private pricePerFullShare = 0;
 
-    function getPricePerFullShare() view public override returns (uint256) {
+    function getPricePerFullShare() public view override returns (uint256) {
         return pricePerFullShare;
     }
 
-    function setPricePerFullShare(uint _pricePerFullShare) external {
+    function setPricePerFullShare(uint256 _pricePerFullShare) external {
         pricePerFullShare = _pricePerFullShare;
     }
 }

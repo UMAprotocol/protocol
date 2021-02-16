@@ -7,5 +7,5 @@ pragma solidity ^0.6.0;
  */
 abstract contract VaultInterface {
     // Gets the number of return tokens that a "share" of this vault is worth.
-    function getPricePerFullShare() view public virtual returns (uint256);
+    function getPricePerFullShare() public view virtual returns (uint256);
 }
