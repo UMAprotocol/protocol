@@ -371,25 +371,42 @@ async function getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurr
   return {};
 }
 
-async function createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
-  assert(empAddress, "createBalancerPriceFeedForEmp: Must pass in an `empAddress`");
-  const emp = getEmpAtAddress(web3, empAddress);
-  const balancerTokenIn = await emp.methods.tokenCurrency().call();
+async function createBalancerPriceFeedForFinancialContractI(
+  logger,
+  web3,
+  networker,
+  getTime,
+  financialContractAddress,
+  config = {}
+) {
+  assert(
+    financialContractAddress,
+    "createBalancerPriceFeedForFinancialContractI: Must pass in an `financialContractAddress`"
+  );
+  const financialContract = getFinancialContractIdentifierAtAddress(web3, financialContractAddress);
+  const balancerTokenIn = await financialContract.methods.tokenCurrency().call();
   // disable lookback and twap by default
   const lookback = 0;
   const twapLength = 0;
   return createPriceFeed(logger, web3, networker, getTime, { balancerTokenIn, lookback, twapLength, ...config });
 }
 
-async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config) {
-  if (!empAddress) {
-    throw new Error("createUniswapPriceFeedForEmp: Must pass in an `empAddress`");
+async function createUniswapPriceFeedForFinancialContract(
+  logger,
+  web3,
+  networker,
+  getTime,
+  financialContractAddress,
+  config
+) {
+  if (!financialContractAddress) {
+    throw new Error("createUniswapPriceFeedForFinancialContract: Must pass in an `financialContractAddress`");
   }
 
-  const emp = getEmpAtAddress(web3, empAddress);
+  const financialContract = getFinancialContractIdentifierAtAddress(web3, financialContractAddress);
 
-  const collateralCurrencyAddress = await emp.methods.collateralCurrency().call();
-  const syntheticTokenAddress = await emp.methods.tokenCurrency().call();
+  const collateralCurrencyAddress = await financialContract.methods.collateralCurrency().call();
+  const syntheticTokenAddress = await financialContract.methods.tokenCurrency().call();
 
   // Note: order doesn't matter.
   const { pairAddress, inverted } = await getUniswapPairDetails(web3, syntheticTokenAddress, collateralCurrencyAddress);
@@ -417,9 +434,9 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   const userConfig = config || {};
 
   logger.debug({
-    at: "createUniswapPriceFeedForEmp",
-    message: "Inferred default config from identifier or EMP address",
-    empAddress,
+    at: "createUniswapPriceFeedForFinancialContract",
+    message: "Inferred default config from identifier or Financial Contract address",
+    financialContractAddress,
     defaultConfig,
     userConfig
   });
@@ -427,54 +444,92 @@ async function createUniswapPriceFeedForEmp(logger, web3, networker, getTime, em
   return await createPriceFeed(logger, web3, networker, getTime, { ...defaultConfig, ...userConfig });
 }
 
-function createTokenPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config = {}) {
+function createTokenPriceFeedForFinancialContract(
+  logger,
+  web3,
+  networker,
+  getTime,
+  financialContractAddress,
+  config = {}
+) {
   if (!config || !config.type) {
-    return createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+    return createReferencePriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContractAddress,
+      config
+    );
   } else if (config.type == "balancer") {
-    return createBalancerPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+    return createBalancerPriceFeedForFinancialContractI(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContractAddress,
+      config
+    );
   } else {
-    return createUniswapPriceFeedForEmp(logger, web3, networker, getTime, empAddress, config);
+    return createUniswapPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContractAddress,
+      config
+    );
   }
 }
 
 /**
- * Create a reference price feed for the EMP. Note: this is the price feed that the token is tracking.
+ * Create a reference price feed for the Financial Contract. Note: this is the price feed that the token is tracking.
  * @param {Object} winston logger.
  * @param {Object} web3 instance.
  * @param {Object} networker object that the price feed may use to make REST calls.
  * @param {Function} function to get the current time.
- * @param {String} string representing the address of the EMP contract.
+ * @param {String} string representing the address of the Financial Contract contract.
  * @param {Object=} config (optional) to override the defaults for this reference feed.
- * @param {String=} identifier (optional) allows caller to choose which default price feed config to use. Required only if the caller does not pass in an `empAddress`
+ * @param {String=} identifier (optional) allows caller to choose which default price feed config to use. Required only if the caller does not pass in an `financialContractAddress`
  * @return {Object} an instance of PriceFeedInterface that can be used to get the reference price.
  */
-async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, empAddress, config, identifier) {
-  // Automatically detect identifier from passed in EMP address or use `identifier`.
+async function createReferencePriceFeedForFinancialContract(
+  logger,
+  web3,
+  networker,
+  getTime,
+  financialContractAddress,
+  config,
+  identifier
+) {
+  // Automatically detect identifier from passed in Financial Contract address or use `identifier`.
   let _identifier;
-  let emp;
+  let financialContract;
 
-  if (empAddress) {
-    emp = getEmpAtAddress(web3, empAddress);
-    _identifier = web3.utils.hexToUtf8(await emp.methods.priceIdentifier().call());
+  if (financialContractAddress) {
+    financialContract = getFinancialContractIdentifierAtAddress(web3, financialContractAddress);
+    _identifier = web3.utils.hexToUtf8(await financialContract.methods.priceIdentifier().call());
   } else if (identifier) {
     _identifier = identifier;
   } else {
-    throw new Error("createReferencePriceFeedForEmp: Must pass in an `empAddress` or an `identifier`");
+    throw new Error(
+      "createReferencePriceFeedForFinancialContract: Must pass in an `financialContractAddress` or an `identifier`"
+    );
   }
 
   const defaultConfig = defaultConfigs[_identifier];
 
   logger.debug({
-    at: "createReferencePriceFeedForEmp",
-    message: "Inferred default config from identifier or EMP address",
-    empAddress,
+    at: "createReferencePriceFeedForFinancialContract",
+    message: "Inferred default config from identifier or Financial Contract address",
+    financialContractAddress,
     identifier: _identifier,
     defaultConfig
   });
 
   // Infer lookback from liquidation liveness if user does not explicitly set a lookback.
-  if (emp && defaultConfig && !defaultConfig.lookback) {
-    const lookback = Number((await emp.methods.liquidationLiveness().call()).toString());
+  if (financialContract && defaultConfig && !defaultConfig.lookback) {
+    const lookback = Number((await financialContract.methods.liquidationLiveness().call()).toString());
     Object.assign(defaultConfig, { lookback });
   }
 
@@ -484,7 +539,7 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     combinedConfig = { ...defaultConfig, ...config };
 
     logger.debug({
-      at: "createReferencePriceFeedForEmp",
+      at: "createReferencePriceFeedForFinancialContract",
       message: "Found both a default config and a user-config",
       defaultConfig,
       userConfig: config,
@@ -494,7 +549,9 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
     combinedConfig = defaultConfig || config;
 
     if (!combinedConfig) {
-      throw new Error("createReferencePriceFeedForEmp: No default config was found and no user config was provided.");
+      throw new Error(
+        "createReferencePriceFeedForFinancialContract: No default config was found and no user config was provided."
+      );
     }
     // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
     // get time method with the current block time.
@@ -510,16 +567,16 @@ async function createReferencePriceFeedForEmp(logger, web3, networker, getTime, 
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }
 
-function getEmpAtAddress(web3, empAddress) {
+function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
   const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-  return new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+  return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
 }
 
 module.exports = {
   createPriceFeed,
-  createUniswapPriceFeedForEmp,
-  createBalancerPriceFeedForEmp,
-  createReferencePriceFeedForEmp,
-  createTokenPriceFeedForEmp,
+  createUniswapPriceFeedForFinancialContract,
+  createBalancerPriceFeedForFinancialContractI,
+  createReferencePriceFeedForFinancialContract,
+  createTokenPriceFeedForFinancialContract,
   getUniswapPairDetails
 };

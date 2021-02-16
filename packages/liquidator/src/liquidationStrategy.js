@@ -9,8 +9,8 @@ const assert = require("assert");
  * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
  * of time after this time has passed
  * @property {number} config.withdrawLiveness - Optional unless defenseActivationPercent is enabled. The positions
- * withdraw liveness duration, set by emp contract.
- * @property {number} config.minSponsorSize - Emp minimum sponsor position size in tokens.
+ * withdraw liveness duration, set by financialContract contract.
+ * @property {number} config.minSponsorSize - financialContract minimum sponsor position size in tokens.
  * Example:
  * {
  *   defenseActivationPercent: 80,
@@ -43,7 +43,7 @@ module.exports = (
     liquidationDeadline = 300,
     // the amount of time with which to reset the slow withdraw timer
     withdrawLiveness,
-    // emp contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
+    // financialContract contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
     // resetting timer
     minSponsorSize
   } = {},
@@ -68,7 +68,7 @@ module.exports = (
   }
 
   // Function which packs the arguments for a liquidation.
-  // returns parameters for empContract.methods.createLiquidation
+  // returns parameters for financialContract.methods.createLiquidation
   function createLiquidationParams({ sponsor, tokensToLiquidate, currentBlockTime, maxCollateralPerToken }) {
     assert(sponsor, "requires sponsor to liquidate");
     assert(tokensToLiquidate, "requires tokenToLiquidate");
@@ -99,7 +99,7 @@ module.exports = (
       availableCapital = BN.min(toBN(maxTokensToLiquidateWei), availableCapital);
     }
 
-    // we have enough capital to fully liquidate positon
+    // we have enough capital to fully liquidate position
     if (availableCapital.gte(positionTokens)) {
       return positionTokens;
     }
@@ -257,15 +257,15 @@ module.exports = (
   // position.tokensOutstanding - minSponsorSize >= minSponsorSize
   function canLiquidateMinimum({ position, syntheticTokenBalance }) {
     syntheticTokenBalance = toBN(syntheticTokenBalance);
-    const empMinSponsorSize = toBN(minSponsorSize);
+    const financialContractMinSponsorSize = toBN(minSponsorSize);
 
     // our synthetic balance is less than the amount required to extend deadline
-    if (syntheticTokenBalance.lt(empMinSponsorSize)) return false;
+    if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
     // position cant go below the minimum emp sponsor size
     if (
       toBN(position.numTokens)
-        .sub(empMinSponsorSize)
-        .lt(empMinSponsorSize)
+        .sub(financialContractMinSponsorSize)
+        .lt(financialContractMinSponsorSize)
     )
       return false;
     // all conditions passed and we should minimally liquidate to extend timer as long as the

@@ -8,31 +8,31 @@ class Disputer {
   /**
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
    * @param {Object} votingContract DVM to query price requests.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} empProps Contains EMP contract state data. Expected:
+   * @param {Object} financialContractProps Contains Financial Contract contract state data. Expected:
    *      { priceIdentifier: hex("ETH/BTC") }
    * @param {Object} [disputerConfig] Contains fields with which constructor will attempt to override defaults.
    */
   constructor({
     logger,
-    expiringMultiPartyClient,
+    financialContractClient,
     votingContract,
     gasEstimator,
     priceFeed,
     account,
-    empProps,
+    financialContractProps,
     disputerConfig
   }) {
     this.logger = logger;
     this.account = account;
 
     // Expiring multiparty contract to read contract state
-    this.empClient = expiringMultiPartyClient;
-    this.web3 = this.empClient.web3;
+    this.financialContractClient = financialContractClient;
+    this.web3 = this.financialContractClient.web3;
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
@@ -41,10 +41,10 @@ class Disputer {
     this.priceFeed = priceFeed;
 
     // Instance of the expiring multiparty to perform on-chain disputes
-    this.empContract = this.empClient.emp;
+    this.financialContract = this.financialContractClient.financialContract;
     this.votingContract = votingContract;
 
-    this.empIdentifier = empProps.priceIdentifier;
+    this.financialContractIdentifier = financialContractProps.priceIdentifier;
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
@@ -93,7 +93,7 @@ class Disputer {
 
   // Update the client and gasEstimator clients.
   async update() {
-    await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
+    await Promise.all([this.financialContractClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
@@ -105,7 +105,7 @@ class Disputer {
     });
 
     // Get the latest disputable liquidations from the client.
-    const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
+    const undisputedLiquidations = this.financialContractClient.getUndisputedLiquidations();
     const disputableLiquidationsWithPrices = (
       await Promise.all(
         undisputedLiquidations.map(async liquidation => {
@@ -143,8 +143,8 @@ class Disputer {
           // Price is available, use it to determine if the liquidation is disputable
           if (
             price &&
-            this.empClient.isDisputable(liquidation, price) &&
-            this.empClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+            this.financialContractClient.isDisputable(liquidation, price) &&
+            this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
           ) {
             this.logger.debug({
               at: "Disputer",
@@ -171,7 +171,7 @@ class Disputer {
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
       // Create the transaction.
-      const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      const dispute = this.financialContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       let totalPaid, gasEstimation;
@@ -248,7 +248,7 @@ class Disputer {
     });
 
     // Can only derive rewards from disputed liquidations that this account disputed.
-    const disputedLiquidations = this.empClient
+    const disputedLiquidations = this.financialContractClient
       .getDisputedLiquidations()
       .filter(liquidation => liquidation.disputer === this.account);
 
@@ -268,7 +268,7 @@ class Disputer {
       });
 
       // Construct transaction.
-      const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+      const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawalCallResponse, paidToDisputer, gasEstimation;
@@ -334,9 +334,11 @@ class Disputer {
 
       // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
       // to be callable.
-      let resolvedPrice = await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
-        from: this.empContract.options.address
-      });
+      let resolvedPrice = await this.votingContract.methods
+        .getPrice(this.financialContractIdentifier, requestTimestamp)
+        .call({
+          from: this.financialContract.options.address
+        });
 
       const logResult = {
         tx: receipt.transactionHash,

@@ -1,5 +1,5 @@
 // A thick client for getting information about an different token Balance from the chain. This client is kept separate
-// from the other clients to only store token balances for a given EMP. After a balance is requested for a given wallet
+// from the other clients to only store token balances for a given Financial Contract. After a balance is requested for a given wallet
 // address that wallet is registered within a local array of addresses that the client monitors. This lets bots that
 // implement the client retrieve the latest available data from the last update synchronously.
 class TokenBalanceClient {
@@ -8,8 +8,8 @@ class TokenBalanceClient {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} erc20abi ERC20 token abi used to create a token contract instance to query.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
-   * @param {String} collateralTokenAddress Ethereum address of the Collateral ERC20 token from the EMP.
-   * @param {String} syntheticTokenAddress Ethereum address of the Synthetic ERC20 token from the EMP.
+   * @param {String} collateralTokenAddress Ethereum address of the Collateral ERC20 token from the Financial Contract.
+   * @param {String} syntheticTokenAddress Ethereum address of the Synthetic ERC20 token from the Financial Contract.
    * @return None or throws an Error.
    */
   constructor(logger, erc20abi, web3, collateralTokenAddress, syntheticTokenAddress) {

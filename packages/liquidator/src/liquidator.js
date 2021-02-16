@@ -12,13 +12,13 @@ class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
-   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} votingContract DVM to query price requests.
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} empProps Contains EMP contract state data. Expected:
+   * @param {Object} financialContractProps Contains Financial Contract contract state data. Expected:
    *      { crRatio: 1.5e18,
             minSponsorSize: 10e18,
             priceIdentifier: hex("ETH/BTC") }
@@ -26,40 +26,40 @@ class Liquidator {
    */
   constructor({
     logger,
-    expiringMultiPartyClient,
+    financialContractClient,
     gasEstimator,
     votingContract,
     syntheticToken,
     priceFeed,
     account,
-    empProps,
+    financialContractProps,
     liquidatorConfig
   }) {
     this.logger = logger;
     this.account = account;
 
     // Expiring multiparty contract to read contract state
-    this.empClient = expiringMultiPartyClient;
-    this.web3 = this.empClient.web3;
+    this.financialContractClient = financialContractClient;
+    this.web3 = this.financialContractClient.web3;
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
-    this.empContract = this.empClient.emp;
+    this.financialContract = this.financialContractClient.financialContract;
     this.votingContract = votingContract;
     this.syntheticToken = syntheticToken;
 
     // Instance of the price feed to get the realtime token price.
     this.priceFeed = priceFeed;
 
-    // The EMP contract collateralization Ratio is needed to calculate minCollateralPerToken.
-    this.empCRRatio = empProps.crRatio;
+    // The Financial Contract contract collateralization Ratio is needed to calculate minCollateralPerToken.
+    this.financialContractCRRatio = financialContractProps.crRatio;
 
-    // The EMP contract min sponsor position size is needed to calculate maxTokensToLiquidate.
-    this.empMinSponsorSize = empProps.minSponsorSize;
+    // The Financial Contract contract min sponsor position size is needed to calculate maxTokensToLiquidate.
+    this.financialContractMinSponsorSize = financialContractProps.minSponsorSize;
 
-    this.empIdentifier = empProps.priceIdentifier;
+    this.financialContractIdentifier = financialContractProps.priceIdentifier;
 
     // Helper functions from web3.
     this.BN = this.web3.utils.BN;
@@ -87,7 +87,7 @@ class Liquidator {
       },
       liquidationDeadline: {
         // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
-        // EMP client's last update time. Denominated in seconds, so 300 = 5 minutes.
+        // Financial Contract client's last update time. Denominated in seconds, so 300 = 5 minutes.
         value: 300,
         isValid: x => {
           return x >= 0;
@@ -175,7 +175,7 @@ class Liquidator {
       return logger[severity]({
         at: "Liquidator",
         // could add in additional context for any error thrown,
-        // such as state of emp or bot configuration data
+        // such as state of financialContract or bot configuration data
         minLiquidationPrice: this.liquidationMinPrice,
         ...data
       });
@@ -186,16 +186,16 @@ class Liquidator {
     this.liquidationStrategy = LiquidationStrategy(
       {
         ...configWithDefaults,
-        ...empProps
+        ...financialContractProps
       },
       this.web3.utils,
       log
     );
   }
 
-  // Update the empClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
+  // Update the financialContractClient, gasEstimator and price feed. If a client has recently updated then it will do nothing.
   async update() {
-    await Promise.all([this.empClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
+    await Promise.all([this.financialContractClient.update(), this.gasEstimator.update(), this.priceFeed.update()]);
   }
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   // If `maxTokensToLiquidateWei` is not passed in, then the bot will attempt to liquidate the full position.
@@ -227,24 +227,24 @@ class Liquidator {
     // checks for a positions correct capitalization, not collateralization. In order to liquidate a position that is
     // under collaterelaized (but over capitalized) The CR ratio needs to be included in the maxCollateralPerToken.
     const maxCollateralPerToken = this.toBN(scaledPrice)
-      .mul(this.toBN(this.empCRRatio))
-      .mul(this.empClient.getLatestCumulativeFundingRateMultiplier())
+      .mul(this.toBN(this.financialContractCRRatio))
+      .mul(this.financialContractClient.getLatestCumulativeFundingRateMultiplier())
       .div(this.toBN(this.toWei("1")).mul(this.toBN(this.toWei("1"))));
 
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
-      latestCumulativeFundingRateMultiplier: this.empClient.getLatestCumulativeFundingRateMultiplier(),
+      latestCumulativeFundingRateMultiplier: this.financialContractClient.getLatestCumulativeFundingRateMultiplier(),
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
-      empCRRatio: this.empCRRatio.toString(),
+      financialContractCRRatio: this.financialContractCRRatio.toString(),
       maxCollateralPerToken: maxCollateralPerToken.toString(),
       crThreshold: this.crThreshold
     });
 
     // Get the latest undercollateralized positions from the client.
-    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPrice);
+    const underCollateralizedPositions = this.financialContractClient.getUnderCollateralizedPositions(scaledPrice);
 
     if (underCollateralizedPositions.length === 0) {
       this.logger.debug({
@@ -264,7 +264,7 @@ class Liquidator {
       });
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
-      const currentBlockTime = this.empClient.getLastUpdateTime();
+      const currentBlockTime = this.financialContractClient.getLastUpdateTime();
       const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
 
       // If `startingBlock` and `endingBlock` are specified and the position had a requested withdrawal within the
@@ -291,7 +291,7 @@ class Liquidator {
         // maximum tokens we can liquidate in position
         maxTokensToLiquidateWei,
         // minimim position size, as well as minimum liquidation to extend withdraw
-        empMinSponsorSize: this.empMinSponsorSize,
+        financialContractMinSponsorSize: this.financialContractMinSponsorSize,
         currentBlockTime,
         // should bot emit specialized logs about skipping liquidations due to WDF
         shouldEmitWDFSkipLogs: blockWindowHasRequestedWithdraw,
@@ -323,7 +323,7 @@ class Liquidator {
       }
 
       // liquidation strategy will control how much to liquidate
-      const liquidation = this.empContract.methods.createLiquidation(...liquidationArgs);
+      const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
       // Send the transaction or report failure.
       let receipt;
@@ -406,8 +406,8 @@ class Liquidator {
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
-    const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    const disputedLiquidations = this.empClient.getDisputedLiquidations();
+    const expiredLiquidations = this.financialContractClient.getExpiredLiquidations();
+    const disputedLiquidations = this.financialContractClient.getDisputedLiquidations();
     const potentialWithdrawableLiquidations = expiredLiquidations
       .concat(disputedLiquidations)
       .filter(liquidation => liquidation.liquidator === this.account);
@@ -428,7 +428,7 @@ class Liquidator {
       });
 
       // Construct transaction.
-      const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+      const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
       let withdrawalCallResponse, gasEstimation;
@@ -514,8 +514,8 @@ class Liquidator {
       if (requestTimestamp) {
         try {
           resolvedPrice = revertWrapper(
-            await this.votingContract.methods.getPrice(this.empIdentifier, requestTimestamp).call({
-              from: this.empContract.options.address
+            await this.votingContract.methods.getPrice(this.financialContractIdentifier, requestTimestamp).call({
+              from: this.financialContract.options.address
             })
           );
         } catch (error) {

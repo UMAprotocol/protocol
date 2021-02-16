@@ -15,7 +15,7 @@ const { CRMonitor } = require("../src/CRMonitor");
 
 // Helpers and custom winston transport module to monitor winston log outputs
 const {
-  ExpiringMultiPartyClient,
+  FinancialContractClient,
   PriceFeedMock,
   SpyTransport,
   lastSpyLogIncludes,
@@ -37,7 +37,7 @@ const startTime = "15798990420";
 
 // Contracts
 let collateralToken;
-let emp;
+let financialContract;
 let syntheticToken;
 let mockOracle;
 let identifierWhitelist;
@@ -52,14 +52,14 @@ let collateralWhitelist;
 let priceFeedMock;
 let spyLogger;
 let spy;
-let empProps;
+let financialContractProps;
 let monitorConfig;
 
 // re-used variables
 let identifier;
 let fundingRateIdentifier;
 let currentTime;
-let empClient;
+let financialContractClient;
 let crMonitor;
 
 let convertCollateral;
@@ -68,9 +68,9 @@ let convertPrice;
 
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async fundingRate => {
-  currentTime = (await emp.getCurrentTime()).toNumber();
-  await emp.proposeFundingRate({ rawValue: fundingRate }, currentTime);
-  await emp.setCurrentTime(currentTime + 10000);
+  currentTime = (await financialContract.getCurrentTime()).toNumber();
+  await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
+  await financialContract.setCurrentTime(currentTime + 10000);
 };
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
@@ -95,9 +95,9 @@ contract("CRMonitor.js", function(accounts) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
-    // on the current iteration version.
-    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
+    // Perpetual depending on the current iteration version.
+    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -203,27 +203,27 @@ contract("CRMonitor.js", function(accounts) {
             }
           );
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
-          emp = await financialContract.new(constructorParams);
+          financialContract = await FinancialContract.new(constructorParams);
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-          await emp.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
+          await financialContract.setCurrentTime(startTime);
+          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
-          // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
+          // logs the correct text based on interactions with the financialContract. Note that only `info` level messages are captured.
           spy = sinon.spy();
           spyLogger = winston.createLogger({
             level: "info",
             transports: [new SpyTransport({ level: "info" }, { spy: spy })]
           });
 
-          await syntheticToken.addMinter(emp.address);
-          await syntheticToken.addBurner(emp.address);
-          empClient = new ExpiringMultiPartyClient(
+          await syntheticToken.addMinter(financialContract.address);
+          await syntheticToken.addBurner(financialContract.address);
+          financialContractClient = new FinancialContractClient(
             spyLogger,
-            financialContract.abi,
+            FinancialContract.abi,
             web3,
-            emp.address,
+            financialContract.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -245,24 +245,24 @@ contract("CRMonitor.js", function(accounts) {
               }
             ]
           };
-          syntheticToken = await Token.at(await emp.tokenCurrency());
+          syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-          empProps = {
+          financialContractProps = {
             collateralSymbol: await collateralToken.symbol(),
             collateralDecimals: testConfig.collateralDecimals,
             syntheticDecimals: testConfig.syntheticDecimals,
             priceFeedDecimals: testConfig.priceFeedDecimals,
             syntheticSymbol: await syntheticToken.symbol(),
-            priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
+            priceIdentifier: hexToUtf8(await financialContract.priceIdentifier()),
             networkId: await web3.eth.net.getId()
           };
 
           crMonitor = new CRMonitor({
             logger: spyLogger,
-            expiringMultiPartyClient: empClient,
+            financialContractClient: financialContractClient,
             priceFeed: priceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
 
           await collateralToken.addMember(1, tokenSponsor, {
@@ -272,17 +272,21 @@ contract("CRMonitor.js", function(accounts) {
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 3; i++) {
             await collateralToken.mint(accounts[i], convertCollateral("100000000"), { from: tokenSponsor });
-            await collateralToken.approve(emp.address, convertCollateral("100000000"), { from: accounts[i] });
-            await syntheticToken.approve(emp.address, convertSynthetic("100000000"), { from: accounts[i] });
+            await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
+              from: accounts[i]
+            });
+            await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+              from: accounts[i]
+            });
           }
 
           // Create positions for the monitoredTrader and monitoredSponsor accounts
-          await emp.create(
+          await financialContract.create(
             { rawValue: convertCollateral("250") },
             { rawValue: convertSynthetic("100") },
             { from: monitoredTrader }
           );
-          await emp.create(
+          await financialContract.create(
             { rawValue: convertCollateral("300") },
             { rawValue: convertSynthetic("100") },
             { from: monitoredSponsor }
@@ -293,14 +297,14 @@ contract("CRMonitor.js", function(accounts) {
           "Winston correctly emits collateralization ratio message",
           async function() {
             // No messages created if safely above the CR threshold
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
 
             // Emits a message if below the CR threshold. At a price of 1.3 only the monitoredTrader should be undercollateralized
             // with a CR of 250 / (100 * 1.3) =1.923 which is below this addresses threshold of 200 and should emit a message.
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1.3"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1);
@@ -311,7 +315,7 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
             assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
             assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
             assert.equal(lastSpyLogLevel(spy), "warn");
@@ -319,7 +323,7 @@ contract("CRMonitor.js", function(accounts) {
             // The message should be sent every time the bot is polled and there is a crossing of the threshold line. At a price
             // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
             // both monitored wallets above their thresholds. As a result no new message should be sent.
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1.2"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1); // no new message.
@@ -327,20 +331,20 @@ contract("CRMonitor.js", function(accounts) {
             // Crossing the price threshold for both sponsors should emit exactly 2 new messages. At a price of 2.1
             // monitoredTrader's CR = 250/(100*2.1) = 1.1904 and monitoredSponsor's CR = 300/(100*2.1) = 1.42857. At these CRs
             // Both bots are below their thresholds
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("2.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 3); // two new messages
 
             // A second check below this threshold should again trigger messages for both sponsors.
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("2.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 5);
 
             // Reset the price to over collateralized state for both accounts by moving the price into the lower value. This
             // should not emit any events as both correctly collateralized.
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 5);
@@ -350,10 +354,10 @@ contract("CRMonitor.js", function(accounts) {
             // withdrawal liveness they can place their position's collateralization under the threshold. Say monitoredTrader
             // withdraws 75 units of collateral. Given price is 1 unit of synthetic for each unit of debt. This would place
             // their position at a collateralization ratio of 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00.
-            await emp.requestWithdrawal({ rawValue: convertCollateral("75") }, { from: monitoredTrader });
+            await financialContract.requestWithdrawal({ rawValue: convertCollateral("75") }, { from: monitoredTrader });
 
             // The wallet CR should reflect the requested withdrawal amount.
-            await empClient.update();
+            await financialContractClient.update();
             await crMonitor.checkWalletCrRatio();
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 7); // a new message is sent.
@@ -363,14 +367,14 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
 
             // Advance time after withdrawal liveness. Check that CR detected is the same post withdrawal execution
             currentTime = await timer.getCurrentTime.call();
             await timer.setCurrentTime(currentTime.toNumber() + 11);
-            await emp.withdrawPassedRequest({ from: monitoredTrader });
+            await financialContract.withdrawPassedRequest({ from: monitoredTrader });
 
-            await empClient.update();
+            await financialContractClient.update();
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 8); // a new message is sent.
             assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `MonitorConfig`
@@ -379,14 +383,14 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
           }
         );
         versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
           "Winston correctly emits collateralization ratio message considering perpetual funding rates",
           async function() {
             // No messages created if safely above the CR threshold
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
@@ -396,9 +400,9 @@ contract("CRMonitor.js", function(accounts) {
             // sponsor's debt. This becomes 100*1.1 = 110. Also, let's set the price to 1.1
             // The sponsor CR is now 250 / (100 * 1.1 * 1.1) = 2.066
             await _setFundingRateAndAdvanceTime(toWei("0.00001"));
-            await emp.applyFundingRate();
-            assert.equal((await emp.fundingRate()).cumulativeMultiplier.toString(), toWei("1.1"));
-            await empClient.update();
+            await financialContract.applyFundingRate();
+            assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.1"));
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
@@ -407,9 +411,9 @@ contract("CRMonitor.js", function(accounts) {
             // another 0.05 is added onto the funding rate. The cumlative rate will become 1.1 * (1 + 0.000005 * 10000) = 1.155.
             // This will place the sponsors CR at 250 / (100 * 1.155 * 1.1) = 1.9677 which is below the 2 alerting threshold.
             await _setFundingRateAndAdvanceTime(toWei("0.000005"));
-            await emp.applyFundingRate();
-            assert.equal((await emp.fundingRate()).cumulativeMultiplier.toString(), toWei("1.155"));
-            await empClient.update();
+            await financialContract.applyFundingRate();
+            assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.155"));
+            await financialContractClient.update();
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1);
             assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
@@ -419,7 +423,7 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "196.77%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.10")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await emp.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
             assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
             assert.isTrue(lastSpyLogIncludes(spy, "1.44")); // Liquidation price
             assert.isTrue(lastSpyLogIncludes(spy, "cumulative funding rate multiplier is 1.15")); // correctly reports funding rate multiplier.
@@ -443,10 +447,10 @@ contract("CRMonitor.js", function(accounts) {
 
             crMonitor = new CRMonitor({
               logger: spyLogger,
-              expiringMultiPartyClient: empClient,
+              financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: invalidMonitorConfig1,
-              empProps
+              financialContractProps
             });
             errorThrown1 = false;
           } catch (err) {
@@ -471,10 +475,10 @@ contract("CRMonitor.js", function(accounts) {
 
             crMonitor = new CRMonitor({
               logger: spyLogger,
-              expiringMultiPartyClient: empClient,
+              financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: invalidMonitorConfig2,
-              empProps
+              financialContractProps
             });
             errorThrown2 = false;
           } catch (err) {
@@ -490,10 +494,10 @@ contract("CRMonitor.js", function(accounts) {
             try {
               crMonitor = new CRMonitor({
                 logger: spyLogger,
-                expiringMultiPartyClient: empClient,
+                financialContractClient: financialContractClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: emptyConfig,
-                empProps
+                financialContractProps
               });
               await crMonitor.checkWalletCrRatio();
               errorThrown = false;
@@ -509,14 +513,14 @@ contract("CRMonitor.js", function(accounts) {
             const alertOverrideConfig = { ...monitorConfig, logOverrides: { crThreshold: "error" } };
             crMonitor = new CRMonitor({
               logger: spyLogger,
-              expiringMultiPartyClient: empClient,
+              financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: alertOverrideConfig,
-              empProps
+              financialContractProps
             });
 
             // Increase price to lower wallet CR below threshold
-            await empClient.update();
+            await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1.3"));
             await crMonitor.checkWalletCrRatio();
             assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));

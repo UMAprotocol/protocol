@@ -17,9 +17,9 @@ const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
 
 const {
   createPriceFeed,
-  createReferencePriceFeedForEmp,
-  createUniswapPriceFeedForEmp,
-  createTokenPriceFeedForEmp
+  createReferencePriceFeedForFinancialContract,
+  createUniswapPriceFeedForFinancialContract,
+  createTokenPriceFeedForFinancialContract
 } = require("../../src/price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
@@ -446,7 +446,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
+    const financialContract = await ExpiringMultiParty.new(constructorParams);
 
     const getIdBackup = web3.eth.net.getId;
 
@@ -454,7 +454,14 @@ contract("CreatePriceFeed.js", function(accounts) {
     web3.eth.net.getId = async () => 1;
 
     const twapLength = 100;
-    const priceFeed = await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address, { twapLength });
+    const priceFeed = await createUniswapPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      { twapLength }
+    );
 
     // Cannot test for the uniswap address since that depends on the synthetic token address, which is generated in a non-hermetic way.
     // Price should always be inverted since the collateralTokenAddress is 0x1.
@@ -489,13 +496,13 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
+    const financialContract = await ExpiringMultiParty.new(constructorParams);
 
     let didThrow = false;
     try {
       // Creation should fail because this test network has no deployed uniswap contract and UNISWAP_ADDRESS isn't
       // provided in the environment.
-      await createUniswapPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+      await createUniswapPriceFeedForFinancialContract(logger, web3, networker, getTime, financialContract.address);
     } catch (error) {
       didThrow = true;
     }
@@ -555,9 +562,16 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
+    const financialContract = await ExpiringMultiParty.new(constructorParams);
 
-    const balancerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
+    const balancerFeed = await createTokenPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      config
+    );
     assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
   });
 
@@ -590,9 +604,16 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
+    const financialContract = await ExpiringMultiParty.new(constructorParams);
 
-    const uniswapFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, config);
+    const uniswapFeed = await createTokenPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      config
+    );
     assert.isTrue(uniswapFeed instanceof UniswapPriceFeed);
   });
 
@@ -618,12 +639,25 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
+    const financialContract = await ExpiringMultiParty.new(constructorParams);
 
     // If `config` is undefined or ommitted (and set to its default value), this should return a Medianizer Price Feed
-    let medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+    let medianizerFeed = await createTokenPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address
+    );
     assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
-    medianizerFeed = await createTokenPriceFeedForEmp(logger, web3, networker, getTime, emp.address, undefined);
+    medianizerFeed = await createTokenPriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      undefined
+    );
     assert.isTrue(medianizerFeed instanceof MedianizerPriceFeed);
   });
 
@@ -856,12 +890,19 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    let emp = await ExpiringMultiParty.new(constructorParams);
+    let financialContract = await ExpiringMultiParty.new(constructorParams);
 
     // Should create a valid price feed with no config.
-    const priceFeed = await createReferencePriceFeedForEmp(logger, web3, networker, getTime, emp.address, {
-      minTimeBetweenUpdates: 5
-    });
+    const priceFeed = await createReferencePriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      {
+        minTimeBetweenUpdates: 5
+      }
+    );
 
     assert.isTrue(priceFeed !== null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
@@ -898,12 +939,19 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
-    let emp = await ExpiringMultiParty.new(constructorParams);
+    let financialContract = await ExpiringMultiParty.new(constructorParams);
 
     // Should create a valid price feed with no config.
-    const priceFeed = await createReferencePriceFeedForEmp(logger, web3, networker, getTime, emp.address, {
-      minTimeBetweenUpdates: 5
-    });
+    const priceFeed = await createReferencePriceFeedForFinancialContract(
+      logger,
+      web3,
+      networker,
+      getTime,
+      financialContract.address,
+      {
+        minTimeBetweenUpdates: 5
+      }
+    );
 
     assert.isTrue(priceFeed !== null);
     assert.equal(priceFeed.priceFeeds[0].minTimeBetweenUpdates, 5);
@@ -941,12 +989,12 @@ contract("CreatePriceFeed.js", function(accounts) {
       from: accounts[0]
     });
 
-    let emp = await ExpiringMultiParty.new(constructorParams);
+    let financialContract = await ExpiringMultiParty.new(constructorParams);
 
     let didThrow = false;
     try {
       // Should create an invlid price feed since an invalid identifier was provided.
-      await createReferencePriceFeedForEmp(logger, web3, networker, getTime, emp.address);
+      await createReferencePriceFeedForFinancialContract(logger, web3, networker, getTime, financialContract.address);
     } catch (error) {
       didThrow = true;
     }

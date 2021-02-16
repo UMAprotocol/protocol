@@ -12,20 +12,20 @@ yarn add @uma/financial-templates-lib
 ## Importing the package
 
 ```js
-const { ExpiringMultiPartyClient, GasEstimator } = require("@uma/financial-templates-lib")
+const { FinancialContractClient, GasEstimator } = require("@uma/financial-templates-lib")
 ```
 
 ## Clients
 
 The three clients available are:
 
-1. The `ExpiringMultiPartyClient` can be used to access information about EMP sponsors and their collateralization
+1. The `FinancialContractClient` can be used to access information about Financial Contract sponsors and their collateralization
    ratios. To understand how to interact with the client, see the class documentation
-   [here](./src/clients/ExpiringMultiPartyClient.js).
+   [here](./src/clients/FinancialContractClient.js).
 
-1. The `ExpiringMultiPartyEventClient` can be used to access historical events that were emitted by an EMP. To
+1. The `FinancialContractEventClient` can be used to access historical events that were emitted by a Financial Contract. To
    understand how to interact with the client, see the class documentation
-   [here](./src/clients/ExpiringMultiPartyEventClient.js).
+   [here](./src/clients/FinancialContractEventClient.js).
 
 1. The `TokenBalanceClient` tracks the collateral and synthetic balances for a list of wallets. To understand how to
    interact with the client, see the class documentation

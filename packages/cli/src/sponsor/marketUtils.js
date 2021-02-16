@@ -1,7 +1,7 @@
 const style = require("../textStyle");
 const winston = require("winston");
 const { getCurrencySymbol } = require("./currencyUtils.js");
-const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
+const { createReferencePriceFeedForFinancialContract, Networker } = require("@uma/financial-templates-lib");
 const { computeCollateralizationRatio, createFormatFunction, PublicNetworks } = require("@uma/common");
 
 const getMarketSummary = async (web3, artifacts) => {
@@ -80,9 +80,9 @@ async function getCollateralizationRatio(web3, empAddress, collateral, tokens) {
   const { toBN } = web3.utils;
   let priceFeed;
   try {
-    // TODO: change createReferencePriceFeedForEmp to allow a null or undefined logger instead of forcing the caller
+    // TODO: change createReferencePriceFeedForFinancialContract to allow a null or undefined logger instead of forcing the caller
     // to provide a silent logger.
-    priceFeed = await createReferencePriceFeedForEmp(
+    priceFeed = await createReferencePriceFeedForFinancialContract(
       winston.createLogger({ silent: true }),
       web3,
       new Networker(),

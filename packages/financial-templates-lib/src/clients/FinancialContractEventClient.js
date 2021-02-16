@@ -1,35 +1,35 @@
 // A thick client for getting information about an ExpiringMultiParty events. This client is kept separate from the
-// ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
+// FinancialContractEventClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
-class ExpiringMultiPartyEventClient {
+class FinancialContractEventClient {
   /**
-   * @notice Constructs new ExpiringMultiPartyClient.
+   * @notice Constructs new FinancialContractEventClient.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} empAbi Expiring Multi Party truffle ABI object to create a contract instance.
+   * @param {Object} financialContractAbi Financial Contract truffle ABI object to create a contract instance.
    * @param {Object} web3 Web3 provider from truffle instance.
-   * @param {String} empAddress Ethereum address of the EMP contract deployed on the current network.
+   * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the current network.
    * @param {Integer} startingBlockNumber Offset block number to index events from.
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
    */
   constructor(
     logger,
-    empAbi,
+    financialContractAbi,
     web3,
-    empAddress,
+    financialContractAddress,
     startingBlockNumber = 0,
     endingBlockNumber = null,
-    contractType = "ExpiringMultiParty", // Default to EMP for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractType = "ExpiringMultiParty", // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
     contractVersion = "1.2.2"
   ) {
     this.logger = logger;
     this.web3 = web3;
 
-    // EMP contract
-    this.emp = new this.web3.eth.Contract(empAbi, empAddress);
-    this.empAddress = empAddress;
+    // Financial Contract contract
+    this.financialContract = new this.web3.eth.Contract(financialContractAbi, financialContractAddress);
+    this.financialContractAddress = financialContractAddress;
 
-    // EMP Events data structure to enable synchronous retrieval of information.
+    // Financial Contract Events data structure to enable synchronous retrieval of information.
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
@@ -165,21 +165,21 @@ class ExpiringMultiPartyEventClient {
       liquidationWithdrawnEventsObj,
       settleExpiredPositionEventsObj
     ] = await Promise.all([
-      this.emp.methods.getCurrentTime().call(),
-      this.emp.getPastEvents("LiquidationCreated", blockSearchConfig),
-      this.emp.getPastEvents("LiquidationDisputed", blockSearchConfig),
-      this.emp.getPastEvents("DisputeSettled", blockSearchConfig),
-      this.emp.getPastEvents("PositionCreated", blockSearchConfig),
-      this.emp.getPastEvents("NewSponsor", blockSearchConfig),
-      this.emp.getPastEvents("Deposit", blockSearchConfig),
-      this.emp.getPastEvents("Withdrawal", blockSearchConfig),
-      this.emp.getPastEvents("Redeem", blockSearchConfig),
-      this.emp.getPastEvents("RegularFeesPaid", blockSearchConfig),
-      this.emp.getPastEvents("FinalFeesPaid", blockSearchConfig),
-      this.emp.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
+      this.financialContract.methods.getCurrentTime().call(),
+      this.financialContract.getPastEvents("LiquidationCreated", blockSearchConfig),
+      this.financialContract.getPastEvents("LiquidationDisputed", blockSearchConfig),
+      this.financialContract.getPastEvents("DisputeSettled", blockSearchConfig),
+      this.financialContract.getPastEvents("PositionCreated", blockSearchConfig),
+      this.financialContract.getPastEvents("NewSponsor", blockSearchConfig),
+      this.financialContract.getPastEvents("Deposit", blockSearchConfig),
+      this.financialContract.getPastEvents("Withdrawal", blockSearchConfig),
+      this.financialContract.getPastEvents("Redeem", blockSearchConfig),
+      this.financialContract.getPastEvents("RegularFeesPaid", blockSearchConfig),
+      this.financialContract.getPastEvents("FinalFeesPaid", blockSearchConfig),
+      this.financialContract.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
       this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
-        ? this.emp.getPastEvents("SettleExpiredPosition", blockSearchConfig)
-        : this.emp.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
+        ? this.financialContract.getPastEvents("SettleExpiredPosition", blockSearchConfig)
+        : this.financialContract.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -339,13 +339,13 @@ class ExpiringMultiPartyEventClient {
     this.firstBlockToSearch = lastBlockToSearch + 1;
 
     this.logger.debug({
-      at: "ExpiringMultiPartyEventClient",
-      message: "Expiring multi party event state updated",
+      at: "FinancialContractEventClient",
+      message: "Financial Contract event state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   }
 }
 
 module.exports = {
-  ExpiringMultiPartyEventClient
+  FinancialContractEventClient
 };

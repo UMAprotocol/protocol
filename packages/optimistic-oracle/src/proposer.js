@@ -1,4 +1,4 @@
-const { Networker, createReferencePriceFeedForEmp } = require("@uma/financial-templates-lib");
+const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
 const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
@@ -239,7 +239,7 @@ class OptimisticOracleProposer {
 
     // Create a new pricefeed for this identifier. We might consider caching these price requests
     // for re-use if any requests use the same identifier.
-    let newPriceFeed = await createReferencePriceFeedForEmp(
+    let newPriceFeed = await createReferencePriceFeedForFinancialContract(
       this.logger,
       this.web3,
       new Networker(this.logger),

@@ -27,7 +27,7 @@ contract("TokenBalanceClient.js", function(accounts) {
       const sponsor2 = accounts[2];
       const rando = accounts[3];
 
-      // Test object for EMP event client
+      // Test object for Financial Contract event client
       let client;
 
       // Contracts
@@ -39,7 +39,7 @@ contract("TokenBalanceClient.js", function(accounts) {
 
       before(async function() {
         convert = Convert(tokenConfig.collateralDecimals);
-        // The TokenBalance Client is independent of the EMP and simply needs two tokens to monitor.
+        // The TokenBalance Client is independent of the Financial Contract and simply needs two tokens to monitor.
         collateralToken = await Token.new(
           tokenConfig.tokenName,
           tokenConfig.tokenSymbol,
