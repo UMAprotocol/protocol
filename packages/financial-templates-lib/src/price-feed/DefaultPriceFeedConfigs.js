@@ -343,7 +343,8 @@ const defaultConfigs = {
   "COMPUSDC-APR-MAR28/USDC": {
     type: "uniswap",
     uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
-    twapLength: 7200
+    twapLength: 7200,
+    poolDecimals: 6
   },
   BTCDOM: {
     type: "domfi",
