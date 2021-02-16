@@ -61,15 +61,20 @@ describe("affiliates/utils", function() {
   });
 
   it("getDevMiningWeek", function() {
-    const result = utils.getDevMiningWeek();
+    let result = utils.getLastDevMiningWeek();
+    assert.ok(result > 0);
+    result = utils.getCurrentDevMiningWeek();
     assert.ok(result > 0);
   });
   it("getDappMiningWeek", function() {
-    const result = utils.getDappMiningWeek();
+    let result = utils.getLastDappMiningWeek();
+    assert.ok(result > 0);
+    result = utils.getCurrentDappMiningWeek();
     assert.ok(result > 0);
   });
   it("compare dev mining week vs dapp mining week", function() {
-    assert.ok(utils.getDevMiningWeek() > utils.getDappMiningWeek());
+    assert.ok(utils.getCurrentDevMiningWeek() > utils.getCurrentDappMiningWeek());
+    assert.ok(utils.getLastDevMiningWeek() > utils.getLastDappMiningWeek());
   });
   it("makeDevMiningFilename", function() {
     const startTime = moment("2021", "YYYY")
@@ -84,6 +89,25 @@ describe("affiliates/utils", function() {
       endTime,
       weekNumber: 10
     });
+    assert.ok(result);
+  });
+  it("makeDappMiningFilename", function() {
+    const startTime = moment("2021", "YYYY")
+      .startOf("year")
+      .valueOf();
+    const endTime = moment("2021", "YYYY")
+      .startOf("year")
+      .add(1, "week")
+      .valueOf();
+    const result = utils.makeDappMiningFilename({
+      startTime,
+      endTime,
+      weekNumber: 10
+    });
+    assert.ok(result);
+  });
+  it("generateDappMiningConfig", function() {
+    const result = utils.generateDappMiningConfig({whitelistTable:[]});
     assert.ok(result);
   });
 });

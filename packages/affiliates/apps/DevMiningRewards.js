@@ -1,6 +1,7 @@
 // This file is meant to be run in the command line. It takes in a configuration to generate
 // final deployer reward output.
 // example: node apps/DevMiningRewards ./config.example.js --network=mainnet_mnemonic >> output.json
+require("dotenv").config();
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
@@ -15,9 +16,13 @@ const Coingecko = require("../libs/coingecko");
 const SynthPrices = require("../libs/synthPrices");
 const { getWeb3 } = require("@uma/common");
 
+const { makeUnixPipe } = require("../libs/affiliates/utils");
+
 // This is the main function which configures all data sources for the calculation.
-async function App(config, env) {
+const App = env => async params => {
   const web3 = getWeb3();
+  const {config} = params
+  assert(config,'requires config object on params')
   let { empWhitelist = [], startTime, endTime, totalRewards, fallbackPrices } = config;
   assert(empWhitelist, "requires whitelist");
   assert(startTime, "requires startTime");
@@ -82,28 +87,32 @@ async function App(config, env) {
   });
 
   return {
-    config,
+    ...params,
     // result will contain deployer rewards as well as per emp rewards
-    ...result
+    result
   };
 }
 
+makeUnixPipe(App(process.env))
+  .then(console.log)
+  .catch(console.error)
+  .finally(() => process.exit());
 // const config = Config();
 
-highland(process.stdin)
-  .reduce('',(result,str)=>{
-    return result + str
-  })
-  .map(x=>JSON.parse(x))
-  .map(config=>App(config,process.env))
-  .flatMap(highland)
-  .errors((err,next)=>{
-    console.error(err)
-  })
-  .each(x=>{
-    console.log(JSON.stringify(x, null, 2))
-    process.exit()
-  })
+// highland(process.stdin)
+//   .reduce('',(result,str)=>{
+//     return result + str
+//   })
+//   .map(x=>JSON.parse(x))
+//   .map(config=>App(config,process.env))
+//   .flatMap(highland)
+//   .errors((err,next)=>{
+//     console.error(err)
+//   })
+//   .each(x=>{
+//     console.log(JSON.stringify(x, null, 2))
+//     process.exit()
+//   })
 
 // App(config, process.env)
 //   .then(x => console.log(JSON.stringify(x, null, 2)))

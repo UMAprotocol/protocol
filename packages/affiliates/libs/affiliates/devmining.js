@@ -210,6 +210,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
           if (err.message.includes("history does not go back far enough") || err.message.includes("history is empty")) {
             result.push([empAddress, "0"]);
           } else {
+            console.error('error with emp',empAddress)
             throw err;
           }
         }
