@@ -66,19 +66,11 @@ class OptimisticOracleClient {
     });
   }
 
-  // Returns disputes that can be settled and that involved the caler as the disputer
+  // Returns disputes that can be settled and that involved the caller as the disputer
   getSettleableDisputes(caller) {
     return this.settleableDisputes.filter(event => {
       return event.disputer === caller;
     });
-  }
-
-  // Returns an array of Price Request objects for each position that someone has proposed a price for and whose
-  // proposal can be disputed. The proposal can be disputed because the proposed price deviates from the `inputPrice` by
-  // more than the `errorThreshold`.
-  getDisputablePriceProposals() {
-    // TODO
-    return;
   }
 
   // Returns the last update timestamp.
@@ -140,7 +132,8 @@ class OptimisticOracleClient {
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
           timestamp: event.returnValues.timestamp,
           proposedPrice: event.returnValues.proposedPrice,
-          expirationTimestamp: event.returnValues.expirationTimestamp
+          expirationTimestamp: event.returnValues.expirationTimestamp,
+          currency: event.returnValues.currency
         };
       });
 
@@ -210,10 +203,7 @@ class OptimisticOracleClient {
     ).filter(event => event !== undefined);
     this.settleableDisputes = unsettledResolvedDisputeEvents;
 
-    // Determine which undisputed proposals SHOULD be disputed based on current prices:
-    // TODO: This would involve having a pricefeed for each identifier. This logic might be
-    // better placed in the OO Keeper instead of the client.
-
+    // Update timestamp and end update.
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
       at: "OptimisticOracleClient",
