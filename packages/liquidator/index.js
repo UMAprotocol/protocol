@@ -347,8 +347,8 @@ async function Poll(callback) {
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
-      //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
-      //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
+      //   "defenseActivationPercent": undefined -> Set to > 0 to turn on "Whale Defense" strategy.
+      //                               Specifies how far along a withdraw must be in % before defense strategy kicks in.
       //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
       //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
       //   "contractVersion":"1.2.2"} -> override the contract version the liquidator is pointing at.
