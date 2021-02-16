@@ -1,4 +1,4 @@
-const { ZERO_ADDRESS, MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei, toBN, fromWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
 
