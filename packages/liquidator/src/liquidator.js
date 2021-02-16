@@ -120,14 +120,6 @@ class Liquidator {
           return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
         }
       },
-      whaleDefenseFundWei: {
-        // by default make this disabled
-        value: undefined,
-        isValid: x => {
-          if (x === undefined) return true;
-          return this.toBN(x).gte(this.toBN("0"));
-        }
-      },
       defenseActivationPercent: {
         value: undefined,
         isValid: x => {
@@ -275,6 +267,17 @@ class Liquidator {
       const currentBlockTime = this.financialContractClient.getLastUpdateTime();
       const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
 
+      // If `startingBlock` and `endingBlock` are specified and the position had a requested withdrawal within the
+      // block window, then upgrade the log level about skipping any liquidations:
+      let blockWindowHasRequestedWithdraw = false;
+      if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
+        const requestedWithdrawalEvents = await this.empContract.getPastEvents("RequestWithdrawal", {
+          fromBlock: this.startingBlock,
+          toBlock: this.endingBlock
+        });
+        blockWindowHasRequestedWithdraw = Boolean(requestedWithdrawalEvents);
+      }
+
       // run strategy based on configs and current state
       // will return liquidation arguments or nothing
       // if it returns nothing it means this position cant be or shouldnt be liquidated
@@ -290,61 +293,15 @@ class Liquidator {
         // minimim position size, as well as minimum liquidation to extend withdraw
         financialContractMinSponsorSize: this.financialContractMinSponsorSize,
         currentBlockTime,
+        // should bot emit specialized logs about skipping liquidations due to WDF
+        shouldEmitWDFSkipLogs: blockWindowHasRequestedWithdraw,
         // for logging
         inputPrice: scaledPrice.toString()
       });
 
       // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
       // has not passed the WDF's activation threshold.
-      // This gets logged as an event, see constructor
-      if (!liquidationArgs) {
-        // If WDF is active, withdrawal request is active but has NOT expired yet,
-        // and liveness hasn't passed activation % then send customized log:
-        if (
-          this.defenseActivationPercent &&
-          !this.liquidationStrategy.utils.passedDefenseActivationPercent({ position, currentBlockTime })
-        ) {
-          // If `startingBlock` and `endingBlock` are specified and the requested withdrawal was within the
-          // block window, then upgrade the log level:
-          let logLevel = "debug";
-          if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
-            const blockWindowHasRequestedWithdraw = await this.financialContract.getPastEvents("RequestWithdrawal", {
-              fromBlock: this.startingBlock,
-              toBlock: this.endingBlock
-            });
-            if (blockWindowHasRequestedWithdraw) {
-              logLevel = "info";
-            }
-          }
-          this.logger[logLevel]({
-            at: "Liquidator",
-            message: "Withdrawal liveness has not passed WDF activation threshold, skipping😴",
-            sponsor: position.sponsor,
-            inputPrice: scaledPrice.toString(),
-            position,
-            minLiquidationPrice: this.liquidationMinPrice,
-            maxLiquidationPrice: maxCollateralPerToken.toString(),
-            syntheticTokenBalance: syntheticTokenBalance.toString(),
-            currentBlockTime
-          });
-          continue;
-        }
-        // the bot has 0 balance.
-        this.logger.error({
-          at: "Liquidator",
-          message:
-            "Zero liquidation balance. If bot has balance, then it likely does not have enough balance to fully liquidate the position, which is equal to the minimum sponsor size✋",
-          sponsor: position.sponsor,
-          inputPrice: scaledPrice.toString(),
-          position: position,
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: "0",
-          syntheticTokenBalance: syntheticTokenBalance.toString(),
-          error: new Error("Refusing to liquidate 0 tokens")
-        });
-        continue;
-      }
+      if (!liquidationArgs) continue;
 
       // pulls the tokens to liquidate parameter out of the liquidation arguments
       const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);

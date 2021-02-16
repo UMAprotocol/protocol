@@ -11,7 +11,20 @@ const IDENTIFIER_NON_18_PRECISION = {
   "STABLESPREAD/BTC": 8,
   "ELASTIC_STABLESPREAD/USDC": 6,
   BCHNBTC: 8,
-  AMPLUSD: 6
+  AMPLUSD: 6,
+  "uVOL-BTC-APR21": 6,
+  "BTC-BASIS-3M/USDC": 6,
+  "BTC-BASIS-6M/USDC": 6,
+  "ETH-BASIS-3M/USDC": 6,
+  "ETH-BASIS-6M/USDC": 6,
+  "COMPUSDC-APR-FEB28/USDC": 6,
+  "COMPUSDC-APR-MAR28/USDC": 6,
+  DSDUSD: 6,
+  DEFI_PULSE_TOTAL_TVL: 6,
+  SUSHIUNI_TVL: 6,
+  // The following identifiers are used in local test environments only:
+  TEST8DECIMALS: 8,
+  TEST6DECIMALS: 6
 };
 
 const getPrecisionForIdentifier = identifier => {

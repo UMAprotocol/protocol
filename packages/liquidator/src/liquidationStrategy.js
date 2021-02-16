@@ -4,18 +4,15 @@ const assert = require("assert");
  * will check withdraw positions to see if they require an extension rather than full liquidation.
  * @constructor
  * @param {object} config - State configuration, env vars, contract vars
- * @property {number} config.whaleDefenseFundWei - Optional value which enables strategy if above 0. Specify the
- * reserves to hold in tokens to allow for defense strategy. 0 disables.
  * @property {number} config.defenseActivationPercent - The % past liveness a position needs to be before its
- * extended. Optional unless whaleDefenseFundWei is enabled.
+ * extended. This activates the Whale Defense strategy if it is > 0.
  * @property {number} config.liquidationDeadline - Aborts the liquidation if the transaction is mined this amount
  * of time after this time has passed
- * @property {number} config.withdrawLiveness - Optional unless whaleDefenseFundWei is enabled. The positions
+ * @property {number} config.withdrawLiveness - Optional unless defenseActivationPercent is enabled. The positions
  * withdraw liveness duration, set by financialContract contract.
- * @property {number} config.minSponsorSize - FinancialContractAddress minimum sponsor position size in tokens.
+ * @property {number} config.minSponsorSize - financialContract minimum sponsor position size in tokens.
  * Example:
  * {
- *   whaleDefenseFundWei: '10000000000000000000',
  *   defenseActivationPercent: 80,
  *   liquidationDeadline: 300,
  *   withdrawLiveness: 10000,
@@ -39,10 +36,8 @@ const assert = require("assert");
  */
 module.exports = (
   {
-    // how much money to set aside for defense in tokens
-    whaleDefenseFundWei = 0,
     // when to activate defense, when withdraw is X% in time complete
-    defenseActivationPercent,
+    defenseActivationPercent = 0,
     liquidationMinPrice = "0",
     // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
     liquidationDeadline = 300,
@@ -66,12 +61,11 @@ module.exports = (
   assert(BN, "requires BN");
 
   // these variables are optional and are only checked if WDF is activated
-  whaleDefenseFundWei &&
-    assert(
-      defenseActivationPercent >= 0 && defenseActivationPercent <= 100,
-      "Requires defenseActivationPercent to bet set between 0 and 100"
-    );
-  whaleDefenseFundWei && assert(withdrawLiveness > 0, "requires withdrawLiveness");
+  const wdfActive = typeof defenseActivationPercent === "number" && defenseActivationPercent > 0;
+  if (wdfActive) {
+    assert(defenseActivationPercent <= 100, "Requires defenseActivationPercent to bet set between (0, 100]");
+    assert(withdrawLiveness > 0, "requires withdrawLiveness");
+  }
 
   // Function which packs the arguments for a liquidation.
   // returns parameters for financialContract.methods.createLiquidation
@@ -89,14 +83,9 @@ module.exports = (
     ];
   }
 
-  // use in the case of a non whale defense liquidation
-  // Similar to the logic that already exists, but takes into account more information.
-  function calculateTokensToLiquidate({
-    syntheticTokenBalance,
-    positionTokens,
-    maxTokensToLiquidateWei,
-    withdrawRequestPending
-  }) {
+  // Return how many tokens that the bot can liquidate, taking into account
+  // the bot's balance and the minimum position size.
+  function calculateTokensToLiquidate({ syntheticTokenBalance, positionTokens, maxTokensToLiquidateWei }) {
     positionTokens = toBN(positionTokens);
     syntheticTokenBalance = toBN(syntheticTokenBalance);
 
@@ -105,14 +94,12 @@ module.exports = (
     // Available capital calculates the max we can currently spend.
     // If there is NO withdrawal request pending (or the request has expired liveness), then
     // we'll ignore the WDF constraint and just liquidate with max funds.
-    let availableCapital = withdrawRequestPending
-      ? BN.max(toBN(0), syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)))
-      : syntheticTokenBalance;
+    let availableCapital = syntheticTokenBalance;
     if (maxTokensToLiquidateWei) {
       availableCapital = BN.min(toBN(maxTokensToLiquidateWei), availableCapital);
     }
 
-    // we have enough capital to fully liquidate positon
+    // we have enough capital to fully liquidate position
     if (availableCapital.gte(positionTokens)) {
       return positionTokens;
     }
@@ -128,7 +115,9 @@ module.exports = (
   }
 
   // Call this with only undercollateralized position
-  // SyntheticTokenBalance should be passed in respecting maxTokensToLiquidate
+  // SyntheticTokenBalance should be passed in respecting maxTokensToLiquidate.
+  // Responsible for emitting customized logs since its already parsing
+  // whether a liquidation is valid to send and for how many tokens.
   function processPosition({
     position,
     syntheticTokenBalance,
@@ -142,50 +131,85 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(position, "requires position");
 
-    // whale fund enabled, check if withdraw liveness can be extended with a min liquidation
-    if (whaleDefenseFundWei && toBN(whaleDefenseFundWei).gt(toBN("0"))) {
-      // we should only liquidate the minimum here to extend withdraw
+    let tokensToLiquidate = toBN(0);
+
+    if (!wdfActive || !hasWithdrawRequestPending({ position, currentBlockTime })) {
+      // 1) If either WDF is not activated or there is no withdraw pending, then
+      //    submit liquidation using all capital
+      //     - This will include withdraws that have expired already.
+      tokensToLiquidate = calculateTokensToLiquidate({
+        syntheticTokenBalance,
+        positionTokens: position.numTokens,
+        maxTokensToLiquidateWei
+      });
+    } else if (canLiquidateFully({ position, syntheticTokenBalance })) {
+      // 2) If you can fully liquidate, do it, regardless of whether WDF is activated.
+      tokensToLiquidate = calculateTokensToLiquidate({
+        syntheticTokenBalance,
+        positionTokens: position.numTokens,
+        maxTokensToLiquidateWei
+      });
+    } else if (
+      wdfActive &&
+      hasWithdrawRequestPending({ position, currentBlockTime }) &&
+      passedDefenseActivationPercent({ position, currentBlockTime }) &&
+      canLiquidateMinimum({ position, syntheticTokenBalance })
+    ) {
+      // 3) If WDF is active and withdraw has passed WDF activation percentage, then submit min liquidation
+      emit("info", {
+        message: "Liquidator bot is extending withdraw deadline, funds may need to be added to liquidate full position",
+        position,
+        maxLiquidationPrice: maxCollateralPerToken.toString(),
+        syntheticTokenBalance: syntheticTokenBalance.toString(),
+        maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
+        currentBlockTime,
+        ...logInfo
+      });
+      tokensToLiquidate = minSponsorSize;
+    }
+
+    // If tokensToLiquidate is 0 at this point, determine why and send a customized log,
+    // and return undefined.
+    if (toBN(tokensToLiquidate).lte(toBN(0))) {
+      // Case 1: WDF is active but liveness threshold has not passed yet
       if (
-        shouldLiquidateMinimum({
-          position,
-          syntheticTokenBalance,
-          currentBlockTime
-        })
+        wdfActive &&
+        hasWithdrawRequestPending({ position, currentBlockTime }) &&
+        !passedDefenseActivationPercent({ position, currentBlockTime })
       ) {
-        // we are using the WDF to liquidate. We need to alert user
-        emit("info", {
-          message:
-            "Liquidator bot is extending withdraw deadline, funds may need to be added to liquidate full position",
-          position: position,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
+        emit("debug", {
+          message: "Liquidator bot skipping liquidation, withdrawal liveness has not passed WDF activation threshold😴",
+          position,
+          currentBlockTime,
+          withdrawLiveness,
+          defenseActivationPercent,
+          ...logInfo
+        });
+      }
+      // Case 2: Liquidator doesn't have enough balance to liquidate the minimum sponsor size
+      else if (!canLiquidateMinimum({ position, syntheticTokenBalance })) {
+        emit("error", {
+          message: "Insufficient balance to liquidate the minimum sponsor size✋",
+          position,
           syntheticTokenBalance: syntheticTokenBalance.toString(),
           maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
-          whaleDefenseFundWei: whaleDefenseFundWei.toString(),
           currentBlockTime,
           ...logInfo
         });
-        // this assume financialContractMinSponsorSize will always be <= maxTokensToLiquidate
-        return createLiquidationParams({
-          sponsor: position.sponsor,
-          // Only liquidating the minimum size to extend withdraw
-          tokensToLiquidate: minSponsorSize,
+      }
+      // Case 3: Unknown
+      else {
+        emit("error", {
+          message: "Unknown reason why liquidation is being skipped, should investigate🙃",
+          position,
+          maxLiquidationPrice: maxCollateralPerToken.toString(),
+          syntheticTokenBalance: syntheticTokenBalance.toString(),
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
           currentBlockTime,
-          maxCollateralPerToken
+          ...logInfo
         });
       }
-    }
-
-    // WDF strategy not activated, calculate tokens to liquidate respecting all constraints
-    const tokensToLiquidate = calculateTokensToLiquidate({
-      syntheticTokenBalance,
-      positionTokens: position.numTokens,
-      maxTokensToLiquidateWei,
-      withdrawRequestPending: hasWithdrawRequestPending({ position, currentBlockTime })
-    });
-
-    // check if we should try to liquidate this position
-    if (shouldLiquidate({ tokensToLiquidate })) {
-      // We should liquidate the entire position using our capital - wdf
+    } else {
       return createLiquidationParams({
         sponsor: position.sponsor,
         tokensToLiquidate,
@@ -193,7 +217,6 @@ module.exports = (
         maxCollateralPerToken
       });
     }
-    // we dont liquidate, dont return anything. Probably because amount to liquidate is 0
   }
 
   // Pure function which just calculates how far a timer has progressed between 0 and 100
@@ -208,6 +231,7 @@ module.exports = (
     return 100 * (elapsed / duration);
   }
 
+  // Returns true if withdrawal request is pending and non-expired
   function hasWithdrawRequestPending({ position, currentBlockTime }) {
     return (
       // this position has a withdraw pending
@@ -219,25 +243,25 @@ module.exports = (
   // Returns true if enough of the withdrawal liveness has passed that the WDF strategy can be activated.
   function passedDefenseActivationPercent({ position, currentBlockTime }) {
     return (
-      hasWithdrawRequestPending({ position, currentBlockTime }) &&
       withdrawProgressPercent(withdrawLiveness, position.withdrawalRequestPassTimestamp, currentBlockTime) >=
-        parseFloat(defenseActivationPercent)
+      parseFloat(defenseActivationPercent)
     );
   }
 
-  // Should we try to delay this withdrawal. Update this logic to change conditions to run delay strategy.
-  function shouldLiquidateMinimum({ position, syntheticTokenBalance, currentBlockTime }) {
-    assert(defenseActivationPercent >= 0, "requires defenseActivationPercent");
-    assert(withdrawLiveness > 0, "requires withdrawLiveness");
+  // Returns true of syntheticTokenBalance >= position.tokensOutstanding
+  function canLiquidateFully({ position, syntheticTokenBalance }) {
+    return toBN(syntheticTokenBalance).gte(toBN(position.numTokens));
+  }
+
+  // Returns true of syntheticTokenBalance >= minSponsorSize and
+  // position.tokensOutstanding - minSponsorSize >= minSponsorSize
+  function canLiquidateMinimum({ position, syntheticTokenBalance }) {
     syntheticTokenBalance = toBN(syntheticTokenBalance);
     const financialContractMinSponsorSize = toBN(minSponsorSize);
-    currentBlockTime = Number(currentBlockTime);
 
     // our synthetic balance is less than the amount required to extend deadline
     if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
-    // we have enough to fully liquidate position respecting WDF, so do not do the minimum
-    if (syntheticTokenBalance.sub(toBN(whaleDefenseFundWei)).gte(toBN(position.numTokens))) return false;
-    // position cant go below the minimum financialContract sponsor size
+    // position cant go below the minimum emp sponsor size
     if (
       toBN(position.numTokens)
         .sub(financialContractMinSponsorSize)
@@ -246,16 +270,6 @@ module.exports = (
       return false;
     // all conditions passed and we should minimally liquidate to extend timer as long as the
     // liveness timer on withdraw has passed the activation threshold.
-    return passedDefenseActivationPercent({ position, currentBlockTime });
-  }
-
-  // Any new constraints can be added here, but for now
-  // only dont liquidate if the amount to liquidate is <=0
-  function shouldLiquidate({ tokensToLiquidate }) {
-    tokensToLiquidate = toBN(tokensToLiquidate);
-    // nothing to liquidate
-    if (tokensToLiquidate.lte(toBN(0))) return false;
-    // any other conditions we do try to liquidate
     return true;
   }
 
@@ -265,9 +279,10 @@ module.exports = (
     // Utility calls exposed for testing or other use
     // Not really needed outside this module
     utils: {
-      shouldLiquidate,
-      shouldLiquidateMinimum,
+      canLiquidateFully,
+      canLiquidateMinimum,
       createLiquidationParams,
+      hasWithdrawRequestPending,
       passedDefenseActivationPercent,
       withdrawProgressPercent,
       calculateTokensToLiquidate
