@@ -381,8 +381,8 @@ const defaultConfigs = {
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",
-    minuteLookback: 7200,
-    hourlyLookback: 604800,
+    minuteLookback: 7200, // minuteLookback up to 2 days
+    hourlyLookback: 604800, // hourlyLookback up to 2 months
     minTimeBetweenUpdates: 600
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
