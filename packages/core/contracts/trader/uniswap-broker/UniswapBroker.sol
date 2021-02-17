@@ -2,20 +2,40 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/lib/contracts/libraries/Babylonian.sol";
+import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
+import "@uniswap/lib/contracts/libraries/FullMath.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+
 /**
  * @title UniswapBroker
  * @notice Trading contract used to arb uniswap pairs to a desired "true" price. Intended use is to arb UMA perpetual
- * synthetics that trade off peg. Implementation is inspired by https://arxiv.org/abs/1911.03380 and an official uniswap
- * example https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/examples/ExampleSwapToPrice.sol
+ * synthetics that trade off peg. This implementation can ber used in conjunction with a DSProxy contract to atomically
+ * swap and move a uniswap market.
  *
  */
 
 contract UniswapBroker {
     using SafeMath for uint256;
 
-    // Swaps an amount of either token such that the trade is results in the uniswap pair's price being as close as
-    // possible to the truePrice. True price is expressed in the ratio of token A to token B.
-    // caller must approve this contract to spend whichever token is intended to be swapped.
+ /**
+     * @notice Swaps an amount of either token such that the trade results in the uniswap pair's price being as close as
+     * possible to the truePrice. 
+     * @dev True price is expressed in the ratio of token A to token B.
+     * @dev The caller must approve this contract to spend whichever token is intended to be swapped.
+     * @param uniswapRouter address of the uniswap router used to facilate trades.
+     * @param uniswapFactory address of the uniswap factory used to fetch current pair reserves.
+     * @param tokenA address of the first token in the uniswap pair.
+     * @param tokenA address of the second token in the uniswap pair.
+     * @param truePriceTokenA the nominator of the true price.
+     * @param truePriceTokenB the denominatornominator of the true price.
+     * @param maxSpendTokenA maximum to spend in tokenA. Note can be set to zero, thereby limiting the direction of trade.
+     * @param maxSpendTokenA maximum to spend in tokenB. Note can be set to zero, thereby limiting the direction of trade.
+     * @param to recipient of the trade proceeds.
+     * @param to deadline to limit when the trade can execute. If the tx is mined after this timestamp then revert.
+     */
+
     function swapToPrice(
         address uniswapRouter,
         address uniswapFactory,
@@ -68,6 +88,18 @@ contract UniswapBroker {
         );
     }
 
+/**
+     * @notice Given the "true" price a token (represented by truePriceTokenA/truePriceTokenB) and the reservers in the
+     * uniswap pair, calculate: a) the direction of trade (aToB) and b) the amount needed to trade (amountIn) to move
+     * the pool price to be equalto the true price.
+     * @dev Note that this method uses the Babylonian square root method which has a small margin of error which will
+     * result in a small over or under estimation on the size of the trade needed.
+     * @param truePriceTokenA the nominator of the true price.
+     * @param truePriceTokenB the denominatornominator of the true price.
+     * @param reserveA number of token A in the pair reserves
+     * @param reserveB number of token B in the pair reserves
+     */
+//
     function computeTradeToMoveMarket(
         uint256 truePriceTokenA,
         uint256 truePriceTokenB,
@@ -94,6 +126,12 @@ contract UniswapBroker {
         amountIn = leftSide.sub(rightSide);
     }
 
+    // The methods below are taken from https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
+    // We could import this library into this contract but this library is dependent Uniswap's SafeMath, which is bound
+    // to solidity 6.6.6. Hardhat can easily deal with two diffrent sets of solidity versions within one project so 
+    // unit tests would continue to work fine. However, this would break truffle support in the repo as truffle cant
+    // handel having two diffrent solidity versions. As a work around, the spesific methods needed in the UniswapBroker
+    // are simply moved here to maintain truffle support.
     function getReserves(
         address factory,
         address tokenA,
@@ -130,170 +168,4 @@ contract UniswapBroker {
             )
         );
     }
-}
-
-library Babylonian {
-    // credit for this implementation goes to
-    // https://github.com/abdk-consulting/abdk-libraries-solidity/blob/master/ABDKMath64x64.sol#L687
-    function sqrt(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 0;
-        // this block is equivalent to r = uint256(1) << (BitMath.mostSignificantBit(x) / 2);
-        // however that code costs significantly more gas
-        uint256 xx = x;
-        uint256 r = 1;
-        if (xx >= 0x100000000000000000000000000000000) {
-            xx >>= 128;
-            r <<= 64;
-        }
-        if (xx >= 0x10000000000000000) {
-            xx >>= 64;
-            r <<= 32;
-        }
-        if (xx >= 0x100000000) {
-            xx >>= 32;
-            r <<= 16;
-        }
-        if (xx >= 0x10000) {
-            xx >>= 16;
-            r <<= 8;
-        }
-        if (xx >= 0x100) {
-            xx >>= 8;
-            r <<= 4;
-        }
-        if (xx >= 0x10) {
-            xx >>= 4;
-            r <<= 2;
-        }
-        if (xx >= 0x8) {
-            r <<= 1;
-        }
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1;
-        r = (r + x / r) >> 1; // Seven iterations should be enough
-        uint256 r1 = x / r;
-        return (r < r1 ? r : r1);
-    }
-}
-
-// taken from https://medium.com/coinmonks/math-in-solidity-part-3-percents-and-proportions-4db014e080b1
-// license is CC-BY-4.0
-library FullMath {
-    function fullMul(uint256 x, uint256 y) internal pure returns (uint256 l, uint256 h) {
-        uint256 mm = mulmod(x, y, uint256(-1));
-        l = x * y;
-        h = mm - l;
-        if (mm < l) h -= 1;
-    }
-
-    function fullDiv(
-        uint256 l,
-        uint256 h,
-        uint256 d
-    ) private pure returns (uint256) {
-        uint256 pow2 = d & -d;
-        d /= pow2;
-        l /= pow2;
-        l += h * ((-pow2) / pow2 + 1);
-        uint256 r = 1;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        r *= 2 - d * r;
-        return l * r;
-    }
-
-    function mulDiv(
-        uint256 x,
-        uint256 y,
-        uint256 d
-    ) internal pure returns (uint256) {
-        (uint256 l, uint256 h) = fullMul(x, y);
-
-        uint256 mm = mulmod(x, y, d);
-        if (mm > l) h -= 1;
-        l -= mm;
-
-        if (h == 0) return l / d;
-
-        require(h < d, "FullMath: FULLDIV_OVERFLOW");
-        return fullDiv(l, h, d);
-    }
-}
-
-// helper methods for interacting with ERC20 tokens and sending ETH that do not consistently return true/false
-library TransferHelper {
-    function safeApprove(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('approve(address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper::safeApprove: approve failed"
-        );
-    }
-
-    function safeTransfer(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('transfer(address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper::safeTransfer: transfer failed"
-        );
-    }
-
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper::transferFrom: transferFrom failed"
-        );
-    }
-
-    function safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call{ value: value }(new bytes(0));
-        require(success, "TransferHelper::safeTransferETH: ETH transfer failed");
-    }
-}
-
-interface IUniswapV2Router01 {
-    function swapExactTokensForTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
-}
-
-interface IUniswapV2Pair {
-    function getReserves()
-        external
-        view
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        );
 }

@@ -105,7 +105,7 @@ contract("UniswapBroker", function(accounts) {
     const tokenAReserve = (await tokenA.balanceOf(pairAddress)).sub(amountOut);
     const tokenBReserve = (await tokenB.balanceOf(pairAddress)).add(tradeSizeInTokenB);
 
-    // Compute the expected resultant spot price from the two token reserves.
+    // Compute the expected spot price from the two token reserves.
     const expectedSpotPrice = Number(fromWei(tokenAReserve.mul(toBN(toWei("1"))).div(tokenBReserve))).toFixed(4);
 
     // Execute the swap.
@@ -121,6 +121,31 @@ contract("UniswapBroker", function(accounts) {
     assert.equal(await getPoolSpotPrice(), "980.3252");
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
+    // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
+    const tradeToMoveMarket = await uniswapBroker.computeTradeToMoveMarket(
+      "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
+      "1",
+      await tokenA.balanceOf(pairAddress),
+      await tokenB.balanceOf(pairAddress)
+    );
+
+    // For starters, to move the price UP we need to trade token A into the pool for token B. Therefore the aToB should
+    // be true as the token flow should be A for token B to increase the price.
+    assert.isTrue(tradeToMoveMarket.aToB);
+
+    // Secondly, the resultant price after the trade based off the amountIn should be equal to the desired true price.
+    const amountOutArb = await getAmountOut(tradeToMoveMarket.amountIn, tradeToMoveMarket.aToB);
+
+    // Find the modified versions of the token reservers. As we are trading token A for token B the B reservers should be
+    // decreased by the amountOut and the token A reservers should be increased by the trade size in token A.
+    const tokenAReserveArb = (await tokenA.balanceOf(pairAddress)).add(tradeToMoveMarket.amountIn);
+    const tokenBReserveArb = (await tokenB.balanceOf(pairAddress)).sub(amountOutArb);
+
+    // Compute the expected spot price from the two token reserves. This should equal 1000, the desired "true" price.
+    const postArbSpotPrice = Number(fromWei(tokenAReserveArb.mul(toBN(toWei("1"))).div(tokenBReserveArb))).toFixed(0);
+    assert.equal(postArbSpotPrice, "1000");
+
+    // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
     await uniswapBroker.swapToPrice(
       router.address,
       factory.address,
@@ -154,9 +179,8 @@ contract("UniswapBroker", function(accounts) {
     const tokenAReserve = (await tokenA.balanceOf(pairAddress)).add(tradeSizeInTokenA);
     const tokenBReserve = (await tokenB.balanceOf(pairAddress)).sub(amountOut);
 
-    // Compute the expected resultant spot price from the two token reserves.
+    // Compute the expected spot price from the two token reserves.
     const expectedSpotPrice = Number(fromWei(tokenAReserve.mul(toBN(toWei("1"))).div(tokenBReserve))).toFixed(4);
-    console.log("expectedSpotPrice", expectedSpotPrice);
 
     // Execute the swap.
     await router.swapExactTokensForTokens(
@@ -171,6 +195,31 @@ contract("UniswapBroker", function(accounts) {
     assert.equal(await getPoolSpotPrice(), "1209.6700");
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
+    // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
+    const tradeToMoveMarket = await uniswapBroker.computeTradeToMoveMarket(
+      "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
+      "1",
+      await tokenA.balanceOf(pairAddress),
+      await tokenB.balanceOf(pairAddress)
+    );
+
+    // For starters, to move the price DOWN we need to trade token B into the pool for token A. Therefore the aToB should
+    // be false as the token flow should be B for token A to increase the decrease.
+    assert.isFalse(tradeToMoveMarket.aToB);
+
+    // Secondly, the resultant price after the trade based off the amountIn should be equal to the desired true price.
+    const amountOutArb = await getAmountOut(tradeToMoveMarket.amountIn, tradeToMoveMarket.aToB);
+
+    // Find the modified versions of the token reservers. As we are trading token B for token A the A reservers should be
+    // decreased by the amountOut and the token B reservers should be increased by the trade size in token B.
+    const tokenAReserveArb = (await tokenA.balanceOf(pairAddress)).sub(amountOutArb);
+    const tokenBReserveArb = (await tokenB.balanceOf(pairAddress)).add(tradeToMoveMarket.amountIn);
+
+    // Compute the expected spot price from the two token reserves. This should equal 1000, the desired "true" price.
+    const postArbSpotPrice = Number(fromWei(tokenAReserveArb.mul(toBN(toWei("1"))).div(tokenBReserveArb))).toFixed(0);
+    assert.equal(postArbSpotPrice, "1000");
+
+    // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
     await uniswapBroker.swapToPrice(
       router.address,
       factory.address,
