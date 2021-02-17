@@ -57,9 +57,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   const uniswapAddress = toChecksumAddress(randomHex(20));
   const balancerAddress = toChecksumAddress(randomHex(20));
   const symbol = "test-symbol";
-  const convert = "test-convert";
+  const quoteCurrency = "test-quoteCurrency";
   const contractAddress = "test-address";
-  const currency = "test-currency";
 
   before(async function() {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -965,7 +964,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       type: "coinmarketcap",
       apiKey,
       symbol,
-      convert,
+      quoteCurrency,
       lookback,
       minTimeBetweenUpdates
     };
@@ -975,7 +974,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.isTrue(validCoinMarketCapFeed instanceof CoinMarketCapPriceFeed);
     assert.equal(validCoinMarketCapFeed.apiKey, apiKey);
     assert.equal(validCoinMarketCapFeed.symbol, symbol);
-    assert.equal(validCoinMarketCapFeed.convert, convert);
+    assert.equal(validCoinMarketCapFeed.quoteCurrency, quoteCurrency);
     assert.equal(validCoinMarketCapFeed.lookback, lookback);
     assert.equal(validCoinMarketCapFeed.getTime(), getTime());
     assert.equal(validCoinMarketCapFeed.invertPrice, undefined);
@@ -986,14 +985,17 @@ contract("CreatePriceFeed.js", function(accounts) {
       type: "coinmarketcap",
       apiKey,
       symbol,
-      convert,
+      quoteCurrency,
       lookback,
       minTimeBetweenUpdates
     };
 
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, symbol: undefined }), null);
-    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, convert: undefined }), null);
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),
+      null
+    );
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null
@@ -1008,7 +1010,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const config = {
       type: "coingecko",
       contractAddress,
-      currency,
+      quoteCurrency,
       lookback,
       minTimeBetweenUpdates
     };
@@ -1017,7 +1019,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     assert.isTrue(validCoinGeckoFeed instanceof CoinGeckoPriceFeed);
     assert.equal(validCoinGeckoFeed.contractAddress, contractAddress);
-    assert.equal(validCoinGeckoFeed.currency, currency);
+    assert.equal(validCoinGeckoFeed.quoteCurrency, quoteCurrency);
     assert.equal(validCoinGeckoFeed.lookback, lookback);
     assert.equal(validCoinGeckoFeed.getTime(), getTime());
     assert.equal(validCoinGeckoFeed.invertPrice, undefined);
@@ -1027,7 +1029,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const validConfig = {
       type: "coingecko",
       contractAddress,
-      currency,
+      quoteCurrency,
       lookback,
       minTimeBetweenUpdates
     };
@@ -1037,7 +1039,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       null
     );
     assert.equal(
-      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, currency: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),
       null
     );
     assert.equal(

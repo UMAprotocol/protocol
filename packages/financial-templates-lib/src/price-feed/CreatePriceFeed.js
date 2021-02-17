@@ -169,7 +169,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
   } else if (config.type === "coinmarketcap") {
-    const requiredFields = ["apiKey", "symbol", "convert", "lookback", "minTimeBetweenUpdates"];
+    const requiredFields = ["apiKey", "symbol", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -186,7 +186,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       config.apiKey,
       config.symbol,
-      config.convert,
+      config.quoteCurrency,
       config.lookback,
       networker,
       getTime,
@@ -195,7 +195,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
     );
   } else if (config.type === "coingecko") {
-    const requiredFields = ["contractAddress", "currency", "lookback", "minTimeBetweenUpdates"];
+    const requiredFields = ["contractAddress", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -211,7 +211,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3,
       config.contractAddress,
-      config.currency,
+      config.quoteCurrency,
       config.lookback,
       networker,
       getTime,

@@ -87,19 +87,19 @@ contract("CoinMarketCapPriceFeed.js", function() {
     await coinMarketCapPriceFeed.update(); // should produce {  mockTime + 600, mockPrice + 2 }
 
     // Do assertions for each period
-    const price1 = coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime);
+    const price1 = await coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime);
     assert.equal(price1.toString(), toWei(`${mockPrice}`));
 
-    const price2 = coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime + 300);
+    const price2 = await coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime + 300);
     assert.equal(price2.toString(), toWei(`${mockPrice + 1}`));
 
-    const price3 = coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime + 600);
+    const price3 = await coinMarketCapPriceFeed.getHistoricalPrice(originalMockTime + 600);
     assert.equal(price3.toString(), toWei(`${mockPrice + 2}`));
   });
 
-  it("getHistoricalPrice() returns undefined if update() is never called", async function() {
-    const price = coinMarketCapPriceFeed.getHistoricalPrice(mockTime);
-    assert.equal(price, undefined);
+  it("getHistoricalPrice() throws error if update() is never called", async function() {
+    const didThrow = await coinMarketCapPriceFeed.getHistoricalPrice(mockTime).catch(() => true);
+    assert.isTrue(didThrow, "getHistoricalPrice() didn't throw");
   });
 
   it("getHistoricalPrice() returns the price if the time is within the lookout window", async function() {
@@ -107,26 +107,26 @@ contract("CoinMarketCapPriceFeed.js", function() {
 
     await coinMarketCapPriceFeed.update();
 
-    const price = coinMarketCapPriceFeed.getHistoricalPrice(mockTime - lookback);
+    const price = await coinMarketCapPriceFeed.getHistoricalPrice(mockTime - lookback);
     assert.equal(price.toString(), toWei(`${mockPrice}`));
   });
 
-  it("getHistoricalPrice() returns undefined if the time is before the lookout window", async function() {
+  it("getHistoricalPrice() throws error if the time is before the lookout window", async function() {
     networker.getJsonReturns = [validResponse];
 
     await coinMarketCapPriceFeed.update();
 
-    const price = coinMarketCapPriceFeed.getHistoricalPrice(mockTime - lookback - 1);
-    assert.equal(price, undefined);
+    const didThrow = await coinMarketCapPriceFeed.getHistoricalPrice(mockTime - lookback - 1).catch(() => true);
+    assert.isTrue(didThrow, "getHistoricalPrice() didn't throw");
   });
 
-  it("getHistoricalPrice() returns undefined if the time is after the lookout window", async function() {
+  it("getHistoricalPrice() throws error if the time is after the lookout window", async function() {
     networker.getJsonReturns = [validResponse];
 
     await coinMarketCapPriceFeed.update();
 
-    const price = coinMarketCapPriceFeed.getHistoricalPrice(mockTime + 1);
-    assert.equal(price, undefined);
+    const didThrow = await coinMarketCapPriceFeed.getHistoricalPrice(mockTime + 1).catch(() => true);
+    assert.isTrue(didThrow, "getHistoricalPrice() didn't throw");
   });
 
   it("getLastUpdateTime() returns the time when update() was last called", async function() {
@@ -164,8 +164,8 @@ contract("CoinMarketCapPriceFeed.js", function() {
     const price = coinMarketCapPriceFeed.getCurrentPrice();
     assert.equal(price, undefined);
 
-    const time = coinMarketCapPriceFeed.getHistoricalPrice(mockTime);
-    assert.equal(time, undefined);
+    const didThrow = await coinMarketCapPriceFeed.getHistoricalPrice(mockTime).catch(() => true);
+    assert.isTrue(didThrow, "getHistoricalPrice() didn't throw");
   });
 
   it("Should not call API again if succeeding update() call is within minTimeBetweenUpdates", async function() {
@@ -226,7 +226,7 @@ contract("CoinMarketCapPriceFeed.js", function() {
     const price = cmcInvertedPriceFeed.getCurrentPrice();
     assert.equal(price.toString(), invertedPrice);
 
-    const historicalPrice = cmcInvertedPriceFeed.getHistoricalPrice(mockTime);
+    const historicalPrice = await cmcInvertedPriceFeed.getHistoricalPrice(mockTime);
     assert.equal(historicalPrice.toString(), invertedPrice);
   });
 
@@ -277,7 +277,7 @@ contract("CoinMarketCapPriceFeed.js", function() {
     const price = cgSixDecimalPriceFeed.getCurrentPrice();
     assert.equal(price.toString(), sixDecimalPrice);
 
-    const historicalPrice = cgSixDecimalPriceFeed.getHistoricalPrice(mockTime);
+    const historicalPrice = await cgSixDecimalPriceFeed.getHistoricalPrice(mockTime);
     assert.equal(historicalPrice.toString(), sixDecimalPrice);
   });
 

@@ -7,7 +7,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {String} contractAddress Cryptocurrency contract address in mainnet.
-   * @param {String} currency Currency to use for displaying the price (currency list: https://api.coingecko.com/api/v3/simple/supported_vs_currencies).
+   * @param {String} quoteCurrency Currency to use for displaying the price (currency list: https://api.coingecko.com/api/v3/simple/supported_vs_currencies).
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
@@ -20,7 +20,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     logger,
     web3,
     contractAddress,
-    currency,
+    quoteCurrency,
     lookback,
     networker,
     getTime,
@@ -32,8 +32,9 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     this.logger = logger;
     this.web3 = web3;
     this.contractAddress = contractAddress;
-    this.currency = currency;
+    this.quoteCurrency = quoteCurrency;
     this.lookback = lookback;
+    this.uuid = `CoinGecko-${contractAddress}-${quoteCurrency}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -78,13 +79,13 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     // See https://www.coingecko.com/api/documentations/v3#/operations/simple/get_simple_token_price__id_ for how this url is constructed.
     const url =
       "https://api.coingecko.com/api/v3/simple/token_price/ethereum" +
-      `?contract_addresses=${this.contractAddress}&vs_currencies=${this.currency}`;
+      `?contract_addresses=${this.contractAddress}&vs_currencies=${this.quoteCurrency}`;
 
     // 2. Send request.
     const response = await this.networker.getJson(url);
 
     // 3. Check response.
-    if (!response || !response[this.contractAddress] || !response[this.contractAddress][this.currency]) {
+    if (!response || !response[this.contractAddress] || !response[this.contractAddress][this.quoteCurrency]) {
       throw new Error(`🚨Could not parse result from url ${url}: ${JSON.stringify(response)}`);
     }
 
@@ -95,7 +96,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     //     "<currency>": <price>
     //   }
     // }
-    const newPrice = this.convertPriceFeedDecimals(response[this.contractAddress][this.currency]);
+    const newPrice = this.convertPriceFeedDecimals(response[this.contractAddress][this.quoteCurrency]);
 
     // 5. Store results.
     this.currentPrice = newPrice;
@@ -107,9 +108,9 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (this.lastUpdateTime === undefined) {
-      return undefined;
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     let matchingPrice;
@@ -124,7 +125,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     }
 
     if (!matchingPrice) {
-      return undefined;
+      throw new Error(`${this.uuid}: no matching price`);
     }
 
     return this.invertPrice ? this._invertPriceSafely(matchingPrice) : matchingPrice;

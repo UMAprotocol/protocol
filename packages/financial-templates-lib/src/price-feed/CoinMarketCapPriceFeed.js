@@ -8,7 +8,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {String} apiKey CoinMarketCap API key.
    * @param {String} symbol Cryptocurrency symbol. Example: BTC, ETH, DAI
-   * @param {String} convert Currency to use for calculating market quote. Example: PHP, USD
+   * @param {String} quoteCurrency Currency to use for calculating market quote. Example: PHP, USD
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
@@ -22,7 +22,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     web3,
     apiKey,
     symbol,
-    convert,
+    quoteCurrency,
     lookback,
     networker,
     getTime,
@@ -35,8 +35,9 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     this.web3 = web3;
     this.apiKey = apiKey;
     this.symbol = symbol;
-    this.convert = convert;
+    this.quoteCurrency = quoteCurrency;
     this.lookback = lookback;
+    this.uuid = `CoinMarketCap-${symbol}-${quoteCurrency}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -81,14 +82,19 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     // See https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyQuotesLatest for how this url is constructed.
     const url =
       "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?" +
-      `symbol=${this.symbol}&convert=${this.convert}` +
+      `symbol=${this.symbol}&convert=${this.quoteCurrency}` +
       (this.apiKey ? `&CMC_PRO_API_KEY=${this.apiKey}` : "");
 
     // 2. Send request.
     const response = await this.networker.getJson(url);
 
     // 3. Check response.
-    if (!response || !response.data || !response.data[this.symbol] || !response.data[this.symbol].quote[this.convert]) {
+    if (
+      !response ||
+      !response.data ||
+      !response.data[this.symbol] ||
+      !response.data[this.symbol].quote[this.quoteCurrency]
+    ) {
       throw new Error(`🚨Could not parse result from url ${url}: ${JSON.stringify(response)}`);
     }
 
@@ -105,7 +111,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     //     }
     //   }
     // }
-    const newPrice = this.convertPriceFeedDecimals(response.data[this.symbol].quote[this.convert].price);
+    const newPrice = this.convertPriceFeedDecimals(response.data[this.symbol].quote[this.quoteCurrency].price);
 
     // 5. Store results.
     this.currentPrice = newPrice;
@@ -117,9 +123,9 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (this.lastUpdateTime === undefined) {
-      return undefined;
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     let matchingPrice;
@@ -134,7 +140,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
     }
 
     if (!matchingPrice) {
-      return undefined;
+      throw new Error(`${this.uuid}: no matching price`);
     }
 
     return this.invertPrice ? this._invertPriceSafely(matchingPrice) : matchingPrice;
