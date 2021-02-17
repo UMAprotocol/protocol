@@ -58,7 +58,7 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
+    const UniswapMock = getTruffleContract("UniswapMock", web3, "latest");
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
@@ -149,6 +149,8 @@ contract("index.js", function(accounts) {
         syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
         uniswap = await UniswapMock.new();
+        // Set two arbitrary token addresses so that constructing the UniswapPriceFeed doesn't throw.
+        await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         defaultPriceFeedConfig = {
           type: "uniswap",
@@ -465,6 +467,7 @@ contract("index.js", function(accounts) {
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
         uniswap = await UniswapMock.new();
+        await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
         spyLogger = winston.createLogger({

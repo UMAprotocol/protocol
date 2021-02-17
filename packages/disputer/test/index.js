@@ -54,7 +54,7 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
+    const UniswapMock = getTruffleContract("UniswapMock", web3, "latest");
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
@@ -140,6 +140,8 @@ contract("index.js", function(accounts) {
         await syntheticToken.addBurner(financialContract.address);
 
         uniswap = await UniswapMock.new();
+        // Set two arbitrary token addresses so that constructing the UniswapPriceFeed doesn't throw.
+        await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         defaultPriceFeedConfig = {
           type: "uniswap",
