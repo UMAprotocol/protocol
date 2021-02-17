@@ -677,6 +677,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
                           getCommittedData(commitBackupIndex)[timestamp].identifierPrecision
                         )}
                       <br />
+                      {"-     Price Raw: " + getCommittedData(commitBackupIndex)[timestamp].price}
+                      <br />
                       <br />
                     </span>
                   );

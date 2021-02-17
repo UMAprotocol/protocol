@@ -121,6 +121,8 @@ async function Poll(callback) {
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
       // If there is an optimistic oracle config, add it. Else, set to null. Example config:
       // {
+      //   "disputePricePrecisionOfError":4 -> Proposal prices that do not equal the dispute price
+      //                                       up to this decimal precision will be disputed.
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
       ooProposerConfig: process.env.OOPROPOSER_CONFIG ? JSON.parse(process.env.OOPROPOSER_CONFIG) : {}
