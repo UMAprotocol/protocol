@@ -2,39 +2,43 @@
 
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { computeTWAP } = require("./utils");
-const { ConvertDecimals, averageBlockTimeSeconds } = require("@uma/common");
+const { ConvertDecimals, averageBlockTimeSeconds, parseFixed } = require("@uma/common");
 class UniswapPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new uniswap TWAP price feed object.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} uniswapAbi Uniswap Market Truffle ABI object to create a contract instance to query prices.
+   * @param {Object} erc20Abi ERC20 Token Truffle ABI object to create a contract instance to query decimals.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} uniswapAddress Ethereum address of the Uniswap market the price feed is monitoring.
    * @param {Integer} twapLength Duration of the time weighted average computation used by the price feed.
    * @param {Integer} historicalLookback How far in the past historical prices will be available using await  getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
    * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
-   * @param {Integer} poolDecimals Precision that prices are reported in on-chain
    * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in
    * @return None or throws an Error.
    */
   constructor(
     logger,
     uniswapAbi,
+    erc20Abi,
     web3,
     uniswapAddress,
     twapLength,
     historicalLookback,
     getTime,
     invertPrice,
-    poolDecimals = 18,
     priceFeedDecimals = 18
   ) {
     super();
     this.logger = logger;
     this.web3 = web3;
 
+    // Create Uniswap contract
     this.uniswap = new web3.eth.Contract(uniswapAbi, uniswapAddress);
+    this.erc20Abi = erc20Abi;
+    this.priceFeedDecimals = priceFeedDecimals;
+
     this.uuid = `Uniswap-${uniswapAddress}`;
     this.twapLength = twapLength;
     this.getTime = getTime;
@@ -45,21 +49,13 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // seconds, in blocks, for Sync events.
     this.bufferBlockPercent = 1.1;
 
-    // TODO: Should/Can we read in `poolDecimals` from the this.uniswap?
-    this.poolDecimals = poolDecimals;
-    this.priceFeedDecimals = priceFeedDecimals;
-
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
-
-    // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
-    // on the relationship between pool precision and the desired decimals.
-    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
   }
 
   getCurrentPrice() {
-    return this.currentTwap && this.convertPoolDecimalsToPriceFeedDecimals(this.currentTwap);
+    return this.currentTwap && this.convertBaseDecimalsToPriceFeedDecimals(this.currentTwap);
   }
 
   async getHistoricalPrice(time) {
@@ -70,7 +66,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
     if (historicalPrice) {
-      return this.convertPoolDecimalsToPriceFeedDecimals(historicalPrice);
+      return this.convertBaseDecimalsToPriceFeedDecimals(historicalPrice);
     } else {
       throw new Error(`${this.uuid} missing historical price @ time ${time}`);
     }
@@ -86,7 +82,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
-    return this.lastBlockPrice && this.convertPoolDecimalsToPriceFeedDecimals(this.lastBlockPrice);
+    return this.lastBlockPrice && this.convertBaseDecimalsToPriceFeedDecimals(this.lastBlockPrice);
   }
 
   getPriceFeedDecimals() {
@@ -94,6 +90,32 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
+    // Read token0 and token1 precision from Uniswap contract.
+    const [token0Address, token1Address] = await Promise.all([
+      this.uniswap.methods.token0().call(),
+      this.uniswap.methods.token1().call()
+    ]);
+    this.token0 = new this.web3.eth.Contract(this.erc20Abi, token0Address);
+    this.token1 = new this.web3.eth.Contract(this.erc20Abi, token1Address);
+    const [token0Precision, token1Precision] = await Promise.all([
+      this.token0.methods.decimals().call(),
+      this.token1.methods.decimals().call()
+    ]);
+    // The base currency of the Uniswap pool pair, which is `token1` unless
+    // `invertPrice == True` is the precision that the internal method `_getPriceFromSyncEvent()`
+    // returns prices in, and `convertBaseDecimalsToPriceFeedDecimals` will convert from this precision
+    // to the user's desired `priceFeedDecimals`.
+    this.baseCurrencyDecimals = Number(this.invertPrice ? token0Precision : token1Precision);
+    this.quoteCurrencyDecimals = Number(this.invertPrice ? token1Precision : token0Precision);
+    // Now that we've determined the base precision, create a function that converts
+    // _bn precision from baseCurrencyDecimals to desired decimals by scaling up or down based
+    // on the relationship between pool precision and the desired decimals.
+    this.convertBaseDecimalsToPriceFeedDecimals = ConvertDecimals(
+      this.baseCurrencyDecimals,
+      this.priceFeedDecimals,
+      this.web3
+    );
+
     // Approximate the first block from which we'll need price data from based on the
     // lookback and twap length:
     const lookbackWindow = this.twapLength + this.historicalLookback;
@@ -177,15 +199,16 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _getPriceFromSyncEvent(event) {
-    const fixedPointAdjustment = this.toBN(this.toWei("1"));
+    // Fixed point adjustment should use same precision as quote currency, which
+    // is token0 unless inverted.
+    const fixedPointAdjustment = this.toBN(parseFixed("1", this.quoteCurrencyDecimals).toString());
 
-    // Currently assumes that token0 is the price denominator and token1 is the numerator.
-    // TODO: allow the constructor to select the denominator currency.
     const reserve0 = this.toBN(event.returnValues.reserve0);
     const reserve1 = this.toBN(event.returnValues.reserve1);
 
     if (reserve1.isZero() || reserve0.isZero()) return null;
 
+    // Price is returned using same precision as base currency, which is token1 unless inverted.
     if (this.invertPrice) {
       return reserve0.mul(fixedPointAdjustment).div(reserve1);
     } else {

@@ -81,8 +81,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -94,8 +93,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -154,8 +152,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -167,8 +164,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -220,8 +216,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -233,8 +228,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -292,8 +286,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -304,8 +297,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
