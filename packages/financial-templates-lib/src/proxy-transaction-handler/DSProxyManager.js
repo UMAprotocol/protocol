@@ -117,7 +117,7 @@ class DSProxyManager {
     return executeTransaction;
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
-  async callFunctionOnFreshlyeshlyDeployedLibrary(callCode, callData) {
+  async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
     assert(typeof callCode === "string", "Call code must be a string");
     assert(typeof callData === "string", "Call data must be a string");
     this.logger.debug({

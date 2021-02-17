@@ -146,7 +146,7 @@ contract("DSProxyManager", function(accounts) {
     // The library also needs to code of the contract to deploy.
     const callCode = TokenSender.bytecode;
 
-    const dsProxyCallReturn = await dsProxyManager.callFunctionOnFreshlyeshlyDeployedLibrary(callCode, callData);
+    const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
 
     // We can get the events to double check token transferers were correct.
     let tokenEvents = await testToken.getPastEvents("Transfer");
