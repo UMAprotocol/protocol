@@ -214,8 +214,7 @@ class OptimisticOracleProposer {
         continue;
       }
 
-      // If proposal price is not equal to the dispute price, then
-      // prepare dispute.
+      // If proposal price is not equal to the dispute price, then prepare dispute
       // TODO: Implement dispute buffer feature to only dispute if proposal and dispute price
       // differ using some margin of error. For example, we could define a variable `proposalErrorPrecision`
       // and set it to 5, to only send disputes if prices differ after rounding to 5 decimals of precision.
