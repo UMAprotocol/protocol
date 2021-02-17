@@ -1,0 +1,36 @@
+{
+  "config": {
+    "name": "YD-ETH-MAR21",
+    "empAddress": "0xE4256C47a3b27a969F25de8BEf44eCA5F2552bD5",
+    "totalRewards": 5154,
+    "rewardFactor": 0.3,
+    "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+    "whitelistTable": [
+      ["UMA (default)", "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35"],
+      ["OpenDAO", "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71"],
+      ["MakeShift Finance", "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9"]
+    ],
+    "weekNumber": 5,
+    "endDate": "02/15/2021 11:00 PM",
+    "startDate": "02/08/2021 11:00 PM",
+    "startTime": 1612825200000,
+    "endTime": 1613430000000,
+    "whitelist": [
+      "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+      "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71",
+      "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9"
+    ]
+  },
+  "startBlock": {
+    "timestamp": 1612825208000,
+    "number": 11818645
+  },
+  "endBlock": {
+    "timestamp": 1613429986000,
+    "number": 11864168
+  },
+  "rewards": {
+    "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35": "4955.638294911824279934",
+    "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71": "198.361705088175714912"
+  }
+}
