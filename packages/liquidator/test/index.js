@@ -20,7 +20,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -148,21 +147,11 @@ contract("index.js", function(accounts) {
 
         syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-        uniswap = await UniswapMock.new();
-        // Set two arbitrary token addresses so that constructing the UniswapPriceFeed doesn't throw.
-        await uniswap.setTokens(collateralToken.address, collateralToken.address);
-
         defaultPriceFeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function() {
@@ -466,7 +455,7 @@ contract("index.js", function(accounts) {
         // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
-        uniswap = await UniswapMock.new();
+        const uniswap = await UniswapMock.new();
         await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
