@@ -378,6 +378,13 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
+  CNYUSD: {
+    type: "tradermade",
+    pair: "CNYUSD",
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    minTimeBetweenUpdates: 600
+  },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
   TEST8DECIMALS: {
