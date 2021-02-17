@@ -161,6 +161,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         proposer: proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: "0x",
+        currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
@@ -188,6 +189,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         proposer: proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: "0x",
+        currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
