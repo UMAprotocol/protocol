@@ -79,6 +79,7 @@ async function runExport() {
     existingVoting.address,
     newVoting.address,
     finder.address,
+    proposerWallet, // Pass proposer wallet as the "migrated" address.
     {
       from: proposerWallet
     }
