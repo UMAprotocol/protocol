@@ -110,7 +110,7 @@ contract("DSProxyManager", function(accounts) {
       .transferERC20(testToken.address, contractCreator, toWei("10"))
       .encodeABI();
 
-    // Call the method on the tokenSender(library) with the sendTokenTxData. Node this is called from the perspective
+    // Call the method on the tokenSender(library) with the sendTokenTxData. Note this is called from the perspective
     // of the DSProxy and should send some of the DSProxy tokens.
     const dsProxyCallReturn = await dsProxyManager.callFunctionOnExistingLibrary(tokenSender.address, sendTokenTx);
 
