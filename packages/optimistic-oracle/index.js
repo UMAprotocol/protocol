@@ -69,8 +69,8 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
         async () => {
           await ooProposer.update();
           await ooProposer.sendProposals();
-          // await ooProposer.sendDisputes();
-          // await ooProposer.settleRequests();
+          await ooProposer.sendDisputes();
+          await ooProposer.settleRequests();
           return;
         },
         {

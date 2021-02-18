@@ -42,13 +42,13 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   let identifierWhitelist;
   let collateralWhitelist;
   let store;
+  let mockOracle;
 
   // Offchain infra
   let client;
   let gasEstimator;
   let proposer;
   let spyLogger;
-  let mockOracle;
   let spy;
 
   // Timestamps that we'll use throughout the test.
@@ -78,6 +78,11 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       (await optimisticOracle.getState(optimisticRequester.address, identifier, requestTime, ancillaryData)).toString(),
       state
     );
+  };
+
+  const pushPrice = async price => {
+    const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
+    await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
   before(async function() {
@@ -313,6 +318,78 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       await proposer.update();
       await proposer.sendDisputes();
       assert.equal(spy.callCount, spyCallCount);
+    });
+
+    it("Can settle proposals and disputes", async function() {
+      // Should have one price request for each identifier.
+      let expectedRequests = [];
+      for (let i = 0; i < identifiersToTest.length; i++) {
+        expectedRequests.push({
+          requester: optimisticRequester.address,
+          identifier: hexToUtf8(identifiersToTest[i]),
+          ancillaryData: ancillaryDataAddresses[i],
+          timestamp: requestTime.toString(),
+          currency: collateralCurrenciesForIdentifier[i].address,
+          reward: "0",
+          finalFee
+        });
+      }
+      let result = client.getUnproposedPriceRequests();
+      assert.deepStrictEqual(result, expectedRequests);
+
+      // Make one proposal for bot to dispute:
+      let collateralCurrency = collateralCurrenciesForIdentifier[0];
+      await collateralCurrency.approve(optimisticOracle.address, totalDefaultBond, { from: randoProposer });
+      await optimisticOracle.proposePrice(
+        optimisticRequester.address,
+        identifiersToTest[0],
+        requestTime,
+        ancillaryDataAddresses[0],
+        disputablePrice,
+        {
+          from: randoProposer
+        }
+      );
+
+      // Now make the bot propose to the remaining requests.
+      await proposer.update();
+      await proposer.sendProposals();
+
+      // Finally, execute `sendDisputes()` and dispute the first proposal we made.
+      await proposer.update();
+      await proposer.sendDisputes();
+
+      // Check that the requests are in the correct state.
+      await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, identifiersToTest[0], ancillaryDataAddresses[0]);
+      for (let i = 1; i < identifiersToTest.length; i++) {
+        await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryDataAddresses[i]);
+      }
+
+      // Now, advance time so that the proposals expire and check that the bot can settle the proposals
+      await optimisticOracle.setCurrentTime((Number(startTime) + liveness).toString());
+      await proposer.update();
+      let spyCountPreSettle = spy.callCount;
+      await proposer.settleRequests();
+
+      // Check that all of the bot's proposals have been settled.
+      for (let i = 1; i < identifiersToTest.length; i++) {
+        await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[i], ancillaryDataAddresses[i]);
+      }
+      assert.equal(lastSpyLogLevel(spy), "info");
+      assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      assert.equal(spy.callCount, spyCountPreSettle + (identifiersToTest.length - 1));
+
+      // Finally resolve the dispute and check that the bot settles the dispute.
+      await pushPrice(disputablePrice);
+      await proposer.update();
+      spyCountPreSettle = spy.callCount;
+      await proposer.settleRequests();
+
+      // Check that the bot's dispute has been settled.
+      await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[0], ancillaryDataAddresses[0]);
+      assert.equal(lastSpyLogLevel(spy), "info");
+      assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      assert.equal(spy.callCount, spyCountPreSettle + 1);
     });
 
     it("Correctly caches created price feeds", async function() {

@@ -175,7 +175,7 @@ class OptimisticOracleProposer {
     }
   }
 
-  // Submit disputes to proposed price requests
+  // Submit disputes to proposed price requests.
   async sendDisputes() {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendDisputes",
@@ -296,8 +296,86 @@ class OptimisticOracleProposer {
     }
   }
 
+  // Settle disputes where this bot was the disputer and proposals where this bot was the proposer.
   async settleRequests() {
-    // TODO
+    this.logger.debug({
+      at: "OptimisticOracleProposer#settleRequests",
+      message: "Checking for proposals and disputes to settle"
+    });
+
+    for (let priceRequest of this.optimisticOracleClient
+      .getSettleableProposals(this.account)
+      .concat(this.optimisticOracleClient.getSettleableDisputes(this.account))) {
+      // Create the transaction.
+      const settle = this.ooContract.methods.settle(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        priceRequest.ancillaryData
+      );
+
+      // Simple version of inventory management: simulate the transaction and assume that if it fails,
+      // the caller didn't have enough collateral.
+      let payout, gasEstimation;
+      try {
+        [payout, gasEstimation] = await Promise.all([
+          settle.call({ from: this.account }),
+          settle.estimateGas({ from: this.account })
+        ]);
+      } catch (error) {
+        this.logger.error({
+          at: "OptimisticOracleProposer#settleRequests",
+          message: "Cannot settle for unknown reason☹️",
+          priceRequest,
+          error
+        });
+        continue;
+      }
+      const txnConfig = {
+        from: this.account,
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      };
+
+      this.logger.debug({
+        at: "OptimisticOracleProposer#settleRequests",
+        message: "Settling proposal or dispute",
+        priceRequest,
+        payout: payout.toString(),
+        txnConfig
+      });
+
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await settle.send(txnConfig);
+      } catch (error) {
+        this.logger.error({
+          at: "OptimisticOracleProposer#settleRequests",
+          message: "Failed to settle proposal or dispute🚨",
+          error
+        });
+        continue;
+      }
+      const logResult = {
+        tx: receipt.transactionHash,
+        requester: receipt.events.Settle.returnValues.requester,
+        proposer: receipt.events.Settle.returnValues.proposer,
+        disputer: receipt.events.Settle.returnValues.disputer,
+        identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
+        ancillaryData: receipt.events.Settle.returnValues.ancillaryData,
+        timestamp: receipt.events.Settle.returnValues.timestamp,
+        price: receipt.events.Settle.returnValues.price,
+        payout: receipt.events.Settle.returnValues.payout
+      };
+      this.logger.info({
+        at: "OptimisticOracleProposer#settleRequests",
+        message: "Settled proposal or dispute!⛑",
+        priceRequest,
+        txnConfig,
+        settleResult: logResult
+      });
+    }
   }
 
   /** **********************************
