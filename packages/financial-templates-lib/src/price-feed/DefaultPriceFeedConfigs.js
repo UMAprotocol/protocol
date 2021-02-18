@@ -384,6 +384,26 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
+  PHPDAI: {
+    type: "medianizer",
+    computeMean: true,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      {
+        type: "coinmarketcap",
+        symbol: "DAI",
+        convert: "PHP",
+        invertPrice: true
+      },
+      {
+        type: "coingecko",
+        contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+        currency: "php",
+        invertPrice: true
+      }
+    ]
+  },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
   TEST8DECIMALS: {
