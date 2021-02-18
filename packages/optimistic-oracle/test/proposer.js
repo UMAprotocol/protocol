@@ -68,6 +68,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   const identifiersToTest = [
     web3.utils.utf8ToHex("TEST8DECIMALS"),
     web3.utils.utf8ToHex("TEST6DECIMALS"),
+    web3.utils.utf8ToHex("TEST18DECIMALS"),
     web3.utils.utf8ToHex("TEST18DECIMALS")
   ];
   let collateralCurrenciesForIdentifier;
@@ -165,20 +166,21 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Construct OO Proposer using a valid default price feed config containing any additional properties
       // not set in DefaultPriceFeedConfig
-      let defaultPriceFeedConfig = {
+      let commonPriceFeedConfig = {
         currentPrice: "1.2", // Mocked current price. This will be scaled to the identifier's precision.
-        historicalPrice: "2.403" // Mocked historical price. This will be scaled to the identifier's precision.
+        historicalPrice: "2.4" // Mocked historical price. This will be scaled to the identifier's precision.
       };
-      // For this test, we'll dispute any proposals that don't match prices up to 2 decimals of precision.
+      // For this test, we'll dispute any proposals that are not equal to historical price up to a
+      // 10% margin of error
       let ooProposerConfig = {
-        disputePricePrecisionOfError: 2
+        disputePriceErrorPercent: 0.1
       };
       proposer = new OptimisticOracleProposer({
         logger: spyLogger,
         optimisticOracleClient: client,
         gasEstimator,
         account: botRunner,
-        defaultPriceFeedConfig,
+        commonPriceFeedConfig,
         ooProposerConfig
       });
 
@@ -267,19 +269,23 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // 1) "TEST8DECIMALS"
       // 2) "TEST6DECIMALS"
       // 3) "TEST18DECIMALS"
+      // 4) "TEST18DECIMALS"
 
-      // The historical price is 2.403.
-      // Dispute prices must match 2.403 up to 2 decimals of precision, so 2.40.
+      // The historical price is 2.4.
+      // Dispute prices must be within 10% of 2.4, so the allowed range is [2.16, 2.64]
       let disputablePrices = [
-        // 2.4044e8 => disputer rounds to 2.40
+        // 2.17e8
         // - NOT DISPUTED.
-        "240440000",
-        // 2.40519e6 => disputer rounds to 2.41
+        "216000000",
+        // 2.15e6
         // - DISPUTED
-        "2451900",
-        // 2.391e18 => disputer rounds to 2.39
+        "2150000",
+        // 2.65e18
         // - DISPUTED
-        "2391000000000000000"
+        "2650000000000000000",
+        // 2.63e18
+        // - NOT DISPUTED
+        "2630000000000000000"
       ];
       // Should have one proposal for each identifier
       let expectedProposals = [];
@@ -315,11 +321,16 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       await proposer.sendDisputes();
 
       // Check that the onchain proposals have been disputed.
-      // Check also that the first proposal is NOT disputed
-      for (let i = 1; i < identifiersToTest.length; i++) {
+      // Check also that the first and the last proposal are NOT disputed
+      for (let i = 1; i < identifiersToTest.length - 1; i++) {
         await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, identifiersToTest[i], ancillaryDataAddresses[i]);
       }
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[0], ancillaryDataAddresses[0]);
+      await verifyState(
+        OptimisticOracleRequestStatesEnum.PROPOSED,
+        identifiersToTest[identifiersToTest.length - 1],
+        ancillaryDataAddresses[identifiersToTest.length - 1]
+      );
 
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
@@ -340,27 +351,16 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     });
 
     it("Correctly caches created price feeds", async function() {
-      // Submit another price request (with a different timestamp) for an identifier that is already used.
-      await optimisticRequester.requestPrice(
-        identifiersToTest[0],
-        requestTime + 1,
-        "0x",
-        collateralCurrenciesForIdentifier[0].address,
-        0
-      );
-      // Update the proposer since the OO state has changed
-      await proposer.update();
-
       // Call `sendProposals` which should create a new pricefeed for each identifier.
       await proposer.sendProposals();
 
       // Check that only 1 price feed is cached for each unique identifier, which also tests that the re-requested
-      // identifier (with a diff timestamp) does not create 2 pricefeeds.
-      assert.equal(Object.keys(proposer.priceFeedCache).length, identifiersToTest.length);
+      // identifier does not create 2 pricefeeds.
+      assert.equal(Object.keys(proposer.priceFeedCache).length, identifiersToTest.length - 1);
 
       // Call `sendDisputes` which should just fetch pricefeeds from the cache instead of creating new ones.
       await proposer.sendDisputes();
-      assert.equal(Object.keys(proposer.priceFeedCache).length, identifiersToTest.length);
+      assert.equal(Object.keys(proposer.priceFeedCache).length, identifiersToTest.length - 1);
     });
   });
 
@@ -383,7 +383,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
-      defaultPriceFeedConfig: invalidPriceFeedConfig
+      commonPriceFeedConfig: invalidPriceFeedConfig
     });
     await proposer.update();
 
@@ -456,6 +456,33 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query historical price for price request"));
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
+  });
+
+  it("Cannot set disputePriceErrorPercent < 0 or >= 1", async function() {
+    try {
+      new OptimisticOracleProposer({
+        logger: spyLogger,
+        optimisticOracleClient: client,
+        gasEstimator,
+        account: botRunner,
+        ooProposerConfig: { disputePriceErrorPercent: -0.1 }
+      });
+      assert(false);
+    } catch (err) {
+      assert(true);
+    }
+    try {
+      new OptimisticOracleProposer({
+        logger: spyLogger,
+        optimisticOracleClient: client,
+        gasEstimator,
+        account: botRunner,
+        ooProposerConfig: { disputePriceErrorPercent: 1 }
+      });
+      assert(false);
+    } catch (err) {
+      assert(true);
+    }
   });
 
   // TODO:
