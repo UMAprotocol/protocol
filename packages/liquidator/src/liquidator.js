@@ -267,17 +267,6 @@ class Liquidator {
       const currentBlockTime = this.financialContractClient.getLastUpdateTime();
       const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
 
-      // If `startingBlock` and `endingBlock` are specified and the position had a requested withdrawal within the
-      // block window, then upgrade the log level about skipping any liquidations:
-      let blockWindowHasRequestedWithdraw = false;
-      if (!isNaN(this.startingBlock) && !isNaN(this.endingBlock)) {
-        const requestedWithdrawalEvents = await this.empContract.getPastEvents("RequestWithdrawal", {
-          fromBlock: this.startingBlock,
-          toBlock: this.endingBlock
-        });
-        blockWindowHasRequestedWithdraw = Boolean(requestedWithdrawalEvents);
-      }
-
       // run strategy based on configs and current state
       // will return liquidation arguments or nothing
       // if it returns nothing it means this position cant be or shouldnt be liquidated
@@ -286,15 +275,11 @@ class Liquidator {
         position,
         // need to know our current balance to know how much to save for defense fund
         syntheticTokenBalance,
+        currentBlockTime,
         // this is required to create liquidation object
         maxCollateralPerToken,
         // maximum tokens we can liquidate in position
         maxTokensToLiquidateWei,
-        // minimim position size, as well as minimum liquidation to extend withdraw
-        financialContractMinSponsorSize: this.financialContractMinSponsorSize,
-        currentBlockTime,
-        // should bot emit specialized logs about skipping liquidations due to WDF
-        shouldEmitWDFSkipLogs: blockWindowHasRequestedWithdraw,
         // for logging
         inputPrice: scaledPrice.toString()
       });
