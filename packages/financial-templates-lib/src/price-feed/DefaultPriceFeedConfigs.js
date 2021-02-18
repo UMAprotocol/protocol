@@ -384,6 +384,13 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
+  CNYUSD: {
+    type: "tradermade",
+    pair: "CNYUSD",
+    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
+    hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
+    minTimeBetweenUpdates: 600
+  },
   PHPDAI: {
     type: "medianizer",
     computeMean: true,
