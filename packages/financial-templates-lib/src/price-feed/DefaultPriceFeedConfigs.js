@@ -381,7 +381,7 @@ const defaultConfigs = {
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",
-    minuteLookback: 7200, // minuteLookback up to 2 days
+    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
     hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
     minTimeBetweenUpdates: 600
   },
