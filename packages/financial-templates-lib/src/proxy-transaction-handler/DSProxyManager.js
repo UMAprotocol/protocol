@@ -50,6 +50,7 @@ class DSProxyManager {
       dsProxyFactoryAddress: this.dsProxyFactoryAddress
     });
 
+    if (this.dsProxy && this.dsProxyAddress) this.dsProxyAddress;
     const fromBlock = await getFromBlock(this.web3);
     const events = await this.dsProxyFactory.getPastEvents("Created", {
       fromBlock,
@@ -90,6 +91,7 @@ class DSProxyManager {
         account: this.account
       });
     }
+    return this.dsProxyAddress;
   }
   // Encode with `yourTruffleContractInstance.yourMethod(params1,param2).encodeABI()
   async callFunctionOnExistingLibrary(libraryAddress, callData) {

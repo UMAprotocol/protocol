@@ -10,10 +10,10 @@ const sinon = require("sinon");
 // Script to test
 const { DSProxyManager } = require("../../src/proxy-wallet-transaction-handler/DSProxyManager.js");
 
-const TokenSender = getTruffleContract("TokenSender", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
-const DSProxy = getTruffleContract("DSProxy", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
+const TokenSender = getTruffleContract("TokenSender", web3, "latest");
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
+const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+const Token = getTruffleContract("ExpandedERC20", web3, "latest");
 
 contract("DSProxyManager", function(accounts) {
   let contractCreator = accounts[0];
@@ -56,9 +56,8 @@ contract("DSProxyManager", function(accounts) {
   });
   it("Can reject invalid constructor params correctly construct DSProxyManager", async function() {
     // should throw with invalid addresses
-    let didThrow = false;
-    try {
-      dsProxyManager = new DSProxyManager({
+    assert.throws(() => {
+      new DSProxyManager({
         logger: spyLogger,
         web3,
         gasEstimator,
@@ -67,10 +66,7 @@ contract("DSProxyManager", function(accounts) {
         dsProxyFactoryAbi: DSProxyFactory.abi,
         dsProxyAbi: DSProxy.abi
       });
-    } catch (error) {
-      didThrow = true;
-    }
-    assert.isTrue(didThrow);
+    });
   });
 
   it("Initialization correctly deploys a DSProxy if the user has not deployed one", async function() {
