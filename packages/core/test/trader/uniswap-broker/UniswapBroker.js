@@ -92,7 +92,7 @@ contract("UniswapBroker", function(accounts) {
 
   it("Broker can correctly trade the price up to a desired price", async function() {
     // Say that someone comes and trades in size against the pool, trading a large amount of tokenB for tokenA,
-    // dropping the token price to something off peg. We will compte that the price changes as expected. Say a trade of
+    // dropping the token price to something off peg. We will compute that the price changes as expected. Say a trade of
     // 100000 token B for token A. Based on the pool size, the resultant price will be 980.3252 (see logic below for calc).
     const tradeSizeInTokenB = toBN(toWei("100000"));
 
@@ -166,7 +166,7 @@ contract("UniswapBroker", function(accounts) {
 
   it("Broker can correctly trade the price down to a desired price", async function() {
     // Say that someone comes and trades in size against the pool, trading a large amount of tokenA for tokenB,
-    // increasing the token price to something off peg. We will compte that the price changes as expected. Say a trade of
+    // increasing the token price to something off peg. We will compute that the price changes as expected. Say a trade of
     // 1000000000 token A for token B. Based on the pool size, the resultant price will be 1209.6700 (see logic below for calc).
     const tradeSizeInTokenA = toBN(toWei("1000000000"));
 

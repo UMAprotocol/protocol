@@ -13,15 +13,14 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
  * @notice Trading contract used to arb uniswap pairs to a desired "true" price. Intended use is to arb UMA perpetual
  * synthetics that trade off peg. This implementation can ber used in conjunction with a DSProxy contract to atomically
  * swap and move a uniswap market.
- *
  */
 
 contract UniswapBroker {
     using SafeMath for uint256;
 
- /**
+    /**
      * @notice Swaps an amount of either token such that the trade results in the uniswap pair's price being as close as
-     * possible to the truePrice. 
+     * possible to the truePrice.
      * @dev True price is expressed in the ratio of token A to token B.
      * @dev The caller must approve this contract to spend whichever token is intended to be swapped.
      * @param uniswapRouter address of the uniswap router used to facilate trades.
@@ -81,14 +80,14 @@ contract UniswapBroker {
 
         router.swapExactTokensForTokens(
             amountIn,
-            0, // amountOutMin: we can skip computing this number because the math is tested
+            0, // amountOutMin: we can skip computing this number because the math is tested within the uniswap tests.
             path,
             to,
             deadline
         );
     }
 
-/**
+    /**
      * @notice Given the "true" price a token (represented by truePriceTokenA/truePriceTokenB) and the reservers in the
      * uniswap pair, calculate: a) the direction of trade (aToB) and b) the amount needed to trade (amountIn) to move
      * the pool price to be equalto the true price.
@@ -99,7 +98,7 @@ contract UniswapBroker {
      * @param reserveA number of token A in the pair reserves
      * @param reserveB number of token B in the pair reserves
      */
-//
+    //
     function computeTradeToMoveMarket(
         uint256 truePriceTokenA,
         uint256 truePriceTokenB,
@@ -110,6 +109,8 @@ contract UniswapBroker {
 
         uint256 invariant = reserveA.mul(reserveB);
 
+        // The trade ∆a of token a required to move the market to some desired price P' from the current price P can be
+        // found with ∆a=(kP')^1/2-Ra.
         uint256 leftSide =
             Babylonian.sqrt(
                 FullMath.mulDiv(
@@ -128,7 +129,7 @@ contract UniswapBroker {
 
     // The methods below are taken from https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
     // We could import this library into this contract but this library is dependent Uniswap's SafeMath, which is bound
-    // to solidity 6.6.6. Hardhat can easily deal with two diffrent sets of solidity versions within one project so 
+    // to solidity 6.6.6. Hardhat can easily deal with two diffrent sets of solidity versions within one project so
     // unit tests would continue to work fine. However, this would break truffle support in the repo as truffle cant
     // handel having two diffrent solidity versions. As a work around, the spesific methods needed in the UniswapBroker
     // are simply moved here to maintain truffle support.
