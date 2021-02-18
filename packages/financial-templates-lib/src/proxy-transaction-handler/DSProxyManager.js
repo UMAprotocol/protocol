@@ -134,7 +134,7 @@ class DSProxyManager {
 
     this.logger.info({
       at: "DSProxyManager",
-      message: "Executed function on a freshly minted library, created in the same tx 🌝",
+      message: "Executed function on a freshly minted library, created in the same tx 🤗",
       callCodeHash: web3.utils.soliditySha3(callCode),
       callData,
       tx: executeTransaction.transactionHash
