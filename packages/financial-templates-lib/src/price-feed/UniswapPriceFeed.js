@@ -90,31 +90,33 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-    // Read token0 and token1 precision from Uniswap contract.
-    const [token0Address, token1Address] = await Promise.all([
-      this.uniswap.methods.token0().call(),
-      this.uniswap.methods.token1().call()
-    ]);
-    this.token0 = new this.web3.eth.Contract(this.erc20Abi, token0Address);
-    this.token1 = new this.web3.eth.Contract(this.erc20Abi, token1Address);
-    const [token0Precision, token1Precision] = await Promise.all([
-      this.token0.methods.decimals().call(),
-      this.token1.methods.decimals().call()
-    ]);
-    // The base currency of the Uniswap pool pair, which is `token1` unless
-    // `invertPrice == True` is the precision that the internal method `_getPriceFromSyncEvent()`
-    // returns prices in, and `convertBaseDecimalsToPriceFeedDecimals` will convert from this precision
-    // to the user's desired `priceFeedDecimals`.
-    this.baseCurrencyDecimals = Number(this.invertPrice ? token0Precision : token1Precision);
-    this.quoteCurrencyDecimals = Number(this.invertPrice ? token1Precision : token0Precision);
-    // Now that we've determined the base precision, create a function that converts
-    // _bn precision from baseCurrencyDecimals to desired decimals by scaling up or down based
-    // on the relationship between pool precision and the desired decimals.
-    this.convertBaseDecimalsToPriceFeedDecimals = ConvertDecimals(
-      this.baseCurrencyDecimals,
-      this.priceFeedDecimals,
-      this.web3
-    );
+    // Read token0 and token1 precision from Uniswap contract if not already cached:
+    if (!this.quoteCurrencyDecimals || !this.convertBaseDecimalsToPriceFeedDecimals) {
+      const [token0Address, token1Address] = await Promise.all([
+        this.uniswap.methods.token0().call(),
+        this.uniswap.methods.token1().call()
+      ]);
+      this.token0 = new this.web3.eth.Contract(this.erc20Abi, token0Address);
+      this.token1 = new this.web3.eth.Contract(this.erc20Abi, token1Address);
+      const [token0Precision, token1Precision] = await Promise.all([
+        this.token0.methods.decimals().call(),
+        this.token1.methods.decimals().call()
+      ]);
+      // The base currency of the Uniswap pool pair, which is `token1` unless
+      // `invertPrice == True` is the precision that the internal method `_getPriceFromSyncEvent()`
+      // returns prices in, and `convertBaseDecimalsToPriceFeedDecimals` will convert from this precision
+      // to the user's desired `priceFeedDecimals`.
+      this.baseCurrencyDecimals = Number(this.invertPrice ? token0Precision : token1Precision);
+      this.quoteCurrencyDecimals = Number(this.invertPrice ? token1Precision : token0Precision);
+      // Now that we've determined the base precision, create a function that converts
+      // _bn precision from baseCurrencyDecimals to desired decimals by scaling up or down based
+      // on the relationship between pool precision and the desired decimals.
+      this.convertBaseDecimalsToPriceFeedDecimals = ConvertDecimals(
+        this.baseCurrencyDecimals,
+        this.priceFeedDecimals,
+        this.web3
+      );
+    }
 
     // Approximate the first block from which we'll need price data from based on the
     // lookback and twap length:
