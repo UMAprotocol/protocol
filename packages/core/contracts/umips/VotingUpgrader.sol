@@ -26,23 +26,31 @@ contract VotingUpgrader {
     // Addresses to upgrade.
     address public newVoting;
 
+    // Address to call setMigrated on the old voting contract.
+    address public setMigratedAddress;
+
     /**
      * @notice Removes an address from the whitelist.
      * @param _governor the Governor contract address.
      * @param _existingVoting the current/existing Voting contract address.
      * @param _newVoting the new Voting deployment address.
      * @param _finder the Finder contract address.
+     * @param _setMigratedAddress the address to set migrated. This address will be able to continue making calls to
+     *                            old voting contract (used to claim rewards on others' behalf). Note: this address
+     *                            can always be changed by the voters.
      */
     constructor(
         address _governor,
         address _existingVoting,
         address _newVoting,
-        address _finder
+        address _finder,
+        address _setMigratedAddress
     ) public {
         governor = _governor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;
         finder = Finder(_finder);
+        setMigratedAddress = _setMigratedAddress;
     }
 
     /**
@@ -55,8 +63,10 @@ contract VotingUpgrader {
 
         // Change the addresses in the Finder.
         finder.changeImplementationAddress(OracleInterfaces.Oracle, newVoting);
-        // Set current Voting contract to migrated.
-        existingVoting.setMigrated(newVoting);
+
+        // Set the preset "migrated" address to allow this address to claim rewards on voters' behalf.
+        // This also effectively shuts down the existing voting contract so new votes cannot be triggered.
+        existingVoting.setMigrated(setMigratedAddress);
 
         // Transfer back ownership of old voting contract and the finder to the governor.
         existingVoting.transferOwnership(governor);
