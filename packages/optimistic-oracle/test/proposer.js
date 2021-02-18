@@ -285,7 +285,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
         "2650000000000000000",
         // 2.63e18
         // - NOT DISPUTED
-        "2630000000000000000"
+        "2640000000000000000"
       ];
       // Should have one proposal for each identifier
       let expectedProposals = [];
