@@ -28,6 +28,7 @@ async function runExport() {
 
   // The finder should correctly match the addresses of new contracts
   const finder = await Finder.deployed();
+  const governor = await Governor.deployed();
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName.Oracle);
   const finderSetAddress = await finder.getImplementationAddress(interfaceNameBytes32);
   assert.equal(web3.utils.toChecksumAddress(finderSetAddress), web3.utils.toChecksumAddress(votingAddress));
@@ -37,7 +38,7 @@ async function runExport() {
 
   const newVotingContract = await Voting.at(votingAddress);
   const currentOwner = await newVotingContract.owner();
-  assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(Governor.address));
+  assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(governor.address));
 
   console.log("✅ New Voting correctly transferred ownership!");
 
@@ -51,8 +52,8 @@ async function runExport() {
 
   console.log(" 4. Validating old voting contract and finder is owned by governor...");
 
-  assert.equal(await oldVotingContract.owner(), Governor.address);
-  assert.equal(await finder.owner(), Governor.address);
+  assert.equal(await oldVotingContract.owner(), governor.address);
+  assert.equal(await finder.owner(), governor.address);
 
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor!");
 }

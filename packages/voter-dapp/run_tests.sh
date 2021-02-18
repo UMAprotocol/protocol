@@ -47,8 +47,8 @@ echo '#                                                                  #'
 echo '# 2/16. Submitting price requests                                  #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier USDETH-Commit+Reveal --time 1570000000
-yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier USDETH-2key-Commit+Reveal --time 1570000000
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST8DECIMALS --time 1570000000
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST6DECIMALS --time 1570000000
 yarn run truffle exec ../core/scripts/mainnet/ProposeAdmin.js --network test --prod
 echo "- ✅ Price requests submitted!"
 
@@ -71,7 +71,7 @@ echo "- ‼️ Before testing the voter dApp, you will need to import the accoun
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;
-        Help ) echo "🚸 Import the following Private Key into Metamask: https://metamask.zendesk.com/hc/en-us/articles/360015489331-Importing-an-Account" && yarn truffle exec ./scripts/local/getPrivateKeyFromMnemonic.js --mnemonic "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat" --network test;;
+        Help ) echo "🚸 Import the following Private Key into Metamask: https://metamask.zendesk.com/hc/en-us/articles/360015489331-Importing-an-Account" && yarn truffle exec ../core/scripts/local/getPrivateKeyFromMnemonic.js --mnemonic "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat" --network test;;
         Exit ) exit;;
     esac
 done
@@ -97,7 +97,7 @@ echo '#                                                                  #'
 echo '# 6/16. Committing without the 2 Key wallet                        #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Commit votes for [USDETH-Commit+Reveal, Admin-0]. Click Edit to enter a vote, and then Save to submit a transaction via Metamask. You can enter any price for the non-admin price request, and check that the admin Commit button displays a radio selection of YES and NO. Prior to committing a vote, the Current Vote column should only display an Edit button. After committing, your vote should be displayed (and translated into YES or NO for Admin votes)"
+echo "- Commit votes. Click Edit to enter a vote, and then Save to submit a transaction via Metamask. You can enter any price for the non-admin price request, and check that the admin Commit button displays a radio selection of YES and NO. Prior to committing a vote, the Current Vote column should only display an Edit button. After committing, your vote should be displayed (and translated into YES or NO for Admin votes). Finally, after committing click the DISPLAY button to make sure that the price was committed using the correct precision."
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;
@@ -129,7 +129,7 @@ echo '#                                                                  #'
 echo '# 8/16. Revealing without the 2 Key wallet                         #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Reveal votes for [USDETH-Commit+Reveal, Admin-0]. Click Edit to select the commits to reveal, and then Save to submit a transaction via Metamask. Prior to and after revealing, your committed values should be displayed (and translated into YES or NO for Admin votes). After revealing successfully, the Status column should display Revealed"
+echo "- Reveal votes. Click Edit to select the commits to reveal, and then Save to submit a transaction via Metamask. Prior to and after revealing, your committed values should be displayed (and translated into YES or NO for Admin votes). After revealing successfully, the Status column should display Revealed"
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;
@@ -191,7 +191,7 @@ echo '#                                                                  #'
 echo '# 12/16. Committing with the 2 Key wallet                          #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Commit votes for [USDETH-2key-Commit+Reveal]."
+echo "- Commit votes."
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;
@@ -223,7 +223,7 @@ echo '#                                                                  #'
 echo '# 14/16. Revealing with the 2 Key wallet                           #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Reveal votes for [USDETH-2key-Commit+Reveal, Admin-0]."
+echo "- Reveal votes."
 select yn in "Continue" "Help" "Exit"; do
     case $yn in
         Continue ) break;;

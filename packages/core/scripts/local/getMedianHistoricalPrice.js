@@ -8,7 +8,7 @@
  * @dev How to run: yarn truffle exec ./packages/core/scripts/local/getMedianHistoricalPrice.js --network mainnet_mnemonic --identifier USDBTC --time 1601503200
  */
 const { fromWei } = web3.utils;
-const { createReferencePriceFeedForEmp, Networker } = require("@uma/financial-templates-lib");
+const { createReferencePriceFeedForFinancialContract, Networker } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
 require("dotenv").config();
@@ -48,7 +48,7 @@ async function getMedianHistoricalPrice(callback) {
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
       ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
     };
-    const medianizerPriceFeed = await createReferencePriceFeedForEmp(
+    const medianizerPriceFeed = await createReferencePriceFeedForFinancialContract(
       dummyLogger,
       web3,
       new Networker(dummyLogger),

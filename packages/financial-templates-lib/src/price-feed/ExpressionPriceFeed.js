@@ -133,8 +133,13 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return math.bignumber(price.toString()).div(decimalsMultiplier);
   }
 
-  // Takes a math.bignumber number and converts it to a fixed point number that's expected outside this library.
+  // Takes a math.bignumber OR math.ResultSet of math.bignumbers and converts it to a fixed point number that's
+  // expected outside this library. Note: if the price is a ResultSet, the last value is converted and returned.
   _convertToFixed(price, outputDecimals) {
+    // If the price is a ResultSet with multiple entires, extract the last one and make that the price.
+    if (price.entries) {
+      price = price.entries[price.entries.length - 1];
+    }
     const decimals = math.bignumber(outputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
     return Web3.utils.toBN(math.format(price.mul(decimalsMultiplier).round(), { notation: "fixed" }));
