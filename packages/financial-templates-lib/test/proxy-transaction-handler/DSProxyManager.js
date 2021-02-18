@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Script to test
-const { DSProxyManager } = require("../../src/proxy-wallet-transaction-handler/DSProxyManager.js");
+const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
 
 const TokenSender = getTruffleContract("TokenSender", web3, "latest");
 const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
