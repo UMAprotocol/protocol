@@ -46,13 +46,13 @@ contract("BalanceMonitor.js", function(accounts) {
       let collateralToken;
       let syntheticToken;
 
-      // Test object for EMP event client
+      // Test object for Financial Contract event client
       let balanceMonitor;
       let tokenBalanceClient;
       let monitorConfig;
       let spy;
       let spyLogger;
-      let empProps;
+      let financialContractProps;
 
       let convertCollateral;
       let convertSynthetic;
@@ -71,7 +71,7 @@ contract("BalanceMonitor.js", function(accounts) {
         await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
-        // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
+        // logs the correct text based on interactions with the financialContract. Note that only `info` level messages are captured.
         spy = sinon.spy(); // new spy per test to reset all counters and emited messages.
         spyLogger = winston.createLogger({
           level: "info",
@@ -105,7 +105,7 @@ contract("BalanceMonitor.js", function(accounts) {
           ]
         };
 
-        empProps = {
+        financialContractProps = {
           collateralSymbol: await collateralToken.symbol(),
           syntheticSymbol: await syntheticToken.symbol(),
           collateralDecimals: testConfig.collateralDecimals,
@@ -117,7 +117,7 @@ contract("BalanceMonitor.js", function(accounts) {
           logger: spyLogger,
           tokenBalanceClient,
           monitorConfig,
-          empProps
+          financialContractProps
         });
 
         // setup the positions to the initial happy state.
@@ -298,7 +298,7 @@ contract("BalanceMonitor.js", function(accounts) {
             logger: spyLogger,
             tokenBalanceClient,
             monitorConfig: invalidMonitorConfig1,
-            empProps
+            financialContractProps
           });
           errorThrown1 = false;
         } catch (err) {
@@ -327,7 +327,7 @@ contract("BalanceMonitor.js", function(accounts) {
             logger: spyLogger,
             tokenBalanceClient,
             monitorConfig: invalidMonitorConfig2,
-            empProps
+            financialContractProps
           });
           errorThrown2 = false;
         } catch (err) {
@@ -343,7 +343,7 @@ contract("BalanceMonitor.js", function(accounts) {
             logger: spyLogger,
             tokenBalanceClient,
             monitorConfig: emptyConfig,
-            empProps
+            financialContractProps
           });
           await balanceMonitor.checkBotBalances();
           errorThrown = false;
@@ -358,7 +358,7 @@ contract("BalanceMonitor.js", function(accounts) {
           logger: spyLogger,
           tokenBalanceClient,
           monitorConfig: alertOverrideConfig,
-          empProps
+          financialContractProps
         });
 
         // Lower the liquidator bot's synthetic balance.
@@ -380,7 +380,7 @@ contract("BalanceMonitor.js", function(accounts) {
           logger: spyLogger,
           tokenBalanceClient,
           monitorConfig: alertOverrideConfig,
-          empProps
+          financialContractProps
         });
 
         // Lower the liquidator bot's collateral balance.
@@ -402,7 +402,7 @@ contract("BalanceMonitor.js", function(accounts) {
           logger: spyLogger,
           tokenBalanceClient,
           monitorConfig: alertOverrideConfig,
-          empProps
+          financialContractProps
         });
 
         // Lower the liquidator bot's ETH balance.

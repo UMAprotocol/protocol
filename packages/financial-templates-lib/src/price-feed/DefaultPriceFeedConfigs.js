@@ -287,11 +287,27 @@ const defaultConfigs = {
     experimentalPriceFeeds: [
       {
         type: "medianizer",
-        medianizedFeeds: [{ type: "cryptowatch", exchange: "uniswap-v2", pair: "fraxusdc" }]
+        medianizedFeeds: [
+          // FRAX/USDC:
+          {
+            type: "uniswap",
+            uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
+            twapLength: 2,
+            poolDecimals: 6
+          }
+        ]
       },
       {
         type: "medianizer",
-        medianizedFeeds: [{ type: "cryptowatch", exchange: "uniswap-v2", pair: "esdusdc" }]
+        medianizedFeeds: [
+          // ESD/USDC:
+          {
+            type: "uniswap",
+            uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
+            twapLength: 2,
+            poolDecimals: 6
+          }
+        ]
       },
       {
         type: "medianizer",
@@ -340,6 +356,12 @@ const defaultConfigs = {
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
     twapLength: 7200
   },
+  "COMPUSDC-APR-MAR28/USDC": {
+    type: "uniswap",
+    uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
+    twapLength: 7200,
+    poolDecimals: 6
+  },
   BTCDOM: {
     type: "domfi",
     pair: "BTCDOM",
@@ -360,6 +382,33 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "ftx", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
+    ]
+  },
+  CNYUSD: {
+    type: "tradermade",
+    pair: "CNYUSD",
+    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
+    hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
+    minTimeBetweenUpdates: 600
+  },
+  PHPDAI: {
+    type: "medianizer",
+    computeMean: true,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      {
+        type: "coinmarketcap",
+        symbol: "DAI",
+        convert: "PHP",
+        invertPrice: true
+      },
+      {
+        type: "coingecko",
+        contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+        currency: "php",
+        invertPrice: true
+      }
     ]
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this

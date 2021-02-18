@@ -11,7 +11,7 @@ class CRMonitor {
   /**
    * @notice Constructs new Collateral Requirement Monitor.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} expiringMultiPartyClient Client used to query EMP status for monitored wallets position info.
+   * @param {Object} financialContractClient Client used to query Financial Contract status for monitored wallets position info.
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {Object} monitorConfig Object containing an array of wallets to Monitor. Each wallet's `walletName`, `address`,
    * `crAlert` must be given. Example:
@@ -21,18 +21,18 @@ class CRMonitor {
    *       ...],
    *        logLevelOverrides: {crThreshold: "error"}       // Log level overrides
    *      };
-   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   * @param {Object} financialContractProps Configuration object used to inform logs of key Financial Contract information. Example:
    *      { collateralDecimals: 18,
             syntheticDecimals: 18,
             priceFeedDecimals: 18,
             priceIdentifier: "ETH/BTC",
             networkId:1 }
    */
-  constructor({ logger, expiringMultiPartyClient, priceFeed, monitorConfig, empProps }) {
+  constructor({ logger, financialContractClient, priceFeed, monitorConfig, financialContractProps }) {
     this.logger = logger;
 
-    this.empClient = expiringMultiPartyClient;
-    this.web3 = this.empClient.web3;
+    this.financialContractClient = financialContractClient;
+    this.web3 = this.financialContractClient.web3;
 
     // Offchain price feed to compute the current collateralization ratio for the monitored positions.
     this.priceFeed = priceFeed;
@@ -40,9 +40,9 @@ class CRMonitor {
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
     // is 100*10^8. This function would return 100*10^18, thereby converting collateral decimals to 18 decimal places.
-    this.normalizeCollateralDecimals = ConvertDecimals(empProps.collateralDecimals, 18, this.web3);
-    this.normalizeSyntheticDecimals = ConvertDecimals(empProps.syntheticDecimals, 18, this.web3);
-    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
+    this.normalizeCollateralDecimals = ConvertDecimals(financialContractProps.collateralDecimals, 18, this.web3);
+    this.normalizeSyntheticDecimals = ConvertDecimals(financialContractProps.syntheticDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
@@ -82,9 +82,9 @@ class CRMonitor {
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
-    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
-    const defaultEmpProps = {
-      empProps: {
+    // Validate the financialContractProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultFinancialContractProps = {
+      financialContractProps: {
         value: {},
         isValid: x => {
           // The config must contain the following keys and types:
@@ -103,7 +103,7 @@ class CRMonitor {
         }
       }
     };
-    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+    Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -117,7 +117,7 @@ class CRMonitor {
     if (this.walletsToMonitor.length == 0) return; // If there are no wallets to monitor exit early
     // yield the price feed at the current time.
     const price = this.priceFeed.getCurrentPrice();
-    const latestCumulativeFundingRateMultiplier = this.empClient.getLatestCumulativeFundingRateMultiplier();
+    const latestCumulativeFundingRateMultiplier = this.financialContractClient.getLatestCumulativeFundingRateMultiplier();
 
     if (!price) {
       this.logger.warn({
@@ -171,7 +171,7 @@ class CRMonitor {
         const liquidationPrice = this._calculatePriceForCR(
           backingCollateral,
           tokensOutstanding,
-          this.empClient.collateralRequirement
+          this.financialContractClient.collateralRequirement
         );
 
         // Sample message:
@@ -180,17 +180,17 @@ class CRMonitor {
         const mrkdwn =
           wallet.name +
           " (" +
-          createEtherscanLinkMarkdown(monitoredAddress, this.empProps.networkId) +
+          createEtherscanLinkMarkdown(monitoredAddress, this.financialContractProps.networkId) +
           ") collateralization ratio has dropped to " +
           this.formatDecimalString(positionCR.muln(100)) + // Scale up the CR threshold by 100 to become a percentage
           "% which is below the " +
           wallet.crAlert * 100 +
           "% threshold. Current value of " +
-          this.empProps.priceIdentifier +
+          this.financialContractProps.priceIdentifier +
           " is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(price)) +
           ". The collateralization requirement is " +
-          this.formatDecimalString(this.empClient.collateralRequirement.muln(100)) +
+          this.formatDecimalString(this.financialContractClient.collateralRequirement.muln(100)) +
           "%. Liquidation price: " +
           this.formatDecimalString(liquidationPrice) + // Note that this does NOT use normalizePriceFeedDecimals as the value has been normalized from the _calculatePriceForCR equation.
           ". The latest cumulative funding rate multiplier is " +
@@ -207,7 +207,7 @@ class CRMonitor {
   }
 
   _getPositionInformation(address) {
-    return this.empClient.getAllPositions().find(position => position.sponsor === address);
+    return this.financialContractClient.getAllPositions().find(position => position.sponsor === address);
   }
 
   // Checks if a big number value is below a given threshold.

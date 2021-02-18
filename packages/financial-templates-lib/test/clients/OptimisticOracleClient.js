@@ -95,7 +95,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     startTime = (await optimisticOracle.getCurrentTime()).toNumber();
     requestTime = startTime - 10;
 
-    // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // The FinancialContractClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
@@ -161,6 +161,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         proposer: proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: "0x",
+        currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
@@ -188,6 +189,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
         proposer: proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: "0x",
+        currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()

@@ -38,7 +38,7 @@ contract("SyntheticPegMonitor", function() {
       let spyLogger;
 
       let monitorConfig;
-      let empProps;
+      let financialContractProps;
       let syntheticPegMonitor;
 
       let convertPrice;
@@ -51,7 +51,7 @@ contract("SyntheticPegMonitor", function() {
         invalidPriceFeedMock = new InvalidPriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
         denominatorPriceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
 
-        empProps = {
+        financialContractProps = {
           syntheticSymbol: "SYNTH",
           priceIdentifier: "TEST_IDENTIFIER",
           priceFeedDecimals: testConfig.priceFeedDecimals
@@ -79,7 +79,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
         });
 
@@ -170,7 +170,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
 
           await syntheticPegMonitor.checkPriceDeviation();
@@ -192,7 +192,7 @@ contract("SyntheticPegMonitor", function() {
             medianizerPriceFeed: medianizerPriceFeedMock,
             denominatorPriceFeed: denominatorPriceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
 
           // Denominator price set to 1, should produce 0 deviation.
@@ -233,7 +233,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
         });
 
@@ -376,7 +376,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: invalidPriceFeedMock,
             medianizerPriceFeed: invalidPriceFeedMock,
             monitorConfig: {},
-            empProps
+            financialContractProps
           });
 
           // Test when no update time in the price feed is set.
@@ -447,7 +447,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            empProps
+            financialContractProps
           });
 
           // Inject prices into pricefeed.
@@ -491,7 +491,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig1,
-              empProps
+              financialContractProps
             });
             errorThrown1 = false;
           } catch (err) {
@@ -514,7 +514,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig2,
-              empProps
+              financialContractProps
             });
             errorThrown2 = false;
           } catch (err) {
@@ -533,7 +533,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: emptyConfig,
-              empProps
+              financialContractProps
             });
             await syntheticPegMonitor.checkPriceDeviation();
             await syntheticPegMonitor.checkPegVolatility();
@@ -555,7 +555,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig,
-              empProps
+              financialContractProps
             });
 
             errorThrown = false;
@@ -572,7 +572,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig: alertOverrideConfig,
-            empProps
+            financialContractProps
           });
 
           // Price deviation above the threshold of 20% should send a message.

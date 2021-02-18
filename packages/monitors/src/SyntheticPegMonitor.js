@@ -20,12 +20,20 @@ class SyntheticPegMonitor {
            syntheticVolatilityAlertThreshold: 0.2 // Threshold for synthetic price volatility.
            logOverrides: {deviation: "error"}     // Log level overrides.
           }
-   * @param {Object} empProps Configuration object used to inform logs of key EMP information. Example:
+   * @param {Object} financialContractProps Configuration object used to inform logs of key Financial Contract information. Example:
    *      { syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
    */
-  constructor({ logger, web3, uniswapPriceFeed, medianizerPriceFeed, denominatorPriceFeed, monitorConfig, empProps }) {
+  constructor({
+    logger,
+    web3,
+    uniswapPriceFeed,
+    medianizerPriceFeed,
+    denominatorPriceFeed,
+    monitorConfig,
+    financialContractProps
+  }) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
@@ -35,7 +43,7 @@ class SyntheticPegMonitor {
 
     this.web3 = web3;
 
-    this.normalizePriceFeedDecimals = ConvertDecimals(empProps.priceFeedDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
 
@@ -86,9 +94,9 @@ class SyntheticPegMonitor {
     };
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
-    // Validate the EMPProps object. This contains a set of important info within it so need to be sure it's structured correctly.
-    const defaultEmpProps = {
-      empProps: {
+    // Validate the financialContractProps object. This contains a set of important info within it so need to be sure it's structured correctly.
+    const defaultFinancialContractProps = {
+      financialContractProps: {
         value: {},
         isValid: x => {
           // The config must contain the following keys and types:
@@ -103,7 +111,7 @@ class SyntheticPegMonitor {
         }
       }
     };
-    Object.assign(this, createObjectFromDefaultProps({ empProps }, defaultEmpProps));
+    Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
@@ -161,7 +169,7 @@ class SyntheticPegMonitor {
         message: "Synthetic off peg alert 😵",
         mrkdwn:
           "Synthetic token " +
-          this.empProps.syntheticSymbol +
+          this.financialContractProps.syntheticSymbol +
           " is trading at " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(uniswapTokenPrice)) +
           " on Uniswap. Target price is " +
@@ -215,7 +223,7 @@ class SyntheticPegMonitor {
         message: "Peg price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
-          this.empProps.priceIdentifier +
+          this.financialContractProps.priceIdentifier +
           " price is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +
@@ -269,7 +277,7 @@ class SyntheticPegMonitor {
         message: "Synthetic price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
-          this.empProps.priceIdentifier +
+          this.financialContractProps.priceIdentifier +
           " price is " +
           this.formatDecimalString(this.normalizePriceFeedDecimals(pricefeedLatestPrice)) +
           ". Price moved " +

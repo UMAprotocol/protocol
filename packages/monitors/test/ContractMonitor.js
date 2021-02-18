@@ -13,7 +13,7 @@ const { getTruffleContract } = require("@uma/core");
 
 // Helpers and custom winston transport module to monitor winston log outputs
 const {
-  ExpiringMultiPartyEventClient,
+  FinancialContractEventClient,
   PriceFeedMock,
   SpyTransport,
   lastSpyLogIncludes
@@ -37,7 +37,7 @@ const startTime = "15798990420";
 
 // Contracts
 let collateralToken;
-let emp;
+let financialContract;
 let syntheticToken;
 let mockOracle;
 let identifierWhitelist;
@@ -49,14 +49,14 @@ let optimisticOracle;
 let configStore;
 let collateralWhitelist;
 
-// Test object for EMP event client
+// Test object for Financial Contract event client
 let eventClient;
 
 // Price feed mock
 let priceFeedMock;
 let spyLogger;
 let spy;
-let empProps;
+let financialContractProps;
 let monitorConfig;
 
 // re-used variables
@@ -97,9 +97,9 @@ contract("ContractMonitor.js", function(accounts) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
-    // Import the tested versions of contracts. note that financialContract is either an emp or the perp depending
-    // on the current iteration version.
-    const financialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
+    // Perpetual depending on the current iteration version.
+    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
     const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
@@ -204,27 +204,27 @@ contract("ContractMonitor.js", function(accounts) {
           );
 
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
-          emp = await financialContract.new(constructorParams);
+          financialContract = await FinancialContract.new(constructorParams);
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-          await emp.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await emp.applyFundingRate();
+          await financialContract.setCurrentTime(startTime);
+          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
-          // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
+          // logs the correct text based on interactions with the financialContract. Note that only `info` level messages are captured.
           spy = sinon.spy();
           spyLogger = winston.createLogger({
             level: "info",
             transports: [new SpyTransport({ level: "info" }, { spy })]
           });
 
-          await syntheticToken.addMinter(emp.address);
-          await syntheticToken.addBurner(emp.address);
-          eventClient = new ExpiringMultiPartyEventClient(
+          await syntheticToken.addMinter(financialContract.address);
+          await syntheticToken.addBurner(financialContract.address);
+          eventClient = new FinancialContractEventClient(
             spyLogger,
-            financialContract.abi,
+            FinancialContract.abi,
             web3,
-            emp.address,
+            financialContract.address,
             0, // startingBlockNumber
             null, // endingBlockNumber
             contractVersion.contractType
@@ -234,24 +234,24 @@ contract("ContractMonitor.js", function(accounts) {
           // Define a configuration object. In this config only monitor one liquidator and one disputer.
           monitorConfig = { monitoredLiquidators: [liquidator], monitoredDisputers: [disputer] };
 
-          syntheticToken = await Token.at(await emp.tokenCurrency());
+          syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-          empProps = {
+          financialContractProps = {
             collateralSymbol: await collateralToken.symbol(),
             collateralDecimals: testConfig.collateralDecimals,
             syntheticDecimals: testConfig.syntheticDecimals,
             priceFeedDecimals: testConfig.priceFeedDecimals,
             syntheticSymbol: await syntheticToken.symbol(),
-            priceIdentifier: hexToUtf8(await emp.priceIdentifier()),
+            priceIdentifier: hexToUtf8(await financialContract.priceIdentifier()),
             networkId: await web3.eth.net.getId()
           };
 
           contractMonitor = new ContractMonitor({
             logger: spyLogger,
-            expiringMultiPartyEventClient: eventClient,
+            financialContractEventClient: eventClient,
             priceFeed: priceFeedMock,
             monitorConfig,
-            empProps,
+            financialContractProps,
             votingContract: mockOracle
           });
 
@@ -264,26 +264,26 @@ contract("ContractMonitor.js", function(accounts) {
             await collateralToken.mint(accounts[i], convertCollateral("100000000"), {
               from: tokenSponsor
             });
-            await collateralToken.approve(emp.address, convertSynthetic("100000000"), {
+            await collateralToken.approve(financialContract.address, convertSynthetic("100000000"), {
               from: accounts[i]
             });
-            await syntheticToken.approve(emp.address, convertSynthetic("100000000"), {
+            await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
               from: accounts[i]
             });
           }
 
           // Create positions for the sponsors, liquidator and disputer
-          await emp.create(
+          await financialContract.create(
             { rawValue: convertCollateral("150") },
             { rawValue: convertSynthetic("50") },
             { from: sponsor1 }
           );
-          await emp.create(
+          await financialContract.create(
             { rawValue: convertCollateral("175") },
             { rawValue: convertSynthetic("45") },
             { from: sponsor2 }
           );
-          newSponsorTxn = await emp.create(
+          newSponsorTxn = await financialContract.create(
             { rawValue: convertCollateral("1500") },
             { rawValue: convertSynthetic("400") },
             { from: liquidator }
@@ -310,7 +310,7 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "1,500.00")); // Collateral amount
 
             // Create another position
-            const txObject1 = await emp.create(
+            const txObject1 = await financialContract.create(
               { rawValue: convertCollateral("10") },
               { rawValue: convertSynthetic("1.5") },
               { from: sponsor3 } // not a monitored address
@@ -331,10 +331,10 @@ contract("ContractMonitor.js", function(accounts) {
           "Winston correctly emits liquidation message",
           async function() {
             // Request a withdrawal from sponsor1 to check if monitor correctly differentiates between liquidated and locked collateral
-            await emp.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
+            await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
 
             // Create liquidation to liquidate sponsor2 from sponsor1
-            const txObject1 = await emp.createLiquidation(
+            const txObject1 = await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -383,7 +383,7 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "SYNTH")); // should contain token symbol
 
             // Liquidate another position and ensure the Contract monitor emits the correct params
-            const txObject2 = await emp.createLiquidation(
+            const txObject2 = await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -413,7 +413,7 @@ contract("ContractMonitor.js", function(accounts) {
           "Winston correctly emits dispute events",
           async function() {
             // Create liquidation to dispute.
-            await emp.createLiquidation(
+            await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -422,7 +422,7 @@ contract("ContractMonitor.js", function(accounts) {
               { from: liquidator }
             );
 
-            const txObject1 = await emp.dispute("0", sponsor1, {
+            const txObject1 = await financialContract.dispute("0", sponsor1, {
               from: disputer
             });
 
@@ -441,7 +441,7 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "15.00")); // dispute bond of 10% of sponsor 1's 150 collateral => 15
 
             // Create a second liquidation to dispute from a non-monitored account.
-            await emp.createLiquidation(
+            await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -451,7 +451,7 @@ contract("ContractMonitor.js", function(accounts) {
             );
 
             // the disputer is also not monitored
-            const txObject2 = await emp.dispute("0", sponsor2, {
+            const txObject2 = await financialContract.dispute("0", sponsor2, {
               from: sponsor2
             });
 
@@ -473,8 +473,8 @@ contract("ContractMonitor.js", function(accounts) {
           "Return Dispute Settlement Events",
           async function() {
             // Create liquidation to liquidate sponsor1 from liquidator
-            let liquidationTime = (await emp.getCurrentTime()).toNumber();
-            await emp.createLiquidation(
+            let liquidationTime = (await financialContract.getCurrentTime()).toNumber();
+            await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -484,7 +484,7 @@ contract("ContractMonitor.js", function(accounts) {
             );
 
             // Dispute the position from the disputer
-            await emp.dispute("0", sponsor1, {
+            await financialContract.dispute("0", sponsor1, {
               from: disputer
             });
 
@@ -494,7 +494,7 @@ contract("ContractMonitor.js", function(accounts) {
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
             // Withdraw from liquidation to settle the dispute event.
-            const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+            const txObject1 = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
             await eventClient.clearState();
 
             // Even though the dispute settlement has occurred on-chain, because we haven't updated the event client yet,
@@ -518,11 +518,11 @@ contract("ContractMonitor.js", function(accounts) {
 
             // Advance time so that price request is for a different timestamp.
             const nextLiquidationTimestamp = liquidationTime + 1;
-            await emp.setCurrentTime(nextLiquidationTimestamp.toString());
+            await financialContract.setCurrentTime(nextLiquidationTimestamp.toString());
 
             // Create a second liquidation from a non-monitored address (sponsor1).
-            liquidationTime = (await emp.getCurrentTime()).toNumber();
-            await emp.createLiquidation(
+            liquidationTime = (await financialContract.getCurrentTime()).toNumber();
+            await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
               { rawValue: convertPrice("99999") },
@@ -532,7 +532,7 @@ contract("ContractMonitor.js", function(accounts) {
             );
 
             // Dispute the liquidator from a non-monitor address (sponsor2)
-            await emp.dispute("0", sponsor2, {
+            await financialContract.dispute("0", sponsor2, {
               from: sponsor2
             });
 
@@ -542,7 +542,7 @@ contract("ContractMonitor.js", function(accounts) {
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
             // Withdraw from liquidation to settle the dispute event.
-            const txObject2 = await emp.withdrawLiquidation("0", sponsor2, { from: sponsor2 });
+            const txObject2 = await financialContract.withdrawLiquidation("0", sponsor2, { from: sponsor2 });
             await eventClient.clearState();
 
             // Update the eventClient and check it has the dispute event stored correctly
@@ -559,7 +559,7 @@ contract("ContractMonitor.js", function(accounts) {
           }
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
-          "Cannot set invalid config or empProps",
+          "Cannot set invalid config or financialContractProps",
           async function() {
             let errorThrown1;
             try {
@@ -567,10 +567,10 @@ contract("ContractMonitor.js", function(accounts) {
               const invalidConfig1 = { monitoredLiquidators: liquidator, monitoredDisputers: [disputer] };
               contractMonitor = new ContractMonitor({
                 logger: spyLogger,
-                expiringMultiPartyEventClient: eventClient,
+                financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: invalidConfig1,
-                empProps
+                financialContractProps
               });
               errorThrown1 = false;
             } catch (err) {
@@ -584,10 +584,10 @@ contract("ContractMonitor.js", function(accounts) {
               const invalidConfig2 = { monitoredLiquidators: "NOT AN ADDRESS" };
               contractMonitor = new ContractMonitor({
                 logger: spyLogger,
-                expiringMultiPartyEventClient: eventClient,
+                financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: invalidConfig2,
-                empProps
+                financialContractProps
               });
               errorThrown2 = false;
             } catch (err) {
@@ -597,15 +597,15 @@ contract("ContractMonitor.js", function(accounts) {
 
             let errorThrown3;
             try {
-              // Create an invalid empProps. This includes missing values or wrong type asignment.
+              // Create an invalid financialContractProps. This includes missing values or wrong type asignment.
 
-              empProps.collateralDecimals = null; // set a variable that must be a number to null
+              financialContractProps.collateralDecimals = null; // set a variable that must be a number to null
               contractMonitor = new ContractMonitor({
                 logger: spyLogger,
-                expiringMultiPartyEventClient: eventClient,
+                financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig, // valid config
-                empProps
+                financialContractProps
               });
               errorThrown3 = false;
             } catch (err) {
@@ -624,10 +624,10 @@ contract("ContractMonitor.js", function(accounts) {
               const emptyConfig = {};
               contractMonitor = new ContractMonitor({
                 logger: spyLogger,
-                expiringMultiPartyEventClient: eventClient,
+                financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: emptyConfig,
-                empProps
+                financialContractProps
               });
               await contractMonitor.checkForNewSponsors();
               await contractMonitor.checkForNewLiquidations();

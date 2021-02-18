@@ -9,10 +9,10 @@ const { getWeb3, MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS 
 const { Liquidator } = require("./src/liquidator");
 const {
   GasEstimator,
-  ExpiringMultiPartyClient,
+  FinancialContractClient,
   Networker,
   Logger,
-  createReferencePriceFeedForEmp,
+  createReferencePriceFeedForFinancialContract,
   waitForLogger,
   delay
 } = require("@uma/financial-templates-lib");
@@ -21,10 +21,10 @@ const {
 const { getAbi, getAddress } = require("@uma/core");
 
 /**
- * @notice Continuously attempts to liquidate positions in the EMP contract.
+ * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
- * @param {String} empAddress Contract address of the EMP.
+ * @param {String} financialContractAddress Contract address of the Financial Contract.
  * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
@@ -40,7 +40,7 @@ const { getAbi, getAddress } = require("@uma/core");
 async function run({
   logger,
   web3,
-  empAddress,
+  financialContractAddress,
   oneSplitAddress,
   pollingDelay,
   errorRetries,
@@ -60,7 +60,7 @@ async function run({
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Liquidator#index",
       message: "Liquidator started 🌊",
-      empAddress,
+      financialContractAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -71,7 +71,7 @@ async function run({
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
-      findContractVersion(empAddress, web3),
+      findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
@@ -96,27 +96,27 @@ async function run({
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
     const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(
+    const financialContract = new web3.eth.Contract(
       getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
-      empAddress
+      financialContractAddress
     );
 
-    // Returns whether the EMP has expired yet
+    // Returns whether the Financial Contract has expired yet
     const checkIsExpiredOrShutdownPromise = async () => {
       const [expirationOrShutdownTimestamp, contractTimestamp] = await Promise.all([
         liquidatorConfig.contractType === "ExpiringMultiParty"
-          ? emp.methods.expirationTimestamp().call()
-          : emp.methods.emergencyShutdownTimestamp().call(),
-        emp.methods.getCurrentTime().call()
+          ? financialContract.methods.expirationTimestamp().call()
+          : financialContract.methods.emergencyShutdownTimestamp().call(),
+        financialContract.methods.getCurrentTime().call()
       ]);
-      // Check if EMP is expired.
+      // Check if Financial Contract is expired.
       if (
         Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) &&
         Number(expirationOrShutdownTimestamp) > 0
       ) {
         logger.info({
           at: "Liquidator#index",
-          message: `EMP is ${
+          message: `Financial Contract is ${
             liquidatorConfig.contractType === "ExpiringMultiParty" ? "expired" : "shutdown"
           }, can only withdraw liquidator dispute rewards 🕰`,
           expirationOrShutdownTimestamp,
@@ -128,7 +128,7 @@ async function run({
       }
     };
 
-    // Generate EMP properties to inform bot of important on-chain state values that we only want to query once.
+    // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [
       collateralRequirement,
       priceIdentifier,
@@ -138,12 +138,12 @@ async function run({
 
       withdrawLiveness
     ] = await Promise.all([
-      emp.methods.collateralRequirement().call(),
-      emp.methods.priceIdentifier().call(),
-      emp.methods.minSponsorTokens().call(),
-      emp.methods.collateralCurrency().call(),
-      emp.methods.tokenCurrency().call(),
-      emp.methods.withdrawalLiveness().call()
+      financialContract.methods.collateralRequirement().call(),
+      financialContract.methods.priceIdentifier().call(),
+      financialContract.methods.minSponsorTokens().call(),
+      financialContract.methods.collateralCurrency().call(),
+      financialContract.methods.tokenCurrency().call(),
+      financialContract.methods.withdrawalLiveness().call()
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
@@ -154,13 +154,13 @@ async function run({
       collateralDecimals,
       syntheticDecimals
     ] = await Promise.all([
-      collateralToken.methods.allowance(accounts[0], empAddress).call(),
-      syntheticToken.methods.allowance(accounts[0], empAddress).call(),
+      collateralToken.methods.allowance(accounts[0], financialContractAddress).call(),
+      syntheticToken.methods.allowance(accounts[0], financialContractAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
 
-    const empProps = {
+    const financialContractProps = {
       crRatio: collateralRequirement,
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens,
@@ -175,12 +175,12 @@ async function run({
     };
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
-    const priceFeed = await createReferencePriceFeedForEmp(
+    const priceFeed = await createReferencePriceFeedForFinancialContract(
       logger,
       web3,
       new Networker(logger),
       getTime,
-      empAddress,
+      financialContractAddress,
       priceFeedConfig
     );
 
@@ -188,13 +188,13 @@ async function run({
       throw new Error("Price feed config is invalid");
     }
 
-    // Create the ExpiringMultiPartyClient to query on-chain information, GasEstimator to get latest gas prices and an
+    // Create the financialContractClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of Liquidator to preform liquidations.
-    const empClient = new ExpiringMultiPartyClient(
+    const financialContractClient = new FinancialContractClient(
       logger,
       getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       web3,
-      empAddress,
+      financialContractAddress,
       collateralDecimals,
       syntheticDecimals,
       priceFeed.getPriceFeedDecimals(),
@@ -213,13 +213,13 @@ async function run({
 
     const liquidator = new Liquidator({
       logger,
-      expiringMultiPartyClient: empClient,
+      financialContractClient,
       gasEstimator,
       votingContract: voting,
       syntheticToken,
       priceFeed,
       account: accounts[0],
-      empProps,
+      financialContractProps,
       liquidatorConfig
     });
 
@@ -233,36 +233,36 @@ async function run({
       liquidatorConfig
     });
 
-    // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+    // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+      const collateralApprovalTx = await collateralToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
         collateralApprovalTx: collateralApprovalTx.transactionHash
       });
     }
     if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       await gasEstimator.update();
-      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+      const syntheticApprovalTx = await syntheticToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
         from: accounts[0],
         gasPrice: gasEstimator.getCurrentFastPrice()
       });
       logger.info({
         at: "Liquidator#index",
-        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
         syntheticApprovalTx: syntheticApprovalTx.transactionHash
       });
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
-      // Check if EMP expired before running current iteration.
+      // Check if Financial Contract expired before running current iteration.
       let isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
 
       await retry(
@@ -316,17 +316,17 @@ async function run({
 
 async function Poll(callback) {
   try {
-    if (!process.env.EMP_ADDRESS) {
+    if (!process.env.EMP_ADDRESS && !process.env.FINANCIAL_CONTRACT_ADDRESS) {
       throw new Error(
-        "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables."
+        "Bad environment variables! Specify an EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS for the location of the financial contract the bot is expected to interact with."
       );
     }
 
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
-      // EMP Address. Should be an Ethereum address
-      empAddress: process.env.EMP_ADDRESS,
+      // Financial Contract Address. Should be an Ethereum address
+      financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
       // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
       oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
@@ -347,8 +347,8 @@ async function Poll(callback) {
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
-      //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
-      //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
+      //   "defenseActivationPercent": undefined -> Set to > 0 to turn on "Whale Defense" strategy.
+      //                               Specifies how far along a withdraw must be in % before defense strategy kicks in.
       //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
       //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
       //   "contractVersion":"1.2.2"} -> override the contract version the liquidator is pointing at.
