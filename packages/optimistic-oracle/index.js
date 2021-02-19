@@ -130,13 +130,14 @@ async function Poll(callback) {
       // Default to 10 seconds in between error re-tries.
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
       // Common price feed configuration passed along to all those constructed by proposer.
-      commonPriceFeedConfig: process.env.OOPRICE_FEED_CONFIG
-        ? JSON.parse(process.env.OOPRICE_FEED_CONFIG)
+      commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
+        ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)
         : { lookback: 7200 },
       // If there is an optimistic oracle config, add it. Else, set to null. Example config:
       // {
       //   "disputePriceErrorPercent":0.05 -> Proposal prices that do not equal the dispute price
       //                                      within this error % will be disputed.
+      //                                      e.g. 0.05 implies 5% margin of error.
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
       ooProposerConfig: process.env.OOPROPOSER_CONFIG ? JSON.parse(process.env.OOPROPOSER_CONFIG) : {}

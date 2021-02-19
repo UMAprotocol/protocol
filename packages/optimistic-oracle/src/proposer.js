@@ -51,7 +51,9 @@ class OptimisticOracleProposer {
       },
       disputePriceErrorPercent: {
         // `disputePricePrecisionOfError`: Proposal prices that differ from the dispute price
-        //                                 more than this % error will be disputed.
+        //                                 more than this % error will be disputed. e.g. 0.05
+        //                                 implies 5% margin of error from the historical price
+        //                                 computed by the local pricefeed.
         value: 0.05,
         isValid: x => {
           return x >= 0 && x < 1;
