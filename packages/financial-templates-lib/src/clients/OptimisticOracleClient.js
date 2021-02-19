@@ -118,7 +118,7 @@ class OptimisticOracleClient {
     });
 
     // Store proposals that have NOT been disputed and have NOT been settled, and reformat data.
-    let undisputedProposals = proposalEvents.filter(event => {
+    const undisputedProposals = proposalEvents.filter(event => {
       const key = this._getPriceRequestKey(event);
       const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
       return hasDispute === undefined;
