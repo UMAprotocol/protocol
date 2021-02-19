@@ -13,7 +13,7 @@ const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
-const { getTruffleContract, getAbi } = require("@uma/core");
+const { getTruffleContract } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
@@ -23,6 +23,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
+  const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -329,8 +330,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3,
       getTime,
-      vaultAbi: getAbi("VaultInterface", "latest"),
-      erc20Abi: getAbi("IERC20Standard", "latest"),
+      vaultAbi: VaultInterface.abi,
+      erc20Abi: ERC20.abi,
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3)
     });
@@ -351,7 +352,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3,
       getTime,
-      erc20Abi: getAbi("IERC20Standard", "latest"),
+      erc20Abi: ERC20.abi,
       blockFinder: getSharedBlockFinder(web3)
     });
   }
