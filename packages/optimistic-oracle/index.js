@@ -18,9 +18,10 @@ const { getWeb3 } = require("@uma/common");
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
+ * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the optimistic oracle proposer.
  * @return None or throws an Error.
  */
-async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout }) {
+async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout, optimisticOracleProposerConfig }) {
   try {
     const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
@@ -29,11 +30,12 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
-      message: "OO proposer started 🌊",
+      message: "OptimisticOracle proposer started 🌊",
       optimisticOracleAddress,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout
+      errorRetriesTimeout,
+      optimisticOracleProposerConfig
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -55,22 +57,23 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
     const defaultPriceFeedConfig = {
       lookback: 7200 // Should we pass in this object and/or its properties as input into the `run()` method?
     };
-    const ooProposer = new OptimisticOracleProposer({
+    const optimisticOracleProposer = new OptimisticOracleProposer({
       logger,
       optimisticOracleClient,
       gasEstimator,
       account: accounts[0],
-      defaultPriceFeedConfig
+      defaultPriceFeedConfig,
+      optimisticOracleProposerConfig
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async () => {
-          await ooProposer.update();
-          await ooProposer.sendProposals();
-          await ooProposer.sendDisputes();
-          await ooProposer.settleRequests();
+          await optimisticOracleProposer.update();
+          await optimisticOracleProposer.sendProposals();
+          await optimisticOracleProposer.sendDisputes();
+          await optimisticOracleProposer.settleRequests();
           return;
         },
         {
@@ -123,7 +126,7 @@ async function Poll(callback) {
       // {
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
-      ooProposerConfig: process.env.OOPROPOSER_CONFIG ? JSON.parse(process.env.OOPROPOSER_CONFIG) : {}
+      optimisticOracleProposerConfig: process.env.OO_PROPOSER_CONFIG ? JSON.parse(process.env.OO_PROPOSER_CONFIG) : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

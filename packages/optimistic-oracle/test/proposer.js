@@ -193,7 +193,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
-      assert.isTrue(spyLogIncludes(spy, -1, "Approved OO to transfer unlimited collateral tokens"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Approved OptimisticOracle to transfer unlimited collateral tokens"));
       const totalCalls = spy.callCount;
 
       // Should have sent one INFO log for each currency approved.

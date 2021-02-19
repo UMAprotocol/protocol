@@ -10,9 +10,16 @@ class OptimisticOracleProposer {
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} defaultPriceFeedConfig Default configuration to construct all price feed objects.
-   * @param {Object} [ooProposerConfig] Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} [optimisticOracleProposerConfig] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig, ooProposerConfig }) {
+  constructor({
+    logger,
+    optimisticOracleClient,
+    gasEstimator,
+    account,
+    defaultPriceFeedConfig,
+    optimisticOracleProposerConfig
+  }) {
     this.logger = logger;
     this.account = account;
     this.optimisticOracleClient = optimisticOracleClient;
@@ -25,7 +32,7 @@ class OptimisticOracleProposer {
     // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
     this.GAS_LIMIT_BUFFER = 1.25;
 
-    this.ooContract = this.optimisticOracleClient.oracle;
+    this.optimisticOracleContract = this.optimisticOracleClient.oracle;
 
     // Cached mapping of identifiers to pricefeed classes
     this.priceFeedCache = {};
@@ -39,7 +46,7 @@ class OptimisticOracleProposer {
     this.hexToUtf8 = this.web3.utils.hexToUtf8;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
-    // values via the `ooProposerConfig` input object. The `isValid` property is a function that should be called
+    // values via the `optimisticOracleProposerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
       txnGasLimit: {
@@ -52,7 +59,7 @@ class OptimisticOracleProposer {
     };
 
     // Validate and set config settings to class state.
-    const configWithDefaults = createObjectFromDefaultProps(ooProposerConfig, defaultConfig);
+    const configWithDefaults = createObjectFromDefaultProps(optimisticOracleProposerConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
   }
 
@@ -72,6 +79,8 @@ class OptimisticOracleProposer {
       message: "Checking for unproposed price requests to send proposals for"
     });
 
+    // TODO: Should allow user to filter out price requests with rewards below a threshold,
+    // allowing the bot to prevent itself from being induced to unprofitably propose.
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
       await this._sendProposal(priceRequest);
     }
@@ -139,7 +148,7 @@ class OptimisticOracleProposer {
     }
 
     // Create the transaction.
-    const proposal = this.ooContract.methods.proposePrice(
+    const proposal = this.optimisticOracleContract.methods.proposePrice(
       priceRequest.requester,
       this.utf8ToHex(priceRequest.identifier),
       priceRequest.timestamp,
@@ -160,7 +169,6 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#sendProposals",
         message: "Cannot propose price: not enough collateral (or large enough approval)✋",
         proposer: this.account,
-        proposalBond,
         priceRequest,
         error
       });
@@ -176,6 +184,7 @@ class OptimisticOracleProposer {
       at: "OptimisticOracleProposer#sendProposals",
       message: "Proposing new price",
       priceRequest,
+      proposalBond,
       proposalPrice,
       txnConfig
     });
@@ -188,6 +197,7 @@ class OptimisticOracleProposer {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
         message: "Failed to propose price🚨",
+        priceRequest,
         error
       });
       return;
@@ -206,6 +216,7 @@ class OptimisticOracleProposer {
       at: "OptimisticOracleProposer#sendProposals",
       message: "Proposed price!💍",
       priceRequest,
+      proposalBond,
       proposalPrice,
       txnConfig,
       proposalResult: logResult
@@ -238,7 +249,7 @@ class OptimisticOracleProposer {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Failed to query historical price for price request",
-        disputePrice,
+        priceRequest,
         error
       });
       return;
@@ -251,7 +262,7 @@ class OptimisticOracleProposer {
     let isPriceDisputable = !this.toBN(disputePrice).eq(this.toBN(proposalPrice));
     if (isPriceDisputable) {
       // Create the transaction.
-      const dispute = this.ooContract.methods.disputePrice(
+      const dispute = this.optimisticOracleContract.methods.disputePrice(
         priceRequest.requester,
         this.utf8ToHex(priceRequest.identifier),
         priceRequest.timestamp,
@@ -287,6 +298,7 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
         priceRequest,
+        disputeBond,
         proposalPrice,
         disputePrice,
         txnConfig
@@ -300,6 +312,7 @@ class OptimisticOracleProposer {
         this.logger.error({
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Failed to dispute proposal🚨",
+          priceRequest,
           error
         });
         return;
@@ -318,6 +331,7 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputed proposal!⛑",
         priceRequest,
+        disputeBond,
         disputePrice,
         txnConfig,
         disputeResult: logResult
@@ -327,7 +341,7 @@ class OptimisticOracleProposer {
   // Construct settlement transaction and send or return early if an error is encountered.
   async _settleRequest(priceRequest) {
     // Create the transaction.
-    const settle = this.ooContract.methods.settle(
+    const settle = this.optimisticOracleContract.methods.settle(
       priceRequest.requester,
       this.utf8ToHex(priceRequest.identifier),
       priceRequest.timestamp,
@@ -361,7 +375,7 @@ class OptimisticOracleProposer {
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
       priceRequest,
-      payout: payout.toString(),
+      payout,
       txnConfig
     });
 
@@ -373,6 +387,7 @@ class OptimisticOracleProposer {
       this.logger.error({
         at: "OptimisticOracleProposer#settleRequests",
         message: "Failed to settle proposal or dispute🚨",
+        priceRequest,
         error
       });
       return;
@@ -392,6 +407,7 @@ class OptimisticOracleProposer {
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settled proposal or dispute!⛑",
       priceRequest,
+      payout,
       txnConfig,
       settleResult: logResult
     });
@@ -404,11 +420,11 @@ class OptimisticOracleProposer {
     const _approveCollateralCurrencyForPriceRequest = async priceRequest => {
       const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
       const currentCollateralAllowance = await collateralToken.methods
-        .allowance(this.account, this.ooContract.options.address)
+        .allowance(this.account, this.optimisticOracleContract.options.address)
         .call();
       if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
         const collateralApprovalPromise = collateralToken.methods
-          .approve(this.ooContract.options.address, MAX_UINT_VAL)
+          .approve(this.optimisticOracleContract.options.address, MAX_UINT_VAL)
           .send({
             from: this.account,
             gasPrice: this.gasEstimator.getCurrentFastPrice()
@@ -416,7 +432,7 @@ class OptimisticOracleProposer {
           .then(tx => {
             this.logger.info({
               at: "OptimisticOracle#Proposer",
-              message: "Approved OO to transfer unlimited collateral tokens 💰",
+              message: "Approved OptimisticOracle to transfer unlimited collateral tokens 💰",
               currency: collateralToken.options.address,
               collateralApprovalTx: tx.transactionHash
             });
@@ -425,7 +441,7 @@ class OptimisticOracleProposer {
       }
     };
 
-    // The OO requires approval to transfer the proposed price request's collateral currency in order to post a bond.
+    // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to post a bond.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
       await _approveCollateralCurrencyForPriceRequest(priceRequest);
