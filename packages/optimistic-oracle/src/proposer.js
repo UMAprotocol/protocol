@@ -51,13 +51,6 @@ class OptimisticOracleProposer {
     // values via the `optimisticOracleProposerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
-      txnGasLimit: {
-        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
-        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
-        isValid: x => {
-          return x >= 6000000 && x < 15000000;
-        }
-      },
       disputePriceErrorPercent: {
         // `disputePricePrecisionOfError`: Proposal prices that differ from the dispute price
         //                                 more than this % error will be disputed. e.g. 0.05
@@ -167,46 +160,22 @@ class OptimisticOracleProposer {
       priceRequest.ancillaryData,
       proposalPrice
     );
-    const txnConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const transactionConfig = {
+      gasPrice: this.gasEstimator.getCurrentFastPrice(),
+      from: this.account
     };
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Proposing new price",
       priceRequest,
       proposalPrice,
-      txnConfig
+      transactionConfig
     });
-    const transactionResult = await runTransaction(
-      proposal,
-      this.account,
-      txnConfig,
-      this.GAS_LIMIT_BUFFER,
-      this.txnGasLimit
-    );
-
-    // Handle error:
-    if (transactionResult.error) {
-      if (transactionResult.error.type === "call") {
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendProposals",
-          message: "Cannot propose price: not enough collateral (or large enough approval)✋",
-          priceRequest,
-          error: transactionResult.error
-        });
-        return;
-      } else {
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendProposals",
-          message: "Failed to propose price🚨",
-          priceRequest,
-          error: transactionResult.error
-        });
-        return;
-      }
-    }
-    // If no error, transaction must have succeeded
-    else {
+    try {
+      const transactionResult = await runTransaction({
+        transaction: proposal,
+        config: transactionConfig
+      });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
 
@@ -226,9 +195,21 @@ class OptimisticOracleProposer {
         priceRequest,
         proposalBond: returnValue,
         proposalPrice,
-        txnConfig,
+        transactionConfig,
         proposalResult: logResult
       });
+    } catch (error) {
+      const message =
+        error.type === "call"
+          ? "Cannot propose price: not enough collateral (or large enough approval)✋"
+          : "Failed to propose price🚨";
+      this.logger.error({
+        at: "OptimisticOracleProposer#sendProposals",
+        message,
+        priceRequest,
+        error
+      });
+      return;
     }
   }
   // Construct dispute transaction and send or return early if an error is encountered.
@@ -292,8 +273,9 @@ class OptimisticOracleProposer {
         priceRequest.timestamp,
         priceRequest.ancillaryData
       );
-      const txnConfig = {
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      const transactionConfig = {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account
       };
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
@@ -302,38 +284,13 @@ class OptimisticOracleProposer {
         proposalPrice,
         disputePrice,
         allowedError: this.disputePriceErrorPercent,
-        txnConfig
+        transactionConfig
       });
-      const transactionResult = await runTransaction(
-        dispute,
-        this.account,
-        txnConfig,
-        this.GAS_LIMIT_BUFFER,
-        this.txnGasLimit
-      );
-
-      // Handle error:
-      if (transactionResult.error) {
-        if (transactionResult.error.type === "call") {
-          this.logger.error({
-            at: "OptimisticOracleProposer#sendDisputes",
-            message: "Cannot dispute price: not enough collateral (or large enough approval)✋",
-            priceRequest,
-            error: transactionResult.error
-          });
-          return;
-        } else {
-          this.logger.error({
-            at: "OptimisticOracleProposer#sendDisputes",
-            message: "Failed to dispute proposal🚨",
-            priceRequest,
-            error: transactionResult.error
-          });
-          return;
-        }
-      }
-      // If no error, transaction must have succeeded
-      else {
+      try {
+        const transactionResult = await runTransaction({
+          transaction: dispute,
+          config: transactionConfig
+        });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue;
 
@@ -354,9 +311,21 @@ class OptimisticOracleProposer {
           disputePrice,
           disputeBond: returnValue,
           allowedError: this.disputePriceErrorPercent,
-          txnConfig,
+          transactionConfig,
           disputeResult: logResult
         });
+      } catch (error) {
+        const message =
+          error.type === "call"
+            ? "Cannot dispute price: not enough collateral (or large enough approval)✋"
+            : "Failed to dispute proposal🚨";
+        this.logger.error({
+          at: "OptimisticOracleProposer#sendDisputes",
+          message,
+          priceRequest,
+          error
+        });
+        return;
       }
     }
   }
@@ -369,45 +338,21 @@ class OptimisticOracleProposer {
       priceRequest.timestamp,
       priceRequest.ancillaryData
     );
-    const txnConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const transactionConfig = {
+      gasPrice: this.gasEstimator.getCurrentFastPrice(),
+      from: this.account
     };
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
       priceRequest,
-      txnConfig
+      transactionConfig
     });
-    const transactionResult = await runTransaction(
-      settle,
-      this.account,
-      txnConfig,
-      this.GAS_LIMIT_BUFFER,
-      this.txnGasLimit
-    );
-
-    // Handle error:
-    if (transactionResult.error) {
-      if (transactionResult.error.type === "call") {
-        this.logger.error({
-          at: "OptimisticOracleProposer#settleRequests",
-          message: "Cannot settle for unknown reason☹️",
-          priceRequest,
-          error: transactionResult.error
-        });
-        return;
-      } else {
-        this.logger.error({
-          at: "OptimisticOracleProposer#settleRequests",
-          message: "Failed to settle proposal or dispute🚨",
-          priceRequest,
-          error: transactionResult.error
-        });
-        return;
-      }
-    }
-    // If no error, transaction must have succeeded
-    else {
+    try {
+      const transactionResult = await runTransaction({
+        transaction: settle,
+        config: transactionConfig
+      });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
 
@@ -427,9 +372,19 @@ class OptimisticOracleProposer {
         message: "Settled proposal or dispute!⛑",
         priceRequest,
         payout: returnValue,
-        txnConfig,
+        transactionConfig,
         settleResult: logResult
       });
+    } catch (error) {
+      const message =
+        error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
+      this.logger.error({
+        at: "OptimisticOracleProposer#settleRequests",
+        message,
+        priceRequest,
+        error
+      });
+      return;
     }
   }
   // Sets allowances for all collateral currencies used in unproposed price requests
@@ -441,7 +396,10 @@ class OptimisticOracleProposer {
       const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
       const currentCollateralAllowance = await collateralToken.methods
         .allowance(this.account, this.optimisticOracleContract.options.address)
-        .call();
+        .call({
+          from: this.account,
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        });
       if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
         const collateralApprovalPromise = collateralToken.methods
           .approve(this.optimisticOracleContract.options.address, MAX_UINT_VAL)
