@@ -39,6 +39,7 @@ class DSProxyManager {
   }
 
   getDSProxyAddress() {
+    if (!this.dsProxyFactoryAddress) throw new Error("DSProxy not yet set! call initializeDSProxy first!");
     return this.dsProxyAddress;
   }
 
@@ -50,7 +51,7 @@ class DSProxyManager {
       dsProxyFactoryAddress: this.dsProxyFactoryAddress
     });
 
-    if (this.dsProxy && this.dsProxyAddress) this.dsProxyAddress;
+    if (this.dsProxy && this.dsProxyAddress) return this.dsProxyAddress;
     const fromBlock = await getFromBlock(this.web3);
     const events = await this.dsProxyFactory.getPastEvents("Created", {
       fromBlock,
@@ -95,6 +96,7 @@ class DSProxyManager {
   }
   // Encode with `yourTruffleContractInstance.yourMethod(params1,param2).encodeABI()
   async callFunctionOnExistingLibrary(libraryAddress, callData) {
+    assert(this.dsProxy, "DSProxy must first be initialized to use this method");
     assert(this.isAddress(libraryAddress), "Library address must be valid address");
     assert(typeof callData === "string", "Call data must be a string");
     this.logger.debug({
@@ -120,6 +122,7 @@ class DSProxyManager {
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
   async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
+    assert(this.dsProxy, "DSProxy must first be initialized to use this method");
     assert(typeof callCode === "string", "Call code must be a string");
     assert(typeof callData === "string", "Call data must be a string");
     this.logger.debug({
