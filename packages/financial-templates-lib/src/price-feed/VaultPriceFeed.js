@@ -65,7 +65,7 @@ class VaultPriceFeed extends PriceFeedInterface {
 
   async update() {
     const currentTime = await this.getTime();
-    if (this.lastUpdateTime === undefined || currentTime > this.lastUpdateTime + this.minTimeBetweenUpdates) {
+    if (this.lastUpdateTime === undefined || currentTime >= this.lastUpdateTime + this.minTimeBetweenUpdates) {
       this.price = await this._getPrice();
       this.lastUpdateTime = currentTime;
     }

@@ -137,7 +137,7 @@ contract("VaultPriceFeed.js", function(accounts) {
   });
 
   it("PriceFeedDecimals", async function() {
-    assert.equal(vaultPriceFeed.getPriceFeeedDecimals(), priceFeedDecimals);
+    assert.equal(vaultPriceFeed.getPriceFeedDecimals(), priceFeedDecimals);
   });
 
   it("BlockFinder correctly passed in", async function() {
