@@ -2,7 +2,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
 const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
-const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
+const { mineTransactionsAtTime, MAX_SAFE_JS_INT, parseFixed } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
@@ -10,6 +10,9 @@ const CONTRACT_VERSION = "latest";
 
 const UniswapMock = getTruffleContract("UniswapMock", web3, CONTRACT_VERSION);
 const Uniswap = getTruffleContract("Uniswap", web3, CONTRACT_VERSION);
+const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+
+const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
 contract("UniswapPriceFeed.js", function(accounts) {
   const owner = accounts[0];
@@ -32,6 +35,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     uniswapPriceFeed = new UniswapPriceFeed(
       dummyLogger,
       Uniswap.abi,
+      Token.abi,
       web3,
       uniswapMock.address,
       3600,
@@ -39,6 +43,12 @@ contract("UniswapPriceFeed.js", function(accounts) {
       () => mockTime,
       false
     );
+
+    // By default, token0 and token1 use 18 decimal precision
+    const token0 = await Token.new("Uni Token0", "U0", 18, { from: owner });
+    const token1 = await Token.new("Uni Token1", "U1", 18, { from: owner });
+    await uniswapMock.setTokens(token0.address, token1.address);
+    await uniswapPriceFeed.update();
   });
 
   it("Basic current price", async function() {
@@ -287,6 +297,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     uniswapPriceFeed = new UniswapPriceFeed(
       dummyLogger,
       Uniswap.abi,
+      Token.abi,
       web3,
       uniswapMock.address,
       3600,
@@ -301,43 +312,64 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2"));
   });
 
-  describe("Can return non-18 precision prices", function() {
+  describe("Can handle non-18 precision pool prices and return non-18 precision prices", function() {
     let scaleDownPriceFeed, scaleUpPriceFeed;
+    let token0Precision = 8;
+    let token1Precision = 6;
+    const convertToken0 = Convert(token0Precision);
+    const convertToken1 = Convert(token1Precision);
+
     beforeEach(async function() {
-      // Here we specify that the pool is reporting a 6 decimal precision price, and we want prices in
-      // 12 decimals. This should scale up prices by 10e6.
+      // This UniswapPriceFeed's _getPriceFromSyncEvent will return prices in same precision as
+      // token1. But we also change the token0 precision to test that the
+      // UniswapPriceFeed correctly handles it.
+      let token0 = await Token.new("Uni Token 0", "T0", token0Precision, { from: owner });
+      let token1 = await Token.new("Uni Token 1", "T1", token1Precision, { from: owner });
+      await uniswapMock.setTokens(token0.address, token1.address);
+
+      // Since the price is not inverted for this pricefeed, the `_getPriceFromSyncEvent()` method
+      // will return prices using the same precision as token1, which is 6 for these tests.
+
+      // Here we specify that we want to return prices from the pricefeed in
+      // 12 decimals, so this should scale up prices derived from the Sync events by 10e6, from 6
+      // decimals to 12 decimals.
       scaleUpPriceFeed = new UniswapPriceFeed(
         dummyLogger,
         Uniswap.abi,
+        Token.abi,
         web3,
         uniswapMock.address,
         3600,
         3600,
         () => mockTime,
         false,
-        6,
         12
       );
-      // Here we specify that the balancer pool is returning a 6 decimal precision price, and we want prices in
-      // 4 decimals. This should scale down prices by 10e2.
+
+      // Here we specify that we want to return prices from the pricefeed in
+      // 4 decimals, so this should scale down prices derived from the Sync events by 10e2, from 6
+      // decimals to 4 decimals.
       scaleDownPriceFeed = new UniswapPriceFeed(
         dummyLogger,
         Uniswap.abi,
+        Token.abi,
         web3,
         uniswapMock.address,
         3600,
         3600,
         () => mockTime,
         false,
-        6,
         4
       );
+
+      // Update for pricefeed to read UniswapMock tokens.
+      await uniswapPriceFeed.update();
     });
     it("Basic 2 price TWAP", async function() {
-      // Update the prices with a small amount of time between.
-      const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
+      // Update the prices with a small amount of time between
+      const result1 = await uniswapMock.setPrice(convertToken0("1"), convertToken1("1"));
       await delay(1);
-      const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));
+      const result2 = await uniswapMock.setPrice(convertToken0("2"), convertToken1("1"));
 
       const getBlockTime = async result => {
         return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
@@ -353,8 +385,9 @@ contract("UniswapPriceFeed.js", function(accounts) {
       await scaleDownPriceFeed.update();
 
       const totalTime = mockTime - time1;
-      const weightedPrice1 = toBN(toWei("1")).muln(time2 - time1);
-      const weightedPrice2 = toBN(toWei("0.5")); // 0.5 * 1 second since the mockTime is one second past time2.
+      // Prices are returned in token1 precision since the UniswapPriceFeed is not inverted.
+      const weightedPrice1 = toBN(convertToken1("1").toString()).muln(time2 - time1);
+      const weightedPrice2 = toBN(convertToken1("0.5").toString()); // 0.5 * 1 second since the mockTime is one second past time2.
 
       // Compare the scaled TWAPs.
       assert.equal(
@@ -381,7 +414,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
       await mineTransactionsAtTime(
         web3,
-        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))],
+        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("100"))],
         currentTime - 7200,
         owner
       );
@@ -389,7 +422,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       // At an hour and a half ago, set the price to 90.
       await mineTransactionsAtTime(
         web3,
-        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))],
+        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("90"))],
         currentTime - 5400,
         owner
       );
@@ -397,7 +430,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       // At an hour ago, set the price to 80.
       await mineTransactionsAtTime(
         web3,
-        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))],
+        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("80"))],
         currentTime - 3600,
         owner
       );
@@ -405,7 +438,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       // At half an hour ago, set the price to 70.
       await mineTransactionsAtTime(
         web3,
-        [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))],
+        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("70"))],
         currentTime - 1800,
         owner
       );
@@ -418,13 +451,13 @@ contract("UniswapPriceFeed.js", function(accounts) {
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
       assert.equal(
         (await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
-        toBN(toWei("95"))
+        toBN(convertToken1("95").toString())
           .muln(10 ** 6)
           .toString()
       );
       assert.equal(
         (await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
-        toBN(toWei("95"))
+        toBN(convertToken1("95").toString())
           .divn(10 ** 2)
           .toString()
       );

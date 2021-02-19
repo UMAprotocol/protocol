@@ -15,7 +15,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -54,7 +53,6 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
@@ -139,19 +137,11 @@ contract("index.js", function(accounts) {
         await syntheticToken.addMinter(financialContract.address);
         await syntheticToken.addBurner(financialContract.address);
 
-        uniswap = await UniswapMock.new();
-
         defaultPriceFeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function() {
