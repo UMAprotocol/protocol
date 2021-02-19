@@ -26,6 +26,8 @@ const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
+const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
+const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
 const winston = require("winston");
@@ -54,6 +56,9 @@ contract("CreatePriceFeed.js", function(accounts) {
   const twapLength = 180;
   const uniswapAddress = toChecksumAddress(randomHex(20));
   const balancerAddress = toChecksumAddress(randomHex(20));
+  const symbol = "test-symbol";
+  const quoteCurrency = "test-quoteCurrency";
+  const contractAddress = "test-address";
 
   before(async function() {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -1000,5 +1005,98 @@ contract("CreatePriceFeed.js", function(accounts) {
     }
 
     assert.isTrue(didThrow);
+  });
+
+  it("Valid CoinMarketCap config", async function() {
+    const config = {
+      type: "coinmarketcap",
+      apiKey,
+      symbol,
+      quoteCurrency,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    const validCoinMarketCapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validCoinMarketCapFeed instanceof CoinMarketCapPriceFeed);
+    assert.equal(validCoinMarketCapFeed.apiKey, apiKey);
+    assert.equal(validCoinMarketCapFeed.symbol, symbol);
+    assert.equal(validCoinMarketCapFeed.quoteCurrency, quoteCurrency);
+    assert.equal(validCoinMarketCapFeed.lookback, lookback);
+    assert.equal(validCoinMarketCapFeed.getTime(), getTime());
+    assert.equal(validCoinMarketCapFeed.invertPrice, undefined);
+  });
+
+  it("Invalid CoinMarketCap config", async function() {
+    const validConfig = {
+      type: "coinmarketcap",
+      apiKey,
+      symbol,
+      quoteCurrency,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, symbol: undefined }), null);
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
+    );
+  });
+
+  it("Valid CoinGecko config", async function() {
+    const config = {
+      type: "coingecko",
+      contractAddress,
+      quoteCurrency,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    const validCoinGeckoFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validCoinGeckoFeed instanceof CoinGeckoPriceFeed);
+    assert.equal(validCoinGeckoFeed.contractAddress, contractAddress);
+    assert.equal(validCoinGeckoFeed.quoteCurrency, quoteCurrency);
+    assert.equal(validCoinGeckoFeed.lookback, lookback);
+    assert.equal(validCoinGeckoFeed.getTime(), getTime());
+    assert.equal(validCoinGeckoFeed.invertPrice, undefined);
+  });
+
+  it("Invalid CoinGecko config", async function() {
+    const validConfig = {
+      type: "coingecko",
+      contractAddress,
+      quoteCurrency,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, contractAddress: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
+    );
   });
 });

@@ -18,10 +18,19 @@ const { getWeb3 } = require("@uma/common");
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
- * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the optimistic oracle proposer.
+ * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
+ * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @return None or throws an Error.
  */
-async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout, optimisticOracleProposerConfig }) {
+async function run({
+  logger,
+  web3,
+  pollingDelay,
+  errorRetries,
+  errorRetriesTimeout,
+  commonPriceFeedConfig,
+  optimisticOracleProposerConfig
+}) {
   try {
     const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
@@ -35,6 +44,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
+      commonPriceFeedConfig,
       optimisticOracleProposerConfig
     });
 
@@ -52,17 +62,14 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     // Construct default price feed config passed to all pricefeeds constructed by the proposer.
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
-    // so a new pricefeed is constructed for each identifier. This `defaultPriceFeedConfig` contains
+    // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
-    const defaultPriceFeedConfig = {
-      lookback: 7200 // Should we pass in this object and/or its properties as input into the `run()` method?
-    };
     const optimisticOracleProposer = new OptimisticOracleProposer({
       logger,
       optimisticOracleClient,
       gasEstimator,
       account: accounts[0],
-      defaultPriceFeedConfig,
+      commonPriceFeedConfig,
       optimisticOracleProposerConfig
     });
 
@@ -122,8 +129,15 @@ async function Poll(callback) {
       errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
       // Default to 10 seconds in between error re-tries.
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
+      // Common price feed configuration passed along to all those constructed by proposer.
+      commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
+        ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)
+        : { lookback: 7200 },
       // If there is an optimistic oracle config, add it. Else, set to null. Example config:
       // {
+      //   "disputePriceErrorPercent":0.05 -> Proposal prices that do not equal the dispute price
+      //                                      within this error % will be disputed.
+      //                                      e.g. 0.05 implies 5% margin of error.
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
