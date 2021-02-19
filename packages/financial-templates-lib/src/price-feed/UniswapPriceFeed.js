@@ -91,7 +91,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   async update() {
     // Read token0 and token1 precision from Uniswap contract if not already cached:
-    if (!this.token0Precision || !this.token1Precision) {
+    if (!this.token0Precision || !this.token1Precision || !this.convertToPriceFeedDecimals) {
       const [token0Address, token1Address] = await Promise.all([
         this.uniswap.methods.token0().call(),
         this.uniswap.methods.token1().call()
