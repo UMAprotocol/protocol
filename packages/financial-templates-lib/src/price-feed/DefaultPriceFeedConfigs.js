@@ -376,6 +376,11 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
   },
+  DEFI_PULSE_TOTAL_TVL: {
+    type: "defipulsetotal",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600
+  },
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",

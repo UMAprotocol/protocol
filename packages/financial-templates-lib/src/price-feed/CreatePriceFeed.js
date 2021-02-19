@@ -2,6 +2,7 @@ const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
+const { DefiPulseTotalPriceFeed } = require("./DefiPulseTotalPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
@@ -96,6 +97,29 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       getTime,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals // This defaults to 18 unless supplied by user
+    );
+  } else if (config.type === "defipulsetvl") {
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating DefiPulseTotalPriceFeed",
+      config
+    });
+
+    return new DefiPulseTotalPriceFeed(
+      logger,
+      web3,
+      config.apiKey,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.priceFeedDecimals
     );
   } else if (config.type === "medianizer") {
     const requiredFields = ["medianizedFeeds"];
