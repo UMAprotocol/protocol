@@ -18,7 +18,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "echo \"No tests configured\"",
+    "test": "hardhat test ./test/*",
     "build": "tsc"
   },
   "bugs": {

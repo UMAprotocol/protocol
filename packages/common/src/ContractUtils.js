@@ -38,9 +38,9 @@ const runTransaction = async ({ transaction, config }) => {
   // First try to simulate transaction and also extract return value if its
   // a state-modifying transaction. If the function is state modifying, then successfully
   // sending it will return the transaction receipt, not the return value, so we grab it here.
-  let returnValue;
+  let returnValue, estimatedGas;
   try {
-    [returnValue] = await Promise.all([transaction.call(config)]);
+    [returnValue, estimatedGas] = await Promise.all([transaction.call(config), transaction.estimateGas(config)]);
   } catch (error) {
     error.type = "call";
     throw error;
@@ -49,7 +49,7 @@ const runTransaction = async ({ transaction, config }) => {
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {
-    receipt = await transaction.send(config);
+    receipt = await transaction.send({ ...config, gas: estimatedGas });
     return {
       receipt,
       returnValue
