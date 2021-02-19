@@ -55,7 +55,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   getCurrentPrice() {
-    return this.currentTwap && this.convertBaseDecimalsToPriceFeedDecimals(this.currentTwap);
+    return this.currentTwap && this.convertToPriceFeedDecimals(this.currentTwap);
   }
 
   async getHistoricalPrice(time) {
@@ -66,7 +66,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
     const historicalPrice = this._computeTwap(this.events, time - this.twapLength, time);
     if (historicalPrice) {
-      return this.convertBaseDecimalsToPriceFeedDecimals(historicalPrice);
+      return this.convertToPriceFeedDecimals(historicalPrice);
     } else {
       throw new Error(`${this.uuid} missing historical price @ time ${time}`);
     }
@@ -82,7 +82,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
   getLastBlockPrice() {
-    return this.lastBlockPrice && this.convertBaseDecimalsToPriceFeedDecimals(this.lastBlockPrice);
+    return this.lastBlockPrice && this.convertToPriceFeedDecimals(this.lastBlockPrice);
   }
 
   getPriceFeedDecimals() {
@@ -91,7 +91,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   async update() {
     // Read token0 and token1 precision from Uniswap contract if not already cached:
-    if (!this.quoteCurrencyDecimals || !this.convertBaseDecimalsToPriceFeedDecimals) {
+    if (!this.token0Precision || !this.token1Precision) {
       const [token0Address, token1Address] = await Promise.all([
         this.uniswap.methods.token0().call(),
         this.uniswap.methods.token1().call()
@@ -102,17 +102,14 @@ class UniswapPriceFeed extends PriceFeedInterface {
         this.token0.methods.decimals().call(),
         this.token1.methods.decimals().call()
       ]);
-      // The base currency of the Uniswap pool pair, which is `token1` unless
-      // `invertPrice == True` is the precision that the internal method `_getPriceFromSyncEvent()`
-      // returns prices in, and `convertBaseDecimalsToPriceFeedDecimals` will convert from this precision
-      // to the user's desired `priceFeedDecimals`.
-      this.baseCurrencyDecimals = Number(this.invertPrice ? token0Precision : token1Precision);
-      this.quoteCurrencyDecimals = Number(this.invertPrice ? token1Precision : token0Precision);
-      // Now that we've determined the base precision, create a function that converts
-      // _bn precision from baseCurrencyDecimals to desired decimals by scaling up or down based
-      // on the relationship between pool precision and the desired decimals.
-      this.convertBaseDecimalsToPriceFeedDecimals = ConvertDecimals(
-        this.baseCurrencyDecimals,
+      this.token0Precision = token0Precision;
+      this.token1Precision = token1Precision;
+      // `_getPriceFromSyncEvent()` returns prices in the same precision as `token1` unless price is inverted.
+      // Therefore, `convertToPriceFeedDecimals` will convert from `token1Precision`
+      // to the user's desired `priceFeedDecimals`, unless inverted then it will convert from
+      // `token0Precision` to `priceFeedDecimals`.
+      this.convertToPriceFeedDecimals = ConvertDecimals(
+        Number(this.invertPrice ? this.token0Precision : this.token1Precision),
         this.priceFeedDecimals,
         this.web3
       );
@@ -201,9 +198,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _getPriceFromSyncEvent(event) {
-    // Fixed point adjustment should use same precision as quote currency, which
-    // is token0 unless inverted.
-    const fixedPointAdjustment = this.toBN(parseFixed("1", this.quoteCurrencyDecimals).toString());
+    // Fixed point adjustment should use same precision as token0, unless price is inverted.
+    const fixedPointAdjustment = this.toBN(
+      parseFixed("1", this.invertPrice ? this.token1Precision : this.token0Precision).toString()
+    );
 
     const reserve0 = this.toBN(event.returnValues.reserve0);
     const reserve1 = this.toBN(event.returnValues.reserve1);
