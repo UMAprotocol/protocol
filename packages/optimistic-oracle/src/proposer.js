@@ -221,13 +221,13 @@ class OptimisticOracleProposer {
         expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp
       };
       this.logger.info({
-        at: "OptimisticOracleProposer#sendDisputes",
+        at: "OptimisticOracleProposer#sendProposals",
         message: "Proposed price!💍",
         priceRequest,
         proposalBond: returnValue,
         proposalPrice,
         txnConfig,
-        disputeResult: logResult
+        proposalResult: logResult
       });
     }
   }
