@@ -873,6 +873,56 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.isNotNull(expressionPriceFeed);
   });
 
+  it("VaultPriceFeed: valid config", async function() {
+    const config = {
+      type: "vault",
+      address: web3.utils.randomHex(20)
+    };
+
+    const vaultPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(vaultPriceFeed);
+  });
+
+  it("VaultPriceFeed: invalid config", async function() {
+    const config = {
+      type: "vault"
+    };
+
+    const vaultPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(vaultPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
+  });
+
+  it("VaultPriceFeed: shared BlockFinder", async function() {
+    const config = {
+      type: "vault",
+      address: web3.utils.randomHex(20)
+    };
+
+    const vaultPriceFeed1 = await createPriceFeed(logger, web3, networker, getTime, config);
+    const vaultPriceFeed2 = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.strictEqual(vaultPriceFeed2.blockFinder, vaultPriceFeed1.blockFinder);
+  });
+
+  it("VaultPriceFeed: optional parameters", async function() {
+    const address = web3.utils.randomHex(20);
+    const config = {
+      type: "vault",
+      address,
+      priceFeedDecimals: 6,
+      minTimeBetweenUpdates: 100
+    };
+
+    const vaultPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(vaultPriceFeed.minTimeBetweenUpdates, 100);
+    assert.equal(vaultPriceFeed.priceFeedDecimals, 6);
+    assert.equal(vaultPriceFeed.vault.options.address, web3.utils.toChecksumAddress(address));
+  });
+
   it("Default reference price feed", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });

@@ -178,7 +178,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
   assert(requestBlock, "requestBlock function must be provided");
   // Grabs the most recent block and caches it.
   async function getLatestBlock() {
-    const block = await requestBlock();
+    const block = await requestBlock("latest");
     const index = lodash.sortedIndexBy(blocks, block, "number");
     if (blocks[index]?.number !== block.number) blocks.splice(index, 0, block);
     return blocks[index];
