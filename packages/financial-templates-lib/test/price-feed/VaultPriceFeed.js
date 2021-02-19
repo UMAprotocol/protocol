@@ -113,29 +113,6 @@ contract("VaultPriceFeed.js", function(accounts) {
     assert.equal(vaultPriceFeed.getLastUpdateTime(), mockTime); // Update time should have no incremented.
   });
 
-  it("Update Frequency", async function() {
-    await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
-    await vaultPriceFeed.update();
-    assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("50", priceFeedDecimals).toString());
-    const initialTime = mockTime;
-    assert.equal(vaultPriceFeed.getLastUpdateTime(), initialTime);
-
-    // Increment time to just under the 1 minute default threshold and push a new price.
-    mockTime += 59;
-    await vaultMock.setPricePerFullShare(parseFixed("10", tokenDecimals));
-    await vaultPriceFeed.update();
-    assert.equal(vaultPriceFeed.getLastUpdateTime(), initialTime); // No change in update time.
-
-    // Price should not have changed.
-    assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("50", priceFeedDecimals).toString());
-
-    // An increment of one more secont + update should trigger the feed to pull in the new price.
-    mockTime += 1;
-    await vaultPriceFeed.update();
-    assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("10", priceFeedDecimals).toString());
-    assert.equal(vaultPriceFeed.getLastUpdateTime(), mockTime); // Update time should have no incremented.
-  });
-
   it("PriceFeedDecimals", async function() {
     assert.equal(vaultPriceFeed.getPriceFeedDecimals(), priceFeedDecimals);
   });

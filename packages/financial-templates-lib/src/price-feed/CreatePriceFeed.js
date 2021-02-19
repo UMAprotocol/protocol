@@ -16,6 +16,7 @@ const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract, getAbi } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
 const { VaultPriceFeed } = require("./VaultPriceFeed");
+const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
@@ -327,9 +328,30 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       ...config,
       logger,
       web3,
+      getTime,
       vaultAbi: getAbi("VaultInterface", "latest"),
       erc20Abi: getAbi("IERC20Standard", "latest"),
       vaultAddress: config.address,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "lp") {
+    const requiredFields = ["poolAddress", "tokenAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating LPPriceFeed",
+      config
+    });
+
+    return new LPPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      erc20Abi: getAbi("IERC20Standard", "latest"),
       blockFinder: getSharedBlockFinder(web3)
     });
   }
