@@ -42,7 +42,7 @@ const runTransaction = async ({ transaction, config }) => {
   try {
     [returnValue] = await Promise.all([transaction.call(config)]);
   } catch (error) {
-    error.type === "call";
+    error.type = "call";
     throw error;
   }
 
@@ -55,7 +55,7 @@ const runTransaction = async ({ transaction, config }) => {
       returnValue
     };
   } catch (error) {
-    error.type === "send";
+    error.type = "send";
     throw error;
   }
 };
