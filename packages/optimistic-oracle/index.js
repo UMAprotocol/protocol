@@ -19,7 +19,7 @@ const { getWeb3 } = require("@uma/common");
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
- * @param {Object} [ooProposerConfig] Configuration to construct the OptimisticOracle proposer.
+ * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @return None or throws an Error.
  */
 async function run({
@@ -29,7 +29,7 @@ async function run({
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
-  ooProposerConfig
+  optimisticOracleProposerConfig
 }) {
   try {
     const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
@@ -39,13 +39,13 @@ async function run({
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
-      message: "OO proposer started 🌊",
+      message: "OptimisticOracle proposer started 🌊",
       optimisticOracleAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
-      ooProposerConfig
+      optimisticOracleProposerConfig
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -64,23 +64,23 @@ async function run({
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
-    const ooProposer = new OptimisticOracleProposer({
+    const optimisticOracleProposer = new OptimisticOracleProposer({
       logger,
       optimisticOracleClient,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
-      ooProposerConfig
+      optimisticOracleProposerConfig
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async () => {
-          await ooProposer.update();
-          await ooProposer.sendProposals();
-          // await ooProposer.sendDisputes();
-          // await ooProposer.settleRequests();
+          await optimisticOracleProposer.update();
+          await optimisticOracleProposer.sendProposals();
+          await optimisticOracleProposer.sendDisputes();
+          await optimisticOracleProposer.settleRequests();
           return;
         },
         {
@@ -140,7 +140,9 @@ async function Poll(callback) {
       //                                      e.g. 0.05 implies 5% margin of error.
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
-      ooProposerConfig: process.env.OOPROPOSER_CONFIG ? JSON.parse(process.env.OOPROPOSER_CONFIG) : {}
+      optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
+        ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
+        : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

@@ -72,7 +72,7 @@ contract("index.js", function() {
 
     // The first log should indicate that the OO-Proposer runner started successfully
     // and auto detected the OO's deployed address.
-    assert.isTrue(spyLogIncludes(spy, 0, "OO proposer started"));
+    assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
