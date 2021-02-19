@@ -27,6 +27,61 @@ const revertWrapper = result => {
   return result;
 };
 
+/**
+ * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown,
+ * return the error and add a flag denoting whether it was sent on the .call() or the .send().
+ * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
+ * @param {*String} senderAccount Sender of transaction. Injected to `transactionConfig`.
+ * @param {*Object} transactionConfig { gasPrice } passed to web3 transaction.
+ * @param {*Number} transactionGasLimit Maximum gas limit to set for sending transaction.
+ * @param {*Number} gasLimitBuffer Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+ * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
+ */
+const runTransaction = async (
+  transaction,
+  senderAccount,
+  transactionConfig,
+  transactionGasLimit,
+  gasLimitBuffer = 1.25
+) => {
+  // First try to simulate transaction and also extract return value if its
+  // a state-modifying transaction. If the function is state modifying, then successfully
+  // sending it will return the transaction receipt, not the return value, so we grab it here.
+  let returnValue, gasEstimation;
+  try {
+    [returnValue, gasEstimation] = await Promise.all([
+      transaction.call({ from: senderAccount }),
+      transaction.estimateGas({ from: senderAccount })
+    ]);
+  } catch (error) {
+    return {
+      error,
+      type: "call"
+    };
+  }
+
+  // .call() succeeded, now broadcast transaction.
+  transactionConfig = {
+    ...transactionConfig,
+    from: senderAccount,
+    gas: Math.min(Math.floor(gasEstimation * gasLimitBuffer), transactionGasLimit)
+  };
+  let receipt;
+  try {
+    receipt = await transaction.send(transactionConfig);
+    return {
+      receipt,
+      returnValue
+    };
+  } catch (error) {
+    return {
+      error,
+      type: "send"
+    };
+  }
+};
+
 module.exports = {
-  revertWrapper
+  revertWrapper,
+  runTransaction
 };

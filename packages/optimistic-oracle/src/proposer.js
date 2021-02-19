@@ -1,5 +1,10 @@
 const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const {
+  getPrecisionForIdentifier,
+  createObjectFromDefaultProps,
+  MAX_UINT_VAL,
+  runTransaction
+} = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class OptimisticOracleProposer {
@@ -28,9 +33,6 @@ class OptimisticOracleProposer {
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
-
-    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
-    this.GAS_LIMIT_BUFFER = 1.25;
 
     this.optimisticOracleContract = this.optimisticOracleClient.oracle;
 
@@ -157,7 +159,7 @@ class OptimisticOracleProposer {
       return;
     }
 
-    // Create the transaction.
+    // Get successful transaction receipt and return value or error.
     const proposal = this.optimisticOracleContract.methods.proposePrice(
       priceRequest.requester,
       this.utf8ToHex(priceRequest.identifier),
@@ -165,72 +167,69 @@ class OptimisticOracleProposer {
       priceRequest.ancillaryData,
       proposalPrice
     );
-
-    // Simple version of inventory management: simulate the transaction and assume that if it fails,
-    // the caller didn't have enough collateral.
-    let proposalBond, gasEstimation;
-    try {
-      [proposalBond, gasEstimation] = await Promise.all([
-        proposal.call({ from: this.account }),
-        proposal.estimateGas({ from: this.account })
-      ]);
-    } catch (error) {
-      this.logger.error({
-        at: "OptimisticOracleProposer#sendProposals",
-        message: "Cannot propose price: not enough collateral (or large enough approval)✋",
-        proposer: this.account,
-        priceRequest,
-        error
-      });
-      return;
-    }
     const txnConfig = {
-      from: this.account,
-      gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
       gasPrice: this.gasEstimator.getCurrentFastPrice()
     };
-
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Proposing new price",
       priceRequest,
-      proposalBond,
       proposalPrice,
       txnConfig
     });
-
-    // Send the transaction or report failure.
-    let receipt;
-    try {
-      receipt = await proposal.send(txnConfig);
-    } catch (error) {
-      this.logger.error({
-        at: "OptimisticOracleProposer#sendProposals",
-        message: "Failed to propose price🚨",
-        priceRequest,
-        error
-      });
-      return;
-    }
-    const logResult = {
-      tx: receipt.transactionHash,
-      requester: receipt.events.ProposePrice.returnValues.requester,
-      proposer: receipt.events.ProposePrice.returnValues.proposer,
-      identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
-      ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData,
-      timestamp: receipt.events.ProposePrice.returnValues.timestamp,
-      proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
-      expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp
-    };
-    this.logger.info({
-      at: "OptimisticOracleProposer#sendProposals",
-      message: "Proposed price!💍",
-      priceRequest,
-      proposalBond,
-      proposalPrice,
+    const transactionResult = await runTransaction(
+      proposal,
+      this.account,
       txnConfig,
-      proposalResult: logResult
-    });
+      this.GAS_LIMIT_BUFFER,
+      this.txnGasLimit
+    );
+
+    // Handle error:
+    if (transactionResult.error) {
+      if (transactionResult.error.type === "call") {
+        this.logger.error({
+          at: "OptimisticOracleProposer#sendProposals",
+          message: "Cannot propose price: not enough collateral (or large enough approval)✋",
+          priceRequest,
+          error: transactionResult.error
+        });
+        return;
+      } else {
+        this.logger.error({
+          at: "OptimisticOracleProposer#sendProposals",
+          message: "Failed to propose price🚨",
+          priceRequest,
+          error: transactionResult.error
+        });
+        return;
+      }
+    }
+    // If no error, transaction must have succeeded
+    else {
+      let receipt = transactionResult.receipt;
+      let returnValue = transactionResult.returnValue;
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        requester: receipt.events.ProposePrice.returnValues.requester,
+        proposer: receipt.events.ProposePrice.returnValues.proposer,
+        identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
+        ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData,
+        timestamp: receipt.events.ProposePrice.returnValues.timestamp,
+        proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
+        expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp
+      };
+      this.logger.info({
+        at: "OptimisticOracleProposer#sendProposals",
+        message: "Proposed price!💍",
+        priceRequest,
+        proposalBond: returnValue,
+        proposalPrice,
+        txnConfig,
+        proposalResult: logResult
+      });
+    }
   }
   // Construct dispute transaction and send or return early if an error is encountered.
   async _sendDispute(priceRequest) {
@@ -286,159 +285,153 @@ class OptimisticOracleProposer {
       this.toBN(proposalPrice.toString())
     );
     if (isPriceDisputable) {
-      // Create the transaction.
+      // Get successful transaction receipt and return value or error.
       const dispute = this.optimisticOracleContract.methods.disputePrice(
         priceRequest.requester,
         this.utf8ToHex(priceRequest.identifier),
         priceRequest.timestamp,
         priceRequest.ancillaryData
       );
-
-      // Simple version of inventory management: simulate the transaction and assume that if it fails,
-      // the caller didn't have enough collateral.
-      let disputeBond, gasEstimation;
-      try {
-        [disputeBond, gasEstimation] = await Promise.all([
-          dispute.call({ from: this.account }),
-          dispute.estimateGas({ from: this.account })
-        ]);
-      } catch (error) {
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendDisputes",
-          message: "Cannot dispute price: not enough collateral (or large enough approval)✋",
-          proposer: this.account,
-          disputeBond,
-          priceRequest,
-          error
-        });
-        return;
-      }
       const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
         priceRequest,
         proposalPrice,
-        disputeBond,
         disputePrice,
         allowedError: this.disputePriceErrorPercent,
         txnConfig
       });
-
-      // Send the transaction or report failure.
-      let receipt;
-      try {
-        receipt = await dispute.send(txnConfig);
-      } catch (error) {
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendDisputes",
-          message: "Failed to dispute proposal🚨",
-          priceRequest,
-          error
-        });
-        return;
-      }
-      const logResult = {
-        tx: receipt.transactionHash,
-        requester: receipt.events.DisputePrice.returnValues.requester,
-        proposer: receipt.events.DisputePrice.returnValues.proposer,
-        disputer: receipt.events.DisputePrice.returnValues.disputer,
-        identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
-        ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData,
-        timestamp: receipt.events.DisputePrice.returnValues.timestamp,
-        proposedPrice: receipt.events.DisputePrice.returnValues.proposedPrice
-      };
-      this.logger.info({
-        at: "OptimisticOracleProposer#sendDisputes",
-        message: "Disputed proposal!⛑",
-        priceRequest,
-        proposalPrice,
-        disputePrice,
-        disputeBond,
-        allowedError: this.disputePriceErrorPercent,
+      const transactionResult = await runTransaction(
+        dispute,
+        this.account,
         txnConfig,
-        disputeResult: logResult
-      });
+        this.GAS_LIMIT_BUFFER,
+        this.txnGasLimit
+      );
+
+      // Handle error:
+      if (transactionResult.error) {
+        if (transactionResult.error.type === "call") {
+          this.logger.error({
+            at: "OptimisticOracleProposer#sendDisputes",
+            message: "Cannot dispute price: not enough collateral (or large enough approval)✋",
+            priceRequest,
+            error: transactionResult.error
+          });
+          return;
+        } else {
+          this.logger.error({
+            at: "OptimisticOracleProposer#sendDisputes",
+            message: "Failed to dispute proposal🚨",
+            priceRequest,
+            error: transactionResult.error
+          });
+          return;
+        }
+      }
+      // If no error, transaction must have succeeded
+      else {
+        let receipt = transactionResult.receipt;
+        let returnValue = transactionResult.returnValue;
+
+        const logResult = {
+          tx: receipt.transactionHash,
+          requester: receipt.events.DisputePrice.returnValues.requester,
+          proposer: receipt.events.DisputePrice.returnValues.proposer,
+          disputer: receipt.events.DisputePrice.returnValues.disputer,
+          identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
+          ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData,
+          timestamp: receipt.events.DisputePrice.returnValues.timestamp,
+          proposedPrice: receipt.events.DisputePrice.returnValues.proposedPrice
+        };
+        this.logger.info({
+          at: "OptimisticOracleProposer#sendDisputes",
+          message: "Disputed proposal!⛑",
+          priceRequest,
+          proposalPrice,
+          disputePrice,
+          disputeBond: returnValue,
+          allowedError: this.disputePriceErrorPercent,
+          txnConfig,
+          disputeResult: logResult
+        });
+      }
     }
   }
   // Construct settlement transaction and send or return early if an error is encountered.
   async _settleRequest(priceRequest) {
-    // Create the transaction.
+    // Get successful transaction receipt and return value or error.
     const settle = this.optimisticOracleContract.methods.settle(
       priceRequest.requester,
       this.utf8ToHex(priceRequest.identifier),
       priceRequest.timestamp,
       priceRequest.ancillaryData
     );
-
-    // Simple version of inventory management: simulate the transaction and assume that if it fails,
-    // the caller didn't have enough collateral.
-    let payout, gasEstimation;
-    try {
-      [payout, gasEstimation] = await Promise.all([
-        settle.call({ from: this.account }),
-        settle.estimateGas({ from: this.account })
-      ]);
-    } catch (error) {
-      this.logger.error({
-        at: "OptimisticOracleProposer#settleRequests",
-        message: "Cannot settle for unknown reason☹️",
-        priceRequest,
-        error
-      });
-      return;
-    }
     const txnConfig = {
-      from: this.account,
-      gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
       gasPrice: this.gasEstimator.getCurrentFastPrice()
     };
-
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
       priceRequest,
-      payout,
       txnConfig
     });
-
-    // Send the transaction or report failure.
-    let receipt;
-    try {
-      receipt = await settle.send(txnConfig);
-    } catch (error) {
-      this.logger.error({
-        at: "OptimisticOracleProposer#settleRequests",
-        message: "Failed to settle proposal or dispute🚨",
-        priceRequest,
-        error
-      });
-      return;
-    }
-    const logResult = {
-      tx: receipt.transactionHash,
-      requester: receipt.events.Settle.returnValues.requester,
-      proposer: receipt.events.Settle.returnValues.proposer,
-      disputer: receipt.events.Settle.returnValues.disputer,
-      identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
-      ancillaryData: receipt.events.Settle.returnValues.ancillaryData,
-      timestamp: receipt.events.Settle.returnValues.timestamp,
-      price: receipt.events.Settle.returnValues.price,
-      payout: receipt.events.Settle.returnValues.payout
-    };
-    this.logger.info({
-      at: "OptimisticOracleProposer#settleRequests",
-      message: "Settled proposal or dispute!⛑",
-      priceRequest,
-      payout,
+    const transactionResult = await runTransaction(
+      settle,
+      this.account,
       txnConfig,
-      settleResult: logResult
-    });
+      this.GAS_LIMIT_BUFFER,
+      this.txnGasLimit
+    );
+
+    // Handle error:
+    if (transactionResult.error) {
+      if (transactionResult.error.type === "call") {
+        this.logger.error({
+          at: "OptimisticOracleProposer#settleRequests",
+          message: "Cannot settle for unknown reason☹️",
+          priceRequest,
+          error: transactionResult.error
+        });
+        return;
+      } else {
+        this.logger.error({
+          at: "OptimisticOracleProposer#settleRequests",
+          message: "Failed to settle proposal or dispute🚨",
+          priceRequest,
+          error: transactionResult.error
+        });
+        return;
+      }
+    }
+    // If no error, transaction must have succeeded
+    else {
+      let receipt = transactionResult.receipt;
+      let returnValue = transactionResult.returnValue;
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        requester: receipt.events.Settle.returnValues.requester,
+        proposer: receipt.events.Settle.returnValues.proposer,
+        disputer: receipt.events.Settle.returnValues.disputer,
+        identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
+        ancillaryData: receipt.events.Settle.returnValues.ancillaryData,
+        timestamp: receipt.events.Settle.returnValues.timestamp,
+        price: receipt.events.Settle.returnValues.price,
+        payout: receipt.events.Settle.returnValues.payout
+      };
+      this.logger.info({
+        at: "OptimisticOracleProposer#settleRequests",
+        message: "Settled proposal or dispute!⛑",
+        priceRequest,
+        payout: returnValue,
+        txnConfig,
+        settleResult: logResult
+      });
+    }
   }
   // Sets allowances for all collateral currencies used in unproposed price requests
   async _setAllowances() {

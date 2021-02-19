@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex, soliditySha3 } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, soliditySha3, toBN } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -238,6 +238,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
+      assert.equal(spy.getCall(-1).lastArg.proposalBond, totalDefaultBond);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -340,6 +341,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Disputed proposal"));
+      assert.equal(spy.getCall(-1).lastArg.disputeBond, totalDefaultBond);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -412,6 +414,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       }
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      assert.equal(spy.getCall(-1).lastArg.payout, totalDefaultBond);
       assert.equal(spy.callCount, spyCountPreSettle + (identifiersToTest.length - 1));
 
       // Finally resolve the dispute and check that the bot settles the dispute.
@@ -425,6 +428,8 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[0], ancillaryDataAddresses[0]);
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      // Note: payout is equal to original default bond + 1/2 of loser's dispute bond (not including loser's final fee)
+      assert.equal(spy.getCall(-1).lastArg.payout, toBN(totalDefaultBond).add(toBN(finalFee).divn(2)));
       assert.equal(spy.callCount, spyCountPreSettle + 1);
     });
 
