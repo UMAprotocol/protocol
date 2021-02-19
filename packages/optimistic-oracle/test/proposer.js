@@ -239,6 +239,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
       assert.equal(spy.getCall(-1).lastArg.proposalBond, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -342,6 +343,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Disputed proposal"));
       assert.equal(spy.getCall(-1).lastArg.disputeBond, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.disputeResult.tx);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -415,6 +417,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
       assert.equal(spy.getCall(-1).lastArg.payout, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
       assert.equal(spy.callCount, spyCountPreSettle + (identifiersToTest.length - 1));
 
       // Finally resolve the dispute and check that the bot settles the dispute.
@@ -430,6 +433,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
       // Note: payout is equal to original default bond + 1/2 of loser's dispute bond (not including loser's final fee)
       assert.equal(spy.getCall(-1).lastArg.payout, toBN(totalDefaultBond).add(toBN(finalFee).divn(2)));
+      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
       assert.equal(spy.callCount, spyCountPreSettle + 1);
     });
 
