@@ -26,6 +26,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.priceFeedDecimals = priceFeedDecimals;
+    this.uuid = "DefiPulseTVL";
 
     this.toWei = this.web3.utils.toWei;
 
@@ -38,7 +39,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
 
   async getHistoricalPrice(time) {
     if (this.lastUpdateTime === undefined) {
-      throw new Error("undefined lastUpdateTime");
+      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     let closestTime = { timestamp: 0, tvlUSD: 0 };
@@ -57,7 +58,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     const historicalPrice = this.scaleResult(closestTime.tvlUSD);
 
     if (closestTime.timestamp === 0) {
-      throw new Error(`No cached time found for timestamp: ${time}`);
+      throw new Error(`${this.uuid}: No cached time found for timestamp: ${time}`);
     } else {
       return historicalPrice;
     }
