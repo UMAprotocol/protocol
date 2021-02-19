@@ -2,14 +2,20 @@
 pragma solidity ^0.6.0;
 
 import "../interfaces/VaultInterface.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Mock for yearn-style vaults for use in tests.
  */
-abstract contract VaultMock is VaultInterface {
+contract VaultMock is VaultInterface {
+    IERC20 public override token;
     uint256 private pricePerFullShare = 0;
 
-    function getPricePerFullShare() public view override returns (uint256) {
+    constructor(IERC20 _token) public {
+        token = _token;
+    }
+
+    function getPricePerFullShare() external view override returns (uint256) {
         return pricePerFullShare;
     }
 

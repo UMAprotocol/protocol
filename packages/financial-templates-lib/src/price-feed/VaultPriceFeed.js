@@ -4,18 +4,30 @@ const { ConvertDecimals } = require("@uma/common");
 class VaultPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new price feed object that tracks the share price of a yearn-style vault.
+   * @dev Note: this only supports badger Setts and Yearn v1 right now.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} vaultAbi Yearn Vault abi object to create a contract instance.
    * @param {Object} erc20Abi ERC20 abi object to create a contract instance.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} vaultAddress Ethereum address of the yearn-style vault to monitor.
    * @param {Function} getTime Returns the current time.
-   * @param {Integer} minTimeBetweenUpdates Minimum amount of time that must pass before update will actually run
+   * @param {Function} [blockFinder] Optionally pass in a shared blockFinder instance (to share the cache).
+   * @param {Integer} [minTimeBetweenUpdates] Minimum amount of time that must pass before update will actually run
    *                                        again.
-   * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in.
+   * @param {Integer} [priceFeedDecimals] Precision that the caller wants precision to be reported in.
    * @return None or throws an Error.
    */
-  constructor(logger, vaultAbi, erc20Abi, web3, vaultAddress, getTime, minTimeBetweenUpdates, priceFeedDecimals = 18) {
+  constructor({
+    logger,
+    vaultAbi,
+    erc20Abi,
+    web3,
+    vaultAddress,
+    getTime,
+    blockFinder,
+    minTimeBetweenUpdates = 60,
+    priceFeedDecimals = 18
+  }) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -26,15 +38,7 @@ class VaultPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.blockFinder = BlockFinder(web3.eth.getBlock);
-
-    // Helper functions from web3.
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-
-    // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
-    // on the relationship between pool precision and the desired decimals.
-    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
+    this.blockFinder = blockFinder || BlockFinder(web3.eth.getBlock);
   }
 
   getCurrentPrice() {
@@ -62,14 +66,14 @@ class VaultPriceFeed extends PriceFeedInterface {
   async update() {
     const currentTime = await this.getTime();
     if (this.lastUpdateTime === undefined || currentTime > this.lastUpdateTime + this.minTimeBetweenUpdates) {
-      this.price = this._getPrice();
+      this.price = await this._getPrice();
       this.lastUpdateTime = currentTime;
     }
   }
 
-  async _getPrice(blockNumber) {
+  async _getPrice(blockNumber = "latest") {
     const rawPrice = await this.vault.methods.getPricePerFullShare().call(undefined, blockNumber);
-    this.price = this._convertDecimals(rawPrice);
+    return await this._convertDecimals(rawPrice);
   }
 
   async _convertDecimals(value) {
@@ -79,12 +83,16 @@ class VaultPriceFeed extends PriceFeedInterface {
 
       let underlyingTokenDecimals;
       try {
-        underlyingTokenDecimals = (await underlyingToken.methods.decimals().call()).toNumber();
+        underlyingTokenDecimals = await underlyingToken.methods.decimals().call();
       } catch (err) {
         underlyingTokenDecimals = 18;
       }
 
-      this.cachedConvertDecimalsFn = ConvertDecimals(underlyingTokenDecimals, this.priceFeedDecimals, this.web3);
+      this.cachedConvertDecimalsFn = ConvertDecimals(
+        parseInt(underlyingTokenDecimals),
+        this.priceFeedDecimals,
+        this.web3
+      );
     }
     return this.cachedConvertDecimalsFn(value);
   }

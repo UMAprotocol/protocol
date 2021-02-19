@@ -12,8 +12,10 @@ const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
-const { getTruffleContract } = require("@uma/core");
+const { getTruffleContract, getAbi } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
+const { VaultPriceFeed } = require("./VaultPriceFeed");
+const { BlockFinder } = require("./utils");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
@@ -284,6 +286,27 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     });
 
     return await _createExpressionPriceFeed(config);
+  } else if (config.type === "vault") {
+    const requiredFields = ["address"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating VaultPriceFeed",
+      config
+    });
+
+    return new VaultPriceFeed({
+      ...config,
+      logger,
+      web3,
+      vaultAbi: getAbi("VaultInterface", "latest"),
+      erc20Abi: getAbi("IERC20Standard", "latest"),
+      vaultAddress: config.address,
+      blockFinder: getSharedBlockFinder(web3)
+    });
   }
 
   logger.error({
@@ -383,6 +406,15 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
     return await Promise.all(medianizerConfigs.map(config => _createMedianizerPriceFeed(config)));
   }
+}
+
+// Simple function to grab a singleton instance of the blockFinder to share the cache.
+function getSharedBlockFinder(web3) {
+  // Attach the blockFinder to this function.
+  if (!getSharedBlockFinder.blockFinder) {
+    getSharedBlockFinder.blockFinder = BlockFinder(web3.eth.getBlock);
+  }
+  return getSharedBlockFinder.blockFinder;
 }
 
 function isMissingField(config, requiredFields, logger) {
