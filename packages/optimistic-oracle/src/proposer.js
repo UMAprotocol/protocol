@@ -9,15 +9,15 @@ class OptimisticOracleProposer {
    * @param {Object} optimisticOracleClient Module used to query OO information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {Object} defaultPriceFeedConfig Default configuration to construct all price feed objects.
+   * @param {Object} commonPriceFeedConfig Default configuration to construct all price feed objects.
    * @param {Object} [ooProposerConfig] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor({ logger, optimisticOracleClient, gasEstimator, account, defaultPriceFeedConfig, ooProposerConfig }) {
+  constructor({ logger, optimisticOracleClient, gasEstimator, account, commonPriceFeedConfig, ooProposerConfig }) {
     this.logger = logger;
     this.account = account;
     this.optimisticOracleClient = optimisticOracleClient;
     this.web3 = this.optimisticOracleClient.web3;
-    this.defaultPriceFeedConfig = defaultPriceFeedConfig;
+    this.commonPriceFeedConfig = commonPriceFeedConfig;
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
@@ -47,6 +47,16 @@ class OptimisticOracleProposer {
         value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
         isValid: x => {
           return x >= 6000000 && x < 15000000;
+        }
+      },
+      disputePriceErrorPercent: {
+        // `disputePricePrecisionOfError`: Proposal prices that differ from the dispute price
+        //                                 more than this % error will be disputed. e.g. 0.05
+        //                                 implies 5% margin of error from the historical price
+        //                                 computed by the local pricefeed.
+        value: 0.05,
+        isValid: x => {
+          return x >= 0 && x < 1;
         }
       }
     };
@@ -214,11 +224,26 @@ class OptimisticOracleProposer {
         continue;
       }
 
-      // If proposal price is not equal to the dispute price, then prepare dispute
-      // TODO: Implement dispute buffer feature to only dispute if proposal and dispute price
-      // differ using some margin of error. For example, we could define a variable `proposalErrorPrecision`
-      // and set it to 5, to only send disputes if prices differ after rounding to 5 decimals of precision.
-      let isPriceDisputable = !this.toBN(disputePrice).eq(this.toBN(proposalPrice));
+      // Return true if `_baselinePrice` * (1 - error %) <= `_testPrice` <= `_baselinePrice` * (1 + error %)
+      // else false.
+      const _comparePricesWithErrorMargin = (_baselinePrice, _testPrice) => {
+        // Note: BN.js does not perform math on decimals, so we will convert the %'s to Wei and back.
+        const lowerMargin = _baselinePrice
+          .mul(this.toBN(this.toWei((1 - this.disputePriceErrorPercent).toString())))
+          .div(this.toBN(this.toWei("1")));
+        const upperMargin = _baselinePrice
+          .mul(this.toBN(this.toWei((1 + this.disputePriceErrorPercent).toString())))
+          .div(this.toBN(this.toWei("1")));
+        return _testPrice.gte(lowerMargin) && _testPrice.lte(upperMargin);
+      };
+
+      // If proposal price is not equal to the dispute price within margin of error, then
+      // prepare dispute. Basically we're assuming that the `disputePrice` is the baseline
+      // price.
+      let isPriceDisputable = !_comparePricesWithErrorMargin(
+        this.toBN(disputePrice.toString()),
+        this.toBN(proposalPrice.toString())
+      );
       if (isPriceDisputable) {
         // Create the transaction.
         const dispute = this.ooContract.methods.disputePrice(
@@ -257,8 +282,9 @@ class OptimisticOracleProposer {
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputing proposal",
           priceRequest,
-          proposalPrice,
-          disputePrice,
+          proposalPrice: proposalPrice.toString(),
+          disputePrice: disputePrice.toString(),
+          allowedError: this.disputePriceErrorPercent,
           txnConfig
         });
 
@@ -288,7 +314,9 @@ class OptimisticOracleProposer {
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputed proposal!⛑",
           priceRequest,
-          disputePrice,
+          proposalPrice: proposalPrice.toString(),
+          disputePrice: disputePrice.toString(),
+          allowedError: this.disputePriceErrorPercent,
           txnConfig,
           disputeResult: logResult
         });
@@ -357,16 +385,16 @@ class OptimisticOracleProposer {
     if (priceFeed) return priceFeed;
 
     // No cached pricefeed found for this identifier. Create a new one.
-    // First, construct the config for this identifier. We start with the `defaultPriceFeedConfig`
+    // First, construct the config for this identifier. We start with the `commonPriceFeedConfig`
     // properties and add custom properties for this specific identifier such as precision.
     let priceFeedConfig = {
-      ...this.defaultPriceFeedConfig,
+      ...this.commonPriceFeedConfig,
       priceFeedDecimals: getPrecisionForIdentifier(identifier)
     };
     this.logger.debug({
       at: "OptimisticOracleProposer",
       message: "Created pricefeed configuration for identifier",
-      defaultPriceFeedConfig: this.priceFeedConfig,
+      commonPriceFeedConfig: this.commonPriceFeedConfig,
       identifier
     });
 
