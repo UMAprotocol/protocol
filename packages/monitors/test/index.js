@@ -19,7 +19,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -31,7 +30,7 @@ let optimisticOracle;
 
 let constructorParams;
 let defaultMonitorConfig;
-let defaultUniswapPricefeedConfig;
+let defaultTokenPricefeedConfig;
 let defaultMedianizerPricefeedConfig;
 
 let spy;
@@ -59,7 +58,6 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
@@ -148,22 +146,13 @@ contract("index.js", function(accounts) {
         await syntheticToken.addMinter(financialContract.address);
         await syntheticToken.addBurner(financialContract.address);
 
-        uniswap = await UniswapMock.new();
-
-        // Run with empty configs for all input values, except for uniswap mock which is needed as no uniswap market in test env.
         defaultMonitorConfig = {};
-        defaultUniswapPricefeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+        defaultTokenPricefeedConfig = {
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
         defaultMedianizerPricefeedConfig = {};
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
       it("Completes one iteration without logging any errors", async function() {
@@ -177,7 +166,7 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
 
@@ -214,7 +203,7 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
 
@@ -244,7 +233,7 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
 
@@ -277,7 +266,7 @@ contract("index.js", function(accounts) {
             startingBlock: fromBlock,
             endingBlock: toBlock,
             monitorConfig: defaultMonitorConfig,
-            tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+            tokenPriceFeedConfig: defaultTokenPricefeedConfig,
             medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
           });
         } catch (error) {
@@ -321,7 +310,7 @@ contract("index.js", function(accounts) {
         });
 
         errorRetries = 3; // set execution retries to 3 to validate.
-        // Not both the uniswap and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForFinancialContract
+        // Note both the token and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForFinancialContract
         // can pass without trying to poll any information on the invalidFinancialContract to ensure that the bot gets into the main while
         // loop without throwing an error in inital set-up. If this left as defaultMedianizerPricefeedConfig (which is blank)
         // The bot will error out in setting up the price feed as the invalidFinancialContract instance cant be queried for `liquidationLiveness`
@@ -339,8 +328,8 @@ contract("index.js", function(accounts) {
             startingBlock: fromBlock,
             endingBlock: toBlock,
             monitorConfig: { ...defaultMonitorConfig, contractVersion: "latest", contractType: "ExpiringMultiParty" },
-            tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
-            medianizerPriceFeedConfig: defaultUniswapPricefeedConfig
+            tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+            medianizerPriceFeedConfig: defaultTokenPricefeedConfig
           });
         } catch (error) {
           errorThrown = true;

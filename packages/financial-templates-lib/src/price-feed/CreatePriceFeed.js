@@ -17,6 +17,7 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
+  const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
 
   if (config.type === "cryptowatch") {
@@ -87,13 +88,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new UniswapPriceFeed(
       logger,
       Uniswap.abi,
+      ERC20.abi,
       web3,
       config.uniswapAddress,
       config.twapLength,
       config.lookback,
       getTime,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.poolDecimals,
       config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "medianizer") {
