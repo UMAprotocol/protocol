@@ -456,6 +456,8 @@ contract("index.js", function(accounts) {
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
         const uniswap = await UniswapMock.new();
+        // token0 and token1 don't matter here so we just arbitrarily set them to an existing token
+        // that is already created, like `collateralToken`.
         await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
