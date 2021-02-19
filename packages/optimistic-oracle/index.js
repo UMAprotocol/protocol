@@ -138,7 +138,6 @@ async function Poll(callback) {
       //   "disputePriceErrorPercent":0.05 -> Proposal prices that do not equal the dispute price
       //                                      within this error % will be disputed.
       //                                      e.g. 0.05 implies 5% margin of error.
-      //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
