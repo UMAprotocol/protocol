@@ -126,7 +126,9 @@ async function Poll(callback) {
       // {
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
-      optimisticOracleProposerConfig: process.env.OO_PROPOSER_CONFIG ? JSON.parse(process.env.OO_PROPOSER_CONFIG) : {}
+      optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
+        ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
+        : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
