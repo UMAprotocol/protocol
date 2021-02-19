@@ -123,7 +123,7 @@ class OptimisticOracleClient {
       const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
       return hasDispute === undefined;
     });
-    let unsettledProposals = await Promise.all(
+    const unsettledProposals = await Promise.all(
       undisputedProposals.map(async event => {
         const state = await this.oracle.methods
           .getState(
