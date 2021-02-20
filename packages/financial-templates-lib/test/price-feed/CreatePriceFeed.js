@@ -923,6 +923,74 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(vaultPriceFeed.vault.options.address, web3.utils.toChecksumAddress(address));
   });
 
+  it("LPPriceFeed: valid config", async function() {
+    const config = {
+      type: "lp",
+      poolAddress: web3.utils.randomHex(20),
+      tokenAddress: web3.utils.randomHex(20)
+    };
+
+    const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNotNull(lpPriceFeed);
+  });
+
+  it("LPPriceFeed: invalid config, no token address", async function() {
+    let config = {
+      type: "lp",
+      poolAddress: web3.utils.randomHex(20)
+    };
+
+    const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(lpPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
+  });
+
+  it("LPPriceFeed: invalid config, no pool address", async function() {
+    let config = {
+      type: "lp",
+      tokenAddress: web3.utils.randomHex(20)
+    };
+
+    const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(lpPriceFeed);
+    assert.equal(spy.callCount, 1); // 1 error.
+  });
+
+  it("LPPriceFeed: shared BlockFinder", async function() {
+    const config = {
+      type: "lp",
+      poolAddress: web3.utils.randomHex(20),
+      tokenAddress: web3.utils.randomHex(20)
+    };
+
+    const lpPriceFeed1 = await createPriceFeed(logger, web3, networker, getTime, config);
+    const lpPriceFeed2 = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.strictEqual(lpPriceFeed2.blockFinder, lpPriceFeed1.blockFinder);
+  });
+
+  it("LPPriceFeed: optional parameters", async function() {
+    const tokenAddress = web3.utils.randomHex(20);
+    const poolAddress = web3.utils.randomHex(20);
+    const config = {
+      type: "lp",
+      tokenAddress,
+      poolAddress,
+      priceFeedDecimals: 6,
+      minTimeBetweenUpdates: 100
+    };
+
+    const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(lpPriceFeed.minTimeBetweenUpdates, 100);
+    assert.equal(lpPriceFeed.priceFeedDecimals, 6);
+    assert.equal(lpPriceFeed.pool.options.address, web3.utils.toChecksumAddress(poolAddress));
+    assert.equal(lpPriceFeed.token.options.address, web3.utils.toChecksumAddress(tokenAddress));
+  });
+
   it("Default reference price feed", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });

@@ -29,6 +29,15 @@ class VaultPriceFeed extends PriceFeedInterface {
     priceFeedDecimals = 18
   }) {
     super();
+
+    // Assert required inputs.
+    assert(logger, "logger required");
+    assert(vaultAbi, "vaultAbi required");
+    assert(erc20Abi, "erc20Abi required");
+    assert(web3, "web3 required");
+    assert(vaultAddress, "vaultAddress required");
+    assert(getTime, "getTime required");
+
     this.logger = logger;
     this.web3 = web3;
 

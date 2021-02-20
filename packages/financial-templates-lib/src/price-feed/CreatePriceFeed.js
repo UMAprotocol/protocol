@@ -13,15 +13,17 @@ const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
-const { getTruffleContract, getAbi } = require("@uma/core");
+const { getTruffleContract } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
 const { VaultPriceFeed } = require("./VaultPriceFeed");
+const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
+  const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -327,9 +329,30 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       ...config,
       logger,
       web3,
-      vaultAbi: getAbi("VaultInterface", "latest"),
-      erc20Abi: getAbi("IERC20Standard", "latest"),
+      getTime,
+      vaultAbi: VaultInterface.abi,
+      erc20Abi: ERC20.abi,
       vaultAddress: config.address,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "lp") {
+    const requiredFields = ["poolAddress", "tokenAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating LPPriceFeed",
+      config
+    });
+
+    return new LPPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      erc20Abi: ERC20.abi,
       blockFinder: getSharedBlockFinder(web3)
     });
   }
