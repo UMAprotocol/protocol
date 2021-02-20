@@ -1,6 +1,8 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { BlockFinder } = require("./utils");
 const { ConvertDecimals } = require("@uma/common");
+const assert = require("assert");
+
 class VaultPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new price feed object that tracks the share price of a yearn-style vault.

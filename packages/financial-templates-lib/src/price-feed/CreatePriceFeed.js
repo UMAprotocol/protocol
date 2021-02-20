@@ -395,30 +395,33 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     // This is a complicated looking map that maps each symbol into an entry in an object with its value the price
     // feed created from the mapped config in allConfigs.
     const priceFeedMap = Object.fromEntries(
-      await Promise.all(
-        symbols.map(async symbol => {
-          const config = allConfigs[symbol];
+      (
+        await Promise.all(
+          symbols.map(async symbol => {
+            const config = allConfigs[symbol];
 
-          // If there is no config for this symbol, insert null and send an error.
-          if (!config) {
-            logger.error({
-              at: "_createExpressionPriceFeed",
-              message: `No price feed config found for symbol: ${symbol} 🚨`,
-              expressionConfig
-            });
-            return [symbol, null];
-          }
+            // If there is no config for this symbol, return just null, which will be filtered out.
+            // Allow this through becuase
+            if (!config) {
+              logger.debug({
+                at: "_createExpressionPriceFeed",
+                message: `No price feed config found for symbol: ${symbol} 🚨`,
+                expressionConfig
+              });
+              return null;
+            }
 
-          // These configs will inherit the expression config values (except type), but prefer the individual config's
-          // value when present.
-          const combinedConfig = { ...expressionConfig, type: undefined, ...config };
+            // These configs will inherit the expression config values (except type), but prefer the individual config's
+            // value when present.
+            const combinedConfig = { ...expressionConfig, type: undefined, ...config };
 
-          // If this returns null, just return upstream since the error has already been logged and the null will be
-          // detected upstream.
-          const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
-          return [symbol, priceFeed];
-        })
-      )
+            // If this returns null, just return upstream since the error has already been logged and the null will be
+            // detected upstream.
+            const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
+            return [symbol, priceFeed];
+          })
+        )
+      ).filter(el => el !== null)
     );
 
     // Return null if any of the price feeds in the map are null (meaning there was an error).
