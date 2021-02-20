@@ -1,30 +1,33 @@
 // This executes an approved admin proposal. This assumes that the admin proposal is one to whitelist an identifier,
 // therefore it will check the identifier whitelist afterwards.
 
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
-const assert = require("assert");
+const { GasEstimator, Logger } = require("@uma/financial-templates-lib");
 
 async function execute(callback) {
   try {
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
     const governor = await Governor.deployed();
 
-    // Get the latest admin proposal
-    const proposalId = (await governor.numProposals()).subn(1).toString();
-    const proposal = await governor.getProposal(proposalId);
+    const start = 48;
+    const end = 56;
 
-    // for every transactions within the proposal
-    for (let i = 0; i < proposal.transactions.length; i++) {
-      console.log(`${i}: Submitting tx...`);
-      let tx = await governor.executeProposal(proposalId.toString(), i.toString());
-      console.log(`${i}: Done: `, tx.tx);
+    const gasEstimator = new GasEstimator(Logger, 60, 200);
+    await gasEstimator.update();
+
+    for (let j = start; j <= end; j++) {
+      const proposal = await governor.getProposal(j);
+      // for every transactions within the proposal
+      console.log(`Starting proposal ${j} with ${proposal.transactions.length} transactions.`);
+      for (let i = 0; i < proposal.transactions.length; i++) {
+        await gasEstimator.update();
+        console.log(`Proposal ${j}, Transaction ${i}: Submitting tx...`);
+        let tx = await governor.executeProposal(j.toString(), i.toString(), {
+          gasPrice: gasEstimator.getCurrentFastPrice()
+        });
+        console.log(`${i}: Done: `, tx.tx);
+      }
+      console.log(`Admin proposal ${j} executed!`);
     }
-
-    // Check that the identifier whitelist has been updated.
-    assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex("TEST-NEW-IDENTIFIER")), true);
-
-    console.log("Admin proposal to whitelist new identifier executed!");
   } catch (err) {
     console.error(err);
     callback(err);
