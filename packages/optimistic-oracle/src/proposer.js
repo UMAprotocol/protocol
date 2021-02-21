@@ -327,6 +327,15 @@ class OptimisticOracleProposer {
         });
         return;
       }
+    } else {
+      this.logger.debug({
+        at: "OptimisticOracleProposer#sendDisputes",
+        message: "Skipping dispute because proposal price is within allowed margin of error",
+        priceRequest,
+        proposalPrice,
+        disputePrice,
+        allowedError: this.disputePriceErrorPercent
+      });
     }
   }
   // Construct settlement transaction and send or return early if an error is encountered.
