@@ -55,6 +55,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   getCurrentPrice() {
+    return this.web3.toBN("0");
     return this.currentTwap && this.convertToPriceFeedDecimals(this.currentTwap);
   }
 
@@ -90,18 +91,23 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
+
+    return;
     // Read token0 and token1 precision from Uniswap contract if not already cached:
     if (!this.token0Precision || !this.token1Precision || !this.convertToPriceFeedDecimals) {
+      console.log(this.uuid, "1");
       const [token0Address, token1Address] = await Promise.all([
         this.uniswap.methods.token0().call(),
         this.uniswap.methods.token1().call()
       ]);
+      console.log(this.uuid, "2");
       this.token0 = new this.web3.eth.Contract(this.erc20Abi, token0Address);
       this.token1 = new this.web3.eth.Contract(this.erc20Abi, token1Address);
       const [token0Precision, token1Precision] = await Promise.all([
         this.token0.methods.decimals().call(),
         this.token1.methods.decimals().call()
       ]);
+      console.log(this.uuid, "3");
       this.token0Precision = token0Precision;
       this.token1Precision = token1Precision;
       // `_getPriceFromSyncEvent()` returns prices in the same precision as `token1` unless price is inverted.
@@ -133,6 +139,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
       // Uses latest unless the events array already has data. If so, it only queries _before_ existing events.
       const toBlock = events[0] ? events[0].blockNumber - 1 : "latest";
 
+      console.log(`loop ${i} ${this.uuid}`);
+
       // By taking larger powers of 2, this doubles the lookback each time.
       fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
 
@@ -147,6 +155,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
             return blocks[event.blockNumber].then(block => {
+              console.log(`${this.uuid} got block ${block.number}`);
               event.timestamp = block.timestamp;
               event.price = this._getPriceFromSyncEvent(event);
               return event;
@@ -154,6 +163,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
           })
         );
       });
+      console.log(this.uuid, "4");
 
       // Adds newly queried events to the array.
       events = [...newEvents, ...events];

@@ -123,7 +123,9 @@ class ExpressionPriceFeed extends PriceFeedInterface {
 
   async update() {
     // Update all constituent price feeds.
-    await Promise.all(Object.values(this.priceFeedMap).map(pf => pf.update()));
+    await Promise.all(Object.values(this.priceFeedMap).map(pf => {
+      return pf.update().then(() => console.log(pf.uuid));
+    }));
   }
 
   // Takes a BN fixed point number and converts it to a math.bignumber decimal number that the math library can handle.

@@ -39,7 +39,7 @@ async function getMedianHistoricalPrice(callback) {
 
     // Create and update a new Medianizer price feed.
     let dummyLogger = winston.createLogger({
-      silent: true
+      silent: false
     });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back.
@@ -60,7 +60,10 @@ async function getMedianHistoricalPrice(callback) {
     if (!medianizerPriceFeed) {
       throw new Error(`Failed to construct medianizer price feed for the ${queryIdentifier} identifier`);
     }
+
+    console.log("preupdate");
     await medianizerPriceFeed.update();
+    console.log("postupdate");
 
     // If user specified a timestamp, then use it, otherwise default to the current time.
     let queryTime;

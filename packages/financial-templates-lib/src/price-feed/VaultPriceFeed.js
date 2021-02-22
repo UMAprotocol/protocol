@@ -90,7 +90,7 @@ class VaultPriceFeed extends PriceFeedInterface {
   async _convertDecimals(value) {
     if (!this.cachedConvertDecimalsFn) {
       const underlyingTokenAddress = await this.vault.methods.token().call();
-      const underlyingToken = new web3.eth.Contract(this.erc20Abi, underlyingTokenAddress);
+      const underlyingToken = new this.web3.eth.Contract(this.erc20Abi, underlyingTokenAddress);
 
       let underlyingTokenDecimals;
       try {

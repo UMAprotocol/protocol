@@ -109,7 +109,7 @@ class LPPriceFeed extends PriceFeedInterface {
     // Note: this produces a rawPrice that is in terms of the token's decimals, not the pool's.
     // Note: if the total supply is zero, then we just set the price to 0 since no LP tokens exist.
     const rawPrice = lpTotalSupply.isZero()
-      ? web3.utils.toBN("0")
+      ? this.web3.utils.toBN("0")
       : tokensInPool.mul(poolDecimalMultiplier).divRound(lpTotalSupply);
 
     // _convertDecimals takes a price with the token's decimals and returns it in terms of priceFeedDecimals.
