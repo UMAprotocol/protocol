@@ -408,6 +408,17 @@ const defaultConfigs = {
       }
     ]
   },
+  XAUPERL: {
+    type: "expression",
+    expression: "XAUUSD * USDPERL"
+  },
+  XAUUSD: {
+    type: "tradermade",
+    pair: "XAUUSD",
+    minTimeBetweenUpdates: 300,
+    minuteLookback: 7200,
+    hourlyLookback: 7200
+  },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
   TEST8DECIMALS: {
