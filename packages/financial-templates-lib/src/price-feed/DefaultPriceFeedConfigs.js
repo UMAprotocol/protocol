@@ -415,9 +415,9 @@ const defaultConfigs = {
   XAUUSD: {
     type: "tradermade",
     pair: "XAUUSD",
-    minTimeBetweenUpdates: 300,
+    minTimeBetweenUpdates: 60,
     minuteLookback: 7200,
-    hourlyLookback: 7200
+    hourlyLookback: 604800
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
