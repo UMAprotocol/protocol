@@ -19,7 +19,7 @@
  * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
  *
- * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
+ * Example: yarn truffle exec ./packages/core/scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
