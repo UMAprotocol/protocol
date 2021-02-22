@@ -160,10 +160,6 @@ class OptimisticOracleProposer {
       priceRequest.ancillaryData,
       proposalPrice
     );
-    const transactionConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice(),
-      from: this.account
-    };
     this.logger.error({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Detected price request, and proposing new price",
@@ -173,7 +169,10 @@ class OptimisticOracleProposer {
     try {
       const transactionResult = await runTransaction({
         transaction: proposal,
-        config: transactionConfig
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account
+        }
       });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
@@ -271,23 +270,21 @@ class OptimisticOracleProposer {
         priceRequest.timestamp,
         priceRequest.ancillaryData
       );
-      const transactionConfig = {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account
-      };
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
         priceRequest,
         proposalPrice,
         disputePrice,
-        allowedError: this.disputePriceErrorPercent,
-        transactionConfig
+        allowedError: this.disputePriceErrorPercent
       });
       try {
         const transactionResult = await runTransaction({
           transaction: dispute,
-          config: transactionConfig
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
         });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue;
@@ -344,20 +341,18 @@ class OptimisticOracleProposer {
       priceRequest.timestamp,
       priceRequest.ancillaryData
     );
-    const transactionConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice(),
-      from: this.account
-    };
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
-      priceRequest,
-      transactionConfig
+      priceRequest
     });
     try {
       const transactionResult = await runTransaction({
         transaction: settle,
-        config: transactionConfig
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account
+        }
       });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
