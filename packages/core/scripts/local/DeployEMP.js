@@ -100,7 +100,7 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     let constructorParams = {
-      expirationTimestamp: Math.ceil(Date.now() / 1000) + 60 * 10, // 15 minutes from now
+      expirationTimestamp: Math.ceil(Date.now() / 1000) + 60 * 2, // 2 minutes from now
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test Synth",

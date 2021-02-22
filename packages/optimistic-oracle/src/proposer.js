@@ -164,12 +164,11 @@ class OptimisticOracleProposer {
       gasPrice: this.gasEstimator.getCurrentFastPrice(),
       from: this.account
     };
-    this.logger.debug({
+    this.logger.error({
       at: "OptimisticOracleProposer#sendProposals",
-      message: "Proposing new price",
+      message: "Detected price request, and proposing new price",
       priceRequest,
-      proposalPrice,
-      transactionConfig
+      potentialProposalPrice: proposalPrice
     });
     try {
       const transactionResult = await runTransaction({
@@ -195,7 +194,6 @@ class OptimisticOracleProposer {
         priceRequest,
         proposalBond: returnValue,
         proposalPrice,
-        transactionConfig,
         proposalResult: logResult
       });
     } catch (error) {
@@ -311,7 +309,6 @@ class OptimisticOracleProposer {
           disputePrice,
           disputeBond: returnValue,
           allowedError: this.disputePriceErrorPercent,
-          transactionConfig,
           disputeResult: logResult
         });
       } catch (error) {
@@ -381,7 +378,6 @@ class OptimisticOracleProposer {
         message: "Settled proposal or dispute!⛑",
         priceRequest,
         payout: returnValue,
-        transactionConfig,
         settleResult: logResult
       });
     } catch (error) {
