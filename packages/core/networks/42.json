@@ -57,7 +57,7 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x4107851478431d4f0462d145888772329a2dD208"
+    "address": "0x9730d10260FB939C53a00DE964a615362574569e"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
