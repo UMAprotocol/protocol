@@ -11,5 +11,6 @@ module.exports = {
   ...require("./src/price-feed/Networker"),
   ...require("./src/price-feed/PriceFeedMock"),
   ...require("./src/price-feed/PriceFeedMockScaled"),
-  ...require("./src/price-feed/InvalidPriceFeedMock")
+  ...require("./src/price-feed/InvalidPriceFeedMock"),
+  ...require("./src/proxy-transaction-handler/DSProxyManager")
 };

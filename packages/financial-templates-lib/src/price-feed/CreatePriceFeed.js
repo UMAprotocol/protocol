@@ -502,6 +502,7 @@ async function createReferencePriceFeedForFinancialContract(
   config,
   identifier
 ) {
+  console.log("FINDING");
   // Automatically detect identifier from passed in Financial Contract address or use `identifier`.
   let _identifier;
   let financialContract;
@@ -568,8 +569,12 @@ async function createReferencePriceFeedForFinancialContract(
 }
 
 function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
-  const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-  return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  try {
+    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
+    return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  } catch (error) {
+    throw new Error({ message: "Something went wrong in fetching the financial contract identifier", error });
+  }
 }
 
 module.exports = {
