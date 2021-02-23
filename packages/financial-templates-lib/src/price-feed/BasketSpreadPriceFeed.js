@@ -135,7 +135,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
     }
   }
-  // This searches for closest time in a list of [time,price] data. Based on code in affiliates models/prices.
+  // This searches for closest time in a list of [[time,price]] data. Based on code in affiliates models/prices.
+  // input list is [[time,price]]
+  // output price as BN
   closestTime(list) {
     return time => {
       const result = list.reduce((a, b) => {
@@ -178,7 +180,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       // Each parameter looks up and returns the closest price to the timestamp.
       const expPrices = experimentalPrices.map(lookup => lookup(time));
       const basePrices = baselinePrices.map(lookup => lookup(time));
-      const denomPrices = denominatorPrice ? denominatorPrice.map(lookup => lookup(time)) : null;
+      const denomPrices = denominatorPrice ? denominatorPrice(time) : null;
 
       // Takes in an array of prices for each basket and returns a single price
       return [time, this._getSpreadFromBasketPrices(expPrices, basePrices, denomPrices)];

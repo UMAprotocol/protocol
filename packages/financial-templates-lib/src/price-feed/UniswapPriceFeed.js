@@ -58,7 +58,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return this.currentTwap && this.convertToPriceFeedDecimals(this.currentTwap);
   }
 
-  getHistoricalPrice(time) {
+  async getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.historicalLookback) {
       // Requesting an historical TWAP earlier than the lookback.
       throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
