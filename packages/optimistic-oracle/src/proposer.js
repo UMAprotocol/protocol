@@ -164,7 +164,8 @@ class OptimisticOracleProposer {
       at: "OptimisticOracleProposer#sendProposals",
       message: "Detected price request, and proposing new price",
       priceRequest,
-      potentialProposalPrice: proposalPrice
+      potentialProposalPrice: proposalPrice,
+      proposer: this.account
     });
     try {
       const transactionResult = await runTransaction({
@@ -276,7 +277,8 @@ class OptimisticOracleProposer {
         priceRequest,
         proposalPrice,
         disputePrice,
-        allowedError: this.disputePriceErrorPercent
+        allowedError: this.disputePriceErrorPercent,
+        disputer: this.account
       });
       try {
         const transactionResult = await runTransaction({
