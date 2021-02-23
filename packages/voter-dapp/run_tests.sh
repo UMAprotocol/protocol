@@ -39,11 +39,12 @@ echo -e '####################################################################\n'
 # This forces the voter dapp to deploy the _new_ voting contract with all the other contracts unchanged, which will
 # force it to test the old 2key contract with the new voting contract.
 yarn truffle compile
-ARTIFACT_PATH=$(node -p "require.resolve('@uma/core/build/contracts/Voting.json')")
+ARTIFACT_PATH_1_2_0=$(node -p "require.resolve('@uma/core-1-2-0/build/contracts/Voting.json')")
+ARTIFACT_PATH_NEW=$(node -p "require.resolve('@uma/core/build/contracts/Voting.json')")
 BACKUP=$(mktemp -d)/Voting.json
-echo "$ARTIFACT_PATH is being modified in a breaking way. Backup at $BACKUP."
-cp $ARTIFACT_PATH $BACKUP
-node -p "JSON.stringify({...require('$BACKUP'), bytecode: require('../core/build/contracts/Voting.json').bytecode }, null, 2)" > $ARTIFACT_PATH
+echo "$ARTIFACT_PATH_1_2_0 is being modified in a breaking way. Backup at $BACKUP."
+cp $ARTIFACT_PATH_1_2_0 $BACKUP
+node -p "JSON.stringify({...require('$BACKUP'), bytecode: require('$ARTIFACT_PATH_NEW').bytecode }, null, 2)" > $ARTIFACT_PATH_1_2_0
 yarn run truffle migrate --reset --network test
 echo "- ✅ Migration complete!"
 
