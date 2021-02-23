@@ -41,7 +41,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new CryptoWatchPriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.cryptowatchApiKey,
       config.exchange,
       config.pair,
       config.lookback,
@@ -103,7 +103,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals // This defaults to 18 unless supplied by user
     );
   } else if (config.type === "defipulsetvl") {
-    const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey"];
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -118,7 +118,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new DefiPulseTotalPriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.defipulseApiKey,
       config.lookback,
       networker,
       getTime,
@@ -198,7 +198,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
   } else if (config.type === "coinmarketcap") {
-    const requiredFields = ["apiKey", "symbol", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
+    const requiredFields = ["cmcApiKey", "symbol", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -213,7 +213,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new CoinMarketCapPriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.cmcApiKey,
       config.symbol,
       config.quoteCurrency,
       config.lookback,
@@ -249,7 +249,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
     );
   } else if (config.type === "tradermade") {
-    const requiredFields = ["pair", "apiKey", "minTimeBetweenUpdates"];
+    const requiredFields = ["pair", "tradermadeApiKey", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -264,7 +264,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new TraderMadePriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.tradermadeApiKey,
       config.pair,
       config.minuteLookback,
       config.hourlyLookback,
