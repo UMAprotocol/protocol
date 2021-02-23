@@ -6,9 +6,7 @@ const assert = require("assert");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
-const highland = require('highland')
 
-const Config = require("../libs/config");
 const { DevMining } = require("../libs/affiliates");
 const { Emp } = require("../libs/contracts");
 const Queries = require("../libs/bigquery");
@@ -21,8 +19,8 @@ const { makeUnixPipe } = require("../libs/affiliates/utils");
 // This is the main function which configures all data sources for the calculation.
 const App = env => async params => {
   const web3 = getWeb3();
-  const {config} = params
-  assert(config,'requires config object on params')
+  const { config } = params;
+  assert(config, "requires config object on params");
   let { empWhitelist = [], startTime, endTime, totalRewards, fallbackPrices } = config;
   assert(empWhitelist, "requires whitelist");
   assert(startTime, "requires startTime");
@@ -91,31 +89,9 @@ const App = env => async params => {
     // result will contain deployer rewards as well as per emp rewards
     result
   };
-}
+};
 
 makeUnixPipe(App(process.env))
   .then(console.log)
   .catch(console.error)
   .finally(() => process.exit());
-// const config = Config();
-
-// highland(process.stdin)
-//   .reduce('',(result,str)=>{
-//     return result + str
-//   })
-//   .map(x=>JSON.parse(x))
-//   .map(config=>App(config,process.env))
-//   .flatMap(highland)
-//   .errors((err,next)=>{
-//     console.error(err)
-//   })
-//   .each(x=>{
-//     console.log(JSON.stringify(x, null, 2))
-//     process.exit()
-//   })
-
-// App(config, process.env)
-//   .then(x => console.log(JSON.stringify(x, null, 2)))
-//   .catch(console.error)
-//   // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
-//   .finally(() => process.exit());

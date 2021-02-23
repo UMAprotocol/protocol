@@ -107,7 +107,9 @@ describe("affiliates/utils", function() {
     assert.ok(result);
   });
   it("generateDappMiningConfig", function() {
-    const result = utils.generateDappMiningConfig({whitelistTable:[]});
+    const result = utils.generateDappMiningConfig({ empRewards: 1000, whitelistTable: [] });
     assert.ok(result);
+    assert(result.endTime < Date.now());
+    assert(result.startTime < result.endTime);
   });
 });

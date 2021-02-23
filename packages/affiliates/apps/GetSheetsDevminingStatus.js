@@ -82,7 +82,7 @@ function parseSheet(sheet, columns = SHEET_COLUMNS) {
       try {
         result[name] = map ? map(row[index]) : row[index];
       } catch (err) {
-        // console.error("error in row:" + row, err);
+        console.error("error in row:" + row, err);
       }
       return result;
     }, {});
@@ -118,7 +118,7 @@ async function run() {
     range: getRangeString(100)
   };
   const result = await sheets.spreadsheets.values.get(request);
-  return JSON.stringify(filterActive(parseSheet(result.data)),null,2);
+  return JSON.stringify(filterActive(parseSheet(result.data)), null, 2);
 }
 
 run()

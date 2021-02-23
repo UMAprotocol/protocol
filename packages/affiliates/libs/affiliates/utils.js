@@ -17,10 +17,19 @@ function mdlink(text, link) {
   return `[${text}](${link})`;
 }
 
-function devMiningPrTemplate({ issueNumber, startTime, endTime, empWhiteList, weekNumber, fallbackPrices = [] }) {
+function devMiningPrTemplate({
+  issueNumber,
+  totalRewards,
+  startTime,
+  endTime,
+  empWhiteList,
+  weekNumber,
+  fallbackPrices = []
+}) {
   assert(issueNumber, "requires issue number");
-  assert(endTime, "requires starTime");
+  assert(totalRewards, "requires totalRewards");
   assert(endTime, "requires endTime");
+  assert(startTime, "requires starTime");
   assert(empWhiteList, "requires empWhiteList");
   assert(weekNumber, "requires weekNumber");
   const startDate = moment(startTime)
@@ -30,7 +39,7 @@ function devMiningPrTemplate({ issueNumber, startTime, endTime, empWhiteList, we
     .utc()
     .format("YYYY/MM/DD");
   return {
-    title: `Run Mining rewards for ${name} week ${weekNumber + 1} between ${startDate} and ${endDate}`,
+    title: `Run Dev Mining rewards for week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
 **Motivation**
 #${issueNumber}
@@ -46,7 +55,7 @@ In order to run create a config.json with this data:
     "startTime": ${startTime},
     "endTime": ${endTime},
     "totalRewards": ${totalRewards},
-    "empWhitelist": ${empWhitelist},
+    "empWhitelist": ${empWhiteList},
     "fallbackPrices": ${fallbackPrices},
 }
 \`\`\`
@@ -73,21 +82,21 @@ function dappMiningTemplate({ name, empAddress, startTime, endTime, whitelistTab
     title: `Run Dapp Mining rewards for ${name} week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
 Run dapp mining rewards for ${mdlink(name, eslink(empAddress))} week ${weekNumber +
-      1} from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}).
+      1} from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}). 
 
 Name | Tagged Address
 -- | -- 
-${whitelistTable
-  .map(data => {
-    return data.join(" | ");
-  })
-  .join("\n")}
+  ${whitelistTable
+    .map(data => {
+      return data.join(" | ");
+    })
+    .join("\n")}
 `
   };
 }
 
-function devMiningTemplate({config,whitelist}) {
-  const  {startTime, endTime, fallbackPrices, weekNumber} = config
+function devMiningTemplate({ config, whitelist }) {
+  const { startTime, endTime, fallbackPrices, weekNumber } = config;
   const startDate = moment(startTime)
     .utc()
     .format("YYYY/MM/DD");
@@ -137,7 +146,7 @@ function whitelistFromDetails(details) {
     return [detail.empAddress, detail.payoutAddress];
   });
 }
-function generateDevMiningConfig({whitelist,week,period,totalRewards=50000}) {
+function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000 }) {
   const empWhitelist = whitelistFromDetails(whitelist);
   const fallbackPrices = [];
   week = week || getLastDevMiningWeek();
@@ -146,37 +155,30 @@ function generateDevMiningConfig({whitelist,week,period,totalRewards=50000}) {
     ...period,
     empWhitelist,
     fallbackPrices,
-    totalRewards,
+    totalRewards
   };
 }
 
 function generateDappMiningConfig(params = {}) {
-  let { week, empAddresses, devMiningPr, whitelistTable, defaultAddress, empRewards, rewardFactor = 0.3 } = params;
-  assert(whitelistTable,'requires whitelist table')
-  assert(empRewards,'requires empRewards')
+  let { week, whitelistTable, defaultAddress, empRewards, rewardFactor = 0.3 } = params;
+  assert(whitelistTable, "requires whitelist table");
+  assert(empRewards, "requires empRewards");
   week = week || getLastDappMiningWeek();
   const period = dappMiningPeriodByWeek(week);
   return {
     ...params,
     ...period,
     defaultAddress,
-    totalRewards: Math.floor(empRewards * rewardFactor),
+    totalRewards: Math.floor(parseFloat(empRewards) * rewardFactor),
     whitelist: whitelistTable.map(x => x[1])
   };
 }
 
-function generateMarkdownConfig(details) {
-  return {
-    details,
-    ...generateConfig(details)
-  };
-}
-
 function miningPeriodByWeek(weekNumber = 0, first) {
-  assert(weekNumber >= 0,'requires week number 0 or more')
-  assert(first >= 0, 'requires start of first payout in ms time')
+  assert(weekNumber >= 0, "requires week number 0 or more");
+  assert(first >= 0, "requires start of first payout in ms time");
   const start = moment(first).add(weekNumber, "weeks");
-  const end = moment(first).add(weekNumber + 1, 'weeks')
+  const end = moment(first).add(weekNumber + 1, "weeks");
   return {
     weekNumber,
     endDate: end.format("L LT"),
@@ -190,31 +192,31 @@ function getWeekByDate(now, start) {
   assert(now >= start, "current time must be greater than start time of program");
   return Math.floor(moment.duration(now - start).asWeeks());
 }
-function dappMiningPeriodByWeek(weekNumber = getDappMiningWeek(), first = dappMiningStartTime) {
+function dappMiningPeriodByWeek(weekNumber = getLastDappMiningWeek(), first = dappMiningStartTime) {
   return miningPeriodByWeek(weekNumber, first);
 }
-function devMiningPeriodByWeek(weekNumber = getDevMiningWeek(), first = devMiningStartTime) {
+function devMiningPeriodByWeek(weekNumber = getLastDevMiningWeek(), first = devMiningStartTime) {
   return miningPeriodByWeek(weekNumber, first);
 }
-// gets the current week we are in, which is not complete 
+// gets the current week we are in, which is not complete
 function getCurrentDevMiningWeek(date = Date.now(), first = devMiningStartTime) {
   return getWeekByDate(date, first);
 }
-// gets the current week we are in, which is not complete 
+// gets the current week we are in, which is not complete
 function getCurrentDappMiningWeek(date = Date.now(), first = dappMiningStartTime) {
   return getWeekByDate(date, first);
 }
 // Return the last week of which has a full period.
 function getLastDevMiningWeek(date = Date.now(), first = devMiningStartTime) {
   const result = getWeekByDate(date, first);
-  assert(result > 0,'Dev mining must experience a full period before getting last week')
-  return result -1 
+  assert(result > 0, "Dev mining must experience a full period before getting last week");
+  return result - 1;
 }
 // Returns last week which has a full period.
 function getLastDappMiningWeek(date = Date.now(), first = dappMiningStartTime) {
-  const result =  getWeekByDate(date, first);
-  assert(result > 0,'Dev mining must experience a full period before getting last week')
-  return result -1 
+  const result = getWeekByDate(date, first);
+  assert(result > 0, "Dev mining must experience a full period before getting last week");
+  return result - 1;
 }
 
 function makeDevMiningFilename(config) {
@@ -251,7 +253,7 @@ function makeUnixPipe(through, stdin = process.stdin) {
       return result + str;
     })
     .map(x => JSON.parse(x))
-    .map(async x=>through(x))
+    .map(async x => through(x))
     .flatMap(highland)
     .map(x => JSON.stringify(x, null, 2))
     .toPromise(Promise);
@@ -263,7 +265,6 @@ module.exports = {
   makeDappMiningFilename,
   dappMiningTemplate,
   devMiningTemplate,
-  generateMarkdownConfig,
   generateDevMiningConfig,
   miningPeriodByWeek,
   getWeekByDate,
@@ -275,5 +276,6 @@ module.exports = {
   dappMiningPeriodByWeek,
   devMiningPeriodByWeek,
   saveToDisk,
-  generateDappMiningConfig
+  generateDappMiningConfig,
+  devMiningPrTemplate
 };

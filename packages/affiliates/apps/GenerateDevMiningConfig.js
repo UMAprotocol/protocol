@@ -1,14 +1,16 @@
-const Config = require("../libs/config");
-const { generateDevMiningConfig,  makeUnixPipe } = require("../libs/affiliates/utils");
+const assert = require("assert");
+const { generateDevMiningConfig, makeUnixPipe } = require("../libs/affiliates/utils");
 
 // This is the main function which configures all data sources for the calculation.
 async function App(whitelist) {
-  const config = generateDevMiningConfig({whitelist})
+  assert(whitelist, "requires whitelist");
+  const config = generateDevMiningConfig({ whitelist });
   return {
     config,
-    whitelist,
-  }
+    whitelist
+  };
 }
 
-makeUnixPipe(App).then(console.log).catch(console.error)
-
+makeUnixPipe(App)
+  .then(console.log)
+  .catch(console.error);
