@@ -45,7 +45,6 @@ echo "$ARTIFACT_PATH is being modified in a breaking way. Backup at $BACKUP."
 cp $ARTIFACT_PATH $BACKUP
 node -p "JSON.stringify({...require('$BACKUP'), bytecode: require('../core/build/contracts/Voting.json').bytecode }, null, 2)" > $ARTIFACT_PATH
 yarn run truffle migrate --reset --network test
-cp $BACKUP $ARTIFACT_PATH
 echo "- ✅ Migration complete!"
 
 # Submit 2 normal price requests:
