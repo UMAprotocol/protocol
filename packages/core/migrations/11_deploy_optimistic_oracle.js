@@ -2,13 +2,7 @@ const OptimisticOracle = artifacts.require("OptimisticOracle");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
-const {
-  getKeysForNetwork,
-  deploy,
-  enableControllableTiming,
-  interfaceName,
-  RegistryRolesEnum
-} = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming, interfaceName } = require("@uma/common");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -39,6 +33,7 @@ module.exports = async function(deployer, network, accounts) {
     { from: keys.deployer }
   );
 
+  // Register OO with Voting so it can make price requests.
   const registry = await Registry.deployed();
-  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
+  await registry.registerContract([], optimisticOracle.address);
 };
