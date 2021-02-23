@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex, soliditySha3, toBN } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -153,11 +153,15 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     // happen with financial contracts
     let ancillaryDataAddresses = [];
 
+    let commonPriceFeedConfig;
+
     beforeEach(async function() {
       // Make a new price request for each identifier, each of which should cause the keeper bot to
       // construct a pricefeed with a new precision.
       for (let i = 0; i < identifiersToTest.length; i++) {
-        let ancillaryData = soliditySha3({ t: "address", v: collateralCurrenciesForIdentifier[i].address });
+        // To simulate a requested price from the EMP, the collateral currency should be in
+        // lower case since the EMP contract will convert from address to bytes.
+        let ancillaryData = collateralCurrenciesForIdentifier[i].address.toLowerCase();
         ancillaryDataAddresses[i] = ancillaryData;
 
         await optimisticRequester.requestPrice(
@@ -171,7 +175,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Construct OO Proposer using a valid default price feed config containing any additional properties
       // not set in DefaultPriceFeedConfig
-      let commonPriceFeedConfig = {
+      commonPriceFeedConfig = {
         currentPrice: "1.2", // Mocked current price. This will be scaled to the identifier's precision.
         historicalPrice: "2.4" // Mocked historical price. This will be scaled to the identifier's precision.
       };
@@ -229,6 +233,16 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Now: Execute `sendProposals()` and test that the bot correctly responds to these price proposals
       await proposer.sendProposals();
+
+      // Check that an error alert is sent for each price request detected
+      let errorAlertCount = 0;
+      for (let i = 0; i < spy.getCalls().length; i++) {
+        if (spy.getCall(-(i + 1)).lastArg.level === "error") {
+          assert.isTrue(spyLogIncludes(spy, -(i + 1), "Detected price request"));
+          errorAlertCount += 1;
+        }
+      }
+      assert.equal(errorAlertCount, identifiersToTest.length);
 
       // Check that the onchain requests have been proposed to.
       for (let i = 0; i < identifiersToTest.length; i++) {
