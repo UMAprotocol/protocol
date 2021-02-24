@@ -167,7 +167,8 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const mrkdwn =
-        `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ``The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
+        `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
         `The settlement price is ${event.price}. ` +
         `The payout was ${event.payout} made to the ${
           event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"

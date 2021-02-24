@@ -62,7 +62,7 @@ contract("index.js", function(accounts) {
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
+    describe(`(type=financial-contract): Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
