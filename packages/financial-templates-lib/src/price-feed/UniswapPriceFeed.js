@@ -28,7 +28,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     historicalLookback,
     getTime,
     invertPrice,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
+    blocks = {}
   ) {
     super();
     this.logger = logger;
@@ -52,10 +53,10 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+    this.blocks = blocks;
   }
 
   getCurrentPrice() {
-    return this.web3.toBN("0");
     return this.currentTwap && this.convertToPriceFeedDecimals(this.currentTwap);
   }
 
@@ -91,8 +92,6 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-
-    return;
     // Read token0 and token1 precision from Uniswap contract if not already cached:
     if (!this.token0Precision || !this.token1Precision || !this.convertToPriceFeedDecimals) {
       console.log(this.uuid, "1");
@@ -131,7 +130,6 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
 
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
-    let blocks = {}; // Caches blocks (so we don't have to re-query timestamps).
     let fromBlock = Infinity; // Arbitrary initial value > 0.
 
     // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
@@ -144,18 +142,24 @@ class UniswapPriceFeed extends PriceFeedInterface {
       // By taking larger powers of 2, this doubles the lookback each time.
       fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
 
+      console.log("from block", fromBlock);
+      console.log("to block", toBlock);
+      console.log("earliest", earliestLookbackTime);
+      console.log("lookback time", lookbackWindow);
+
       const newEvents = await this._getSortedSyncEvents(fromBlock, toBlock).then(newEvents => {
         // Grabs the timestamps for all blocks, but avoids re-querying by .then-ing any cached blocks.
         return Promise.all(
           newEvents.map(event => {
             // If there is nothing in the cache for this block number, add a new promise that will resolve to the block.
-            if (!blocks[event.blockNumber]) {
-              blocks[event.blockNumber] = this.web3.eth.getBlock(event.blockNumber);
+            if (!this.blocks[event.blockNumber]) {
+              this.blocks[event.blockNumber] = this.web3.eth
+                .getBlock(event.blockNumber)
+                .then(block => ({ timestamp: block.timestamp, number: block.number }));
             }
 
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
-            return blocks[event.blockNumber].then(block => {
-              console.log(`${this.uuid} got block ${block.number}`);
+            return this.blocks[event.blockNumber].then(block => {
               event.timestamp = block.timestamp;
               event.price = this._getPriceFromSyncEvent(event);
               return event;

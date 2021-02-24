@@ -69,7 +69,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     );
 
     if (errors.length > 0) {
-      throw errors;
+      throw errors.map(error => error.trace);
     }
 
     return this._convertToFixed(this.expressionCode.evaluate(historicalPrices), this.getPriceFeedDecimals());
@@ -123,9 +123,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
 
   async update() {
     // Update all constituent price feeds.
-    await Promise.all(Object.values(this.priceFeedMap).map(pf => {
-      return pf.update().then(() => console.log(pf.uuid));
-    }));
+    await Promise.all(Object.values(this.priceFeedMap).map(pf => pf.update()));
   }
 
   // Takes a BN fixed point number and converts it to a math.bignumber decimal number that the math library can handle.
@@ -142,6 +140,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     if (price.entries) {
       price = price.entries[price.entries.length - 1];
     }
+
     const decimals = math.bignumber(outputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
     return Web3.utils.toBN(math.format(price.mul(decimalsMultiplier).round(), { notation: "fixed" }));

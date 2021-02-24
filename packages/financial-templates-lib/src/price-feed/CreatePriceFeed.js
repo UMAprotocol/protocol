@@ -19,6 +19,8 @@ const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
 
+const uniswapBlockCache = {};
+
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
@@ -100,7 +102,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback,
       getTime,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.priceFeedDecimals // This defaults to 18 unless supplied by user
+      config.priceFeedDecimals, // This defaults to 18 unless supplied by user
+      uniswapBlockCache
     );
   } else if (config.type === "defipulsetvl") {
     const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey"];

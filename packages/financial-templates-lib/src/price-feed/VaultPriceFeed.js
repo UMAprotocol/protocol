@@ -105,6 +105,7 @@ class VaultPriceFeed extends PriceFeedInterface {
         this.web3
       );
     }
+
     return this.cachedConvertDecimalsFn(value);
   }
 }
