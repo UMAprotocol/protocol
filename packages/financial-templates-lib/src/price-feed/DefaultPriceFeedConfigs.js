@@ -467,6 +467,17 @@ const defaultConfigs = {
       BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" }
     }
   },
+  XAUPERL: {
+    type: "expression",
+    expression: "XAUUSD * USDPERL"
+  },
+  XAUUSD: {
+    type: "tradermade",
+    pair: "XAUUSD",
+    minTimeBetweenUpdates: 60,
+    minuteLookback: 7200,
+    hourlyLookback: 604800
+  },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
   TEST8DECIMALS: {

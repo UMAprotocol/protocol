@@ -19,10 +19,10 @@
  * - `./PushPriceEMP.js`: "resolves" a pending mock oracle price request with a price.
  *
  *
- * Example: $(npm bin)/truffle exec ./scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
+ * Example: yarn truffle exec ./packages/core/scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const { interfaceName } = require("@uma/common");
+const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
@@ -92,43 +92,65 @@ const deployEMP = async callback => {
       console.log("Whitelisted collateral currency");
     }
 
+    // Minimum sponsor size needs to be denominated with same currency as tokenCurrency,
+    // which will be the same as the collateral precision if the abiVersion is "latest",
+    // otherwise 18.
+    const syntheticTokenDecimals = (await collateralToken.decimals()).toString();
+    const minSponsorTokens = parseFixed("100", syntheticTokenDecimals).toString();
+
     // Create a new EMP
-    const constructorParams = {
-      expirationTimestamp: "1917036000", // 09/30/2030 @ 10:00pm (UTC)
+    let constructorParams = {
+      expirationTimestamp: Math.ceil(Date.now() / 1000) + 60 * 2, // 2 minutes from now
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "uUSDrBTC Synthetic Token Expiring 1 October 2020",
-      syntheticSymbol: "uUSDrBTC-OCT",
+      syntheticName: "Test Synth",
+      syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.35") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.2") },
-      minSponsorTokens: { rawValue: toWei("100") },
+      minSponsorTokens: { rawValue: minSponsorTokens },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
       excessTokenBeneficiary: store.address
     };
 
+    // Inject constructor params neccessary for "latest" version of the EMPCreator:
+    if (abiVersion === "latest") {
+      constructorParams = {
+        ...constructorParams,
+        financialProductLibraryAddress: ZERO_ADDRESS
+      };
+    }
+
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     const emp = await ExpiringMultiParty.at(_emp);
 
-    const empConstructorParams = {
+    let empConstructorParams = {
       ...constructorParams,
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
+    // Grab `tokenAddress` from newly constructed EMP and add to `empConstructorParams` for new EMP's
+    if (abiVersion === "latest") {
+      empConstructorParams = {
+        ...empConstructorParams,
+        tokenAddress: await emp.tokenCurrency()
+      };
+    }
+
     const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
       empConstructorParams
     ]);
-    console.log("Encoded EMP Parameters", encodedParameters);
 
     // Done!
     console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
     console.log(`Deployer address @ ${deployer}`);
-    console.table(constructorParams);
+    console.log("Encoded EMP Parameters", encodedParameters);
+    console.table(empConstructorParams);
 
     if (argv.test) {
       const initialSponsor = accounts[1];

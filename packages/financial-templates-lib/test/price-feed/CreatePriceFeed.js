@@ -323,7 +323,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   it("Valid CryptoWatch config", async function() {
     const config = {
       type: "cryptowatch",
-      apiKey,
+      cryptowatchApiKey: apiKey,
       exchange,
       pair,
       lookback,
@@ -359,7 +359,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   it("Invalid CryptoWatch config", async function() {
     const validConfig = {
       type: "cryptowatch",
-      apiKey,
+      cryptowatchApiKey: apiKey,
       exchange,
       pair,
       lookback,
@@ -789,7 +789,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       customFeeds: {
         mysymbol: {
           type: "cryptowatch",
-          apiKey,
+          cryptowatchApiKey: apiKey,
           exchange,
           pair,
           lookback,
@@ -1129,7 +1129,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   it("Valid CoinMarketCap config", async function() {
     const config = {
       type: "coinmarketcap",
-      apiKey,
+      cmcApiKey: apiKey,
       symbol,
       quoteCurrency,
       lookback,
@@ -1150,14 +1150,17 @@ contract("CreatePriceFeed.js", function(accounts) {
   it("Invalid CoinMarketCap config", async function() {
     const validConfig = {
       type: "coinmarketcap",
-      apiKey,
+      cmcApiKey: apiKey,
       symbol,
       quoteCurrency,
       lookback,
       minTimeBetweenUpdates
     };
 
-    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, cmcApiKey: undefined }),
+      null
+    );
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, symbol: undefined }), null);
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),

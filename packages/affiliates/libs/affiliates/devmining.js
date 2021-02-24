@@ -87,25 +87,14 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     }
   }
 
-  function decodeMedianizerPrice(input) {
+  // Need to convert seconds to MS
+  function decodePrice(input) {
     return [input[0] * 1000, input[1]];
-  }
-  function decodeOtherPrice(input) {
-    return [input.closeTime * 1000, input.closePrice.toString()];
-  }
-  function isMedianizerPrice(input) {
-    return input.length === 2;
   }
   // Gets the value of synthetics in collateral currency.
   async function getSyntheticPriceHistory(address, start, end) {
     const result = await synthPrices.getHistoricSynthPrices(address, start, end);
-    // Turns out getHistoricPriceFeed differs between price feed classes.
-    // This needs to be fixed but for now we will detect it and switch between decodings.
-    // TODO: Fix this behavior, see issue #2461
-    const fixedPrices = result.map(price => {
-      if (isMedianizerPrice(price)) return decodeMedianizerPrice(price);
-      return decodeOtherPrice(price);
-    });
+    const fixedPrices = result.map(decodePrice);
     return Prices(fixedPrices);
   }
 
