@@ -206,17 +206,10 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     if (endBlock.number === startBlock.number + 1) return startBlock;
 
     assert(endBlock.number !== startBlock.number, "startBlock cannot equal endBlock");
-    if (!(timestamp < endBlock.timestamp && timestamp > startBlock.timestamp)) {
-      console.log(startBlock.timestamp, startBlock.number);
-      console.log(endBlock.timestamp, endBlock.number);
-      console.log(timestamp);
-      console.trace();
-      throw new Error("timestamp not in between start and end blocks");
-    }
-    // assert(
-    //   timestamp < endBlock.timestamp && timestamp > startBlock.timestamp,
-    //   "timestamp not in between start and end blocks"
-    // );
+    assert(
+      timestamp < endBlock.timestamp && timestamp > startBlock.timestamp,
+      "timestamp not in between start and end blocks"
+    );
 
     // Interpolating the timestamp we're searching for to block numbers.
     const totalTimeDifference = endBlock.timestamp - startBlock.timestamp;
