@@ -283,7 +283,7 @@ describe("index.js", function() {
     assert.isTrue(spyLogIncludes(spy, -1, "The exchange adapter has executed a trade successfully"));
 
     // The spot price should be set to 5% below the reference price feed as the bot was trading up from the previous number.
-    // This yields 1250*0.95 ~= 1197 as the expected market price.
+    // This yields 1250*0.95 ~= 1187 as the expected market price.
     assert.equal(Number(await getPoolSpotPrice()).toFixed(0), "1187");
     // Check that the resultant post Trade Price Deviation is -5%, as we should be 5% below the reference price after the trade.
     assert.equal(parseFloat(spy.getCall(-1).lastArg.postTradePriceDeviationError.replace("%", "")).toFixed(0), "-5");
