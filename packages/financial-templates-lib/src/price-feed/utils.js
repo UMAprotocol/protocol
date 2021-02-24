@@ -244,7 +244,8 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     if (blocks[0].timestamp > timestamp) {
       let initialBlock = blocks[0];
       const cushion = 1.1;
-      const incrementDistance = await estimateBlocksElapsed(Math.max(initialBlock.timestamp - timestamp, 60), cushion);
+      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
+      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
 
       // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
       for (let multiplier = 1; ; multiplier++) {
