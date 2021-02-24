@@ -141,7 +141,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       }
     );
 
-    // Make dispute2 and resolve them
+    // Make disputes and resolve them
     await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: disputer });
     disputeTxn1 = await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
       from: disputer

@@ -2,6 +2,7 @@ module.exports = {
   ...require("./src/clients/FinancialContractClient"),
   ...require("./src/clients/FinancialContractEventClient"),
   ...require("./src/clients/OptimisticOracleClient"),
+  ...require("./src/clients/OptimisticOracleEventClient"),
   ...require("./src/clients/TokenBalanceClient"),
   ...require("./src/helpers/delay"),
   ...require("./src/helpers/GasEstimator"),
