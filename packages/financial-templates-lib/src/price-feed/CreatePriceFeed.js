@@ -433,6 +433,17 @@ async function createUniswapPriceFeedForFinancialContract(
 
   const userConfig = config || {};
 
+  // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
+  // get time method with the current block time.
+  if (userConfig.getTimeOverride) {
+    if (userConfig.getTimeOverride.useBlockTime) {
+      getTime = async () =>
+        web3.eth.getBlock("latest").then(block => {
+          return block.timestamp;
+        });
+    }
+  }
+
   logger.debug({
     at: "createUniswapPriceFeedForFinancialContract",
     message: "Inferred default config from identifier or Financial Contract address",
@@ -502,7 +513,6 @@ async function createReferencePriceFeedForFinancialContract(
   config,
   identifier
 ) {
-  console.log("FINDING");
   // Automatically detect identifier from passed in Financial Contract address or use `identifier`.
   let _identifier;
   let financialContract;

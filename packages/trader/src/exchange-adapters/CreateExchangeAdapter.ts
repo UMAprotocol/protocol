@@ -1,13 +1,11 @@
 const assert = require("assert");
-
 const { UniswapTrader } = require("./UniswapTrader");
 
 async function createExchangeAdapter(logger: any, web3: any, dsProxyManager: any, config: any) {
-  console.log("config", config);
   assert(config.type, "Exchange adapter must have a type. EG uniswap for a uniswap dex");
 
   if (config.type === "uniswap") {
-    const requiredFields = ["tokenA", "tokenB"];
+    const requiredFields = ["tokenAAddress", "tokenBAddress"];
     if (isMissingField(config, requiredFields, logger)) return null;
 
     // TODO: refactor these to be pulled from a constants file somewhere.
@@ -28,6 +26,7 @@ async function createExchangeAdapter(logger: any, web3: any, dsProxyManager: any
   return null;
 }
 
+// TODO: this method was taken verbatim from the create price feed class. it should be refactored to a common util.
 function isMissingField(config: any, requiredFields: Array<string>, logger: any) {
   const missingField = requiredFields.find(field => config[field] === undefined);
   if (missingField !== undefined) {

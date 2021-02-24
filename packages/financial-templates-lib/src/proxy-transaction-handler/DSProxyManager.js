@@ -128,8 +128,8 @@ class DSProxyManager {
     this.logger.debug({
       at: "DSProxyManager",
       message: "Executing function on library that will be deployed in the same transaction",
-      callCode,
-      callData
+      callData,
+      callCode
     });
 
     const executeTransaction = await this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData).send({
@@ -139,7 +139,7 @@ class DSProxyManager {
 
     this.logger.info({
       at: "DSProxyManager",
-      message: "Executed function on a freshly minted library, created in the same tx 🤗",
+      message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callCodeHash: web3.utils.soliditySha3(callCode),
       callData,
       tx: executeTransaction.transactionHash

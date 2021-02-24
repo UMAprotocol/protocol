@@ -1,12 +1,10 @@
 import { config } from "dotenv";
-config();
+
 import retry from "async-retry";
-import { TraderConfig } from "./TraderConfig";
-const { createExchangeAdapter } = require("./exchange-adapters/CreateExchangeAdapter");
-const { getWeb3, MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { getWeb3 } = require("@uma/common");
+const { getAbi } = require("@uma/core");
 const {
   GasEstimator,
-  FinancialContractClient,
   Networker,
   Logger,
   createReferencePriceFeedForFinancialContract,
@@ -17,70 +15,109 @@ const {
 } = require("@uma/financial-templates-lib");
 
 const { RangeTrader } = require("./RangeTrader");
-// Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
+const { createExchangeAdapter } = require("./exchange-adapters/CreateExchangeAdapter");
+import { TraderConfig } from "./TraderConfig";
+config();
 
 export async function run(logger: any, web3: any): Promise<void> {
-  const getTime = () => Math.round(new Date().getTime() / 1000);
-  // Config Processing
-  const config = new TraderConfig(process.env);
-  console.log("config", config);
+  try {
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+    const config = new TraderConfig(process.env);
 
-  // Load unlocked web3 accounts, get the networkId and set up price feed.
-  const networker = new Networker(logger);
-  const accounts = await web3.eth.getAccounts();
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[config.pollingDelay === 0 ? "debug" : "info"]({
+      at: "Trader#index",
+      message: "Trader started 🚜",
+      financialContractAddress: config.financialContractAddress,
+      pollingDelay: config.pollingDelay,
+      errorRetries: config.errorRetries,
+      errorRetriesTimeout: config.errorRetriesTimeout,
+      tokenPriceFeedConfig: config.tokenPriceFeedConfig,
+      referencePriceFeedConfig: config.referencePriceFeedConfig,
+      exchangeAdapterConfig: config.exchangeAdapterConfig
+    });
 
-  // TODO: create a method to pull out constants for the uniswap factory, router.
+    // Load unlocked web3 accounts, get the networkId and set up price feed.
+    const networker = new Networker(logger);
+    const accounts = await web3.eth.getAccounts();
 
-  const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger);
 
-  const dsProxyManager = new DSProxyManager({
-    logger,
-    web3,
-    gasEstimator,
-    account: accounts[0],
-    dsProxyFactoryAddress: config.dsProxyFactoryAddress,
-    dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-    dsProxyAbi: getAbi("DSProxy")
-  });
-
-  await dsProxyManager.initializeDSProxy();
-
-  const [tokenPriceFeed, referencePriceFeed, exchangeAdapter] = await Promise.all([
-    createTokenPriceFeedForFinancialContract(
+    const dsProxyManager = new DSProxyManager({
       logger,
       web3,
-      networker,
-      getTime,
-      config.financialContractAddress,
-      config.tokenPriceFeedConfig
-    ),
+      gasEstimator,
+      account: accounts[0],
+      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
+      dsProxyFactoryAbi: getAbi("DSProxyFactory"),
+      dsProxyAbi: getAbi("DSProxy")
+    });
 
-    createReferencePriceFeedForFinancialContract(
-      logger,
-      web3,
-      networker,
-      getTime,
-      config.financialContractAddress,
-      config.referencePriceFeedConfig
-    ),
-    createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig)
-  ]);
+    await dsProxyManager.initializeDSProxy();
 
-  const rangeTrader = new RangeTrader(tokenPriceFeed, referencePriceFeed, exchangeAdapter);
-  await retry(
-    async () => {
-      // Trading logic here.
-    },
-    {
-      retries: 3,
-      minTimeout: 5 * 1000, // delay between retries in ms
-      randomize: false,
-      onRetry: (error: Error, attempt: number) => {
-        console.log(error, attempt);
+    const [tokenPriceFeed, referencePriceFeed, exchangeAdapter] = await Promise.all([
+      createTokenPriceFeedForFinancialContract(
+        logger,
+        web3,
+        networker,
+        getTime,
+        config.financialContractAddress,
+        config.tokenPriceFeedConfig
+      ),
+
+      createReferencePriceFeedForFinancialContract(
+        logger,
+        web3,
+        networker,
+        getTime,
+        config.financialContractAddress,
+        config.referencePriceFeedConfig
+      ),
+      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig)
+    ]);
+
+    const rangeTrader = new RangeTrader(logger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter);
+    for (;;) {
+      await retry(
+        async () => {
+          await Promise.all([rangeTrader.update(), gasEstimator.update()]);
+          await rangeTrader.checkRangeMovementsAndTrade();
+        },
+        {
+          retries: config.errorRetries,
+          minTimeout: config.errorRetriesTimeout * 1000, // delay between retries in ms
+          randomize: false,
+          onRetry: error => {
+            logger.debug({
+              at: "Trader#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
+        }
+      );
+      // If the polling delay is set to 0 then the script will terminate the bot after one full run.
+      if (config.pollingDelay === 0) {
+        logger.debug({
+          at: "Trader#index",
+          message: "End of serverless execution loop - terminating process"
+        });
+        await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+        break;
       }
+      logger.debug({
+        at: "Trader#index",
+        message: "End of execution loop - waiting polling delay",
+        pollingDelay: `${config.pollingDelay} (s)`
+      });
+      await delay(Number(config.pollingDelay));
     }
-  );
+  } catch (error) {
+    // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
+    throw typeof error === "string" ? new Error(error) : error;
+  }
 }
 
 if (require.main === module) {
@@ -88,8 +125,12 @@ if (require.main === module) {
     .then(() => {
       process.exit(0);
     })
-    .catch(err => {
-      console.error(err);
+    .catch(error => {
+      Logger.error({
+        at: "Trader#index",
+        message: "Trader execution error🚨",
+        error: typeof error === "string" ? new Error(error) : error
+      });
       process.exit(1);
     });
 }

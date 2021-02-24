@@ -99,8 +99,8 @@ describe("index.js", function() {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
     });
 
     // Create a new synthetic token & collateral token.
@@ -165,6 +165,8 @@ describe("index.js", function() {
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
+    await uniswap.setPrice(toWei("1"), toWei("1"));
+    await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
   it("Runs with no errors", async function() {
@@ -177,6 +179,7 @@ describe("index.js", function() {
       tokenAAddress: syntheticToken.address,
       tokenBAddress: collateralToken.address
     });
+    process.env.POLLING_DELAY = "0";
 
     // Must not throw.
     await run(spyLogger, web3);
