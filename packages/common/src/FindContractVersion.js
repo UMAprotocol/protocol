@@ -35,33 +35,33 @@ async function findContractVersion(contractAddress, web3) {
 }
 
 const versionMap = {
-  "0xa13e06c4439902742ac1a823744c7f8c201068ab6786d33f218433e55d69b1f2": {
-    // Kovan/Mainnet 1.2.2 ExpiringMultiParty. Used by Yield Dollar and other contracts.
-    contractType: "ExpiringMultiParty",
-    contractVersion: "1.2.2"
-  },
   "0x91a7449c56a485be56bd91515dd5334b73d60371f970ea3750e146c25b65e5b7": {
-    // Kovan/Mainnet 1.2.0 ExpiringMultiParty. Used by expired Yield Dollar.
+    // Kovan/Mainnet 1.2.0 ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.0"
   },
-  "0x7a52b6452a5f68e68a1bbebf66497019194a9fc9533457eeb92043e3d3bbae3b": {
-    // 1.2.2 ExpiringMultiParty deployed from hardhat tests.
+  "0xa13e06c4439902742ac1a823744c7f8c201068ab6786d33f218433e55d69b1f2": {
+    // Kovan/Mainnet 1.2.2 ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
   "0xf08fab3a5b442d4a4b55525e4c71169d2e6826a2543842119e2e57dfac1a6b6a": {
-    // Kovan/mainnet latest ExpiringMultiParty Expiring multi party
+    // Kovan/mainnet latest ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
   },
+  "0x7a52b6452a5f68e68a1bbebf66497019194a9fc9533457eeb92043e3d3bbae3b": {
+    // Hardhat tests 1.2.2 ExpiringMultiParty.
+    contractType: "ExpiringMultiParty",
+    contractVersion: "1.2.2"
+  },
   "0x1f75b3ae77a4a3b91fefd81264ec94751dcceafb02d42d2250a209385cdee39a": {
-    // latest ExpiringMultiParty deployed from hardhat tests.
+    // Hardhat tests ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
   },
   "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
-    // latest Perpetual deployed from hardhat tests.
+    // Hardhat tests latest Perpetual.
     contractType: "Perpetual",
     contractVersion: "latest"
   }
