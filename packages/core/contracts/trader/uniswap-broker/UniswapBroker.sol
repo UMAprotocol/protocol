@@ -136,7 +136,7 @@ contract UniswapBroker {
         address factory,
         address tokenA,
         address tokenB
-    ) internal view returns (uint256 reserveA, uint256 reserveB) {
+    ) public view returns (uint256 reserveA, uint256 reserveB) {
         (address token0, ) = sortTokens(tokenA, tokenB);
         (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);

@@ -22,7 +22,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
   beforeEach(async function() {
     dexMock = await BalancerMock.new({ from: owner });
 
-    // The UniswapPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // The BalancerPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",

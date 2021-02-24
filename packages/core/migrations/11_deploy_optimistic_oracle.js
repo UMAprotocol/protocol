@@ -39,6 +39,9 @@ module.exports = async function(deployer, network, accounts) {
     { from: keys.deployer }
   );
 
+  // Register OO with Voting so it can make price requests.
   const registry = await Registry.deployed();
-  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, keys.deployer, { from: keys.deployer });
+  await registry.registerContract([], optimisticOracle.address, { from: keys.deployer });
+  await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, keys.deployer, { from: keys.deployer });
 };

@@ -2,20 +2,28 @@ const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
+const { DefiPulseTotalPriceFeed } = require("./DefiPulseTotalPriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
+const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
+const { CoinGeckoPriceFeed } = require("./CoinGeckoPriceFeed");
 const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
 const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
+const { VaultPriceFeed } = require("./VaultPriceFeed");
+const { LPPriceFeed } = require("./LPPriceFeed");
+const { BlockFinder } = require("./utils");
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
   const Uniswap = getTruffleContract("Uniswap", web3, "latest");
+  const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
+  const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -33,7 +41,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new CryptoWatchPriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.cryptowatchApiKey,
       config.exchange,
       config.pair,
       config.lookback,
@@ -85,14 +93,37 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new UniswapPriceFeed(
       logger,
       Uniswap.abi,
+      ERC20.abi,
       web3,
       config.uniswapAddress,
       config.twapLength,
       config.lookback,
       getTime,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
-      config.poolDecimals,
       config.priceFeedDecimals // This defaults to 18 unless supplied by user
+    );
+  } else if (config.type === "defipulsetvl") {
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating DefiPulseTotalPriceFeed",
+      config
+    });
+
+    return new DefiPulseTotalPriceFeed(
+      logger,
+      web3,
+      config.defipulseApiKey,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.priceFeedDecimals
     );
   } else if (config.type === "medianizer") {
     const requiredFields = ["medianizedFeeds"];
@@ -166,8 +197,59 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
     return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
+  } else if (config.type === "coinmarketcap") {
+    const requiredFields = ["cmcApiKey", "symbol", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating CoingMarketCapPriceFeed",
+      config
+    });
+
+    return new CoinMarketCapPriceFeed(
+      logger,
+      web3,
+      config.cmcApiKey,
+      config.symbol,
+      config.quoteCurrency,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.priceFeedDecimals // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+    );
+  } else if (config.type === "coingecko") {
+    const requiredFields = ["contractAddress", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating CoinGeckoPriceFeed",
+      config
+    });
+
+    return new CoinGeckoPriceFeed(
+      logger,
+      web3,
+      config.contractAddress,
+      config.quoteCurrency,
+      config.lookback,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.invertPrice, // Not checked in config because this parameter just defaults to false.
+      config.priceFeedDecimals // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+    );
   } else if (config.type === "tradermade") {
-    const requiredFields = ["pair", "apiKey", "minTimeBetweenUpdates"];
+    const requiredFields = ["pair", "tradermadeApiKey", "minTimeBetweenUpdates"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -182,7 +264,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new TraderMadePriceFeed(
       logger,
       web3,
-      config.apiKey,
+      config.tradermadeApiKey,
       config.pair,
       config.minuteLookback,
       config.hourlyLookback,
@@ -231,6 +313,48 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     });
 
     return await _createExpressionPriceFeed(config);
+  } else if (config.type === "vault") {
+    const requiredFields = ["address"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating VaultPriceFeed",
+      config
+    });
+
+    return new VaultPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      vaultAbi: VaultInterface.abi,
+      erc20Abi: ERC20.abi,
+      vaultAddress: config.address,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "lp") {
+    const requiredFields = ["poolAddress", "tokenAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating LPPriceFeed",
+      config
+    });
+
+    return new LPPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      erc20Abi: ERC20.abi,
+      blockFinder: getSharedBlockFinder(web3)
+    });
   }
 
   logger.error({
@@ -330,6 +454,15 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   async function _createBasketOfMedianizerPriceFeeds(medianizerConfigs) {
     return await Promise.all(medianizerConfigs.map(config => _createMedianizerPriceFeed(config)));
   }
+}
+
+// Simple function to grab a singleton instance of the blockFinder to share the cache.
+function getSharedBlockFinder(web3) {
+  // Attach the blockFinder to this function.
+  if (!getSharedBlockFinder.blockFinder) {
+    getSharedBlockFinder.blockFinder = BlockFinder(web3.eth.getBlock);
+  }
+  return getSharedBlockFinder.blockFinder;
 }
 
 function isMissingField(config, requiredFields, logger) {
