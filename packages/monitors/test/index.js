@@ -62,7 +62,7 @@ contract("index.js", function(accounts) {
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-    describe(`(type=financial-contract): Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
+    describe(`(type=financial-contract): Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
@@ -349,6 +349,44 @@ contract("index.js", function(accounts) {
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });
+    });
+  });
+
+  describe("(type=optimistic-oracle): Tests running on smart contract version latest", function() {
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", "latest");
+    const Finder = getTruffleContract("Finder", "latest");
+    const Timer = getTruffleContract("Timer", "latest");
+
+    beforeEach(async function() {
+      // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
+      spy = sinon.spy(); // Create a new spy for each test.
+      spyLogger = winston.createLogger({
+        level: "debug",
+        transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      });
+
+      finder = await Finder.new();
+      timer = await Timer.new();
+      optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+      await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+    });
+    it("Completes one iteration without logging any errors", async function() {
+      await Poll.run({
+        type: "optimistic-oracle",
+        logger: spyLogger,
+        web3,
+        optimisticOracleAddress: optimisticOracle.address,
+        pollingDelay,
+        errorRetries,
+        errorRetriesTimeout,
+        startingBlock: fromBlock,
+        endingBlock: toBlock,
+        monitorConfig: {}
+      });
+
+      for (let i = 0; i < spy.callCount; i++) {
+        assert.notEqual(spyLogLevel(spy, i), "error");
+      }
     });
   });
 });

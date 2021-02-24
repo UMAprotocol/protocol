@@ -88,22 +88,6 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    const contractAddress = type === "financial-contract" ? financialContractAddress : optimisticOracleAddress;
-    const [detectedContract, networkId, latestBlock] = await Promise.all([
-      findContractVersion(contractAddress, web3),
-      web3.eth.net.getId(),
-      web3.eth.getBlock("latest")
-    ]);
-
-    // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
-    // `endingBlock` as null.
-    const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
-
-    // Append the contract version and type to the monitorConfig, if the monitorConfig does not already contain one.
-    if (!monitorConfig) monitorConfig = {};
-    if (!monitorConfig.contractVersion) monitorConfig.contractVersion = detectedContract.contractVersion;
-    if (!monitorConfig.contractType) monitorConfig.contractType = detectedContract.contractType;
-
     // `asyncLoopLogic` is an async method that is called once for each loop iteration and will be retried
     // specified.
     let asyncLoopLogic;
@@ -113,6 +97,21 @@ async function run({
      *
      ***************************************/
     if (type === "financial-contract") {
+      const [detectedContract, networkId, latestBlock] = await Promise.all([
+        findContractVersion(financialContractAddress, web3),
+        web3.eth.net.getId(),
+        web3.eth.getBlock("latest")
+      ]);
+
+      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+      // `endingBlock` as null.
+      const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
+
+      // Append the contract version and type to the monitorConfig, if the monitorConfig does not already contain one.
+      if (!monitorConfig) monitorConfig = {};
+      if (!monitorConfig.contractVersion) monitorConfig.contractVersion = detectedContract.contractVersion;
+      if (!monitorConfig.contractType) monitorConfig.contractType = detectedContract.contractType;
+
       // Check that the version and type is supported. Note if either is null this check will also catch it.
       if (
         SUPPORTED_CONTRACT_VERSIONS.filter(
@@ -311,6 +310,12 @@ async function run({
        * OptimisticOracle Contract Runner
        *
        ***************************************/
+      const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
+
+      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+      // `endingBlock` as null.
+      const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
+
       const optimisticOracleContractEventClient = new OptimisticOracleEventClient(
         logger,
         getAbi("OptimisticOracle"),
@@ -320,6 +325,7 @@ async function run({
         endingBlock
       );
 
+      if (!monitorConfig) monitorConfig = {};
       const contractProps = {
         networkId
       };
