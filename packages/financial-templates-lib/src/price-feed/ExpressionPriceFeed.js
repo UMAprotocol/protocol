@@ -140,7 +140,6 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     if (price.entries) {
       price = price.entries[price.entries.length - 1];
     }
-
     const decimals = math.bignumber(outputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
     return Web3.utils.toBN(math.format(price.mul(decimalsMultiplier).round(), { notation: "fixed" }));
