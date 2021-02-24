@@ -59,7 +59,7 @@ let dsProxyFactory: any;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
 // TODO: these methods are taken from the UniswapBroker tests verbatim. they should be refactored to a common util that
-// can be re - used betyeen diffrent uniswap tests.
+// can be re-used between different uniswap tests.
 const createContractObjectFromJson = (contractJsonObject: any) => {
   const contract = require("@truffle/contract");
   let truffleContractCreator = contract(contractJsonObject);
