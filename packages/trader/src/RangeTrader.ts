@@ -21,6 +21,17 @@ export class RangeTrader {
   readonly fixedPointAdjustment: any;
 
   constructor(
+    /**
+   * @notice Constructs new Range Trader.
+   * @param {Object} logger Module used to send logs.
+   * @param {Object} web3 Provider from Truffle/node  to connect to Ethereum network.
+   * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
+   * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
+   * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
+   * @param {Object} rangeTraderConfig: Config to parameterize the range trader. Expected:
+   *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
+            targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
+   */
     logger: any,
     web3: any,
     tokenPriceFeed: any,
@@ -111,7 +122,14 @@ export class RangeTrader {
       });
       return;
     }
-    const priceScalar = deviationError.gte(this.toBN("0")) ? this.targetPriceSpread + 1 : 1 - this.targetPriceSpread;
+    // Calculate the desired deviation off from the targetPrice feed, as a scalar quantity. If deviationError > 0 then
+    // scalar = targetPriceSpread + 1. For example, if the traded price of a token is 1250 with a "true" price of 1000
+    // then the deviation error is δ = (observed - expected) / expected = (1250 - 1000) / 1000 = 0.25.
+    // As the error is positive (and larger than the threshold) the scalar = 1 + 0.05 = 1.05. The bot will therefore
+    // try to trade the price down to 1.05x the desired price, or 1050. Similarly, if deviationError < 0 then
+    // scalar = targetPriceSpread - 1. If the synthetic was trading at 800 then δ = (750 - 1000) / 1000 = -0.25 then the
+    // the scalar = 1 - 0.05 = 0.95. Therefore the bot will trade the price up to 950.
+    const priceScalar = deviationError.gte(this.toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
 
     const desiredPrice = currentReferencePrice
       .mul(this.toBN(this.toWei(priceScalar.toString())))
@@ -152,14 +170,8 @@ export class RangeTrader {
     });
   }
 
-  //TODO: replace the any type with bignumber types. I'm not exactly sure what the best practice is to do this in typescript.
+  // TODO: replace the any type with bignumber types. I'm not exactly sure what the best practice is to do this in typescript.
   // TODO: this method was taken from the SyntheticPegMonitor verbatim. Ideally it should be refactored into a common utility that both can use.
-  // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
-  // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
-  // This is equivalent of a 20 percent deviation between the numbers.
-  // Note 1) this method can return negative error if the deviation is in a negative direction. 2) Regarding scaling,
-  // prices can be scaled arbitrarily but this function always returns 1e18 scaled number as a deviation error is
-  // a unitless number.
   _calculateDeviationError(observedValue: any, expectedValue: any) {
     return this.normalizePriceFeedDecimals(observedValue)
       .sub(this.normalizePriceFeedDecimals(expectedValue))

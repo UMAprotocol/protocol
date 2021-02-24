@@ -26,17 +26,17 @@ describe("index.js", function() {
   let collateralToken: any;
   let syntheticToken: any;
   let financialContract: any;
-  let uniswap;
+  let uniswap: any;
   let store: any;
   let timer: any;
   let mockOracle: any;
   let finder: any;
   let identifierWhitelist: any;
   let configStore: any;
-  let collateralWhitelist;
-  let optimisticOracle;
+  let collateralWhitelist: any;
+  let optimisticOracle: any;
   let defaultPriceFeedConfig: any;
-  let constructorParams;
+  let constructorParams: any;
   let dsProxyFactory: any;
 
   let originalEnv: any;

@@ -52,9 +52,9 @@ let tokenB: any;
 let uniswapFactory: any;
 let uniswapRouter: any;
 let uniswapBroker: any;
-let pair;
+let pair: any;
 let pairAddress: any;
-let WETH;
+let WETH: any;
 let dsProxyFactory: any;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
