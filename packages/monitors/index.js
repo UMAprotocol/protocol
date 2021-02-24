@@ -386,6 +386,10 @@ async function run({
 }
 async function Poll(callback) {
   try {
+    // Detect `type` of monitor from whether user has set `OPTIMISTIC_ORACLE_ADDRESS` or not,
+    // if they have then we assume that they want to run the optimistic oracle monitor, otherwise
+    // we check that they can run the financil contract monitor correctly.
+
     // If user specifies an OPTIMISTIC_ORACLE_ADDRESS, then no need to check for a financial contract address.
     const type = process.env.OPTIMISTIC_ORACLE_ADDRESS ? "optimistic-oracle" : "financial-contract";
     // Note: If type is "optimistic-oracle" then we already know that `OPTIMISTIC_ORACLE_ADDRESS` exists
