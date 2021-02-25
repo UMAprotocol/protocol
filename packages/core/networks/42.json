@@ -21,7 +21,7 @@
   },
   {
     "contractName": "Store",
-    "address": "0x59BAD73757B93C9c36FE3a431B31660a1C8AD41F"
+    "address": "0x41AF40Eb92Bec4dD8DA77103597838b3dBBD3B6f"
   },
   {
     "contractName": "Governor",
@@ -45,11 +45,11 @@
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0x9EEc87Fa8dc3e4Aab025773420E9C91572686F49"
+    "address": "0xf8bdAb5d675F76eD863fF9Fa35B129A6e43e71cA"
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x0a81125f17E9A98fEF5b463696fD83dbf7515e3F"
+    "address": "0xeF9c374b7976941fCAf5e501eaB531E430463fC6"
   },
   {
     "contractName": "Voting",
