@@ -79,11 +79,10 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         uint256 windowIndex,
         address account,
         uint256 amount,
-        string memory metaData,
         bytes32[] memory merkleProof
     ) public nonReentrant() {
         require(!claimed[windowIndex][account], "Already claimed");
-        require(verifyClaim(windowIndex, account, amount, metaData, merkleProof), "Incorrect merkle proof");
+        require(verifyClaim(windowIndex, account, amount, merkleProof), "Incorrect merkle proof");
 
         claimed[windowIndex][account] = true;
         _disburse(account, amount, windowIndex);
@@ -93,14 +92,9 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         uint256 windowIndex,
         address account,
         uint256 amount,
-        string memory metaData,
         bytes32[] memory merkleProof
     ) public view returns (bool valid) {
-        Window memory window = merkleWindows[windowIndex];
-        bytes32 leaf =
-            keccak256(
-                abi.encodePacked(windowIndex, account, amount, metaData, window.rewardToken, window.start, window.end)
-            );
+        bytes32 leaf = keccak256(abi.encodePacked(account, amount));
         return MerkleProof.verify(merkleProof, merkleWindows[windowIndex].merkleRoot, leaf);
     }
 

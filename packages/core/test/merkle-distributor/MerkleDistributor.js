@@ -10,41 +10,22 @@ const MerkleDistributor = artifacts.require("MerkleDistributor");
 const Timer = artifacts.require("Timer");
 const Token = artifacts.require("ExpandedERC20");
 
-let merkleDistributor, timer, rewardToken, rewardRecipients, merkleTree, rewardLeafs, leaf, claimerProof;
+let merkleDistributor, timer, rewardToken, rewardRecipients, merkleTree, rewardLeafs, leaf, claimerProof, windowIndex;
 
-// For a recipeint object, create the leaf to be part of the merkle tree. The leaf is simply a hash of the concatenation
-// of all fields within the payout object for the recipient.
+// For a recipient object, create the leaf to be part of the merkle tree. The leaf is simply a hash of the concatenation
+// account and the amount.
 const createLeaf = recipient => {
-  // The recipient must contain all the keys to correctly generate the leaf hash. If anything is undefined we'll have nonsensical problems.
   assert.isTrue(
-    Object.keys(recipient).every(val =>
-      ["windowIndex", "account", "amount", "metaData", "rewardToken", "windowStart", "windowEnd"].includes(val)
-    ),
-    "recipient must contain all required keys"
+    Object.keys(recipient).every(val => ["account", "amount"].includes(val)),
+    "recipient does not contain required keys"
   );
-  return web3.utils.soliditySha3(
-    { t: "uint256", v: recipient.windowIndex },
-    { t: "address", v: recipient.account },
-    { t: "uint256", v: recipient.amount },
-    { t: "string", v: recipient.metaData },
-    { t: "address", v: recipient.rewardToken },
-    { t: "uint256", v: recipient.windowStart },
-    { t: "uint256", v: recipient.windowEnd }
-  );
+  return web3.utils.soliditySha3({ t: "address", v: recipient.account }, { t: "uint256", v: recipient.amount });
 };
 
 // Generate payouts to be used in tests using the SamplePayouts file.
-const createRewardRecipientsFromSampleData = (SamplePayouts, windowIndex, windowStart, windowEnd) => {
+const createRewardRecipientsFromSampleData = SamplePayouts => {
   return Object.keys(SamplePayouts.exampleRecipients).map(recipientAddress => {
-    return {
-      account: recipientAddress,
-      amount: SamplePayouts.exampleRecipients[recipientAddress].amount,
-      metaData: SamplePayouts.exampleRecipients[recipientAddress].metaData,
-      windowIndex,
-      windowStart,
-      windowEnd,
-      rewardToken: rewardToken.address
-    };
+    return { account: recipientAddress, amount: SamplePayouts.exampleRecipients[recipientAddress].amount };
   });
 };
 
@@ -67,43 +48,18 @@ contract("ExpiringMultiParty", function(accounts) {
       // Create a an array of reward recipients. Each object within the array represents the payout for one account. The
       // metaData is an arbitrary string that can be appended to each recipient to add additional information about the payouts.
       rewardRecipients = [
-        {
-          account: accounts[3],
-          amount: rewardAmount.muln(1).toString(),
-          metaData: "Liquidity mining, Developer mining, UMA governance"
-        },
-        {
-          account: accounts[4],
-          amount: rewardAmount.muln(2).toString(),
-          metaData: "Liquidity mining, Developer mining"
-        },
-        {
-          account: accounts[5],
-          amount: rewardAmount.muln(3).toString(),
-          metaData: "Liquidity mining"
-        }
+        { account: accounts[3], amount: rewardAmount.muln(1).toString() },
+        { account: accounts[4], amount: rewardAmount.muln(2).toString() },
+        { account: accounts[5], amount: rewardAmount.muln(3).toString() }
       ];
-
-      const windowIndex = 0; // Each window has a unique index
-      // In this example, each recipient will have their rewards vest instantly once. Each recipient will get the `amount`
-      // of `rewardToken` when claiming their rewards.
-      const commonFields = {
-        windowIndex,
-        rewardToken: rewardToken.address,
-        windowStart: currentTime,
-        windowEnd: currentTime
-      };
-
-      // Append the commonFields to each rewardRecipient
-      rewardRecipients = rewardRecipients.map((r, index) => {
-        return { ...rewardRecipients[index], ...commonFields };
-      });
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
       rewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
 
       // Build the merkle tree from an array of hashes from each recipient.
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
+
+      windowIndex = 0; // Using only 1 window.
 
       // Seed the merkleDistributor with the root of the tree and additional information.
       await rewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, { from: contractCreator });
@@ -122,7 +78,7 @@ contract("ExpiringMultiParty", function(accounts) {
       claimerProof = merkleTree.getProof(leaf.leaf);
 
       // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
-      await merkleDistributor.claimWindow(leaf.windowIndex, leaf.account, leaf.amount, leaf.metaData, claimerProof);
+      await merkleDistributor.claimWindow(windowIndex, leaf.account, leaf.amount, claimerProof);
       // Their balance should have increased by the amount of the reward.
       assert.equal(
         (await rewardToken.balanceOf(leaf.account)).toString(),
@@ -133,7 +89,7 @@ contract("ExpiringMultiParty", function(accounts) {
   describe("Single window", function() {
     // For each test in the single window, load in the SampleMerlePayouts, generate a tree and set it in the distributor.
     beforeEach(async function() {
-      const windowIndex = 0;
+      windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
 
       rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts, windowIndex, currentTime, currentTime);
@@ -159,9 +115,7 @@ contract("ExpiringMultiParty", function(accounts) {
     it("Can claim rewards on another EOA's behalf", async function() {
       // Can correctly claim on the EOAs behalf.
       const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
-      await merkleDistributor.claimWindow(leaf.windowIndex, leaf.account, leaf.amount, leaf.metaData, claimerProof, {
-        from: rando
-      });
+      await merkleDistributor.claimWindow(windowIndex, leaf.account, leaf.amount, claimerProof, { from: rando });
       // The EOA balance should have increased by the amount of the reward.
       assert.equal(
         (await rewardToken.balanceOf(leaf.account)).toString(),
@@ -170,15 +124,11 @@ contract("ExpiringMultiParty", function(accounts) {
     });
     it("Can not double claim rewards", async function() {
       // Claim rewards for the EOA.
-      await merkleDistributor.claimWindow(leaf.windowIndex, leaf.account, leaf.amount, leaf.metaData, claimerProof, {
-        from: rando
-      });
+      await merkleDistributor.claimWindow(windowIndex, leaf.account, leaf.amount, claimerProof, { from: rando });
       // Can not re-claim rewards for the EOA.
       assert(
         await didContractThrow(
-          merkleDistributor.claimWindow(leaf.windowIndex, leaf.account, leaf.amount, leaf.metaData, claimerProof, {
-            from: rando
-          })
+          merkleDistributor.claimWindow(windowIndex, leaf.account, leaf.amount, claimerProof, { from: rando })
         )
       );
     });
@@ -187,23 +137,25 @@ contract("ExpiringMultiParty", function(accounts) {
       // the rest of the valid proof.
       assert(
         await didContractThrow(
-          merkleDistributor.claimWindow(leaf.windowIndex, rando, leaf.amount, leaf.metaData, claimerProof, {
-            from: rando
-          })
+          merkleDistributor.claimWindow(windowIndex, rando, leaf.amount, claimerProof, { from: rando })
         )
       );
     });
     it("Can not claim rewards with invalid data", async function() {
-      const invalidProof = [utf8ToHex("0x")];
       assert(
         await didContractThrow(
-          merkleDistributor.claimWindow(leaf.windowIndex, leaf.account, leaf.amount, leaf.metaData, invalidProof, {
-            from: rando
-          })
+          merkleDistributor.claimWindow(windowIndex, leaf.account, toWei("1000000"), claimerProof, { from: rando })
         )
       );
     });
-    it("Can not claim rewards with invalid proof", async function() {});
+    it("Can not claim rewards with invalid proof", async function() {
+      const invalidProof = [utf8ToHex("0x")];
+      assert(
+        await didContractThrow(
+          merkleDistributor.claimWindow(windowIndex, leaf.account, leaf.amount, invalidProof, { from: rando })
+        )
+      );
+    });
   });
 
   describe("Multiple window", function() {
