@@ -6,7 +6,7 @@ import VotingInterfaceTesting from "@uma/core/build/contracts/VotingInterfaceTes
 
 // Hack to add the new voting address on kovan and mainnet, but not change anything else.
 Voting.networks[1].address = "0x8b1631ab830d11531ae83725fda4d86012eccd77";
-Voting.networks[42].address = "0x08f5728338de40a7b6fc35d30b0ca7cc622be6f3";
+Voting.networks[42].address = "0x0740C93a3D2B6088d0E345Da47c3B412b9874562";
 Voting.abi = VotingInterfaceTesting.abi;
 
 const options = {
