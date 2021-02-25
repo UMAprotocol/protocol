@@ -1,6 +1,6 @@
 const winston = require("winston");
 
-const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
 const { OptimisticOracleEventClient } = require("../../src/clients/OptimisticOracleEventClient");
 const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
@@ -24,18 +24,20 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
   const proposer = accounts[2];
   const disputer = accounts[3];
 
+  // Contracts
   let optimisticRequester;
   let optimisticOracle;
-  let client;
-  let dummyLogger;
   let mockOracle;
-
   let finder;
   let timer;
   let identifierWhitelist;
   let collateralWhitelist;
   let store;
   let collateral;
+
+  // Bot helper modules
+  let client;
+  let dummyLogger;
 
   // Timestamps that we'll use throughout the test.
   let requestTime;
@@ -46,9 +48,13 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
   const liveness = 7200; // 2 hours
   const initialUserBalance = toWei("100");
   const finalFee = toWei("1");
-  const totalDefaultBond = toWei("2"); // 2x final fee
-  const disputePayout = toWei("2.5"); // dispute bond + 50% of loser's bond
-  const correctPrice = toWei("-17");
+  const totalDefaultBond = toBN(finalFee)
+    .mul(toBN(2))
+    .toString(); // 2x final fee
+  const disputePayout = toBN(totalDefaultBond)
+    .add(toBN(finalFee).div(toBN(2)))
+    .toString(); // dispute bond + 50% of loser's bond
+  const correctPrice = toWei("-17"); // Arbitrary price to use as the correct price for proposals + disputes
   const identifier = web3.utils.utf8ToHex("Test Identifier");
 
   const pushPrice = async price => {
@@ -191,6 +197,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
     const newTxn = await optimisticRequester.requestPrice(
       identifier,
       requestTime,
+      // Note: we're using collateral address as ancillary data here to test with more entropy.
       collateral.address,
       collateral.address,
       0
@@ -203,6 +210,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         blockNumber: newTxn.receipt.blockNumber,
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
         currency: collateral.address,
@@ -250,6 +259,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       optimisticRequester.address,
       identifier,
       requestTime,
+      // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+      // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
       collateral.address.toLowerCase(),
       correctPrice,
       {
@@ -332,6 +343,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice
@@ -400,6 +413,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer: ZERO_ADDRESS,
         identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
         price: correctPrice,

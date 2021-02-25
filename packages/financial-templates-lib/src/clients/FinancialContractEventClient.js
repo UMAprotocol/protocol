@@ -1,4 +1,4 @@
-// A thick client for getting information about an FinancialContract events. This client is kept separate from the
+// A thick client for getting information about FinancialContract events. This client is kept separate from the
 // FinancialContractClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
 class FinancialContractEventClient {

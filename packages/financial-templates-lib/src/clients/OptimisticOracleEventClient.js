@@ -1,13 +1,13 @@
-// A thick client for getting information about an OptimisticOracle events. This client is kept separate from the
+// A thick client for getting information about OptimisticOracle events. This client is kept separate from the
 // OptimisticOracleClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
 class OptimisticOracleEventClient {
   /**
    * @notice Constructs new OptimisticOracleEventClient.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} optimisticOracleAbi Financial Contract truffle ABI object to create a contract instance.
+   * @param {Object} optimisticOracleAbi OptimisticOracle truffle ABI object to create a contract instance.
    * @param {Object} web3 Web3 provider from truffle instance.
-   * @param {String} optimisticOracleAddress Ethereum address of the Financial Contract contract deployed on the current network.
+   * @param {String} optimisticOracleAddress Ethereum address of the OptimisticOracle contract deployed on the current network.
    * @param {Integer} startingBlockNumber Offset block number to index events from.
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.

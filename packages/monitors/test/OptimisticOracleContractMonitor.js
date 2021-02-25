@@ -59,7 +59,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
   const initialUserBalance = toWei("100");
   const finalFee = toWei("1");
   const reward = toWei("3");
-  // Proposal|Dispute bond = 2 x final fee = 2
+  // Proposal & Dispute bond = 2 x final fee
   const proposalPayout = toWei("5"); // dispute bond + reward
   const disputePayout = toWei("5.5"); // dispute bond + 50% of loser's bond + reward
   const correctPrice = toWei("-17");

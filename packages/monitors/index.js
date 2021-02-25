@@ -7,14 +7,14 @@ const retry = require("async-retry");
 const {
   FinancialContractClient,
   FinancialContractEventClient,
+  OptimisticOracleEventClient,
   TokenBalanceClient,
   Networker,
   Logger,
   createReferencePriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
-  delay,
-  OptimisticOracleEventClient
+  delay
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -312,8 +312,7 @@ async function run({
        ***************************************/
       const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
 
-      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
-      // `endingBlock` as null.
+      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber`.
       const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
 
       const optimisticOracleContractEventClient = new OptimisticOracleEventClient(
@@ -387,8 +386,8 @@ async function run({
 async function Poll(callback) {
   try {
     // Detect `type` of monitor from whether user has set `OPTIMISTIC_ORACLE_ADDRESS` or not,
-    // if they have then we assume that they want to run the optimistic oracle monitor, otherwise
-    // we check that they can run the financil contract monitor correctly.
+    // if they have, then we assume that they want to run the optimistic oracle monitor, otherwise
+    // we check that they can run the financial contract monitor correctly.
 
     // If user specifies an OPTIMISTIC_ORACLE_ADDRESS, then no need to check for a financial contract address.
     const type = process.env.OPTIMISTIC_ORACLE_ADDRESS ? "optimistic-oracle" : "financial-contract";

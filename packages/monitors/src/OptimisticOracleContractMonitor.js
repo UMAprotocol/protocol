@@ -16,7 +16,7 @@ class OptimisticOracleContractMonitor {
   constructor({ logger, optimisticOracleContractEventClient, monitorConfig, contractProps }) {
     this.logger = logger;
 
-    // Financial Contract event client to read latest contract events.
+    // OptimisticOracle Contract event client to read latest contract events.
     this.optimisticOracleContractEventClient = optimisticOracleContractEventClient;
     this.optimisticOracleContract = this.optimisticOracleContractEventClient.optimisticOracleContract;
     this.web3 = this.optimisticOracleContractEventClient.web3;
@@ -91,7 +91,7 @@ class OptimisticOracleContractMonitor {
     this.lastRequestPriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
-  // Queries Proposal events since the latest query marked by `lastProposePriceBlockNumber`.
+  // Queries ProposePrice events since the latest query marked by `lastProposePriceBlockNumber`.
   async checkForProposals() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
@@ -122,7 +122,7 @@ class OptimisticOracleContractMonitor {
     this.lastProposePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
-  // Queries Dispute events since the latest query marked by `lastDisputePriceBlockNumber`.
+  // Queries DisputePrice events since the latest query marked by `lastDisputePriceBlockNumber`.
   async checkForDisputes() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
@@ -152,7 +152,7 @@ class OptimisticOracleContractMonitor {
     this.lastDisputePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
-  // Queries Settlement events since the latest query marked by `lastSettlementBlockNumber`.
+  // Queries Settle events since the latest query marked by `lastSettlementBlockNumber`.
   async checkForSettlements() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
