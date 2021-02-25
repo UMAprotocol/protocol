@@ -352,8 +352,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     }
 
     /**
-     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond
-     * and pay a fixed final fee charged on each price request.
+     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond and pay a fixed final
+     * fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no other pending disputes.
      * This contract must be approved to spend at least the dispute bond amount of `collateralCurrency`. This dispute
      * bond amount is calculated from `disputeBondPercentage` times the collateral in the liquidation.
@@ -424,8 +424,8 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
         // Calculate rewards as a function of the TRV.
         // Note1: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
-        // Note2: the tokenRedemptionValue uses the tokensOutstanding which was calculating using the funding rate at
-        // liquidation time from _getFundingRateAppliedTokenDebt.Therefore the TRV consideres the full debt value at that time.
+        // Note2: the tokenRedemptionValue uses the tokensOutstanding which was calculated using the funding rate at
+        // liquidation time from _getFundingRateAppliedTokenDebt. Therefore the TRV considers the full debt value at that time.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory settlementPrice = liquidation.settlementPrice;
         FixedPoint.Unsigned memory tokenRedemptionValue =

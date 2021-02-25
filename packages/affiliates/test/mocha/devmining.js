@@ -177,6 +177,57 @@ describe("DevMining Rewards", function() {
       assert.equal(result.empPayouts["a"], 80);
       assert.equal(result.empPayouts["b"], 20);
     });
+    it("should not reward emps that expire during the reward period", function() {
+      // add balance at block 0 for first emp
+      balanceHistories[0][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "a" with 2 collateral 1 synthetic
+        args: ["a", "2", "1"],
+        blockTimestamp: 0
+      });
+      // add balance for second emp
+      balanceHistories[1][1].handleEvent(0, {
+        name: "PositionCreated",
+        // creating a position for address "a" with 2 collateral 1 synthetic
+        args: ["a", "2", "1"],
+        blockTimestamp: 0
+      });
+      // create position at block 1 for first emp
+      balanceHistories[0][1].handleEvent(1, {
+        name: "PositionCreated",
+        args: ["b", "2", "1"],
+        blockTimestamp: 1
+      });
+      // create positionat block 1 for second emp
+      balanceHistories[1][1].handleEvent(1, {
+        name: "PositionCreated",
+        args: ["b", "2", "1"],
+        blockTimestamp: 1
+      });
+      // now we will also expire emp 2, rendering its latest value unrecordded
+      balanceHistories[1][1].handleEvent(1, {
+        name: "ContractExpired",
+        args: [],
+        blockTimestamp: 1
+      });
+      balanceHistories[0][1].finalize();
+      balanceHistories[1][1].finalize();
+      // Run for 2 blocks, [0-2)
+      const startTime = 0;
+      const endTime = 2;
+      const changeParams = {
+        ...params,
+        startTime,
+        endTime,
+        blocks: lodash.times(endTime - startTime, i => ({ timestamp: i, number: i }))
+      };
+      // We should record 50% / 50% contribution for both at block 0
+      // and 100% / 0% contribution at block 1.
+      const result = affiliates.utils.calculateRewards(changeParams);
+      assert.equal(result.empPayouts["a"], 75);
+      // B expired at block 1, so it should have lower rewards proportionally
+      assert.equal(result.empPayouts["b"], 25);
+    });
   });
   describe("running dataset 1", function() {
     let affiliates;

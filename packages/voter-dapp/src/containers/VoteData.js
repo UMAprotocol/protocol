@@ -32,7 +32,7 @@ function useVoteData() {
 
       // Load data into `newVoteData` synchronously
       data.priceRequestRounds.forEach(dataForRequest => {
-        const identifier = dataForRequest.id.split("-")[0];
+        const identifier = dataForRequest.identifier.id;
         const newRoundKey = getRequestKey(dataForRequest.time, identifier, dataForRequest.roundId);
 
         // Commit vote data:

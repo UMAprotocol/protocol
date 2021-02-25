@@ -2,16 +2,19 @@
 // part of UMIP-15. It can be run on a local ganache fork of the main net or can be run directly on the main net to
 // execute the upgrade transactions. To run this on the localhost first fork main net into Ganache with the
 // proposerWallet unlocked as follows: ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as: yarn truffle exec ./scripts/UMIP-15/1_Propose.js --network mainnet-fork from core
+// Then execute the script as: yarn truffle exec ./scripts/voting-upgrade-umip/1_Propose.js --network mainnet-fork from core
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
-const VotingToken = artifacts.require("VotingToken");
-const Governor = artifacts.require("Governor");
-const Umip15Upgrader = artifacts.require("Umip15Upgrader");
+const { getTruffleContract } = require("../../index");
+const Finder = getTruffleContract("Finder", web3, "1.1.0");
+const Registry = getTruffleContract("Registry", web3, "1.1.0");
+const Voting = getTruffleContract("Voting", web3, "1.1.0");
+const VotingToken = getTruffleContract("VotingToken", web3, "1.1.0");
+const Governor = getTruffleContract("Governor", web3, "1.1.0");
+
+// Use latest bytecode for any contract that we're deploying in-script.
+const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "latest");
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
@@ -25,7 +28,7 @@ async function runExport() {
     snapshot = await takeSnapshot(web3);
     snapshotId = snapshot["result"];
   }
-  console.log("Running UMIP-15 Upgrade🔥");
+  console.log("Running Voting Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
   const registry = await Registry.deployed();
@@ -70,8 +73,8 @@ async function runExport() {
 
   console.log("Deployed voting contract:\t", newVoting.address);
 
-  console.log("3. DEPLOYED UMIP-15UPGRADER.sol");
-  const umip15Upgrader = await Umip15Upgrader.new(
+  console.log("3. DEPLOYED VotingUpgrader.sol");
+  const votingUpgrader = await VotingUpgrader.new(
     governor.address,
     existingVoting.address,
     newVoting.address,
@@ -81,7 +84,7 @@ async function runExport() {
     }
   );
 
-  console.log("Deployed UMIP-upgrader\t", umip15Upgrader.address);
+  console.log("Deployed VotingUpgrader\t", votingUpgrader.address);
 
   console.log("4. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNOR");
   await newVoting.transferOwnership(governor.address, { from: proposerWallet });
@@ -95,17 +98,17 @@ async function runExport() {
 
   console.log("5.a. Add minting roll to new voting contract:", addVotingAsTokenMinterTx);
 
-  const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(umip15Upgrader.address).encodeABI();
+  const transferFinderOwnershipTx = finder.contract.methods.transferOwnership(votingUpgrader.address).encodeABI();
 
   console.log("5.b. Transfer finder ownership tx data:", transferFinderOwnershipTx);
 
   const transferExistingVotingOwnershipTx = existingVoting.contract.methods
-    .transferOwnership(umip15Upgrader.address)
+    .transferOwnership(votingUpgrader.address)
     .encodeABI();
 
   console.log("5.c. Transfer existing voting ownership tx data:", transferExistingVotingOwnershipTx);
 
-  const upgraderExecuteUpgradeTx = umip15Upgrader.contract.methods.upgrade().encodeABI();
+  const upgraderExecuteUpgradeTx = votingUpgrader.contract.methods.upgrade().encodeABI();
 
   console.log("5.d. Upgrader Execute Upgrade tx data:", upgraderExecuteUpgradeTx);
 
@@ -130,7 +133,7 @@ async function runExport() {
         data: transferExistingVotingOwnershipTx
       },
       {
-        to: umip15Upgrader.address,
+        to: votingUpgrader.address,
         value: 0,
         data: upgraderExecuteUpgradeTx
       }

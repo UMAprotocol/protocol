@@ -84,7 +84,7 @@ function ResolvedRequests({ votingAccount }) {
   const newProposalEvents = useCacheEvents(
     "Governor",
     "NewProposal",
-    useMemo(() => ({ fromBlock: 0 }))
+    useMemo(() => ({ fromBlock: 0 }), [])
   );
   const decodeRequestIndex = index => {
     const proposal = adminProposals[index];

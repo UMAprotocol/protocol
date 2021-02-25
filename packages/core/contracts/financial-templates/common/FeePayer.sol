@@ -104,7 +104,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Fetch the regualar fees, late penatly and the max posible to pay given the current collateral within the contract.
+        // Fetch the regular fees, late penalty and the max possible to pay given the current collateral within the contract.
         (
             FixedPoint.Unsigned memory regularFee,
             FixedPoint.Unsigned memory latePenalty,
@@ -137,7 +137,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
      * @notice Fetch any regular fees that the contract has pending but has not yet paid. If the fees to be paid are more
      * than the total collateral within the contract then the totalPaid returned is full contract collateral amount.
      * @dev This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
-     * @return regularFee outstanding unpaid regualr fee.
+     * @return regularFee outstanding unpaid regular fee.
      * @return latePenalty outstanding unpaid late fee for being late in previous fee payments.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      */

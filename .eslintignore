@@ -7,5 +7,6 @@ ui
 sponsor-dapp-v2
 voter-dapp
 build
+dist
 .github
 cache

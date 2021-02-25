@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -34,6 +34,8 @@ const { getWeb3 } = require("@uma/common");
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [liquidatorConfig] Configuration to construct the liquidator.
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
+ * @param {Number} [startingBlock] Earliest block to query for contract events that the bot will log about.
+ * @param {Number} [endingBlock] Latest block to query for contract events that the bot will log about.
  * @return None or throws an Error.
  */
 async function run({
@@ -46,31 +48,80 @@ async function run({
   errorRetriesTimeout,
   priceFeedConfig,
   liquidatorConfig,
-  liquidatorOverridePrice
+  liquidatorOverridePrice,
+  startingBlock,
+  endingBlock
 }) {
   try {
     const { toBN } = web3.utils;
+
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[pollingDelay === 0 ? "debug" : "info"]({
+      at: "Liquidator#index",
+      message: "Liquidator started 🌊",
+      empAddress,
+      pollingDelay,
+      errorRetries,
+      errorRetriesTimeout,
+      priceFeedConfig,
+      liquidatorConfig,
+      liquidatorOverridePrice
+    });
+
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // Load unlocked web3 accounts and get the networkId.
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const [detectedContract, accounts, networkId] = await Promise.all([
+      findContractVersion(empAddress, web3),
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
+    ]);
+    // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
+    if (!liquidatorConfig) liquidatorConfig = {};
+    if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract?.contractVersion;
+    if (!liquidatorConfig.contractType) liquidatorConfig.contractType = detectedContract?.contractType;
 
-    // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-    const emp = new web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    // Check that the version and type is supported. Note if either is null this check will also catch it.
+    if (
+      SUPPORTED_CONTRACT_VERSIONS.filter(
+        vo => vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
+      ).length == 0
+    )
+      throw new Error(
+        `Contract version specified or inferred is not supported by this bot. Liquidator config:${JSON.stringify(
+          liquidatorConfig
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} is not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
+      );
+
+    // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
+    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+    const emp = new web3.eth.Contract(
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
+      empAddress
+    );
 
     // Returns whether the EMP has expired yet
-    const checkIsExpiredPromise = async () => {
-      const [expirationTimestamp, contractTimestamp] = await Promise.all([
-        emp.methods.expirationTimestamp().call(),
+    const checkIsExpiredOrShutdownPromise = async () => {
+      const [expirationOrShutdownTimestamp, contractTimestamp] = await Promise.all([
+        liquidatorConfig.contractType === "ExpiringMultiParty"
+          ? emp.methods.expirationTimestamp().call()
+          : emp.methods.emergencyShutdownTimestamp().call(),
         emp.methods.getCurrentTime().call()
       ]);
       // Check if EMP is expired.
-      if (Number(contractTimestamp) >= Number(expirationTimestamp)) {
+      if (
+        Number(contractTimestamp) >= Number(expirationOrShutdownTimestamp) &&
+        Number(expirationOrShutdownTimestamp) > 0
+      ) {
         logger.info({
           at: "Liquidator#index",
-          message: "EMP is expired, can only withdraw liquidator dispute rewards 🕰",
-          expirationTimestamp,
+          message: `EMP is ${
+            liquidatorConfig.contractType === "ExpiringMultiParty" ? "expired" : "shutdown"
+          }, can only withdraw liquidator dispute rewards 🕰`,
+          expirationOrShutdownTimestamp,
           contractTimestamp
         });
         return true;
@@ -86,7 +137,7 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      isExpired,
+
       withdrawLiveness
     ] = await Promise.all([
       emp.methods.collateralRequirement().call(),
@@ -94,12 +145,8 @@ async function run({
       emp.methods.minSponsorTokens().call(),
       emp.methods.collateralCurrency().call(),
       emp.methods.tokenCurrency().call(),
-      checkIsExpiredPromise(),
       emp.methods.withdrawalLiveness().call()
     ]);
-
-    // Initial EMP expiry status
-    let IS_EXPIRED = isExpired;
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -122,19 +169,12 @@ async function run({
       withdrawLiveness
     };
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[pollingDelay === 0 ? "debug" : "info"]({
-      at: "Liquidator#index",
-      message: "Liquidator started 🌊",
-      empAddress,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-      priceFeedConfig,
-      liquidatorConfig,
-      liquidatorOverridePrice
-    });
+    // Add block window into `liquidatorConfig`
+    liquidatorConfig = {
+      ...liquidatorConfig,
+      startingBlock,
+      endingBlock
+    };
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const priceFeed = await createReferencePriceFeedForEmp(
@@ -154,12 +194,13 @@ async function run({
     // instance of Liquidator to preform liquidations.
     const empClient = new ExpiringMultiPartyClient(
       logger,
-      getAbi("ExpiringMultiParty"),
+      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       web3,
       empAddress,
       collateralDecimals,
       syntheticDecimals,
-      priceFeed.getPriceFeedDecimals()
+      priceFeed.getPriceFeedDecimals(),
+      liquidatorConfig.contractType
     );
 
     const gasEstimator = new GasEstimator(logger);
@@ -190,49 +231,47 @@ async function run({
       collateralDecimals: Number(collateralDecimals),
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig
+      priceFeedConfig,
+      liquidatorConfig
     });
 
     // The EMP requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    // If the contract is expired, the liquidator can only withdraw disputes so there is no need to set allowances.
-    if (!IS_EXPIRED) {
-      if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited collateral tokens 💰",
-          collateralApprovalTx: collateralApprovalTx.transactionHash
-        });
-      }
-      if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-        await gasEstimator.update();
-        const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
-          from: accounts[0],
-          gasPrice: gasEstimator.getCurrentFastPrice()
-        });
-        logger.info({
-          at: "Liquidator#index",
-          message: "Approved EMP to transfer unlimited synthetic tokens 💰",
-          syntheticApprovalTx: syntheticApprovalTx.transactionHash
-        });
-      }
+    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const collateralApprovalTx = await collateralToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited collateral tokens 💰",
+        collateralApprovalTx: collateralApprovalTx.transactionHash
+      });
+    }
+    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      await gasEstimator.update();
+      const syntheticApprovalTx = await syntheticToken.methods.approve(empAddress, MAX_UINT_VAL).send({
+        from: accounts[0],
+        gasPrice: gasEstimator.getCurrentFastPrice()
+      });
+      logger.info({
+        at: "Liquidator#index",
+        message: "Approved EMP to transfer unlimited synthetic tokens 💰",
+        syntheticApprovalTx: syntheticApprovalTx.transactionHash
+      });
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       // Check if EMP expired before running current iteration.
-      IS_EXPIRED = await checkIsExpiredPromise();
+      let isExpiredOrShutdown = await checkIsExpiredOrShutdownPromise();
 
       await retry(
         async () => {
           // Update the liquidators state. This will update the clients, price feeds and gas estimator.
           await liquidator.update();
-          if (!IS_EXPIRED) {
+          if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
             const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
@@ -305,17 +344,25 @@ async function Poll(callback) {
       priceFeedConfig: process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : null,
       // If there is a liquidator config, add it. Else, set to null. This config contains crThreshold,liquidationDeadline,
       // liquidationMinPrice, txnGasLimit & logOverrides. Example config:
-      // {"crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
+      // { "crThreshold":0.02,  -> Liquidate if a positions collateral falls more than this % below the min CR requirement
       //   "liquidationDeadline":300, -> Aborts if the transaction is mined this amount of time after the last update
       //   "liquidationMinPrice":0, -> Aborts if the amount of collateral in the position per token is below this ratio
       //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //   "whaleDefenseFundWei": undefined -> Amount of tokens to set aside for withdraw delay defense in case position cant be liquidated.
       //   "defenseActivationPercent": undefined -> How far along a withdraw must be in % before defense strategy kicks in.
-      //   "logOverrides":{"positionLiquidated":"warn"}} -> override specific events log levels.
-      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : null,
+      //   "logOverrides":{"positionLiquidated":"warn"}, -> override specific events log levels.
+      //   "contractType":"ExpiringMultiParty", -> override the kind of contract the liquidator is pointing at.
+      //   "contractVersion":"1.2.2"} -> override the contract version the liquidator is pointing at.
+      liquidatorConfig: process.env.LIQUIDATOR_CONFIG ? JSON.parse(process.env.LIQUIDATOR_CONFIG) : {},
       // If there is a LIQUIDATOR_OVERRIDE_PRICE environment variable then the liquidator will disregard the price from the
       // price feed and preform liquidations at this override price. Use with caution as wrong input could cause invalid liquidations.
-      liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE
+      liquidatorOverridePrice: process.env.LIQUIDATOR_OVERRIDE_PRICE,
+      // Block number to search for events from. If set, acts to offset the search to ignore events in the past. If
+      // either startingBlock or endingBlock is not sent, then the bot will search for event.
+      startingBlock: process.env.STARTING_BLOCK_NUMBER,
+      // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
+      // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
+      endingBlock: process.env.ENDING_BLOCK_NUMBER
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
