@@ -34,6 +34,17 @@ echo '#                                                                  #'
 echo '# 1/16. Deploying voting contracts on test network                 #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
+
+# This hacky snippet just copies the newer voting bytecode into the package artifacts that the voter dapp uses.
+# This forces the voter dapp to deploy the _new_ voting contract with all the other contracts unchanged, which will
+# force it to test the old 2key contract with the new voting contract.
+yarn truffle compile
+ARTIFACT_PATH_1_2_0=$(node -p "require.resolve('@uma/core-1-2-0/build/contracts/Voting.json')")
+ARTIFACT_PATH_NEW=$(node -p "require.resolve('@uma/core/build/contracts/Voting.json')")
+BACKUP=$(mktemp -d)/Voting.json
+echo "$ARTIFACT_PATH_1_2_0 is being modified in a breaking way. Backup at $BACKUP."
+cp $ARTIFACT_PATH_1_2_0 $BACKUP
+node -p "JSON.stringify({...require('$BACKUP'), bytecode: require('$ARTIFACT_PATH_NEW').bytecode }, null, 2)" > $ARTIFACT_PATH_1_2_0
 yarn run truffle migrate --reset --network test
 echo "- ✅ Migration complete!"
 
