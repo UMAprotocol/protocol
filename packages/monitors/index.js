@@ -30,7 +30,6 @@ const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
- * @param {String} type Type of contract to monitor, for example "optimistic-oracle" or "financial-contract"
  * @param {Object} logger Module responsible for sending logs.
  * @param {String} financialContractAddress Contract address of the Financial Contract.
  * @param {String} optimisticOracleAddress Contract address of the OptimisticOracle Contract.
@@ -49,7 +48,6 @@ const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@
  * @return None or throws an Error.
  */
 async function run({
-  type = "financial-contract",
   logger,
   web3,
   financialContractAddress,
@@ -72,7 +70,6 @@ async function run({
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "Monitor#index",
       message: "Monitor started 🕵️‍♂️",
-      type,
       financialContractAddress,
       optimisticOracleAddress,
       pollingDelay,
@@ -88,15 +85,16 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-    // `asyncLoopLogic` is an async method that is called once for each loop iteration and will be retried
-    // specified.
-    let asyncLoopLogic;
+    // List of promises to run in parallel during each iteration,
+    // each of which represents a monitor executing.
+    let monitorRunners = [];
+
     /** *************************************
      *
      * Financial Contract Runner
      *
      ***************************************/
-    if (type === "financial-contract") {
+    if (financialContractAddress) {
       const [detectedContract, networkId, latestBlock] = await Promise.all([
         findContractVersion(financialContractAddress, web3),
         web3.eth.net.getId(),
@@ -276,40 +274,41 @@ async function run({
         monitorConfig
       });
 
-      asyncLoopLogic = async () => {
-        // Update all client and price feeds.
-        await Promise.all([
+      // Clients must be updated before monitors can run:
+      monitorRunners.push(
+        Promise.all([
           financialContractClient.update(),
           financialContractEventClient.update(),
           tokenBalanceClient.update(),
           medianizerPriceFeed.update(),
           tokenPriceFeed.update(),
           denominatorPriceFeed && denominatorPriceFeed.update()
-        ]);
+        ]).then(async () => {
+          await Promise.all([
+            // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
+            contractMonitor.checkForNewLiquidations(),
+            contractMonitor.checkForNewDisputeEvents(),
+            contractMonitor.checkForNewDisputeSettlementEvents(),
+            contractMonitor.checkForNewSponsors(),
+            // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
+            balanceMonitor.checkBotBalances(),
+            // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
+            crMonitor.checkWalletCrRatio(),
+            // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
+            syntheticPegMonitor.checkPriceDeviation(),
+            syntheticPegMonitor.checkPegVolatility(),
+            syntheticPegMonitor.checkSyntheticVolatility()
+          ]);
+        })
+      );
+    }
 
-        // Run all queries within the monitor bots modules.
-        await Promise.all([
-          // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
-          contractMonitor.checkForNewLiquidations(),
-          contractMonitor.checkForNewDisputeEvents(),
-          contractMonitor.checkForNewDisputeSettlementEvents(),
-          contractMonitor.checkForNewSponsors(),
-          // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
-          balanceMonitor.checkBotBalances(),
-          // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
-          crMonitor.checkWalletCrRatio(),
-          // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
-          syntheticPegMonitor.checkPriceDeviation(),
-          syntheticPegMonitor.checkPegVolatility(),
-          syntheticPegMonitor.checkSyntheticVolatility()
-        ]);
-      };
-    } else {
-      /** *************************************
-       *
-       * OptimisticOracle Contract Runner
-       *
-       ***************************************/
+    /** *************************************
+     *
+     * OptimisticOracle Contract Runner
+     *
+     ***************************************/
+    if (optimisticOracleAddress) {
       const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
 
       // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber`.
@@ -335,33 +334,37 @@ async function run({
         contractProps
       });
 
-      asyncLoopLogic = async () => {
-        // Update all client and price feeds.
-        await Promise.all([optimisticOracleContractEventClient.update()]);
-
-        // Run all queries within the monitor bots modules.
-        await Promise.all([
-          contractMonitor.checkForRequests(),
-          contractMonitor.checkForProposals(),
-          contractMonitor.checkForDisputes(),
-          contractMonitor.checkForSettlements()
-        ]);
-      };
+      // Clients must be updated before monitors can run:
+      monitorRunners.push(
+        Promise.all([optimisticOracleContractEventClient.update()]).then(async () => {
+          await Promise.all([
+            contractMonitor.checkForRequests(),
+            contractMonitor.checkForProposals(),
+            contractMonitor.checkForDisputes(),
+            contractMonitor.checkForSettlements()
+          ]);
+        })
+      );
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
-      await retry(asyncLoopLogic, {
-        retries: errorRetries,
-        minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
-        onRetry: error => {
-          logger.debug({
-            at: "Monitor#index",
-            message: "An error was thrown in the execution loop - retrying",
-            error: typeof error === "string" ? new Error(error) : error
-          });
+      await retry(
+        async function() {
+          await Promise.all(monitorRunners);
+        },
+        {
+          retries: errorRetries,
+          minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
+          onRetry: error => {
+            logger.debug({
+              at: "Monitor#index",
+              message: "An error was thrown in the execution loop - retrying",
+              error: typeof error === "string" ? new Error(error) : error
+            });
+          }
         }
-      });
+      );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
@@ -385,16 +388,9 @@ async function run({
 }
 async function Poll(callback) {
   try {
-    // Detect `type` of monitor from whether user has set `OPTIMISTIC_ORACLE_ADDRESS` or not,
-    // if they have, then we assume that they want to run the optimistic oracle monitor, otherwise
-    // we check that they can run the financial contract monitor correctly.
-
-    // If user specifies an OPTIMISTIC_ORACLE_ADDRESS, then no need to check for a financial contract address.
-    const type = process.env.OPTIMISTIC_ORACLE_ADDRESS ? "optimistic-oracle" : "financial-contract";
-    // Note: If type is "optimistic-oracle" then we already know that `OPTIMISTIC_ORACLE_ADDRESS` exists
-    if (type === "financial-contract" && !process.env.EMP_ADDRESS && !process.env.FINANCIAL_CONTRACT_ADDRESS) {
+    if (!process.env.OPTIMISTIC_ORACLE_ADDRESS && !process.env.EMP_ADDRESS && !process.env.FINANCIAL_CONTRACT_ADDRESS) {
       throw new Error(
-        "Bad environment variables! Specify an EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS for the location of the contract the bot is expected to interact with."
+        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS for the location of the contract the bot is expected to interact with."
       );
     }
 
@@ -406,7 +402,6 @@ async function Poll(callback) {
     // This object is spread when calling the `run` function below. It relies on the object enumeration order and must
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
-      type,
       optimisticOracleAddress: process.env.OPTIMISTIC_ORACLE_ADDRESS,
       financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
