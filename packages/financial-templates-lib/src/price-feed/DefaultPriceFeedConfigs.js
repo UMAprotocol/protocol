@@ -420,7 +420,7 @@ const defaultConfigs = {
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
-    twapLength: 7200,
+    twapLength: 300,
     priceFeedDecimals: 18,
     customFeeds: {
       WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
@@ -449,7 +449,7 @@ const defaultConfigs = {
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
-    twapLength: 7200,
+    twapLength: 300,
     priceFeedDecimals: 18,
     customFeeds: {
       WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
