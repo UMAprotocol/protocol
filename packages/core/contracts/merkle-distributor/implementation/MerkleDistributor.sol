@@ -22,8 +22,10 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     // Claims for this window cannot take place before start time.
     struct Window {
         uint256 start;
+        uint256 end;
         bytes32 merkleRoot;
         IERC20 rewardToken;
+        uint256 totalRewardsDistributed;
     }
 
     // Windows are mapped to arbitrary indices.
@@ -40,45 +42,55 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     // Set merkle root for a window and seed allocations.
     function setWindowMerkleRoot(
         uint256 windowIndex,
-        uint256 totalWindowAmount,
+        uint256 totalRewardsDistributed,
         uint256 windowStart,
-        address rewardTokenAddress,
+        uint256 windowEnd,
+        address rewardToken,
         bytes32 merkleRoot
     ) external nonReentrant() onlyOwner {
         require(merkleWindows[windowIndex].merkleRoot == bytes32(0), "Root already set");
         Window storage window = merkleWindows[windowIndex];
         window.start = windowStart;
+        window.end = windowEnd;
         window.merkleRoot = merkleRoot;
-        window.rewardToken = IERC20(rewardTokenAddress);
+        window.rewardToken = IERC20(rewardToken);
+        window.totalRewardsDistributed = totalRewardsDistributed;
 
-        // TODO: How can we check that the `totalWindowAmount` is enough to cover all of the merkle root
+        // TODO: How can we check that the `totalRewardsDistributed` is enough to cover all of the merkle root
         // disbursements?
+
         require(
-            window.rewardToken.transferFrom(msg.sender, address(this), totalWindowAmount),
+            window.rewardToken.transferFrom(msg.sender, address(this), totalRewardsDistributed),
             "Seeding allocation failed"
         );
     }
 
     function claimWindow(
-        address account,
         uint256 windowIndex,
+        address account,
         uint256 amount,
+        string memory metaData,
         bytes32[] memory merkleProof
     ) public nonReentrant() {
         require(!claimed[windowIndex][account], "Already claimed");
-        require(verifyClaim(account, windowIndex, amount, merkleProof), "Incorrect merkle proof");
+        require(verifyClaim(windowIndex, account, amount, metaData, merkleProof), "Incorrect merkle proof");
 
         claimed[windowIndex][account] = true;
         _disburse(account, amount, windowIndex);
     }
 
     function verifyClaim(
-        address account,
         uint256 windowIndex,
+        address account,
         uint256 amount,
+        string memory metaData,
         bytes32[] memory merkleProof
     ) public view returns (bool valid) {
-        bytes32 leaf = keccak256(abi.encodePacked(account, amount));
+        Window memory window = merkleWindows[windowIndex];
+        bytes32 leaf =
+            keccak256(
+                abi.encodePacked(windowIndex, account, amount, metaData, window.rewardToken, window.start, window.end)
+            );
         return MerkleProof.verify(merkleProof, merkleWindows[windowIndex].merkleRoot, leaf);
     }
 
@@ -91,8 +103,10 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
             // Check that claim attempt is within window start and end time.
             uint256 currentContractTime = getCurrentTime();
             Window memory window = merkleWindows[windowIndex];
+
             require(currentContractTime >= window.start, "Invalid window time");
             require(window.rewardToken.transfer(account, amount), "Disbursement failed");
+
             emit Claimed(windowIndex, account, amount, address(window.rewardToken));
         }
     }
