@@ -98,9 +98,11 @@ async function run({
       ).length == 0
     )
       throw new Error(
-        `Contract version specified or inferred is not supported by this bot. Provided/inferred config: ${JSON.stringify(
+        `Contract version specified or inferred is not supported by this bot. Monitor config:${JSON.stringify(
           monitorConfig
-        )}. is not part of ${JSON.stringify(SUPPORTED_CONTRACT_VERSIONS)}`
+        )} & detectedContractVersion:${JSON.stringify(detectedContract)} is not part of ${JSON.stringify(
+          SUPPORTED_CONTRACT_VERSIONS
+        )}`
       );
     // Setup contract instances.
     const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));

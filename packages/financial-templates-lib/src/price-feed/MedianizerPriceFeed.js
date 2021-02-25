@@ -16,6 +16,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       throw new Error("MedianizerPriceFeed cannot be constructed with no constituent price feeds.");
     }
 
+    this.toBN = priceFeeds[0].toBN;
     this.priceFeeds = priceFeeds;
     this.computeMean = computeMean;
   }
@@ -68,12 +69,15 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     for (let pricePointIndex = 0; pricePointIndex < historicalPricePeriods[0].length; pricePointIndex++) {
       // Create an array of prices at the pricePointIndex for each price feed. The median is taken over this set.
       const periodPrices = historicalPricePeriods.map(historicalPrice => {
+        // this is meant to process historicalPrices in the form of [timestamp,price]. Some older price feeds may
+        // not conform to this, as this api has changed recently, though the medianizer has always conformed to this.
+        // TODO: updated any non conforming price feeds to return getHistoricalPricePeriods as an array of [time,price].
         return historicalPrice[pricePointIndex]
-          ? historicalPrice[pricePointIndex].closePrice
+          ? this.toBN(historicalPrice[pricePointIndex][1])
           : this.priceFeeds[0].toBN("0");
       });
       processedMedianHistoricalPricePeriods[pricePointIndex] = [
-        historicalPricePeriods[0][pricePointIndex].closeTime,
+        historicalPricePeriods[0][pricePointIndex][0],
         this.computeMean ? this._computeMean(periodPrices).toString() : this._computeMedian(periodPrices).toString()
       ];
     }
