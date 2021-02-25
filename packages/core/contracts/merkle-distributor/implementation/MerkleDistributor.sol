@@ -9,6 +9,7 @@
  */
 
 pragma solidity ^0.6.0;
+// pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -64,6 +65,15 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
             "Seeding allocation failed"
         );
     }
+
+    // TODO: implement this method
+    // function multiClaimWindow(
+    //     uint256[] memory windowIndices,
+    //     address[] memory accounts,
+    //     uint256[] memory amounts,
+    //     string[] memory metaData,
+    //     bytes32[][] memory merkleProofs
+    // ) public nonReentrant() {}
 
     function claimWindow(
         uint256 windowIndex,
