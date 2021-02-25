@@ -56,6 +56,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
     .toString(); // dispute bond + 50% of loser's bond
   const correctPrice = toWei("-17"); // Arbitrary price to use as the correct price for proposals + disputes
   const identifier = web3.utils.utf8ToHex("Test Identifier");
+  const defaultAncillaryData = "0x";
 
   const pushPrice = async price => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
@@ -120,8 +121,20 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
     );
 
     // Make price requests
-    requestTxn1 = await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
-    requestTxn2 = await optimisticRequester.requestPrice(identifier, requestTime + 1, "0x", collateral.address, 0);
+    requestTxn1 = await optimisticRequester.requestPrice(
+      identifier,
+      requestTime,
+      defaultAncillaryData,
+      collateral.address,
+      0
+    );
+    requestTxn2 = await optimisticRequester.requestPrice(
+      identifier,
+      requestTime + 1,
+      defaultAncillaryData,
+      collateral.address,
+      0
+    );
 
     // Make proposals
     await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: proposer });
@@ -130,7 +143,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       optimisticRequester.address,
       identifier,
       requestTime,
-      "0x",
+      defaultAncillaryData,
       correctPrice,
       {
         from: proposer
@@ -140,7 +153,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       optimisticRequester.address,
       identifier,
       requestTime + 1,
-      "0x",
+      defaultAncillaryData,
       correctPrice,
       {
         from: proposer
@@ -149,18 +162,40 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
 
     // Make disputes and resolve them
     await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: disputer });
-    disputeTxn1 = await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
-      from: disputer
-    });
+    disputeTxn1 = await optimisticOracle.disputePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      defaultAncillaryData,
+      {
+        from: disputer
+      }
+    );
     await pushPrice(correctPrice);
-    disputeTxn2 = await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime + 1, "0x", {
-      from: disputer
-    });
+    disputeTxn2 = await optimisticOracle.disputePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime + 1,
+      defaultAncillaryData,
+      {
+        from: disputer
+      }
+    );
     await pushPrice(correctPrice);
 
     // Settle expired proposals and resolved disputes
-    settlementTxn1 = await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
-    settlementTxn2 = await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime + 1, "0x");
+    settlementTxn1 = await optimisticOracle.settle(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      defaultAncillaryData
+    );
+    settlementTxn2 = await optimisticOracle.settle(
+      optimisticRequester.address,
+      identifier,
+      requestTime + 1,
+      defaultAncillaryData
+    );
   });
 
   it("Return RequestPrice events", async function() {
@@ -174,7 +209,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         blockNumber: requestTxn1.receipt.blockNumber,
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
@@ -185,7 +220,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         blockNumber: requestTxn2.receipt.blockNumber,
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         currency: collateral.address,
         reward: "0",
@@ -232,7 +267,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         requester: optimisticRequester.address,
         proposer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         currency: collateral.address,
         proposedPrice: correctPrice,
@@ -244,7 +279,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         requester: optimisticRequester.address,
         proposer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         currency: collateral.address,
         proposedPrice: correctPrice,
@@ -297,7 +332,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice
       },
@@ -308,7 +343,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         proposedPrice: correctPrice
       }
@@ -364,7 +399,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         price: correctPrice,
         payout: disputePayout
@@ -376,7 +411,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
+        ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         price: correctPrice,
         payout: disputePayout

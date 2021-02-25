@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
 const { OptimisticOracleContractMonitor } = require("../src/OptimisticOracleContractMonitor");
 const { interfaceName, MAX_UINT_VAL } = require("@uma/common");
@@ -60,10 +60,20 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
   const finalFee = toWei("1");
   const reward = toWei("3");
   // Proposal & Dispute bond = 2 x final fee
-  const proposalPayout = toWei("5"); // dispute bond + reward
-  const disputePayout = toWei("5.5"); // dispute bond + 50% of loser's bond + reward
-  const correctPrice = toWei("-17");
+  const totalDefaultBond = toBN(finalFee)
+    .mul(toBN(2))
+    .toString(); // 2x final fee
+  const proposalPayout = toBN(totalDefaultBond)
+    .add(toBN(reward))
+    .toString(); // dispute bond + reward
+  const disputePayout = toBN(totalDefaultBond)
+    .add(toBN(reward))
+    .add(toBN(finalFee).div(toBN(2)))
+    .toString(); // dispute bond + reward +  50% of loser's bond
+  const correctPrice = toWei("-17"); // Arbitrary price to use as the correct price for proposals + disputes
   const identifier = web3.utils.utf8ToHex("Test Identifier");
+  const defaultAncillaryData = "0x";
+  const alternativeAncillaryData = "0x1234";
 
   const pushPrice = async price => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
@@ -142,7 +152,13 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     });
 
     // Make price requests
-    requestTxn = await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, reward);
+    requestTxn = await optimisticRequester.requestPrice(
+      identifier,
+      requestTime,
+      defaultAncillaryData,
+      collateral.address,
+      reward
+    );
 
     // Make proposals
     await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: proposer });
@@ -151,7 +167,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       optimisticRequester.address,
       identifier,
       requestTime,
-      "0x",
+      defaultAncillaryData,
       correctPrice,
       {
         from: proposer
@@ -160,13 +176,24 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
 
     // Make disputes and resolve them
     await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: disputer });
-    disputeTxn = await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", {
-      from: disputer
-    });
+    disputeTxn = await optimisticOracle.disputePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      defaultAncillaryData,
+      {
+        from: disputer
+      }
+    );
     await pushPrice(correctPrice);
 
     // Settle expired proposals and resolved disputes
-    settlementTxn = await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
+    settlementTxn = await optimisticOracle.settle(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      defaultAncillaryData
+    );
   });
 
   it("Winston correctly emits price request message", async function() {
@@ -182,7 +209,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     // should contain the correct request information.
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(lastSpyLogIncludes(spy, "0x")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, collateral.address)); // Currency
     assert.isTrue(lastSpyLogIncludes(spy, reward)); // Reward
     assert.isTrue(lastSpyLogIncludes(spy, finalFee)); // Final Fee
@@ -192,14 +219,14 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     const newTxn = await optimisticRequester.requestPrice(
       identifier,
       requestTime,
-      "0x1234",
+      alternativeAncillaryData,
       collateral.address,
       reward
     );
     await eventClient.update();
     await contractMonitor.checkForRequests();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.tx}`));
-    assert.isTrue(lastSpyLogIncludes(spy, "0x1234")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -218,19 +245,25 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.address)); // Requester
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(lastSpyLogIncludes(spy, "0x")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, collateral.address)); // Currency
     assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Proposed Price
     assert.isTrue(lastSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
     let spyCount = spy.callCount;
 
     // Make another proposal with different ancillary data.
-    await optimisticRequester.requestPrice(identifier, requestTime, "0x1234", collateral.address, reward);
+    await optimisticRequester.requestPrice(
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      collateral.address,
+      reward
+    );
     const newTxn = await optimisticOracle.proposePrice(
       optimisticRequester.address,
       identifier,
       requestTime,
-      "0x1234",
+      alternativeAncillaryData,
       correctPrice,
       {
         from: proposer
@@ -239,7 +272,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     await eventClient.update();
     await contractMonitor.checkForProposals();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.tx}`));
-    assert.isTrue(lastSpyLogIncludes(spy, "0x1234")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -259,22 +292,41 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(lastSpyLogIncludes(spy, "0x")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Proposed Price
     let spyCount = spy.callCount;
 
     // Make another dispute with different ancillary data.
-    await optimisticRequester.requestPrice(identifier, requestTime, "0x1234", collateral.address, reward);
-    await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x1234", correctPrice, {
-      from: proposer
-    });
-    const newTxn = await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x1234", {
-      from: disputer
-    });
+    await optimisticRequester.requestPrice(
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      collateral.address,
+      reward
+    );
+    await optimisticOracle.proposePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      correctPrice,
+      {
+        from: proposer
+      }
+    );
+    const newTxn = await optimisticOracle.disputePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      {
+        from: disputer
+      }
+    );
     await eventClient.update();
     await contractMonitor.checkForDisputes();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.tx}`));
-    assert.isTrue(lastSpyLogIncludes(spy, "0x1234")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -294,20 +346,38 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, disputer)); // Disputer
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(lastSpyLogIncludes(spy, "0x")); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Price
     // Proposal was disputed, payout made to winner of disputer
     assert.isTrue(lastSpyLogIncludes(spy, `payout was ${disputePayout} made to the winner of the dispute`));
     let spyCount = spy.callCount;
 
     // Make another settlement without a dispute, with different ancillary data.
-    await optimisticRequester.requestPrice(identifier, requestTime, "0x1234", collateral.address, reward);
+    await optimisticRequester.requestPrice(
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      collateral.address,
+      reward
+    );
     const newProposalTime = await optimisticOracle.getCurrentTime();
-    await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x1234", correctPrice, {
-      from: proposer
-    });
+    await optimisticOracle.proposePrice(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      alternativeAncillaryData,
+      correctPrice,
+      {
+        from: proposer
+      }
+    );
     await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
-    const newTxn = await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x1234");
+    const newTxn = await optimisticOracle.settle(
+      optimisticRequester.address,
+      identifier,
+      requestTime,
+      alternativeAncillaryData
+    );
     await eventClient.update();
     await contractMonitor.checkForSettlements();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.tx}`));
