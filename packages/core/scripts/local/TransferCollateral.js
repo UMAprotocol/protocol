@@ -1,15 +1,17 @@
 /**
  * @notice Transfers collateral from accounts[0] with --collateral of collateral.
  *
- * Example: `$(npm bin)/truffle exec ./scripts/local/transferCollateral.js --network test --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --to 0x0`
+ * Example: `yarn truffle exec ./scripts/local/transferCollateral.js --network test --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --to 0x0 --cversion latest`
  */
 const { toWei, toBN } = web3.utils;
 const { getTruffleContract } = require("../../index");
 
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to", "cversion"] });
+const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
+
 // Deployed contract ABI's and addresses we need to fetch.
-const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.2");
+const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, abiVersion);
 const ExpandedERC20 = getTruffleContract("ExpandedERC20", web3, "1.2.2");
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to"] });
 
 async function transferCollateral(callback) {
   try {

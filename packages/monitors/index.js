@@ -41,7 +41,7 @@ const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
- * @param {Object} medianizerPriceFeedConfig Configuration to construct the denominator price feed object.
+ * @param {Object} denominatorPriceFeedConfig Configuration to construct the denominator price feed object.
  * @return None or throws an Error.
  */
 async function run({
