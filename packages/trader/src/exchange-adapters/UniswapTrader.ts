@@ -1,4 +1,8 @@
-import assert from "assert";
+import winston from "winston";
+import Web3 from "web3";
+import BigNumber from "bignumber.js";
+const truffleContract = require("@truffle/contract");
+
 const { MAX_UINT_VAL } = require("@uma/common");
 const { ExchangeAdapterInterface } = require("./ExchangeAdapterInterface");
 const { getTruffleContract } = require("@uma/core");
@@ -7,8 +11,8 @@ const IUniswapV2Factory = require("@uniswap/v2-core/build/IUniswapV2Factory.json
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 
 class UniswapTrader extends ExchangeAdapterInterface {
-  readonly logger: any;
-  readonly web3: any;
+  readonly logger: winston.Logger;
+  readonly web3: Web3;
   readonly uniswapRouterAddress: string;
   readonly uniswapFactoryAddress: string;
   readonly tokenAAddress: string;
@@ -41,7 +45,7 @@ class UniswapTrader extends ExchangeAdapterInterface {
 
     this.UniswapBroker = getTruffleContract("UniswapBroker", this.web3);
   }
-  async tradeMarketToDesiredPrice(desiredPrice: string) {
+  async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
     const callCode = this.UniswapBroker.bytecode;
 
     const contract = new this.web3.eth.Contract(this.UniswapBroker.abi);
@@ -52,7 +56,7 @@ class UniswapTrader extends ExchangeAdapterInterface {
         this.uniswapRouterAddress,
         this.uniswapFactoryAddress,
         [this.tokenAAddress, this.tokenBAddress],
-        [desiredPrice, this.web3.utils.toWei("1").toString()],
+        [desiredPrice.toString(), this.web3.utils.toWei("1").toString()],
         [MAX_UINT_VAL, MAX_UINT_VAL],
         this.dsProxyManager.getDSProxyAddress(),
         (await this.web3.eth.getBlock("latest")).timestamp + this.tradeDeadline
@@ -82,8 +86,7 @@ class UniswapTrader extends ExchangeAdapterInterface {
   // potentially the getTruffleContract method should be modified to enable creation of truffle contracts from json
   // as a fallback keeping the getter interface generic.
   createContractObjectFromJson(contractJsonObject: any) {
-    const contract = require("@truffle/contract");
-    const truffleContractCreator = contract(contractJsonObject);
+    const truffleContractCreator = truffleContract(contractJsonObject);
     truffleContractCreator.setProvider(this.web3.currentProvider);
     return truffleContractCreator;
   }

@@ -1,9 +1,13 @@
+import winston from "winston";
+import Web3 from "web3";
+import BigNumber from "bignumber.js";
+
 const { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps } = require("@uma/common");
 import assert from "assert";
 
 export class RangeTrader {
-  readonly logger: any;
-  readonly web3: any;
+  readonly logger: winston.Logger;
+  readonly web3: Web3;
   readonly tokenPriceFeed: any;
   readonly referencePriceFeed: any;
   readonly normalizePriceFeedDecimals: any;
@@ -32,8 +36,8 @@ export class RangeTrader {
    *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
             targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
    */
-    logger: any,
-    web3: any,
+    logger: winston.Logger,
+    web3: Web3,
     tokenPriceFeed: any,
     referencePriceFeed: any,
     exchangeAdapter: any,
@@ -53,7 +57,6 @@ export class RangeTrader {
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Helper functions from web3.
-    this.BN = this.web3.utils.BN;
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
@@ -172,7 +175,7 @@ export class RangeTrader {
 
   // TODO: replace the any type with bignumber types. I'm not exactly sure what the best practice is to do this in typescript.
   // TODO: this method was taken from the SyntheticPegMonitor verbatim. Ideally it should be refactored into a common utility that both can use.
-  _calculateDeviationError(observedValue: any, expectedValue: any) {
+  _calculateDeviationError(observedValue: BigNumber, expectedValue: BigNumber) {
     return this.normalizePriceFeedDecimals(observedValue)
       .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.fixedPointAdjustment) // Scale the numerator before division

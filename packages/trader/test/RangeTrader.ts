@@ -119,6 +119,7 @@ describe("index.js", function() {
     tokenPriceFeed = new UniswapPriceFeed(
       spyLogger,
       IUniswapV2Pair.abi,
+      Token.abi,
       web3,
       pairAddress,
       1,

@@ -1,3 +1,6 @@
+import winston from "winston";
+import Web3 from "web3";
+
 import { config } from "dotenv";
 
 import retry from "async-retry";
@@ -19,7 +22,7 @@ const { createExchangeAdapter } = require("./exchange-adapters/CreateExchangeAda
 import { TraderConfig } from "./TraderConfig";
 config();
 
-export async function run(logger: any, web3: any): Promise<void> {
+export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const config = new TraderConfig(process.env);

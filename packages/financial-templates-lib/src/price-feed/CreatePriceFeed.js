@@ -568,13 +568,8 @@ async function createUniswapPriceFeedForFinancialContract(
 
   // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
   // get time method with the current block time.
-  if (userConfig.getTimeOverride) {
-    if (userConfig.getTimeOverride.useBlockTime) {
-      getTime = async () =>
-        web3.eth.getBlock("latest").then(block => {
-          return block.timestamp;
-        });
-    }
+  if (userConfig.getTimeOverride?.useBlockTime) {
+    getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
   }
 
   logger.debug({
@@ -699,13 +694,8 @@ async function createReferencePriceFeedForFinancialContract(
     }
     // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
     // get time method with the current block time.
-    if (combinedConfig.getTimeOverride) {
-      if (combinedConfig.getTimeOverride.useBlockTime) {
-        getTime = async () =>
-          web3.eth.getBlock("latest").then(block => {
-            return block.timestamp;
-          });
-      }
+    if (combinedConfig.getTimeOverride?.useBlockTime) {
+      getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
     }
   }
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);

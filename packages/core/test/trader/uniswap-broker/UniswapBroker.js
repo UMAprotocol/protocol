@@ -1,6 +1,7 @@
 const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei, toBN, fromWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
+const truffleContract = require("@truffle/contract");
 
 // Tested Contract
 const UniswapBroker = getTruffleContract("UniswapBroker", web3);
@@ -22,8 +23,7 @@ let pairAddress;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
 const createContractObjectFromJson = contractJsonObject => {
-  const contract = require("@truffle/contract");
-  let truffleContractCreator = contract(contractJsonObject);
+  let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };

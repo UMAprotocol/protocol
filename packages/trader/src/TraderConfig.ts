@@ -2,7 +2,7 @@ import Web3 from "web3";
 import assert from "assert";
 
 export interface ProcessEnv {
-  [key: string]: any;
+  [key: string]: string;
 }
 
 export class TraderConfig {
@@ -13,9 +13,9 @@ export class TraderConfig {
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
 
-  readonly tokenPriceFeedConfig: object;
-  readonly referencePriceFeedConfig: object;
-  readonly exchangeAdapterConfig: object;
+  readonly tokenPriceFeedConfig: any;
+  readonly referencePriceFeedConfig: any;
+  readonly exchangeAdapterConfig: any;
 
   constructor(env: ProcessEnv) {
     const {

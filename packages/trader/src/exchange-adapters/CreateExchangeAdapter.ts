@@ -1,7 +1,10 @@
+import winston from "winston";
+import Web3 from "web3";
+
 const assert = require("assert");
 const { UniswapTrader } = require("./UniswapTrader");
 
-async function createExchangeAdapter(logger: any, web3: any, dsProxyManager: any, config: any) {
+async function createExchangeAdapter(logger: winston.Logger, web3: Web3, dsProxyManager: any, config: any) {
   assert(config.type, "Exchange adapter must have a type. EG uniswap for a uniswap dex");
 
   if (config.type === "uniswap") {
