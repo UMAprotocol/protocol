@@ -31,8 +31,8 @@ const argv = require("minimist")(process.argv.slice(), {
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 const syntheticName = argv.name || "Test Synth";
 const syntheticSymbol = argv.symbol || "SYNTH";
-const expiry = Number(argv.expiry) || 2;
-const expirationTimestamp = Math.ceil(Date.now() / 1000) + expiry; // 2 minutes from now
+const expiry = argv.expiry || 2;
+const expirationTimestamp = Math.ceil(Date.now() / 1000) + Number(expiry); // 2 minutes from now
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
