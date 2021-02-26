@@ -177,8 +177,17 @@ contract("ServerlessSpoke.js", function(accounts) {
     const invalidConfigResponse = await sendRequest(invalidConfigBody);
     assert.equal(invalidConfigResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
-    assert.isTrue(invalidConfigResponse.res.text.includes("Bad environment variables! Specify an EMP_ADDRESS"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Bad environment variables! Specify an EMP_ADDRESS")); // Check the process logger contained the error.
+    assert.isTrue(
+      invalidConfigResponse.res.text.includes(
+        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
+      )
+    );
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
+      )
+    ); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
   it("Serverless Spoke can correctly returns errors over http calls(invalid network identifier)", async function() {
