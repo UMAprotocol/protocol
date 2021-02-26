@@ -74,7 +74,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     event SeededWindow(
         uint256 indexed windowIndex,
         uint256 amount,
-        uint256 windowStart,
+        uint256 indexed windowStart,
         uint256 windowEnd,
         address indexed rewardToken
     );
