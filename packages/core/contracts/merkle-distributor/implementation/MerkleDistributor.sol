@@ -151,6 +151,8 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     // TODO: This method could get pretty gas intensive; is there a way we can reduce the amount
     // of external `transfer` calls if we precompute all the rewards for each account?
     // It's a bit tricky because there are multiple reward currencies possible.
+    // TODO: Add a unit test describining the max amount of `claims` that can be packed into
+    // this method before the method runs out of gas.
     function claimWindows(Claim[] memory claims) public nonReentrant() {
         for (uint256 i = 0; i < claims.length; i++) {
             _claimWindow(claims[i]);
