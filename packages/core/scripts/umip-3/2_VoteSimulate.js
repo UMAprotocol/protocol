@@ -47,8 +47,8 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const votingInterface = await await VotingInterface.at("0x8B1631ab830d11531aE83725fDa4D86012eCCd77");
-  const voting = await await Voting.at("0x8B1631ab830d11531aE83725fDa4D86012eCCd77");
+  const voting = await Voting.deployed();
+  const votingInterface = await VotingInterface.at(voting.address);
   const governor = await Governor.deployed();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();
