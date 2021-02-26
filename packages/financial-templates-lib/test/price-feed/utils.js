@@ -113,7 +113,7 @@ contract("Price Feed Utils", async function() {
       const blockFinder = BlockFinder(getBlock);
 
       // Ensure that a timestamp _after_ the last block fails.
-      assert.isTrue(await blockFinder.getBlockForTimestamp(latestBlockNumber + 1).catch(() => true));
+      assert.equal((await blockFinder.getBlockForTimestamp(latestBlockNumber + 1)).number, latestBlockNumber);
 
       // Timestamp before the first block should fail.
       assert.isTrue(await blockFinder.getBlockForTimestamp(-1).catch(() => true));
