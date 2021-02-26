@@ -8,8 +8,12 @@
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
+const Finder = artifacts.require("Finder");
 const Governor = artifacts.require("Governor");
 const ERC20 = artifacts.require("ERC20");
+const Voting = artifacts.require("Voting");
+
+const { interfaceName } = require("@uma/common");
 
 const { parseUnits } = require("@ethersproject/units");
 const { getDecimals } = require("./utils");
@@ -89,9 +93,26 @@ async function runExport() {
     transactionList = [...transactionList, ...transactionsToAdd];
   }
 
-  // Send the proposal
   const governor = await Governor.deployed();
-  await governor.propose(transactionList, { from: proposerWallet, gas: 2000000 });
+  console.log(`Sending to governor @ ${governor.address}`);
+
+  // Send the proposal
+  const txn = await governor.propose(transactionList, { from: proposerWallet, gas: 2000000 });
+  console.log("Transaction: ", txn?.tx);
+
+  const finder = await Finder.deployed();
+  const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
+  console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
+
+  const oracle = await Voting.at(oracleAddress);
+  const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+
+  const newAdminRequest = priceRequests[priceRequests.length - 1];
+  console.log(
+    `New price request {identifier: ${
+      newAdminRequest.args.identifier
+    }, timestamp: ${newAdminRequest.args.time.toString()}}`
+  );
 
   console.log(`
 

@@ -12,7 +12,8 @@ const {
   takeSnapshot,
   revertToSnapshot,
   computeVoteHash,
-  signMessage
+  signMessage,
+  isAdminRequest
 } = require("@uma/common");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
@@ -22,10 +23,20 @@ const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 // Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
+const Finder = getTruffleContract("Finder", web3, "1.1.0");
+// Use VotingInterface when committing or revealing to match the correct commit and reveal function signatures
+// without an `ancillaryData` param.
+const VotingInterface = getTruffleContract("VotingInterface", web3);
+// Use Voting for methods missing from the interface like `getCurrentTime` and `hasPrice`
 const Voting = getTruffleContract("Voting", web3, "1.1.0");
 
 let snapshotId;
 
+function getAdminPendingRequests(requests) {
+  return requests.filter(request => {
+    return isAdminRequest(web3.utils.hexToUtf8(request.identifier));
+  });
+}
 async function runExport() {
   console.log("Running Upgrade vote simulator🔥");
   let snapshot = await takeSnapshot(web3);
@@ -37,11 +48,14 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const voting = await await Voting.deployed();
+  const finder = await Finder.deployed();
+  const votingAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex("Oracle"));
+  const voting = await Voting.at(votingAddress);
+  const votingInterface = await VotingInterface.at(voting.address);
   const governor = await Governor.deployed();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();
-  let votingPhase = (await voting.getVotePhase()).toNumber();
+  let votingPhase = (await votingInterface.getVotePhase()).toNumber();
 
   const secondsPerDay = 86400;
   const accounts = await web3.eth.getAccounts();
@@ -81,14 +95,18 @@ async function runExport() {
     "CurrentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
-  let pendingRequests = await voting.getPendingRequests();
+  console.log(`Checking pending requests for Voting contract @ ${voting.address}`);
+  // Note: `getPendingRequests()` returns unexpected data if `Voting` is not on the current version.
+  // This is because the `getPendingRequests` method on Voting has changed its ABI to return a
+  // `PendingRequestAncillary` struct which is new to the latest ABI.
+  let pendingRequests = getAdminPendingRequests(await votingInterface.getPendingRequests());
   assert(pendingRequests.length >= 1); // there should be at least one pending request
 
   /** *****************************************************
    * 2) Build vote tx from the foundation wallet         *
    *******************************************************/
 
-  let currentRoundId = (await voting.getCurrentRoundId()).toString();
+  let currentRoundId = (await votingInterface.getCurrentRoundId()).toString();
   const requestsToVoteOn = [];
 
   for (let pendingIndex = 0; pendingIndex < pendingRequests.length; pendingIndex++) {
@@ -142,7 +160,7 @@ async function runExport() {
       identifier: request.identifier,
       voteHash: request.voteHash
     });
-    const VoteTx = await voting.commitVote(request.identifier, request.time, request.voteHash, {
+    const VoteTx = await votingInterface.commitVote(request.identifier, request.time, request.voteHash, {
       from: foundationWallet,
       gas: 2000000
     });
@@ -160,21 +178,21 @@ async function runExport() {
     "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
-    (await voting.getVotePhase()).toNumber(),
+    (await votingInterface.getVotePhase()).toNumber(),
     "currentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    (await votingInterface.getCurrentRoundId()).toString()
   );
 
   console.log("📸 Generating a voting token snapshot.");
   const account = (await web3.eth.getAccounts())[0];
   const snapshotMessage = "Sign For Snapshot";
   let signature = await signMessage(web3, snapshotMessage, account);
-  await voting.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
+  await votingInterface.snapshotCurrentRound(signature, { from: account, gas: 2000000 });
 
   for (let i = 0; i < pendingRequests.length; i++) {
     const request = requestsToVoteOn[i];
 
-    const revealTx = await voting.revealVote(request.identifier, request.time, request.price, request.salt, {
+    const revealTx = await votingInterface.revealVote(request.identifier, request.time, request.price, request.salt, {
       from: foundationWallet,
       gas: 2000000
     });
@@ -188,13 +206,23 @@ async function runExport() {
     "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
-    (await voting.getVotePhase()).toNumber(),
+    (await votingInterface.getVotePhase()).toNumber(),
     "currentRoundId",
-    (await voting.getCurrentRoundId()).toString()
+    (await votingInterface.getCurrentRoundId()).toString()
   );
 
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+  assert.equal(getAdminPendingRequests(await votingInterface.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
 
+  // Sanity check that prices are available now for Admin requests
+  for (let i = 0; i < requestsToVoteOn.length; i++) {
+    const hasPrice = await voting.hasPrice(requestsToVoteOn[i].identifier, requestsToVoteOn[i].time, {
+      from: governor.address
+    });
+    assert(
+      hasPrice,
+      `Request with identifier ${requestsToVoteOn[i].identifier} and time ${requestsToVoteOn[i].time} has no price`
+    );
+  }
   /** *******************************************************************
    * 4) Execute proposal submitted to governor now that voting is done *
    **********************************************************************/

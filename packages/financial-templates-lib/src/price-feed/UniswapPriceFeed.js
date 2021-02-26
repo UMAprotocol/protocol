@@ -28,7 +28,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     historicalLookback,
     getTime,
     invertPrice,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
+    blocks = {}
   ) {
     super();
     this.logger = logger;
@@ -52,6 +53,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+    this.blocks = blocks;
   }
 
   getCurrentPrice() {
@@ -134,7 +136,6 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
 
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
-    let blocks = {}; // Caches blocks (so we don't have to re-query timestamps).
     let fromBlock = Infinity; // Arbitrary initial value > 0.
 
     // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
@@ -150,12 +151,14 @@ class UniswapPriceFeed extends PriceFeedInterface {
         return Promise.all(
           newEvents.map(event => {
             // If there is nothing in the cache for this block number, add a new promise that will resolve to the block.
-            if (!blocks[event.blockNumber]) {
-              blocks[event.blockNumber] = this.web3.eth.getBlock(event.blockNumber);
+            if (!this.blocks[event.blockNumber]) {
+              this.blocks[event.blockNumber] = this.web3.eth
+                .getBlock(event.blockNumber)
+                .then(block => ({ timestamp: block.timestamp, number: block.number }));
             }
 
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
-            return blocks[event.blockNumber].then(block => {
+            return this.blocks[event.blockNumber].then(block => {
               event.timestamp = block.timestamp;
               event.price = this._getPriceFromSyncEvent(event);
               return event;
