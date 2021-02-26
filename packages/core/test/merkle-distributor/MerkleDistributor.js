@@ -1,7 +1,7 @@
 const { MerkleTree } = require("../../../merkle-distributor/src/merkleTree");
 
 const SamplePayouts = require("./SamplePayout.json");
-
+const truffleAssert = require("truffle-assertions");
 const { toBN, toWei, utf8ToHex } = web3.utils;
 const { MAX_UINT_VAL, didContractThrow } = require("@uma/common");
 
@@ -118,7 +118,7 @@ contract("ExpiringMultiParty", function(accounts) {
     it("Can claim rewards on another EOA's behalf", async function() {
       // Can correctly claim on the EOAs behalf.
       const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
-      await merkleDistributor.claimWindow(
+      const claimTx = await merkleDistributor.claimWindow(
         { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
         { from: rando }
       );
@@ -127,6 +127,18 @@ contract("ExpiringMultiParty", function(accounts) {
         (await rewardToken.balanceOf(leaf.account)).toString(),
         claimerBalanceBefore.add(toBN(leaf.amount)).toString()
       );
+
+      truffleAssert.eventEmitted(claimTx, "Claimed", ev => {
+        return (
+          ev.caller.toLowerCase() == rando.toLowerCase() &&
+          ev.windowIndex == windowIndex.toString() &&
+          ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+          ev.totalClaimAmount.toString() == leaf.amount.toString() &&
+          ev.amountVestedNetPreviousClaims.toString() == leaf.amount.toString() &&
+          ev.claimAmountRemaining.toString() == "0" &&
+          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
+        );
+      });
     });
     it("Can not double claim rewards", async function() {
       // Claim rewards for the EOA.
@@ -232,7 +244,7 @@ contract("ExpiringMultiParty", function(accounts) {
       const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
 
       await timer.setCurrentTime(vestingStartTime.addn(10));
-      await merkleDistributor.claimWindow(
+      const claimTx1 = await merkleDistributor.claimWindow(
         { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
         { from: rando }
       );
@@ -248,6 +260,18 @@ contract("ExpiringMultiParty", function(accounts) {
           .toString()
       );
 
+      truffleAssert.eventEmitted(claimTx1, "Claimed", ev => {
+        return (
+          ev.caller.toLowerCase() == rando.toLowerCase() &&
+          ev.windowIndex == windowIndex.toString() &&
+          ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+          ev.totalClaimAmount.toString() == toWei("1") &&
+          ev.amountVestedNetPreviousClaims.toString() == toWei("0.1") &&
+          ev.claimAmountRemaining.toString() == toWei("0.9") &&
+          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
+        );
+      });
+
       // No additional tokens should be release without more time traversed through vesting. Claim call should revert.
       assert(
         await didContractThrow(
@@ -260,7 +284,7 @@ contract("ExpiringMultiParty", function(accounts) {
 
       // Advance half way though the window and claim the vested tokens again.
       await timer.setCurrentTime(vestingStartTime.addn(50));
-      await merkleDistributor.claimWindow(
+      const claimTx2 = await merkleDistributor.claimWindow(
         { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
         { from: rando }
       );
@@ -276,6 +300,18 @@ contract("ExpiringMultiParty", function(accounts) {
           )
           .toString()
       );
+
+      truffleAssert.eventEmitted(claimTx2, "Claimed", ev => {
+        return (
+          ev.caller.toLowerCase() == rando.toLowerCase() &&
+          ev.windowIndex == windowIndex.toString() &&
+          ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+          ev.totalClaimAmount.toString() == toWei("1") && // Total of 1
+          ev.amountVestedNetPreviousClaims.toString() == toWei("0.4") && // total of 0.5 vested up to now, with 0.1 already claimed.
+          ev.claimAmountRemaining.toString() == toWei("0.5") && // 0.5 left still to claim.
+          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
+        );
+      });
     });
     it("Can claim all rewards post vesting", async function() {
       // Advance time to after the vesting window. Should be able to claim all rewards.
@@ -318,7 +354,7 @@ contract("ExpiringMultiParty", function(accounts) {
     it("Can claim from multiple windows in one transaction", async function() {});
     it("Can not re-use window index", async function() {});
     it("can not claim from invalid window", async function() {});
-    it("Can claim from multiple windows in one transaction", async function() {});
+    it("Can claim from multiple accounts in one transaction", async function() {});
   });
 
   describe("Admin functionality", function() {

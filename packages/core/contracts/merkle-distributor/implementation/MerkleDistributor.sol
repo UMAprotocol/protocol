@@ -58,11 +58,12 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
 
     // Events:
     event Claimed(
+        address caller,
         uint256 indexed windowIndex,
         address indexed account,
-        uint256 claimAmount,
-        uint256 amountVested,
-        uint256 amountRemaining,
+        uint256 totalClaimAmount,
+        uint256 amountVestedNetPreviousClaims,
+        uint256 claimAmountRemaining,
         address indexed rewardToken
     );
     event SeededWindow(uint256 indexed windowIndex, uint256 amount, uint256 windowStart, address indexed rewardToken);
@@ -118,6 +119,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         _disburse(claim, merkleWindow, amountVestedNetPreviousClaims);
 
         emit Claimed(
+            msg.sender,
             claim.windowIndex,
             claim.account,
             claim.amount,
