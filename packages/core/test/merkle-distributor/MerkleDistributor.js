@@ -22,7 +22,7 @@ const createLeaf = recipient => {
   return web3.utils.soliditySha3({ t: "address", v: recipient.account }, { t: "uint256", v: recipient.amount });
 };
 
-// Generate payouts to be used in tests using the SamplePayouts file.
+// Generate payouts to be used in tests using the SamplePayouts file. SamplePayouts is read in from a JsonFile.
 const createRewardRecipientsFromSampleData = SamplePayouts => {
   return Object.keys(SamplePayouts.exampleRecipients).map(recipientAddress => {
     return { account: recipientAddress, amount: SamplePayouts.exampleRecipients[recipientAddress] };
@@ -95,7 +95,7 @@ contract("ExpiringMultiParty", function(accounts) {
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
 
-      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts, windowIndex, currentTime, currentTime);
+      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
       rewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
@@ -197,13 +197,11 @@ contract("ExpiringMultiParty", function(accounts) {
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
 
-      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts, windowIndex, currentTime, currentTime);
+      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
       rewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
-
-      // Seed the merkleDistributor with the root of the tree and additional information.
 
       // set the start time to 100 seconds into the future and the end time to 200 seconds in the future.
       vestingStartTime = currentTime.addn(100);
@@ -212,6 +210,8 @@ contract("ExpiringMultiParty", function(accounts) {
       await rewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, {
         from: contractCreator
       });
+
+      // Seed the merkleDistributor with the root of the tree and additional information.
       await merkleDistributor.setWindowMerkleRoot(
         windowIndex,
         SamplePayouts.totalRewardsDistributed,
@@ -362,8 +362,95 @@ contract("ExpiringMultiParty", function(accounts) {
     });
   });
   describe("Multiple window", function() {
-    beforeEach(async function() {});
-    it("Can claim from multiple windows in one transaction", async function() {});
+    let rewardRecipients1, rewardRecipients2;
+    let rewardLeafs1, rewardLeafs2;
+    let merkleTree1, merkleTree2;
+    let vesting1StartTime, vesting2StartTime, vesting1EndTime, vesting2EndTime;
+    beforeEach(async function() {
+      const currentTime = await timer.getCurrentTime();
+
+      rewardRecipients1 = createRewardRecipientsFromSampleData(SamplePayouts);
+
+      // Generate another set of reward recipients, as the same set as number 1 but double the rewards.
+      rewardRecipients2 = rewardRecipients1.map(recipient => {
+        return {
+          account: recipient.account,
+          amount: toBN(recipient.amount)
+            .muln(2)
+            .toString()
+        };
+      });
+
+      // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
+      rewardLeafs1 = rewardRecipients1.map(item => ({ ...item, leaf: createLeaf(item) }));
+      rewardLeafs2 = rewardRecipients2.map(item => ({ ...item, leaf: createLeaf(item) }));
+
+      merkleTree1 = new MerkleTree(rewardLeafs1.map(item => item.leaf));
+      merkleTree2 = new MerkleTree(rewardLeafs2.map(item => item.leaf));
+
+      // set the start time to 100 seconds into the future and the end time to 200 seconds in the future.
+      vesting1StartTime = currentTime.addn(100);
+      vesting1EndTime = currentTime.addn(200);
+
+      vesting2StartTime = currentTime.addn(250);
+      vesting2EndTime = currentTime.addn(350);
+
+      await rewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, {
+        from: contractCreator
+      });
+      // Seed the merkleDistributor with the root of the tree and additional information.
+      await merkleDistributor.setWindowMerkleRoot(
+        "0",
+        SamplePayouts.totalRewardsDistributed,
+        vesting1StartTime,
+        vesting1EndTime,
+        rewardToken.address,
+        merkleTree1.getRoot()
+      );
+
+      await merkleDistributor.setWindowMerkleRoot(
+        "1",
+        SamplePayouts.totalRewardsDistributed,
+        vesting2StartTime,
+        vesting2EndTime,
+        rewardToken.address,
+        merkleTree2.getRoot()
+      );
+    });
+    it("Can claim from multiple windows if one window has incomplete vesting", async function() {});
+    it("Can claim from multiple windows in one transaction", async function() {
+      await timer.setCurrentTime(vesting2EndTime.addn(10)); // Move time to past the end of the second vesting window.
+      // try and claim all rewards at the same time for the 0th wallet.
+      const leaf1 = rewardLeafs1[0];
+      const leaf2 = rewardLeafs2[0];
+
+      const accountBalanceBefore = await rewardToken.balanceOf(leaf1.account);
+      await merkleDistributor.claimWindows(
+        [
+          {
+            windowIndex: "0",
+            account: leaf1.account,
+            amount: leaf1.amount,
+            merkleProof: merkleTree1.getProof(leaf1.leaf)
+          },
+          {
+            windowIndex: "1",
+            account: leaf2.account,
+            amount: leaf2.amount,
+            merkleProof: merkleTree2.getProof(leaf2.leaf)
+          }
+        ],
+        { from: rando }
+      );
+
+      assert.equal(
+        (await rewardToken.balanceOf(leaf1.account)).toString(),
+        accountBalanceBefore
+          .add(toBN(leaf1.amount))
+          .add(toBN(leaf2.amount))
+          .toString()
+      );
+    });
     it("Can not re-use window index", async function() {});
     it("can not claim from invalid window", async function() {});
     it("Can claim from multiple accounts in one transaction", async function() {});
