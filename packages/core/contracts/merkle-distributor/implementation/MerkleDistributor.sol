@@ -181,7 +181,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         require(amountVestedNetPreviousClaims > 0, "Zero vested amount");
 
         // Calculate how much the account has left to claim (unvested). Useful in logging.
-        amountRemaining = claim.amount.sub(amountVestedNetPreviousClaims);
+        amountRemaining = claim.amount.sub(amountVested);
 
         // Finally, Update the total amount the user has claimed as the amountVested.
         amountClaimedFromWindow[claim.windowIndex][claim.account] = amountVested;

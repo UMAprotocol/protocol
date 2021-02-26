@@ -318,7 +318,7 @@ contract("ExpiringMultiParty", function(accounts) {
       const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
 
       await timer.setCurrentTime(vestingStartTime.addn(110)); // window is 100 seconds long. 110 is after the end.
-      await merkleDistributor.claimWindow(
+      const claimTx = await merkleDistributor.claimWindow(
         {
           windowIndex: windowIndex,
           account: leaf.account,
@@ -332,6 +332,18 @@ contract("ExpiringMultiParty", function(accounts) {
         (await rewardToken.balanceOf(leaf.account)).toString(),
         claimerBalanceBefore.add(toBN(leaf.amount)).toString()
       );
+
+      truffleAssert.eventEmitted(claimTx, "Claimed", ev => {
+        return (
+          ev.caller.toLowerCase() == rando.toLowerCase() &&
+          ev.windowIndex == windowIndex.toString() &&
+          ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+          ev.totalClaimAmount.toString() == toWei("1") &&
+          ev.amountVestedNetPreviousClaims.toString() == toWei("1") &&
+          ev.claimAmountRemaining.toString() == toWei("0") &&
+          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
+        );
+      });
 
       // No additional tokens should be release post claim. Claim call should revert.
       assert(
