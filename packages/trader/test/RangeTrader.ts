@@ -62,7 +62,7 @@ let dsProxyFactory: any;
 // can be re-used between different uniswap tests.
 const createContractObjectFromJson = (contractJsonObject: any) => {
   const contract = require("@truffle/contract");
-  let truffleContractCreator = contract(contractJsonObject);
+  const truffleContractCreator = contract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };
@@ -182,7 +182,7 @@ describe("index.js", function() {
     await tokenPriceFeed.update();
   });
 
-  it.only("Correctly detects overpriced tokens and executes trades", async function() {
+  it("Correctly detects overpriced tokens and executes trades", async function() {
     // The default behavior of the bot is to preform a trade if and only if the absolute error is greater than 20%. If
     //  it is then trade the error down to 5%. To start with, the tokenPriceFeed and referencePriceFeed should both
     // equal 1000, due to the seeing, where no trading should be done as no error between the feeds.
@@ -259,7 +259,7 @@ describe("index.js", function() {
   it("Correctly detects underpriced tokens and executes trades", async function() {
     // This test is very similar to the previous one but instead of setting the synth to be overpriced we set to to
     // underpriced. To get directly to the test case we can simply set the reference price feed to be greater than the
-    //synthetic dex price + the threshold. Any price for the reference feed over 1250 should trigger a trade as the %
+    // synthetic dex price + the threshold. Any price for the reference feed over 1250 should trigger a trade as the %
     // error is calculated using δ = (observed - expected) / expected where δ = (1000 - 1250) / 1250 = 0.2. If we set it
     // to 1249 we should not execute a trade as the price is right below the execution threshold of 20%.
     referencePriceFeed.setCurrentPrice(toWei("1249"));

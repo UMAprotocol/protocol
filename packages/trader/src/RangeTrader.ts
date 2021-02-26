@@ -62,13 +62,13 @@ export class RangeTrader {
     const defaultConfig = {
       tradeExecutionThreshold: {
         value: 0.2,
-        isValid: (x: Number) => {
+        isValid: (x: number) => {
           return x > 0;
         }
       },
       targetPriceSpread: {
         value: 0.05,
-        isValid: (x: Number) => {
+        isValid: (x: number) => {
           return x > 0 && x <= 1;
         }
       }

@@ -41,11 +41,11 @@ describe("index.js", function() {
 
   let originalEnv: any;
 
-  let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
-  let errorRetries = 1;
-  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
-  let identifier = "TEST_IDENTIFIER";
-  let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+  const pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
+  const errorRetries = 1;
+  const errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+  const identifier = "TEST_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
   const FinancialContract = getTruffleContract("Perpetual", web3, contractVersion);
   const Finder = getTruffleContract("Finder", web3, contractVersion);

@@ -41,7 +41,7 @@ class UniswapTrader extends ExchangeAdapterInterface {
 
     this.UniswapBroker = getTruffleContract("UniswapBroker", this.web3);
   }
-  async tradeMarketToDesiredPrice(desiredPrice: String) {
+  async tradeMarketToDesiredPrice(desiredPrice: string) {
     const callCode = this.UniswapBroker.bytecode;
 
     const contract = new this.web3.eth.Contract(this.UniswapBroker.abi);
@@ -83,7 +83,7 @@ class UniswapTrader extends ExchangeAdapterInterface {
   // as a fallback keeping the getter interface generic.
   createContractObjectFromJson(contractJsonObject: any) {
     const contract = require("@truffle/contract");
-    let truffleContractCreator = contract(contractJsonObject);
+    const truffleContractCreator = contract(contractJsonObject);
     truffleContractCreator.setProvider(this.web3.currentProvider);
     return truffleContractCreator;
   }
