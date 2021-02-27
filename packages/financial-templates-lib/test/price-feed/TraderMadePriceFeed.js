@@ -104,10 +104,6 @@ contract("TraderMadePriceFeed.js", function() {
 
     await traderMadePriceFeed.update();
 
-    // TODO: These tests might fail if they are not being run in the GMT-0 timezone as the UNIX
-    // timestamps are hardcoded to the GMT-0 times corresponding to the `date` objects in
-    // the validResponses array.
-
     // Before period 1 should fail.
     assert.isTrue(await traderMadePriceFeed.getHistoricalPrice(1611607700 - timezeoneOffsetSeconds).catch(() => true));
 
