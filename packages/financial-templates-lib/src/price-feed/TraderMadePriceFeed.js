@@ -30,7 +30,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     getTime,
     minTimeBetweenUpdates,
     priceFeedDecimals = 18,
-    ohlcPeriod = 10 // Only 5, 10, 15 minutes is supported by TraderMade.
+    ohlcPeriod = 1 // Some pairs like CNYUSD are only available at higher granularities like 10
   ) {
     super();
     this.logger = logger;

@@ -386,7 +386,8 @@ const defaultConfigs = {
     pair: "CNYUSD",
     minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
     hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
-    minTimeBetweenUpdates: 600
+    minTimeBetweenUpdates: 600,
+    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
   PHPDAI: {
     type: "medianizer",
