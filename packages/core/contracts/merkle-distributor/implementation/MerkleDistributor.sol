@@ -111,10 +111,9 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         _seedWindow(indexToSeed, totalRewardsDistributed, windowStart, windowEnd, rewardToken, merkleRoot);
     }
 
-    // Flip window lock to opposite of current value. When `window.locked` is true,
-    // claims are blocked for that window.
-    function toggleWindowLock(uint256 windowIndex) external nonReentrant() onlyOwner {
-        merkleWindows[windowIndex].locked = !merkleWindows[windowIndex].locked;
+    // When `window.locked` is true, claims are blocked for that window.
+    function setWindowLock(uint256 windowIndex, bool lockValue) external nonReentrant() onlyOwner {
+        merkleWindows[windowIndex].locked = lockValue;
     }
 
     // Overwrite merkle root for specified window index. Owner must deposit `totalRewardsDistributed`

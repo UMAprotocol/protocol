@@ -851,13 +851,13 @@ contract("MerkleDistributor.js", function(accounts) {
       claimProof1 = merkleTree1.getProof(leaf1.leaf);
       claimProof2 = merkleTree2.getProof(leaf2.leaf);
     });
-    describe("(toggleWindowLock)", function() {
+    describe("(setWindowLock)", function() {
       it("Only owner can call", async function() {
-        assert(await didContractThrow(merkleDistributor.toggleWindowLock(windowIndex, { from: rando })));
+        assert(await didContractThrow(merkleDistributor.setWindowLock(windowIndex, true, { from: rando })));
       });
       it("Blocks claim for window until lock removed", async function() {
         // Lock window 0
-        await merkleDistributor.toggleWindowLock(windowIndex, { from: contractCreator });
+        await merkleDistributor.setWindowLock(windowIndex, true, { from: contractCreator });
         assert(
           await didContractThrow(
             merkleDistributor.claimWindow({
@@ -877,7 +877,7 @@ contract("MerkleDistributor.js", function(accounts) {
         });
 
         // Unlock window 0
-        await merkleDistributor.toggleWindowLock(windowIndex, { from: contractCreator });
+        await merkleDistributor.setWindowLock(windowIndex, false, { from: contractCreator });
         await merkleDistributor.claimWindow({
           windowIndex: windowIndex,
           account: leaf1.account,
