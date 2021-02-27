@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.0.0...@uma/common@2.0.1) (2021-02-27)
+
+### Bug Fixes
+
+- **common:** missing required file in common ([#2608](https://github.com/UMAprotocol/protocol/issues/2608)) ([9850c11](https://github.com/UMAprotocol/protocol/commit/9850c11667655042b76bc77b7edf9bca6eeebb61))
+
 # [2.0.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@1.1.0...@uma/common@2.0.0) (2021-02-26)
 
 ### Bug Fixes
