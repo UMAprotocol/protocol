@@ -309,7 +309,6 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     const ohlcHourlyUrl = `https://marketdata.tradermade.com/api/v1/timeseries?currency=${this.pair}&api_key=${this.apiKey}&start_date=${startHourlyDate}&end_date=${endDate}&format=records&interval=hourly`;
 
     // 2. Send requests.
-    console.log(this.networker.getJsonReturns);
     const ohlcHourlyResponse = await this.networker.getJson(ohlcHourlyUrl);
 
     // 3. Check responses.
