@@ -397,7 +397,9 @@ class TraderMadePriceFeed extends PriceFeedInterface {
 
     // If `minuteLookback` is not specified but `hourlyLookback` is, then we'll
     // just update the hourly timeseries and throw an error if that fails.
-    if (this.hourlyLookback) {
+    // Skip this update if hourlyPrices were already updated following an updateMinute
+    // failure.
+    if (!this.historicalPricesHourly && this.hourlyLookback) {
       await this.updateHourly(lastUpdateTime);
     }
   }
