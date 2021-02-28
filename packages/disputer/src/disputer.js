@@ -153,7 +153,7 @@ class Disputer {
               liquidation: JSON.stringify(liquidation)
             });
 
-            return { ...liquidation, price };
+            return { ...liquidation, price: price.toString() };
           }
 
           return null;
@@ -205,7 +205,6 @@ class Disputer {
         at: "Disputer",
         message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
-        inputPrice,
         txnConfig
       });
 
