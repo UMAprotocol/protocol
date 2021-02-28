@@ -385,13 +385,19 @@ const defaultConfigs = {
     type: "tradermade",
     pair: "CNYUSD",
     minTimeBetweenUpdates: 600,
-    minuteLookback: 172800,
-    // Set minute lookback to maximum of 2 days allowed by minute-interval endpoint. This is longer
-    // than the expected liquidationLiveness of 2 hours because we might need to get the last price
-    // before the tradermade API stopped serving prices for the weekend.
+    // Since TradeMadeAPI timeseries data is unavailable over the weekend,
+    // set either the `minuteLookback` or the `hourlyLookback` to be longer than 3 days (259200 seconds)
+    // so that we can fetch the last known price prior to the weekend start.
+    // For example, if `minuteLookback = 7200`, then 2 hours after the weekend has "begun",
+    // `TraderMadePriceFeed.updateMinute()` will fail to find any prices. Simultaneously
+    // setting `hourLookback = 604800` ensures that if `updateMinute()` fails then `updateHourly()`
+    // will return the last hourly price. Alternatively, you can set `minuteLookback = 172800`, or
+    // 2 days (the maximum minute interval lookback) which will allow `updateMinute()` to fetch
+    // data for longer into the off-market period. We set `minuteLookback` to 7200 and `hourlyLookback`
+    // to 604800 so that we can both reduce the amount of data to parse from the minute-interval
+    // and ensure that we can always find a price when weekend prices are not available.
+    minuteLookback: 7200,
     hourlyLookback: 604800,
-    // Hourly interval data will be used as fallback if minute data is empty, so
-    // set conservatively to 1 week.
     ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
   PHPDAI: {
@@ -480,13 +486,19 @@ const defaultConfigs = {
   XAUUSD: {
     type: "tradermade",
     pair: "XAUUSD",
-    minuteLookback: 172800,
-    // Set minute lookback to maximum of 2 days allowed by minute-interval endpoint. This is longer
-    // than the expected liquidationLiveness of 2 hours because we might need to get the last price
-    // before the tradermade API stopped serving prices for the weekend.
+    // Since TradeMadeAPI timeseries data is unavailable over the weekend,
+    // set either the `minuteLookback` or the `hourlyLookback` to be longer than 3 days (259200 seconds)
+    // so that we can fetch the last known price prior to the weekend start.
+    // For example, if `minuteLookback = 7200`, then 2 hours after the weekend has "begun",
+    // `TraderMadePriceFeed.updateMinute()` will fail to find any prices. Simultaneously
+    // setting `hourLookback = 604800` ensures that if `updateMinute()` fails then `updateHourly()`
+    // will return the last hourly price. Alternatively, you can set `minuteLookback = 172800`, or
+    // 2 days (the maximum minute interval lookback) which will allow `updateMinute()` to fetch
+    // data for longer into the off-market period. We set `minuteLookback` to 7200 and `hourlyLookback`
+    // to 604800 so that we can both reduce the amount of data to parse from the minute-interval
+    // and ensure that we can always find a price when weekend prices are not available.
+    minuteLookback: 7200,
     hourlyLookback: 604800,
-    // Hourly interval data will be used as fallback if minute data is empty, so
-    // set conservatively to 1 week.
     minTimeBetweenUpdates: 60
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
