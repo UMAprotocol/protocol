@@ -199,8 +199,6 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const inputPrice = disputeableLiquidation.price;
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
@@ -232,7 +230,6 @@ class Disputer {
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",
         liquidation: disputeableLiquidation,
-        inputPrice,
         txnConfig,
         disputeResult: logResult
       });
