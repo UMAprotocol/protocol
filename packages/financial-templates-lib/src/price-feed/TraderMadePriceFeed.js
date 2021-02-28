@@ -24,8 +24,8 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     web3,
     apiKey,
     pair,
-    minuteLookback,
-    hourlyLookback,
+    minuteLookback = 172800, // Max lookback for minute interval is 2 days
+    hourlyLookback = 604800, // Max lookback for hourly interval is 2 months, but 1 week is a reasonable default.
     networker,
     getTime,
     minTimeBetweenUpdates,

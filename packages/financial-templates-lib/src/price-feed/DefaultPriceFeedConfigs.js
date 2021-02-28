@@ -384,8 +384,6 @@ const defaultConfigs = {
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",
-    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
-    hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
     minTimeBetweenUpdates: 600,
     ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
@@ -475,9 +473,7 @@ const defaultConfigs = {
   XAUUSD: {
     type: "tradermade",
     pair: "XAUUSD",
-    minTimeBetweenUpdates: 60,
-    minuteLookback: 7200,
-    hourlyLookback: 604800
+    minTimeBetweenUpdates: 60
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
