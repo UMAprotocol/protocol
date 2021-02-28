@@ -14,6 +14,7 @@ contract("TraderMadePriceFeed.js", function() {
   const apiKey = "test-api-key";
   const pair = "test-pair";
   const minuteLookback = 600; // 10 minutes
+  const ohlcPeriod = 10;
   const hourlyLookback = 172800; // 2 days
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 600;
@@ -88,7 +89,8 @@ contract("TraderMadePriceFeed.js", function() {
       networker,
       getTime,
       minTimeBetweenUpdates,
-      18
+      18,
+      ohlcPeriod
     );
   });
 
