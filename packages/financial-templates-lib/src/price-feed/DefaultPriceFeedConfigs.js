@@ -385,6 +385,13 @@ const defaultConfigs = {
     type: "tradermade",
     pair: "CNYUSD",
     minTimeBetweenUpdates: 600,
+    minuteLookback: 172800,
+    // Set minute lookback to maximum of 2 days allowed by minute-interval endpoint. This is longer
+    // than the expected liquidationLiveness of 2 hours because we might need to get the last price
+    // before the tradermade API stopped serving prices for the weekend.
+    hourlyLookback: 604800,
+    // Hourly interval data will be used as fallback if minute data is empty, so
+    // set conservatively to 1 week.
     ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
   PHPDAI: {
@@ -473,6 +480,13 @@ const defaultConfigs = {
   XAUUSD: {
     type: "tradermade",
     pair: "XAUUSD",
+    minuteLookback: 172800,
+    // Set minute lookback to maximum of 2 days allowed by minute-interval endpoint. This is longer
+    // than the expected liquidationLiveness of 2 hours because we might need to get the last price
+    // before the tradermade API stopped serving prices for the weekend.
+    hourlyLookback: 604800,
+    // Hourly interval data will be used as fallback if minute data is empty, so
+    // set conservatively to 1 week.
     minTimeBetweenUpdates: 60
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
