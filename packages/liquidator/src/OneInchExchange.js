@@ -10,7 +10,7 @@ class OneInchExchange {
    * */
   constructor({ web3, gasEstimator, logger, oneSplitAbi, erc20TokenAbi, oneSplitAddress }) {
     if (!oneSplitAddress) {
-      throw new Error("Missing oneSplitAddress in OneInchEcchange constructor!");
+      throw new Error("Missing oneSplitAddress in OneInchExchange constructor!");
     }
 
     this.logger = logger;
