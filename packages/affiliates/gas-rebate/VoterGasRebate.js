@@ -263,37 +263,43 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
     ]);
     // Check if claim txn was sent by an UMA dev batch retrieval.
     if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
+      // To prevent rebating voters who experienced someone else claiming their rewards (and thus
+      // paying gas on the voter's behalf), filter out claim calls that were not instantiated
+      // by the voter. Note that this might have some false negatives for edge case voters
+      // who claim from different accounts.
       const voter = claim.returnValues.voter;
-      const roundId = claim.returnValues.roundId;
-      const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
-      const requestTime = claim.returnValues.time;
+      if (toChecksumAddress(voter) === toChecksumAddress(transactionReceipt.from)) {
+        const roundId = claim.returnValues.roundId;
+        const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
+        const requestTime = claim.returnValues.time;
 
-      // Metrics.
-      const uniqueVoteKey = `${identifier}-${requestTime}`;
-      if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
+        // Metrics.
+        const uniqueVoteKey = `${identifier}-${requestTime}`;
+        if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
 
-      const gasUsed = parseInt(transactionReceipt.gasUsed);
-      const txnTimestamp = transactionBlock.timestamp;
+        const gasUsed = parseInt(transactionReceipt.gasUsed);
+        const txnTimestamp = transactionBlock.timestamp;
 
-      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-      const val = {
-        voter,
-        roundId,
-        requestTime,
-        identifier,
-        claim: {
-          transactionBlock: transactionBlock.number,
-          hash: transactionReceipt.transactionHash,
-          gasUsed,
-          txnTimestamp
+        const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+        const val = {
+          voter,
+          roundId,
+          requestTime,
+          identifier,
+          claim: {
+            transactionBlock: transactionBlock.number,
+            hash: transactionReceipt.transactionHash,
+            gasUsed,
+            txnTimestamp
+          }
+        };
+
+        // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
+        // part of a batch transaction.
+        if (!batchTxns[transactionReceipt.transactionHash]) {
+          batchTxns[transactionReceipt.transactionHash] = true;
+          rewardedVotersToRebate[key] = val;
         }
-      };
-
-      // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
-      // part of a batch transaction.
-      if (!batchTxns[transactionReceipt.transactionHash]) {
-        batchTxns[transactionReceipt.transactionHash] = true;
-        rewardedVotersToRebate[key] = val;
       }
     }
 
