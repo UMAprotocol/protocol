@@ -12,7 +12,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} uniswapAddress Ethereum address of the Uniswap market the price feed is monitoring.
    * @param {Integer} twapLength Duration of the time weighted average computation used by the price feed.
-   * @param {Integer} historicalLookback How far in the past historical prices will be available using await  getHistoricalPrice.
+   * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
    * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
    * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in
@@ -28,7 +28,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
     historicalLookback,
     getTime,
     invertPrice,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
+    blocks = {}
   ) {
     super();
     this.logger = logger;
@@ -52,6 +53,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+    this.blocks = blocks;
   }
 
   getCurrentPrice() {
@@ -70,6 +72,15 @@ class UniswapPriceFeed extends PriceFeedInterface {
     } else {
       throw new Error(`${this.uuid} missing historical price @ time ${time}`);
     }
+  }
+
+  // This function does not return the same type of price data as getHistoricalPrice. It returns the raw
+  // price history from uniswap without a twap. This is by choice, since a twap calculation across the entire
+  // history is 1. complicated and 2. unecessary as this function is only needed for affliate calculations.
+  getHistoricalPricePeriods() {
+    return this.events.map(event => {
+      return [event.timestamp, this.convertToPriceFeedDecimals(event.price)];
+    });
   }
 
   getLastUpdateTime() {
@@ -125,7 +136,6 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let lookbackBlocks = Math.ceil((this.bufferBlockPercent * lookbackWindow) / (await averageBlockTimeSeconds()));
 
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
-    let blocks = {}; // Caches blocks (so we don't have to re-query timestamps).
     let fromBlock = Infinity; // Arbitrary initial value > 0.
 
     // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
@@ -141,12 +151,14 @@ class UniswapPriceFeed extends PriceFeedInterface {
         return Promise.all(
           newEvents.map(event => {
             // If there is nothing in the cache for this block number, add a new promise that will resolve to the block.
-            if (!blocks[event.blockNumber]) {
-              blocks[event.blockNumber] = this.web3.eth.getBlock(event.blockNumber);
+            if (!this.blocks[event.blockNumber]) {
+              this.blocks[event.blockNumber] = this.web3.eth
+                .getBlock(event.blockNumber)
+                .then(block => ({ timestamp: block.timestamp, number: block.number }));
             }
 
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
-            return blocks[event.blockNumber].then(block => {
+            return this.blocks[event.blockNumber].then(block => {
               event.timestamp = block.timestamp;
               event.price = this._getPriceFromSyncEvent(event);
               return event;

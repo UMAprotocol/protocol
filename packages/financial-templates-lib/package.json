@@ -1,28 +1,28 @@
 {
   "name": "@uma/financial-templates-lib",
-  "version": "1.2.0",
+  "version": "2.0.1",
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "dependencies": {
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/logging-winston": "^3.0.6",
     "@google-cloud/trace-agent": "^4.2.5",
-    "@uma/common": "^1.1.0",
-    "@uma/core": "^1.2.2",
+    "@uma/common": "^2.0.1",
+    "@uma/core": "^2.0.1",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "dotenv": "^6.2.0",
     "mathjs": "^9.2.0",
     "minimist": "^1.2.0",
-    "node-fetch": "^2.6.0",
     "moment": "^2.29.1",
+    "node-fetch": "^2.6.0",
     "node-pagerduty": "^1.2.0",
     "winston": "^3.2.1",
     "winston-transport": "^4.3.0"
   },
   "devDependencies": {
+    "@tsconfig/node14": "^1.0.0",
     "truffle": "^5.1.37",
-    "typescript": "^4.1.3",
-    "@tsconfig/node14": "^1.0.0"
+    "typescript": "^4.1.3"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

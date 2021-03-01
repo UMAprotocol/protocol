@@ -384,9 +384,10 @@ const defaultConfigs = {
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",
-    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
-    hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
-    minTimeBetweenUpdates: 600
+    minTimeBetweenUpdates: 600,
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
   PHPDAI: {
     type: "medianizer",
@@ -407,6 +408,76 @@ const defaultConfigs = {
         invertPrice: true
       }
     ]
+  },
+  "USD/bBadger": {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      wbtc_usd = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI) / USDETH;
+      badger_usd_sushi = wbtc_usd * BADGER_WBTC_SUSHI;
+      badger_usd_uni = wbtc_usd * BADGER_WBTC_UNI;
+      badger_usd = median(badger_usd_sushi, badger_usd_uni, BADGER_USD_HUOBI);
+      1 / (badger_usd * BBADGER_BADGER)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    priceFeedDecimals: 18,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+      BADGER_WBTC_SUSHI: {
+        type: "uniswap",
+        uniswapAddress: "0x110492b31c59716ac47337e616804e3e3adc0b4a",
+        invertPrice: true
+      },
+      BADGER_WBTC_UNI: {
+        type: "uniswap",
+        uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
+        invertPrice: true
+      },
+      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt" },
+      BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
+    }
+  },
+  "USD-[bwBTC/ETH SLP]": {
+    type: "expression",
+    expression: `
+      wbtc_usd = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI) / USDETH;
+      eth_usd = 1 / USDETH;
+      lp_usd = (wbtc_usd * WBTC_PER_SHARE) + (eth_usd * ETH_PER_SHARE);
+      1 / (BLP_LP * lp_usd)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    priceFeedDecimals: 18,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+      ETH_PER_SHARE: {
+        type: "lp",
+        poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
+        tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      },
+      WBTC_PER_SHARE: {
+        type: "lp",
+        poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
+        tokenAddress: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+      },
+      BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" }
+    }
+  },
+  XAUPERL: {
+    type: "expression",
+    expression: "XAUUSD * USDPERL"
+  },
+  XAUUSD: {
+    type: "tradermade",
+    pair: "XAUUSD",
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    minTimeBetweenUpdates: 60
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.

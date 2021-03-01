@@ -160,21 +160,20 @@ class OptimisticOracleProposer {
       priceRequest.ancillaryData,
       proposalPrice
     );
-    const transactionConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice(),
-      from: this.account
-    };
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
-      message: "Proposing new price",
+      message: "Detected price request, and proposing new price",
       priceRequest,
-      proposalPrice,
-      transactionConfig
+      potentialProposalPrice: proposalPrice,
+      proposer: this.account
     });
     try {
       const transactionResult = await runTransaction({
         transaction: proposal,
-        config: transactionConfig
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account
+        }
       });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
@@ -195,7 +194,6 @@ class OptimisticOracleProposer {
         priceRequest,
         proposalBond: returnValue,
         proposalPrice,
-        transactionConfig,
         proposalResult: logResult
       });
     } catch (error) {
@@ -273,10 +271,6 @@ class OptimisticOracleProposer {
         priceRequest.timestamp,
         priceRequest.ancillaryData
       );
-      const transactionConfig = {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account
-      };
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
@@ -284,12 +278,15 @@ class OptimisticOracleProposer {
         proposalPrice,
         disputePrice,
         allowedError: this.disputePriceErrorPercent,
-        transactionConfig
+        disputer: this.account
       });
       try {
         const transactionResult = await runTransaction({
           transaction: dispute,
-          config: transactionConfig
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
         });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue;
@@ -311,7 +308,6 @@ class OptimisticOracleProposer {
           disputePrice,
           disputeBond: returnValue,
           allowedError: this.disputePriceErrorPercent,
-          transactionConfig,
           disputeResult: logResult
         });
       } catch (error) {
@@ -327,6 +323,15 @@ class OptimisticOracleProposer {
         });
         return;
       }
+    } else {
+      this.logger.debug({
+        at: "OptimisticOracleProposer#sendDisputes",
+        message: "Skipping dispute because proposal price is within allowed margin of error",
+        priceRequest,
+        proposalPrice,
+        disputePrice,
+        allowedError: this.disputePriceErrorPercent
+      });
     }
   }
   // Construct settlement transaction and send or return early if an error is encountered.
@@ -338,20 +343,18 @@ class OptimisticOracleProposer {
       priceRequest.timestamp,
       priceRequest.ancillaryData
     );
-    const transactionConfig = {
-      gasPrice: this.gasEstimator.getCurrentFastPrice(),
-      from: this.account
-    };
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
-      priceRequest,
-      transactionConfig
+      priceRequest
     });
     try {
       const transactionResult = await runTransaction({
         transaction: settle,
-        config: transactionConfig
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account
+        }
       });
       let receipt = transactionResult.receipt;
       let returnValue = transactionResult.returnValue;
@@ -372,7 +375,6 @@ class OptimisticOracleProposer {
         message: "Settled proposal or dispute!⛑",
         priceRequest,
         payout: returnValue,
-        transactionConfig,
         settleResult: logResult
       });
     } catch (error) {

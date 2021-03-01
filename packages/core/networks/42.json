@@ -29,7 +29,7 @@
   },
   {
     "contractName": "DesignatedVotingFactory",
-    "address": "0xF988f9f62f355966a758c5936C9080183C176585"
+    "address": "0xe6614f50Ea93A2497ae7a392E0BC36239845b9a4"
   },
   {
     "contractName": "TokenFactory",
@@ -53,11 +53,11 @@
   },
   {
     "contractName": "Voting",
-    "address": "0x08f5728338de40a7b6fc35d30b0ca7cc622be6f3"
+    "address": "0x0740C93a3D2B6088d0E345Da47c3B412b9874562"
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x4107851478431d4f0462d145888772329a2dD208"
+    "address": "0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC"
   },
   {
     "contractName": "ExpiringMultiPartyLib",

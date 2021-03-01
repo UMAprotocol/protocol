@@ -153,7 +153,7 @@ class Disputer {
               liquidation: JSON.stringify(liquidation)
             });
 
-            return { ...liquidation, price };
+            return { ...liquidation, price: price.toString() };
           }
 
           return null;
@@ -199,13 +199,10 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const inputPrice = disputeableLiquidation.price;
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
-        inputPrice,
         txnConfig
       });
 
@@ -233,7 +230,6 @@ class Disputer {
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",
         liquidation: disputeableLiquidation,
-        inputPrice,
         txnConfig,
         disputeResult: logResult
       });

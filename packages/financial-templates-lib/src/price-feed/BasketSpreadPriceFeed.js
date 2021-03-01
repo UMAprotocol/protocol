@@ -1,5 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@ethersproject/bignumber");
+const assert = require("assert");
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
 // computes the average price feed for each basket, and returns the spread between the two averages.
@@ -134,7 +135,57 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       return this._getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice);
     }
   }
+  // This searches for closest time in a list of [[time,price]] data. Based on code in affiliates models/prices.
+  // input list is [[time,price]]
+  // output price as BN
+  closestTime(list) {
+    return time => {
+      const result = list.reduce((a, b) => {
+        const aDiff = Math.abs(a[0] - time);
+        const bDiff = Math.abs(b[0] - time);
 
+        // if differences are equal, return larger? timestamp
+        if (aDiff == bDiff) {
+          return a < b ? a : b;
+        }
+        // if diffs are diff, return smallest diff
+        return bDiff < aDiff ? b : a;
+      });
+      assert(result, "no closest time found");
+      return this.toBN(result[1]);
+    };
+  }
+  // This function does something similar to get historicalprice, but does not have the luxury of only caring about a
+  // single point in time. It has to run the basketspread price across all timestamps available. This is complicated
+  // as there are multiple price histories which we must search through at each matching timestamp to find the closets
+  // prices to add into the basket calculation.
+  // Returns data in the form of [[time,price]]
+  getHistoricalPricePeriods() {
+    const experimentalPrices = this.experimentalPriceFeeds.map(priceFeed => {
+      // This price history gets wrapped in "closestTime" which returns a searching function with timestamp input.
+      return this.closestTime(priceFeed.getHistoricalPricePeriods());
+    });
+    const baselinePrices = this.baselinePriceFeeds.map(priceFeed => {
+      return this.closestTime(priceFeed.getHistoricalPricePeriods());
+    });
+    let denominatorPrice;
+    if (this.denominatorPriceFeed) {
+      denominatorPrice = this.closestTime(this.denominatorPriceFeed.getHistoricalPricePeriods());
+    }
+
+    // This uses the first baseline price feed as a reference for the historical timestamps to search for
+    const pricePeriods = this.baselinePriceFeeds[0].getHistoricalPricePeriods();
+    return pricePeriods.map(pricePeriod => {
+      const [time] = pricePeriod;
+      // Each parameter looks up and returns the closest price to the timestamp.
+      const expPrices = experimentalPrices.map(lookup => lookup(time));
+      const basePrices = baselinePrices.map(lookup => lookup(time));
+      const denomPrices = denominatorPrice ? denominatorPrice(time) : null;
+
+      // Takes in an array of prices for each basket and returns a single price
+      return [time, this._getSpreadFromBasketPrices(expPrices, basePrices, denomPrices)];
+    });
+  }
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
     const lastUpdateTimes = this.allPriceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
