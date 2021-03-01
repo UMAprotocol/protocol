@@ -91,9 +91,22 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     // contract. Importantly, we assume that the owner of this contract
     // correctly chooses an amount `totalRewardsDistributed` that is sufficient
     // to cover all claims within the `merkleRoot`. Otherwise, a race condition
-    // can be created either within a window (last claimants within a window don't get their claim)
-    // or across windows (claimants from window T take rewards from window T+1). This situation
-    // can occur because we do not segregate reward balances by window, for code simplicity purposes.
+    // can be created. This situation can occur because we do not segregate reward balances by window,
+    // for code simplicity purposes.
+    //
+    // Example race situation:
+    //     - Window 1 Tree: Owner sets `totalRewardsDistributed=100` and insert proofs that give
+    //                      claimant A 50 tokens and claimant B 51 tokens. The owner has made an error
+    //                      by not setting the `totalRewardsDistributed` correctly to 101).
+    //     - Window 2 Tree: Owner sets `totalRewardsDistributed=1` and insert proofs that give
+    //                      claimant A 1 token. The owner correctly set `totalRewardsDistributed` this time.
+    //     - At this point contract owns 100 + 1 = 101 tokens. Now, imagine the following sequence:
+    //       (1) Claimant A claims 50 tokens for Window 1, contract now has 101 - 50 = 51 tokens.
+    //       (2) Claimant B claims 51 tokens for Window 1, contract now has 51 - 51 = 0 tokens.
+    //       (3) Claimant A tries to claim 1 token for Window 2 but fails because contract has 0 tokens.
+    //     - In summary, the contract owner created a race for step(2) and step(3) in which the first
+    //       claim would succeed and the second claim would fail, even though both claimants would expect
+    //       their claims to suceed.
     function setWindowMerkleRoot(
         uint256 totalRewardsDistributed,
         uint256 windowStart,
