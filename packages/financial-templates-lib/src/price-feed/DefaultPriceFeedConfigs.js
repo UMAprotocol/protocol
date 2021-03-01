@@ -389,6 +389,13 @@ const defaultConfigs = {
     hourlyLookback: 604800,
     ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
   },
+  EURUSD: {
+    type: "tradermade",
+    pair: "EURUSD",
+    minTimeBetweenUpdates: 600,
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+  },
   PHPDAI: {
     type: "medianizer",
     computeMean: true,
