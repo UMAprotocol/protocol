@@ -153,6 +153,7 @@ describe("index.js", function() {
     syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
     uniswap = await UniswapMock.new();
+    await uniswap.setTokens(syntheticToken.address, collateralToken.address);
 
     defaultPriceFeedConfig = {
       type: "uniswap",

@@ -4,34 +4,26 @@ import BigNumber from "bignumber.js";
 const truffleContract = require("@truffle/contract");
 
 const { MAX_UINT_VAL } = require("@uma/common");
-const { ExchangeAdapterInterface } = require("./ExchangeAdapterInterface");
+const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
 const { getTruffleContract } = require("@uma/core");
 
 const IUniswapV2Factory = require("@uniswap/v2-core/build/IUniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 
-class UniswapTrader extends ExchangeAdapterInterface {
-  readonly logger: winston.Logger;
-  readonly web3: Web3;
-  readonly uniswapRouterAddress: string;
-  readonly uniswapFactoryAddress: string;
-  readonly tokenAAddress: string;
-  readonly tokenBAddress: string;
-  readonly dsProxyManager: any;
+class UniswapTrader implements InstanceType<typeof ExchangeAdapterInterface> {
   readonly tradeDeadline: any;
   readonly UniswapBroker: any;
   uniswapPair: any;
 
   constructor(
-    logger: any,
-    web3: any,
-    uniswapRouterAddress: string,
-    uniswapFactoryAddress: string,
-    tokenAAddress: string,
-    tokenBAddress: string,
-    dsProxyManager: any
+    readonly logger: winston.Logger,
+    readonly web3: Web3,
+    readonly uniswapRouterAddress: string,
+    readonly uniswapFactoryAddress: string,
+    readonly tokenAAddress: string,
+    readonly tokenBAddress: string,
+    readonly dsProxyManager: any
   ) {
-    super();
     this.logger = logger;
     this.web3 = web3;
     this.uniswapRouterAddress = uniswapRouterAddress;

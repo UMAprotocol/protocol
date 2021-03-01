@@ -58,7 +58,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     });
 
     await dsProxyManager.initializeDSProxy();
-
     const [tokenPriceFeed, referencePriceFeed, exchangeAdapter] = await Promise.all([
       createTokenPriceFeedForFinancialContract(
         logger,
@@ -79,12 +78,14 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       ),
       createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig)
     ]);
-
     const rangeTrader = new RangeTrader(logger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter);
     for (;;) {
       await retry(
         async () => {
-          await Promise.all([rangeTrader.update(), gasEstimator.update()]);
+          // Update the price feeds & gasEstimator.
+          await Promise.all([tokenPriceFeed.update(), referencePriceFeed.update(), gasEstimator.update()]);
+
+          // Check if a trade should be done. If so, trade.
           await rangeTrader.checkRangeMovementsAndTrade();
         },
         {

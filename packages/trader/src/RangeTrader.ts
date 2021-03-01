@@ -1,20 +1,15 @@
 import winston from "winston";
 import Web3 from "web3";
 import BigNumber from "bignumber.js";
+const ExchangeAdapterInterface = require("./exchange-adapters/ExchangeAdapterInterface");
 
 const { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps } = require("@uma/common");
 import assert from "assert";
 
 export class RangeTrader {
-  readonly logger: winston.Logger;
-  readonly web3: Web3;
-  readonly tokenPriceFeed: any;
-  readonly referencePriceFeed: any;
   readonly normalizePriceFeedDecimals: any;
   readonly formatDecimalString: any;
-  readonly exchangeAdapter: any;
 
-  // TODO: is there any way to not have to declare these as part of the type?
   readonly BN: any;
   readonly toBN: any;
   readonly toWei: any;
@@ -36,12 +31,12 @@ export class RangeTrader {
    *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
             targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
    */
-    logger: winston.Logger,
-    web3: Web3,
-    tokenPriceFeed: any,
-    referencePriceFeed: any,
-    exchangeAdapter: any,
-    rangeTraderConfig: any
+    readonly logger: winston.Logger,
+    readonly web3: Web3,
+    readonly tokenPriceFeed: any,
+    readonly referencePriceFeed: any,
+    readonly exchangeAdapter: typeof ExchangeAdapterInterface,
+    readonly rangeTraderConfig: any
   ) {
     assert(tokenPriceFeed.priceFeedDecimals === referencePriceFeed.priceFeedDecimals, "pricefeed decimals must match");
 
@@ -82,10 +77,6 @@ export class RangeTrader {
     Object.assign(this, configWithDefaults);
 
     this.fixedPointAdjustment = this.toBN(this.toWei("1"));
-  }
-
-  async update() {
-    await Promise.all([this.tokenPriceFeed.update(), this.referencePriceFeed.update()]);
   }
 
   async checkRangeMovementsAndTrade() {
