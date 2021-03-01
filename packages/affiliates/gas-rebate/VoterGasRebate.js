@@ -363,6 +363,7 @@ async function calculateRebate({
 }) {
   try {
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
+    console.log(`Using DVM @ ${voting.options.address}`);
 
     if (!debug) {
       console.log("\n\n*=======================================*");
@@ -409,6 +410,7 @@ async function calculateRebate({
 
     // Final UMA rebates to send
     const rebateOutput = {
+      votingContractAddress: voting.options.address,
       rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
@@ -615,6 +617,11 @@ async function Main(callback) {
     console.log("* - Fetching UMA-ETH exchange rates     *");
     console.log("*                                       *");
     console.log("*=======================================*");
+
+    // Make sure user is on Mainnet.
+    const networkId = await web3.eth.net.getId();
+    if (networkId !== 1)
+      throw new Error("You are not using a Mainnet web3 provider, script will product devastating results 🧟‍♂️");
 
     const rebateNumber = argv.rebateNumber ? argv.rebateNumber : "1";
     // First check if block numbers are passed in, then default to timetamps.
