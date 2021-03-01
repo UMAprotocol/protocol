@@ -1,6 +1,12 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@uma/common");
 const moment = require("moment");
+const assert = require("assert");
+
+// Constants
+const VALID_OHLC_PERIODS = [1, 5, 10, 15, 30];
+const MAX_MINUTE_LOOKBACK = 172800; // 2 days
+const MAX_HOURLY_LOOKBACK = 5184000; // 2 months
 
 // An implementation of PriceFeedInterface that uses TraderMade api to retrieve prices.
 class TraderMadePriceFeed extends PriceFeedInterface {
@@ -10,14 +16,32 @@ class TraderMadePriceFeed extends PriceFeedInterface {
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {String} pair Representation of the pair the price feed is tracking.
    * @param {String} apiKey TraderMade Data API key.
-   * @param {Integer} minuteLookback How far in the past the historical prices will be available using getHistoricalPrice.
-   * @param {Integer} hourlyLookback How far in the past the historical prices will be available using getHistoricalPricePeriods.
+   * @param {Integer} minuteLookback Maximum 172800 lookback. How far in the past the historical prices will be available
+   *                  using getHistoricalPrice. The minute timeseries is the default one to use to fetch historical prices.
+   *                  Moreover, TradeMadeAPI timeseries data is unavailable over the weekend,
+   *                  (generally the period between Friday 22:00 GMT and Sunday 22:00 GMT). Because of the minute-timeseries'
+   *                  shorter lookback, this feed is configured to use the hourly timeseries as a fallback in case there
+   *                  is no minute timeseries data. Therefore to take advantage of this, we recommend setting either
+   *                  the `hourlyLookback` to be longer than 3 days (259200 seconds) so that the hourly timeseries always contains
+   *                  the last known price prior to the weekend start. This allows us to simultaneously set a shorter minute
+   *                  lookback. For example, if `minuteLookback = 7200`, then 2 hours after the weekend has "begun",
+   *                  `TraderMadePriceFeed.updateMinute()` will fail to find any prices. Simultaneously setting
+   *                  `hourLookback = 604800` ensures that if `updateMinute()` fails then `updateHourly()` will return the last
+   *                  hourly price. Alternatively, you can set `minuteLookback = 172800` (the maximum minute interval lookback)
+   *                  which will allow `updateMinute()` to fetch data for longer into the off-market period.
+   *                  We like setting `minuteLookback` to 7200 and `hourlyLookback` to 604800 so that we can both reduce the
+   *                  amount of data to parse from the minute-interval and ensure that we can always find a price when
+   *                  weekend prices are not available.
+   * @param {Integer} hourlyLookback Maximum 5184000 lookback. How far in the past the historical prices will be available
+   *                  using getHistoricalPricePeriods. Hourly historical prices can also be used as a fallback to the
+   *                  minute timeseries if no minute data is available.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
-   * @param {Number} ohlcPeriod Number of minutes interval between ohlc prices requested from TraderMade.
+   * @param {Number} ohlcPeriod Number of minutes interval between ohlc prices requested from TraderMade. Must be
+   *                 one of {1, 5, 10, 15, 30}
    */
   constructor(
     logger,
@@ -30,7 +54,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     getTime,
     minTimeBetweenUpdates,
     priceFeedDecimals = 18,
-    ohlcPeriod = 1 // Some pairs like CNYUSD are only available at higher granularities like 10
+    ohlcPeriod = 1
   ) {
     super();
     this.logger = logger;
@@ -38,6 +62,11 @@ class TraderMadePriceFeed extends PriceFeedInterface {
 
     this.apiKey = apiKey;
     this.pair = pair;
+
+    // Sanitize API specific parameters:
+    assert(VALID_OHLC_PERIODS.includes(ohlcPeriod), `ohlcPeriod must be one of ${JSON.stringify(VALID_OHLC_PERIODS)}`);
+    assert(minuteLookback <= MAX_MINUTE_LOOKBACK, `minuteLookback must be < ${MAX_MINUTE_LOOKBACK}`);
+    assert(hourlyLookback <= MAX_HOURLY_LOOKBACK, `hourlyLookback must be < ${MAX_HOURLY_LOOKBACK}`);
 
     this.minuteLookback = minuteLookback;
     this.hourlyLookback = hourlyLookback;
@@ -71,10 +100,10 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     // Set first price time in `historicalPrices` to first non-null price.
     let firstPriceTime;
 
-// Note: The TraderMade API does not update /timeseries data over the weekend, so to handle this case we can fall back
-// on the longer lookback window of the hourly timeseries. (The lookback limit for the minute inverval is 2 days, while
-// the limit for the hourly interval is 2 months). This fall back logic will only work if `this.hourlyLookback` is
-// configured long enough such that there is an hourly price available.
+    // Note: The TraderMade API does not update /timeseries data over the weekend, so to handle this case we can fall back
+    // on the longer lookback window of the hourly timeseries. (The lookback limit for the minute inverval is 2 days, while
+    // the limit for the hourly interval is 2 months). This fall back logic will only work if `this.hourlyLookback` is
+    // configured long enough such that there is an hourly price available.
     let historicalPricesToCheck = this.historicalPricesMinute
       ? this.historicalPricesMinute
       : this.historicalPricesHourly;
