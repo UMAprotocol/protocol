@@ -353,7 +353,12 @@ contract("index.js", function(accounts) {
         if (contractVersion.contractType == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
         if (contractVersion.contractType == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
         assert.isTrue(spyLogIncludes(spy, -1, "Liquidation withdrawn"));
-        assert.equal(spy.getCall(-1).lastArg.amountWithdrawn, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
+        assert.equal(
+          contractVersion.contractVersion === "1.2.2"
+            ? spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount
+            : spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator,
+          toWei("80")
+        ); // Amount withdrawn by liquidator minus dispute rewards.
       });
 
       it("Allowances are set", async function() {
