@@ -71,13 +71,10 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     // Set first price time in `historicalPrices` to first non-null price.
     let firstPriceTime;
 
-    // If no minute-interval prices are available, try the hourly-interval:
-    // Note: The TraderMade API does not update /timeseries data over the weekend,
-    // so to handle this case we can fall back on the longer lookback window of the
-    // hourly timeseries. (The lookback limit for the minute inverval is 2 days, while the limit
-    // for the hourly interval is 2 months). This fall back logic will only work
-    // if `this.hourlyLookback` is configured long enough such that there is an hourly price
-    // available.
+// Note: The TraderMade API does not update /timeseries data over the weekend, so to handle this case we can fall back
+// on the longer lookback window of the hourly timeseries. (The lookback limit for the minute inverval is 2 days, while
+// the limit for the hourly interval is 2 months). This fall back logic will only work if `this.hourlyLookback` is
+// configured long enough such that there is an hourly price available.
     let historicalPricesToCheck = this.historicalPricesMinute
       ? this.historicalPricesMinute
       : this.historicalPricesHourly;
