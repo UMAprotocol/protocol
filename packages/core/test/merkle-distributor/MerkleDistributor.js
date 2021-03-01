@@ -26,7 +26,6 @@ let leaf;
 let claimerProof;
 let windowIndex;
 let windowStart;
-let windowEnd;
 
 // For a recipient object, create the leaf to be part of the merkle tree. The leaf is simply a hash of the packed
 // account and the amount.
@@ -84,9 +83,7 @@ contract("MerkleDistributor.js", function(accounts) {
       // Build the merkle tree from an array of hashes from each recipient.
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
 
-      // Set start == end to disable vesting.
       windowStart = currentTime;
-      windowEnd = windowStart;
       // Expect this merkle root to be at the first index.
       windowIndex = 0;
 
@@ -94,9 +91,9 @@ contract("MerkleDistributor.js", function(accounts) {
       const seedTxn = await merkleDistributor.setWindowMerkleRoot(
         totalRewardAmount,
         windowStart,
-        windowEnd,
         rewardToken.address,
-        merkleTree.getRoot()
+        merkleTree.getRoot(),
+        { from: contractCreator }
       );
 
       // Check event logs.
@@ -105,15 +102,14 @@ contract("MerkleDistributor.js", function(accounts) {
           ev.windowIndex.toString() === windowIndex.toString() &&
           ev.amount.toString() === totalRewardAmount.toString() &&
           ev.windowStart.toString() === windowStart.toString() &&
-          ev.windowEnd.toString() === windowEnd.toString() &&
-          ev.rewardToken === rewardToken.address
+          ev.rewardToken === rewardToken.address &&
+          ev.owner === contractCreator
         );
       });
 
       // Check on chain Window state:
       const windowState = await merkleDistributor.merkleWindows(windowIndex);
       assert.equal(windowState.start.toString(), windowStart.toString());
-      assert.equal(windowState.end.toString(), windowEnd.toString());
       assert.equal(windowState.merkleRoot, merkleTree.getRoot());
       assert.equal(windowState.rewardToken, rewardToken.address);
       assert.equal(windowState.totalRewardsDistributed.toString(), totalRewardAmount.toString());
@@ -128,7 +124,7 @@ contract("MerkleDistributor.js", function(accounts) {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
         const contractBalanceBefore = await rewardToken.balanceOf(merkleDistributor.address);
 
-        // // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
+        // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
         // Note: Anyone can claim on behalf of anyone else.
         const claimTxn = await merkleDistributor.claimWindow(
           { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
@@ -140,9 +136,7 @@ contract("MerkleDistributor.js", function(accounts) {
             ev.caller === contractCreator &&
             ev.windowIndex.toString() === windowIndex.toString() &&
             ev.account === leaf.account &&
-            ev.totalClaimAmount.toString() === leaf.amount.toString() &&
-            ev.amountVestedNetPreviousClaims.toString() === leaf.amount.toString() &&
-            ev.claimAmountRemaining.toString() === "0" &&
+            ev.amount.toString() === leaf.amount.toString() &&
             ev.rewardToken == rewardToken.address
           );
         });
@@ -156,23 +150,28 @@ contract("MerkleDistributor.js", function(accounts) {
           (await rewardToken.balanceOf(merkleDistributor.address)).toString(),
           contractBalanceBefore.sub(toBN(leaf.amount)).toString()
         );
-        // User should have claimed their full allocation for this distribution window.
-        assert.equal(
-          (await merkleDistributor.amountClaimedFromWindow(windowIndex, leaf.account)).toString(),
-          leaf.amount.toString()
+        // User should be marked as claimed and cannot claim again.
+        assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
+        assert(
+          await didContractThrow(
+            merkleDistributor.claimWindow(
+              { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
+              // Should fail for same account and window index, even if caller is another account.
+              { from: rando }
+            )
+          )
         );
       }
     });
   });
-  describe("(claimWindow): No vesting", function() {
+  describe("(claimWindow)", function() {
     // For each test in the single window, load in the SampleMerklePayouts, generate a tree and set it in the distributor.
     beforeEach(async function() {
       // Window should be the first in the contract.
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
-      // Start window at T+1, and disable vesting.
+      // Start window at T+1.
       windowStart = Number(currentTime.toString()) + 1;
-      windowEnd = windowStart;
 
       rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
 
@@ -184,7 +183,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken.address,
         merkleTree.getRoot()
       );
@@ -206,15 +204,6 @@ contract("MerkleDistributor.js", function(accounts) {
 
       // Advance time to window start and claim successfully.
       await merkleDistributor.setCurrentTime(windowStart.toString());
-      await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-    });
-    it("Can claim after window end", async function() {
-      await merkleDistributor.setCurrentTime(windowEnd + 1);
       await merkleDistributor.claimWindow({
         windowIndex: windowIndex,
         account: leaf.account,
@@ -254,12 +243,12 @@ contract("MerkleDistributor.js", function(accounts) {
             ev.caller.toLowerCase() == rando.toLowerCase() &&
             ev.windowIndex == windowIndex.toString() &&
             ev.account.toLowerCase() == leaf.account.toLowerCase() &&
-            ev.totalClaimAmount.toString() == leaf.amount.toString() &&
-            ev.amountVestedNetPreviousClaims.toString() == leaf.amount.toString() &&
-            ev.claimAmountRemaining.toString() == "0" &&
+            ev.amount.toString() == leaf.amount.toString() &&
             ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
           );
         });
+
+        assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
       });
       it("Cannot double claim rewards", async function() {
         await merkleDistributor.claimWindow({
@@ -279,301 +268,79 @@ contract("MerkleDistributor.js", function(accounts) {
           )
         );
       });
-      it("(verifyClaim): Invalid merkle proof", async function() {
-        // `claimerProof` must match the hashed { account, amount } in the root exactly, test cases where either is incorrect.
-        // Correct proof and claim:
-        assert.isTrue(
-          await merkleDistributor.verifyClaim({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: leaf.amount,
-            merkleProof: claimerProof
-          })
+      it("Claim for 0 tokens does not revert", async function() {
+        // Payout #9 is for 0 tokens.
+        leaf = rewardLeafs[9];
+        claimerProof = merkleTree.getProof(leaf.leaf);
+        const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
+        await merkleDistributor.claimWindow(
+          { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
+          { from: rando }
         );
-
-        // Helper method that checks that `verifyClaim` returns false and `claimWindow` reverts.
-        const verifyClaimFails = async claim => {
-          assert.isNotTrue(await merkleDistributor.verifyClaim(claim));
-          assert(await didContractThrow(merkleDistributor.claimWindow(claim)));
-        };
-
-        // Incorrect account:
-        await verifyClaimFails({
-          windowIndex: windowIndex,
-          account: rando,
-          amount: leaf.amount,
-          merkleProof: claimerProof
-        });
-
-        // Incorrect amount:
-        const invalidAmount = "1";
-        await verifyClaimFails({
-          windowIndex: windowIndex,
-          account: leaf.account,
-          amount: invalidAmount,
-          merkleProof: claimerProof
-        });
-
-        // Invalid merkle proof:
-        const invalidProof = [utf8ToHex("0x")];
-        await verifyClaimFails({
+        assert.equal((await rewardToken.balanceOf(leaf.account)).toString(), claimerBalanceBefore.toString());
+        assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
+      });
+      it("gas", async function() {
+        const claimTx = await merkleDistributor.claimWindow({
           windowIndex: windowIndex,
           account: leaf.account,
           amount: leaf.amount,
-          merkleProof: invalidProof
+          merkleProof: claimerProof
+        });
+        // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
+        // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
+        console.log(`Gas used: ${claimTx.receipt.gasUsed}`);
+      });
+      describe("(verifyClaim)", function() {
+        it("valid proof", async function() {
+          // `claimerProof` must match the hashed { account, amount } in the root exactly, test cases where either is incorrect.
+          // Correct proof and claim:
+          assert.isTrue(
+            await merkleDistributor.verifyClaim({
+              windowIndex: windowIndex,
+              account: leaf.account,
+              amount: leaf.amount,
+              merkleProof: claimerProof
+            })
+          );
+        });
+        it("invalid proof", async function() {
+          // Helper method that checks that `verifyClaim` returns false and `claimWindow` reverts.
+          const verifyClaimFails = async claim => {
+            assert.isNotTrue(await merkleDistributor.verifyClaim(claim));
+            assert(await didContractThrow(merkleDistributor.claimWindow(claim)));
+          };
+
+          // Incorrect account:
+          await verifyClaimFails({
+            windowIndex: windowIndex,
+            account: rando,
+            amount: leaf.amount,
+            merkleProof: claimerProof
+          });
+
+          // Incorrect amount:
+          const invalidAmount = "1";
+          await verifyClaimFails({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            amount: invalidAmount,
+            merkleProof: claimerProof
+          });
+
+          // Invalid merkle proof:
+          const invalidProof = [utf8ToHex("0x")];
+          await verifyClaimFails({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            amount: leaf.amount,
+            merkleProof: invalidProof
+          });
         });
       });
     });
   });
-  describe("(claimWindow): Vesting over a window", function() {
-    beforeEach(async function() {
-      // Assume that this is first merkle root in contract.
-      windowIndex = 0;
-      const currentTime = await timer.getCurrentTime();
-      // Start window at currentTime and vest over 100 seconds from the current time.
-      windowStart = currentTime;
-      windowEnd = currentTime.addn(100);
-
-      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
-
-      // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
-      rewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
-      merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
-
-      // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindowMerkleRoot(
-        SamplePayouts.totalRewardsDistributed,
-        windowStart,
-        windowEnd,
-        rewardToken.address,
-        merkleTree.getRoot()
-      );
-
-      leaf = rewardLeafs[0];
-      claimerProof = merkleTree.getProof(leaf.leaf);
-    });
-    it("Can claim linear-vested amount", async function() {
-      // The contract will vest rewards linearly over the vesting window. If we are 10 seconds into the vesting window
-      // then we should get 10% of the rewards vested.
-      await timer.setCurrentTime(windowStart.addn(10));
-      let claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
-
-      let claimTxn = await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-
-      // The claimer balance should have increased by the 10% of the original reward amount.
-      const vestedClaimAmount1 = toBN(leaf.amount)
-        .muln(10)
-        .divn(100);
-      assert.equal(
-        (await rewardToken.balanceOf(leaf.account)).toString(),
-        claimerBalanceBefore.add(vestedClaimAmount1).toString()
-      );
-
-      // Check event logs
-      truffleAssert.eventEmitted(claimTxn, "Claimed", ev => {
-        return (
-          ev.caller === contractCreator &&
-          ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.account.toLowerCase() === leaf.account.toLowerCase() &&
-          ev.totalClaimAmount.toString() === leaf.amount.toString() &&
-          ev.amountVestedNetPreviousClaims.toString() === vestedClaimAmount1.toString() &&
-          ev.claimAmountRemaining.toString() ===
-            toBN(leaf.amount)
-              .sub(vestedClaimAmount1)
-              .toString() &&
-          ev.rewardToken === rewardToken.address
-        );
-      });
-
-      // No additional tokens should be released without more time traversed through vesting. Claim call should revert.
-      assert(
-        await didContractThrow(
-          merkleDistributor.claimWindow({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: leaf.amount,
-            merkleProof: claimerProof
-          })
-        )
-      );
-
-      // Contract should track amount claimed so far.
-      assert.equal(
-        (await merkleDistributor.amountClaimedFromWindow(windowIndex, leaf.account)).toString(),
-        vestedClaimAmount1.toString()
-      );
-
-      // Advance half way though the window and claim the vested tokens again.
-      await timer.setCurrentTime(windowStart.addn(50));
-      claimTxn = await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-
-      // The claimer balance should have increased by the amount of the rewards vested, equal to 50% of the claim reward.
-      const vestedClaimAmount2 = toBN(leaf.amount)
-        .muln(50)
-        .divn(100);
-      assert.equal(
-        (await rewardToken.balanceOf(leaf.account)).toString(),
-        claimerBalanceBefore.add(vestedClaimAmount2).toString()
-      );
-
-      truffleAssert.eventEmitted(claimTxn, "Claimed", ev => {
-        return (
-          ev.caller === contractCreator &&
-          ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.account.toLowerCase() === leaf.account.toLowerCase() &&
-          ev.totalClaimAmount.toString() === leaf.amount.toString() &&
-          ev.amountVestedNetPreviousClaims.toString() === vestedClaimAmount2.sub(vestedClaimAmount1).toString() &&
-          ev.claimAmountRemaining.toString() ===
-            toBN(leaf.amount)
-              .sub(vestedClaimAmount2)
-              .toString() &&
-          ev.rewardToken === rewardToken.address
-        );
-      });
-
-      // Contract should track amount claimed so far.
-      assert.equal(
-        (await merkleDistributor.amountClaimedFromWindow(windowIndex, leaf.account)).toString(),
-        vestedClaimAmount2.toString()
-      );
-
-      // Now advance past window time and the remaining balance should be fully vested
-      await timer.setCurrentTime(windowEnd.addn(10));
-      claimTxn = await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-
-      // The claimer balance should have increased by the full amount of the claim.
-      assert.equal(
-        (await rewardToken.balanceOf(leaf.account)).toString(),
-        claimerBalanceBefore.add(toBN(leaf.amount)).toString()
-      );
-
-      truffleAssert.eventEmitted(claimTxn, "Claimed", ev => {
-        return (
-          ev.caller === contractCreator &&
-          ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.account.toLowerCase() === leaf.account.toLowerCase() &&
-          ev.totalClaimAmount.toString() === leaf.amount.toString() &&
-          ev.amountVestedNetPreviousClaims.toString() ===
-            toBN(leaf.amount)
-              .sub(vestedClaimAmount2)
-              .toString() &&
-          ev.claimAmountRemaining.toString() === "0" &&
-          ev.rewardToken === rewardToken.address
-        );
-      });
-
-      // Contract show full amount claimed
-      assert.equal(
-        (await merkleDistributor.amountClaimedFromWindow(windowIndex, leaf.account)).toString(),
-        leaf.amount.toString()
-      );
-
-      // No additional tokens should be released without more time traversed through vesting. Claim call should revert.
-      assert(
-        await didContractThrow(
-          merkleDistributor.claimWindow({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: leaf.amount,
-            merkleProof: claimerProof
-          })
-        )
-      );
-
-      // Another account who has not claimed any tokens can now claim their full vested amount.
-      leaf = rewardLeafs[1];
-      claimerProof = merkleTree.getProof(leaf.leaf);
-      claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
-      claimTxn = await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-      assert.equal(
-        (await rewardToken.balanceOf(leaf.account)).toString(),
-        claimerBalanceBefore.add(toBN(leaf.amount)).toString()
-      );
-      truffleAssert.eventEmitted(claimTxn, "Claimed", ev => {
-        return (
-          ev.caller === contractCreator &&
-          ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.account.toLowerCase() === leaf.account.toLowerCase() &&
-          ev.totalClaimAmount.toString() === leaf.amount.toString() &&
-          // Full claim amount since account has not previously claimed:
-          ev.amountVestedNetPreviousClaims.toString() === toBN(leaf.amount).toString() &&
-          ev.claimAmountRemaining.toString() === "0" &&
-          ev.rewardToken === rewardToken.address
-        );
-      });
-      assert.equal(
-        (await merkleDistributor.amountClaimedFromWindow(windowIndex, leaf.account)).toString(),
-        leaf.amount.toString()
-      );
-      assert(
-        await didContractThrow(
-          merkleDistributor.claimWindow({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: leaf.amount,
-            merkleProof: claimerProof
-          })
-        )
-      );
-    });
-  });
-  describe("(calcVestedAmount)", function() {
-    let testAmount = toWei("10");
-    let testedTime;
-    // Window is 10 seconds long
-    const testStart = 10;
-    const testEnd = 20;
-    it("time <= windowStart, return 0", async function() {
-      testedTime = 5;
-      let result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, windowStart, windowEnd);
-      assert.equal(result.toString(), "0");
-      testedTime = windowStart;
-      result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, windowStart, windowEnd);
-      assert.equal(result.toString(), "0");
-    });
-    it("time >= windowStart, return full amount", async function() {
-      testedTime = windowEnd;
-      let result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, testStart, testEnd);
-      assert.equal(result.toString(), testAmount);
-      testedTime = 25;
-      result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, testStart, testEnd);
-      assert.equal(result.toString(), testAmount);
-    });
-    it("windowEnd <= windowStart, return full amount", async function() {
-      testedTime = 15;
-      let result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, testStart, testStart);
-      assert.equal(result.toString(), testAmount);
-    });
-    it("windowStart <= time <= windowEnd, return interpolated amount", async function() {
-      testedTime = 17;
-      let result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, testStart, testEnd);
-      assert.equal(result.toString(), toWei("7"));
-      testedTime = 12;
-      result = await merkleDistributor.calcVestedAmount(testAmount, testedTime, testStart, testEnd);
-      assert.equal(result.toString(), toWei("2"));
-    });
-  });
-  describe("(claimWindows): multiple reward tokens", function() {
+  describe("(claimWindows)", function() {
     let rewardRecipients1, rewardRecipients2;
     let rewardLeafs1, rewardLeafs2;
     let merkleTree1, merkleTree2;
@@ -582,7 +349,6 @@ contract("MerkleDistributor.js", function(accounts) {
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
       windowStart = currentTime;
-      windowEnd = windowStart;
 
       rewardRecipients1 = createRewardRecipientsFromSampleData(SamplePayouts);
 
@@ -607,7 +373,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken.address,
         merkleTree1.getRoot() // Distributes to rewardLeafs1
       );
@@ -615,7 +380,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken2.address,
         merkleTree2.getRoot() // Distributes to rewardLeafs2
       );
@@ -740,7 +504,6 @@ contract("MerkleDistributor.js", function(accounts) {
       const currentTime = await timer.getCurrentTime();
       // Start window at current time, disable vesting
       windowStart = currentTime;
-      windowEnd = windowStart;
 
       rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
 
@@ -754,7 +517,6 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.setWindowMerkleRoot(
             SamplePayouts.totalRewardsDistributed,
             windowStart,
-            windowEnd,
             rewardToken.address,
             merkleTree.getRoot(),
             { from: rando }
@@ -768,7 +530,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken.address,
         merkleTree.getRoot(),
         { from: contractCreator }
@@ -785,7 +546,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken.address,
         merkleTree.getRoot(),
         { from: contractCreator }
@@ -808,7 +568,6 @@ contract("MerkleDistributor.js", function(accounts) {
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
       windowStart = currentTime;
-      windowEnd = windowStart;
 
       rewardRecipients1 = createRewardRecipientsFromSampleData(SamplePayouts);
 
@@ -833,7 +592,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken.address,
         merkleTree1.getRoot() // Distributes to rewardLeafs1
       );
@@ -841,7 +599,6 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
-        windowEnd,
         rewardToken2.address,
         merkleTree2.getRoot() // Distributes to rewardLeafs2
       );
@@ -857,7 +614,15 @@ contract("MerkleDistributor.js", function(accounts) {
       });
       it("Blocks claim for window until lock removed", async function() {
         // Lock window 0
-        await merkleDistributor.setWindowLock(windowIndex, true, { from: contractCreator });
+        const txn = await merkleDistributor.setWindowLock(windowIndex, true, { from: contractCreator });
+        truffleAssert.eventEmitted(txn, "SetWindowLock", ev => {
+          return (
+            ev.owner.toLowerCase() === contractCreator.toLowerCase() &&
+            ev.windowIndex.toString() === windowIndex.toString() &&
+            ev.locked
+          );
+        });
+
         assert(
           await didContractThrow(
             merkleDistributor.claimWindow({
@@ -896,14 +661,20 @@ contract("MerkleDistributor.js", function(accounts) {
         let ownerBalanceBefore = await rewardToken.balanceOf(contractCreator);
         let contractBalanceBefore = await rewardToken.balanceOf(merkleDistributor.address);
 
-        await merkleDistributor.withdrawRewards(rewardToken.address, toWei("1"), { from: contractCreator });
+        const withdrawAmount = toWei("1");
+        const txn = await merkleDistributor.withdrawRewards(rewardToken.address, withdrawAmount, {
+          from: contractCreator
+        });
+        truffleAssert.eventEmitted(txn, "WithdrawRewards", ev => {
+          return ev.owner === contractCreator && ev.amount.toString() === withdrawAmount;
+        });
 
         assert.equal(
-          ownerBalanceBefore.add(toBN(toWei("1"))).toString(),
+          ownerBalanceBefore.add(toBN(withdrawAmount)).toString(),
           (await rewardToken.balanceOf(contractCreator)).toString()
         );
         assert.equal(
-          contractBalanceBefore.sub(toBN(toWei("1"))).toString(),
+          contractBalanceBefore.sub(toBN(withdrawAmount)).toString(),
           (await rewardToken.balanceOf(merkleDistributor.address)).toString()
         );
       });
@@ -918,14 +689,20 @@ contract("MerkleDistributor.js", function(accounts) {
         let ownerBalanceBefore = await rewardToken.balanceOf(contractCreator);
         let contractBalanceBefore = await rewardToken.balanceOf(merkleDistributor.address);
 
-        await merkleDistributor.depositRewards(rewardToken.address, toWei("1"), { from: contractCreator });
+        const depositAmount = toWei("1");
+        const txn = await merkleDistributor.depositRewards(rewardToken.address, depositAmount, {
+          from: contractCreator
+        });
+        truffleAssert.eventEmitted(txn, "DepositRewards", ev => {
+          return ev.owner === contractCreator && ev.amount.toString() === depositAmount;
+        });
 
         assert.equal(
-          ownerBalanceBefore.sub(toBN(toWei("1"))).toString(),
+          ownerBalanceBefore.sub(toBN(depositAmount)).toString(),
           (await rewardToken.balanceOf(contractCreator)).toString()
         );
         assert.equal(
-          contractBalanceBefore.add(toBN(toWei("1"))).toString(),
+          contractBalanceBefore.add(toBN(depositAmount)).toString(),
           (await rewardToken.balanceOf(merkleDistributor.address)).toString()
         );
       });
@@ -940,7 +717,6 @@ contract("MerkleDistributor.js", function(accounts) {
               windowIndexToReset,
               SamplePayouts.totalRewardsDistributed,
               windowStart,
-              windowEnd,
               rewardToken.address,
               merkleTree1.getRoot(),
               { from: rando }
@@ -960,15 +736,25 @@ contract("MerkleDistributor.js", function(accounts) {
             })
           )
         );
-        await merkleDistributor.resetWindowMerkleRoot(
+        const seedTxn = await merkleDistributor.resetWindowMerkleRoot(
           windowIndexToReset,
           SamplePayouts.totalRewardsDistributed,
           windowStart,
-          windowEnd,
           rewardToken.address,
           merkleTree1.getRoot(),
           { from: contractCreator }
         );
+
+        // Check that the SeededWindow event was re-emitted.
+        truffleAssert.eventEmitted(seedTxn, "SeededWindow", ev => {
+          return (
+            ev.windowIndex.toString() === windowIndexToReset.toString() &&
+            ev.amount.toString() === SamplePayouts.totalRewardsDistributed.toString() &&
+            ev.windowStart.toString() === windowStart.toString() &&
+            ev.rewardToken === rewardToken.address &&
+            ev.owner === contractCreator
+          );
+        });
 
         // Now claims from Merkle Tree 1 can be made on the reset window index.
         await merkleDistributor.claimWindow({
