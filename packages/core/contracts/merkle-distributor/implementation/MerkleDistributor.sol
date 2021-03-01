@@ -62,13 +62,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     uint256 public lastSeededIndex;
 
     // Events:
-    event Claimed(
-        address caller,
-        uint256 indexed windowIndex,
-        address indexed account,
-        uint256 amount,
-        address indexed rewardToken
-    );
+    event Claimed(address indexed caller, address indexed account, uint256 amount, address indexed rewardToken);
     event SeededWindow(
         uint256 indexed windowIndex,
         uint256 amount,
@@ -150,21 +144,27 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
      *
      ****************************/
 
-    // TODO: This method could get pretty gas intensive; is there a way we can reduce the amount
-    // of external `transfer` calls if we precompute all the rewards for each account?
-    // It's a bit tricky because there are multiple reward currencies possible.
-    // TODO: Add a unit test describining the max amount of `claims` that can be packed into
-    // this method before the method runs out of gas.
-    function claimWindows(Claim[] memory claims) public nonReentrant() {
+    // Batch claims for a reward currency for an account to save gas.
+    function claimWindows(
+        Claim[] memory claims,
+        address rewardToken,
+        address account
+    ) public nonReentrant() {
+        uint256 amountToClaim = 0;
         for (uint256 i = 0; i < claims.length; i++) {
-            _claimWindow(claims[i]);
+            Claim memory claim = claims[i];
+            require(claim.account == account, "Invalid account in batch claim");
+            _markClaimed(claim);
+            amountToClaim = amountToClaim.add(claim.amount);
         }
+        _disburse(IERC20(rewardToken), account, amountToClaim);
     }
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
     function claimWindow(Claim memory claim) public nonReentrant() {
-        _claimWindow(claim);
+        _markClaimed(claim);
+        _disburse(merkleWindows[claim.windowIndex].rewardToken, claim.account, claim.amount);
     }
 
     // Checks {account, amount} against Merkle root at given window index.
@@ -197,30 +197,27 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         emit SeededWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
     }
 
-    function _claimWindow(Claim memory claim) private windowNotLocked(claim.windowIndex) {
+    function _markClaimed(Claim memory claim) private windowNotLocked(claim.windowIndex) {
         // Check claimed proof against merkle window at given index.
         require(verifyClaim(claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
         require(!claimed[claim.windowIndex][claim.account], "Account has already claimed for this window");
 
         // Proof is correct and claim has not occurred yet; check that claim window has begun.
-        Window memory merkleWindow = merkleWindows[claim.windowIndex];
-        require(getCurrentTime() >= merkleWindow.start, "Claim window has not begin");
+        require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begin");
 
-        // Mark as claimed and disburse reward.
         claimed[claim.windowIndex][claim.account] = true;
-        _disburse(claim.account, claim.amount, merkleWindow.rewardToken);
-
-        emit Claimed(msg.sender, claim.windowIndex, claim.account, claim.amount, address(merkleWindow.rewardToken));
     }
 
     function _disburse(
+        IERC20 token,
         address account,
-        uint256 amount,
-        IERC20 rewardToken
+        uint256 amount
     ) private {
+        // TODO: Should we revert claims for 0 tokens?
         if (amount > 0) {
-            rewardToken.safeTransfer(account, amount);
+            token.safeTransfer(account, amount);
         }
+        emit Claimed(msg.sender, account, amount, address(token));
     }
 }
