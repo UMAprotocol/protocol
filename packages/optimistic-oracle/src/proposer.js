@@ -160,7 +160,7 @@ class OptimisticOracleProposer {
       priceRequest.ancillaryData,
       proposalPrice
     );
-    this.logger.error({
+    this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Detected price request, and proposing new price",
       priceRequest,
