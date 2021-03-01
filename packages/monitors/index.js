@@ -85,7 +85,7 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
-// List of promises to run in parallel during each iteration, each of which represents a monitor executing.
+    // List of promises to run in parallel during each iteration, each of which represents a monitor executing.
     let monitorRunners = [];
 
     /** *************************************
