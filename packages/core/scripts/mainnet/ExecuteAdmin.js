@@ -2,17 +2,27 @@
 // therefore it will check the identifier whitelist afterwards.
 
 const Governor = artifacts.require("Governor");
-const { GasEstimator, Logger } = require("@uma/financial-templates-lib");
+const { GasEstimator } = require("@uma/financial-templates-lib");
+const winston = require("winston");
+const argv = require("minimist")(process.argv.slice(), {
+  string: ["start", "end"]
+});
 
 async function execute(callback) {
   try {
     const governor = await Governor.deployed();
 
-    const start = 48;
-    const end = 56;
+    const end = argv.end || (await governor.numProposals()).subn(1).toString();
+    const start = argv.start || end;
+    console.log(`Proposing Admin ${start} through Admin ${end}`);
 
-    const gasEstimator = new GasEstimator(Logger, 60, 200);
-    await gasEstimator.update();
+    const gasEstimator = new GasEstimator(
+      winston.createLogger({
+        silent: true
+      }),
+      60,
+      100
+    );
 
     for (let j = start; j <= end; j++) {
       const proposal = await governor.getProposal(j);
