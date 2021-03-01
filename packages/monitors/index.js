@@ -85,6 +85,17 @@ async function run({
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    /** *************************************
+     *
+     * Set variables common to all monitors
+     *
+     ***************************************/
+    const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
+    // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+    // `endingBlock` as null.
+    const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
+    if (!monitorConfig) monitorConfig = {};
+
     // List of promises to run in parallel during each iteration, each of which represents a monitor executing.
     let monitorRunners = [];
 
@@ -94,18 +105,9 @@ async function run({
      *
      ***************************************/
     if (financialContractAddress) {
-      const [detectedContract, networkId, latestBlock] = await Promise.all([
-        findContractVersion(financialContractAddress, web3),
-        web3.eth.net.getId(),
-        web3.eth.getBlock("latest")
-      ]);
-
-      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
-      // `endingBlock` as null.
-      const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
+      const [detectedContract] = await Promise.all([findContractVersion(financialContractAddress, web3)]);
 
       // Append the contract version and type to the monitorConfig, if the monitorConfig does not already contain one.
-      if (!monitorConfig) monitorConfig = {};
       if (!monitorConfig.contractVersion) monitorConfig.contractVersion = detectedContract.contractVersion;
       if (!monitorConfig.contractType) monitorConfig.contractType = detectedContract.contractType;
 
@@ -308,11 +310,6 @@ async function run({
      *
      ***************************************/
     if (optimisticOracleAddress) {
-      const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
-
-      // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber`.
-      const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
-
       const optimisticOracleContractEventClient = new OptimisticOracleEventClient(
         logger,
         getAbi("OptimisticOracle"),
@@ -322,7 +319,6 @@ async function run({
         endingBlock
       );
 
-      if (!monitorConfig) monitorConfig = {};
       const contractProps = {
         networkId
       };
