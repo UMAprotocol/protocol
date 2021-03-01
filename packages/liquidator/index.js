@@ -18,7 +18,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -70,10 +70,9 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [detectedContract, accounts, networkId] = await Promise.all([
+    const [detectedContract, accounts] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
-      web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.getAccounts()
     ]);
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
@@ -95,7 +94,6 @@ async function run({
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
-    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
     const financialContract = new web3.eth.Contract(
       getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       financialContractAddress
@@ -215,7 +213,6 @@ async function run({
       logger,
       financialContractClient,
       gasEstimator,
-      votingContract: voting,
       syntheticToken,
       priceFeed,
       account: accounts[0],

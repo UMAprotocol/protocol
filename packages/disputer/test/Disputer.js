@@ -272,7 +272,6 @@ contract("Disputer.js", function(accounts) {
           disputer = new Disputer({
             logger: spyLogger,
             financialContractClient: financialContractClient,
-            votingContract: mockOracle.contract,
             gasEstimator,
             priceFeed: priceFeedMock,
             account: accounts[0],
@@ -570,7 +569,16 @@ contract("Disputer.js", function(accounts) {
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
               PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
             );
-            assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convertPrice("1.3"));
+            assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, convertPrice("1.3"));
+
+            // Check that the log contains the dispute rewards:
+            if (disputer.isLegacyEmpVersion) {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount).gt(0));
+            } else {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToSponsor).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToDisputer).gt(0));
+            }
 
             // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
             await disputer.update();
@@ -660,7 +668,6 @@ contract("Disputer.js", function(accounts) {
                 disputer = new Disputer({
                   logger: spyLogger,
                   financialContractClient: financialContractClient,
-                  votingContract: mockOracle.contract,
                   gasEstimator,
                   priceFeed: priceFeedMock,
                   account: accounts[0],
@@ -682,7 +689,6 @@ contract("Disputer.js", function(accounts) {
               disputer = new Disputer({
                 logger: spyLogger,
                 financialContractClient: financialContractClient,
-                votingContract: mockOracle.contract,
                 gasEstimator,
                 priceFeed: priceFeedMock,
                 account: accounts[0],

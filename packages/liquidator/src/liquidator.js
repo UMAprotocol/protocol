@@ -14,7 +14,6 @@ class Liquidator {
    * @param {Object} logger Module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
-   * @param {Object} votingContract DVM to query price requests.
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -28,7 +27,6 @@ class Liquidator {
     logger,
     financialContractClient,
     gasEstimator,
-    votingContract,
     syntheticToken,
     priceFeed,
     account,
@@ -47,7 +45,6 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.financialContract = this.financialContractClient.financialContract;
-    this.votingContract = votingContract;
     this.syntheticToken = syntheticToken;
 
     // Instance of the price feed to get the realtime token price.
@@ -159,6 +156,11 @@ class Liquidator {
     // Validate and set config settings to class state.
     const configWithDefaults = createObjectFromDefaultProps(liquidatorConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
+
+    // These EMP versions have different "LiquidationWithdrawn" event parameters that we need to handle.
+    this.isLegacyEmpVersion = Boolean(
+      this.contractVersion === "1.2.0" || this.contractVersion === "1.2.1" || this.contractVersion === "1.2.2"
+    );
 
     // generalize log emitter, use it to attach default data to all logs
     const log = (severity = "info", data = {}) => {
@@ -439,10 +441,9 @@ class Liquidator {
 
       // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
       // In later versions it returns an object containing all payouts.
-      const amountWithdrawn =
-        this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-          ? withdrawalCallResponse.rawValue.toString()
-          : withdrawalCallResponse.payToLiquidator.rawValue.toString();
+      const amountWithdrawn = this.isLegacyEmpVersion
+        ? withdrawalCallResponse.rawValue.toString()
+        : withdrawalCallResponse.payToLiquidator.rawValue.toString();
 
       const txnConfig = {
         from: this.account,
@@ -458,11 +459,6 @@ class Liquidator {
         amountWithdrawn,
         txnConfig
       });
-
-      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
-      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
-      // is callable.
-      let requestTimestamp = liquidation.liquidationTime;
 
       // Send the transaction or report failure.
       let receipt;
@@ -493,42 +489,31 @@ class Liquidator {
         continue;
       }
 
-      // Get resolved price request for dispute. This will fail if there is no price for the liquidation timestamp, which is possible if the
-      // liquidation expired without dispute.
-      let resolvedPrice;
-      if (requestTimestamp) {
-        try {
-          resolvedPrice = revertWrapper(
-            await this.votingContract.methods.getPrice(this.financialContractIdentifier, requestTimestamp).call({
-              from: this.financialContract.options.address
-            })
-          );
-        } catch (error) {
-          // Ignore any errors as this indicates that there is nothing to do yet.
-        }
-      }
-
-      const logResult = {
+      let logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        // Settlement price is possible undefined if liquidation expired without a dispute
+        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
         liquidationStatus:
           PostWithdrawLiquidationRewardsStatusTranslations[
             receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
           ]
       };
 
-      // If there is no price available for the withdrawable liquidation, likely that liquidation expired without dispute.
-      if (resolvedPrice) {
-        logResult.resolvedPrice = resolvedPrice.toString();
+      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      if (this.isLegacyEmpVersion) {
+        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+      } else {
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
       }
 
       this.logger.info({
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amountWithdrawn,
-        txnConfig,
         liquidationResult: logResult
       });
     }

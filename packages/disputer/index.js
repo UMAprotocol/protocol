@@ -19,7 +19,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -63,10 +63,9 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [detectedContract, accounts, networkId] = await Promise.all([
+    const [detectedContract, accounts] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
-      web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.getAccounts()
     ]);
 
     // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
@@ -89,7 +88,6 @@ async function run({
       );
 
     // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
     const financialContract = new web3.eth.Contract(
       getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
       financialContractAddress
@@ -144,7 +142,6 @@ async function run({
     const disputer = new Disputer({
       logger,
       financialContractClient,
-      votingContract: voting,
       gasEstimator,
       priceFeed,
       account: accounts[0],
