@@ -394,7 +394,7 @@ const defaultConfigs = {
     pair: "EURUSD",
     minTimeBetweenUpdates: 600,
     minuteLookback: 7200,
-    hourlyLookback: 604800,
+    hourlyLookback: 604800
   },
   PHPDAI: {
     type: "medianizer",
