@@ -1,0 +1,41 @@
+{
+  "config": {
+    "name": "YD-BTC-MAR21",
+    "empAddress": "0x1c3f1A342c8D9591D9759220d114C685FD1cF6b8",
+    "rewardFactor": 0.3,
+    "defaultAddress": "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+    "whitelistTable": [
+      ["UMA (default)", "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35"],
+      ["OpenDAO", "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71"],
+      ["MakeShift Finance", "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9"],
+      ["ChickFlock", "0xDAa953f01048253A201BA9B0bd0786575f9C2468"]
+    ],
+    "empRewards": "15140.674317681903863862",
+    "weekNumber": 7,
+    "endDate": "03/01/2021 11:00 PM",
+    "startDate": "02/22/2021 11:00 PM",
+    "startTime": 1614034800000,
+    "endTime": 1614639600000,
+    "totalRewards": 4542,
+    "whitelist": [
+      "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35",
+      "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71",
+      "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9",
+      "0xDAa953f01048253A201BA9B0bd0786575f9C2468"
+    ]
+  },
+  "startBlock": {
+    "timestamp": 1614034807000,
+    "number": 11909709
+  },
+  "endBlock": {
+    "timestamp": 1614639589000,
+    "number": 11955175
+  },
+  "rewards": {
+    "0xa0dfF1F09a0DCEda7641b7eB07c3BDbe66a06C35": "4482.645597597246650052",
+    "0x9a9dcd6b52B45a78CD13b395723c245dAbFbAb71": "55.480849843797913116",
+    "0x45Ea614a7Ea47Ec393BDA310F901702DB1347df9": "0.050126275272330918",
+    "0xDAa953f01048253A201BA9B0bd0786575f9C2468": "3.818185931825628786"
+  }
+}
