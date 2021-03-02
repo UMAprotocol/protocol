@@ -38,7 +38,7 @@ import VoteData from "./containers/VoteData";
 function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  const { toBN, fromWei, hexToUtf8 } = web3.utils;
+  const { toBN, hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
@@ -132,7 +132,7 @@ function ResolvedRequests({ votingAccount }) {
 
   useEffect(() => {
     setHasSpamRequests(false);
-    if (allResolvedEvents && allResolvedEvents.length) {
+    if (allResolvedEvents?.length) {
       const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
         if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
@@ -152,7 +152,7 @@ function ResolvedRequests({ votingAccount }) {
         setResolvedEvents(nonBlacklistedRequests);
       }
     }
-  }, [allResolvedEvents, IDENTIFIER_BLACKLIST, showSpamRequests]);
+  }, [hexToUtf8, allResolvedEvents, showSpamRequests]);
 
   const revealedVoteEvents =
     useCacheEvents(

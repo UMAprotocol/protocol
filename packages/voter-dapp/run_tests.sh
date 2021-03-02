@@ -39,18 +39,14 @@ echo -e '####################################################################\n'
 # This forces the voter dapp to deploy the _new_ voting contract with all the other contracts unchanged, which will
 # force it to test the old 2key contract with the new voting contract.
 yarn truffle compile
-ARTIFACT_PATH_1_2_0=$(node -p "require.resolve('@uma/core-1-2-0/build/contracts/Voting.json')")
-ARTIFACT_PATH_NEW=$(node -p "require.resolve('@uma/core/build/contracts/Voting.json')")
-BACKUP=$(mktemp -d)/Voting.json
-echo "$ARTIFACT_PATH_1_2_0 is being modified in a breaking way. Backup at $BACKUP."
-cp $ARTIFACT_PATH_1_2_0 $BACKUP
-node -p "JSON.stringify({...require('$BACKUP'), bytecode: require('$ARTIFACT_PATH_NEW').bytecode }, null, 2)" > $ARTIFACT_PATH_1_2_0
 yarn run truffle migrate --reset --network test
 echo "- ✅ Migration complete!"
 
-# Submit 2 normal price requests:
-# - 1 to commit & reveal on browser
-# - 1 to commit & reveal on browser with 2-Key contract
+# Submit 4 normal price requests:
+# - 1 to commit & reveal on browser 8 decimals
+# - 1 to commit & reveal on browser 6 decimals
+# - 1 to commit & reveal on browser 8 decimals and ancillary data
+# - 1 to commit & reveal on browser 6 decimals and ancillary data
 # Submit 1 admin price request:
 # - 1 to commit & reveal on browser
 echo -e '\n####################################################################'
@@ -59,7 +55,9 @@ echo '# 2/16. Submitting price requests                                  #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST8DECIMALS --time 1570000000
-yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST6DECIMALS --time 1570000000
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST6DECIMALS --time 1570000000 
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST8DECIMALSANCIL --time 1570000000 --ancillaryData='8dec'
+yarn run truffle exec ../core/scripts/local/RequestOraclePrice.js --network test --identifier TEST6DECIMALSANCIL --time 1570000000 --ancillaryData='6dec'
 yarn run truffle exec ../core/scripts/mainnet/ProposeAdmin.js --network test --prod
 echo "- ✅ Price requests submitted!"
 

@@ -36,7 +36,7 @@ import {
   deriveKeyPairFromSignatureMetamask,
   encryptMessage,
   getKeyGenMessage,
-  computeVoteHash,
+  computeVoteHashAncillary,
   getRandomUnsignedInt,
   BATCH_MAX_COMMITS,
   BATCH_MAX_REVEALS,
@@ -141,7 +141,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
         setPendingRequests(nonBlacklistedRequests);
       }
     }
-  }, [allPendingRequests, IDENTIFIER_BLACKLIST, showSpamRequests]);
+  }, [allPendingRequests, hexToUtf8, showSpamRequests]);
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
@@ -350,7 +350,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
   const { send: batchRevealFunction, status: revealStatus } = useCacheSend(votingGateway, "batchReveal");
-  const { send: snapshotCurrentRound, status: snapshotStatus } = useCacheSend(snapshotContract, "snapshotCurrentRound");
+  const { send: snapshotCurrentRound } = useCacheSend(snapshotContract, "snapshotCurrentRound");
 
   const onSnapshotHandler = () => {
     const hashedSnapshotMessage = web3.utils.soliditySha3(snapshotMessage);
@@ -361,6 +361,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       .catch(err => console.log("snapshot error", err));
   };
 
+  // keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier))
   const onClickHandler = () => {
     const reveals = [];
     for (const index in checkboxesChecked) {
@@ -368,10 +369,9 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
         reveals.push({
           identifier: pendingRequests[index].identifier,
           time: pendingRequests[index].time,
+          ancillaryData: pendingRequests[index].ancillaryData || DEFAULT_ANCILLARY_DATA,
           price: decryptedCommits[index].price.toString(),
-          salt: decryptedCommits[index].salt,
-          // TODO: This will need to be updated eventually when data input from user
-          ancillaryData: DEFAULT_ANCILLARY_DATA
+          salt: decryptedCommits[index].salt
         });
       }
     }
@@ -398,8 +398,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
       const price = parseFixed(editState[index], identifierPrecision).toString();
       const salt = getRandomUnsignedInt().toString();
-      // TODO: This will need to be pulled from user input in the future
-      const ancillaryData = DEFAULT_ANCILLARY_DATA;
+      const ancillaryData = pendingRequests[index].ancillaryData || DEFAULT_ANCILLARY_DATA;
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
         JSON.stringify({ price, salt })
@@ -408,7 +407,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
         identifier: pendingRequests[index].identifier,
         time: pendingRequests[index].time,
         ancillaryData,
-        hash: computeVoteHash({
+        hash: computeVoteHashAncillary({
           price,
           salt,
           account: votingAccount,
@@ -508,7 +507,6 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
           pendingRequest.ancillaryData || DEFAULT_ANCILLARY_DATA
         )
       ];
-    console.log({ revealEvent, pendingRequest, eventsMap });
     if (revealEvent) {
       return {
         statusString: "Revealed",
