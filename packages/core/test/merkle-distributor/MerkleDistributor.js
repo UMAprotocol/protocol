@@ -129,6 +129,7 @@ contract("MerkleDistributor.js", function(accounts) {
           return (
             ev.caller === contractCreator &&
             ev.account === leaf.account &&
+            ev.windowIndex.toString() === windowIndex.toString() &&
             ev.amount.toString() === leaf.amount.toString() &&
             ev.rewardToken == rewardToken.address
           );
@@ -235,6 +236,7 @@ contract("MerkleDistributor.js", function(accounts) {
           return (
             ev.caller.toLowerCase() == rando.toLowerCase() &&
             ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+            ev.windowIndex.toString() === windowIndex.toString() &&
             ev.amount.toString() == leaf.amount.toString() &&
             ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
           );
@@ -407,15 +409,9 @@ contract("MerkleDistributor.js", function(accounts) {
         accountBalanceBefore.add(batchedClaimAmount).toString()
       );
 
-      // One Claimed event should have been emitted for batched claim amount.
-      truffleAssert.eventEmitted(claimTx, "Claimed", ev => {
-        return (
-          ev.caller.toLowerCase() == rando.toLowerCase() &&
-          ev.account.toLowerCase() == leaf1.account.toLowerCase() &&
-          ev.amount.toString() == batchedClaimAmount.toString() &&
-          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
-        );
-      });
+      // One Claimed event should have been emitted for each batched claim.
+      const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
+      assert.equal(claimedEvents.length, claims.length);
     });
     it("Can only batch claim for one account", async function() {
       // Leaf 2 is for account[1], can't batch claim for two different accounts.

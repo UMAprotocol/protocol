@@ -62,7 +62,13 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     uint256 public lastSeededIndex;
 
     // Events:
-    event Claimed(address indexed caller, address indexed account, uint256 amount, address indexed rewardToken);
+    event Claimed(
+        address indexed caller,
+        uint256 windowIndex,
+        address indexed account,
+        uint256 amount,
+        address indexed rewardToken
+    );
     event SeededWindow(
         uint256 indexed windowIndex,
         uint256 amount,
@@ -220,6 +226,13 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begin");
 
         claimed[claim.windowIndex][claim.account] = true;
+        emit Claimed(
+            msg.sender,
+            claim.windowIndex,
+            claim.account,
+            claim.amount,
+            address(merkleWindows[claim.windowIndex].rewardToken)
+        );
     }
 
     function _disburse(
@@ -231,6 +244,5 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         if (amount > 0) {
             token.safeTransfer(account, amount);
         }
-        emit Claimed(msg.sender, account, amount, address(token));
     }
 }
