@@ -409,6 +409,78 @@ const defaultConfigs = {
       }
     ]
   },
+  "ETH-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
+    }
+  },
+  "ETH-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
+    }
+  },
+  "BTC-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
+    }
+  },
+  "BTC-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
+    }
+  },
   "USD/bBadger": {
     type: "expression",
     // Note: lower-case variables are intermediate, upper-case are configured feeds.
