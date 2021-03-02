@@ -20,8 +20,8 @@ async function execute(callback) {
       winston.createLogger({
         silent: true
       }),
-      60,
-      100
+      60, // Time between updates.
+      100 // Default gas price.
     );
 
     for (let j = start; j <= end; j++) {
