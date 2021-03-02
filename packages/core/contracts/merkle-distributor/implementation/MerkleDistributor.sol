@@ -35,8 +35,6 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
-        // Owner can set this to true to block claims for this window.
-        bool locked;
     }
 
     // Represents an account's claim for `amount` within the Merkle root located at the `windowIndex`.
@@ -74,12 +72,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         address owner
     );
     event WithdrawRewards(address indexed owner, uint256 amount);
-    event SetWindowLock(address indexed owner, uint256 indexed windowIndex, bool locked);
-
-    modifier windowNotLocked(uint256 windowIndex) {
-        require(!merkleWindows[windowIndex].locked, "Window distributions locked");
-        _;
-    }
+    event DestroyWindow(uint256 indexed windowIndex, address owner);
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
@@ -121,27 +114,13 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         _seedWindow(indexToSeed, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
     }
 
-    // When `window.locked` is true, claims are blocked for that window.
-    function setWindowLock(uint256 windowIndex, bool lockValue) external nonReentrant() onlyOwner {
-        merkleWindows[windowIndex].locked = lockValue;
-        emit SetWindowLock(msg.sender, windowIndex, lockValue);
+    // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
+    function destroyMerkleRoot(uint256 windowIndex) external nonReentrant() onlyOwner {
+        delete merkleWindows[windowIndex];
+        emit DestroyWindow(windowIndex, msg.sender);
     }
 
-    // Overwrite merkle root for specified window index. Owner must deposit `totalRewardsDistributed`
-    // into contract.
-    // TODO: Should we require that `windowIndex <= lastSeededIndex` or should this function just be
-    // a generalized `setWindowMerkleRoot` whereby the owner can set a merkle root for any index?
-    function resetWindowMerkleRoot(
-        uint256 windowIndex,
-        uint256 totalRewardsDistributed,
-        uint256 windowStart,
-        address rewardToken,
-        bytes32 merkleRoot
-    ) external nonReentrant() onlyOwner {
-        _seedWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
-    }
-
-    // Emergency methods to transfer rewards out of the contract
+    // Emergency method used to transfer rewards out of the contract
     // incase the contract was configured improperly.
     function withdrawRewards(address rewardCurrency, uint256 amount) external nonReentrant() onlyOwner {
         IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
@@ -206,7 +185,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         emit SeededWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
     }
 
-    function _markClaimed(Claim memory claim) private windowNotLocked(claim.windowIndex) {
+    function _markClaimed(Claim memory claim) private {
         // Check claimed proof against merkle window at given index.
         require(verifyClaim(claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.

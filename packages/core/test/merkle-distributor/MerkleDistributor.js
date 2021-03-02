@@ -533,101 +533,26 @@ contract("MerkleDistributor.js", function(accounts) {
     });
   });
   describe("Emergency admin functions", function() {
-    // We test out methods that shouldn't be called unless the Owner has made a mistake
-    // seeding the contract. We create multiple windows containing different Merkle roots
-    // to test that admin functionality can be isolated to specific windows.
-    let rewardRecipients1, rewardRecipients2;
-    let rewardLeafs1, rewardLeafs2;
-    let merkleTree1, merkleTree2;
-    let leaf1, leaf2;
-    let claimProof1, claimProof2;
     beforeEach(async function() {
-      // Assume we start at first windowIndex. Disable vesting.
+      // Assume we start at first windowIndex.
       windowIndex = 0;
       const currentTime = await timer.getCurrentTime();
       windowStart = currentTime;
 
-      rewardRecipients1 = createRewardRecipientsFromSampleData(SamplePayouts);
+      rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
+      rewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
 
-      // Generate another set of reward recipients, as the same set as number 1 but double the rewards.
-      rewardRecipients2 = rewardRecipients1.map(recipient => {
-        return {
-          account: recipient.account,
-          amount: toBN(recipient.amount)
-            .muln(2)
-            .toString()
-        };
-      });
-
-      // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
-      rewardLeafs1 = rewardRecipients1.map(item => ({ ...item, leaf: createLeaf(item) }));
-      rewardLeafs2 = rewardRecipients2.map(item => ({ ...item, leaf: createLeaf(item) }));
-
-      merkleTree1 = new MerkleTree(rewardLeafs1.map(item => item.leaf));
-      merkleTree2 = new MerkleTree(rewardLeafs2.map(item => item.leaf));
-
-      // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindowMerkleRoot(
-        SamplePayouts.totalRewardsDistributed,
-        windowStart,
-        rewardToken.address,
-        merkleTree1.getRoot() // Distributes to rewardLeafs1
-      );
+      merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
 
       await merkleDistributor.setWindowMerkleRoot(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
-        merkleTree2.getRoot() // Distributes to rewardLeafs2
+        merkleTree.getRoot()
       );
 
-      leaf1 = rewardLeafs1[0];
-      leaf2 = rewardLeafs2[0];
-      claimProof1 = merkleTree1.getProof(leaf1.leaf);
-      claimProof2 = merkleTree2.getProof(leaf2.leaf);
-    });
-    describe("(setWindowLock)", function() {
-      it("Only owner can call", async function() {
-        assert(await didContractThrow(merkleDistributor.setWindowLock(windowIndex, true, { from: rando })));
-      });
-      it("Blocks claim for window until lock removed", async function() {
-        // Lock window 0
-        const txn = await merkleDistributor.setWindowLock(windowIndex, true, { from: contractCreator });
-        truffleAssert.eventEmitted(txn, "SetWindowLock", ev => {
-          return (
-            ev.owner.toLowerCase() === contractCreator.toLowerCase() &&
-            ev.windowIndex.toString() === windowIndex.toString() &&
-            ev.locked
-          );
-        });
-
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: leaf1.account,
-              amount: leaf1.amount,
-              merkleProof: claimProof1
-            })
-          )
-        );
-        // Window 1 is not locked.
-        await merkleDistributor.claimWindow({
-          windowIndex: windowIndex + 1,
-          account: leaf2.account,
-          amount: leaf2.amount,
-          merkleProof: claimProof2
-        });
-
-        // Unlock window 0
-        await merkleDistributor.setWindowLock(windowIndex, false, { from: contractCreator });
-        await merkleDistributor.claimWindow({
-          windowIndex: windowIndex,
-          account: leaf1.account,
-          amount: leaf1.amount,
-          merkleProof: claimProof1
-        });
-      });
+      leaf = rewardLeafs[0];
+      claimerProof = merkleTree.getProof(leaf.leaf);
     });
     describe("(withdrawRewards)", function() {
       it("Only owner can call", async function() {
@@ -657,62 +582,28 @@ contract("MerkleDistributor.js", function(accounts) {
         );
       });
     });
-    describe("(resetWindowMerkleRoot)", function() {
-      // Reset the second merkle root to the same root as window 1.
-      const windowIndexToReset = "1";
+    describe("(destroyMerkleRoot)", function() {
       it("Only owner can call", async function() {
-        assert(
-          await didContractThrow(
-            merkleDistributor.resetWindowMerkleRoot(
-              windowIndexToReset,
-              SamplePayouts.totalRewardsDistributed,
-              windowStart,
-              rewardToken.address,
-              merkleTree1.getRoot(),
-              { from: rando }
-            )
-          )
-        );
+        assert(await didContractThrow(merkleDistributor.destroyMerkleRoot(windowIndex, { from: rando })));
       });
-      it("Overwrites merkle root and new claims can be made", async function() {
-        // Merkle Tree 2 is inserted at the window to reset so claims from Merkle Tree 1 will revert
+      it("Deletes merkle root and all claims for the window index revert", async function() {
+        const txn = await merkleDistributor.destroyMerkleRoot(windowIndex, { from: contractCreator });
+
+        truffleAssert.eventEmitted(txn, "DestroyWindow", ev => {
+          return ev.windowIndex.toString() === windowIndex.toString() && ev.owner === contractCreator;
+        });
+
+        // All claims on this window revert
         assert(
           await didContractThrow(
             merkleDistributor.claimWindow({
-              windowIndex: windowIndexToReset,
-              account: leaf1.account,
-              amount: leaf1.amount,
-              merkleProof: claimProof1
+              windowIndex: windowIndex,
+              account: leaf.account,
+              amount: leaf.amount,
+              merkleProof: claimerProof
             })
           )
         );
-        const seedTxn = await merkleDistributor.resetWindowMerkleRoot(
-          windowIndexToReset,
-          SamplePayouts.totalRewardsDistributed,
-          windowStart,
-          rewardToken.address,
-          merkleTree1.getRoot(),
-          { from: contractCreator }
-        );
-
-        // Check that the SeededWindow event was re-emitted.
-        truffleAssert.eventEmitted(seedTxn, "SeededWindow", ev => {
-          return (
-            ev.windowIndex.toString() === windowIndexToReset.toString() &&
-            ev.amount.toString() === SamplePayouts.totalRewardsDistributed.toString() &&
-            ev.windowStart.toString() === windowStart.toString() &&
-            ev.rewardToken === rewardToken.address &&
-            ev.owner === contractCreator
-          );
-        });
-
-        // Now claims from Merkle Tree 1 can be made on the reset window index.
-        await merkleDistributor.claimWindow({
-          windowIndex: windowIndexToReset,
-          account: leaf1.account,
-          amount: leaf1.amount,
-          merkleProof: claimProof1
-        });
       });
     });
   });
