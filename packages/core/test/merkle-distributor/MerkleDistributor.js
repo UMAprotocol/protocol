@@ -616,34 +616,6 @@ contract("MerkleDistributor.js", function(accounts) {
         );
       });
     });
-    describe("(depositRewards)", function() {
-      it("Only owner can call", async function() {
-        assert(
-          await didContractThrow(merkleDistributor.depositRewards(rewardToken.address, toWei("1"), { from: rando }))
-        );
-      });
-      it("Sends rewards to contract", async function() {
-        let ownerBalanceBefore = await rewardToken.balanceOf(contractCreator);
-        let contractBalanceBefore = await rewardToken.balanceOf(merkleDistributor.address);
-
-        const depositAmount = toWei("1");
-        const txn = await merkleDistributor.depositRewards(rewardToken.address, depositAmount, {
-          from: contractCreator
-        });
-        truffleAssert.eventEmitted(txn, "DepositRewards", ev => {
-          return ev.owner === contractCreator && ev.amount.toString() === depositAmount;
-        });
-
-        assert.equal(
-          ownerBalanceBefore.sub(toBN(depositAmount)).toString(),
-          (await rewardToken.balanceOf(contractCreator)).toString()
-        );
-        assert.equal(
-          contractBalanceBefore.add(toBN(depositAmount)).toString(),
-          (await rewardToken.balanceOf(merkleDistributor.address)).toString()
-        );
-      });
-    });
     describe("(resetWindowMerkleRoot)", function() {
       // Reset the second merkle root to the same root as window 1.
       const windowIndexToReset = "1";

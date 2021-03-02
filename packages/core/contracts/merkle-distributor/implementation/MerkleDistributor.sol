@@ -76,7 +76,6 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         address indexed rewardToken,
         address owner
     );
-    event DepositRewards(address indexed owner, uint256 amount);
     event WithdrawRewards(address indexed owner, uint256 amount);
     event SetWindowLock(address indexed owner, uint256 indexed windowIndex, bool locked);
 
@@ -145,16 +144,11 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         _seedWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
     }
 
-    // Emergency methods to transfer rewards into and out of the contract
+    // Emergency methods to transfer rewards out of the contract
     // incase the contract was configured improperly.
     function withdrawRewards(address rewardCurrency, uint256 amount) external nonReentrant() onlyOwner {
         IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
         emit WithdrawRewards(msg.sender, amount);
-    }
-
-    function depositRewards(address rewardCurrency, uint256 amount) external nonReentrant() onlyOwner {
-        IERC20(rewardCurrency).safeTransferFrom(msg.sender, address(this), amount);
-        emit DepositRewards(msg.sender, amount);
     }
 
     /****************************
