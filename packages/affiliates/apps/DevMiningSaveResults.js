@@ -1,6 +1,7 @@
 const assert = require("assert");
 const { makeDevMiningFilename, makeUnixPipe, saveToDisk } = require("../libs/affiliates/utils");
 
+// This basically just saves the output of dev mining, along with config to a file with a standard filename.
 async function App(params) {
   const { config, result } = params;
   const fn = makeDevMiningFilename(config);

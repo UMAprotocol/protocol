@@ -1,4 +1,4 @@
-// collection of functions to compose a automation pipeline
+// collection of functions to compose a automation pipeline with regards to dev/dapp mining.
 const assert = require("assert");
 const highland = require("highland");
 const moment = require("moment");
@@ -6,17 +6,21 @@ const Path = require("path");
 const fs = require("fs");
 const { Octokit } = require("@octokit/rest");
 
+// Hard coded start dates for both dev and dapp mining. These are used to calculate week number given a date.
 const devMiningStartTime = moment("2020-11-2 23:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 const dappMiningStartTime = moment("2021-01-04 23:00", "YYYY-MM-DD  HH:mm Z").valueOf();
 
+// Turns an address into an etherscan link
 function eslink(addr) {
   return `https://etherscan.io/address/${addr}`;
 }
 
+// Creates a markdown formatted link for templating markdown files.
 function mdlink(text, link) {
   return `[${text}](${link})`;
 }
 
+// Generates the title and body for a dev mining PR.
 function devMiningPrTemplate({
   issueNumber,
   totalRewards,
@@ -69,6 +73,7 @@ closes #${issueNumber}
   };
 }
 
+// Generate dapp mining issue body and title
 function dappMiningTemplate({ name, empAddress, startTime, endTime, whitelistTable, weekNumber }) {
   const startDate = moment(startTime)
     .utc()
@@ -95,6 +100,7 @@ Name | Tagged Address
   };
 }
 
+// Generate dev mining issue body and title
 function devMiningTemplate({ config, whitelist }) {
   const { startTime, endTime, fallbackPrices, weekNumber } = config;
   const startDate = moment(startTime)
@@ -129,6 +135,8 @@ If fallback prices are needed it will be shown below:
   };
 }
 
+// Submit issue to github. Requieres auth, which is your github API key.
+// Rest = {body, title} which is required for opening an issue.
 async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol", ...rest } = {}) {
   assert(auth, "requires github auth credentials");
   const octokit = new Octokit({
@@ -141,11 +149,27 @@ async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol
   });
 }
 
+// Takes an array of "details" which is simply an array of objects in this format:
+// [{
+//   empAddress,
+//   payoutAddress,
+//   name,
+//   identifier,
+//   enabled
+// }]
+// And returns it in the whitelist format consumable by dev mining:
+// [
+//   [ address, payoutAddress],
+//   [ address, payoutAddress],
+// ]
 function whitelistFromDetails(details) {
   return details.map(detail => {
     return [detail.empAddress, detail.payoutAddress];
   });
 }
+
+// Generates a dev mining config consumable by the dev mining app. It assumes you are passing in various
+// parameters here, and will auto generate the week and period if not provided, based on current date.
 function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000 }) {
   const empWhitelist = whitelistFromDetails(whitelist);
   const fallbackPrices = [];
@@ -159,6 +183,8 @@ function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000
   };
 }
 
+// Generates dapp mining config consumable by dapp mining app. Wil auto generate start,end dates as well
+// as week number if week is not provided. Requires empReward number generated from dev mining.
 function generateDappMiningConfig(params = {}) {
   let { week, whitelistTable, defaultAddress, empRewards, rewardFactor = 0.3 } = params;
   assert(whitelistTable, "requires whitelist table");
@@ -174,6 +200,7 @@ function generateDappMiningConfig(params = {}) {
   };
 }
 
+// For a given week number, calculates the period for rewards, and some metadata for human readability
 function miningPeriodByWeek(weekNumber = 0, first) {
   assert(weekNumber >= 0, "requires week number 0 or more");
   assert(first >= 0, "requires start of first payout in ms time");
@@ -219,6 +246,7 @@ function getLastDappMiningWeek(date = Date.now(), first = dappMiningStartTime) {
   return result - 1;
 }
 
+// Makes a common convention for dev mining files
 function makeDevMiningFilename(config) {
   const { startTime, endTime, weekNumber } = config;
   const format = "YYYY-MM-DD";
@@ -230,6 +258,7 @@ function makeDevMiningFilename(config) {
   return [fn, "json"].join(".");
 }
 
+// Makes a common convention for dapp mining files
 function makeDappMiningFilename(config) {
   const { startTime, endTime, name, weekNumber } = config;
   const format = "YYYY-MM-DD";
@@ -242,21 +271,34 @@ function makeDappMiningFilename(config) {
   return [fn, "json"].join(".");
 }
 
+// Just saves a js object to file to disk based on a given filename
 async function saveToDisk(fn, result) {
   fs.writeFileSync(Path.join(process.cwd(), fn), JSON.stringify(result, null, 2));
   return result;
 }
 
-function makeUnixPipe(through, stdin = process.stdin) {
-  return highland(stdin)
-    .reduce("", (result, str) => {
-      return result + str;
-    })
-    .map(x => JSON.parse(x))
-    .map(async x => through(x))
-    .flatMap(highland)
-    .map(x => JSON.stringify(x, null, 2))
-    .toPromise(Promise);
+// This provides a convention for passing json data in and out of the app to allow unix piping to work
+// with complex data objects. It does this by parsing data from sdtin and constructing a full string
+// which is then parsed as a json object. Its then passed into callback which allows abitrary processing.
+// The callback can return valid json, which will get stringified and returned. Typically this gets logged to std out.
+function makeUnixPipe(cb, stdin = process.stdin) {
+  return (
+    highland(stdin)
+      // stdin is a stream of chars. This appends all chars into a string, which ends at end of input.
+      .reduce("", (result, str) => {
+        return result + str;
+      })
+      // once string is final, we try to parse it as json. We assume that our caller is passing us a valid json string.
+      .map(x => JSON.parse(x))
+      // once we have the json object we call the callback passing it as a param
+      .map(async x => cb(x))
+      // we need to do this to extract the result of the promise in the stream.
+      .flatMap(highland)
+      // we want our result to be also a valid json string, so we can continue chaining the pipeline
+      .map(x => JSON.stringify(x, null, 2))
+      // returns string as a promise so we can log it however we need. but typically it would just be std out.
+      .toPromise(Promise)
+  );
 }
 
 module.exports = {

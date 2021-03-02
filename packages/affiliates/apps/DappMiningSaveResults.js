@@ -1,6 +1,7 @@
 const assert = require("assert");
 const { makeDappMiningFilename, makeUnixPipe, saveToDisk } = require("../libs/affiliates/utils");
 
+// This basically just saves the output of dapp mining, along with config to a file with a standard filename.
 async function App(params) {
   const { config, result } = params;
   assert(result, "requires dev mining results json");
