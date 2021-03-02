@@ -657,7 +657,16 @@ async function createReferencePriceFeedForFinancialContract(
     );
   }
 
-  const defaultConfig = defaultConfigs[_identifier];
+  // For test purposes, if the identifier begins with "TEST..." or "INVALID..." then we will set the pricefeed
+  // to test-only pricefeeds like the PriceFeedMock and the InvalidPriceFeed.
+  let defaultConfig;
+  if (_identifier.startsWith("TEST")) {
+    defaultConfig = { type: "test" };
+  } else if (_identifier.startsWith("INVALID")) {
+    defaultConfig = { type: "invalid" };
+  } else {
+    defaultConfig = defaultConfigs[_identifier];
+  }
 
   logger.debug({
     at: "createReferencePriceFeedForFinancialContract",

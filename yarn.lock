@@ -4807,6 +4807,27 @@
     "@typescript-eslint/types" "4.15.0"
     eslint-visitor-keys "^2.0.0"
 
+"@uma/common@^1.0.1", "@uma/common@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@uma/common/-/common-1.1.0.tgz#dd847498e81f5ccd38ac759bcc4afed240f2b409"
+  integrity sha512-ASzLiK7icYCbXrSxKUg7dJp1AuZUDd6MnQ1aXmGrNb7/VaIq4mxO7CYtYAj785jglrorpEGyB/b5ZbmUmldheA==
+  dependencies:
+    "@ethersproject/bignumber" "^5.0.5"
+    "@google-cloud/kms" "^0.3.0"
+    "@google-cloud/storage" "^2.4.2"
+    "@truffle/hdwallet-provider" "^1.0.25"
+    "@umaprotocol/truffle-ledger-provider" "^1.0.3"
+    abi-decoder "github:UMAprotocol/abi-decoder"
+    bignumber.js "^8.0.1"
+    dotenv "^6.2.0"
+    eth-crypto "^1.6.0"
+    minimist "^1.2.0"
+    moment "^2.24.0"
+    node-metamask "github:UMAprotocol/node-metamask"
+    require-context "^1.1.0"
+    truffle-deploy-registry "^0.5.1"
+    web3 "1.2.11"
+
 "@uma/core-1-1-0@npm:@uma/core@1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.1.0.tgz#81c23f67c3b8bc1b39877dd4084d697753582e67"
