@@ -35,9 +35,6 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
-        // Total amount of rewards distributed this window. This is not enforced
-        // but might be useful to query.
-        uint256 totalRewardsDistributed;
         // Owner can set this to true to block claims for this window.
         bool locked;
     }
@@ -203,7 +200,6 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         window.start = windowStart;
         window.merkleRoot = merkleRoot;
         window.rewardToken = IERC20(rewardToken);
-        window.totalRewardsDistributed = totalRewardsDistributed;
 
         window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
 
