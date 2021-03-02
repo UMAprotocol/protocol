@@ -186,7 +186,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         require(!claimed[claim.windowIndex][claim.account], "Account has already claimed for this window");
 
         // Proof is correct and claim has not occurred yet; check that claim window has begun.
-        require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begin");
+        require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begun");
 
         claimed[claim.windowIndex][claim.account] = true;
         emit Claimed(
