@@ -326,52 +326,44 @@ contract("MerkleDistributor.js", function(accounts) {
         // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
         console.log(`Gas used: ${claimTx.receipt.gasUsed}`);
       });
-      describe("(verifyClaim)", function() {
-        it("valid proof", async function() {
-          // `claimerProof` must match the hashed { account, amount } in the root exactly, test cases where either is incorrect.
-          // Correct proof and claim:
-          assert.isTrue(
-            await merkleDistributor.verifyClaim({
+      it("invalid proof", async function() {
+        // Incorrect account:
+        assert(
+          await didContractThrow(
+            merkleDistributor.claimWindow({
               windowIndex: windowIndex,
-              account: leaf.account,
+              account: rando,
               amount: leaf.amount,
               merkleProof: claimerProof
             })
-          );
-        });
-        it("invalid proof", async function() {
-          // Helper method that checks that `verifyClaim` returns false and `claimWindow` reverts.
-          const verifyClaimFails = async claim => {
-            assert.isNotTrue(await merkleDistributor.verifyClaim(claim));
-            assert(await didContractThrow(merkleDistributor.claimWindow(claim)));
-          };
+          )
+        );
 
-          // Incorrect account:
-          await verifyClaimFails({
-            windowIndex: windowIndex,
-            account: rando,
-            amount: leaf.amount,
-            merkleProof: claimerProof
-          });
+        // Incorrect amount:
+        const invalidAmount = "1";
+        assert(
+          await didContractThrow(
+            merkleDistributor.claimWindow({
+              windowIndex: windowIndex,
+              account: leaf.account,
+              amount: invalidAmount,
+              merkleProof: claimerProof
+            })
+          )
+        );
 
-          // Incorrect amount:
-          const invalidAmount = "1";
-          await verifyClaimFails({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: invalidAmount,
-            merkleProof: claimerProof
-          });
-
-          // Invalid merkle proof:
-          const invalidProof = [utf8ToHex("0x")];
-          await verifyClaimFails({
-            windowIndex: windowIndex,
-            account: leaf.account,
-            amount: leaf.amount,
-            merkleProof: invalidProof
-          });
-        });
+        // Invalid merkle proof:
+        const invalidProof = [utf8ToHex("0x")];
+        assert(
+          await didContractThrow(
+            merkleDistributor.claimWindow({
+              windowIndex: windowIndex,
+              account: leaf.account,
+              amount: leaf.amount,
+              merkleProof: invalidProof
+            })
+          )
+        );
       });
     });
   });
