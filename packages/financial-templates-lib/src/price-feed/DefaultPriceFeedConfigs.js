@@ -392,7 +392,7 @@ const defaultConfigs = {
   EURUSD: {
     type: "tradermade",
     pair: "EURUSD",
-    minTimeBetweenUpdates: 600,
+    minTimeBetweenUpdates: 60,
     minuteLookback: 7200,
     hourlyLookback: 604800
   },
