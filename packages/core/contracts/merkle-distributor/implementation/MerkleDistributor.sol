@@ -19,10 +19,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/Testable.sol";
 
-contract MerkleDistributor is Ownable, Lockable, Testable {
+contract MerkleDistributor is Ownable, Testable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -64,7 +63,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         uint256 amount,
         address indexed rewardToken
     );
-    event SeededWindow(
+    event SetWindow(
         uint256 indexed windowIndex,
         uint256 amount,
         uint256 indexed windowStart,
@@ -72,7 +71,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         address owner
     );
     event WithdrawRewards(address indexed owner, uint256 amount);
-    event DestroyWindow(uint256 indexed windowIndex, address owner);
+    event DeleteWindow(uint256 indexed windowIndex, address owner);
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
@@ -102,27 +101,27 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     //     - In summary, the contract owner created a race for step(2) and step(3) in which the first
     //       claim would succeed and the second claim would fail, even though both claimants would expect
     //       their claims to suceed.
-    function setWindowMerkleRoot(
+    function setWindow(
         uint256 totalRewardsDistributed,
         uint256 windowStart,
         address rewardToken,
         bytes32 merkleRoot
-    ) external nonReentrant() onlyOwner {
+    ) external onlyOwner {
         uint256 indexToSeed = lastSeededIndex;
         lastSeededIndex = indexToSeed.add(1);
 
-        _seedWindow(indexToSeed, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
+        _setWindow(indexToSeed, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
-    function destroyMerkleRoot(uint256 windowIndex) external nonReentrant() onlyOwner {
+    function deleteWindow(uint256 windowIndex) external onlyOwner {
         delete merkleWindows[windowIndex];
-        emit DestroyWindow(windowIndex, msg.sender);
+        emit DeleteWindow(windowIndex, msg.sender);
     }
 
     // Emergency method used to transfer rewards out of the contract
     // incase the contract was configured improperly.
-    function withdrawRewards(address rewardCurrency, uint256 amount) external nonReentrant() onlyOwner {
+    function withdrawRewards(address rewardCurrency, uint256 amount) external onlyOwner {
         IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
         emit WithdrawRewards(msg.sender, amount);
     }
@@ -138,7 +137,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
         Claim[] memory claims,
         address rewardToken,
         address account
-    ) public nonReentrant() {
+    ) public {
         uint256 amountToClaim = 0;
         for (uint256 i = 0; i < claims.length; i++) {
             Claim memory claim = claims[i];
@@ -151,7 +150,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
-    function claimWindow(Claim memory claim) public nonReentrant() {
+    function claimWindow(Claim memory claim) public {
         _markClaimed(claim);
         _disburse(merkleWindows[claim.windowIndex].rewardToken, claim.account, claim.amount);
     }
@@ -162,7 +161,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
      *
      ****************************/
 
-    function _seedWindow(
+    function _setWindow(
         uint256 windowIndex,
         uint256 totalRewardsDistributed,
         uint256 windowStart,
@@ -176,7 +175,7 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
 
         window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
 
-        emit SeededWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
+        emit SetWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
     }
 
     function _markClaimed(Claim memory claim) private {

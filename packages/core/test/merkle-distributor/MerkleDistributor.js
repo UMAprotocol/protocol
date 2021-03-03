@@ -82,7 +82,7 @@ contract("MerkleDistributor.js", function(accounts) {
       windowIndex = 0;
 
       // Seed the merkleDistributor with the root of the tree and additional information.
-      const seedTxn = await merkleDistributor.setWindowMerkleRoot(
+      const seedTxn = await merkleDistributor.setWindow(
         totalRewardAmount,
         windowStart,
         rewardToken.address,
@@ -91,7 +91,7 @@ contract("MerkleDistributor.js", function(accounts) {
       );
 
       // Check event logs.
-      truffleAssert.eventEmitted(seedTxn, "SeededWindow", ev => {
+      truffleAssert.eventEmitted(seedTxn, "SetWindow", ev => {
         return (
           ev.windowIndex.toString() === windowIndex.toString() &&
           ev.amount.toString() === totalRewardAmount.toString() &&
@@ -173,7 +173,7 @@ contract("MerkleDistributor.js", function(accounts) {
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
 
       // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
@@ -279,7 +279,7 @@ contract("MerkleDistributor.js", function(accounts) {
         rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
         let otherRewardLeafs = rewardRecipients.map(item => ({ ...item, leaf: createLeaf(item) }));
         let otherMerkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
-        await merkleDistributor.setWindowMerkleRoot(
+        await merkleDistributor.setWindow(
           SamplePayouts.totalRewardsDistributed,
           windowStart,
           rewardToken.address,
@@ -397,14 +397,14 @@ contract("MerkleDistributor.js", function(accounts) {
       merkleTree2 = new MerkleTree(rewardLeafs2.map(item => item.leaf));
 
       // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
         merkleTree1.getRoot() // Distributes to rewardLeafs1
       );
 
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
@@ -469,7 +469,7 @@ contract("MerkleDistributor.js", function(accounts) {
       assert(await didContractThrow(merkleDistributor.claimWindows(invalidClaims, rewardToken.address, leaf1.account)));
     });
   });
-  describe("(setWindowMerkleRoot)", function() {
+  describe("(setWindow)", function() {
     beforeEach(async function() {
       const currentTime = await timer.getCurrentTime();
       // Start window at current time, disable vesting
@@ -484,7 +484,7 @@ contract("MerkleDistributor.js", function(accounts) {
     it("Only owner can call", async function() {
       assert(
         await didContractThrow(
-          merkleDistributor.setWindowMerkleRoot(
+          merkleDistributor.setWindow(
             SamplePayouts.totalRewardsDistributed,
             windowStart,
             rewardToken.address,
@@ -497,7 +497,7 @@ contract("MerkleDistributor.js", function(accounts) {
     it("Owner's balance is transferred to contract", async function() {
       let ownerBalanceBefore = await rewardToken.balanceOf(contractCreator);
 
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
@@ -513,7 +513,7 @@ contract("MerkleDistributor.js", function(accounts) {
     it("(lastSeededIndex): starts at 1 and increments on each seed", async function() {
       assert.equal((await merkleDistributor.lastSeededIndex()).toString(), "0");
 
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
@@ -536,7 +536,7 @@ contract("MerkleDistributor.js", function(accounts) {
 
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
 
-      await merkleDistributor.setWindowMerkleRoot(
+      await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
@@ -574,14 +574,14 @@ contract("MerkleDistributor.js", function(accounts) {
         );
       });
     });
-    describe("(destroyMerkleRoot)", function() {
+    describe("(deleteWindow)", function() {
       it("Only owner can call", async function() {
-        assert(await didContractThrow(merkleDistributor.destroyMerkleRoot(windowIndex, { from: rando })));
+        assert(await didContractThrow(merkleDistributor.deleteWindow(windowIndex, { from: rando })));
       });
       it("Deletes merkle root and all claims for the window index revert", async function() {
-        const txn = await merkleDistributor.destroyMerkleRoot(windowIndex, { from: contractCreator });
+        const txn = await merkleDistributor.deleteWindow(windowIndex, { from: contractCreator });
 
-        truffleAssert.eventEmitted(txn, "DestroyWindow", ev => {
+        truffleAssert.eventEmitted(txn, "DeleteWindow", ev => {
           return ev.windowIndex.toString() === windowIndex.toString() && ev.owner === contractCreator;
         });
 
