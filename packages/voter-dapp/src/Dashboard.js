@@ -9,6 +9,7 @@ import DesignatedVoting from "@uma/core/build/contracts/DesignatedVoting.json";
 import RetrieveRewards from "./RetrieveRewards.js";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { formatWithMaxDecimals, formatWei } from "@uma/common";
+import MigrationBanner from "./MigrationBanner";
 
 function Dashboard() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
@@ -98,6 +99,8 @@ function Dashboard() {
       <AppBar color="secondary" position="static">
         <Header votingAccount={votingAccount} />
       </AppBar>
+
+      {shouldShowBanner && <MigrationBanner oldDesignatedVotingAddress={oldDesignatedVotingAddress} balance={oldDesignatedVotingBalance}/>}
       {designatedVotingHelpers}
       <RetrieveRewards votingAccount={votingAccount} />
       <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} snapshotContract="Voting" />
