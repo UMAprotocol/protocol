@@ -237,14 +237,15 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
     // If the last block we have stored is too early, grab the latest block.
     if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {
       const block = await getLatestBlock();
-      assert(block.timestamp >= timestamp, "timestamp is in the future (after latest block)");
+      if (timestamp >= block.timestamp) return block;
     }
 
     // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
     if (blocks[0].timestamp > timestamp) {
       let initialBlock = blocks[0];
       const cushion = 1.1;
-      const incrementDistance = await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion);
+      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
+      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
 
       // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
       for (let multiplier = 1; ; multiplier++) {

@@ -769,7 +769,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(spy.callCount, 1); // 1 error.
   });
 
-  it("ExpressionPriceFeed: invalid config, symbol not found", async function() {
+  it("ExpressionPriceFeed: valid config, no resolved feeds", async function() {
     const config = {
       type: "expression",
       expression: "mysymbol * 2"
@@ -777,8 +777,9 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
-    assert.isNull(expressionPriceFeed);
-    assert.equal(spy.callCount, 1); // 1 error.
+    assert.isNotNull(expressionPriceFeed);
+    // Price feed map should have no elements.
+    assert.equal(Object.keys(expressionPriceFeed.priceFeedMap).length, 0);
   });
 
   it("ExpressionPriceFeed: customFeeds", async function() {

@@ -37,8 +37,6 @@ contract DesignatedVotingFactory is Withdrawable {
      * @return designatedVoting a new DesignatedVoting contract.
      */
     function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting) {
-        require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
-
         DesignatedVoting designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
         return designatedVoting;
@@ -51,7 +49,6 @@ contract DesignatedVotingFactory is Withdrawable {
      * address and wants that reflected here.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
-        require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
         designatedVotingContracts[msg.sender] = DesignatedVoting(designatedVotingAddress);
     }
 }
