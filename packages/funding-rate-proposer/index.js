@@ -82,6 +82,7 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
+          await fundingRateProposer.updateFundingRates();
           return;
         },
         {

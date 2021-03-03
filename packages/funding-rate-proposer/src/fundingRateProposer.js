@@ -1,12 +1,12 @@
 const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { getPrecisionForIdentifier, createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class FundingRateProposer {
   /**
    * @notice Constructs new Perpetual FundingRate Proposer bot.
    * @param {Object} logger Module used to send logs.
-   * @param {Object} perpetualFactoryClient Module used to query for live perpetual contracts
+   * @param {Object} perpetualFactoryClient Module used to query for live perpetual contracts.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} commonPriceFeedConfig Default configuration to construct all price feed objects.
@@ -72,15 +72,8 @@ class FundingRateProposer {
   async update() {
     await Promise.all([this.perpetualFactoryClient.update(), this.gasEstimator.update()]);
 
-    // Create contract object for each perpetual address created.
-    for (let creationEvent of this.perpetualFactoryClient.getAllCreatedContractEvents()) {
-      if (!this.contractCache[creationEvent.contractAddress]) {
-        // Failure to construct a Perpetual instance using the contract address should be fatal,
-        // so we don't catch that error.
-        const perpetualContract = this.createPerpetualContract(creationEvent.contractAddress);
-        this.contractCache[creationEvent.contractAddress] = perpetualContract;
-      }
-    }
+    // Once PerpFactory client is updated, cache contract instances for each address deployed.
+    this._cachePerpetualContracts();
 
     // Increase allowances for all relevant collateral currencies.
     await this._setAllowances();
@@ -89,7 +82,8 @@ class FundingRateProposer {
   async updateFundingRates() {
     this.logger.debug({
       at: "PerpetualProposer#updateFundingRates",
-      message: "Checking for contract funding rates to update"
+      message: "Checking for contract funding rates to update",
+      perpetualsChecked: Object.keys(this.contractCache)
     });
 
     // TODO: Should allow user to filter out price requests with rewards below a threshold,
@@ -112,7 +106,7 @@ class FundingRateProposer {
       from: this.account,
       gasPrice: this.gasEstimator.getCurrentFastPrice()
     });
-    const fundingRateIdentifier = currentFundingRateData.identifier;
+    const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
     const priceFeed = await this._createOrGetCachedPriceFeed(fundingRateIdentifier);
 
     // Pricefeed is either constructed correctly or is null.
@@ -187,16 +181,8 @@ class FundingRateProposer {
     // First check for cached pricefeed for this identifier and return it if exists:
     let priceFeed = this.priceFeedCache[identifier];
     if (priceFeed) return priceFeed;
-
-    // No cached pricefeed found for this identifier. Create a new one.
-    // First, construct the config for this identifier. We start with the `commonPriceFeedConfig`
-    // properties and add custom properties for this specific identifier such as precision.
-    let priceFeedConfig = {
-      ...this.commonPriceFeedConfig,
-      priceFeedDecimals: getPrecisionForIdentifier(identifier)
-    };
     this.logger.debug({
-      at: "OptimisticOracleProposer",
+      at: "PerpetualProposer",
       message: "Created pricefeed configuration for identifier",
       commonPriceFeedConfig: this.commonPriceFeedConfig,
       identifier
@@ -210,11 +196,23 @@ class FundingRateProposer {
       new Networker(this.logger),
       () => Math.round(new Date().getTime() / 1000),
       null, // No EMP Address needed since we're passing identifier explicitly
-      priceFeedConfig,
+      this.commonPriceFeedConfig,
       identifier
     );
-    this.priceFeedCache[identifier] = newPriceFeed;
+    if (newPriceFeed) this.priceFeedCache[identifier] = newPriceFeed;
     return newPriceFeed;
+  }
+
+  // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
+  _cachePerpetualContracts() {
+    for (let creationEvent of this.perpetualFactoryClient.getAllCreatedContractEvents()) {
+      if (!this.contractCache[creationEvent.contractAddress]) {
+        // Failure to construct a Perpetual instance using the contract address should be fatal,
+        // so we don't catch that error.
+        const perpetualContract = this.createPerpetualContract(creationEvent.contractAddress);
+        this.contractCache[creationEvent.contractAddress] = perpetualContract;
+      }
+    }
   }
 }
 

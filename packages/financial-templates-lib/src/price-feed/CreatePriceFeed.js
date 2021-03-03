@@ -18,6 +18,7 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
+const { getPrecisionForIdentifier } = require("@uma/common");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -661,9 +662,9 @@ async function createReferencePriceFeedForFinancialContract(
   // to test-only pricefeeds like the PriceFeedMock and the InvalidPriceFeed.
   let defaultConfig;
   if (_identifier.startsWith("TEST")) {
-    defaultConfig = { type: "test" };
+    defaultConfig = { type: "test", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
   } else if (_identifier.startsWith("INVALID")) {
-    defaultConfig = { type: "invalid" };
+    defaultConfig = { type: "invalid", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
   } else {
     defaultConfig = defaultConfigs[_identifier];
   }

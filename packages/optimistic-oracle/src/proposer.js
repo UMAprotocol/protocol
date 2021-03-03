@@ -1,10 +1,5 @@
 const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const {
-  getPrecisionForIdentifier,
-  createObjectFromDefaultProps,
-  MAX_UINT_VAL,
-  runTransaction
-} = require("@uma/common");
+const { createObjectFromDefaultProps, MAX_UINT_VAL, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class OptimisticOracleProposer {
@@ -441,14 +436,6 @@ class OptimisticOracleProposer {
     // First check for cached pricefeed for this identifier and return it if exists:
     let priceFeed = this.priceFeedCache[identifier];
     if (priceFeed) return priceFeed;
-
-    // No cached pricefeed found for this identifier. Create a new one.
-    // First, construct the config for this identifier. We start with the `commonPriceFeedConfig`
-    // properties and add custom properties for this specific identifier such as precision.
-    let priceFeedConfig = {
-      ...this.commonPriceFeedConfig,
-      priceFeedDecimals: getPrecisionForIdentifier(identifier)
-    };
     this.logger.debug({
       at: "OptimisticOracleProposer",
       message: "Created pricefeed configuration for identifier",
@@ -464,10 +451,10 @@ class OptimisticOracleProposer {
       new Networker(this.logger),
       () => Math.round(new Date().getTime() / 1000),
       null, // No EMP Address needed since we're passing identifier explicitly
-      priceFeedConfig,
+      this.commonPriceFeedConfig,
       identifier
     );
-    this.priceFeedCache[identifier] = newPriceFeed;
+    if (newPriceFeed) this.priceFeedCache[identifier] = newPriceFeed;
     return newPriceFeed;
   }
 }
