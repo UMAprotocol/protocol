@@ -24,7 +24,7 @@ function Dashboard() {
     designatedVoting: drizzleState.contracts[deployedDesignatedVotingAddress]
   }));
 
-  const { shouldShowBanner, oldDesignatedVotingAddress, balance } = useCacheCall(
+  const { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance } = useCacheCall(
     ["OldDesignatedVotingFactory", "VotingToken"],
     call => {
       if (!account) return {};
