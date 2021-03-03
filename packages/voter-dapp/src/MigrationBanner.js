@@ -7,7 +7,6 @@ function eslink(addr) {
   return `https://etherscan.io/address/${addr}`;
 }
 
-const OpenNewTab = link => () => window.open(link, "_blank");
 // This is ok to hard code for now
 const migrationLink = "https://docs.google.com/document/d/1dVQuMwiVsSEtlPFFl7AsCDe02-njgfLCLZr7a7zGUNo";
 
@@ -21,11 +20,14 @@ function MigrationBanner({ oldDesignatedVotingAddress, balance }) {
           here
         </a>
         &nbsp;which holds {balance} <strong>UMA</strong> tokens. These tokens will not count towards a vote until you
-        migrate them to a new contract. Follow the migration guide to update your 2 Key contract.
+        migrate them to a new contract. Follow the&nbsp;
+        <strong>
+          <a href={migrationLink} rel="noopener noreferrer" target="_blank">
+            migration guide
+          </a>
+        </strong>
+        &nbsp;to update your 2 Key contract.
       </Typography>
-      <Button color="secondary" onClick={OpenNewTab(migrationLink)}>
-        <strong> Migration Guide</strong>
-      </Button>
     </NotificationBanner>
   );
 }
