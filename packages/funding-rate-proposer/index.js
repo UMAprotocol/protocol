@@ -45,7 +45,7 @@ async function run({
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "PerpetualFundingRateProposer#index",
-      message: "Perpetual funding rate proposer started 🌊",
+      message: "Perpetual funding rate proposer started 🌝",
       perpetualAddress,
       pollingDelay,
       errorRetries,
