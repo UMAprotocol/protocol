@@ -31,13 +31,13 @@ function Dashboard() {
       const oldDesignatedVotingAddress = call("OldDesignatedVotingFactory", "designatedVotingContracts", account);
       if (!oldDesignatedVotingAddress) return {};
       const balance = call("VotingToken", "balanceOf", oldDesignatedVotingAddress);
-      if (!oldDesignatedVotingBalance) return {};
+      if (!balance) return {};
 
-      const balanceBN = web3.utils.toBN(oldDesignatedVotingBalance.toString());
+      const balanceBN = web3.utils.toBN(balance.toString());
       const shouldShowBanner = !balanceBN.isZero();
       const formattedBalance = formatWithMaxDecimals(formatWei(balance, web3), 2, 4, false);
 
-      return { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance: formattedbalance };
+      return { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance: formattedBalance };
     }
   );
 
