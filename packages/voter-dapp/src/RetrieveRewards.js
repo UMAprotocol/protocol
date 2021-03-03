@@ -44,7 +44,6 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
 
     // Each of the following loops adds the relevant portions of the event state to the corresponding voteState data
     // structure.
-    console.log(retrievedRewardsEvents);
     for (const event of retrievedRewardsEvents) {
       const voteState = getVoteState(
         event.returnValues.identifier,
