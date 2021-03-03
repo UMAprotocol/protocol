@@ -1,5 +1,7 @@
 import winston from "winston";
 import Web3 from "web3";
+const { toWei, toBN } = Web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 import BigNumber from "bignumber.js";
 const ExchangeAdapterInterface = require("./exchange-adapters/ExchangeAdapterInterface");
 
@@ -9,11 +11,6 @@ import assert from "assert";
 export class RangeTrader {
   readonly normalizePriceFeedDecimals: any;
   readonly formatDecimalString: any;
-
-  readonly BN: any;
-  readonly toBN: any;
-  readonly toWei: any;
-  readonly fromWei: any;
 
   readonly tradeExecutionThreshold: any;
   readonly targetPriceSpread: any;
@@ -36,7 +33,10 @@ export class RangeTrader {
     readonly tokenPriceFeed: any,
     readonly referencePriceFeed: any,
     readonly exchangeAdapter: typeof ExchangeAdapterInterface,
-    readonly rangeTraderConfig: any
+    readonly rangeTraderConfig: {
+      tradeExecutionThreshold: number;
+      targetPriceSpread: number;
+    }
   ) {
     assert(tokenPriceFeed.priceFeedDecimals === referencePriceFeed.priceFeedDecimals, "pricefeed decimals must match");
 
@@ -50,11 +50,6 @@ export class RangeTrader {
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
-
-    // Helper functions from web3.
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-    this.fromWei = this.web3.utils.fromWei;
 
     // Default config settings.
     const defaultConfig = {
@@ -76,7 +71,7 @@ export class RangeTrader {
     const configWithDefaults = createObjectFromDefaultProps(rangeTraderConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
 
-    this.fixedPointAdjustment = this.toBN(this.toWei("1"));
+    this.fixedPointAdjustment = toBN(toWei("1"));
   }
 
   async checkRangeMovementsAndTrade() {
@@ -108,7 +103,7 @@ export class RangeTrader {
       preTradePriceDeviation: this.formatDecimalString(deviationError.muln(100)) + "%"
     };
     // If the deviation error is less then the threshold, then log and return. Else, enter trade execution logic.
-    if (deviationError.abs().lt(this.toBN(this.toWei(this.tradeExecutionThreshold.toString())))) {
+    if (deviationError.abs().lt(toBNWei(this.tradeExecutionThreshold))) {
       this.logger.debug({
         at: "RangeTrader",
         message: "The deviationError is less than the threshold to execute a trade",
@@ -123,11 +118,9 @@ export class RangeTrader {
     // try to trade the price down to 1.05x the desired price, or 1050. Similarly, if deviationError < 0 then
     // scalar = targetPriceSpread - 1. If the synthetic was trading at 800 then δ = (750 - 1000) / 1000 = -0.25 then the
     // the scalar = 1 - 0.05 = 0.95. Therefore the bot will trade the price up to 950.
-    const priceScalar = deviationError.gte(this.toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
+    const priceScalar = deviationError.gte(toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
 
-    const desiredPrice = currentReferencePrice
-      .mul(this.toBN(this.toWei(priceScalar.toString())))
-      .div(this.fixedPointAdjustment);
+    const desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
 
     this.logger.debug({
       at: "RangeTrader",
@@ -164,7 +157,6 @@ export class RangeTrader {
     });
   }
 
-  // TODO: replace the any type with bignumber types. I'm not exactly sure what the best practice is to do this in typescript.
   // TODO: this method was taken from the SyntheticPegMonitor verbatim. Ideally it should be refactored into a common utility that both can use.
   _calculateDeviationError(observedValue: BigNumber, expectedValue: BigNumber) {
     return this.normalizePriceFeedDecimals(observedValue)

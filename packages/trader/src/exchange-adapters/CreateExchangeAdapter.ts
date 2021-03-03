@@ -30,7 +30,7 @@ async function createExchangeAdapter(logger: winston.Logger, web3: Web3, dsProxy
 }
 
 // TODO: this method was taken verbatim from the create price feed class. it should be refactored to a common util.
-function isMissingField(config: any, requiredFields: Array<string>, logger: any) {
+function isMissingField(config: { [key: string]: string }, requiredFields: Array<string>, logger: winston.Logger) {
   const missingField = requiredFields.find(field => config[field] === undefined);
   if (missingField !== undefined) {
     logger.error({
