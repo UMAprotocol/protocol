@@ -20,6 +20,38 @@ function mdlink(text, link) {
   return `[${text}](${link})`;
 }
 
+function dappMiningPrTemplate({ issueNumber, config }) {
+  const { name, startTime, endTime, rewardFactor, totalRewards, empRewards } = config;
+  const startDate = moment(startTime)
+    .utc()
+    .format("YYYY/MM/DD");
+  const endDate = moment(endTime)
+    .utc()
+    .format("YYYY/MM/DD");
+  const title = `improve(affiliates): Dapp Mining rewards for ${name} ${startDate} through ${endDate}`;
+  const body = `
+**Motivation**
+#${issueNumber}
+
+**Details**
+Dapp mining for yd-eth-march using .3 of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
+
+Reproduce with config.json
+\`\`\`
+${JSON.stringify(config, null, 2)}
+\`\`\`
+
+And run with \`node apps/DappMiningRewards.js config.json\`
+
+**Issue(s)**
+Fixes #${issueNumber}
+`;
+  return {
+    title,
+    body
+  };
+}
+
 // Generates the title and body for a dev mining PR.
 function devMiningPrTemplate({
   issueNumber,
@@ -319,5 +351,6 @@ module.exports = {
   devMiningPeriodByWeek,
   saveToDisk,
   generateDappMiningConfig,
-  devMiningPrTemplate
+  devMiningPrTemplate,
+  dappMiningPrTemplate
 };
