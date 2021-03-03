@@ -481,7 +481,7 @@ const defaultConfigs = {
   },
   uSTONKS_APR21: {
     type: "uniswap",
-    uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
+    uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
     poolDecimals: 6
   },
