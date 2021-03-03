@@ -30,7 +30,16 @@ function Dashboard() {
     call => {
       if (!account) return {};
       const oldDesignatedVotingAddress = call("OldDesignatedVotingFactory", "designatedVotingContracts", account);
-      if (!oldDesignatedVotingAddress) return {};
+      if (!oldDesignatedVotingAddress || oldDesignatedVotingAddress === addressZero) return {};
+
+      // Handle special case where there is no old designated voting factory so it is set to the new one.
+      const { toChecksumAddress } = web3.utils;
+      if (
+        deployedDesignatedVotingAddress &&
+        toChecksumAddress(oldDesignatedVotingAddress) === toChecksumAddress(deployedDesignatedVotingAddress)
+      )
+        return {};
+
       const balance = call("VotingToken", "balanceOf", oldDesignatedVotingAddress);
       if (!balance) return {};
 
@@ -100,7 +109,9 @@ function Dashboard() {
         <Header votingAccount={votingAccount} />
       </AppBar>
 
-      {shouldShowBanner && <MigrationBanner oldDesignatedVotingAddress={oldDesignatedVotingAddress} balance={oldDesignatedVotingBalance}/>}
+      {shouldShowBanner && (
+        <MigrationBanner oldDesignatedVotingAddress={oldDesignatedVotingAddress} balance={oldDesignatedVotingBalance} />
+      )}
       {designatedVotingHelpers}
       <RetrieveRewards votingAccount={votingAccount} />
       <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} snapshotContract="Voting" />
