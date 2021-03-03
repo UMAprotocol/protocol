@@ -329,6 +329,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
                 await decryptMessage(decryptionKeys[account][currentRoundId].privateKey, voteStatus.committedValue)
               );
             } catch (err) {
+              // Logging this error and returning empty string, to follow the same pattern as return below.
+              console.error("Error decrypting vote status:", err);
               return "";
             }
           } else {
@@ -361,7 +363,6 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       .catch(err => console.log("snapshot error", err));
   };
 
-  // keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier))
   const onClickHandler = () => {
     const reveals = [];
     for (const index in checkboxesChecked) {
