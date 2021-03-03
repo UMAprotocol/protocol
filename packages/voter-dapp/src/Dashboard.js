@@ -8,12 +8,15 @@ import DesignatedVotingTransfer from "./DesignatedVotingTransfer.js";
 import DesignatedVoting from "@uma/core/build/contracts/DesignatedVoting.json";
 import RetrieveRewards from "./RetrieveRewards.js";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
+import { formatWithMaxDecimals, formatWei } from "@uma/common";
+import MigrationBanner from "./MigrationBanner";
 
 function Dashboard() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   }));
+  const { web3 } = drizzle;
 
   const addressZero = "0x0000000000000000000000000000000000000000";
 
@@ -21,6 +24,32 @@ function Dashboard() {
   const { designatedVoting } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     designatedVoting: drizzleState.contracts[deployedDesignatedVotingAddress]
   }));
+
+  const { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance } = useCacheCall(
+    ["OldDesignatedVotingFactory", "VotingToken"],
+    call => {
+      if (!account) return {};
+      const oldDesignatedVotingAddress = call("OldDesignatedVotingFactory", "designatedVotingContracts", account);
+      if (!oldDesignatedVotingAddress || oldDesignatedVotingAddress === addressZero) return {};
+
+      // Handle special case where there is no old designated voting factory so it is set to the new one.
+      const { toChecksumAddress } = web3.utils;
+      if (
+        deployedDesignatedVotingAddress &&
+        toChecksumAddress(oldDesignatedVotingAddress) === toChecksumAddress(deployedDesignatedVotingAddress)
+      )
+        return {};
+
+      const balance = call("VotingToken", "balanceOf", oldDesignatedVotingAddress);
+      if (!balance) return {};
+
+      const balanceBN = web3.utils.toBN(balance.toString());
+      const shouldShowBanner = !balanceBN.isZero();
+      const formattedBalance = formatWithMaxDecimals(formatWei(balance, web3), 2, 4, false);
+
+      return { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance: formattedBalance };
+    }
+  );
 
   // We only want to run `drizzle.addContract` once, even if a change deep inside the `drizzle` object retriggers this
   // `useEffect`.
@@ -79,6 +108,10 @@ function Dashboard() {
       <AppBar color="secondary" position="static">
         <Header votingAccount={votingAccount} />
       </AppBar>
+
+      {shouldShowBanner && (
+        <MigrationBanner oldDesignatedVotingAddress={oldDesignatedVotingAddress} balance={oldDesignatedVotingBalance} />
+      )}
       {designatedVotingHelpers}
       <RetrieveRewards votingAccount={votingAccount} />
       <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} snapshotContract="Voting" />
