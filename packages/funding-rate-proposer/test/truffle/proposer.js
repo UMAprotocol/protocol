@@ -8,7 +8,7 @@ const sinon = require("sinon");
 
 const { toWei, utf8ToHex } = web3.utils;
 
-const { FundingRateProposer } = require("../../src/fundingRateProposer");
+const { FundingRateProposer } = require("../../src/proposer");
 const {
   FinancialContractFactoryEventClient,
   GasEstimator,

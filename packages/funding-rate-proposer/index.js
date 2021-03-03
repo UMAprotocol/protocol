@@ -10,7 +10,7 @@ const {
   FinancialContractFactoryEventClient,
   GasEstimator
 } = require("@uma/financial-templates-lib");
-const { FundingRateProposer } = require("./src/fundingRateProposer");
+const { FundingRateProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");

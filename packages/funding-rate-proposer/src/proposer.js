@@ -75,7 +75,7 @@ class FundingRateProposer {
     // Once PerpFactory client is updated, cache contract instances for each address deployed.
     this._cachePerpetualContracts();
 
-    // Increase allowances for all relevant collateral currencies.
+    // Increase allowances for all contracts to spend the bot owner's respective collateral currency.
     await this._setAllowances();
   }
 
