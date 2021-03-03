@@ -44,11 +44,12 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
 
     // Each of the following loops adds the relevant portions of the event state to the corresponding voteState data
     // structure.
+    console.log(retrievedRewardsEvents);
     for (const event of retrievedRewardsEvents) {
       const voteState = getVoteState(
         event.returnValues.identifier,
         event.returnValues.time,
-        event.returnValues.ancillaryData
+        event.returnValues.ancillaryData || DEFAULT_ANCILLARY_DATA
       );
 
       voteState.retrievedRewards = true;
@@ -59,7 +60,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
     // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_JS_INT;
     for (const reveal of reveals) {
-      const voteState = getVoteState(reveal.identifier, reveal.time, reveal.ancillaryData);
+      const voteState = getVoteState(reveal.identifier, reveal.time, reveal.ancillaryData || DEFAULT_ANCILLARY_DATA);
       const revealRound = reveal.revealRound.toString();
       const revealPrice = reveal.revealPrice.toString();
       const lastVotingRound = reveal.lastVotingRound.toString();
