@@ -35,7 +35,7 @@ const expectedClaimsKeys = [
   "hasClaimed"
 ];
 
-// Kovan information
+// Kovan information.
 const validClaimerAddress1 = "0x00b591bc2b682a0b30dd72bac9406bfa13e5d3cd"; // Address that has 6 unclaimed windows.
 const validClaimerAddress2 = "0x01b01c6fb158e55c83883219a533f1efd2abfdf4"; // Address that has 4 unclaimed windows and 1 claimed window.
 const invalidClaimerAddress = "0x0000000000000000000000000000000000000000";

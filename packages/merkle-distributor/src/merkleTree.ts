@@ -1,3 +1,5 @@
+// This script provides some useful methods for building MerkleTrees. It is taken verbatim from the uniswap implementation
+// https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts
 import { bufferToHex, keccak256 } from "ethereumjs-util";
 
 export default class MerkleTree {
