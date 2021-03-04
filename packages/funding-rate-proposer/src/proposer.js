@@ -250,19 +250,17 @@ class FundingRateProposer {
   }
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
-    // Get new approval receipts or null if approval was unneccessary.
-    const newApprovals = await Promise.map(Object.keys(this.contractCache), contractAddress => {
+    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
       // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-      return setAllowance(
+      const receipt = await setAllowance(
         this.web3,
         this.gasEstimator,
         this.account,
         contractAddress,
         this.contractCache[contractAddress].collateralAddress
       );
-    });
-    newApprovals.forEach(receipt => {
+      // receipt is null if allowance transaction was not sent, for example because allowance is already high enough.
       if (receipt) {
         this.logger.info({
           at: "PerpetualProposer",
@@ -276,7 +274,7 @@ class FundingRateProposer {
   }
 
   async _cacheAndUpdatePriceFeeds() {
-    for (let contractAddress of Object.keys(this.contractCache)) {
+    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
       const fundingRateIdentifier = this.hexToUtf8(
         this.contractCache[contractAddress].state.currentFundingRateData.identifier
       );
@@ -303,7 +301,7 @@ class FundingRateProposer {
         this.priceFeedCache[fundingRateIdentifier] = priceFeed;
       }
       await priceFeed.update();
-    }
+    });
   }
 
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.

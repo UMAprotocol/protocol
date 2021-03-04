@@ -58,7 +58,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
   };
 
   const deployNewContract = async type => {
-    if (type === "Perpetual") {
+    if (type === "PerpetualCreator") {
       const perpAddress = await perpFactory.createPerpetual.call(defaultPerpCreationParams, configStoreParams, {
         from: deployer
       });
@@ -111,8 +111,8 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
 
     // Create new financial contracts:
-    await deployNewContract("ExpiringMultiParty");
-    await deployNewContract("Perpetual");
+    await deployNewContract("ExpiringMultiPartyCreator");
+    await deployNewContract("PerpetualCreator");
 
     // The Event client does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
@@ -129,7 +129,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       empFactory.address,
       0, // startingBlockNumber
       null, // endingBlockNumber
-      "ExpiringMultiParty"
+      "ExpiringMultiPartyCreator"
     );
 
     await empClient.clearState();
@@ -151,7 +151,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     );
 
     // Correctly adds only new events after last query
-    await deployNewContract("ExpiringMultiParty");
+    await deployNewContract("ExpiringMultiPartyCreator");
     await empClient.clearState();
     await empClient.update();
     assert.deepStrictEqual(
@@ -174,7 +174,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       perpFactory.address,
       0, // startingBlockNumber
       null, // endingBlockNumber
-      "Perpetual"
+      "PerpetualCreator"
     );
 
     await perpClient.clearState();
@@ -196,7 +196,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     );
 
     // Correctly adds only new events after last query
-    await deployNewContract("Perpetual");
+    await deployNewContract("PerpetualCreator");
     await perpClient.clearState();
     await perpClient.update();
     assert.deepStrictEqual(
@@ -223,7 +223,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       perpFactory.address,
       currentBlockNumber + 1, // Start the bot one block after the latest event
       null, // endingBlockNumber
-      "Perpetual"
+      "PerpetualCreator"
     );
     const currentTimestamp = (await web3.eth.getBlock("latest")).timestamp;
     await advanceBlockAndSetTime(web3, currentTimestamp + 1);
@@ -233,5 +233,48 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     await offsetClient.update();
 
     assert.deepStrictEqual([], offsetClient.getAllCreatedContractEvents());
+  });
+  it("Client correctly defaults to PerpetualCreator", async function() {
+    perpClient = new FinancialContractFactoryEventClient(
+      dummyLogger,
+      PerpetualCreator.abi,
+      web3,
+      perpFactory.address,
+      0,
+      null
+    );
+    assert.equal(perpClient.getContractType(), "PerpetualCreator");
+  });
+  it("Correctly rejects invalid contract types", async function() {
+    let didThrow = false;
+    try {
+      perpClient = new FinancialContractFactoryEventClient(
+        dummyLogger,
+        PerpetualCreator.abi,
+        web3,
+        perpFactory.address,
+        0,
+        null,
+        "ExpiringMultiParty"
+      );
+    } catch (error) {
+      didThrow = true;
+    }
+    assert.isTrue(didThrow);
+    didThrow = false;
+    try {
+      perpClient = new FinancialContractFactoryEventClient(
+        dummyLogger,
+        PerpetualCreator.abi,
+        web3,
+        perpFactory.address,
+        0,
+        null,
+        "Perpetual"
+      );
+    } catch (error) {
+      didThrow = true;
+    }
+    assert.isTrue(didThrow);
   });
 });

@@ -61,7 +61,9 @@ async function run({
       logger,
       getAbi("PerpetualCreator"),
       web3,
-      getAddress("PerpetualCreator", networkId)
+      getAddress("PerpetualCreator", networkId),
+      0 // Force startingBlock=0 so we can get ALL deployed contracts.
+      // Leave endingBlock=null so that we can get all events up to latest block.
     );
     const gasEstimator = new GasEstimator(logger);
 

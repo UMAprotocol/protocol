@@ -18,7 +18,7 @@ class FinancialContractFactoryEventClient {
     financialContractFactoryAddress,
     startingBlockNumber = 0,
     endingBlockNumber = null,
-    contractType = "Perpetual"
+    contractType = "PerpetualCreator"
     // Default to PerpetualMultiParty for now since the first intended user is the funding rate proposer bot
   ) {
     this.logger = logger;
@@ -41,11 +41,19 @@ class FinancialContractFactoryEventClient {
     this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
 
+    if (contractType != "ExpiringMultiPartyCreator" && contractType != "PerpetualCreator")
+      throw new Error(
+        `Invalid contract type provided: ${contractType}! The financial product factory client only supports ExpiringMultiPartyCreator or PerpetualCreator`
+      );
     this.contractType = contractType;
   }
   // Delete all events within the client
   async clearState() {
     this.createdContractEvents = [];
+  }
+
+  getContractType() {
+    return this.contractType;
   }
 
   getAllCreatedContractEvents() {
@@ -72,7 +80,8 @@ class FinancialContractFactoryEventClient {
     };
 
     // Look for events on chain from the previous seen block number to the current block number.
-    const eventToSearchFor = this.contractType === "Perpetual" ? "CreatedPerpetual" : "CreatedExpiringMultiParty";
+    const eventToSearchFor =
+      this.contractType === "PerpetualCreator" ? "CreatedPerpetual" : "CreatedExpiringMultiParty";
     const [currentTime, createdContractEventsObj] = await Promise.all([
       this.financialContractFactory.methods.getCurrentTime().call(),
       this.financialContractFactory.getPastEvents(eventToSearchFor, blockSearchConfig)
@@ -87,7 +96,7 @@ class FinancialContractFactoryEventClient {
         blockNumber: event.blockNumber,
         deployerAddress: event.returnValues.deployerAddress,
         contractAddress:
-          this.contractType === "Perpetual"
+          this.contractType === "PerpetualCreator"
             ? event.returnValues.perpetualAddress
             : event.returnValues.expiringMultiPartyAddress
       });

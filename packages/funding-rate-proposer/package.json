@@ -30,7 +30,8 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "truffle test ./test/truffle/*"
+    "test": "yarn hardhat-test",
+    "hardhat-test": "hardhat test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

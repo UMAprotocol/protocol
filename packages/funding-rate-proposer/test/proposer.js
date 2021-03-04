@@ -160,8 +160,7 @@ contract("Perpetual: proposer.js", function(accounts) {
         web3,
         perpFactory.address,
         0, // startingBlockNumber
-        null, // endingBlockNumber
-        "Perpetual"
+        null // endingBlockNumber
       );
 
       gasEstimator = new GasEstimator(spyLogger);
