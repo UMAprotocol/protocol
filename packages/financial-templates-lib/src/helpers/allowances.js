@@ -8,10 +8,7 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
 
   // Increase `perpetualAddress` allowance to MAX for the collateral @ `currencyAddress`
   const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
-  const currentCollateralAllowance = await collateralToken.methods.allowance(ownerAddress, spenderAddress).call({
-    from: ownerAddress,
-    gasPrice: gasEstimator.getCurrentFastPrice()
-  });
+  const currentCollateralAllowance = await collateralToken.methods.allowance(ownerAddress, spenderAddress).call();
   if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
     return {
       tx: await collateralToken.methods.approve(spenderAddress, MAX_UINT_VAL).send({
