@@ -483,7 +483,6 @@ const defaultConfigs = {
     type: "uniswap",
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
-    poolDecimals: 6,
     invertPrice: true
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
