@@ -44,6 +44,7 @@ abstract contract VotingAncillaryInterfaceTesting is OracleAncillaryInterface, V
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        bytes ancillaryData,
         uint256 numTokens
     );
 

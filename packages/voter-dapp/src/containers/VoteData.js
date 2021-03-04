@@ -1,5 +1,5 @@
 import { createContainer } from "unstated-next";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 
 import { useQuery } from "@apollo/client";
@@ -23,7 +23,7 @@ function useVoteData() {
   const getRequestKey = (time, identifier, roundId) => {
     return identifier + "-" + time + "-" + roundId;
   };
-  const getVoteStats = () => {
+  const getVoteStats = useCallback(() => {
     if (error) {
       console.error("Failed to get data:", error);
     }
@@ -116,12 +116,12 @@ function useVoteData() {
 
       setRoundVoteData(newVoteData);
     }
-  };
+  }, [data, error, fromWei, loading, toBN, toChecksumAddress, toWei]);
 
   // Refresh the object every time the graphQL API response changes
   useEffect(() => {
     getVoteStats();
-  }, [loading, error, data]);
+  }, [loading, error, data, getVoteStats]);
 
   return { roundVoteData, getRequestKey };
 }

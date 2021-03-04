@@ -35,7 +35,7 @@ async function registerContract(registry) {
 //   2. Registers the deployer's address as a derivative.
 //   3. Adds the specified identifier with Voting.
 //   4. Requests a price at the specified time.
-async function run(deployedFinder, identifier, timeString) {
+async function run(deployedFinder, identifier, timeString, ancillaryData = "") {
   try {
     const deployedRegistry = await Registry.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
@@ -43,6 +43,7 @@ async function run(deployedFinder, identifier, timeString) {
     await registerContract(deployedRegistry);
 
     const identifierInBytes = web3.utils.fromAscii(identifier);
+    const ancillaryDataInBytes = ancillaryData.length ? web3.utils.fromAscii(ancillaryData) : null;
 
     let timeInSeconds = parseInt(timeString);
     if (timeInSeconds === 0) {
@@ -61,13 +62,24 @@ async function run(deployedFinder, identifier, timeString) {
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist))
     );
     await deployedIdentifierWhitelist.addSupportedIdentifier(identifierInBytes);
-    const priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
+    let priceExists;
+
+    if (ancillaryDataInBytes) {
+      priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN, ancillaryDataInBytes);
+    } else {
+      priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
+    }
     if (priceExists) {
-      console.log(`Price already exists for ${identifier} @ ${time}`);
+      console.log(`Price already exists for ${identifier} @ ${time} : ${ancillaryData}`);
       return;
     }
 
-    await deployedVoting.requestPrice(identifierInBytes, timeInBN);
+    if (ancillaryDataInBytes) {
+      await deployedVoting.requestPrice(identifierInBytes, timeInBN, ancillaryDataInBytes);
+    } else {
+      await deployedVoting.requestPrice(identifierInBytes, timeInBN);
+    }
+
     console.log(`Price requested for ${identifier} @ ${time}`);
   } catch (err) {
     console.error(err);
@@ -102,10 +114,10 @@ const runRequestOraclePrice = async function(callback) {
       }
 
       // Request the price.
-      await run(finder, argv.identifier, argv.time);
+      await run(finder, argv.identifier, argv.time, argv.ancillaryData);
     });
   } else {
-    await run(finder, argv.identifier, argv.time);
+    await run(finder, argv.identifier, argv.time, argv.ancillaryData);
 
     // Note: only call the callback in the non-server case. In the server case, the server is expected to run
     // indefinitely.
