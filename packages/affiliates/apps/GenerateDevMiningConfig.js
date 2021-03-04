@@ -13,4 +13,5 @@ async function App(whitelist) {
 
 makeUnixPipe(App)
   .then(console.log)
-  .catch(console.error);
+  .catch(console.error)
+  .finally(() => process.exit());

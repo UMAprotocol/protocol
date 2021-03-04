@@ -314,6 +314,8 @@ async function saveToDisk(fn, result) {
 // which is then parsed as a json object. Its then passed into callback which allows abitrary processing.
 // The callback can return valid json, which will get stringified and returned. Typically this gets logged to std out.
 function makeUnixPipe(cb, stdin = process.stdin) {
+  // This is a way to detect if a unix pipe is set up for stdin https://nodejs.org/dist/latest-v6.x/docs/api/process.html#process_a_note_on_process_i_o
+  assert(!stdin.isTTY, "This application requires JSON string compatible data to be piped through stdin");
   return (
     highland(stdin)
       // stdin is a stream of chars. This appends all chars into a string, which ends at end of input.
