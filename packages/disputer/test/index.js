@@ -32,7 +32,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -236,9 +236,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fourth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 4, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 4, `"contractType":"${contractVersion.contractType}"`));
 
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         let didThrowError = false;
