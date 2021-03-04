@@ -52,7 +52,7 @@ contract MerkleDistributor is Ownable, Testable {
     // downside is having to include an `accountIndex` in the merkle leaf.
     mapping(uint256 => mapping(address => bool)) public claimed;
 
-    // Index of last seeded root. Next allocation to begin at `lastSeededIndex + 1`.
+    // Index of last created Merkle root. Next allocation to begin at `lastCreatedIndex + 1`.
     uint256 public lastCreatedIndex;
 
     // Events:
@@ -107,10 +107,10 @@ contract MerkleDistributor is Ownable, Testable {
         address rewardToken,
         bytes32 merkleRoot
     ) external onlyOwner {
-        uint256 indexToSeed = lastSeededIndex;
-        lastSeededIndex = indexToSeed.add(1);
+        uint256 indexToSet = lastCreatedIndex;
+        lastCreatedIndex = indexToSet.add(1);
 
-        _setWindow(indexToSeed, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
+        _setWindow(indexToSet, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.

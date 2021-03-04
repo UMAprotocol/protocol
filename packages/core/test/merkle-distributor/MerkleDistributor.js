@@ -107,8 +107,8 @@ contract("MerkleDistributor.js", function(accounts) {
       assert.equal(windowState.merkleRoot, merkleTree.getRoot());
       assert.equal(windowState.rewardToken, rewardToken.address);
 
-      // Check that latest seed index has incremented.
-      assert.equal((await merkleDistributor.lastSeededIndex()).toString(), (windowIndex + 1).toString());
+      // Check that latest created index has incremented.
+      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), (windowIndex + 1).toString());
 
       // Claim for all accounts:
       for (let i = 0; i < rewardLeafs.length; i++) {
@@ -324,7 +324,7 @@ contract("MerkleDistributor.js", function(accounts) {
         });
         // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
         // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-        assert.equal(claimTx.receipt.gasUsed, 92051);
+        assert.equal(claimTx.receipt.gasUsed, 92029);
       });
       it("invalid proof", async function() {
         // Incorrect account:
@@ -510,8 +510,8 @@ contract("MerkleDistributor.js", function(accounts) {
         (await rewardToken.balanceOf(contractCreator)).toString()
       );
     });
-    it("(lastSeededIndex): starts at 1 and increments on each seed", async function() {
-      assert.equal((await merkleDistributor.lastSeededIndex()).toString(), "0");
+    it("(lastCreatedIndex): starts at 1 and increments on each seed", async function() {
+      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), "0");
 
       await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
@@ -521,7 +521,7 @@ contract("MerkleDistributor.js", function(accounts) {
         { from: contractCreator }
       );
 
-      assert.equal((await merkleDistributor.lastSeededIndex()).toString(), "1");
+      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), "1");
     });
   });
   describe("Emergency admin functions", function() {
