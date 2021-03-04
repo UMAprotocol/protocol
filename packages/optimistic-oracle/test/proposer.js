@@ -548,31 +548,4 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query historical price for price request"));
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
   });
-
-  it("Cannot set disputePriceErrorPercent < 0 or >= 1", async function() {
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: -0.1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: 1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
-  });
 });

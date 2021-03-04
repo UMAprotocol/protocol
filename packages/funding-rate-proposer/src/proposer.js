@@ -1,7 +1,8 @@
 const {
   Networker,
   createReferencePriceFeedForFinancialContract,
-  setAllowance
+  setAllowance,
+  isDeviationOutsideErrorMargin
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
@@ -66,7 +67,9 @@ class FundingRateProposer {
         //                                      e.g. 0.05 implies 5% margin of error.
         value: 0.05,
         isValid: x => {
-          return x >= 0;
+          return !isNaN(x);
+          // Negative allowed-margins might be useful based on the implementation
+          // of `isDeviationOutsideErrorMargin()`
         }
       }
     };
@@ -170,11 +173,13 @@ class FundingRateProposer {
     }
 
     // If the saved funding rate is not equal to the current funding rate within margin of error, then
-    // prepare request to update. We're assuming that the `offchainFundingRate` is the baseline
+    // prepare request to update. We're assuming that the `offchainFundingRate` is the baseline or "expected"
     // price.
-    let isPriceDisputable = !this._comparePricesWithErrorMargin(
-      this.toBN(offchainFundingRate),
-      this.toBN(onchainFundingRate)
+    let isPriceDisputable = isDeviationOutsideErrorMargin(
+      this.toBN(onchainFundingRate), // ObservedValue
+      this.toBN(offchainFundingRate), // ExpectedValue
+      this.toBN(this.toWei("1")),
+      this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
     if (isPriceDisputable) {
       // Get successful transaction receipt and return value or error.
@@ -356,24 +361,6 @@ class FundingRateProposer {
         currentConfig
       }
     };
-  }
-
-  // TODO: This logic should be refactored out of this bot because similar logic is used in the
-  // SyntheticPegMonitor, OptimisticOracleProposer, and RangeTrader
-  // Return true if `_baselinePrice` * (1 - error %) <= `_testPrice` <= `_baselinePrice` * (1 + error %)
-  // else false.
-  _comparePricesWithErrorMargin(_baselinePrice, _testPrice) {
-    // Note: BN.js does not perform math on decimals, so we will convert the %'s to Wei and back.
-    // TODO: When `baselinePrice == 0`, then this returns True only if `testPrice == 0`, and
-    //       when `testPrice == 0`, then this can't return True unless `errorMargin > 1`.
-    const lowerMargin = _baselinePrice
-      .mul(this.toBN(this.toWei((1 - this.fundingRateErrorPercent).toString())))
-      .div(this.toBN(this.toWei("1")));
-    const upperMargin = _baselinePrice
-      .mul(this.toBN(this.toWei((1 + this.fundingRateErrorPercent).toString())))
-      .div(this.toBN(this.toWei("1")));
-
-    return _testPrice.gte(lowerMargin) && _testPrice.lte(upperMargin);
   }
 }
 

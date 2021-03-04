@@ -1,7 +1,8 @@
 const {
   Networker,
   createReferencePriceFeedForFinancialContract,
-  setAllowance
+  setAllowance,
+  isDeviationOutsideErrorMargin
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 
@@ -56,7 +57,9 @@ class OptimisticOracleProposer {
         //                                 computed by the local pricefeed.
         value: 0.05,
         isValid: x => {
-          return x >= 0 && x < 1;
+          return !isNaN(x);
+          // Negative allowed-margins might be useful based on the implementation
+          // of `isDeviationOutsideErrorMargin()`
         }
       }
     };
@@ -241,25 +244,14 @@ class OptimisticOracleProposer {
       return;
     }
 
-    // Return true if `_baselinePrice` * (1 - error %) <= `_testPrice` <= `_baselinePrice` * (1 + error %)
-    // else false.
-    const _comparePricesWithErrorMargin = (_baselinePrice, _testPrice) => {
-      // Note: BN.js does not perform math on decimals, so we will convert the %'s to Wei and back.
-      const lowerMargin = _baselinePrice
-        .mul(this.toBN(this.toWei((1 - this.disputePriceErrorPercent).toString())))
-        .div(this.toBN(this.toWei("1")));
-      const upperMargin = _baselinePrice
-        .mul(this.toBN(this.toWei((1 + this.disputePriceErrorPercent).toString())))
-        .div(this.toBN(this.toWei("1")));
-      return _testPrice.gte(lowerMargin) && _testPrice.lte(upperMargin);
-    };
-
     // If proposal price is not equal to the dispute price within margin of error, then
-    // prepare dispute. Basically we're assuming that the `disputePrice` is the baseline
+    // prepare dispute. We're assuming that the `disputePrice` is the baseline or "expected"
     // price.
-    let isPriceDisputable = !_comparePricesWithErrorMargin(
-      this.toBN(disputePrice.toString()),
-      this.toBN(proposalPrice.toString())
+    let isPriceDisputable = isDeviationOutsideErrorMargin(
+      this.toBN(proposalPrice.toString()), // ObservedValue
+      this.toBN(disputePrice.toString()), // ExpectedValue
+      this.toBN(this.toWei("1")),
+      this.toBN(this.toWei(this.disputePriceErrorPercent.toString()))
     );
     if (isPriceDisputable) {
       // Get successful transaction receipt and return value or error.

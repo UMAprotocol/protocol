@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { getWeb3, MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const {
@@ -14,7 +14,8 @@ const {
   Logger,
   createReferencePriceFeedForFinancialContract,
   waitForLogger,
-  delay
+  delay,
+  setAllowance
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
@@ -52,7 +53,6 @@ async function run({
   endingBlock
 }) {
   try {
-    const { toBN } = web3.utils;
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -133,7 +133,6 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-
       withdrawLiveness
     ] = await Promise.all([
       financialContract.methods.collateralRequirement().call(),
@@ -146,14 +145,7 @@ async function run({
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [
-      currentCollateralAllowance,
-      currentSyntheticAllowance,
-      collateralDecimals,
-      syntheticDecimals
-    ] = await Promise.all([
-      collateralToken.methods.allowance(accounts[0], financialContractAddress).call(),
-      syntheticToken.methods.allowance(accounts[0], financialContractAddress).call(),
+    const [collateralDecimals, syntheticDecimals] = await Promise.all([
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
@@ -200,6 +192,7 @@ async function run({
     );
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
 
     if (oneSplitAddress) {
       logger.info({
@@ -232,28 +225,22 @@ async function run({
 
     // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
     // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    if (toBN(currentCollateralAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
+    const [collateralApproval, syntheticApproval] = await Promise.all([
+      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
+      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
+    ]);
+    if (collateralApproval) {
       logger.info({
         at: "Liquidator#index",
         message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApproval.tx.transactionHash
       });
     }
-    if (toBN(currentSyntheticAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const syntheticApprovalTx = await syntheticToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
+    if (syntheticApproval) {
       logger.info({
         at: "Liquidator#index",
         message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
-        syntheticApprovalTx: syntheticApprovalTx.transactionHash
+        syntheticApprovalTx: syntheticApproval.tx.transactionHash
       });
     }
 
