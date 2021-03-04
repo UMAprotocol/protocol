@@ -38,7 +38,7 @@ export class RangeTrader {
       targetPriceSpread: number;
     }
   ) {
-    assert(tokenPriceFeed.priceFeedDecimals === referencePriceFeed.priceFeedDecimals, "pricefeed decimals must match");
+    assert(tokenPriceFeed.getPriceFeedDecimals() === referencePriceFeed.getPriceFeedDecimals(), "decimals must match");
 
     this.logger = logger;
     this.web3 = web3;
@@ -46,7 +46,7 @@ export class RangeTrader {
     this.referencePriceFeed = referencePriceFeed;
     this.exchangeAdapter = exchangeAdapter;
 
-    this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.priceFeedDecimals, 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
