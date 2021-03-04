@@ -53,7 +53,7 @@ contract MerkleDistributor is Ownable, Testable {
     mapping(uint256 => mapping(address => bool)) public claimed;
 
     // Index of last seeded root. Next allocation to begin at `lastSeededIndex + 1`.
-    uint256 public lastSeededIndex;
+    uint256 public lastCreatedIndex;
 
     // Events:
     event Claimed(
