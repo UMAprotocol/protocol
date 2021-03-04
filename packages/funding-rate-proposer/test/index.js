@@ -1,7 +1,3 @@
-// Note: This is placed within the /truffle folder because EmpCreator/PerpCreator.new() fails due to incorrect library linking by hardhat.
-// `Error: ExpiringMultiPartyCreator contains unresolved libraries. You must deploy and link the following libraries before
-//         you can deploy a new version of ExpiringMultiPartyCreator: $585a446ef18259666e65e81865270bd4dc$`
-// We should look more into library linking via hardhat within a script: https://hardhat.org/plugins/hardhat-deploy.html#handling-contract-using-libraries
 const Main = require("../index.js");
 
 const winston = require("winston");
@@ -10,29 +6,23 @@ const sinon = require("sinon");
 const { toWei, utf8ToHex } = web3.utils;
 
 const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
-const { interfaceName, RegistryRolesEnum, addGlobalHardhatTestingAddress } = require("@uma/common");
+const { addGlobalHardhatTestingAddress } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
-const Finder = getTruffleContract("Finder", web3);
-const Store = getTruffleContract("Store", web3);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
-const Registry = getTruffleContract("Registry", web3);
 
 contract("index.js", function(accounts) {
   const deployer = accounts[0];
 
   // Contracts
   let perpFactory;
-  let finder;
-  let store;
   let timer;
   let identifierWhitelist;
   let collateralWhitelist;
-  let registry;
   let collateral;
   let perpsCreated = [];
 
@@ -73,31 +63,19 @@ contract("index.js", function(accounts) {
   let commonPriceFeedConfig = { currentPrice: "1", historicalPrice: "1" };
 
   before(async function() {
-    finder = await Finder.deployed();
     timer = await Timer.deployed();
     perpFactory = await PerpetualCreator.deployed();
-    // Set the address in the global name space to enable proposer's index.js to access it.
+    // Set the address in the global name space to enable proposer's index.js to access it via `core/getAddressTest`.
     addGlobalHardhatTestingAddress("PerpetualCreator", perpFactory.address);
 
     // Whitelist an initial identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.fundingRateIdentifier);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
-    store = await Store.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-    // Add Registry to finder so factories can register contracts.
-    registry = await Registry.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-
-    collateralWhitelist = await AddressWhitelist.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
-
-    // Use the same collateral for all perps.
+    // Whitelist collateral and use the same collateral for all contracts.
     collateral = await Token.new("Wrapped Ether", "WETH", "18");
+    collateralWhitelist = await AddressWhitelist.deployed();
     await collateralWhitelist.addToWhitelist(collateral.address);
     defaultCreationParams = {
       ...defaultCreationParams,

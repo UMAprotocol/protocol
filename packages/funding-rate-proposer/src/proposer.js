@@ -80,7 +80,7 @@ class FundingRateProposer {
     // use in `updateFundingRates()` such as the latest funding rates and config store settings.
     await this._cachePerpetualContracts();
 
-    // The following updates must be done after contract state is fetched:
+    // The following updates can be done independently after contract state is fetched:
     await Promise.all([
       // Increase allowances for all contracts to spend the bot owner's respective collateral currency.
       this._setAllowances(),
@@ -360,6 +360,8 @@ class FundingRateProposer {
     };
   }
 
+  // TODO: This logic should be refactored out of this bot because similar logic is used in the
+  // SyntheticPegMonitor, OptimisticOracleProposer, and RangeTrader
   // Return true if `_baselinePrice` * (1 - error %) <= `_testPrice` <= `_baselinePrice` * (1 + error %)
   // else false.
   _comparePricesWithErrorMargin(_baselinePrice, _testPrice) {

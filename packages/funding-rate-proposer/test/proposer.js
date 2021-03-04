@@ -1,14 +1,9 @@
-// Note: This is placed within the /truffle folder because EmpCreator/PerpCreator.new() fails due to incorrect library linking by hardhat.
-// `Error: ExpiringMultiPartyCreator contains unresolved libraries. You must deploy and link the following libraries before
-//         you can deploy a new version of ExpiringMultiPartyCreator: $585a446ef18259666e65e81865270bd4dc$`
-// We should look more into library linking via hardhat within a script: https://hardhat.org/plugins/hardhat-deploy.html#handling-contract-using-libraries
-
 const winston = require("winston");
 const sinon = require("sinon");
 
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
-const { FundingRateProposer } = require("../../src/proposer");
+const { FundingRateProposer } = require("../src/proposer");
 const {
   FinancialContractFactoryEventClient,
   GasEstimator,
@@ -17,28 +12,24 @@ const {
   spyLogIncludes,
   PriceFeedMockScaled
 } = require("@uma/financial-templates-lib");
-const { interfaceName, RegistryRolesEnum, OptimisticOracleRequestStatesEnum } = require("@uma/common");
+const { interfaceName, OptimisticOracleRequestStatesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
 const Perpetual = getTruffleContract("Perpetual", web3);
-const TokenFactory = getTruffleContract("TokenFactory", web3);
 const Finder = getTruffleContract("Finder", web3);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 const Store = getTruffleContract("Store", web3);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
-const Registry = getTruffleContract("Registry", web3);
 
 contract("Perpetual: proposer.js", function(accounts) {
   const deployer = accounts[0];
   const botRunner = accounts[5];
 
   // Contracts
-  let mockOracle;
   let optimisticOracle;
   let perpFactory;
   let finder;
@@ -46,8 +37,6 @@ contract("Perpetual: proposer.js", function(accounts) {
   let timer;
   let identifierWhitelist;
   let collateralWhitelist;
-  let tokenFactory;
-  let registry;
   let collateral;
   let perpsCreated;
 
@@ -105,41 +94,29 @@ contract("Perpetual: proposer.js", function(accounts) {
   };
 
   beforeEach(async function() {
-    finder = await Finder.new();
-    timer = await Timer.new();
+    finder = await Finder.deployed();
+    timer = await Timer.deployed();
     startTime = await timer.getCurrentTime();
-    tokenFactory = await TokenFactory.new();
-    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
+    perpFactory = await PerpetualCreator.deployed();
 
     // Whitelist an initial identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.new();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-    // Add Registry to finder so factories can register contracts.
-    registry = await Registry.new();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-
-    collateralWhitelist = await AddressWhitelist.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
-
-    mockOracle = await MockOracle.new(finder.address, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
-
-    // Set up OO
+    // Set up new OO with custom settings.
     optimisticOracle = await OptimisticOracle.new(optimisticOracleProposalLiveness, finder.address, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
 
-    // Use the same collateral for all perps.
+    // Whitelist and use same collateral for all perps.
     collateral = await Token.new("Wrapped Ether", "WETH", "18");
     await collateral.addMember(1, deployer);
     await collateral.mint(deployer, initialProposerBalance);
     await collateral.mint(botRunner, initialProposerBalance);
+    collateralWhitelist = await AddressWhitelist.deployed();
     await collateralWhitelist.addToWhitelist(collateral.address);
+
+    // Set non-0 final fee to test that bot can stake proposer bond.
+    store = await Store.deployed();
     await store.setFinalFee(collateral.address, { rawValue: finalFee });
     let customCreationParams = {
       ...defaultCreationParams,
