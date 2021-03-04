@@ -63,7 +63,7 @@ contract MerkleDistributor is Ownable, Testable {
         uint256 amount,
         address indexed rewardToken
     );
-    event SetWindow(
+    event CreatedWindow(
         uint256 indexed windowIndex,
         uint256 amount,
         uint256 indexed windowStart,
@@ -175,7 +175,7 @@ contract MerkleDistributor is Ownable, Testable {
 
         window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
 
-        emit SetWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
+        emit CreatedWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
     }
 
     function _markClaimed(Claim memory claim) private {
