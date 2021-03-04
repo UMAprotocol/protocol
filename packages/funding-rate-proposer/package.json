@@ -1,5 +1,5 @@
 {
-  "name": "@uma/perpetual",
+  "name": "@uma/funding-rate-proposer",
   "version": "2.0.1",
   "description": "UMA Perpetual Funding Rate Keeper",
   "dependencies": {
