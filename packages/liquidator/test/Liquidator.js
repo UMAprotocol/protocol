@@ -283,7 +283,6 @@ contract("Liquidator.js", function(accounts) {
             logger: spyLogger,
             financialContractClient: financialContractClient,
             gasEstimator,
-            votingContract: mockOracle.contract,
             syntheticToken: syntheticToken.contract,
             priceFeed: priceFeedMock,
             account: accounts[0],
@@ -608,7 +607,16 @@ contract("Liquidator.js", function(accounts) {
                   : LiquidationStatesEnum.DISPUTE_FAILED
               ]
             );
-            assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convertPrice("1.3"));
+            assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, convertPrice("1.3"));
+
+            // Check that the log contains the dispute rewards:
+            if (liquidator.isLegacyEmpVersion) {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount).gt(0));
+            } else {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToSponsor).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToDisputer).gt(0));
+            }
 
             // After the dispute is resolved, the liquidation should no longer exist and there should be no disputes to withdraw rewards from.
             await liquidator.update();
@@ -678,7 +686,16 @@ contract("Liquidator.js", function(accounts) {
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
               PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
             );
-            assert.equal(spy.getCall(-1).lastArg.liquidationResult.resolvedPrice, convertPrice("1"));
+            assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, convertPrice("1"));
+
+            // Check that the log contains the dispute rewards:
+            if (liquidator.isLegacyEmpVersion) {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount).gt(0));
+            } else {
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToSponsor).gt(0));
+              assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToDisputer).gt(0));
+            }
 
             // After the dispute is resolved, the liquidation should still exist but the liquidator should no longer be able to withdraw any rewards.
             await liquidator.update();
@@ -743,7 +760,6 @@ contract("Liquidator.js", function(accounts) {
                   logger: spyLogger,
                   financialContractClient: financialContractClient,
                   gasEstimator,
-                  votingContract: mockOracle.contract,
                   syntheticToken: syntheticToken.contract,
                   priceFeed: priceFeedMock,
                   account: accounts[0],
@@ -783,7 +799,6 @@ contract("Liquidator.js", function(accounts) {
               logger: spyLogger,
               financialContractClient: financialContractClient,
               gasEstimator,
-              votingContract: mockOracle.contract,
               syntheticToken: syntheticToken.contract,
               priceFeed: priceFeedMock,
               account: accounts[0],
@@ -857,7 +872,6 @@ contract("Liquidator.js", function(accounts) {
                   logger: spyLogger,
                   financialContractClient: financialContractClient,
                   gasEstimator,
-                  votingContract: mockOracle.contract,
                   syntheticToken: syntheticToken.contract,
                   priceFeed: priceFeedMock,
                   account: accounts[0],
@@ -1187,7 +1201,6 @@ contract("Liquidator.js", function(accounts) {
                   logger: spyLogger,
                   financialContractClient: financialContractClient,
                   gasEstimator,
-                  votingContract: mockOracle.contract,
                   syntheticToken: syntheticToken.contract,
                   priceFeed: priceFeedMock,
                   account: accounts[0],
@@ -1290,7 +1303,6 @@ contract("Liquidator.js", function(accounts) {
               logger: spyLogger,
               financialContractClient: financialContractClient,
               gasEstimator,
-              votingContract: mockOracle.contract,
               syntheticToken: syntheticToken.contract,
               priceFeed: priceFeedMock,
               account: accounts[0],
@@ -1312,7 +1324,6 @@ contract("Liquidator.js", function(accounts) {
                 logger: spyLogger,
                 financialContractClient: financialContractClient,
                 gasEstimator,
-                votingContract: mockOracle.contract,
                 syntheticToken: syntheticToken.contract,
                 priceFeed: priceFeedMock,
                 account: accounts[0],
@@ -1431,7 +1442,6 @@ contract("Liquidator.js", function(accounts) {
                 logger: spyLogger,
                 financialContractClient,
                 gasEstimator,
-                votingContract: mockOracle.contract,
                 syntheticToken: syntheticToken.contract,
                 priceFeed: priceFeedMock,
                 account: accounts[0],

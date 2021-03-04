@@ -53,7 +53,11 @@ function DesignatedVotingDeployment({ votingAccount }) {
       <strong>The two key voting contract is completely optional.</strong>
       <br />
       To deploy one, enter your cold key address. To learn more about the 2 key voting system see our{" "}
-      <a href="https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html" target="_blank">
+      <a
+        href="https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
         docs
       </a>
       .

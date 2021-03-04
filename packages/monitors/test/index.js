@@ -19,7 +19,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -31,7 +30,7 @@ let optimisticOracle;
 
 let constructorParams;
 let defaultMonitorConfig;
-let defaultUniswapPricefeedConfig;
+let defaultTokenPricefeedConfig;
 let defaultMedianizerPricefeedConfig;
 
 let spy;
@@ -59,12 +58,12 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    // Note: OptimisticOracle always uses "latest"
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
+    describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
@@ -110,6 +109,9 @@ contract("index.js", function(accounts) {
         );
         await collateralWhitelist.addToWhitelist(collateralToken.address);
 
+        optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+        await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+
         if (contractVersion.contractType == "Perpetual") {
           configStore = await ConfigStore.new(
             {
@@ -122,10 +124,7 @@ contract("index.js", function(accounts) {
             },
             timer.address
           );
-
           await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-          optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-          await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
         }
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
@@ -148,25 +147,18 @@ contract("index.js", function(accounts) {
         await syntheticToken.addMinter(financialContract.address);
         await syntheticToken.addBurner(financialContract.address);
 
-        uniswap = await UniswapMock.new();
-
-        // Run with empty configs for all input values, except for uniswap mock which is needed as no uniswap market in test env.
         defaultMonitorConfig = {};
-        defaultUniswapPricefeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+        defaultTokenPricefeedConfig = {
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
         defaultMedianizerPricefeedConfig = {};
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
-      it("Completes one iteration without logging any errors", async function() {
+      it("FinancialContract monitor: Completes one iteration without logging any errors", async function() {
+        // Once specifying just the `financialContractAddress`, once specifying
+        // the `optimisticOracleAddress`, and once specifying both:
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -177,15 +169,50 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
-
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
-
+      it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function() {
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          optimisticOracleAddress: optimisticOracle.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          startingBlock: fromBlock,
+          endingBlock: toBlock,
+          monitorConfig: defaultMonitorConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+        });
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+      });
+      it("Activating all monitors: Completes one iteration without logging any errors", async function() {
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          financialContractAddress: financialContract.address,
+          optimisticOracleAddress: optimisticOracle.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          startingBlock: fromBlock,
+          endingBlock: toBlock,
+          monitorConfig: defaultMonitorConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+        });
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+      });
       it("Detects price feed, collateral and synthetic decimals", async function() {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
@@ -214,7 +241,7 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
 
@@ -244,7 +271,7 @@ contract("index.js", function(accounts) {
           startingBlock: fromBlock,
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
-          tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
           medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
         });
 
@@ -277,7 +304,7 @@ contract("index.js", function(accounts) {
             startingBlock: fromBlock,
             endingBlock: toBlock,
             monitorConfig: defaultMonitorConfig,
-            tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
+            tokenPriceFeedConfig: defaultTokenPricefeedConfig,
             medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
           });
         } catch (error) {
@@ -321,7 +348,7 @@ contract("index.js", function(accounts) {
         });
 
         errorRetries = 3; // set execution retries to 3 to validate.
-        // Not both the uniswap and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForFinancialContract
+        // Note both the token and medanizer price feeds are the same config. This is done so that createReferencePriceFeedForFinancialContract
         // can pass without trying to poll any information on the invalidFinancialContract to ensure that the bot gets into the main while
         // loop without throwing an error in inital set-up. If this left as defaultMedianizerPricefeedConfig (which is blank)
         // The bot will error out in setting up the price feed as the invalidFinancialContract instance cant be queried for `liquidationLiveness`
@@ -339,24 +366,21 @@ contract("index.js", function(accounts) {
             startingBlock: fromBlock,
             endingBlock: toBlock,
             monitorConfig: { ...defaultMonitorConfig, contractVersion: "latest", contractType: "ExpiringMultiParty" },
-            tokenPriceFeedConfig: defaultUniswapPricefeedConfig,
-            medianizerPriceFeedConfig: defaultUniswapPricefeedConfig
+            tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+            medianizerPriceFeedConfig: defaultTokenPricefeedConfig
           });
         } catch (error) {
           errorThrown = true;
         }
-        // Iterate over all log events and count the number of tokenBalanceStorage, liquidator check for liquidation events
-        // execution loop errors and finally liquidator polling errors.
+        // Iterate over all log events and count the number of
+        // execution loop errors.
         let reTryCounts = {
-          tokenBalanceStorage: 0,
           executionLoopErrors: 0
         };
         for (let i = 0; i < spy.callCount; i++) {
-          if (spyLogIncludes(spy, i, "Token balance storage updated")) reTryCounts.tokenBalanceStorage += 1;
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }
 
-        assert.equal(reTryCounts.tokenBalanceStorage, 4); // Initial loop and each 3 retries should update the token ballance storage. Expect 4 logs.
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });

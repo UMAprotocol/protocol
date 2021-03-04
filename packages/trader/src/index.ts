@@ -5,7 +5,7 @@ import { TraderConfig } from "./TraderConfig";
 
 export async function run(): Promise<void> {
   // Config Processing
-  const config = new TraderConfig(process.env);
+  // const config = new TraderConfig(process.env);
   await retry(
     async () => {
       // Trading logic here.

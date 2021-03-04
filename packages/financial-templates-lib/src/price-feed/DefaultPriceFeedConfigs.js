@@ -81,8 +81,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -94,8 +93,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -154,8 +152,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -167,8 +164,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -220,8 +216,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -233,8 +228,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -292,8 +286,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -304,8 +297,7 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
-            twapLength: 2,
-            poolDecimals: 6
+            twapLength: 2
           }
         ]
       },
@@ -356,6 +348,12 @@ const defaultConfigs = {
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
     twapLength: 7200
   },
+  "COMPUSDC-APR-MAR28/USDC": {
+    type: "uniswap",
+    uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
+    twapLength: 7200,
+    poolDecimals: 6
+  },
   BTCDOM: {
     type: "domfi",
     pair: "BTCDOM",
@@ -377,6 +375,188 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
     ]
+  },
+  DEFI_PULSE_TOTAL_TVL: {
+    type: "defipulsetotal",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600
+  },
+  CNYUSD: {
+    type: "tradermade",
+    pair: "CNYUSD",
+    minTimeBetweenUpdates: 600,
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+  },
+  EURUSD: {
+    type: "tradermade",
+    pair: "EURUSD",
+    minTimeBetweenUpdates: 60,
+    minuteLookback: 7200,
+    hourlyLookback: 604800
+  },
+  PHPDAI: {
+    type: "medianizer",
+    computeMean: true,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      {
+        type: "coinmarketcap",
+        symbol: "DAI",
+        quoteCurrency: "PHP",
+        invertPrice: true
+      },
+      {
+        type: "coingecko",
+        contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
+        quoteCurrency: "php",
+        invertPrice: true
+      }
+    ]
+  },
+  "ETH-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
+    }
+  },
+  "ETH-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
+    }
+  },
+  "BTC-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
+    }
+  },
+  "BTC-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
+    }
+  },
+  "USD/bBadger": {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      wbtc_usd = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI) / USDETH;
+      badger_usd_sushi = wbtc_usd * BADGER_WBTC_SUSHI;
+      badger_usd_uni = wbtc_usd * BADGER_WBTC_UNI;
+      badger_usd = median(badger_usd_sushi, badger_usd_uni, BADGER_USD_HUOBI);
+      1 / (badger_usd * BBADGER_BADGER)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    priceFeedDecimals: 18,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+      BADGER_WBTC_SUSHI: {
+        type: "uniswap",
+        uniswapAddress: "0x110492b31c59716ac47337e616804e3e3adc0b4a",
+        invertPrice: true
+      },
+      BADGER_WBTC_UNI: {
+        type: "uniswap",
+        uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
+        invertPrice: true
+      },
+      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt" },
+      BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
+    }
+  },
+  "USD-[bwBTC/ETH SLP]": {
+    type: "expression",
+    expression: `
+      wbtc_usd = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI) / USDETH;
+      eth_usd = 1 / USDETH;
+      lp_usd = (wbtc_usd * WBTC_PER_SHARE) + (eth_usd * ETH_PER_SHARE);
+      1 / (BLP_LP * lp_usd)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    priceFeedDecimals: 18,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+      ETH_PER_SHARE: {
+        type: "lp",
+        poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
+        tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+      },
+      WBTC_PER_SHARE: {
+        type: "lp",
+        poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
+        tokenAddress: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+      },
+      BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" }
+    }
+  },
+  XAUPERL: {
+    type: "expression",
+    expression: "XAUUSD * USDPERL"
+  },
+  XAUUSD: {
+    type: "tradermade",
+    pair: "XAUUSD",
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    minTimeBetweenUpdates: 60
   },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
