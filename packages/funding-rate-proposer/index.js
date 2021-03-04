@@ -136,7 +136,7 @@ async function Poll(callback) {
       // Common price feed configuration passed along to all those constructed by proposer.
       commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)
-        : { lookback: 7200 },
+        : {},
       // If there is a perpetual proposer config, add it. Else, set to null. Example config:
       // {
       //   "fundingRateErrorPercent":0.05 ->  Current funding rates (as stored in the OptimisticOracle)

@@ -94,7 +94,7 @@ class FundingRateProposer {
       this._setAllowances(),
       // For each contract, create, save, and update a pricefeed instance for its identifier,
       // or just update the pricefeed if the identifier already has cached an instance.
-      await this._cacheAndUpdatePriceFeeds()
+      this._cacheAndUpdatePriceFeeds()
     ]);
   }
 
@@ -105,10 +105,9 @@ class FundingRateProposer {
       perpetualsChecked: Object.keys(this.contractCache)
     });
 
-    // TODO: Should allow user to filter out price requests with rewards below a threshold,
-    // allowing the bot to prevent itself from being induced to unprofitably propose.
-    // We can execute updates for each perpetual contract in parallel because they
-    // should not affect each other.
+    // TODO: Should allow user to set an ROI-based metric to customize whether
+    // bot strategically waits to submit funding rate proposals. Rewards
+    // increase with time since last update.
     await Promise.map(Object.keys(this.contractCache), contractAddress => {
       return this._updateFundingRate(contractAddress);
     });
@@ -142,7 +141,15 @@ class FundingRateProposer {
 
     // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
     const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    let offchainFundingRate = priceFeed.getCurrentPrice().toString();
+    if (!priceFeed) {
+      this.logger.error({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Failed to create pricefeed for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return;
+    }
+    let offchainFundingRate = priceFeed.getCurrentPrice();
     if (!offchainFundingRate) {
       this.logger.error({
         at: "PerpetualProposer#updateFundingRate",
@@ -151,6 +158,7 @@ class FundingRateProposer {
       });
       return;
     }
+    offchainFundingRate = offchainFundingRate.toString();
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
@@ -174,13 +182,13 @@ class FundingRateProposer {
     // If the saved funding rate is not equal to the current funding rate within margin of error, then
     // prepare request to update. We're assuming that the `offchainFundingRate` is the baseline or "expected"
     // price.
-    let isPriceDisputable = isDeviationOutsideErrorMargin(
+    let shouldUpdateFundingRate = isDeviationOutsideErrorMargin(
       this.toBN(onchainFundingRate), // ObservedValue
       this.toBN(offchainFundingRate), // ExpectedValue
       this.toBN(this.toWei("1")),
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
-    if (isPriceDisputable) {
+    if (shouldUpdateFundingRate) {
       // Get successful transaction receipt and return value or error.
       const requestTimestamp = priceFeed.getLastUpdateTime();
       const proposal = cachedContract.contract.methods.proposeFundingRate(
@@ -300,7 +308,11 @@ class FundingRateProposer {
         );
         this.priceFeedCache[fundingRateIdentifier] = priceFeed;
       }
-      await priceFeed.update();
+
+      // If pricefeed was created or fetched from cache, update it
+      if (priceFeed) {
+        await priceFeed.update();
+      }
     });
   }
 

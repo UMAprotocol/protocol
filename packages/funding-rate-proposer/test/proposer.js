@@ -195,15 +195,15 @@ contract("Perpetual: proposer.js", function(accounts) {
       commonPriceFeedConfig,
       optimisticOracleProposerConfig
     });
-
-    // Update the bot to read the new Perpetual state.
-    await proposer.update();
   });
   describe("(update)", function() {
+    beforeEach(async function() {
+      // Read new Perpetual state.
+      await proposer.update();
+    });
     it("(_cachePerpetualContracts)", async function() {
       // `update` should create a new contract instance for each contract
-      assert.equal(Object.keys(proposer.contractCache).length, perpsCreated.length);
-      for (let i = 0; i < perpsCreated.length; i++) {
+      for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
         const cachedContract = proposer.contractCache[perpsCreated[i].address];
         // Check that bot fetches on-chain state from perpetual and config store correctly.
         assert.equal(
@@ -365,5 +365,44 @@ contract("Perpetual: proposer.js", function(accounts) {
         });
       });
     });
+  });
+  it("Emits error log for funding rate identifiers it cannot construct pricefeed for", async function() {
+    const invalidPriceFeedConfig = {};
+    proposer = new FundingRateProposer({
+      logger: spyLogger,
+      perpetualFactoryClient: factoryClient,
+      gasEstimator: gasEstimator,
+      account: botRunner,
+      commonPriceFeedConfig: invalidPriceFeedConfig
+    });
+
+    // PriceFeedCache entries should be empty after `update()`
+    await proposer.update();
+    for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+      assert.equal(proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])], undefined);
+    }
+
+    // Error log should be emitted on `updateFundingRates()`.
+    await proposer.updateFundingRates();
+    assert.equal(lastSpyLogLevel(spy), "error");
+    assert.isTrue(spyLogIncludes(spy, -1, "Failed to create pricefeed for funding rate identifier"));
+  });
+  it("Emits error log for prices it cannot fetch", async function() {
+    // Update once to load priceFeedCache.
+    await proposer.update();
+
+    // Force `getCurrentPrice()` to return null so that bot fails to fetch prices.
+    for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+      const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
+      priceFeed.setCurrentPrice(null);
+    }
+
+    // Update again
+    await proposer.update();
+
+    // Error log should be emitted on `updateFundingRates()`.
+    await proposer.updateFundingRates();
+    assert.equal(lastSpyLogLevel(spy), "error");
+    assert.isTrue(spyLogIncludes(spy, -1, "Failed to query current price for funding rate identifier"));
   });
 });
