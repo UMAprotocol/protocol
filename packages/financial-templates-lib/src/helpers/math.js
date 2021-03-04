@@ -1,3 +1,5 @@
+const assert = require("assert");
+
 // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
 // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
 // This is equivalent of a 20 percent deviation between the numbers.
