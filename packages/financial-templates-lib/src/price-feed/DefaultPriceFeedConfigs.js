@@ -558,6 +558,12 @@ const defaultConfigs = {
     hourlyLookback: 604800,
     minTimeBetweenUpdates: 60
   },
+  uSTONKS_APR21: {
+    type: "uniswap",
+    uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
+    twapLength: 7200,
+    invertPrice: true
+  },
   // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
   // default price feed config.
   TEST8DECIMALS: {
