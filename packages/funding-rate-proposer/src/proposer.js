@@ -6,6 +6,7 @@ const {
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
+const Promise = require("bluebird");
 
 class FundingRateProposer {
   /**
@@ -108,11 +109,9 @@ class FundingRateProposer {
     // allowing the bot to prevent itself from being induced to unprofitably propose.
     // We can execute updates for each perpetual contract in parallel because they
     // should not affect each other.
-    let updatePromises = [];
-    for (let contractAddress of Object.keys(this.contractCache)) {
-      updatePromises.push(this._updateFundingRate(contractAddress));
-    }
-    await Promise.all(updatePromises);
+    await Promise.map(Object.keys(this.contractCache), contractAddress => {
+      return this._updateFundingRate(contractAddress);
+    });
   }
 
   /** **********************************
@@ -251,24 +250,18 @@ class FundingRateProposer {
   }
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
-    const approvalPromises = [];
-
-    // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
-    // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    for (let contractAddress of Object.keys(this.contractCache)) {
-      approvalPromises.push(
-        setAllowance(
-          this.web3,
-          this.gasEstimator,
-          this.account,
-          contractAddress,
-          this.contractCache[contractAddress].collateralAddress
-        )
-      );
-    }
-
     // Get new approval receipts or null if approval was unneccessary.
-    const newApprovals = await Promise.all(approvalPromises);
+    const newApprovals = await Promise.map(Object.keys(this.contractCache), contractAddress => {
+      // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
+      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      return setAllowance(
+        this.web3,
+        this.gasEstimator,
+        this.account,
+        contractAddress,
+        this.contractCache[contractAddress].collateralAddress
+      );
+    });
     newApprovals.forEach(receipt => {
       if (receipt) {
         this.logger.info({
@@ -316,8 +309,7 @@ class FundingRateProposer {
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
   // Fetch and cache latest contract state.
   async _cachePerpetualContracts() {
-    let stateUpdatePromises = [];
-    for (let creationEvent of this.perpetualFactoryClient.getAllCreatedContractEvents()) {
+    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractEvents(), async creationEvent => {
       if (!this.contractCache[creationEvent.contractAddress]) {
         this.logger.debug({
           at: "PerpetualProposer",
@@ -336,9 +328,8 @@ class FundingRateProposer {
           collateralAddress
         };
       }
-      stateUpdatePromises.push(this._getContractState(creationEvent.contractAddress));
-    }
-    await Promise.all(stateUpdatePromises);
+      return this._getContractState(creationEvent.contractAddress);
+    });
   }
 
   // Publish pending funding rate proposals to contract state and fetch updated state.
