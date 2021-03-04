@@ -1,5 +1,5 @@
 const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, MAX_UINT_VAL, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class FundingRateProposer {
@@ -29,14 +29,17 @@ class FundingRateProposer {
     this.createPerpetualContract = perpAddress => {
       return new this.web3.eth.Contract(getAbi("Perpetual"), perpAddress);
     };
+    this.createConfigStoreContract = storeAddress => {
+      return new this.web3.eth.Contract(getAbi("ConfigStore"), storeAddress);
+    };
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
 
-    // Cached mapping of identifiers to pricefeed classes
+    // Cached mapping of identifiers to pricefeed classes.
     this.priceFeedCache = {};
 
-    // Cached perpetual contracts
+    // Cached perpetual contracts and precomputed state.
     this.contractCache = {};
 
     // Helper functions from web3.
@@ -59,7 +62,7 @@ class FundingRateProposer {
         //                                      e.g. 0.05 implies 5% margin of error.
         value: 0.05,
         isValid: x => {
-          return x >= 0 && x < 1;
+          return x >= 0;
         }
       }
     };
@@ -73,10 +76,18 @@ class FundingRateProposer {
     await Promise.all([this.perpetualFactoryClient.update(), this.gasEstimator.update()]);
 
     // Once PerpFactory client is updated, cache contract instances for each address deployed.
-    this._cachePerpetualContracts();
+    // These will be saved to this.contractCache. Additionally, precompute state that we'll
+    // use in `updateFundingRates()` such as the latest funding rates and config store settings.
+    await this._cachePerpetualContracts();
 
-    // Increase allowances for all contracts to spend the bot owner's respective collateral currency.
-    await this._setAllowances();
+    // The following updates must be done after contract state is fetched:
+    await Promise.all([
+      // Increase allowances for all contracts to spend the bot owner's respective collateral currency.
+      this._setAllowances(),
+      // For each contract, create, save, and update a pricefeed instance for its identifier,
+      // or just update the pricefeed if the identifier already has cached an instance.
+      await this._cacheAndUpdatePriceFeeds()
+    ]);
   }
 
   async updateFundingRates() {
@@ -88,9 +99,13 @@ class FundingRateProposer {
 
     // TODO: Should allow user to filter out price requests with rewards below a threshold,
     // allowing the bot to prevent itself from being induced to unprofitably propose.
+    // We can execute updates for each perpetual contract in parallel because they
+    // should not affect each other.
+    let updatePromises = [];
     for (let contractAddress of Object.keys(this.contractCache)) {
-      await this._updateFundingRate(contractAddress);
+      updatePromises.push(this._updateFundingRate(contractAddress));
     }
+    await Promise.all(updatePromises);
   }
 
   /** **********************************
@@ -101,26 +116,26 @@ class FundingRateProposer {
 
   // Check contract funding rates and request+propose to update them, or return early if an error is encountered.
   async _updateFundingRate(contractAddress) {
-    // Fetch current funding rate data from contract
-    const currentFundingRateData = await this.contractCache[contractAddress].methods.fundingRate().call({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
-    });
+    const cachedContract = this.contractCache[contractAddress];
+    const currentFundingRateData = cachedContract.state.currentFundingRateData;
+    const currentConfig = cachedContract.state.currentConfig;
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
-    const priceFeed = await this._createOrGetCachedPriceFeed(fundingRateIdentifier);
 
-    // Pricefeed is either constructed correctly or is null.
-    if (!priceFeed) {
-      this.logger.error({
-        at: "PerpetualProposer#updateFundingRates",
-        message: "Failed to construct a PriceFeed for funding rate identifier",
-        fundingRateIdentifier
+    // If proposal time is not 0, then proposal is already outstanding. Check if
+    // the proposal has been disputed and if not, then we can't propose and must exit.
+    const proposalTime = currentFundingRateData.proposalTime.toString();
+    if (proposalTime !== "0") {
+      this.logger.debug({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Proposal is already pending, cannot propose",
+        fundingRateIdentifier,
+        proposalTime
       });
       return;
     }
 
-    // With pricefeed successfully constructed, get the current funding rate
-    await priceFeed.update();
+    // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
+    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
     let offchainFundingRate = priceFeed.getCurrentPrice().toString();
     if (!offchainFundingRate) {
       this.logger.error({
@@ -129,6 +144,100 @@ class FundingRateProposer {
         fundingRateIdentifier
       });
       return;
+    }
+    let onchainFundingRate = currentFundingRateData.rate.toString();
+
+    // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
+    const minFundingRate = currentConfig.minFundingRate.toString();
+    const maxFundingRate = currentConfig.maxFundingRate.toString();
+    if (
+      this.toBN(offchainFundingRate).lt(this.toBN(minFundingRate)) ||
+      this.toBN(offchainFundingRate).gt(this.toBN(maxFundingRate))
+    ) {
+      this.logger.error({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Potential proposed funding rate is outside allowed funding rate range",
+        fundingRateIdentifier,
+        minFundingRate,
+        maxFundingRate,
+        offchainFundingRate
+      });
+      return;
+    }
+
+    // If the saved funding rate is not equal to the current funding rate within margin of error, then
+    // prepare request to update. We're assuming that the `offchainFundingRate` is the baseline
+    // price.
+    let isPriceDisputable = !this._comparePricesWithErrorMargin(
+      this.toBN(offchainFundingRate),
+      this.toBN(onchainFundingRate)
+    );
+    if (isPriceDisputable) {
+      // Get successful transaction receipt and return value or error.
+      const requestTimestamp = priceFeed.getLastUpdateTime();
+      const proposal = cachedContract.contract.methods.proposeFundingRate(
+        { rawValue: offchainFundingRate },
+        requestTimestamp
+      );
+      this.logger.debug({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Proposing new funding rate",
+        fundingRateIdentifier,
+        requestTimestamp,
+        proposedRate: offchainFundingRate,
+        currentRate: onchainFundingRate,
+        allowedError: this.fundingRateErrorPercent,
+        proposer: this.account
+      });
+      try {
+        const transactionResult = await runTransaction({
+          transaction: proposal,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
+        });
+        let receipt = transactionResult.receipt;
+        let returnValue = transactionResult.returnValue.toString();
+
+        const logResult = {
+          tx: receipt.transactionHash,
+          requester: contractAddress,
+          proposer: this.account,
+          fundingRateIdentifier,
+          requestTimestamp,
+          proposedRate: offchainFundingRate,
+          currentRate: onchainFundingRate,
+          proposalBond: returnValue
+        };
+        this.logger.info({
+          at: "PerpetualProposer#updateFundingRate",
+          message: "Proposed new funding rate!🌻",
+          proposalBond: returnValue,
+          proposalResult: logResult
+        });
+      } catch (error) {
+        const message =
+          error.type === "call"
+            ? "Cannot propose funding rate: not enough collateral (or large enough approval)✋"
+            : "Failed to propose funding rate🚨";
+        this.logger.error({
+          at: "PerpetualProposer#updateFundingRate",
+          message,
+          fundingRateIdentifier,
+          error
+        });
+        return;
+      }
+    } else {
+      this.logger.debug({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Skipping proposal because current rate is within allowed margin of error",
+        fundingRateIdentifier,
+        proposedRate: offchainFundingRate,
+        currentRate: onchainFundingRate,
+        allowedError: this.fundingRateErrorPercent
+      });
     }
   }
   // Sets allowances for all collateral currencies used live perpetual contracts.
@@ -165,7 +274,7 @@ class FundingRateProposer {
     // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     for (let contractAddress of Object.keys(this.contractCache)) {
-      const collateralAddress = await this.contractCache[contractAddress].methods.collateralCurrency().call({
+      const collateralAddress = await this.contractCache[contractAddress].contract.methods.collateralCurrency().call({
         from: this.account,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
@@ -175,44 +284,96 @@ class FundingRateProposer {
     await Promise.all(approvalPromises);
   }
 
-  // Create the pricefeed for a specific identifier and save it to the state, or
-  // return the saved pricefeed if already constructed.
-  async _createOrGetCachedPriceFeed(identifier) {
-    // First check for cached pricefeed for this identifier and return it if exists:
-    let priceFeed = this.priceFeedCache[identifier];
-    if (priceFeed) return priceFeed;
-    this.logger.debug({
-      at: "PerpetualProposer",
-      message: "Created pricefeed configuration for identifier",
-      commonPriceFeedConfig: this.commonPriceFeedConfig,
-      identifier
-    });
+  async _cacheAndUpdatePriceFeeds() {
+    for (let contractAddress of Object.keys(this.contractCache)) {
+      const fundingRateIdentifier = this.hexToUtf8(
+        this.contractCache[contractAddress].state.currentFundingRateData.identifier
+      );
+      let priceFeed = this.priceFeedCache[fundingRateIdentifier];
+      if (!priceFeed) {
+        this.logger.debug({
+          at: "PerpetualProposer",
+          message: "Caching new pricefeed for identifier",
+          commonPriceFeedConfig: this.commonPriceFeedConfig,
+          fundingRateIdentifier
+        });
 
-    // Create a new pricefeed for this identifier. We might consider caching these price requests
-    // for re-use if any requests use the same identifier.
-    let newPriceFeed = await createReferencePriceFeedForFinancialContract(
-      this.logger,
-      this.web3,
-      new Networker(this.logger),
-      () => Math.round(new Date().getTime() / 1000),
-      null, // No EMP Address needed since we're passing identifier explicitly
-      this.commonPriceFeedConfig,
-      identifier
-    );
-    if (newPriceFeed) this.priceFeedCache[identifier] = newPriceFeed;
-    return newPriceFeed;
+        // Create a new pricefeed for this identifier. We might consider caching these price requests
+        // for re-use if any requests use the same identifier.
+        priceFeed = await createReferencePriceFeedForFinancialContract(
+          this.logger,
+          this.web3,
+          new Networker(this.logger),
+          () => Math.round(new Date().getTime() / 1000),
+          null, // No EMP Address needed since we're passing identifier explicitly
+          this.commonPriceFeedConfig,
+          fundingRateIdentifier
+        );
+        this.priceFeedCache[fundingRateIdentifier] = priceFeed;
+      }
+      await priceFeed.update();
+    }
   }
 
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
-  _cachePerpetualContracts() {
+  // Fetch and cache latest contract state.
+  async _cachePerpetualContracts() {
+    let stateUpdatePromises = [];
     for (let creationEvent of this.perpetualFactoryClient.getAllCreatedContractEvents()) {
       if (!this.contractCache[creationEvent.contractAddress]) {
+        this.logger.debug({
+          at: "PerpetualProposer",
+          message: "Caching new perpetual contract",
+          perpetualAddress: creationEvent.contractAddress
+        });
         // Failure to construct a Perpetual instance using the contract address should be fatal,
         // so we don't catch that error.
         const perpetualContract = this.createPerpetualContract(creationEvent.contractAddress);
-        this.contractCache[creationEvent.contractAddress] = perpetualContract;
+        this.contractCache[creationEvent.contractAddress] = {
+          contract: perpetualContract
+        };
       }
+      stateUpdatePromises.push(this._getContractState(creationEvent.contractAddress));
     }
+    await Promise.all(stateUpdatePromises);
+  }
+
+  // Publish pending funding rate proposals to contract state and fetch updated state.
+  async _getContractState(contractAddress) {
+    let perpetualContract = this.contractCache[contractAddress].contract;
+
+    // Grab on-chain state in parallel.
+    const [currentFundingRateData, configStoreAddress] = await Promise.all([
+      perpetualContract.methods.fundingRate().call(),
+      perpetualContract.methods.configStore().call()
+    ]);
+    const configStoreContract = this.createConfigStoreContract(configStoreAddress);
+    const [currentConfig] = await Promise.all([configStoreContract.methods.updateAndGetCurrentConfig().call()]);
+
+    // Save contract state to cache:
+    this.contractCache[contractAddress] = {
+      ...this.contractCache[contractAddress],
+      state: {
+        currentFundingRateData,
+        currentConfig
+      }
+    };
+  }
+
+  // Return true if `_baselinePrice` * (1 - error %) <= `_testPrice` <= `_baselinePrice` * (1 + error %)
+  // else false.
+  _comparePricesWithErrorMargin(_baselinePrice, _testPrice) {
+    // Note: BN.js does not perform math on decimals, so we will convert the %'s to Wei and back.
+    // TODO: When `baselinePrice == 0`, then this returns True only if `testPrice == 0`, and
+    //       when `testPrice == 0`, then this can't return True unless `errorMargin > 1`.
+    const lowerMargin = _baselinePrice
+      .mul(this.toBN(this.toWei((1 - this.fundingRateErrorPercent).toString())))
+      .div(this.toBN(this.toWei("1")));
+    const upperMargin = _baselinePrice
+      .mul(this.toBN(this.toWei((1 + this.fundingRateErrorPercent).toString())))
+      .div(this.toBN(this.toWei("1")));
+
+    return _testPrice.gte(lowerMargin) && _testPrice.lte(upperMargin);
   }
 }
 
