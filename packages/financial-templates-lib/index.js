@@ -6,6 +6,7 @@ module.exports = {
   ...require("./src/clients/OptimisticOracleEventClient"),
   ...require("./src/clients/TokenBalanceClient"),
   ...require("./src/helpers/delay"),
+  ...require("./src/helpers/allowances"),
   ...require("./src/helpers/GasEstimator"),
   ...require("./src/logger/Logger"),
   ...require("./src/logger/SpyTransport"),

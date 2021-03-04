@@ -399,10 +399,10 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify contract type detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+        // To verify contract type detection is correct for a standard feed, check the fourth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 4, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 4, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 4, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function() {
         spy = sinon.spy();
@@ -425,9 +425,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fourth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 4, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 4, `"contractType":"${contractVersion.contractType}"`));
       });
       it("Correctly rejects unknown contract types", async function() {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
@@ -562,9 +562,9 @@ contract("index.js", function(accounts) {
           endingBlock
         });
 
-        // 3rd log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // 4th log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(4).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(4).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });

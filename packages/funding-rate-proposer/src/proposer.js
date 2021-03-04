@@ -1,5 +1,9 @@
-const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, MAX_UINT_VAL, runTransaction } = require("@uma/common");
+const {
+  Networker,
+  createReferencePriceFeedForFinancialContract,
+  setAllowance
+} = require("@uma/financial-templates-lib");
+const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class FundingRateProposer {
@@ -244,44 +248,33 @@ class FundingRateProposer {
   async _setAllowances() {
     const approvalPromises = [];
 
-    // Increase `perpetualAddress` allowance to MAX for the collateral @ `currencyAddress`
-    const _approveCollateralCurrency = async (currencyAddress, perpetualAddress) => {
-      const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
-      const currentCollateralAllowance = await collateralToken.methods.allowance(this.account, perpetualAddress).call({
-        from: this.account,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      });
-      if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
-        const collateralApprovalPromise = collateralToken.methods
-          .approve(perpetualAddress, MAX_UINT_VAL)
-          .send({
-            from: this.account,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-          .then(tx => {
-            this.logger.info({
-              at: "PerpetualProposer",
-              message: "Approved Perpetual contract to transfer unlimited collateral tokens 💰",
-              perpetual: perpetualAddress,
-              currency: currencyAddress,
-              collateralApprovalTx: tx.transactionHash
-            });
-          });
-        approvalPromises.push(collateralApprovalPromise);
-      }
-    };
-
     // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     for (let contractAddress of Object.keys(this.contractCache)) {
-      const collateralAddress = await this.contractCache[contractAddress].contract.methods.collateralCurrency().call({
-        from: this.account,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      });
-      await _approveCollateralCurrency(collateralAddress, contractAddress);
+      approvalPromises.push(
+        setAllowance(
+          this.web3,
+          this.gasEstimator,
+          this.account,
+          contractAddress,
+          this.contractCache[contractAddress].collateralAddress
+        )
+      );
     }
 
-    await Promise.all(approvalPromises);
+    // Get new approval receipts or null if approval was unneccessary.
+    const newApprovals = await Promise.all(approvalPromises);
+    newApprovals.forEach(receipt => {
+      if (receipt) {
+        this.logger.info({
+          at: "PerpetualProposer",
+          message: "Approved Perpetual contract to transfer unlimited collateral tokens 💰",
+          perpetual: receipt.spenderAddress,
+          currency: receipt.currencyAddress,
+          collateralApprovalTx: receipt.tx.transactionHash
+        });
+      }
+    });
   }
 
   async _cacheAndUpdatePriceFeeds() {
@@ -329,8 +322,13 @@ class FundingRateProposer {
         // Failure to construct a Perpetual instance using the contract address should be fatal,
         // so we don't catch that error.
         const perpetualContract = this.createPerpetualContract(creationEvent.contractAddress);
+
+        // Fetch contract state that we won't need to refresh, such as collateral currency:
+        const collateralAddress = await perpetualContract.methods.collateralCurrency().call();
+
         this.contractCache[creationEvent.contractAddress] = {
-          contract: perpetualContract
+          contract: perpetualContract,
+          collateralAddress
         };
       }
       stateUpdatePromises.push(this._getContractState(creationEvent.contractAddress));

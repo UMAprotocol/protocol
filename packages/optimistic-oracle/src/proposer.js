@@ -1,6 +1,9 @@
-const { Networker, createReferencePriceFeedForFinancialContract } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, MAX_UINT_VAL, runTransaction } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const {
+  Networker,
+  createReferencePriceFeedForFinancialContract,
+  setAllowance
+} = require("@uma/financial-templates-lib");
+const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 
 class OptimisticOracleProposer {
   /**
@@ -388,46 +391,45 @@ class OptimisticOracleProposer {
   async _setAllowances() {
     const approvalPromises = [];
 
-    // Increase allowance to MAX for the `priceRequest.currency`
-    const _approveCollateralCurrencyForPriceRequest = async priceRequest => {
-      const collateralToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), priceRequest.currency);
-      const currentCollateralAllowance = await collateralToken.methods
-        .allowance(this.account, this.optimisticOracleContract.options.address)
-        .call({
-          from: this.account,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        });
-      if (this.toBN(currentCollateralAllowance).lt(this.toBN(MAX_UINT_VAL).div(this.toBN("2")))) {
-        const collateralApprovalPromise = collateralToken.methods
-          .approve(this.optimisticOracleContract.options.address, MAX_UINT_VAL)
-          .send({
-            from: this.account,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-          .then(tx => {
-            this.logger.info({
-              at: "OptimisticOracle#Proposer",
-              message: "Approved OptimisticOracle to transfer unlimited collateral tokens 💰",
-              currency: collateralToken.options.address,
-              collateralApprovalTx: tx.transactionHash
-            });
-          });
-        approvalPromises.push(collateralApprovalPromise);
-      }
-    };
-
     // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to post a bond.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
-      await _approveCollateralCurrencyForPriceRequest(priceRequest);
+      approvalPromises.push(
+        setAllowance(
+          this.web3,
+          this.gasEstimator,
+          this.account,
+          this.optimisticOracleContract.options.address,
+          priceRequest.currency
+        )
+      );
     }
 
     // We also approve currencies stored in disputes if for some reason they were not approved already.
     for (let priceRequest of this.optimisticOracleClient.getUndisputedProposals()) {
-      await _approveCollateralCurrencyForPriceRequest(priceRequest);
+      approvalPromises.push(
+        setAllowance(
+          this.web3,
+          this.gasEstimator,
+          this.account,
+          this.optimisticOracleContract.options.address,
+          priceRequest.currency
+        )
+      );
     }
 
-    await Promise.all(approvalPromises);
+    // Get new approval receipts or null if approval was unneccessary.
+    const newApprovals = await Promise.all(approvalPromises);
+    newApprovals.forEach(receipt => {
+      if (receipt) {
+        this.logger.info({
+          at: "OptimisticOracle#Proposer",
+          message: "Approved OptimisticOracle to transfer unlimited collateral tokens 💰",
+          currency: receipt.currencyAddress,
+          collateralApprovalTx: receipt.tx.transactionHash
+        });
+      }
+    });
   }
 
   // Create the pricefeed for a specific identifier and save it to the state, or
