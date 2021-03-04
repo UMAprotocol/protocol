@@ -1,8 +1,3 @@
-// Note: This is placed within the /truffle folder because EmpCreator/PerpCreator.new() fails due to incorrect library linking by hardhat.
-// `Error: ExpiringMultiPartyCreator contains unresolved libraries. You must deploy and link the following libraries before
-//         you can deploy a new version of ExpiringMultiPartyCreator: $585a446ef18259666e65e81865270bd4dc$`
-// We should look more into library linking via hardhat within a script: https://hardhat.org/plugins/hardhat-deploy.html#handling-contract-using-libraries
-
 const winston = require("winston");
 
 const { toWei, utf8ToHex } = web3.utils;
@@ -13,12 +8,10 @@ const { getTruffleContract } = require("@uma/core");
 
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3);
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
-const TokenFactory = getTruffleContract("TokenFactory", web3);
 const Finder = getTruffleContract("Finder", web3);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-const Timer = getTruffleContract("Timer", web3);
 const Registry = getTruffleContract("Registry", web3);
 
 contract("FinancialContractFactoryEventClient.js", function(accounts) {
@@ -28,10 +21,8 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
   let empFactory;
   let perpFactory;
   let finder;
-  let timer;
   let identifierWhitelist;
   let collateralWhitelist;
-  let tokenFactory;
   let registry;
   let collateral;
   let empsCreated = [];
@@ -83,19 +74,17 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
   };
 
   before(async function() {
-    finder = await Finder.new();
-    timer = await Timer.new();
-    tokenFactory = await TokenFactory.new();
-    empFactory = await ExpiringMultiPartyCreator.new(finder.address, tokenFactory.address, timer.address);
-    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
+    finder = await Finder.deployed();
+    empFactory = await ExpiringMultiPartyCreator.deployed();
+    perpFactory = await PerpetualCreator.deployed();
 
     // Whitelist an initial identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.new();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
     // Create and whitelist collateral so we can deploy.
-    collateralWhitelist = await AddressWhitelist.new();
+    collateralWhitelist = await AddressWhitelist.deployed();
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateralWhitelist.addToWhitelist(collateral.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
@@ -116,7 +105,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     };
 
     // Add Registry to finder so factories can register contracts.
-    registry = await Registry.new();
+    registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, empFactory.address);
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
