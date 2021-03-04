@@ -13,7 +13,7 @@ const { encodeAttribution, EncodeCallData } = require("../../libs/contracts");
 
 const web3 = getWeb3();
 const { fromWei, toWei } = web3.utils;
-const empAbi = getAbi("ExpiringMultiParty");
+const empAbi = getAbi("ExpiringMultiParty", "1.2.0");
 const datasetPath = Path.join(__dirname, "../datasets/dapp-mining-set1");
 const config = require("../datasets/dapp-mining-set1/config.json");
 
