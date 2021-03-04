@@ -11,7 +11,7 @@ const createLeaf = (account: string, amount: string) => {
 };
 
 function createMerkleDistributionProofs(
-  recipientsData: { [key: string]: { amount: string; metaData: Object } },
+  recipientsData: { [key: string]: { amount: string; metaData: any } },
   windowIndex: number
 ) {
   // Build an array of leafs for each recipient This is simply a hash of the address and recipient amount.
@@ -23,7 +23,7 @@ function createMerkleDistributionProofs(
   const merkleTree = new MerkleTree(recipientLeafs);
 
   // Lastly, append the leaf and generated proof for each recipient to the original data structure.
-  let recipientsDataWithProof: any = {};
+  const recipientsDataWithProof: any = {};
   Object.keys(recipientsData).forEach((recipientAddress, index) => {
     recipientsDataWithProof[recipientAddress] = {};
     recipientsDataWithProof[recipientAddress].amount = recipientsData[recipientAddress].amount;

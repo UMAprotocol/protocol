@@ -30,7 +30,7 @@ async function _fetchDataFromKV(key: string) {
 
 // Takes recipient proof information and adds it to CloudflareKV. Each recipient's information is stored as chainId:windowIndex:account as the key & the value as stringified object of amount, windowIndex, metatadata and proof.
 async function addClaimsToKV(
-  recipientsData: { [key: string]: { amount: string; windowIndex: number; metaData: Object; proof: Array<string> } },
+  recipientsData: { [key: string]: { amount: string; windowIndex: number; metaData: any; proof: Array<string> } },
   chainId: number,
   windowIndex: number
 ) {

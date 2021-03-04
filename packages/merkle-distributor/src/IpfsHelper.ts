@@ -5,7 +5,7 @@ const nodeFetch = require("node-fetch");
 
 const ipfs = ipfsApi({ host: "ipfs.infura.io", port: "5001", protocol: "https" });
 
-async function uploadFile(file: Object) {
+async function uploadFile(file: any) {
   const { path } = await ipfs.add({ content: Buffer.from(JSON.stringify(file)) });
   return path;
 }
