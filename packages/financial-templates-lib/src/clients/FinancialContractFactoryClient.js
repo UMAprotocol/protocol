@@ -42,7 +42,7 @@ class FinancialContractFactoryClient {
     this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
 
-    if (contractType != "ExpiringMultiPartyCreator" && contractType != "PerpetualCreator")
+    if (contractType !== "ExpiringMultiPartyCreator" && contractType !== "PerpetualCreator")
       throw new Error(
         `Invalid contract type provided: ${contractType}! The financial product factory client only supports ExpiringMultiPartyCreator or PerpetualCreator`
       );
