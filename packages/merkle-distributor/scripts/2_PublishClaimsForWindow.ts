@@ -115,7 +115,8 @@ async function main() {
       claimsObject.totalRewardsDistributed,
       claimsObject.windowStart,
       claimsObject.rewardToken,
-      claimsObject.merkleRoot
+      claimsObject.merkleRoot,
+      ipfsHash
     )
     .send({ from: account });
 

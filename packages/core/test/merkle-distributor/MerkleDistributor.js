@@ -107,6 +107,7 @@ contract("MerkleDistributor.js", function(accounts) {
       assert.equal(windowState.start.toString(), windowStart.toString());
       assert.equal(windowState.merkleRoot, merkleTree.getRoot());
       assert.equal(windowState.rewardToken, rewardToken.address);
+      assert.equal(windowState.ipfsHash, sampleIpfsHash);
 
       // Check that latest created index has incremented.
       assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), (windowIndex + 1).toString());
