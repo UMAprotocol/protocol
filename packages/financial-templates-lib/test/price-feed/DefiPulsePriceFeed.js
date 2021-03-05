@@ -11,6 +11,7 @@ contract("DefiPulseTotalPriceFeed.js", function() {
   const apiKey = "test-api-key";
   const lookback = 3600 * 24 * 7;
   const decimals = 6;
+  const project = 'Sushiswap';
 
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 600; // every 10 minutes
@@ -40,7 +41,8 @@ contract("DefiPulseTotalPriceFeed.js", function() {
       networker,
       getTime,
       minTimeBetweenUpdates,
-      decimals // Add arbitrary decimal conversion and prove this works.
+      decimals, // Add arbitrary decimal conversion and prove this works.
+      project
     );
   });
 

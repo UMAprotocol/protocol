@@ -2,7 +2,7 @@ const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
-const { DefiPulseTotalPriceFeed } = require("./DefiPulseTotalPriceFeed");
+const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
@@ -107,8 +107,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals, // This defaults to 18 unless supplied by user
       uniswapBlockCache
     );
-  } else if (config.type === "defipulsetvl") {
-    const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey"];
+  } else if (config.type === "defipulse") {
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey", "project"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -116,34 +116,11 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     logger.debug({
       at: "createPriceFeed",
-      message: "Creating DefiPulseTotalPriceFeed",
+      message: "Creating DefiPulsePriceFeed",
       config
     });
 
-    return new DefiPulseTotalPriceFeed(
-      logger,
-      web3,
-      config.defipulseApiKey,
-      config.lookback,
-      networker,
-      getTime,
-      config.minTimeBetweenUpdates,
-      config.priceFeedDecimals
-    );
-  } else if (config.type === "defipulsetvl") {
-    const requiredFields = ["lookback", "minTimeBetweenUpdates", "apiKey"];
-
-    if (isMissingField(config, requiredFields, logger)) {
-      return null;
-    }
-
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating DefiPulseTotalPriceFeed",
-      config
-    });
-
-    return new DefiPulseTotalPriceFeed(
+    return new DefiPulsePriceFeed(
       logger,
       web3,
       config.apiKey,
@@ -151,7 +128,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       networker,
       getTime,
       config.minTimeBetweenUpdates,
-      config.priceFeedDecimals
+      config.priceFeedDecimals,
+      config.project
     );
   } else if (config.type === "medianizer") {
     const requiredFields = ["medianizedFeeds"];

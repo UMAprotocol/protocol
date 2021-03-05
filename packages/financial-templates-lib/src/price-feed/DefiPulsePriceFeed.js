@@ -3,9 +3,9 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 const assert = require("assert");
 
 // An implementation of PriceFeedInterface that uses DefiPulse Data api to retrieve prices.
-class DefiPulseTotalPriceFeed extends PriceFeedInterface {
+class DefiPulsePriceFeed extends PriceFeedInterface {
   /**
-   * @notice Constructs the DefiPulseTVL_ALLPriceFeed.
+   * @notice Constructs price feeds for projects listed on DefiPulse.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {String} apiKey DeFiPulse Data API key. Note: these API keys are rate-limited.
@@ -15,8 +15,9 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *      this number of seconds has passed, it will be a no-op.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
+   * @param {String} project Project name that we want to query TVL for.
    */
-  constructor(logger, web3, apiKey, lookback, networker, getTime, minTimeBetweenUpdates, priceFeedDecimals = 18) {
+  constructor(logger, web3, apiKey, lookback, networker, getTime, minTimeBetweenUpdates, priceFeedDecimals = 18, project) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -26,11 +27,11 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.priceFeedDecimals = priceFeedDecimals;
-    this.uuid = "DefiPulseTVL";
-
+    this.project = project;
+    this.uuid = `DefiPulse ${project}`;
     this.toWei = this.web3.utils.toWei;
-
     this.historicalPrices = [];
+
   }
 
   getCurrentPrice() {
@@ -74,7 +75,7 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     // Return early if the last call was too recent.
     if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
-        at: "DefiPulseTotalPriceFeed",
+        at: "DefiPulsePriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
@@ -84,14 +85,14 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
     }
 
     this.logger.debug({
-      at: "DefiPulseTotalPriceFeed",
+      at: "DefiPulsePriceFeed",
       message: "Updating",
       currentTime: currentTime,
       lastUpdateTimestamp: this.lastUpdateTime
     });
 
     // 1. Construct URLs.
-    const priceUrl = `https://data-api.defipulse.com/api/v1/defipulse/api/GetHistory?period=1w&api-key=${this.apiKey}`;
+    const priceUrl = `https://data-api.defipulse.com/api/v1/defipulse/api/GetHistory?project=${this.project}&period=1w&api-key=${this.apiKey}`;
 
     // 2. Send requests.
     const response = await this.networker.getJson(priceUrl);
@@ -155,5 +156,5 @@ class DefiPulseTotalPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  DefiPulseTotalPriceFeed
+  DefiPulsePriceFeed
 };
