@@ -557,6 +557,12 @@ const defaultConfigs = {
     minuteLookback: 7200,
     hourlyLookback: 604800,
     minTimeBetweenUpdates: 60
+  },
+  uSTONKS_APR21: {
+    type: "uniswap",
+    uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
+    twapLength: 7200,
+    invertPrice: true
   }
 };
 
