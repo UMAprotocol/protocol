@@ -2,7 +2,7 @@ const { MAX_UINT_VAL } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 // Sets `owner` allowance for `spender` to MAX, unless `spender` already has an allowance > 1/2 of the MAX_UINT.
-// Return array of successful approval transactions or undefined for skipped approvals.
+// Return successful approval transaction data, or undefined for skipped approvals.
 const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, currencyAddress) => {
   const { toBN } = web3.utils;
 

@@ -20,7 +20,7 @@ class FinancialContractFactoryClient {
     startingBlockNumber = 0,
     endingBlockNumber = null,
     contractType = "PerpetualCreator"
-    // Default to PerpetualMultiParty for now since the first intended user is the funding rate proposer bot
+    // Default to PerpetualMultiParty for now since the first intended user is the funding rate proposer bot.
   ) {
     this.logger = logger;
     this.web3 = web3;
