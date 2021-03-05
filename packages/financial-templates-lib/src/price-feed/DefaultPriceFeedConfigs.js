@@ -563,24 +563,6 @@ const defaultConfigs = {
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
     invertPrice: true
-  },
-  // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
-  // default price feed config.
-  TEST8DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST6DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST18DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  INVALID: {
-    // This type should map to the InvalidPriceFeedMock in `CreatePriceFeed`
-    type: "invalid"
   }
 };
 

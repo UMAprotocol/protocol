@@ -2,6 +2,7 @@
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
 const { ConvertDecimals, createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
+const { calculateDeviationError } = require("@uma/financial-templates-lib");
 
 // TODO: Rename "medianizerPriceFeed" ==> "pegPriceFeed" and "uniswapPriceFeed" ==> "syntheticPriceFeed"
 class SyntheticPegMonitor {
@@ -315,17 +316,12 @@ class SyntheticPegMonitor {
     };
   }
 
-  // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
-  // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
-  // This is equivalent of a 20 percent deviation between the numbers.
-  // Note 1) this logger can return negative error if the deviation is in a negative direction. 2) Regarding scaling,
-  // prices can be scaled arbitrarily but this function always returns 1e18 scaled number as a deviation error is
-  // a unitless number.
   _calculateDeviationError(observedValue, expectedValue) {
-    return this.normalizePriceFeedDecimals(observedValue)
-      .sub(this.normalizePriceFeedDecimals(expectedValue))
-      .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division
-      .div(this.normalizePriceFeedDecimals(expectedValue));
+    return calculateDeviationError(
+      this.normalizePriceFeedDecimals(observedValue),
+      this.normalizePriceFeedDecimals(expectedValue),
+      this.toBN(this.toWei("1")) // We want deviation expressed in 18 decimal precision.
+    );
   }
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past

@@ -18,6 +18,7 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
+const { getPrecisionForIdentifier } = require("@uma/common");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -292,7 +293,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new PriceFeedMockScaled(
       config.currentPrice,
       config.historicalPrice,
-      null,
+      config.lastUpdateTime,
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
     );
@@ -663,7 +664,16 @@ async function createReferencePriceFeedForFinancialContract(
     );
   }
 
-  const defaultConfig = defaultConfigs[_identifier];
+  // For test purposes, if the identifier begins with "TEST..." or "INVALID..." then we will set the pricefeed
+  // to test-only pricefeeds like the PriceFeedMock and the InvalidPriceFeed.
+  let defaultConfig;
+  if (_identifier.startsWith("TEST")) {
+    defaultConfig = { type: "test", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
+  } else if (_identifier.startsWith("INVALID")) {
+    defaultConfig = { type: "invalid", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
+  } else {
+    defaultConfig = defaultConfigs[_identifier];
+  }
 
   logger.debug({
     at: "createReferencePriceFeedForFinancialContract",
