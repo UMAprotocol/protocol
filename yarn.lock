@@ -4807,6 +4807,27 @@
     "@typescript-eslint/types" "4.15.0"
     eslint-visitor-keys "^2.0.0"
 
+"@uma/common@^1.0.1", "@uma/common@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@uma/common/-/common-1.1.0.tgz#dd847498e81f5ccd38ac759bcc4afed240f2b409"
+  integrity sha512-ASzLiK7icYCbXrSxKUg7dJp1AuZUDd6MnQ1aXmGrNb7/VaIq4mxO7CYtYAj785jglrorpEGyB/b5ZbmUmldheA==
+  dependencies:
+    "@ethersproject/bignumber" "^5.0.5"
+    "@google-cloud/kms" "^0.3.0"
+    "@google-cloud/storage" "^2.4.2"
+    "@truffle/hdwallet-provider" "^1.0.25"
+    "@umaprotocol/truffle-ledger-provider" "^1.0.3"
+    abi-decoder "github:UMAprotocol/abi-decoder"
+    bignumber.js "^8.0.1"
+    dotenv "^6.2.0"
+    eth-crypto "^1.6.0"
+    minimist "^1.2.0"
+    moment "^2.24.0"
+    node-metamask "github:UMAprotocol/node-metamask"
+    require-context "^1.1.0"
+    truffle-deploy-registry "^0.5.1"
+    web3 "1.2.11"
+
 "@uma/core-1-1-0@npm:@uma/core@1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.1.0.tgz#81c23f67c3b8bc1b39877dd4084d697753582e67"
@@ -4833,7 +4854,7 @@
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
 
-"@uma/core-1-2-2@npm:@uma/core@1.2.2":
+"@uma/core-1-2-2@npm:@uma/core@1.2.2", "@uma/core@^1.2.0":
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.2.2.tgz#40f8db9e986a6a8ae8968aa690a33de51298f322"
   integrity sha512-eBvUbjTJHUOq9iG2cW2oTkUA8KtVRgcnjk5x0oh4wBZoVuWAb5OH0xHEKpZkHozVi0Nw04pX3dAsBWBwR2JEOA==
@@ -4841,6 +4862,25 @@
     "@truffle/contract" "^4.2.20"
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+
+"@uma/financial-templates-lib@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@uma/financial-templates-lib/-/financial-templates-lib-1.2.0.tgz#84b734836b40de4045a768116e74c41ab19068a4"
+  integrity sha512-CwIaNYEf3Ybysc/V+yecPGAm3QHzXRv8hMC4+2PIqXh89Fypn0DeO2OU1jItUN/y0qPIBRTWFnAC6qBRsLpW6Q==
+  dependencies:
+    "@ethersproject/bignumber" "^5.0.5"
+    "@google-cloud/logging-winston" "^3.0.6"
+    "@google-cloud/trace-agent" "^4.2.5"
+    "@uma/common" "^1.1.0"
+    "@uma/core" "^1.2.0"
+    "@uniswap/sdk" "^2.0.5"
+    bluebird "^3.7.2"
+    dotenv "^6.2.0"
+    minimist "^1.2.0"
+    node-fetch "^2.6.0"
+    node-pagerduty "^1.2.0"
+    winston "^3.2.1"
+    winston-transport "^4.3.0"
 
 "@umaprotocol/react-plugin@^1.5.5":
   version "1.5.5"
