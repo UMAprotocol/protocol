@@ -12,11 +12,12 @@ const {
   spyLogIncludes,
   PriceFeedMockScaled
 } = require("@uma/financial-templates-lib");
-const { interfaceName, OptimisticOracleRequestStatesEnum } = require("@uma/common");
+const { interfaceName, OptimisticOracleRequestStatesEnum, RegistryRolesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
+const PerpetualLib = getTruffleContract("PerpetualLib", web3);
 const Perpetual = getTruffleContract("Perpetual", web3);
 const Finder = getTruffleContract("Finder", web3);
 const Store = getTruffleContract("Store", web3);
@@ -24,6 +25,8 @@ const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
+const TokenFactory = getTruffleContract("TokenFactory", web3);
+const Registry = getTruffleContract("Registry", web3);
 
 contract("Perpetual: proposer.js", function(accounts) {
   const deployer = accounts[0];
@@ -94,27 +97,40 @@ contract("Perpetual: proposer.js", function(accounts) {
   };
 
   before(async function() {
-    finder = await Finder.deployed();
-    timer = await Timer.deployed();
-    perpFactory = await PerpetualCreator.deployed();
+    finder = await Finder.new();
+    timer = await Timer.new();
 
     // Whitelist an price identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
-
-    store = await Store.deployed();
-
     // Whitelist funding rate identifiers:
     fundingRateIdentifiersToTest.forEach(async id => {
       await identifierWhitelist.addSupportedIdentifier(id);
     });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+
+    // Store is neccessary to set up because contracts will need to read final fees before allowing
+    // a proposal.
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+    // Link libraries once so we can deploy new factories.
+    await PerpetualCreator.link(await PerpetualLib.new());
   });
 
   beforeEach(async function() {
-    startTime = await timer.getCurrentTime();
+    // Deploy new factory.
+    const tokenFactory = await TokenFactory.new();
+    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
+
+    // Deploy new registry so perp factory can register contracts.
+    const registry = await Registry.new();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
 
     // Set up new OO with custom settings.
     optimisticOracle = await OptimisticOracle.new(optimisticOracleProposalLiveness, finder.address, timer.address);
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
 
     // Whitelist and use same collateral for all perps.
@@ -122,7 +138,8 @@ contract("Perpetual: proposer.js", function(accounts) {
     await collateral.addMember(1, deployer);
     await collateral.mint(deployer, initialProposerBalance);
     await collateral.mint(botRunner, initialProposerBalance);
-    collateralWhitelist = await AddressWhitelist.deployed();
+    collateralWhitelist = await AddressWhitelist.new();
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
     await collateralWhitelist.addToWhitelist(collateral.address);
 
     // Set non-0 final fee to test that bot can stake proposer bond.
@@ -131,6 +148,11 @@ contract("Perpetual: proposer.js", function(accounts) {
       ...defaultCreationParams,
       collateralAddress: collateral.address
     };
+
+    // Before creating new perps, save the current contract time because this gets initialized as the
+    // "last update time" for the perps. This is important to track because new proposals can only
+    // come after the last update time.
+    startTime = await timer.getCurrentTime();
 
     // Use a different funding rate identifier for each perpetual.
     perpsCreated = [];

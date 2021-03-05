@@ -6,21 +6,26 @@ const sinon = require("sinon");
 const { toWei, utf8ToHex } = web3.utils;
 
 const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
-const { addGlobalHardhatTestingAddress } = require("@uma/common");
+const { addGlobalHardhatTestingAddress, interfaceName, RegistryRolesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
+const PerpetualLib = getTruffleContract("PerpetualLib", web3);
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
+const TokenFactory = getTruffleContract("TokenFactory", web3);
+const Finder = getTruffleContract("Finder", web3);
+const Registry = getTruffleContract("Registry", web3);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const Store = getTruffleContract("Store", web3);
 
 contract("index.js", function(accounts) {
   const deployer = accounts[0];
 
   // Contracts
   let perpFactory;
-  let timer;
   let identifierWhitelist;
   let collateralWhitelist;
   let collateral;
@@ -61,26 +66,48 @@ contract("index.js", function(accounts) {
   // The TEST identifier will map to a PriceFeedMock, which requires the following
   // config fields to be set to construct a price feed properly:
   let commonPriceFeedConfig = { currentPrice: "1", historicalPrice: "1" };
+  const optimisticOracleLiveness = 100;
 
   before(async function() {
-    timer = await Timer.deployed();
-    perpFactory = await PerpetualCreator.deployed();
-    // Set the address in the global name space to enable proposer's index.js to access it via `core/getAddressTest`.
-    addGlobalHardhatTestingAddress("PerpetualCreator", perpFactory.address);
+    const timer = await Timer.new();
+    const tokenFactory = await TokenFactory.new();
+    const finder = await Finder.new();
 
     // Whitelist an initial identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.fundingRateIdentifier);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+
+    // Deploy new registry so perp factory can register contracts.
+    const registry = await Registry.new();
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
+
+    // Store is neccessary to set up because contracts will need to read final fees before allowing
+    // a proposal.
+    const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+
+    // Funding rates are proposed to an OptimisticOracle.
+    const optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
 
     // Whitelist collateral and use the same collateral for all contracts.
     collateral = await Token.new("Wrapped Ether", "WETH", "18");
-    collateralWhitelist = await AddressWhitelist.deployed();
+    collateralWhitelist = await AddressWhitelist.new();
     await collateralWhitelist.addToWhitelist(collateral.address);
     defaultCreationParams = {
       ...defaultCreationParams,
       collateralAddress: collateral.address
     };
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
+
+    await PerpetualCreator.link(await PerpetualLib.new());
+    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
+    // Set the address in the global name space to enable proposer's index.js to access it via `core/getAddressTest`.
+    addGlobalHardhatTestingAddress("PerpetualCreator", perpFactory.address);
 
     // Deploy new Perp
     const perpAddress = await perpFactory.createPerpetual.call(defaultCreationParams, configStoreParams, {

@@ -7,10 +7,14 @@ const { interfaceName, advanceBlockAndSetTime, ZERO_ADDRESS, RegistryRolesEnum }
 const { getTruffleContract } = require("@uma/core");
 
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3);
+const ExpiringMultiPartyLib = getTruffleContract("ExpiringMultiPartyLib", web3);
 const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
+const PerpetualLib = getTruffleContract("PerpetualLib", web3);
 const Finder = getTruffleContract("Finder", web3);
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
+const TokenFactory = getTruffleContract("TokenFactory", web3);
+const Timer = getTruffleContract("Timer", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Registry = getTruffleContract("Registry", web3);
 
@@ -74,17 +78,23 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
   };
 
   before(async function() {
-    finder = await Finder.deployed();
-    empFactory = await ExpiringMultiPartyCreator.deployed();
-    perpFactory = await PerpetualCreator.deployed();
+    finder = await Finder.new();
+    const timer = await Timer.new();
+    const tokenFactory = await TokenFactory.new();
+
+    // Deploy new factories and link libraries.
+    await ExpiringMultiPartyCreator.link(await ExpiringMultiPartyLib.new());
+    await PerpetualCreator.link(await PerpetualLib.new());
+    empFactory = await ExpiringMultiPartyCreator.new(finder.address, tokenFactory.address, timer.address);
+    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
 
     // Whitelist an initial identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.new();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
     // Create and whitelist collateral so we can deploy.
-    collateralWhitelist = await AddressWhitelist.deployed();
+    collateralWhitelist = await AddressWhitelist.new();
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateralWhitelist.addToWhitelist(collateral.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
@@ -105,7 +115,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     };
 
     // Add Registry to finder so factories can register contracts.
-    registry = await Registry.deployed();
+    registry = await Registry.new();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, empFactory.address);
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
