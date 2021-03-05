@@ -15,7 +15,7 @@ yarn add @uma/monitors
 The simplest way to run the monitors is:
 
 ```bash
-EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" MONITOR_CONFIG="{your monitor config object}" monitors --network mainnet_mnemonic
+EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" MONITOR_CONFIG="{optional monitor config object}" monitors --network mainnet_mnemonic
 ```
 
 ## Monitors
