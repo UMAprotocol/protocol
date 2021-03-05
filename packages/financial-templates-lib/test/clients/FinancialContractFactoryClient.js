@@ -2,7 +2,7 @@ const winston = require("winston");
 
 const { toWei, utf8ToHex } = web3.utils;
 
-const { FinancialContractFactoryEventClient } = require("../../src/clients/FinancialContractFactoryEventClient");
+const { FinancialContractFactoryClient } = require("../../src/clients/FinancialContractFactoryClient");
 const { interfaceName, advanceBlockAndSetTime, ZERO_ADDRESS, RegistryRolesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -14,7 +14,7 @@ const Token = getTruffleContract("ExpandedERC20", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Registry = getTruffleContract("Registry", web3);
 
-contract("FinancialContractFactoryEventClient.js", function(accounts) {
+contract("FinancialContractFactoryClient.js", function(accounts) {
   const deployer = accounts[0];
 
   // Contracts
@@ -122,7 +122,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     });
   });
   it("createdExpiringMultiParty", async function() {
-    empClient = new FinancialContractFactoryEventClient(
+    empClient = new FinancialContractFactoryClient(
       dummyLogger,
       ExpiringMultiPartyCreator.abi,
       web3,
@@ -136,6 +136,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
 
     // State is empty before update().
     assert.deepStrictEqual([], empClient.getAllCreatedContractEvents());
+    assert.deepStrictEqual([], empClient.getAllCreatedContractAddresses());
 
     await empClient.update();
     assert.deepStrictEqual(
@@ -149,6 +150,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       ],
       empClient.getAllCreatedContractEvents()
     );
+    assert.deepStrictEqual([empsCreated[0].address], empClient.getAllCreatedContractAddresses());
 
     // Correctly adds only new events after last query
     await deployNewContract("ExpiringMultiPartyCreator");
@@ -165,9 +167,10 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       ],
       empClient.getAllCreatedContractEvents()
     );
+    assert.deepStrictEqual([empsCreated[1].address], empClient.getAllCreatedContractAddresses());
   });
   it("createdPerpetual", async function() {
-    perpClient = new FinancialContractFactoryEventClient(
+    perpClient = new FinancialContractFactoryClient(
       dummyLogger,
       PerpetualCreator.abi,
       web3,
@@ -181,6 +184,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
 
     // State is empty before update().
     assert.deepStrictEqual([], perpClient.getAllCreatedContractEvents());
+    assert.deepStrictEqual([], perpClient.getAllCreatedContractAddresses());
 
     await perpClient.update();
     assert.deepStrictEqual(
@@ -194,6 +198,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       ],
       perpClient.getAllCreatedContractEvents()
     );
+    assert.deepStrictEqual([perpsCreated[0].address], perpClient.getAllCreatedContractAddresses());
 
     // Correctly adds only new events after last query
     await deployNewContract("PerpetualCreator");
@@ -210,13 +215,14 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
       ],
       perpClient.getAllCreatedContractEvents()
     );
+    assert.deepStrictEqual([perpsCreated[1].address], perpClient.getAllCreatedContractAddresses());
   });
   it("Starting client at an offset block number", async function() {
     // Init the event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 
     const currentBlockNumber = await web3.eth.getBlockNumber();
-    const offsetClient = new FinancialContractFactoryEventClient(
+    const offsetClient = new FinancialContractFactoryClient(
       dummyLogger,
       PerpetualCreator.abi,
       web3,
@@ -233,9 +239,10 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     await offsetClient.update();
 
     assert.deepStrictEqual([], offsetClient.getAllCreatedContractEvents());
+    assert.deepStrictEqual([], offsetClient.getAllCreatedContractAddresses());
   });
   it("Client correctly defaults to PerpetualCreator", async function() {
-    perpClient = new FinancialContractFactoryEventClient(
+    perpClient = new FinancialContractFactoryClient(
       dummyLogger,
       PerpetualCreator.abi,
       web3,
@@ -248,7 +255,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
   it("Correctly rejects invalid contract types", async function() {
     let didThrow = false;
     try {
-      perpClient = new FinancialContractFactoryEventClient(
+      perpClient = new FinancialContractFactoryClient(
         dummyLogger,
         PerpetualCreator.abi,
         web3,
@@ -263,7 +270,7 @@ contract("FinancialContractFactoryEventClient.js", function(accounts) {
     assert.isTrue(didThrow);
     didThrow = false;
     try {
-      perpClient = new FinancialContractFactoryEventClient(
+      perpClient = new FinancialContractFactoryClient(
         dummyLogger,
         PerpetualCreator.abi,
         web3,

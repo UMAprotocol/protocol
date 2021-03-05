@@ -5,7 +5,7 @@ const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
 const { FundingRateProposer } = require("../src/proposer");
 const {
-  FinancialContractFactoryEventClient,
+  FinancialContractFactoryClient,
   GasEstimator,
   SpyTransport,
   lastSpyLogLevel,
@@ -93,15 +93,25 @@ contract("Perpetual: proposer.js", function(accounts) {
     );
   };
 
-  beforeEach(async function() {
+  before(async function() {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
-    startTime = await timer.getCurrentTime();
     perpFactory = await PerpetualCreator.deployed();
 
-    // Whitelist an initial identifier so we can deploy.
+    // Whitelist an price identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
+
+    store = await Store.deployed();
+
+    // Whitelist funding rate identifiers:
+    fundingRateIdentifiersToTest.forEach(async id => {
+      await identifierWhitelist.addSupportedIdentifier(id);
+    });
+  });
+
+  beforeEach(async function() {
+    startTime = await timer.getCurrentTime();
 
     // Set up new OO with custom settings.
     optimisticOracle = await OptimisticOracle.new(optimisticOracleProposalLiveness, finder.address, timer.address);
@@ -116,7 +126,6 @@ contract("Perpetual: proposer.js", function(accounts) {
     await collateralWhitelist.addToWhitelist(collateral.address);
 
     // Set non-0 final fee to test that bot can stake proposer bond.
-    store = await Store.deployed();
     await store.setFinalFee(collateral.address, { rawValue: finalFee });
     let customCreationParams = {
       ...defaultCreationParams,
@@ -126,8 +135,6 @@ contract("Perpetual: proposer.js", function(accounts) {
     // Use a different funding rate identifier for each perpetual.
     perpsCreated = [];
     for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-      // Whitelist funding rate identifier
-      await identifierWhitelist.addSupportedIdentifier(fundingRateIdentifiersToTest[i]);
       customCreationParams = {
         ...customCreationParams,
         fundingRateIdentifier: fundingRateIdentifiersToTest[i]
@@ -147,24 +154,23 @@ contract("Perpetual: proposer.js", function(accounts) {
       // data now to make testing easier.
       const ancillaryData = tokenAddress;
       perpsCreated.push({ transaction: perpCreation, address: perpContract.address, ancillaryData });
-
-      spy = sinon.spy();
-      spyLogger = winston.createLogger({
-        level: "debug",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
-      });
-
-      factoryClient = new FinancialContractFactoryEventClient(
-        spyLogger,
-        PerpetualCreator.abi,
-        web3,
-        perpFactory.address,
-        0, // startingBlockNumber
-        null // endingBlockNumber
-      );
-
-      gasEstimator = new GasEstimator(spyLogger);
     }
+
+    // Construct helper classes for proposer bot
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+    factoryClient = new FinancialContractFactoryClient(
+      spyLogger,
+      PerpetualCreator.abi,
+      web3,
+      perpFactory.address,
+      0, // startingBlockNumber
+      null // endingBlockNumber
+    );
+    gasEstimator = new GasEstimator(spyLogger);
 
     // Construct FundingRateProposer using a valid default price feed config containing any additional properties
     // not set in DefaultPriceFeedConfig

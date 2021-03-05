@@ -7,7 +7,7 @@ const {
   Logger,
   waitForLogger,
   delay,
-  FinancialContractFactoryEventClient,
+  FinancialContractFactoryClient,
   GasEstimator
 } = require("@uma/financial-templates-lib");
 const { FundingRateProposer } = require("./src/proposer");
@@ -54,10 +54,10 @@ async function run({
       perpetualProposerConfig
     });
 
-    // Create the FinancialContractFactoryEventClient to query on-chain information,
+    // Create the FinancialContractFactoryClient to query on-chain information,
     // GasEstimator to get latest gas prices and an instance of the funding rate proposer to
     // respond to price requests and proposals.
-    const perpetualFactoryClient = new FinancialContractFactoryEventClient(
+    const perpetualFactoryClient = new FinancialContractFactoryClient(
       logger,
       getAbi("PerpetualCreator"),
       web3,

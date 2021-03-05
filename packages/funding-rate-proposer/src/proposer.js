@@ -319,26 +319,27 @@ class FundingRateProposer {
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
   // Fetch and cache latest contract state.
   async _cachePerpetualContracts() {
-    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractEvents(), async creationEvent => {
-      if (!this.contractCache[creationEvent.contractAddress]) {
+    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractAddresses(), async contractAddress => {
+      if (!this.contractCache[contractAddress]) {
         this.logger.debug({
           at: "PerpetualProposer",
           message: "Caching new perpetual contract",
-          perpetualAddress: creationEvent.contractAddress
+          perpetualAddress: contractAddress
         });
         // Failure to construct a Perpetual instance using the contract address should be fatal,
         // so we don't catch that error.
-        const perpetualContract = this.createPerpetualContract(creationEvent.contractAddress);
+        const perpetualContract = this.createPerpetualContract(contractAddress);
 
         // Fetch contract state that we won't need to refresh, such as collateral currency:
         const collateralAddress = await perpetualContract.methods.collateralCurrency().call();
 
-        this.contractCache[creationEvent.contractAddress] = {
+        this.contractCache[contractAddress] = {
           contract: perpetualContract,
           collateralAddress
         };
       }
-      return this._getContractState(creationEvent.contractAddress);
+      // For this contract, load state.
+      await this._getContractState(contractAddress);
     });
   }
 
@@ -352,6 +353,7 @@ class FundingRateProposer {
       perpetualContract.methods.configStore().call()
     ]);
     const configStoreContract = this.createConfigStoreContract(configStoreAddress);
+    // Grab config store settings.
     const [currentConfig] = await Promise.all([configStoreContract.methods.updateAndGetCurrentConfig().call()]);
 
     // Save contract state to cache:

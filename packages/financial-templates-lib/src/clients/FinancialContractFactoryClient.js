@@ -1,8 +1,9 @@
-// A thick client for getting information about FinancialContractFactory events.
+// A thick client for getting information about FinancialContractFactory contracts.
+const _ = require("lodash");
 
-class FinancialContractFactoryEventClient {
+class FinancialContractFactoryClient {
   /**
-   * @notice Constructs new FinancialContractEventClient.
+   * @notice Constructs new FinancialContractFactoryClient.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} financialContractFactoryAbi ExpiringMultiPartyCreator or PerpetualMultiPartyCreator truffle ABI object.
    * @param {Object} web3 Web3 provider from truffle instance.
@@ -60,6 +61,10 @@ class FinancialContractFactoryEventClient {
     return this.createdContractEvents;
   }
 
+  getAllCreatedContractAddresses() {
+    return _.uniq(this.createdContractEvents.map(event => event.contractAddress));
+  }
+
   // Returns the last update timestamp.
   getLastUpdateTime() {
     return this.lastUpdateTimestamp;
@@ -91,14 +96,15 @@ class FinancialContractFactoryEventClient {
 
     // Process the responses into clean objects.
     for (let event of createdContractEventsObj) {
+      const createdAddress =
+        this.contractType === "PerpetualCreator"
+          ? event.returnValues.perpetualAddress
+          : event.returnValues.expiringMultiPartyAddress;
       this.createdContractEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         deployerAddress: event.returnValues.deployerAddress,
-        contractAddress:
-          this.contractType === "PerpetualCreator"
-            ? event.returnValues.perpetualAddress
-            : event.returnValues.expiringMultiPartyAddress
+        contractAddress: createdAddress
       });
     }
 
@@ -106,7 +112,7 @@ class FinancialContractFactoryEventClient {
     this.firstBlockToSearch = lastBlockToSearch + 1;
 
     this.logger.debug({
-      at: "FinancialContractFactoryEventClient",
+      at: "FinancialContractFactoryClient",
       message: "Financial Contract Factory event state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
@@ -114,5 +120,5 @@ class FinancialContractFactoryEventClient {
 }
 
 module.exports = {
-  FinancialContractFactoryEventClient
+  FinancialContractFactoryClient
 };

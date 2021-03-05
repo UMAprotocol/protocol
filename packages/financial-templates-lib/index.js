@@ -1,7 +1,7 @@
 module.exports = {
   ...require("./src/clients/FinancialContractClient"),
   ...require("./src/clients/FinancialContractEventClient"),
-  ...require("./src/clients/FinancialContractFactoryEventClient"),
+  ...require("./src/clients/FinancialContractFactoryClient"),
   ...require("./src/clients/OptimisticOracleClient"),
   ...require("./src/clients/OptimisticOracleEventClient"),
   ...require("./src/clients/TokenBalanceClient"),
