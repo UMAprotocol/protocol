@@ -8,8 +8,8 @@
  *
  * @title MerkleDistributor contract.
  * @notice Allows an owner to distribute any reward ERC20 to claimants according to Merkle roots. The owner can specify
- *         multiple Merkle roots distributions, each of which has its own start time, constraining when claims can be
- *         executed, and end time, controlling the rate at which a claim is vested.
+ *         multiple Merkle roots distributions, each of which has its own start time constraining when claims can be
+ *         executed.
  */
 
 pragma solidity ^0.6.0;
@@ -19,10 +19,9 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/Testable.sol";
 
-contract MerkleDistributor is Ownable, Lockable, Testable {
+contract MerkleDistributor is Ownable, Testable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -31,15 +30,10 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     struct Window {
         // Claims for this window can begin after `start`.
         uint256 start;
-        // Claims become fully vested after `end`.
-        uint256 end;
         // Merkle root describing the distribution.
         bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
-        // Total amount of rewards distributed this window. This is not enforced
-        // but might be useful to query.
-        uint256 totalRewardsDistributed;
     }
 
     // Represents an account's claim for `amount` within the Merkle root located at the `windowIndex`.
@@ -53,147 +47,170 @@ contract MerkleDistributor is Ownable, Lockable, Testable {
     // Windows are mapped to arbitrary indices.
     mapping(uint256 => Window) public merkleWindows;
 
-    // Keep track of the amount an account has claimed from a window.
-    mapping(uint256 => mapping(address => uint256)) public amountClaimedFromWindow;
+    // Track which accounts have claimed for each window index.
+    // TODO: Should we replace this mapping with a bitmap for each window? Upside is cheaper `claim` transactions,
+    // downside is having to include an `accountIndex` in the merkle leaf.
+    mapping(uint256 => mapping(address => bool)) public claimed;
+
+    // Index of last created Merkle root. Next allocation to begin at `lastCreatedIndex + 1`.
+    uint256 public lastCreatedIndex;
 
     // Events:
     event Claimed(
-        address caller,
-        uint256 indexed windowIndex,
+        address indexed caller,
+        uint256 windowIndex,
         address indexed account,
-        uint256 totalClaimAmount,
-        uint256 amountVestedNetPreviousClaims,
-        uint256 claimAmountRemaining,
+        uint256 amount,
         address indexed rewardToken
     );
-    event SeededWindow(uint256 indexed windowIndex, uint256 amount, uint256 windowStart, address indexed rewardToken);
+    event CreatedWindow(
+        uint256 indexed windowIndex,
+        uint256 amount,
+        uint256 indexed windowStart,
+        address indexed rewardToken,
+        address owner
+    );
+    event WithdrawRewards(address indexed owner, uint256 amount);
+    event DeleteWindow(uint256 indexed windowIndex, address owner);
 
     constructor(address _timerAddress) public Testable(_timerAddress) {}
 
-    // Set merkle root for a window and seed allocations. Callable by owner of this
-    // contract.
-    function setWindowMerkleRoot(
-        uint256 windowIndex,
+    /****************************
+     *
+     * Admin functions
+     *
+     ****************************/
+
+    // Set merkle root for the next available window index and seed allocations. Callable by owner of this
+    // contract. Importantly, we assume that the owner of this contract
+    // correctly chooses an amount `totalRewardsDistributed` that is sufficient
+    // to cover all claims within the `merkleRoot`. Otherwise, a race condition
+    // can be created. This situation can occur because we do not segregate reward balances by window,
+    // for code simplicity purposes.
+    //
+    // Example race situation:
+    //     - Window 1 Tree: Owner sets `totalRewardsDistributed=100` and insert proofs that give
+    //                      claimant A 50 tokens and claimant B 51 tokens. The owner has made an error
+    //                      by not setting the `totalRewardsDistributed` correctly to 101).
+    //     - Window 2 Tree: Owner sets `totalRewardsDistributed=1` and insert proofs that give
+    //                      claimant A 1 token. The owner correctly set `totalRewardsDistributed` this time.
+    //     - At this point contract owns 100 + 1 = 101 tokens. Now, imagine the following sequence:
+    //       (1) Claimant A claims 50 tokens for Window 1, contract now has 101 - 50 = 51 tokens.
+    //       (2) Claimant B claims 51 tokens for Window 1, contract now has 51 - 51 = 0 tokens.
+    //       (3) Claimant A tries to claim 1 token for Window 2 but fails because contract has 0 tokens.
+    //     - In summary, the contract owner created a race for step(2) and step(3) in which the first
+    //       claim would succeed and the second claim would fail, even though both claimants would expect
+    //       their claims to suceed.
+    function setWindow(
         uint256 totalRewardsDistributed,
         uint256 windowStart,
-        uint256 windowEnd,
         address rewardToken,
         bytes32 merkleRoot
-    ) external nonReentrant() onlyOwner {
-        require(merkleWindows[windowIndex].merkleRoot == bytes32(0), "Root already set");
+    ) external onlyOwner {
+        uint256 indexToSet = lastCreatedIndex;
+        lastCreatedIndex = indexToSet.add(1);
 
-        Window storage window = merkleWindows[windowIndex];
-        window.start = windowStart;
-        window.end = windowEnd;
-        window.merkleRoot = merkleRoot;
-        window.rewardToken = IERC20(rewardToken);
-        window.totalRewardsDistributed = totalRewardsDistributed;
-
-        window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
+        _setWindow(indexToSet, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
     }
 
-    // TODO: This method could get pretty gas intensive; is there a way we can reduce the amount
-    // of external `transfer` calls if we precompute all the rewards for each account?
-    // It's a bit tricky because there are multiple reward currencies possible.
-    function claimWindows(Claim[] memory claims) public nonReentrant() {
+    // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
+    function deleteWindow(uint256 windowIndex) external onlyOwner {
+        delete merkleWindows[windowIndex];
+        emit DeleteWindow(windowIndex, msg.sender);
+    }
+
+    // Emergency method used to transfer rewards out of the contract
+    // incase the contract was configured improperly.
+    function withdrawRewards(address rewardCurrency, uint256 amount) external onlyOwner {
+        IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
+        emit WithdrawRewards(msg.sender, amount);
+    }
+
+    /****************************
+     *
+     * Public functions
+     *
+     ****************************/
+
+    // Batch claims for a reward currency for an account to save gas.
+    function claimWindows(
+        Claim[] memory claims,
+        address rewardToken,
+        address account
+    ) public {
+        uint256 amountToClaim = 0;
         for (uint256 i = 0; i < claims.length; i++) {
-            claimWindow(claims[i]);
+            Claim memory claim = claims[i];
+            require(claim.account == account, "Invalid account in batch claim");
+            _markClaimed(claim);
+            amountToClaim = amountToClaim.add(claim.amount);
         }
+        _disburse(IERC20(rewardToken), account, amountToClaim);
     }
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
-    function claimWindow(Claim memory claim) public nonReentrant() {
+    function claimWindow(Claim memory claim) public {
+        _markClaimed(claim);
+        _disburse(merkleWindows[claim.windowIndex].rewardToken, claim.account, claim.amount);
+    }
+
+    /****************************
+     *
+     * Internal functions
+     *
+     ****************************/
+
+    function _setWindow(
+        uint256 windowIndex,
+        uint256 totalRewardsDistributed,
+        uint256 windowStart,
+        address rewardToken,
+        bytes32 merkleRoot
+    ) private {
+        Window storage window = merkleWindows[windowIndex];
+        window.start = windowStart;
+        window.merkleRoot = merkleRoot;
+        window.rewardToken = IERC20(rewardToken);
+
+        window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
+
+        emit CreatedWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
+    }
+
+    function _markClaimed(Claim memory claim) private {
         // Check claimed proof against merkle window at given index.
-        require(verifyClaim(claim), "Incorrect merkle proof");
-        // Check the account has not yet claimed their full amount for this window.
-        require(
-            amountClaimedFromWindow[claim.windowIndex][claim.account] < claim.amount,
-            "Account has already claimed the full amount for this window"
-        );
+        require(_verifyClaim(claim), "Incorrect merkle proof");
+        // Check the account has not yet claimed for this window.
+        require(!claimed[claim.windowIndex][claim.account], "Account has already claimed for this window");
 
-        // Proof is correct; check that claimant has enough vested amount to disburse and decrease their balance.
-        Window memory merkleWindow = merkleWindows[claim.windowIndex];
-        (uint256 amountVestedNetPreviousClaims, uint256 amountRemaining) = _debitClaimedAmount(claim, merkleWindow);
+        // Proof is correct and claim has not occurred yet; check that claim window has begun.
+        require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begun");
 
-        _disburse(claim, merkleWindow, amountVestedNetPreviousClaims);
-
+        claimed[claim.windowIndex][claim.account] = true;
         emit Claimed(
             msg.sender,
             claim.windowIndex,
             claim.account,
             claim.amount,
-            amountVestedNetPreviousClaims,
-            amountRemaining,
-            address(merkleWindow.rewardToken)
+            address(merkleWindows[claim.windowIndex].rewardToken)
         );
     }
 
+    function _disburse(
+        IERC20 token,
+        address account,
+        uint256 amount
+    ) private {
+        // TODO: Should we revert claims for 0 tokens?
+        if (amount > 0) {
+            token.safeTransfer(account, amount);
+        }
+    }
+
     // Checks {account, amount} against Merkle root at given window index.
-    function verifyClaim(Claim memory claim) public view returns (bool valid) {
+    function _verifyClaim(Claim memory claim) private view returns (bool valid) {
         bytes32 leaf = keccak256(abi.encodePacked(claim.account, claim.amount));
         return MerkleProof.verify(claim.merkleProof, merkleWindows[claim.windowIndex].merkleRoot, leaf);
-    }
-
-    // Returns how many tokens can be dispersed from the claim window. The amount is vested fully between `windowStart`
-    // and `windowEnd`, meaning that if `time < start`, then this returns 0, and if `time >= end`, then this returns `amount`.
-    function calcVestedAmount(
-        uint256 amount,
-        uint256 time,
-        uint256 windowStart,
-        uint256 windowEnd
-    ) public view returns (uint256) {
-        if (time < windowStart) {
-            return 0;
-        }
-        // If time is after window end or window end is not greater than start,then return all tokens.
-        else if (time >= windowEnd || windowEnd <= windowStart) {
-            return amount;
-        } else {
-            // Assumptions:
-            // - `time - windowStart` > 0
-            // - `windowEnd - windowStart` > 0
-            // Calculate:
-            // - [ amount * (time - start) ] / [ end - start ]
-            // Description:
-            // - Linearly interpolate amount based on time's location between start and end
-            return amount.mul(time.sub(windowStart)) / windowEnd.sub(windowStart);
-        }
-    }
-
-    function _debitClaimedAmount(Claim memory claim, Window memory merkleWindow)
-        internal
-        returns (uint256 amountVestedNetPreviousClaims, uint256 amountRemaining)
-    {
-        uint256 currentTime = getCurrentTime();
-
-        // Calculate how much of the claimed amount has vested. This will return 0 if the contract time is less than or
-        // equal to the window start, or return the full `amount` if the contract time is greater than or equal to the window end.
-        uint256 amountVested = calcVestedAmount(claim.amount, currentTime, merkleWindow.start, merkleWindow.end);
-
-        // Fetch how much the account has previously claimed for this window.
-        uint256 amountPreviouslyClaimed = amountClaimedFromWindow[claim.windowIndex][claim.account];
-
-        // Calculate how much the account has remaining to still withdraw from their vested amount for this window.
-        amountVestedNetPreviousClaims = amountVested.sub(amountPreviouslyClaimed);
-
-        // If the amount net previous claims is zero, then revert.
-        require(amountVestedNetPreviousClaims > 0, "Zero vested amount");
-
-        // Calculate how much the account has left to claim (unvested). Useful in logging.
-        amountRemaining = claim.amount.sub(amountVested);
-
-        // Finally, Update the total amount the user has claimed as the amountVested.
-        amountClaimedFromWindow[claim.windowIndex][claim.account] = amountVested;
-    }
-
-    function _disburse(
-        Claim memory claim,
-        Window memory merkleWindow,
-        uint256 amount
-    ) internal {
-        if (amount > 0) {
-            merkleWindow.rewardToken.safeTransfer(claim.account, amount);
-        }
     }
 }
