@@ -300,7 +300,7 @@ contract("MerkleDistributor.js", function(accounts) {
       });
       // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
       // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-      assert.equal(claimTx.receipt.gasUsed, 87380);
+      assert.equal(claimTx.receipt.gasUsed, 87361);
     });
     it("invalid proof", async function() {
       // Incorrect account:
@@ -423,7 +423,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
       ];
       const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, { from: rando });
-      assert.equal(claimTx.receipt.gasUsed, 121862);
+      assert.equal(claimTx.receipt.gasUsed, 121843);
 
       // Account 0 should have gained claimed amount from both leaves.
       const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
