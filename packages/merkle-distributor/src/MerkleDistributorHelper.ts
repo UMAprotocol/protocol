@@ -60,7 +60,7 @@ async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddr
     merkleDistributorContract.claimed(claimWindowIndex, claimerAddress)
   );
 
-  // Yield all claims in parallel
+  // Yield all claims calls in parallel.
   const [claimsProofs, contractClaimsProofs] = await Promise.all([
     Promise.all(claimsProofsPromises),
     Promise.all(hasAccountClaimedPromises)
