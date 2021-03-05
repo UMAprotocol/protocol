@@ -16,7 +16,7 @@
 //   }... for all recipients
 // }
 
-// example execution: ts-node ./scripts/CreateClaimsForWindow.ts -i ./scripts/example.json
+// example execution: ts-node ./scripts/1_CreateClaimsForWindow.ts -i ./scripts/example.json
 
 const assert = require("assert");
 const path = require("path");

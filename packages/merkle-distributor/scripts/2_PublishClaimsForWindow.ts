@@ -4,7 +4,7 @@
 // 1) the unlocked account running the script is the owner of the merkleDistributor OR an account with permissions to set merkle roots.
 // 2) the account running the script has sufficient rewards tokens to seed the merkleDistributor.
 // 3) you have set the CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_NAMESPACE_ID and CLOUDFLARE_TOKEN env variables.
-// 4) (optional) you have set the PINATA_SECRET_API_KEY and PINATA_API_KEY environment variables
+// 4) (optional) you have set the PINATA_SECRET_API_KEY and PINATA_API_KEY environment variables.
 
 // Example input file should conform to the following format:
 // {
@@ -27,7 +27,7 @@
 //   }... for all claims
 // }
 
-// example execution: ts-node ./scripts/PublishClaimsForWindow.ts -i ./proof-files/chain-id-42-reward-window-0-claims-file.json -m 0xAfCd2405298C2FABB2F7fCcEB919B4505A6bdDFC --network kovan_mnemonic
+// example execution: ts-node ./scripts/2_PublishClaimsForWindow.ts -i ./proof-files/chain-id-42-reward-window-0-claims-file.json -m 0xAfCd2405298C2FABB2F7fCcEB919B4505A6bdDFC --network kovan_mnemonic
 
 const assert = require("assert");
 import { program } from "commander";
