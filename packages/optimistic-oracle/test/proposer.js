@@ -234,16 +234,6 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // Now: Execute `sendProposals()` and test that the bot correctly responds to these price proposals
       await proposer.sendProposals();
 
-      // Check that an error alert is sent for each price request detected
-      let errorAlertCount = 0;
-      for (let i = 0; i < spy.getCalls().length; i++) {
-        if (spy.getCall(-(i + 1)).lastArg.level === "error") {
-          assert.isTrue(spyLogIncludes(spy, -(i + 1), "Detected price request"));
-          errorAlertCount += 1;
-        }
-      }
-      assert.equal(errorAlertCount, identifiersToTest.length);
-
       // Check that the onchain requests have been proposed to.
       for (let i = 0; i < identifiersToTest.length; i++) {
         await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifiersToTest[i], ancillaryDataAddresses[i]);
@@ -557,32 +547,5 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query historical price for price request"));
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
-  });
-
-  it("Cannot set disputePriceErrorPercent < 0 or >= 1", async function() {
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: -0.1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: 1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
   });
 });

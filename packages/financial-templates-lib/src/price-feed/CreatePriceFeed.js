@@ -18,6 +18,7 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
+const { getPrecisionForIdentifier } = require("@uma/common");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -292,7 +293,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new PriceFeedMockScaled(
       config.currentPrice,
       config.historicalPrice,
-      null,
+      config.lastUpdateTime,
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
     );
@@ -573,6 +574,12 @@ async function createUniswapPriceFeedForFinancialContract(
 
   const userConfig = config || {};
 
+  // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
+  // get time method with the current block time.
+  if (userConfig.getTimeOverride?.useBlockTime) {
+    getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
+  }
+
   logger.debug({
     at: "createUniswapPriceFeedForFinancialContract",
     message: "Inferred default config from identifier or Financial Contract address",
@@ -657,7 +664,16 @@ async function createReferencePriceFeedForFinancialContract(
     );
   }
 
-  const defaultConfig = defaultConfigs[_identifier];
+  // For test purposes, if the identifier begins with "TEST..." or "INVALID..." then we will set the pricefeed
+  // to test-only pricefeeds like the PriceFeedMock and the InvalidPriceFeed.
+  let defaultConfig;
+  if (_identifier.startsWith("TEST")) {
+    defaultConfig = { type: "test", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
+  } else if (_identifier.startsWith("INVALID")) {
+    defaultConfig = { type: "invalid", priceFeedDecimals: getPrecisionForIdentifier(_identifier) };
+  } else {
+    defaultConfig = defaultConfigs[_identifier];
+  }
 
   logger.debug({
     at: "createReferencePriceFeedForFinancialContract",
@@ -695,21 +711,20 @@ async function createReferencePriceFeedForFinancialContract(
     }
     // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
     // get time method with the current block time.
-    if (combinedConfig.getTimeOverride) {
-      if (combinedConfig.getTimeOverride.useBlockTime) {
-        getTime = async () =>
-          web3.eth.getBlock("latest").then(block => {
-            return block.timestamp;
-          });
-      }
+    if (combinedConfig.getTimeOverride?.useBlockTime) {
+      getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
     }
   }
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }
 
 function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
-  const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-  return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  try {
+    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
+    return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  } catch (error) {
+    throw new Error({ message: "Something went wrong in fetching the financial contract identifier", error });
+  }
 }
 
 module.exports = {

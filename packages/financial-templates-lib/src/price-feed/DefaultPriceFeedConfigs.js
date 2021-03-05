@@ -384,9 +384,17 @@ const defaultConfigs = {
   CNYUSD: {
     type: "tradermade",
     pair: "CNYUSD",
-    minuteLookback: 7200, // interval=minute allowed lookback up to 2 days
-    hourlyLookback: 604800, // interval=hour allowed lookback up to 2 months
-    minTimeBetweenUpdates: 600
+    minTimeBetweenUpdates: 600,
+    minuteLookback: 7200,
+    hourlyLookback: 604800,
+    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+  },
+  EURUSD: {
+    type: "tradermade",
+    pair: "EURUSD",
+    minTimeBetweenUpdates: 60,
+    minuteLookback: 7200,
+    hourlyLookback: 604800
   },
   PHPDAI: {
     type: "medianizer",
@@ -397,16 +405,88 @@ const defaultConfigs = {
       {
         type: "coinmarketcap",
         symbol: "DAI",
-        convert: "PHP",
+        quoteCurrency: "PHP",
         invertPrice: true
       },
       {
         type: "coingecko",
         contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
-        currency: "php",
+        quoteCurrency: "php",
         invertPrice: true
       }
     ]
+  },
+  "ETH-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
+    }
+  },
+  "ETH-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
+    }
+  },
+  "BTC-BASIS-6M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-biquarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
+    }
+  },
+  "BTC-BASIS-3M/USDC": {
+    type: "expression",
+    expression: `
+      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
+      `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
+      SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
+      FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
+    }
   },
   "USD/bBadger": {
     type: "expression",
@@ -474,27 +554,15 @@ const defaultConfigs = {
   XAUUSD: {
     type: "tradermade",
     pair: "XAUUSD",
-    minTimeBetweenUpdates: 60,
     minuteLookback: 7200,
-    hourlyLookback: 604800
+    hourlyLookback: 604800,
+    minTimeBetweenUpdates: 60
   },
-  // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
-  // default price feed config.
-  TEST8DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST6DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST18DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  INVALID: {
-    // This type should map to the InvalidPriceFeedMock in `CreatePriceFeed`
-    type: "invalid"
+  uSTONKS_APR21: {
+    type: "uniswap",
+    uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
+    twapLength: 7200,
+    invertPrice: true
   }
 };
 

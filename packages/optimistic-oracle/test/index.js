@@ -41,18 +41,11 @@ contract("index.js", function() {
     addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
     addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
-  beforeEach(async function() {
-    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
-    spy = sinon.spy(); // Create a new spy for each test.
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-    });
-  });
 
   it("Completes one iteration without logging any errors", async function() {
-    // We will also create a new spy logger, listening for debug events because success logs are tagged with the
+    // We will create a new spy logger, listening for debug events because success logs are tagged with the
     // debug level.
+    spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]

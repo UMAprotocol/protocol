@@ -1,14 +1,14 @@
 {
   "name": "@uma/monitors",
-  "version": "1.2.0",
+  "version": "2.0.1",
   "description": "UMA Monitors",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "dependencies": {
-    "@uma/common": "^1.1.0",
-    "@uma/core": "1.2.2",
-    "@uma/financial-templates-lib": "^1.2.0",
+    "@uma/common": "^2.0.1",
+    "@uma/core": "^2.0.1",
+    "@uma/financial-templates-lib": "^2.0.1",
     "async-retry": "^1.3.1",
     "dotenv": "^6.2.0",
     "truffle": "^5.1.35"

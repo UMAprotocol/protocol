@@ -32,7 +32,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -177,12 +177,12 @@ contract("index.js", function(accounts) {
           errorRetriesTimeout
         });
 
-        // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
-        // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+        // Seventh log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
+        // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
 
       it("Allowances are set", async function() {
@@ -236,9 +236,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
 
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         let didThrowError = false;

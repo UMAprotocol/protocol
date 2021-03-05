@@ -1,16 +1,27 @@
-import DesignatedVotingFactory from "@uma/core-1-2-0/build/contracts/DesignatedVotingFactory.json";
-import Governor from "@uma/core-1-2-0/build/contracts/Governor.json";
-import Voting from "@uma/core-1-2-0/build/contracts/Voting.json";
-import VotingToken from "@uma/core-1-2-0/build/contracts/VotingToken.json";
-import VotingInterfaceTesting from "@uma/core/build/contracts/VotingInterfaceTesting.json";
+import DesignatedVotingFactory from "@uma/core/build/contracts/DesignatedVotingFactory.json";
+import Governor from "@uma/core/build/contracts/Governor.json";
+import Voting from "@uma/core/build/contracts/Voting.json";
+import VotingToken from "@uma/core/build/contracts/VotingToken.json";
+import VotingAncillaryTest from "@uma/core/build/contracts/VotingAncillaryInterfaceTesting.json";
 
-// Hack to add the new voting address on kovan and mainnet, but not change anything else.
-Voting.networks[1].address = "0x8b1631ab830d11531ae83725fda4d86012eccd77";
-Voting.networks[42].address = "0x0740C93a3D2B6088d0E345Da47c3B412b9874562";
-Voting.abi = VotingInterfaceTesting.abi;
+// Doing this to force using only the ancillary interface. Drizzle was getting confused when calling overloads.
+Voting.abi = [...VotingAncillaryTest.abi];
+const OldDesignatedVotingFactory = {
+  abi: DesignatedVotingFactory.abi,
+  networks: {
+    ...DesignatedVotingFactory.networks, // Unless overridden, this will make the "old" voting contract == new voting contract.
+    1: {
+      address: "0xE81EeE5Da165fA6863bBc82dF66E62d18625d592"
+    },
+    42: {
+      address: "0xF988f9f62f355966a758c5936C9080183C176585"
+    }
+  },
+  contractName: "OldDesignatedVotingFactory"
+};
 
 const options = {
-  contracts: [DesignatedVotingFactory, Governor, Voting, VotingToken],
+  contracts: [DesignatedVotingFactory, Governor, Voting, VotingToken, OldDesignatedVotingFactory],
   polls: {
     accounts: 1000,
     blocks: 3000

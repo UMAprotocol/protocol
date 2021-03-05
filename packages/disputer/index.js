@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -15,11 +15,12 @@ const {
   Networker,
   delay,
   waitForLogger,
-  createReferencePriceFeedForFinancialContract
+  createReferencePriceFeedForFinancialContract,
+  setAllowance
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -45,7 +46,6 @@ async function run({
   disputerOverridePrice
 }) {
   try {
-    const { toBN } = web3.utils;
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -63,10 +63,9 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [detectedContract, accounts, networkId] = await Promise.all([
+    const [detectedContract, accounts] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
-      web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.getAccounts()
     ]);
 
     // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
@@ -89,7 +88,6 @@ async function run({
       );
 
     // Setup contract instances.
-    const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
     const financialContract = new web3.eth.Contract(
       getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
       financialContractAddress
@@ -103,9 +101,8 @@ async function run({
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [priceIdentifier, currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
+    const [priceIdentifier, collateralDecimals, syntheticDecimals] = await Promise.all([
       financialContract.methods.priceIdentifier().call(),
-      collateralToken.methods.allowance(accounts[0], financialContractAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
@@ -141,10 +138,11 @@ async function run({
     );
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
+
     const disputer = new Disputer({
       logger,
       financialContractClient,
-      votingContract: voting,
       gasEstimator,
       priceFeed,
       account: accounts[0],
@@ -164,16 +162,18 @@ async function run({
 
     // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
+    const collateralApproval = await setAllowance(
+      web3,
+      gasEstimator,
+      accounts[0],
+      financialContractAddress,
+      collateralTokenAddress
+    );
+    if (collateralApproval) {
       logger.info({
         at: "Disputer#index",
         message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApproval.tx.transactionHash
       });
     }
 

@@ -7,7 +7,7 @@ const { Prices } = require("../../libs/models");
 const { mocks } = require("../../libs/datasets");
 const Path = require("path");
 
-const empAbi = getAbi("ExpiringMultiParty");
+const empAbi = getAbi("ExpiringMultiParty", "1.2.0");
 
 const { EmpBalancesHistory } = require("../../libs/processors");
 

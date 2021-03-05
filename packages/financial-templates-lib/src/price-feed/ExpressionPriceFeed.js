@@ -69,7 +69,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     );
 
     if (errors.length > 0) {
-      throw errors.map(error => error.stack);
+      throw errors;
     }
 
     return this._convertToFixed(this.expressionCode.evaluate(historicalPrices), this.getPriceFeedDecimals());
