@@ -573,6 +573,12 @@ async function createUniswapPriceFeedForFinancialContract(
 
   const userConfig = config || {};
 
+  // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
+  // get time method with the current block time.
+  if (userConfig.getTimeOverride?.useBlockTime) {
+    getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
+  }
+
   logger.debug({
     at: "createUniswapPriceFeedForFinancialContract",
     message: "Inferred default config from identifier or Financial Contract address",
@@ -695,21 +701,20 @@ async function createReferencePriceFeedForFinancialContract(
     }
     // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
     // get time method with the current block time.
-    if (combinedConfig.getTimeOverride) {
-      if (combinedConfig.getTimeOverride.useBlockTime) {
-        getTime = async () =>
-          web3.eth.getBlock("latest").then(block => {
-            return block.timestamp;
-          });
-      }
+    if (combinedConfig.getTimeOverride?.useBlockTime) {
+      getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
     }
   }
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 }
 
 function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
-  const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-  return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  try {
+    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
+    return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+  } catch (error) {
+    throw new Error({ message: "Something went wrong in fetching the financial contract identifier", error });
+  }
 }
 
 module.exports = {
