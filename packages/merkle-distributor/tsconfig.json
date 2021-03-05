@@ -1,0 +1,8 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["validation-test/**/*.ts", "hardhat.config.ts"],
+  "compilerOptions": {
+    "outDir": "build"
+  },
+  "references": [{ "path": "./src/" }]
+}
