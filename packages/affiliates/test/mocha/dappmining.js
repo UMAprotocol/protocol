@@ -35,7 +35,7 @@ describe("DappMining V1", function() {
     dappmining = DappMining["v1"]({ queries, empAbi, web3 });
     utils = dappmining.utils;
   });
-  describe("Dappmining Unit Tests", function() {
+  describe("Dappmining V1 Unit Tests", function() {
     it("calculates percent", function() {
       let result = utils.calculatePercent(100, toWei(".01"));
       assert.equal(result, "1");
@@ -269,7 +269,7 @@ describe("DappMining V2", function() {
     dappmining = DappMining["v2"]({ queries, empAbi, web3 });
     utils = dappmining.utils;
   });
-  describe("Dappmining v2 Unit Tests", function() {
+  describe("Dappmining V2 Unit Tests", function() {
     it("sums attributions", function() {
       const attributions = AttributionLookback();
       let sum = utils.sumAttributions(attributions);

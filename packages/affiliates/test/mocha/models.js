@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { History, Balances, SharedAttributions, Prices, AttributionHistory } = require("../../libs/models");
+const { History, Balances, SharedAttributions, Prices, AttributionLookback } = require("../../libs/models");
 const Coingecko = require("../../libs/coingecko");
 // const SynthPrices = require("../../libs/synthPrices");
 const moment = require("moment");
@@ -110,10 +110,10 @@ describe("Contract Prices", function() {
   });
 });
 
-describe("AttributionHistory", function() {
+describe("AttributionLookback", function() {
   let attributions;
   it("init", function() {
-    attributions = AttributionHistory();
+    attributions = AttributionLookback();
     assert.ok(attributions);
   });
   it("create", function() {
@@ -133,13 +133,13 @@ describe("AttributionHistory", function() {
     assert.equal(result[0].affiliate, "tagb");
     assert.equal(result[0].amount, "100");
   });
-  it("getAttributionShares", function() {
-    let result = attributions.getAttributionShares("usera", 200);
+  it("getAttributionPercents", function() {
+    let result = attributions.getAttributionPercents("usera", 200);
     assert.equal(result["taga"], "500000000000000000");
     assert.equal(result["tagb"], "500000000000000000");
 
     // the oldest attribution only gets partially included while the youngest gets fully included (100 vs 50)
-    result = attributions.getAttributionShares("usera", 150);
+    result = attributions.getAttributionPercents("usera", 150);
     // 50 / 150
     assert.equal(result["taga"], "333333333333333333");
     // 100 / 150
@@ -147,7 +147,7 @@ describe("AttributionHistory", function() {
 
     try {
       // this should throw, because not enough attributions can add up to 201
-      result = attributions.getAttributionShares("usera", 201);
+      result = attributions.getAttributionPercents("usera", 201);
     } catch (err) {
       assert.ok(err);
     }
