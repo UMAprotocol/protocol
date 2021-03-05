@@ -211,6 +211,7 @@ contract("MerkleDistributor.js", function(accounts) {
         },
         { from: rando }
       );
+      console.log(`Gas used: ${claimTx.receipt.gasUsed}`);
       assert.equal(
         (await rewardToken.balanceOf(leaf.account)).toString(),
         claimerBalanceBefore.add(toBN(leaf.amount)).toString()
@@ -289,18 +290,6 @@ contract("MerkleDistributor.js", function(accounts) {
         (await rewardToken.balanceOf(otherLeaf.account)).toString(),
         startingBalance.add(toBN(leaf.amount).add(toBN(otherLeaf.amount))).toString()
       );
-    });
-    it("gas", async function() {
-      const claimTx = await merkleDistributor.claimWindow({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        accountIndex: leaf.accountIndex,
-        amount: leaf.amount,
-        merkleProof: claimerProof
-      });
-      // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
-      // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-      assert.equal(claimTx.receipt.gasUsed, 87361);
     });
     it("invalid proof", async function() {
       // Incorrect account:
@@ -423,7 +412,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
       ];
       const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, { from: rando });
-      assert.equal(claimTx.receipt.gasUsed, 121843);
+      console.log(`Gas used: ${claimTx.receipt.gasUsed}`);
 
       // Account 0 should have gained claimed amount from both leaves.
       const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
