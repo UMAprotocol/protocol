@@ -19,7 +19,9 @@ const UMIP_PRECISION = {
   BTCDOM: 2,
   ALTDOM: 2,
   BCHNBTC: 8,
-  "GASETH-TWAP-1Mx1M": 18
+  "GASETH-TWAP-1Mx1M": 18,
+  "USD-[bwBTC/ETH SLP]": 18,
+  "USD/bBadger": 18
 };
 const DEFAULT_PRECISION = 5;
 
@@ -37,13 +39,26 @@ async function getMedianHistoricalPrice(callback) {
     // Function to get the current time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    // If user specified a timestamp, then use it, otherwise default to the current time.
+    let queryTime;
+    if (!argv.time) {
+      queryTime = getTime();
+      console.log(
+        `Optional '--time' flag not specified, defaulting to the current Unix timestamp (in seconds): ${queryTime}`
+      );
+    } else {
+      queryTime = argv.time;
+    }
+    console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
+    const lookback = Math.round(Math.max(getTime() - queryTime, 1800));
+
     // Create and update a new Medianizer price feed.
     let dummyLogger = winston.createLogger({
       silent: true
     });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back.
-      lookback: 345600,
+      lookback,
       priceFeedDecimals: 18, // Ensure all prices come out as 18-decimal denominated so the fromWei conversion works at the end.
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
       ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
@@ -60,19 +75,8 @@ async function getMedianHistoricalPrice(callback) {
     if (!medianizerPriceFeed) {
       throw new Error(`Failed to construct medianizer price feed for the ${queryIdentifier} identifier`);
     }
-    await medianizerPriceFeed.update();
 
-    // If user specified a timestamp, then use it, otherwise default to the current time.
-    let queryTime;
-    if (!argv.time) {
-      queryTime = getTime();
-      console.log(
-        `Optional '--time' flag not specified, defaulting to the current Unix timestamp (in seconds): ${queryTime}`
-      );
-    } else {
-      queryTime = argv.time;
-    }
-    console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
+    await medianizerPriceFeed.update();
 
     // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js

@@ -8,4 +8,8 @@ pragma solidity ^0.6.0;
 abstract contract Uniswap {
     // Called after every swap showing the new uniswap "price" for this token pair.
     event Sync(uint112 reserve0, uint112 reserve1);
+    // Base currency.
+    address public token0;
+    // Quote currency.
+    address public token1;
 }

@@ -1,22 +1,23 @@
 {
   "name": "@uma/serverless-orchestration",
-  "version": "1.1.0",
+  "version": "2.0.1",
   "description": "Serverless orchestration scripts to run a parallel instances of scripts or bots",
   "dependencies": {
     "@truffle/contract": "^4.2.20",
-    "@uma/common": "^1.1.0",
-    "@uma/financial-templates-lib": "^1.2.0"
+    "@uma/common": "^2.0.1",
+    "@uma/financial-templates-lib": "^2.0.1"
   },
   "devDependencies": {
+    "@awaitjs/express": "^0.3.0",
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",
-    "google-auth-library": "^6.0.2",
-    "@awaitjs/express": "^0.3.0",
     "@openzeppelin/contracts": "3.0.0",
+    "@uma/core": "npm:@uma/core@1.2.0",
     "chai": "^4.2.0",
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
+    "google-auth-library": "^6.0.2",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
     "moment": "^2.24.0",
@@ -24,8 +25,7 @@
     "supertest": "^4.0.2",
     "truffle": "^5.1.16",
     "truffle-assertions": "^0.9.2",
-    "web3": "1.2.7",
-    "@uma/core": "npm:@uma/core@1.2.0"
+    "web3": "1.2.7"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

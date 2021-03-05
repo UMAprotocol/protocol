@@ -9,7 +9,6 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
-   * @param {Object} votingContract DVM to query price requests.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -20,7 +19,6 @@ class Disputer {
   constructor({
     logger,
     financialContractClient,
-    votingContract,
     gasEstimator,
     priceFeed,
     account,
@@ -42,7 +40,6 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.financialContract = this.financialContractClient.financialContract;
-    this.votingContract = votingContract;
 
     this.financialContractIdentifier = financialContractProps.priceIdentifier;
 
@@ -89,6 +86,11 @@ class Disputer {
 
     // Validate and set config settings to class state.
     Object.assign(this, createObjectFromDefaultProps(disputerConfig, defaultConfig));
+
+    // These EMP versions have different "LiquidationWithdrawn" event parameters that we need to handle.
+    this.isLegacyEmpVersion = Boolean(
+      this.contractVersion === "1.2.0" || this.contractVersion === "1.2.1" || this.contractVersion === "1.2.2"
+    );
   }
 
   // Update the client and gasEstimator clients.
@@ -153,7 +155,7 @@ class Disputer {
               liquidation: JSON.stringify(liquidation)
             });
 
-            return { ...liquidation, price };
+            return { ...liquidation, price: price.toString() };
           }
 
           return null;
@@ -199,13 +201,10 @@ class Disputer {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
 
-      const inputPrice = disputeableLiquidation.price;
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
-        inputPrice,
         txnConfig
       });
 
@@ -233,8 +232,6 @@ class Disputer {
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",
         liquidation: disputeableLiquidation,
-        inputPrice,
-        txnConfig,
         disputeResult: logResult
       });
     }
@@ -282,10 +279,9 @@ class Disputer {
 
         // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
         // In later versions it returns an object containing all payouts.
-        paidToDisputer =
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.paidToDisputer.rawValue.toString();
+        paidToDisputer = this.isLegacyEmpVersion
+          ? withdrawalCallResponse.rawValue.toString()
+          : withdrawalCallResponse.paidToDisputer.rawValue.toString();
 
         // If the call would revert OR the disputer would get nothing for withdrawing then throw and continue.
         if (revertWrapper(withdrawalCallResponse) === null || paidToDisputer === "0") {
@@ -295,8 +291,7 @@ class Disputer {
         this.logger.debug({
           at: "Disputer",
           message: "No rewards to withdraw",
-          liquidation: liquidation,
-          error
+          liquidation: liquidation
         });
         continue;
       }
@@ -314,11 +309,6 @@ class Disputer {
         txnConfig
       });
 
-      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
-      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
-      // is callable.
-      const requestTimestamp = liquidation.liquidationTime;
-
       // Send the transaction or report failure.
       let receipt;
       try {
@@ -332,31 +322,30 @@ class Disputer {
         continue;
       }
 
-      // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
-      // to be callable.
-      let resolvedPrice = await this.votingContract.methods
-        .getPrice(this.financialContractIdentifier, requestTimestamp)
-        .call({
-          from: this.financialContract.options.address
-        });
-
-      const logResult = {
+      let logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
         liquidationStatus:
           PostWithdrawLiquidationRewardsStatusTranslations[
             receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ],
-        resolvedPrice: resolvedPrice.toString()
+          ]
       };
+
+      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      if (this.isLegacyEmpVersion) {
+        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+      } else {
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+      }
 
       this.logger.info({
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        paidToDisputer,
-        txnConfig,
         liquidationResult: logResult
       });
     }

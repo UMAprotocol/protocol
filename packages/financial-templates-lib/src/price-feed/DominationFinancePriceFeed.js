@@ -131,13 +131,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    if (!this.invertPrice) return this.historicalPricePeriods;
+    if (!this.invertPrice) return this.historicalPricePeriods.map(x => [x.closeTime, x.closePrice]);
     else
       return this.historicalPricePeriods.map(historicalPrice => {
-        return {
-          ...historicalPrice,
-          closePrice: this._invertPriceSafely(historicalPrice.closePrice)
-        };
+        return [historicalPrice.closeTime, this._invertPriceSafely(historicalPrice.closePrice)];
       });
   }
 

@@ -136,17 +136,15 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    if (!this.invertPrice) return this.historicalPricePeriods;
+    if (!this.invertPrice)
+      return this.historicalPricePeriods.map(historicalPrice => {
+        return [historicalPrice.closeTime, historicalPrice.closePrice];
+      });
     else
       return this.historicalPricePeriods.map(historicalPrice => {
-        return {
-          ...historicalPrice,
-          openPrice: this._invertPriceSafely(historicalPrice.openPrice),
-          closePrice: this._invertPriceSafely(historicalPrice.closePrice)
-        };
+        return [historicalPrice.closeTime, this._invertPriceSafely(historicalPrice.closePrice)];
       });
   }
-
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }

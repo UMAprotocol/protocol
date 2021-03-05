@@ -20,7 +20,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -58,7 +57,7 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
+    const UniswapMock = getTruffleContract("UniswapMock", web3, "latest");
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
@@ -148,19 +147,11 @@ contract("index.js", function(accounts) {
 
         syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-        uniswap = await UniswapMock.new();
-
         defaultPriceFeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function() {
@@ -199,11 +190,11 @@ contract("index.js", function(accounts) {
         });
 
         // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
-        // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+        // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
 
       it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function() {
@@ -362,7 +353,12 @@ contract("index.js", function(accounts) {
         if (contractVersion.contractType == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
         if (contractVersion.contractType == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
         assert.isTrue(spyLogIncludes(spy, -1, "Liquidation withdrawn"));
-        assert.equal(spy.getCall(-1).lastArg.amountWithdrawn, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
+        assert.equal(
+          contractVersion.contractVersion === "1.2.2"
+            ? spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount
+            : spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator,
+          toWei("80")
+        ); // Amount withdrawn by liquidator minus dispute rewards.
       });
 
       it("Allowances are set", async function() {
@@ -403,10 +399,10 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify contract type detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+        // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function() {
         spy = sinon.spy();
@@ -429,9 +425,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
       });
       it("Correctly rejects unknown contract types", async function() {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
@@ -464,7 +460,10 @@ contract("index.js", function(accounts) {
         // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
-        uniswap = await UniswapMock.new();
+        const uniswap = await UniswapMock.new();
+        // token0 and token1 don't matter here so we just arbitrarily set them to an existing token
+        // that is already created, like `collateralToken`.
+        await uniswap.setTokens(collateralToken.address, collateralToken.address);
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
         spyLogger = winston.createLogger({
@@ -563,9 +562,9 @@ contract("index.js", function(accounts) {
           endingBlock
         });
 
-        // 3rd log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // 5th log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });

@@ -27,6 +27,40 @@ const revertWrapper = result => {
   return result;
 };
 
+/**
+ * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown,
+ * return the error and add a flag denoting whether it was sent on the .call() or the .send().
+ * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
+ * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
+ * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
+ */
+const runTransaction = async ({ transaction, config }) => {
+  // First try to simulate transaction and also extract return value if its
+  // a state-modifying transaction. If the function is state modifying, then successfully
+  // sending it will return the transaction receipt, not the return value, so we grab it here.
+  let returnValue, estimatedGas;
+  try {
+    [returnValue, estimatedGas] = await Promise.all([transaction.call(config), transaction.estimateGas(config)]);
+  } catch (error) {
+    error.type = "call";
+    throw error;
+  }
+
+  // .call() succeeded, now broadcast transaction.
+  let receipt;
+  try {
+    receipt = await transaction.send({ ...config, gas: estimatedGas });
+    return {
+      receipt,
+      returnValue
+    };
+  } catch (error) {
+    error.type = "send";
+    throw error;
+  }
+};
+
 module.exports = {
-  revertWrapper
+  revertWrapper,
+  runTransaction
 };

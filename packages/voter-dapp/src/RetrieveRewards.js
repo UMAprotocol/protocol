@@ -12,6 +12,8 @@ import {
   formatWithMaxDecimals
 } from "@uma/common";
 
+const DEFAULT_ANCILLARY_DATA = "0x";
+
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
     containingObj[field] = {};
@@ -34,17 +36,20 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
     const state = {};
 
     // Function to get the voteState object for an identifier and time.
-    const getVoteState = (identifierIn, timeIn) => {
+    const getVoteState = (identifierIn, timeIn, ancillaryData = DEFAULT_ANCILLARY_DATA) => {
       const identifier = web3.utils.hexToUtf8(identifierIn);
       const time = timeIn.toString();
-
-      return getOrCreateObj(state, `${identifier}|${time}`);
+      return getOrCreateObj(state, `${identifier}|${time}|${ancillaryData}`);
     };
 
     // Each of the following loops adds the relevant portions of the event state to the corresponding voteState data
     // structure.
     for (const event of retrievedRewardsEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
+      const voteState = getVoteState(
+        event.returnValues.identifier,
+        event.returnValues.time,
+        event.returnValues.ancillaryData || DEFAULT_ANCILLARY_DATA
+      );
 
       voteState.retrievedRewards = true;
     }
@@ -54,7 +59,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
     // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_JS_INT;
     for (const reveal of reveals) {
-      const voteState = getVoteState(reveal.identifier, reveal.time);
+      const voteState = getVoteState(reveal.identifier, reveal.time, reveal.ancillaryData || DEFAULT_ANCILLARY_DATA);
       const revealRound = reveal.revealRound.toString();
       const revealPrice = reveal.revealPrice.toString();
       const lastVotingRound = reveal.lastVotingRound.toString();
@@ -81,8 +86,8 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, reveals, votingAccount) {
     for (const [key, voteState] of Object.entries(state)) {
       if (voteState.priceResolutionRound === oldestUnclaimedRound.toString() && voteState.didReveal) {
         // If this is an eligible reward for the oldest round, extract the information and push it into the retrieval array.
-        const [identifier, time] = key.split("|");
-        toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
+        const [identifier, time, ancillaryData] = key.split("|");
+        toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time, ancillaryData });
       }
 
       // Only so many reward claims can fit in a single transaction, so break if we go over that limit.
@@ -164,7 +169,8 @@ function RetrieveRewards({ votingAccount }) {
         revealRound: event.returnValues.roundId,
         revealPrice: event.returnValues.price,
         identifier: event.returnValues.identifier,
-        time: event.returnValues.time
+        time: event.returnValues.time,
+        ancillaryData: event.returnValues.ancillaryData || DEFAULT_ANCILLARY_DATA
       };
     });
 
@@ -176,7 +182,8 @@ function RetrieveRewards({ votingAccount }) {
       reveals.map(reveal => {
         return {
           identifier: reveal.identifier,
-          time: reveal.time
+          time: reveal.time,
+          ancillaryData: reveal.ancillaryData
         };
       })
     );
@@ -195,7 +202,7 @@ function RetrieveRewards({ votingAccount }) {
       if (status.status === PriceRequestStatusEnum.RESOLVED) {
         // Note: this method needs to be called "from" the Governor contract since it's approved to "use" the DVM.
         // Otherwise, it will revert.
-        reveal.resolvedPrice = call("Voting", "getPrice", reveal.identifier, reveal.time, {
+        reveal.resolvedPrice = call("Voting", "getPrice", reveal.identifier, reveal.time, reveal.ancillaryData, {
           from: governorAddress
         });
 
@@ -225,7 +232,7 @@ function RetrieveRewards({ votingAccount }) {
         })
         .catch(err => console.error(`retrieveRewards.call failed:`, err));
     }
-  }, [votingAccount, rewardsTxn.oldestUnclaimedRound, rewardsTxn.toRetrieve]);
+  }, [web3.utils, drizzle.contracts.Voting, votingAccount, rewardsTxn.oldestUnclaimedRound, rewardsTxn.toRetrieve]);
 
   let body = "";
   const hasPendingTxns = rewardsTxn.status === "pending";

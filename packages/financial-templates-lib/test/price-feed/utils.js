@@ -104,7 +104,8 @@ contract("Price Feed Utils", async function() {
 
     it("Bounds checking", async function() {
       // Function just maps blocks 1:1 to timestamps for easy timestamp computation.
-      const getBlock = async (blockNumber = latestBlockNumber) => {
+      const getBlock = async blockNumber => {
+        if (blockNumber === "latest") blockNumber = latestBlockNumber;
         // No bounds checking in this function since we _want_ the block finder to respect the latest block.
         return { number: blockNumber, timestamp: blockNumber };
       };
@@ -112,7 +113,7 @@ contract("Price Feed Utils", async function() {
       const blockFinder = BlockFinder(getBlock);
 
       // Ensure that a timestamp _after_ the last block fails.
-      assert.isTrue(await blockFinder.getBlockForTimestamp(latestBlockNumber + 1).catch(() => true));
+      assert.equal((await blockFinder.getBlockForTimestamp(latestBlockNumber + 1)).number, latestBlockNumber);
 
       // Timestamp before the first block should fail.
       assert.isTrue(await blockFinder.getBlockForTimestamp(-1).catch(() => true));
@@ -120,7 +121,8 @@ contract("Price Feed Utils", async function() {
 
     it("Squared timestamps", async function() {
       // Get block just generates timestamps by squaring the block number.
-      const getBlock = async (blockNumber = latestBlockNumber) => {
+      const getBlock = async blockNumber => {
+        if (blockNumber === "latest") blockNumber = latestBlockNumber;
         checkBlockNumber(blockNumber);
         return { number: blockNumber, timestamp: blockNumber ** 2 };
       };
@@ -152,7 +154,8 @@ contract("Price Feed Utils", async function() {
         lastTimestamp = block.timestamp;
       }
 
-      const getBlock = (blockNumber = latestBlockNumber) => {
+      const getBlock = blockNumber => {
+        if (blockNumber === "latest") blockNumber = latestBlockNumber;
         checkBlockNumber(blockNumber);
         return blocks.find(block => block.number === blockNumber);
       };

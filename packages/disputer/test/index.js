@@ -15,7 +15,6 @@ const Poll = require("../index.js");
 let collateralToken;
 let syntheticToken;
 let financialContract;
-let uniswap;
 let store;
 let timer;
 let mockOracle;
@@ -33,7 +32,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -54,7 +53,6 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
@@ -139,19 +137,11 @@ contract("index.js", function(accounts) {
         await syntheticToken.addMinter(financialContract.address);
         await syntheticToken.addBurner(financialContract.address);
 
-        uniswap = await UniswapMock.new();
-
         defaultPriceFeedConfig = {
-          type: "uniswap",
-          uniswapAddress: uniswap.address,
-          twapLength: 1,
-          lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+          type: "test",
+          currentPrice: "1",
+          historicalPrice: "1"
         };
-
-        // Set two uniswap prices to give it a little history.
-        await uniswap.setPrice(toWei("1"), toWei("1"));
-        await uniswap.setPrice(toWei("1"), toWei("1"));
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function() {
@@ -187,12 +177,12 @@ contract("index.js", function(accounts) {
           errorRetriesTimeout
         });
 
-        // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
-        // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+        // Seventh log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
+        // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
 
       it("Allowances are set", async function() {
@@ -246,9 +236,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
 
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         let didThrowError = false;

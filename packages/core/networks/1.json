@@ -17,7 +17,7 @@
   },
   {
     "contractName": "Voting",
-    "address": "0x1d847fb6e04437151736a53f09b6e49713a52aad"
+    "address": "0x8B1631ab830d11531aE83725fDa4D86012eCCd77"
   },
   {
     "contractName": "Registry",
@@ -37,7 +37,7 @@
   },
   {
     "contractName": "DesignatedVotingFactory",
-    "address": "0xE81EeE5Da165fA6863bBc82dF66E62d18625d592"
+    "address": "0xDE7c02aD2b925587Bd16724810f994a2948c4a38"
   },
   {
     "contractName": "WETH9",
@@ -53,10 +53,22 @@
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0x0246FBF444cAe32867b410464664f8F02e1822C7"
+    "address": "0xa10648Da824330d7C7670E26a234bEf442E77f20"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0xB3De1e212B49e68f4a68b5993f31f63946FCA2a6"
+    "address": "0xddfC7E3B4531158acf4C7a5d2c3cB0eE81d018A5"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x287a1bA52e030459F163f48b2Ae468a085003A07"
+  },
+  {
+    "contractName": "PerpetualLib",
+    "address": "0x026ed73A36b37B871Be7bfd25D1C62B9bfB358b5"
+  },
+  {
+    "contractName": "PerpetualCreator",
+    "address": "0xE9f67235C1B0EE401e5F5e119fB9DFc9753F10F9"
   }
 ]

@@ -195,6 +195,12 @@ contract("OptimisticOracleClient.js", function(accounts) {
         expirationTimestamp: (Number(currentContractTime) + liveness).toString()
       }
     ]);
+
+    // Once proposals are settled they no longer appear as settleable in the client.
+    await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
+    await client.update();
+    result = client.getSettleableProposals(proposer);
+    assert.deepStrictEqual(result, []);
   });
 
   it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function() {

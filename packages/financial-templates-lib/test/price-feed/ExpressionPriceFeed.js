@@ -90,8 +90,8 @@ contract("ExpressionPriceFeed.js", function() {
     await expressionPriceFeed.getHistoricalPrice(arbitraryHistoricalTimestamp).then(
       () => assert.fail(),
       err => {
-        assert.equal(err[0].message, "PriceFeedMock expected error thrown");
-        assert.equal(err[1].message, "PriceFeedMock expected error thrown");
+        assert.isTrue(err[0].message.includes("PriceFeedMock"));
+        assert.isTrue(err[1].message.includes("PriceFeedMock"));
         assert.equal(err.length, 2);
       }
     );

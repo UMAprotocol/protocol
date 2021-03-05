@@ -41,18 +41,11 @@ contract("index.js", function() {
     addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
     addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
-  beforeEach(async function() {
-    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
-    spy = sinon.spy(); // Create a new spy for each test.
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-    });
-  });
 
   it("Completes one iteration without logging any errors", async function() {
-    // We will also create a new spy logger, listening for debug events because success logs are tagged with the
+    // We will create a new spy logger, listening for debug events because success logs are tagged with the
     // debug level.
+    spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
@@ -72,7 +65,7 @@ contract("index.js", function() {
 
     // The first log should indicate that the OO-Proposer runner started successfully
     // and auto detected the OO's deployed address.
-    assert.isTrue(spyLogIncludes(spy, 0, "OO proposer started"));
+    assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });

@@ -29,7 +29,7 @@ contract("ServerlessSpoke.js", function(accounts) {
   let syntheticToken;
   let emp;
   let uniswap;
-  let defaultUniswapPricefeedConfig;
+  let defaultPricefeedConfig;
 
   let spy;
   let spyLogger;
@@ -89,11 +89,10 @@ contract("ServerlessSpoke.js", function(accounts) {
 
     uniswap = await UniswapMock.new();
 
-    defaultUniswapPricefeedConfig = {
-      type: "uniswap",
-      uniswapAddress: uniswap.address,
-      twapLength: 1,
-      lookback: 1
+    defaultPricefeedConfig = {
+      type: "test",
+      currentPrice: "1",
+      historicalPrice: "1"
     };
 
     // Set two uniswap prices to give it a little history.
@@ -131,7 +130,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
         MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
@@ -151,7 +150,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig // invalid config that should generate an error
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig // invalid config that should generate an error
       }
     };
 
@@ -170,7 +169,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         // missing EMP_ADDRESS. Should error before entering main while loop.
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig, // invalid config that should generate an error
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // invalid config that should generate an error
         MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
@@ -178,8 +177,17 @@ contract("ServerlessSpoke.js", function(accounts) {
     const invalidConfigResponse = await sendRequest(invalidConfigBody);
     assert.equal(invalidConfigResponse.res.statusCode, 500); // error code
     // Expected error text from an invalid path
-    assert.isTrue(invalidConfigResponse.res.text.includes("Bad environment variables! Specify an EMP_ADDRESS"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Bad environment variables! Specify an EMP_ADDRESS")); // Check the process logger contained the error.
+    assert.isTrue(
+      invalidConfigResponse.res.text.includes(
+        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
+      )
+    );
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        "Bad environment variables! Specify an OPTIMISTIC_ORACLE_ADDRESS, EMP_ADDRESS or FINANCIAL_CONTRACT_ADDRESS"
+      )
+    ); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
   it("Serverless Spoke can correctly returns errors over http calls(invalid network identifier)", async function() {
@@ -190,7 +198,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
         MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
@@ -210,7 +218,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
         EMP_ADDRESS: "0x0000000000000000000000000000000000000000", // Invalid address that should generate an error
-        TOKEN_PRICE_FEED_CONFIG: defaultUniswapPricefeedConfig,
+        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
         MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
       }
     };
