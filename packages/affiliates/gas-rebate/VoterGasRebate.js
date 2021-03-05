@@ -263,37 +263,43 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
     ]);
     // Check if claim txn was sent by an UMA dev batch retrieval.
     if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
+      // To prevent rebating voters who experienced someone else claiming their rewards (and thus
+      // paying gas on the voter's behalf), filter out claim calls that were not instantiated
+      // by the voter. Note that this might have some false negatives for edge case voters
+      // who claim from different accounts.
       const voter = claim.returnValues.voter;
-      const roundId = claim.returnValues.roundId;
-      const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
-      const requestTime = claim.returnValues.time;
+      if (toChecksumAddress(voter) === toChecksumAddress(transactionReceipt.from)) {
+        const roundId = claim.returnValues.roundId;
+        const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
+        const requestTime = claim.returnValues.time;
 
-      // Metrics.
-      const uniqueVoteKey = `${identifier}-${requestTime}`;
-      if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
+        // Metrics.
+        const uniqueVoteKey = `${identifier}-${requestTime}`;
+        if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
 
-      const gasUsed = parseInt(transactionReceipt.gasUsed);
-      const txnTimestamp = transactionBlock.timestamp;
+        const gasUsed = parseInt(transactionReceipt.gasUsed);
+        const txnTimestamp = transactionBlock.timestamp;
 
-      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-      const val = {
-        voter,
-        roundId,
-        requestTime,
-        identifier,
-        claim: {
-          transactionBlock: transactionBlock.number,
-          hash: transactionReceipt.transactionHash,
-          gasUsed,
-          txnTimestamp
+        const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+        const val = {
+          voter,
+          roundId,
+          requestTime,
+          identifier,
+          claim: {
+            transactionBlock: transactionBlock.number,
+            hash: transactionReceipt.transactionHash,
+            gasUsed,
+            txnTimestamp
+          }
+        };
+
+        // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
+        // part of a batch transaction.
+        if (!batchTxns[transactionReceipt.transactionHash]) {
+          batchTxns[transactionReceipt.transactionHash] = true;
+          rewardedVotersToRebate[key] = val;
         }
-      };
-
-      // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
-      // part of a batch transaction.
-      if (!batchTxns[transactionReceipt.transactionHash]) {
-        batchTxns[transactionReceipt.transactionHash] = true;
-        rewardedVotersToRebate[key] = val;
       }
     }
 
@@ -363,6 +369,7 @@ async function calculateRebate({
 }) {
   try {
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
+    console.log(`Using DVM @ ${voting.options.address}`);
 
     if (!debug) {
       console.log("\n\n*=======================================*");
@@ -409,6 +416,7 @@ async function calculateRebate({
 
     // Final UMA rebates to send
     const rebateOutput = {
+      votingContractAddress: voting.options.address,
       rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
@@ -615,6 +623,11 @@ async function Main(callback) {
     console.log("* - Fetching UMA-ETH exchange rates     *");
     console.log("*                                       *");
     console.log("*=======================================*");
+
+    // Make sure user is on Mainnet.
+    const networkId = await web3.eth.net.getId();
+    if (networkId !== 1)
+      throw new Error("You are not using a Mainnet web3 provider, script will product devastating results 🧟‍♂️");
 
     const rebateNumber = argv.rebateNumber ? argv.rebateNumber : "1";
     // First check if block numbers are passed in, then default to timetamps.

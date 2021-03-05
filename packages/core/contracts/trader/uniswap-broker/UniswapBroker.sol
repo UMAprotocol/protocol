@@ -23,56 +23,55 @@ contract UniswapBroker {
      * possible to the truePrice.
      * @dev True price is expressed in the ratio of token A to token B.
      * @dev The caller must approve this contract to spend whichever token is intended to be swapped.
+     * @param tradingAsEOA bool to indicate if the UniswapBroker is being called by a DSProxy or an EOA.
      * @param uniswapRouter address of the uniswap router used to facilate trades.
      * @param uniswapFactory address of the uniswap factory used to fetch current pair reserves.
-     * @param tokenA address of the first token in the uniswap pair.
-     * @param tokenA address of the second token in the uniswap pair.
-     * @param truePriceTokenA the nominator of the true price.
-     * @param truePriceTokenB the denominatornominator of the true price.
-     * @param maxSpendTokenA maximum to spend in tokenA. Note can be set to zero, thereby limiting the direction of trade.
-     * @param maxSpendTokenA maximum to spend in tokenB. Note can be set to zero, thereby limiting the direction of trade.
+     * @param swappedTokens array of addresses which are to be swapped. The order does not matter as the function will figure
+     * out which tokens need to be exchanged to move the market to the desired "true" price.
+     * @param truePriceTokens array of unit used to represent the true price. 0th value is the numerator of the true price
+     * and the 1st value is the the denominator of the true price.
+     * @param maxSpendTokens array of unit to represent the max to spend in the two tokens.
      * @param to recipient of the trade proceeds.
-     * @param to deadline to limit when the trade can execute. If the tx is mined after this timestamp then revert.
+     * @param deadline to limit when the trade can execute. If the tx is mined after this timestamp then revert.
      */
-
     function swapToPrice(
+        bool tradingAsEOA,
         address uniswapRouter,
         address uniswapFactory,
-        address tokenA,
-        address tokenB,
-        uint256 truePriceTokenA,
-        uint256 truePriceTokenB,
-        uint256 maxSpendTokenA,
-        uint256 maxSpendTokenB,
+        address[2] memory swappedTokens,
+        uint256[2] memory truePriceTokens,
+        uint256[2] memory maxSpendTokens,
         address to,
         uint256 deadline
     ) public {
         IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
 
         // true price is expressed as a ratio, so both values must be non-zero
-        require(truePriceTokenA != 0 && truePriceTokenB != 0, "SwapToPrice: ZERO_PRICE");
+        require(truePriceTokens[0] != 0 && truePriceTokens[1] != 0, "SwapToPrice: ZERO_PRICE");
         // caller can specify 0 for either if they wish to swap in only one direction, but not both
-        require(maxSpendTokenA != 0 || maxSpendTokenB != 0, "SwapToPrice: ZERO_SPEND");
+        require(maxSpendTokens[0] != 0 || maxSpendTokens[1] != 0, "SwapToPrice: ZERO_SPEND");
 
         bool aToB;
         uint256 amountIn;
         {
-            (uint256 reserveA, uint256 reserveB) = getReserves(uniswapFactory, tokenA, tokenB);
-            (aToB, amountIn) = computeTradeToMoveMarket(truePriceTokenA, truePriceTokenB, reserveA, reserveB);
+            (uint256 reserveA, uint256 reserveB) = getReserves(uniswapFactory, swappedTokens[0], swappedTokens[1]);
+            (aToB, amountIn) = computeTradeToMoveMarket(truePriceTokens[0], truePriceTokens[1], reserveA, reserveB);
         }
 
         require(amountIn > 0, "SwapToPrice: ZERO_AMOUNT_IN");
 
         // spend up to the allowance of the token in
-        uint256 maxSpend = aToB ? maxSpendTokenA : maxSpendTokenB;
+        uint256 maxSpend = aToB ? maxSpendTokens[0] : maxSpendTokens[1];
         if (amountIn > maxSpend) {
             amountIn = maxSpend;
         }
 
-        address tokenIn = aToB ? tokenA : tokenB;
-        address tokenOut = aToB ? tokenB : tokenA;
-        TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+        address tokenIn = aToB ? swappedTokens[0] : swappedTokens[1];
+        address tokenOut = aToB ? swappedTokens[1] : swappedTokens[0];
+
         TransferHelper.safeApprove(tokenIn, address(router), amountIn);
+
+        if (tradingAsEOA) TransferHelper.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
 
         address[] memory path = new address[](2);
         path[0] = tokenIn;

@@ -11,9 +11,11 @@ module.exports = {
   ...require("./src/helpers/GasEstimator"),
   ...require("./src/logger/Logger"),
   ...require("./src/logger/SpyTransport"),
+  ...require("./src/price-feed/UniswapPriceFeed"),
   ...require("./src/price-feed/CreatePriceFeed"),
   ...require("./src/price-feed/Networker"),
   ...require("./src/price-feed/PriceFeedMock"),
   ...require("./src/price-feed/PriceFeedMockScaled"),
-  ...require("./src/price-feed/InvalidPriceFeedMock")
+  ...require("./src/price-feed/InvalidPriceFeedMock"),
+  ...require("./src/proxy-transaction-handler/DSProxyManager")
 };

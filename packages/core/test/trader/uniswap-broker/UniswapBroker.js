@@ -1,9 +1,10 @@
 const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei, toBN, fromWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
+const truffleContract = require("@truffle/contract");
 
 // Tested Contract
-const UniswapBroker = artifacts.require("UniswapBroker");
+const UniswapBroker = getTruffleContract("UniswapBroker", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const WETH9 = getTruffleContract("WETH9", web3);
 
@@ -22,8 +23,7 @@ let pairAddress;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
 const createContractObjectFromJson = contractJsonObject => {
-  const contract = require("@truffle/contract");
-  let truffleContractCreator = contract(contractJsonObject);
+  let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };
@@ -49,7 +49,7 @@ const getAmountOut = async (amountIn, aToB) => {
 
 contract("UniswapBroker", function(accounts) {
   const deployer = accounts[0];
-  const trader = accounts[0];
+  const trader = accounts[1];
   before(async () => {
     const WETH = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
@@ -72,8 +72,8 @@ contract("UniswapBroker", function(accounts) {
     await tokenA.mint(trader, toWei("100000000000000"));
     await tokenB.mint(trader, toWei("100000000000000"));
 
-    await tokenA.approve(router.address, toWei("100000000000000"));
-    await tokenB.approve(router.address, toWei("100000000000000"));
+    await tokenA.approve(router.address, toWei("100000000000000"), { from: trader });
+    await tokenB.approve(router.address, toWei("100000000000000"), { from: trader });
     await tokenA.approve(uniswapBroker.address, MAX_UINT_VAL, { from: trader });
     await tokenB.approve(uniswapBroker.address, MAX_UINT_VAL, { from: trader });
 
@@ -147,14 +147,12 @@ contract("UniswapBroker", function(accounts) {
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
     await uniswapBroker.swapToPrice(
+      true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
       router.address,
       factory.address,
-      tokenA.address,
-      tokenB.address,
-      "1000", // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
-      "1",
-      MAX_UINT_VAL, // Set to the max posable value as we want to let the broker trade as much as needed in this example.
-      MAX_UINT_VAL,
+      [tokenA.address, tokenB.address],
+      ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
+      [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
       trader,
       (await web3.eth.getBlock("latest")).timestamp + 10,
       { from: trader }
@@ -221,14 +219,12 @@ contract("UniswapBroker", function(accounts) {
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
     await uniswapBroker.swapToPrice(
+      true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
       router.address,
       factory.address,
-      tokenA.address,
-      tokenB.address,
-      "1000", // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
-      "1",
-      MAX_UINT_VAL, // Set to the max posable value as we want to let the broker trade as much as needed in this example.
-      MAX_UINT_VAL,
+      [tokenA.address, tokenB.address],
+      ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
+      [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
       trader,
       (await web3.eth.getBlock("latest")).timestamp + 10,
       { from: trader }

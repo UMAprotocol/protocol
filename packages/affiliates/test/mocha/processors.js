@@ -11,7 +11,7 @@ const { mocks } = require("../../libs/datasets");
 
 const datasetPath = Path.join(__dirname, "../datasets/set1");
 const params = require(Path.join(datasetPath, "/config.json"));
-const abi = getAbi("ExpiringMultiParty");
+const abi = getAbi("ExpiringMultiParty", "1.2.0");
 const web3 = getWeb3();
 
 describe("EmpAttributions", function() {
