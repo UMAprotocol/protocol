@@ -27,8 +27,8 @@ const { toBN, toWei, toChecksumAddress } = web3.utils;
 // This script claims all voter's rewards for the round provided.
 async function claimRewards() {
   const rounds = argv.round ? lodash.castArray(argv.round) : [];
-  const excludeAddresses = argv.excludeAddress ? lodash.castArray(argv.excludeAddress) : [];
-  const claimAddresses = argv.claimAddress ? lodash.castArray(argv.claimAddress) : [];
+  const excludeAddresses = argv.excludeAddress ? lodash.castArray(argv.excludeAddress).map(toChecksumAddress) : [];
+  const claimAddresses = argv.claimAddress ? lodash.castArray(argv.claimAddress).map(toChecksumAddress) : [];
   const versions = argv.version ? lodash.castArray(argv.version) : ["latest", "1.2.2"];
 
   const account = (await web3.eth.getAccounts())[0];
@@ -38,6 +38,9 @@ async function claimRewards() {
     if (version.startsWith("1")) {
       return new web3.eth.Contract(getAbi("Voting", version), getAddress("Voting", networkId, version));
     } else {
+      // This uses the VotingAncillaryInterfaceTesting to create a voting contract that has _only_ the ancillary
+      // functions and events. This interface also includes almost all the regular voting methods that are unrelated
+      // to the ancillary data change. Using this interface effectively avoids the overload problem.
       return new web3.eth.Contract(
         getAbi("VotingAncillaryInterfaceTesting", "latest"),
         getAddress("Voting", networkId, version)
@@ -189,7 +192,7 @@ async function claimRewards() {
 
 async function wrapper(callback) {
   try {
-    await claimRewards(argv.multisig);
+    await claimRewards();
   } catch (e) {
     // Forces the script to return a nonzero error code so failure can be detected in bash.
     callback(e);
