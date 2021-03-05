@@ -8,8 +8,7 @@
  *
  * @title MerkleDistributor contract.
  * @notice Allows an owner to distribute any reward ERC20 to claimants according to Merkle roots. The owner can specify
- *         multiple Merkle roots distributions, each of which has its own start time constraining when claims can be
- *         executed.
+ *         multiple Merkle roots distributions with customized reward currencies.
  */
 
 pragma solidity ^0.6.0;
@@ -25,11 +24,8 @@ contract MerkleDistributor is Ownable, Testable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    // A Window maps a Merkle root to a reward token address and a claim window.
-    // Claims for this window cannot take place before start time.
+    // A Window maps a Merkle root to a reward token address.
     struct Window {
-        // Claims for this window can begin after `start`.
-        uint256 start;
         // Merkle root describing the distribution.
         bytes32 merkleRoot;
         // Currency in which reward is processed.
@@ -48,8 +44,6 @@ contract MerkleDistributor is Ownable, Testable {
     mapping(uint256 => Window) public merkleWindows;
 
     // Track which accounts have claimed for each window index.
-    // TODO: Should we replace this mapping with a bitmap for each window? Upside is cheaper `claim` transactions,
-    // downside is having to include an `accountIndex` in the merkle leaf.
     mapping(uint256 => mapping(address => bool)) public claimed;
 
     // Index of last created Merkle root. Next allocation to begin at `lastCreatedIndex + 1`.
@@ -63,13 +57,7 @@ contract MerkleDistributor is Ownable, Testable {
         uint256 amount,
         address indexed rewardToken
     );
-    event CreatedWindow(
-        uint256 indexed windowIndex,
-        uint256 amount,
-        uint256 indexed windowStart,
-        address indexed rewardToken,
-        address owner
-    );
+    event CreatedWindow(uint256 indexed windowIndex, uint256 amount, address indexed rewardToken, address owner);
     event WithdrawRewards(address indexed owner, uint256 amount);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
 
@@ -103,14 +91,13 @@ contract MerkleDistributor is Ownable, Testable {
     //       their claims to suceed.
     function setWindow(
         uint256 totalRewardsDistributed,
-        uint256 windowStart,
         address rewardToken,
         bytes32 merkleRoot
     ) external onlyOwner {
         uint256 indexToSet = lastCreatedIndex;
         lastCreatedIndex = indexToSet.add(1);
 
-        _setWindow(indexToSet, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
+        _setWindow(indexToSet, totalRewardsDistributed, rewardToken, merkleRoot);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
@@ -164,18 +151,16 @@ contract MerkleDistributor is Ownable, Testable {
     function _setWindow(
         uint256 windowIndex,
         uint256 totalRewardsDistributed,
-        uint256 windowStart,
         address rewardToken,
         bytes32 merkleRoot
     ) private {
         Window storage window = merkleWindows[windowIndex];
-        window.start = windowStart;
         window.merkleRoot = merkleRoot;
         window.rewardToken = IERC20(rewardToken);
 
         window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
 
-        emit CreatedWindow(windowIndex, totalRewardsDistributed, windowStart, rewardToken, msg.sender);
+        emit CreatedWindow(windowIndex, totalRewardsDistributed, rewardToken, msg.sender);
     }
 
     function _markClaimed(Claim memory claim) private {
@@ -184,9 +169,7 @@ contract MerkleDistributor is Ownable, Testable {
         // Check the account has not yet claimed for this window.
         require(!claimed[claim.windowIndex][claim.account], "Account has already claimed for this window");
 
-        // Proof is correct and claim has not occurred yet; check that claim window has begun.
-        require(getCurrentTime() >= merkleWindows[claim.windowIndex].start, "Claim window has not begun");
-
+        // Proof is correct and claim has not occurred yet, mark claimed complete.
         claimed[claim.windowIndex][claim.account] = true;
         emit Claimed(
             msg.sender,
