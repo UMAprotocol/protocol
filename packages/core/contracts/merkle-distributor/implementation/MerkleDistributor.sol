@@ -18,9 +18,8 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../common/implementation/Testable.sol";
 
-contract MerkleDistributor is Ownable, Testable {
+contract MerkleDistributor is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -60,8 +59,6 @@ contract MerkleDistributor is Ownable, Testable {
     event CreatedWindow(uint256 indexed windowIndex, uint256 amount, address indexed rewardToken, address owner);
     event WithdrawRewards(address indexed owner, uint256 amount);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
-
-    constructor(address _timerAddress) public Testable(_timerAddress) {}
 
     /****************************
      *

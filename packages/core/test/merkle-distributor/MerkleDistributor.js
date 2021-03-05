@@ -9,12 +9,10 @@ const { assert } = require("chai");
 
 // Tested Contract
 const MerkleDistributor = artifacts.require("MerkleDistributor");
-const Timer = artifacts.require("Timer");
 const Token = artifacts.require("ExpandedERC20");
 
 // Contract instances
 let merkleDistributor;
-let timer;
 let rewardToken;
 
 // Test variables
@@ -47,8 +45,7 @@ contract("MerkleDistributor.js", function(accounts) {
   let rando = accounts[1];
 
   beforeEach(async () => {
-    timer = await Timer.deployed();
-    merkleDistributor = await MerkleDistributor.new(timer.address);
+    merkleDistributor = await MerkleDistributor.new();
 
     rewardToken = await Token.new("UMA KPI Options July 2021", "uKIP-JUL", 18, { from: contractCreator });
     await rewardToken.addMember(1, contractCreator, { from: contractCreator });
@@ -285,7 +282,7 @@ contract("MerkleDistributor.js", function(accounts) {
       });
       // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
       // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-      assert.equal(claimTx.receipt.gasUsed, 86751);
+      assert.equal(claimTx.receipt.gasUsed, 86743);
     });
     it("invalid proof", async function() {
       // Incorrect account:
@@ -389,7 +386,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
       ];
       const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, { from: rando });
-      assert.equal(claimTx.receipt.gasUsed, 120634);
+      assert.equal(claimTx.receipt.gasUsed, 120678);
 
       // Account 0 should have gained claimed amount from both leaves.
       const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
