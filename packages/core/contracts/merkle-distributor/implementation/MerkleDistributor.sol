@@ -30,10 +30,12 @@ contract MerkleDistributor is Ownable, Testable {
     struct Window {
         // Claims for this window can begin after `start`.
         uint256 start;
-        // Merkle root describing the distribution.
-        bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
+        // Merkle root describing the distribution.
+        bytes32 merkleRoot;
+        // IPFS hash of the merkle tree. Can by used to independently fetch recipient proofs.
+        string ipfsHash;
     }
 
     // Represents an account's claim for `amount` within the Merkle root located at the `windowIndex`.
@@ -105,12 +107,13 @@ contract MerkleDistributor is Ownable, Testable {
         uint256 totalRewardsDistributed,
         uint256 windowStart,
         address rewardToken,
-        bytes32 merkleRoot
+        bytes32 merkleRoot,
+        string memory ipfsHash
     ) external onlyOwner {
         uint256 indexToSet = lastCreatedIndex;
         lastCreatedIndex = indexToSet.add(1);
 
-        _setWindow(indexToSet, totalRewardsDistributed, windowStart, rewardToken, merkleRoot);
+        _setWindow(indexToSet, totalRewardsDistributed, windowStart, rewardToken, merkleRoot, ipfsHash);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
@@ -166,12 +169,14 @@ contract MerkleDistributor is Ownable, Testable {
         uint256 totalRewardsDistributed,
         uint256 windowStart,
         address rewardToken,
-        bytes32 merkleRoot
+        bytes32 merkleRoot,
+        string memory ipfsHash
     ) private {
         Window storage window = merkleWindows[windowIndex];
         window.start = windowStart;
         window.merkleRoot = merkleRoot;
         window.rewardToken = IERC20(rewardToken);
+        window.ipfsHash = ipfsHash;
 
         window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
 

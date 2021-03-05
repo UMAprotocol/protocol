@@ -24,6 +24,8 @@ let claimerProof;
 let windowIndex;
 let windowStart;
 
+const sampleIpfsHash = "QmfVMHgoWpTSZqovo7vhM7Wcmz6EeX4QBYbCk4DZTNM8u3";
+
 // For a recipient object, create the leaf to be part of the merkle tree. The leaf is simply a hash of the packed
 // account and the amount.
 const createLeaf = recipient => {
@@ -85,6 +87,7 @@ contract("MerkleDistributor.js", function(accounts) {
         windowStart,
         rewardToken.address,
         merkleTree.getRoot(),
+        sampleIpfsHash,
         { from: contractCreator }
       );
 
@@ -175,7 +178,8 @@ contract("MerkleDistributor.js", function(accounts) {
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
-        merkleTree.getRoot()
+        merkleTree.getRoot(),
+        sampleIpfsHash
       );
 
       leaf = rewardLeafs[0];
@@ -281,7 +285,8 @@ contract("MerkleDistributor.js", function(accounts) {
           SamplePayouts.totalRewardsDistributed,
           windowStart,
           rewardToken.address,
-          merkleTree.getRoot()
+          merkleTree.getRoot(),
+          sampleIpfsHash
         );
 
         // Assumption: otherLeaf and leaf are claims for the same account.
@@ -322,7 +327,7 @@ contract("MerkleDistributor.js", function(accounts) {
         });
         // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
         // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-        assert.equal(claimTx.receipt.gasUsed, 92029);
+        assert.equal(claimTx.receipt.gasUsed, 92062);
       });
       it("invalid proof", async function() {
         // Incorrect account:
@@ -399,14 +404,16 @@ contract("MerkleDistributor.js", function(accounts) {
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
-        merkleTree1.getRoot() // Distributes to rewardLeafs1
+        merkleTree1.getRoot(), // Distributes to rewardLeafs1
+        sampleIpfsHash
       );
 
       await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
-        merkleTree2.getRoot() // Distributes to rewardLeafs2
+        merkleTree2.getRoot(), // Distributes to rewardLeafs2
+        sampleIpfsHash
       );
     });
     it("Can make multiple claims in one transaction", async function() {
@@ -431,7 +438,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
       ];
       const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, { from: rando });
-      assert.equal(claimTx.receipt.gasUsed, 131228);
+      assert.equal(claimTx.receipt.gasUsed, 131281);
 
       // Account 0 should have gained claimed amount from both leaves.
       const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
@@ -487,6 +494,7 @@ contract("MerkleDistributor.js", function(accounts) {
             windowStart,
             rewardToken.address,
             merkleTree.getRoot(),
+            sampleIpfsHash,
             { from: rando }
           )
         )
@@ -500,6 +508,7 @@ contract("MerkleDistributor.js", function(accounts) {
         windowStart,
         rewardToken.address,
         merkleTree.getRoot(),
+        sampleIpfsHash,
         { from: contractCreator }
       );
 
@@ -516,6 +525,7 @@ contract("MerkleDistributor.js", function(accounts) {
         windowStart,
         rewardToken.address,
         merkleTree.getRoot(),
+        sampleIpfsHash,
         { from: contractCreator }
       );
 
@@ -538,7 +548,8 @@ contract("MerkleDistributor.js", function(accounts) {
         SamplePayouts.totalRewardsDistributed,
         windowStart,
         rewardToken.address,
-        merkleTree.getRoot()
+        merkleTree.getRoot(),
+        sampleIpfsHash
       );
 
       leaf = rewardLeafs[0];
