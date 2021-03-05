@@ -27,16 +27,24 @@ let windowIndex;
 // account and the amount.
 const createLeaf = recipient => {
   assert.isTrue(
-    Object.keys(recipient).every(val => ["account", "amount"].includes(val)),
+    Object.keys(recipient).every(val => ["account", "amount", "accountIndex"].includes(val)),
     "recipient does not contain required keys"
   );
-  return web3.utils.soliditySha3({ t: "address", v: recipient.account }, { t: "uint256", v: recipient.amount });
+  return web3.utils.soliditySha3(
+    { t: "address", v: recipient.account },
+    { t: "uint256", v: recipient.amount },
+    { t: "uint256", v: recipient.accountIndex }
+  );
 };
 
 // Generate payouts to be used in tests using the SamplePayouts file. SamplePayouts is read in from a JsonFile.
 const createRewardRecipientsFromSampleData = SamplePayouts => {
-  return Object.keys(SamplePayouts.exampleRecipients).map(recipientAddress => {
-    return { account: recipientAddress, amount: SamplePayouts.exampleRecipients[recipientAddress] };
+  return Object.keys(SamplePayouts.exampleRecipients).map((recipientAddress, i) => {
+    return {
+      account: recipientAddress,
+      amount: SamplePayouts.exampleRecipients[recipientAddress],
+      accountIndex: i
+    };
   });
 };
 
@@ -55,15 +63,19 @@ contract("MerkleDistributor.js", function(accounts) {
   describe("Basic lifecycle", function() {
     it("Can create a single, simple tree, seed the distributor and claim rewards", async function() {
       const _rewardRecipients = [
-        // [ recipient, rewardAmount ]
-        [accounts[3], toBN(toWei("100"))],
-        [accounts[4], toBN(toWei("200"))],
-        [accounts[5], toBN(toWei("300"))]
+        // [ recipient, rewardAmount, accountIndex]
+        [accounts[3], toBN(toWei("100")), 3],
+        [accounts[4], toBN(toWei("200")), 4],
+        [accounts[5], toBN(toWei("300")), 5]
       ];
       let totalRewardAmount = toBN(0);
       rewardRecipients = _rewardRecipients.map(_rewardObj => {
         totalRewardAmount = totalRewardAmount.add(_rewardObj[1]);
-        return { account: _rewardObj[0], amount: _rewardObj[1].toString() };
+        return {
+          account: _rewardObj[0],
+          amount: _rewardObj[1].toString(),
+          accountIndex: _rewardObj[2]
+        };
       });
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
@@ -108,7 +120,13 @@ contract("MerkleDistributor.js", function(accounts) {
         // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
         // Note: Anyone can claim on behalf of anyone else.
         const claimTxn = await merkleDistributor.claimWindow(
-          { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
+          {
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof
+          },
           { from: contractCreator }
         );
         // Check event logs.
@@ -116,6 +134,7 @@ contract("MerkleDistributor.js", function(accounts) {
           return (
             ev.caller === contractCreator &&
             ev.account === leaf.account &&
+            ev.accountIndex.toString() === leaf.accountIndex.toString() &&
             ev.windowIndex.toString() === windowIndex.toString() &&
             ev.amount.toString() === leaf.amount.toString() &&
             ev.rewardToken == rewardToken.address
@@ -132,7 +151,7 @@ contract("MerkleDistributor.js", function(accounts) {
           contractBalanceBefore.sub(toBN(leaf.amount)).toString()
         );
         // User should be marked as claimed and cannot claim again.
-        assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
+        assert.isTrue(await merkleDistributor.isClaimed(windowIndex, leaf.accountIndex));
         assert(
           await didContractThrow(
             merkleDistributor.claimWindow(
@@ -173,6 +192,7 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.claimWindow({
             windowIndex: windowIndex + 1,
             account: leaf.account,
+            accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof
           })
@@ -182,7 +202,13 @@ contract("MerkleDistributor.js", function(accounts) {
     it("Can claim on another account's behalf", async function() {
       const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
       const claimTx = await merkleDistributor.claimWindow(
-        { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
+        {
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: claimerProof
+        },
         { from: rando }
       );
       assert.equal(
@@ -192,20 +218,20 @@ contract("MerkleDistributor.js", function(accounts) {
 
       truffleAssert.eventEmitted(claimTx, "Claimed", ev => {
         return (
-          ev.caller.toLowerCase() == rando.toLowerCase() &&
-          ev.account.toLowerCase() == leaf.account.toLowerCase() &&
+          ev.caller.toLowerCase() === rando.toLowerCase() &&
+          ev.account.toLowerCase() === leaf.account.toLowerCase() &&
+          ev.accountIndex.toString() === leaf.accountIndex.toString() &&
           ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.amount.toString() == leaf.amount.toString() &&
-          ev.rewardToken.toLowerCase() == rewardToken.address.toLowerCase()
+          ev.amount.toString() === leaf.amount.toString() &&
+          ev.rewardToken.toLowerCase() === rewardToken.address.toLowerCase()
         );
       });
-
-      assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
     });
     it("Cannot double claim rewards", async function() {
       await merkleDistributor.claimWindow({
         windowIndex: windowIndex,
         account: leaf.account,
+        accountIndex: leaf.accountIndex,
         amount: leaf.amount,
         merkleProof: claimerProof
       });
@@ -214,23 +240,12 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.claimWindow({
             windowIndex: windowIndex,
             account: leaf.account,
+            accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof
           })
         )
       );
-    });
-    it("Claim for 0 tokens does not revert", async function() {
-      // Payout #9 is for 0 tokens.
-      leaf = rewardLeafs[9];
-      claimerProof = merkleTree.getProof(leaf.leaf);
-      const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
-      await merkleDistributor.claimWindow(
-        { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof },
-        { from: rando }
-      );
-      assert.equal((await rewardToken.balanceOf(leaf.account)).toString(), claimerBalanceBefore.toString());
-      assert.isTrue(await merkleDistributor.claimed(windowIndex, leaf.account));
     });
     it("Claim for one window does not affect other windows", async function() {
       // Create another duplicate Merkle root. `setWindowMerkleRoot` will dynamically
@@ -255,6 +270,7 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.claimWindow({
         windowIndex: windowIndex,
         account: leaf.account,
+        accountIndex: leaf.accountIndex,
         amount: leaf.amount,
         merkleProof: claimerProof
       });
@@ -263,6 +279,7 @@ contract("MerkleDistributor.js", function(accounts) {
       await merkleDistributor.claimWindow({
         windowIndex: windowIndex + 1,
         account: otherLeaf.account,
+        accountIndex: otherLeaf.accountIndex,
         amount: otherLeaf.amount,
         merkleProof: otherClaimerProof
       });
@@ -277,12 +294,13 @@ contract("MerkleDistributor.js", function(accounts) {
       const claimTx = await merkleDistributor.claimWindow({
         windowIndex: windowIndex,
         account: leaf.account,
+        accountIndex: leaf.accountIndex,
         amount: leaf.amount,
         merkleProof: claimerProof
       });
       // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
       // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-      assert.equal(claimTx.receipt.gasUsed, 86743);
+      assert.equal(claimTx.receipt.gasUsed, 87380);
     });
     it("invalid proof", async function() {
       // Incorrect account:
@@ -291,6 +309,7 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.claimWindow({
             windowIndex: windowIndex,
             account: rando,
+            accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof
           })
@@ -304,7 +323,22 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.claimWindow({
             windowIndex: windowIndex,
             account: leaf.account,
+            accountIndex: leaf.accountIndex,
             amount: invalidAmount,
+            merkleProof: claimerProof
+          })
+        )
+      );
+
+      // Incorrect account index:
+      const invalidAccountIndex = "99";
+      assert(
+        await didContractThrow(
+          merkleDistributor.claimWindow({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: invalidAccountIndex,
+            amount: leaf.amount,
             merkleProof: claimerProof
           })
         )
@@ -317,6 +351,7 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleDistributor.claimWindow({
             windowIndex: windowIndex,
             account: leaf.account,
+            accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: invalidProof
           })
@@ -337,7 +372,7 @@ contract("MerkleDistributor.js", function(accounts) {
       // Generate another set of reward recipients, as the same set as number 1 but double the rewards.
       rewardRecipients2 = rewardRecipients1.map(recipient => {
         return {
-          account: recipient.account,
+          ...recipient,
           amount: toBN(recipient.amount)
             .muln(2)
             .toString()
@@ -375,18 +410,20 @@ contract("MerkleDistributor.js", function(accounts) {
         {
           windowIndex: windowIndex,
           account: leaf1.account,
+          accountIndex: leaf1.accountIndex,
           amount: leaf1.amount,
           merkleProof: merkleTree1.getProof(leaf1.leaf)
         },
         {
           windowIndex: windowIndex + 1,
           account: leaf2.account,
+          accountIndex: leaf2.accountIndex,
           amount: leaf2.amount,
           merkleProof: merkleTree2.getProof(leaf2.leaf)
         }
       ];
       const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, { from: rando });
-      assert.equal(claimTx.receipt.gasUsed, 120678);
+      assert.equal(claimTx.receipt.gasUsed, 121862);
 
       // Account 0 should have gained claimed amount from both leaves.
       const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
@@ -408,12 +445,14 @@ contract("MerkleDistributor.js", function(accounts) {
         {
           windowIndex: windowIndex,
           account: leaf1.account,
+          accountIndex: leaf1.accountIndex,
           amount: leaf1.amount,
           merkleProof: merkleTree1.getProof(leaf1.leaf)
         },
         {
           windowIndex: windowIndex,
           account: leaf2.account,
+          accountIndex: leaf2.accountIndex,
           amount: leaf2.amount,
           merkleProof: merkleTree1.getProof(leaf2.leaf)
         }
@@ -534,6 +573,7 @@ contract("MerkleDistributor.js", function(accounts) {
             merkleDistributor.claimWindow({
               windowIndex: windowIndex,
               account: leaf.account,
+              accountIndex: leaf.accountIndex,
               amount: leaf.amount,
               merkleProof: claimerProof
             })
