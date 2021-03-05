@@ -29,7 +29,9 @@ const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFee
 const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
+
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -1245,18 +1247,14 @@ contract("CreatePriceFeed.js", function(accounts) {
     };
 
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: undefined }), null);
     assert.equal(
-        await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: undefined }),
-        null
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
     );
     assert.equal(
-        await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
-        null
-    );
-    assert.equal(
-        await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
-        null
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
     );
   });
-
 });

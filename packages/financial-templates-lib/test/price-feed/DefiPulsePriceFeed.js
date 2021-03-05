@@ -1,17 +1,17 @@
 const { parseFixed } = require("@uma/common");
-const { DefiPulseTotalPriceFeed } = require("../../src/price-feed/DefiPulseTotalPriceFeed");
+const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("DefiPulseTotalPriceFeed.js", function() {
-  let defiPulseTotalPriceFeed;
+contract("DefiPulsePriceFeed.js", function() {
+  let defiPulsePriceFeed;
   let mockTime = 1611583300;
   let networker;
 
   const apiKey = "test-api-key";
   const lookback = 3600 * 24 * 7;
   const decimals = 6;
-  const project = 'Sushiswap';
+  const project = "Sushiswap";
 
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 600; // every 10 minutes
@@ -33,7 +33,7 @@ contract("DefiPulseTotalPriceFeed.js", function() {
       transports: [new winston.transports.Console()]
     });
 
-    defiPulseTotalPriceFeed = new DefiPulseTotalPriceFeed(
+    defiPulsePriceFeed = new DefiPulsePriceFeed(
       dummyLogger,
       web3,
       apiKey,
@@ -47,37 +47,37 @@ contract("DefiPulseTotalPriceFeed.js", function() {
   });
 
   it("No update", async function() {
-    assert.equal(defiPulseTotalPriceFeed.getCurrentPrice(), undefined);
-    assert.isTrue(await defiPulseTotalPriceFeed.getHistoricalPrice(1000).catch(() => true));
-    assert.equal(defiPulseTotalPriceFeed.getLastUpdateTime(), undefined);
+    assert.equal(defiPulsePriceFeed.getCurrentPrice(), undefined);
+    assert.isTrue(await defiPulsePriceFeed.getHistoricalPrice(1000).catch(() => true));
+    assert.equal(defiPulsePriceFeed.getLastUpdateTime(), undefined);
   });
 
   it("Check decimals", async function() {
-    assert.equal(defiPulseTotalPriceFeed.getPriceFeedDecimals(), decimals);
+    assert.equal(defiPulsePriceFeed.getPriceFeedDecimals(), decimals);
   });
 
   it("Basic historical price", async function() {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
-    await defiPulseTotalPriceFeed.update();
+    await defiPulsePriceFeed.update();
 
     // Before period 1 should return null.
-    assert.isTrue(await defiPulseTotalPriceFeed.getHistoricalPrice(1611572399).catch(() => true));
+    assert.isTrue(await defiPulsePriceFeed.getHistoricalPrice(1611572399).catch(() => true));
     assert.equal(
-      (await defiPulseTotalPriceFeed.getHistoricalPrice(1611575900)).toString(),
+      (await defiPulsePriceFeed.getHistoricalPrice(1611575900)).toString(),
       parseFixed("24.78", decimals).toString()
     );
     assert.equal(
-      (await defiPulseTotalPriceFeed.getHistoricalPrice(1611579500)).toString(),
+      (await defiPulsePriceFeed.getHistoricalPrice(1611579500)).toString(),
       parseFixed("23.50", decimals).toString()
     );
     assert.equal(
-      (await defiPulseTotalPriceFeed.getHistoricalPrice(1611579500)).toString(),
+      (await defiPulsePriceFeed.getHistoricalPrice(1611579500)).toString(),
       parseFixed("23.50", decimals).toString()
     );
     assert.equal(
-      (await defiPulseTotalPriceFeed.getHistoricalPrice(1611579601)).toString(),
+      (await defiPulsePriceFeed.getHistoricalPrice(1611579601)).toString(),
       parseFixed("22.25", decimals).toString()
     );
   });
@@ -86,19 +86,19 @@ contract("DefiPulseTotalPriceFeed.js", function() {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
-    await defiPulseTotalPriceFeed.update();
+    await defiPulsePriceFeed.update();
 
     // Should return the current price in the data.
-    assert.equal(defiPulseTotalPriceFeed.getCurrentPrice().toString(), parseFixed("25.1", decimals).toString());
+    assert.equal(defiPulsePriceFeed.getCurrentPrice().toString(), parseFixed("25.1", decimals).toString());
   });
 
   it("Last update time", async function() {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
-    await defiPulseTotalPriceFeed.update();
+    await defiPulsePriceFeed.update();
 
     // Should return the mock time.
-    assert.equal(defiPulseTotalPriceFeed.getLastUpdateTime(), mockTime);
+    assert.equal(defiPulsePriceFeed.getLastUpdateTime(), mockTime);
   });
 });

@@ -17,7 +17,17 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {String} project Project name that we want to query TVL for.
    */
-  constructor(logger, web3, apiKey, lookback, networker, getTime, minTimeBetweenUpdates, priceFeedDecimals = 18, project) {
+  constructor(
+    logger,
+    web3,
+    apiKey,
+    lookback,
+    networker,
+    getTime,
+    minTimeBetweenUpdates,
+    priceFeedDecimals = 18,
+    project
+  ) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -31,7 +41,6 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     this.uuid = `DefiPulse ${project}`;
     this.toWei = this.web3.utils.toWei;
     this.historicalPrices = [];
-
   }
 
   getCurrentPrice() {
