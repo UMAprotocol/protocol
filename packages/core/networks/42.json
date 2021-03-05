@@ -69,10 +69,10 @@
   },
   {
     "contractName": "PerpetualLib",
-    "address": "0x1Bd1eBD8E11D0a92954bF8fE255035d489041a5F"
+    "address": "0x3B18e629C56F496B0E4C156150eFAc16f2ccd1D9"
   },
   {
     "contractName": "PerpetualCreator",
-    "address": "0x211aAB73C56fef9314fB0889e4f045B5F27cDB3F"
+    "address": "0x6b876861d2F15616a6C8ed8a3E3BAD071EAD3DDE"
   }
 ]
