@@ -35,7 +35,7 @@ contract MerkleDistributor is Ownable {
     struct Claim {
         uint256 windowIndex;
         uint256 amount;
-        uint256 accountIndex; // Used for bitmap.
+        uint256 accountIndex; // Used only for bitmap. Assumed to be unique for each claim.
         address account;
         bytes32[] merkleProof;
     }
@@ -44,7 +44,8 @@ contract MerkleDistributor is Ownable {
     mapping(uint256 => Window) public merkleWindows;
 
     // Track which accounts have claimed for each window index.
-    // Note: uses a packed array of bools for gas optimization on tracking claims.
+    // Note: uses a packed array of bools for gas optimization on tracking certain claims.
+    //       Copied from Uniswap's contract.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
     // Index of last created Merkle root. Next allocation to begin at `lastCreatedIndex + 1`.
@@ -129,19 +130,21 @@ contract MerkleDistributor is Ownable {
         for (uint256 i = 0; i < claims.length; i++) {
             Claim memory claim = claims[i];
             require(claim.account == account, "Invalid account in batch claim");
-            _markClaimed(claim);
+            _verifyAndMarkClaimed(claim);
             amountToClaim = amountToClaim.add(claim.amount);
         }
-        _disburse(IERC20(rewardToken), account, amountToClaim);
+        IERC20(rewardToken).safeTransfer(account, amountToClaim);
     }
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
     function claimWindow(Claim memory claim) public {
-        _markClaimed(claim);
-        _disburse(merkleWindows[claim.windowIndex].rewardToken, claim.account, claim.amount);
+        _verifyAndMarkClaimed(claim);
+        merkleWindows[claim.windowIndex].rewardToken.safeTransfer(claim.account, claim.amount);
     }
 
+    // Returns True if the claim for `accountIndex` has already been completed for the Merkle
+    // root at `windowIndex`.
     function isClaimed(uint256 windowIndex, uint256 accountIndex) public view returns (bool) {
         uint256 claimedWordIndex = accountIndex / 256;
         uint256 claimedBitIndex = accountIndex % 256;
@@ -156,6 +159,7 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
+    // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
     function _setClaimed(uint256 windowIndex, uint256 accountIndex) private {
         uint256 claimedWordIndex = accountIndex / 256;
         uint256 claimedBitIndex = accountIndex % 256;
@@ -164,6 +168,8 @@ contract MerkleDistributor is Ownable {
             (1 << claimedBitIndex);
     }
 
+    // Store new Merkle root at `windowindex`. Pull `totalRewardsDistributed` from caller
+    // to seed distribution for this root.
     function _setWindow(
         uint256 windowIndex,
         uint256 totalRewardsDistributed,
@@ -179,7 +185,8 @@ contract MerkleDistributor is Ownable {
         emit CreatedWindow(windowIndex, totalRewardsDistributed, rewardToken, msg.sender);
     }
 
-    function _markClaimed(Claim memory claim) private {
+    // Verify claim is valid and mark it as completed in this contract.
+    function _verifyAndMarkClaimed(Claim memory claim) private {
         // Check claimed proof against merkle window at given index.
         require(_verifyClaim(claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
@@ -195,14 +202,6 @@ contract MerkleDistributor is Ownable {
             claim.amount,
             address(merkleWindows[claim.windowIndex].rewardToken)
         );
-    }
-
-    function _disburse(
-        IERC20 token,
-        address account,
-        uint256 amount
-    ) private {
-        token.safeTransfer(account, amount);
     }
 
     // Checks {account, amount} against Merkle root at given window index.
