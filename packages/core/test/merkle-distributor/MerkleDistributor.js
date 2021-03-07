@@ -212,7 +212,7 @@ contract("MerkleDistributor.js", function(accounts) {
           },
           { from: rando }
         );
-        console.log(`Gas used: ${claimTx.receipt.gasUsed}`);
+        assert.equal(claimTx.receipt.gasUsed, 87307);
         assert.equal(
           (await rewardToken.balanceOf(leaf.account)).toString(),
           claimerBalanceBefore.add(toBN(leaf.amount)).toString()
@@ -495,7 +495,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      console.log(`Gas used to claim leaf # ${leafIndex}: ${tx.receipt.gasUsed}`);
+      assert.equal(tx.receipt.gasUsed, 99248);
     });
     it("gas deeper node", async function() {
       const leafIndex = 90000;
@@ -508,7 +508,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      console.log(`Gas used to claim leaf # ${leafIndex}: ${tx.receipt.gasUsed}`);
+      assert.equal(tx.receipt.gasUsed, 99268);
     });
     it("gas average random distribution", async function() {
       let total = toBN(0);
@@ -526,8 +526,8 @@ contract("MerkleDistributor.js", function(accounts) {
         total = total.addn(tx.receipt.gasUsed);
         count++;
       }
-      const average = total / count;
-      console.log(`Gas average to claim ${SAMPLE_SIZE} leaves: ${average}`);
+      const average = total.divn(count);
+      assert.equal(Math.floor(average.toNumber()), 84876);
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
@@ -548,8 +548,8 @@ contract("MerkleDistributor.js", function(accounts) {
         total = total.addn(tx.receipt.gasUsed);
         count++;
       }
-      const average = total / count;
-      console.log(`Gas average to claim first 25 leaves: ${average}`);
+      const average = total.divn(count);
+      assert.equal(Math.floor(average.toNumber()), 70463);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
