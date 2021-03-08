@@ -1,4 +1,4 @@
-// This script a withdrawal transaction that will pull founds out of a DSProxy contract. The wallet you run the script
+// This script a withdrawal transaction that will pull funds out of a DSProxy contract. The wallet you run the script
 // from should be the owner (or have sufficient permissions).
 // To Execute execute the script as: truffle exec ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max -- recipientAddress 0x...
 // Note:
