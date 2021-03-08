@@ -24,7 +24,6 @@ config();
 
 export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
   try {
-    console.log("HI");
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const config = new TraderConfig(process.env);
 
@@ -58,9 +57,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
       dsProxyAbi: getAbi("DSProxy")
     });
-    console.log("1");
     await dsProxyManager.initializeDSProxy();
-    console.log("2");
+
     const [tokenPriceFeed, referencePriceFeed, exchangeAdapter] = await Promise.all([
       createTokenPriceFeedForFinancialContract(
         logger,
@@ -81,9 +79,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       ),
       createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId)
     ]);
-    console.log("3");
     const rangeTrader = new RangeTrader(logger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter);
-    console.log("4");
     for (;;) {
       await retry(
         async () => {
