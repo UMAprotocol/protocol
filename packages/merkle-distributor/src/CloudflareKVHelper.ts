@@ -42,7 +42,7 @@ export async function addClaimsToKV(
     };
   });
 
-  const BATCH_SIZE = 10_000; // limit how many wee add in each bulk upload. Cloud flare limits 10k per bulk put.
+  const BATCH_SIZE = 10_000; // limit how many we add in each bulk upload. Cloud flare limits 10k per bulk put.
   let i = 0;
   while (i < KV.length) {
     await _addDataToKV(JSON.stringify(KV.slice(i, (i += BATCH_SIZE))));

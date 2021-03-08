@@ -5,7 +5,7 @@ import { getHardhatConfig } from "@uma/common";
 import path from "path";
 
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
-const packageWkdir = path.dirname(require.resolve("@uma/optimistic-oracle/package.json"));
+const packageWkdir = path.dirname(require.resolve("@uma/merkle-distributor/package.json"));
 
 const configOverride = {
   paths: {
