@@ -50,7 +50,7 @@ async function runExport() {
   await dsProxyManager.initializeDSProxy(argv.dsProxyAddress, false);
 
   const dsProxyAddress = dsProxyManager.getDSProxyAddress();
-
+  if (!dsProxyAddress) throw new Error("DSProxy Address was not found or parameterized");
   const token = new web3.eth.Contract(getAbi("ExpandedERC20"), argv.tokenAddress);
 
   // Figure out how many tokens to withdraw. If max, then query the full balance of the account. Else, use specified.
