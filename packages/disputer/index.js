@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { MAX_UINT_VAL, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -15,7 +15,8 @@ const {
   Networker,
   delay,
   waitForLogger,
-  createReferencePriceFeedForFinancialContract
+  createReferencePriceFeedForFinancialContract,
+  setAllowance
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
@@ -45,7 +46,6 @@ async function run({
   disputerOverridePrice
 }) {
   try {
-    const { toBN } = web3.utils;
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
@@ -101,9 +101,8 @@ async function run({
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
-    const [priceIdentifier, currentAllowance, collateralDecimals, syntheticDecimals] = await Promise.all([
+    const [priceIdentifier, collateralDecimals, syntheticDecimals] = await Promise.all([
       financialContract.methods.priceIdentifier().call(),
-      collateralToken.methods.allowance(accounts[0], financialContractAddress).call(),
       collateralToken.methods.decimals().call(),
       syntheticToken.methods.decimals().call()
     ]);
@@ -139,6 +138,8 @@ async function run({
     );
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
+
     const disputer = new Disputer({
       logger,
       financialContractClient,
@@ -161,16 +162,18 @@ async function run({
 
     // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    if (toBN(currentAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-      await gasEstimator.update();
-      const collateralApprovalTx = await collateralToken.methods.approve(financialContractAddress, MAX_UINT_VAL).send({
-        from: accounts[0],
-        gasPrice: gasEstimator.getCurrentFastPrice()
-      });
+    const collateralApproval = await setAllowance(
+      web3,
+      gasEstimator,
+      accounts[0],
+      financialContractAddress,
+      collateralTokenAddress
+    );
+    if (collateralApproval) {
       logger.info({
         at: "Disputer#index",
         message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApprovalTx.transactionHash
+        collateralApprovalTx: collateralApproval.tx.transactionHash
       });
     }
 
