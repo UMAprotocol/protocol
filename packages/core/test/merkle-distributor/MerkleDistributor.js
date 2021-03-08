@@ -187,6 +187,24 @@ contract("MerkleDistributor.js", function(accounts) {
         leaf = rewardLeafs[0];
         claimerProof = merkleTree.getProof(leaf.leaf);
       });
+      it("Claim reverts when no rewards to transfer", async function() {
+        // First withdraw rewards out of the contract.
+        await merkleDistributor.withdrawRewards(rewardToken.address, SamplePayouts.totalRewardsDistributed, {
+          from: contractCreator
+        });
+        // Claim should fail:
+        assert(
+          await didContractThrow(
+            merkleDistributor.claim({
+              windowIndex,
+              account: leaf.account,
+              accountIndex: leaf.accountIndex,
+              amount: leaf.amount,
+              merkleProof: claimerProof
+            })
+          )
+        );
+      });
       it("Cannot claim for invalid window index", async function() {
         assert(
           await didContractThrow(
