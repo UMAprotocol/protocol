@@ -132,7 +132,7 @@ async function Poll(callback) {
       // Common price feed configuration passed along to all those constructed by proposer.
       commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)
-        : null,
+        : {},
       // If there is an optimistic oracle config, add it. Else, set to null. Example config:
       // {
       //   "disputePriceErrorPercent":0.05 -> Proposal prices that do not equal the dispute price
