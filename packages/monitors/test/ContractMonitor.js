@@ -592,7 +592,7 @@ contract("ContractMonitor.js", function(accounts) {
             await eventClient.update();
             await contractMonitor.checkForNewFundingRateUpdatedEvents();
 
-            assert.isTrue(lastSpyLogIncludes(spy, "New funding rate published: 0.00001%/second"));
+            assert.isTrue(lastSpyLogIncludes(spy, "New funding rate published: 0.00001/second"));
             assert.isTrue(lastSpyLogIncludes(spy, `proposal time was ${proposalTime}`));
             assert.isTrue(lastSpyLogIncludes(spy, "reward of 0"));
             assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject.tx}`));

@@ -431,10 +431,10 @@ class ContractMonitor {
       // Funding Rate Update alert: New funding rate published: [rate]. Original proposal time was
       // [proposalTime] and the proposer received a reward of [reward].
       let mrkdwn =
-        `New funding rate published: ${this.fromWei(event.newFundingRate)}%/second. ` +
+        `New funding rate published: ${this.fromWei(event.newFundingRate)}/second. ` +
         `Original proposal time was ${
           event.updateTime
-        } and the proposer received a reward of ${this.normalizeCollateralDecimals(event.reward)}.`;
+        } and the proposer received a reward of ${this.normalizeCollateralDecimals(event.reward)}. `;
       // Add etherscan link.
       mrkdwn += `Tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.financialContractProps.networkId)}`;
       this.logger.info({
