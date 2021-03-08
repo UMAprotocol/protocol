@@ -120,7 +120,12 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
-    // Batch claims for a reward currency for an account to save gas.
+    // Batch claims for a reward currency for an account to save gas. We only allow
+    // batching the same reward token and the same account because this allows us to effect
+    // the most gas optimizations for the user by precomputing the total amount of the
+    // chosen reward currency to send to the user in a single transfer transaction.
+    // If we allowed multiple accounts or multiple reward currencies,
+    // then this function would still reduce to multiple ERC20.transfer calls.
     function claimWindows(
         Claim[] memory claims,
         address rewardToken,
@@ -130,6 +135,8 @@ contract MerkleDistributor is Ownable {
         for (uint256 i = 0; i < claims.length; i++) {
             Claim memory claim = claims[i];
             require(claim.account == account, "Invalid account in batch claim");
+            address _rewardToken = address(merkleWindows[claim.windowIndex].rewardToken);
+            require(_rewardToken == rewardToken, "Invalid rewardToken in batch claim");
             _verifyAndMarkClaimed(claim);
             amountToClaim = amountToClaim.add(claim.amount);
         }
