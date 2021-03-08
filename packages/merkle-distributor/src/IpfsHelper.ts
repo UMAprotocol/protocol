@@ -16,10 +16,7 @@ export async function viewFile(fileHash: string) {
     const json = await response.json();
     return json;
   } catch (error) {
-    throw {
-      message: "Something went wrong fetching your file! It might not be json formatted on IPFS",
-      error: new Error(error)
-    };
+    throw { message: "Something went wrong fetching your file!", error: new Error(error) };
   }
 }
 
