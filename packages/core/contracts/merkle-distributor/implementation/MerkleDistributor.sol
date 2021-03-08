@@ -153,6 +153,12 @@ contract MerkleDistributor is Ownable {
         return claimedWord & mask == mask;
     }
 
+    // Checks {account, amount} against Merkle root at given window index.
+    function verifyClaim(Claim memory claim) public view returns (bool valid) {
+        bytes32 leaf = keccak256(abi.encodePacked(claim.account, claim.amount, claim.accountIndex));
+        return MerkleProof.verify(claim.merkleProof, merkleWindows[claim.windowIndex].merkleRoot, leaf);
+    }
+
     /****************************
      *
      * Internal functions
@@ -188,7 +194,7 @@ contract MerkleDistributor is Ownable {
     // Verify claim is valid and mark it as completed in this contract.
     function _verifyAndMarkClaimed(Claim memory claim) private {
         // Check claimed proof against merkle window at given index.
-        require(_verifyClaim(claim), "Incorrect merkle proof");
+        require(verifyClaim(claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
         require(!isClaimed(claim.windowIndex, claim.accountIndex), "Account has already claimed for this window");
 
@@ -202,11 +208,5 @@ contract MerkleDistributor is Ownable {
             claim.amount,
             address(merkleWindows[claim.windowIndex].rewardToken)
         );
-    }
-
-    // Checks {account, amount} against Merkle root at given window index.
-    function _verifyClaim(Claim memory claim) private view returns (bool valid) {
-        bytes32 leaf = keccak256(abi.encodePacked(claim.account, claim.amount, claim.accountIndex));
-        return MerkleProof.verify(claim.merkleProof, merkleWindows[claim.windowIndex].merkleRoot, leaf);
     }
 }

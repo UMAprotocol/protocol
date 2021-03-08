@@ -200,6 +200,19 @@ contract("MerkleDistributor.js", function(accounts) {
           )
         );
       });
+      it("gas", async function() {
+        const claimTx = await merkleDistributor.claimWindow(
+          {
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof
+          },
+          { from: rando }
+        );
+        assert.equal(claimTx.receipt.gasUsed, 87329);
+      });
       it("Can claim on another account's behalf", async function() {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
         const claimTx = await merkleDistributor.claimWindow(
@@ -212,7 +225,6 @@ contract("MerkleDistributor.js", function(accounts) {
           },
           { from: rando }
         );
-        assert.equal(claimTx.receipt.gasUsed, 87307);
         assert.equal(
           (await rewardToken.balanceOf(leaf.account)).toString(),
           claimerBalanceBefore.add(toBN(leaf.amount)).toString()
@@ -293,60 +305,51 @@ contract("MerkleDistributor.js", function(accounts) {
         );
       });
       it("invalid proof", async function() {
+        // Reverts unless `claim` is valid.
+        const isInvalidProof = async claim => {
+          // 1) Claim should revert
+          // 2) verifyClaim should return false
+          await didContractThrow(merkleDistributor.claimWindow(claim));
+          assert.isFalse(await merkleDistributor.verifyClaim(claim));
+        };
         // Incorrect account:
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: rando,
-              accountIndex: leaf.accountIndex,
-              amount: leaf.amount,
-              merkleProof: claimerProof
-            })
-          )
-        );
+        await isInvalidProof({
+          windowIndex: windowIndex,
+          account: rando,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: claimerProof
+        });
 
         // Incorrect amount:
         const invalidAmount = "1";
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: leaf.account,
-              accountIndex: leaf.accountIndex,
-              amount: invalidAmount,
-              merkleProof: claimerProof
-            })
-          )
-        );
+        await isInvalidProof({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: invalidAmount,
+          merkleProof: claimerProof
+        });
 
         // Incorrect account index:
         const invalidAccountIndex = "99";
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: leaf.account,
-              accountIndex: invalidAccountIndex,
-              amount: leaf.amount,
-              merkleProof: claimerProof
-            })
-          )
-        );
+        await isInvalidProof({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: invalidAccountIndex,
+          amount: leaf.amount,
+          merkleProof: claimerProof
+        });
 
         // Invalid merkle proof:
         const invalidProof = [utf8ToHex("0x")];
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: leaf.account,
-              accountIndex: leaf.accountIndex,
-              amount: leaf.amount,
-              merkleProof: invalidProof
-            })
-          )
-        );
+        await isInvalidProof({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: invalidProof
+        });
       });
     });
     describe("(claimWindows)", function() {
@@ -495,7 +498,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99248);
+      assert.equal(tx.receipt.gasUsed, 99270);
     });
     it("gas deeper node", async function() {
       const leafIndex = 90000;
@@ -508,7 +511,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99268);
+      assert.equal(tx.receipt.gasUsed, 99290);
     });
     it("gas average random distribution", async function() {
       let total = toBN(0);
@@ -527,7 +530,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 84876);
+      assert.equal(Math.floor(average.toNumber()), 84898);
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
@@ -549,7 +552,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 70463);
+      assert.equal(Math.floor(average.toNumber()), 70485);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
