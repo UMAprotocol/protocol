@@ -66,7 +66,7 @@ async function runExport() {
     .transferERC20(argv.tokenAddress, tokenRecipient, amountToWithdraw)
     .encodeABI();
 
-  // The library also needs to code of the contract to deploy.
+  // The library also needs the code of the contract to deploy.
   const callCode = TokenSender.bytecode;
 
   // Send the transaction against the DSProxy manager.
