@@ -46,7 +46,7 @@ async function runExport() {
   });
 
   // Load in a DSProxy address. If you did not provide one in the args then the script will check against the factory.
-  // False as the second param in this function disables the DSProxyManager from deploying a DSProxy if you dont have one.
+  // False as the second param in this function prevents the DSProxyManager from deploying a DSProxy if you don't have one.
   await dsProxyManager.initializeDSProxy(argv.dsProxyAddress, false);
 
   const dsProxyAddress = dsProxyManager.getDSProxyAddress();
