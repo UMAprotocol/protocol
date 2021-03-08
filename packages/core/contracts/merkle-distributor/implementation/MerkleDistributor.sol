@@ -60,7 +60,12 @@ contract MerkleDistributor is Ownable {
         uint256 amount,
         address indexed rewardToken
     );
-    event CreatedWindow(uint256 indexed windowIndex, uint256 amount, address indexed rewardToken, address owner);
+    event CreatedWindow(
+        uint256 indexed windowIndex,
+        uint256 rewardsDeposited,
+        address indexed rewardToken,
+        address owner
+    );
     event WithdrawRewards(address indexed owner, uint256 amount);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
 
@@ -72,17 +77,19 @@ contract MerkleDistributor is Ownable {
 
     // Set merkle root for the next available window index and seed allocations. Callable by owner of this
     // contract. Importantly, we assume that the owner of this contract
-    // correctly chooses an amount `totalRewardsDistributed` that is sufficient
+    // correctly chooses an amount `rewardsToDeposit` that is sufficient
     // to cover all claims within the `merkleRoot`. Otherwise, a race condition
     // can be created. This situation can occur because we do not segregate reward balances by window,
-    // for code simplicity purposes.
+    // for code simplicity purposes. (If `rewardsToDeposit` is purposefully insufficient to payout
+    // all claims, then the admin must subsequently transfer in rewards or the following situation
+    // can occur).
     //
     // Example race situation:
-    //     - Window 1 Tree: Owner sets `totalRewardsDistributed=100` and insert proofs that give
+    //     - Window 1 Tree: Owner sets `rewardsToDeposit=100` and insert proofs that give
     //                      claimant A 50 tokens and claimant B 51 tokens. The owner has made an error
-    //                      by not setting the `totalRewardsDistributed` correctly to 101).
-    //     - Window 2 Tree: Owner sets `totalRewardsDistributed=1` and insert proofs that give
-    //                      claimant A 1 token. The owner correctly set `totalRewardsDistributed` this time.
+    //                      by not setting the `rewardsToDeposit` correctly to 101).
+    //     - Window 2 Tree: Owner sets `rewardsToDeposit=1` and insert proofs that give
+    //                      claimant A 1 token. The owner correctly set `rewardsToDeposit` this time.
     //     - At this point contract owns 100 + 1 = 101 tokens. Now, imagine the following sequence:
     //       (1) Claimant A claims 50 tokens for Window 1, contract now has 101 - 50 = 51 tokens.
     //       (2) Claimant B claims 51 tokens for Window 1, contract now has 51 - 51 = 0 tokens.
@@ -91,14 +98,14 @@ contract MerkleDistributor is Ownable {
     //       claim would succeed and the second claim would fail, even though both claimants would expect
     //       their claims to suceed.
     function setWindow(
-        uint256 totalRewardsDistributed,
+        uint256 rewardsToDeposit,
         address rewardToken,
         bytes32 merkleRoot
     ) external onlyOwner {
         uint256 indexToSet = lastCreatedIndex;
         lastCreatedIndex = indexToSet.add(1);
 
-        _setWindow(indexToSet, totalRewardsDistributed, rewardToken, merkleRoot);
+        _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
@@ -181,11 +188,11 @@ contract MerkleDistributor is Ownable {
             (1 << claimedBitIndex);
     }
 
-    // Store new Merkle root at `windowindex`. Pull `totalRewardsDistributed` from caller
+    // Store new Merkle root at `windowindex`. Pull `rewardsDeposited` from caller
     // to seed distribution for this root.
     function _setWindow(
         uint256 windowIndex,
-        uint256 totalRewardsDistributed,
+        uint256 rewardsDeposited,
         address rewardToken,
         bytes32 merkleRoot
     ) private {
@@ -193,9 +200,9 @@ contract MerkleDistributor is Ownable {
         window.merkleRoot = merkleRoot;
         window.rewardToken = IERC20(rewardToken);
 
-        window.rewardToken.safeTransferFrom(msg.sender, address(this), totalRewardsDistributed);
+        window.rewardToken.safeTransferFrom(msg.sender, address(this), rewardsDeposited);
 
-        emit CreatedWindow(windowIndex, totalRewardsDistributed, rewardToken, msg.sender);
+        emit CreatedWindow(windowIndex, rewardsDeposited, rewardToken, msg.sender);
     }
 
     // Verify claim is valid and mark it as completed in this contract.

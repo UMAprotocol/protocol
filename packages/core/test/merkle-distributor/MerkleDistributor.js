@@ -96,7 +96,7 @@ contract("MerkleDistributor.js", function(accounts) {
       truffleAssert.eventEmitted(seedTxn, "CreatedWindow", ev => {
         return (
           ev.windowIndex.toString() === windowIndex.toString() &&
-          ev.amount.toString() === totalRewardAmount.toString() &&
+          ev.rewardsDeposited.toString() === totalRewardAmount.toString() &&
           ev.rewardToken === rewardToken.address &&
           ev.owner === contractCreator
         );
