@@ -126,7 +126,7 @@ contract MerkleDistributor is Ownable {
     // chosen reward currency to send to the user in a single transfer transaction.
     // If we allowed multiple accounts or multiple reward currencies,
     // then this function would still reduce to multiple ERC20.transfer calls.
-    function claimWindows(
+    function claimMulti(
         Claim[] memory claims,
         address rewardToken,
         address account
@@ -145,7 +145,7 @@ contract MerkleDistributor is Ownable {
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
-    function claimWindow(Claim memory claim) public {
+    function claim(Claim memory claim) public {
         _verifyAndMarkClaimed(claim);
         merkleWindows[claim.windowIndex].rewardToken.safeTransfer(claim.account, claim.amount);
     }
