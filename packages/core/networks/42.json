@@ -74,5 +74,9 @@
   {
     "contractName": "PerpetualCreator",
     "address": "0x211aAB73C56fef9314fB0889e4f045B5F27cDB3F"
+  },
+  {
+    "contractName": "DSProxyFactory",
+    "address": "0xFB8da0B386F2Ab00B04c7f01f9faC19E21ECC405"
   }
 ]

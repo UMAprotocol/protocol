@@ -93,7 +93,7 @@ async function run({
         )}`
       );
 
-    // Setup contract instances. This uses the contract version pulled in from previous step. Voting is hardcoded to latest main net version.
+    // Setup contract instances. This uses the contract version pulled in from previous step.
     const financialContract = new web3.eth.Contract(
       getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       financialContractAddress

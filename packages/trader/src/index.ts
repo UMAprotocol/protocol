@@ -5,7 +5,7 @@ import { config } from "dotenv";
 
 import retry from "async-retry";
 const { getWeb3 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 const {
   GasEstimator,
   Networker,
@@ -24,6 +24,7 @@ config();
 
 export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
   try {
+    console.log("HI");
     const getTime = () => Math.round(new Date().getTime() / 1000);
     const config = new TraderConfig(process.env);
 
@@ -36,6 +37,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       pollingDelay: config.pollingDelay,
       errorRetries: config.errorRetries,
       errorRetriesTimeout: config.errorRetriesTimeout,
+      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig
@@ -43,7 +45,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const networker = new Networker(logger);
-    const accounts = await web3.eth.getAccounts();
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
     const gasEstimator = new GasEstimator(logger);
 
@@ -52,12 +54,13 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       gasEstimator,
       account: accounts[0],
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
+      dsProxyFactoryAddress: config.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
       dsProxyAbi: getAbi("DSProxy")
     });
-
+    console.log("1");
     await dsProxyManager.initializeDSProxy();
+    console.log("2");
     const [tokenPriceFeed, referencePriceFeed, exchangeAdapter] = await Promise.all([
       createTokenPriceFeedForFinancialContract(
         logger,
@@ -76,9 +79,11 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
         config.financialContractAddress,
         config.referencePriceFeedConfig
       ),
-      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig)
+      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId)
     ]);
+    console.log("3");
     const rangeTrader = new RangeTrader(logger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter);
+    console.log("4");
     for (;;) {
       await retry(
         async () => {

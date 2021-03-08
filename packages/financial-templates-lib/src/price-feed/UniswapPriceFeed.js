@@ -14,7 +14,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
    * @param {Integer} twapLength Duration of the time weighted average computation used by the price feed.
    * @param {Integer} historicalLookback How far in the past historical prices will be available using getHistoricalPrice.
    * @param {Function} getTime Returns the current time.
-   * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or
+   * @param {Bool} invertPrice Indicates if the Uniswap pair is computed as reserve0/reserve1 (true) or reserve1/reserve0 (false)
    * @param {Integer} priceFeedDecimals Precision that the caller wants precision to be reported in
    * @return None or throws an Error.
    */
