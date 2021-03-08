@@ -80,6 +80,7 @@ async function main() {
 
   console.log("Claims file added to IPFS with hash:", ipfsHash, "\n\n2. Pinning claims file to IPFS 📌");
 
+  // Pinning a file on IPFS makes it persistently accessible. This method pins the files with Infura and pinata.
   await IpfsHelper.pinHash(ipfsHash);
 
   console.log("Claims file pinned to IPFS!\n\n3. Adding claims file to cloudflare KV 🗺");

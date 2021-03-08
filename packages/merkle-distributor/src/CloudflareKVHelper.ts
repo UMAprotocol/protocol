@@ -14,7 +14,7 @@ const AUTHENTICATED_HEADER = {
 };
 
 // Bulk add to Cloudflare KV. Data should be a stringified array of [{key:<your-key>,value:<your-value>}]
-async function _addDataToKV(data: string) {
+export async function _addDataToKV(data: string) {
   const response = await nodeFetch(`${BASE_URL}/bulk`, { method: "put", body: data, headers: AUTHENTICATED_HEADER });
   if (response.status != 200) throw { response, error: new Error("Something went wrong adding data to KV") };
   const jsonResponse = await response.json();
@@ -22,14 +22,14 @@ async function _addDataToKV(data: string) {
 }
 
 // Fetched the data stored at a particular key from cloudflare. Throws on error. Errors include key not found.
-async function _fetchDataFromKV(key: string) {
+export async function _fetchDataFromKV(key: string) {
   const response = await nodeFetch(`${BASE_URL}/values/${key}`, { method: "get", headers: AUTHENTICATED_HEADER });
   if (response.status != 200) throw { response, error: new Error("Something went wrong fetching data from KV") };
   return await response.json();
 }
 
 // Takes recipient proof information and adds it to CloudflareKV. Each recipient's information is stored as chainId:windowIndex:account as the key & the value as stringified object of amount, windowIndex, metatadata and proof.
-async function addClaimsToKV(
+export async function addClaimsToKV(
   recipientsData: { [key: string]: { amount: string; windowIndex: number; metaData: any; proof: Array<string> } },
   chainId: number,
   windowIndex: number
@@ -50,7 +50,7 @@ async function addClaimsToKV(
 }
 
 // Append new chainIdWindow information to KV.
-async function updateChainWindowIndicesFromKV(
+export async function updateChainWindowIndicesFromKV(
   chainId: number,
   windowIndex: number,
   ipfsHash: string,
@@ -74,19 +74,17 @@ async function updateChainWindowIndicesFromKV(
   await _addDataToKV(JSON.stringify([{ key: `${chainId}`, value: JSON.stringify(newChainIndices) }]));
 }
 
-async function fetchClaimsFromKV(chainId: number, windowIndex: number, account: string) {
+export async function fetchClaimsFromKV(chainId: number, windowIndex: number, account: string) {
   try {
     return await _fetchDataFromKV(`${chainId}:${windowIndex}:${account}`);
   } catch (error) {
     return error;
   }
 }
-async function fetchChainWindowIndicesFromKV(chainId: number) {
+export async function fetchChainWindowIndicesFromKV(chainId: number) {
   try {
     return await _fetchDataFromKV(`${chainId}`);
   } catch (error) {
     return error;
   }
 }
-
-export = { addClaimsToKV, fetchClaimsFromKV, fetchChainWindowIndicesFromKV, updateChainWindowIndicesFromKV };
