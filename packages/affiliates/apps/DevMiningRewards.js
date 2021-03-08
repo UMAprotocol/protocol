@@ -27,7 +27,9 @@ const App = env => async params => {
   assert(endTime, "requires endTime");
   assert(totalRewards, "requires totalRewards");
 
-  const empAbi = getAbi("ExpiringMultiParty");
+  // we will eventually need to know the versions of each emp being run in order to decode events
+  // but for now this works to run on all current emps.
+  const empAbi = getAbi("ExpiringMultiParty", "1.2.0");
 
   const emp = Emp({ web3 });
   const client = new BigQuery();
