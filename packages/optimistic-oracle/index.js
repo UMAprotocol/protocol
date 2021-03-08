@@ -32,7 +32,7 @@ async function run({
   optimisticOracleProposerConfig
 }) {
   try {
-    const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
     const votingAddress = getAddress("Voting", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
