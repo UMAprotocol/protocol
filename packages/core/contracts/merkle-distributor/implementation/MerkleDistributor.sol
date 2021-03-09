@@ -127,9 +127,12 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
-    function claimMulti(Claim[] memory claims) external {
+    function claimMulti(Claim[] memory claims, address account) external {
         for (uint256 i = 0; i < claims.length; i++) {
-            claim(claims[i]);
+            Claim memory _claim = claims[i];
+            if (_claim.account == account) {
+                claim(_claim);
+            }
         }
     }
 
