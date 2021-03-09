@@ -49,7 +49,7 @@ export class RangeTrader {
     this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 6, false);
 
     // Default config settings.
     const defaultConfig = {
@@ -138,9 +138,12 @@ export class RangeTrader {
         ...commonLogObject,
         error: tradeExecutionTransaction
       });
-      return;
+      throw tradeExecutionTransaction;
     }
-    const exchangeSpotPriceAfterTrade = await this.exchangeAdapter.getExchangeSpotPrice();
+
+    // Get the post trade spot price to double check deviation error.
+    await this.tokenPriceFeed.update();
+    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getCurrentPrice();
 
     const postTradePriceDeviationError = this._calculateDeviationError(
       exchangeSpotPriceAfterTrade,

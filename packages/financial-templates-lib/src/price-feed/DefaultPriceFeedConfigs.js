@@ -335,7 +335,7 @@ const defaultConfigs = {
   },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
-    uniswapAddress: "0x25fb29D865C1356F9e95D621F21366d3a5DB6BB0",
+    uniswapAddress: "0x2b5dfb7874f685bea30b7d8426c9643a4bcf5873",
     twapLength: 7200
   },
   "GASETH-FEB21": {

@@ -9,6 +9,8 @@
     "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
     "@uma/core-1-2-1": "npm:@uma/core@1.2.1",
     "@uma/core-1-2-2": "npm:@uma/core@1.2.2",
+    "@uma/core-2-0-0": "npm:@uma/core@2.0.0",
+    "@uma/core-2-0-1": "npm:@uma/core@2.0.1",
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0"

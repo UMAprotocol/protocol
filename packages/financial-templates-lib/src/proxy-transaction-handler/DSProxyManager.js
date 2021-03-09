@@ -1,5 +1,6 @@
-const { getFromBlock } = require("@uma/common");
+const assert = require("assert");
 
+const { getFromBlock } = require("@uma/common");
 class DSProxyManager {
   /**
    * @notice Constructs new Liquidator bot.
@@ -43,8 +44,19 @@ class DSProxyManager {
     return this.dsProxyAddress;
   }
 
-  // Load in an existing DSProxy for the account EOA if one already exists OR create a new one for the user.
-  async initializeDSProxy() {
+  // Load in an existing DSProxy for the account EOA if one already exists OR create a new one for the user. Note that
+  // the user can provide a dsProxyAddress if they want to override the factory behaviour and load in a DSProxy directly.
+  async initializeDSProxy(dsProxyAddress = null, shouldCreateProxy = true) {
+    if (dsProxyAddress) {
+      this.logger.debug({
+        at: "DSProxyManager",
+        message: "Initalizing to a provided DSProxy Address",
+        dsProxyAddress
+      });
+      this.dsProxyAddress = dsProxyAddress;
+      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      return dsProxyAddress;
+    }
     this.logger.debug({
       at: "DSProxyManager",
       message: "Initalizing...Looking for existing DSProxies or deploying a new one for the provided EOA",
@@ -61,7 +73,7 @@ class DSProxyManager {
     // The user already has a DSProxy deployed. Load it in from the events.
     if (events.length > 0) {
       this.dsProxyAddress = events[events.length - 1].returnValues.proxy;
-      this.dsProxy = new web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.debug({
         at: "DSProxyManager",
         message: "DSProxy has been loaded in for the EOA",
@@ -71,8 +83,8 @@ class DSProxyManager {
       });
     }
 
-    // The user does not yet have a DSProxy. Create them one.
-    if (events.length == 0) {
+    // The user does not yet have a DSProxy. Create them one, if they have enabled shouldCreateProxy.
+    if (events.length == 0 && shouldCreateProxy) {
       this.logger.debug({
         at: "DSProxyManager",
         message: "No DSProxy found for EOA. Deploying new DSProxy",
@@ -83,7 +95,7 @@ class DSProxyManager {
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
       this.dsProxyAddress = dsProxyCreateTx.events.Created.returnValues.proxy;
-      this.dsProxy = new web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
         message: "DSProxy has been deployed for the EOA 🚀",
@@ -140,7 +152,6 @@ class DSProxyManager {
     this.logger.info({
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
-      callCodeHash: web3.utils.soliditySha3(callCode),
       callData,
       tx: executeTransaction.transactionHash
     });
