@@ -127,37 +127,41 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
-    // Batch claims for `account` for the given `rewardTokens`. Claims for other accounts or
-    // other reward tokens will be skipped. If any claims for the specified `account` with a listed
+    // Batch claims for `accounts` for the given `rewardTokens`. Claims for other accounts or
+    // other reward tokens will be skipped. If any claims for the specified `accounts` with a listed
     // reward token are invalid then the entire method will revert.
     function claimMulti(
         Claim[] memory claims,
-        address account,
+        address[] calldata accounts,
         address[] calldata rewardTokens
     ) external {
-        // Precompute amount of each reward token to disburse.
-        uint256[] memory amounts = new uint256[](rewardTokens.length);
-        for (uint256 i = 0; i < claims.length; i++) {
-            Claim memory _claim = claims[i];
-            if (_claim.account == account) {
-                // Find which rewardToken this claim is. If rewardToken for this
-                // claim is not found then skip it.
-                for (uint256 r = 0; r < rewardTokens.length; r++) {
-                    if (address(merkleWindows[_claim.windowIndex].rewardToken) == rewardTokens[r]) {
-                        amounts[r] = amounts[r].add(_claim.amount);
+        // Make batch claims for each account:
+        for (uint256 a = 0; a < accounts.length; a++) {
+            address _account = accounts[a];
+            // Precompute amount of each reward token to disburse for this account.
+            uint256[] memory amounts = new uint256[](rewardTokens.length);
+            for (uint256 i = 0; i < claims.length; i++) {
+                Claim memory _claim = claims[i];
+                if (_claim.account == _account) {
+                    // Find which rewardToken this claim is. If rewardToken for this
+                    // claim is not found then skip it.
+                    for (uint256 r = 0; r < rewardTokens.length; r++) {
+                        if (address(merkleWindows[_claim.windowIndex].rewardToken) == rewardTokens[r]) {
+                            amounts[r] = amounts[r].add(_claim.amount);
 
-                        // _verifyAndMarkClaimed and will revert if the claim is invalid.
-                        _verifyAndMarkClaimed(_claim);
-                        break;
+                            // _verifyAndMarkClaimed and will revert if the claim is invalid.
+                            _verifyAndMarkClaimed(_claim);
+                            break;
+                        }
                     }
                 }
             }
-        }
 
-        // Make one batched transfer for each reward token.
-        for (uint256 r = 0; r < rewardTokens.length; r++) {
-            if (amounts[r] > 0) {
-                IERC20(rewardTokens[r]).safeTransfer(account, amounts[r]);
+            // Make one batched transfer for each reward token.
+            for (uint256 r = 0; r < rewardTokens.length; r++) {
+                if (amounts[r] > 0) {
+                    IERC20(rewardTokens[r]).safeTransfer(_account, amounts[r]);
+                }
             }
         }
     }
