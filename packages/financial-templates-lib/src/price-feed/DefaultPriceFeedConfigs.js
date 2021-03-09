@@ -335,7 +335,7 @@ const defaultConfigs = {
   },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
-    uniswapAddress: "0x25fb29D865C1356F9e95D621F21366d3a5DB6BB0",
+    uniswapAddress: "0x2b5dfb7874f685bea30b7d8426c9643a4bcf5873",
     twapLength: 7200
   },
   "GASETH-FEB21": {
@@ -563,24 +563,6 @@ const defaultConfigs = {
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
     invertPrice: true
-  },
-  // The following identifiers can be used to test how `CreatePriceFeed` interacts with this
-  // default price feed config.
-  TEST8DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST6DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  TEST18DECIMALS: {
-    // This type should map to the PriceFeedMock in `CreatePriceFeed`
-    type: "test"
-  },
-  INVALID: {
-    // This type should map to the InvalidPriceFeedMock in `CreatePriceFeed`
-    type: "invalid"
   }
 };
 

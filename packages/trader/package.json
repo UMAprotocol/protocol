@@ -6,7 +6,10 @@
   "dependencies": {
     "@uma/common": "^2.0.1",
     "async-retry": "^1.3.1",
-    "dotenv": "^8.2.0"
+    "dotenv": "^8.2.0",
+    "@uma/core": "2.0.1",
+    "@uma/financial-templates-lib": "2.0.1",
+    "@umaprotocol/ynatm": "^0.0.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
@@ -33,9 +36,9 @@
   "files": [
     "/dist/**/*.js"
   ],
-  "bin": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "main": "dist/index.js",
+  "bin": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
     "test": "hardhat test"

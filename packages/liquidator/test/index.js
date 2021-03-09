@@ -190,11 +190,11 @@ contract("index.js", function(accounts) {
         });
 
         // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
-        // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+        // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
 
       it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function() {
@@ -399,10 +399,10 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify contract type detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+        // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function() {
         spy = sinon.spy();
@@ -425,9 +425,9 @@ contract("index.js", function(accounts) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
       });
       it("Correctly rejects unknown contract types", async function() {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
@@ -562,9 +562,9 @@ contract("index.js", function(accounts) {
           endingBlock
         });
 
-        // 3rd log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // 5th log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });

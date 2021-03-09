@@ -291,6 +291,7 @@ async function run({
             contractMonitor.checkForNewDisputeEvents(),
             contractMonitor.checkForNewDisputeSettlementEvents(),
             contractMonitor.checkForNewSponsors(),
+            contractMonitor.checkForNewFundingRateUpdatedEvents(),
             // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
             balanceMonitor.checkBotBalances(),
             // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
