@@ -127,6 +127,7 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
+    // Batch claims to reduce gas versus individual submitting all claims.
     function claimMulti(Claim[] memory claims) external {
         for (uint256 i = 0; i < claims.length; i++) {
             claim(claims[i]);
