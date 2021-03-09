@@ -386,13 +386,13 @@ const defaultConfigs = {
     type: "defipulse",
     lookback: 604800,
     minTimeBetweenUpdates: 600,
-    project: "all"
+    project: "SushiSwap"
   },
   DEFI_PULSE_UNISWAP_TVL: {
     type: "defipulse",
     lookback: 604800,
     minTimeBetweenUpdates: 600,
-    project: "all"
+    project: "Uniswap"
   },
   SUSHIUNI: {
     type: "expression",
