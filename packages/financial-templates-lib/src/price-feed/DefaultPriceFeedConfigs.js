@@ -419,8 +419,8 @@ const defaultConfigs = {
   "ETH-BASIS-6M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -437,8 +437,8 @@ const defaultConfigs = {
   "ETH-BASIS-3M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -455,8 +455,8 @@ const defaultConfigs = {
   "BTC-BASIS-6M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -473,8 +473,8 @@ const defaultConfigs = {
   "BTC-BASIS-3M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
