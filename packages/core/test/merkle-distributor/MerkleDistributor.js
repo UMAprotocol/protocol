@@ -358,23 +358,6 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleProof: claimerProof
         });
 
-        // Compare gas used against benchmark implementation: Uniswap's "single window" Merkle distributor,
-        // that uses a Bitmap instead of mapping between addresses and booleans to track claims.
-        assert.equal(claimTx.receipt.gasUsed, 92062);
-      });
-      it("invalid proof", async function() {
-        // Incorrect account:
-        assert(
-          await didContractThrow(
-            merkleDistributor.claimWindow({
-              windowIndex: windowIndex,
-              account: rando,
-              amount: leaf.amount,
-              merkleProof: claimerProof
-            })
-          )
-        );
-
         // Incorrect amount:
         const invalidAmount = "1";
         await isInvalidProof({
@@ -541,11 +524,6 @@ contract("MerkleDistributor.js", function(accounts) {
         for (let claim of invalidClaims) {
           assert.isTrue(await merkleDistributor.verifyClaim(claim));
         }
-
-        const claimTx = await merkleDistributor.claimWindows(claims, rewardToken.address, leaf1.account, {
-          from: rando
-        });
-        assert.equal(claimTx.receipt.gasUsed, 131281);
 
         // But batching them together fails.
         assert(await didContractThrow(merkleDistributor.claimMulti(invalidClaims, rewardToken.address, leaf1.account)));
