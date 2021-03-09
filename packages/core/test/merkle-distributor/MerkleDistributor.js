@@ -645,7 +645,7 @@ contract("MerkleDistributor.js", function(accounts) {
       const tx = await merkleDistributor.claimMulti(batchedClaims, possibleRecipients, [rewardToken.address]);
       assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 53119);
     });
-    it("(batch claim): gas average random distribution, two trees", async function() {
+    it("(batch claim): gas average random distribution, ten trees, ten tokens", async function() {
       // TODO
     });
     // Claiming consecutive leaves should result in average gas savings
