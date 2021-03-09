@@ -40,7 +40,7 @@ describe("DevMining Rewards", function() {
       const synthPrices = SynthPrices(datasetPath);
       affiliates = DevMining({
         queries,
-        empAbi: empAbi,
+        defaultEmpAbi: empAbi,
         coingecko,
         synthPrices
       });
@@ -237,14 +237,19 @@ describe("DevMining Rewards", function() {
       const synthPrices = SynthPrices(datasetPath);
       affiliates = DevMining({
         queries,
-        empAbi,
+        defaultEmpAbi: empAbi,
         coingecko,
         synthPrices
       });
     });
     it("getAllBalanceHistory", async function() {
       this.timeout(10000);
-      const result = await affiliates.utils.getAllBalanceHistories(empContracts, startingTimestamp, endingTimestamp);
+      // this function requires input contracts with their abi in the form of [[empAddress,empAbi]], which is why we map and return [contract]
+      const result = await affiliates.utils.getAllBalanceHistories(
+        empContracts.map(contract => [contract]),
+        startingTimestamp,
+        endingTimestamp
+      );
       assert.equal(result.length, empContracts.length);
       result.forEach(([address, history]) => {
         assert.ok(address);

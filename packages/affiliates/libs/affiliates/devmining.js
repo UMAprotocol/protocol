@@ -12,16 +12,18 @@ const { EmpBalancesHistory } = require("../processors");
 const { Prices } = require("../models");
 const { DecodeLog } = require("../contracts");
 
-module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
+module.exports = ({ queries, defaultEmpAbi, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
-  assert(empAbi, "requires empAbi");
+  assert(defaultEmpAbi, "requires defaultEmpAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
 
   // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
-  async function getBalanceHistory(empAddress, start, end) {
+  async function getBalanceHistory(empAddress, start, end, empAbi = defaultEmpAbi) {
+    assert(empAddress, "requires empAddress");
+    assert(empAbi, "requires empAbi");
     // stream is a bit more optimal than waiting for entire query to return as array
     // We need all logs from beginning of time. This could be optimized by deducing or supplying
     // the specific emp start time to narrow down the query.
@@ -45,11 +47,15 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
 
     return balancesHistory;
   }
+  // This now requires an array of tuples in order to handle varying versions of the EMP
+  // [
+  //   [empAddress, empAbi]
+  // ]
   async function getAllBalanceHistories(empAddresses = [], start, end) {
     return Promise.reduce(
       empAddresses,
-      async (result, empAddress) => {
-        result.push([empAddress, await getBalanceHistory(empAddress, start, end)]);
+      async (result, [empAddress, empAbi]) => {
+        result.push([empAddress, await getBalanceHistory(empAddress, start, end, empAbi)]);
         return result;
       },
       []
@@ -144,7 +150,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
     );
     assert(
-      empValue.length === 2,
+      empValue.length >= 2,
       "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
     );
     return empValue;
@@ -300,7 +306,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
         collateralTokens,
         async address => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
       ),
-      Promise.map(
+      Promise.mapSeries(
         empWhitelist,
         // each empwhitelist contains, [empaddress,deployeraddres], so we only care about empaddress
         async ([empAddress], i) =>
@@ -315,7 +321,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       getBlocks(startTime, endTime),
       // Each empwhitelist contains, [empaddress,deployeraddres], balance histories expects array of just emp addresses
       getAllBalanceHistories(
-        empWhitelist.map(([empaddress]) => empaddress),
+        empWhitelist.map(([empaddress, , empAbi]) => [empaddress, empAbi]),
         firstEmpDate,
         endTime
       )
