@@ -58,6 +58,9 @@ function EmpBalancesHistory() {
 
   // function to snapshot the final balance
   function finalize() {
+    // No balance history was updated. returning without error.
+    if (lastBlockNumber === undefined) return;
+    // history happened to end on last block number, nothing else needed.
     if (history.has(lastBlockNumber)) return;
     history.insert({
       blockNumber: lastBlockNumber,
