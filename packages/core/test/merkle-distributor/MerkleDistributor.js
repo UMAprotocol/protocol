@@ -530,8 +530,10 @@ contract("MerkleDistributor.js", function(accounts) {
     const NUM_LEAVES = 100000;
     // # of leaves we will claim and fetch gas costs for.
     const SAMPLE_SIZE = 25;
+    let batchedClaims;
 
     beforeEach(async function() {
+      batchedClaims = [];
       windowIndex = 0;
 
       // Use same claim data for each recipient.
@@ -598,6 +600,21 @@ contract("MerkleDistributor.js", function(accounts) {
       const average = total.divn(count);
       assert.equal(Math.floor(average.toNumber()), 84831);
     });
+    it("(batch claim): gas average random distribution", async function() {
+      for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
+        const leaf = rewardLeafs[i];
+        const proof = merkleTree.getProof(leaf.leaf);
+        batchedClaims.push({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: proof
+        });
+      }
+      const tx = await merkleDistributor.claimMulti(batchedClaims);
+      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 56846);
+    });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
     // of bools.
@@ -619,6 +636,21 @@ contract("MerkleDistributor.js", function(accounts) {
       }
       const average = total.divn(count);
       assert.equal(Math.floor(average.toNumber()), 70418);
+    });
+    it("(batch claim): gas average first 25", async function() {
+      for (let i = 0; i < 25; i++) {
+        const leaf = rewardLeafs[i];
+        const proof = merkleTree.getProof(leaf.leaf);
+        batchedClaims.push({
+          windowIndex: windowIndex,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: proof
+        });
+      }
+      const tx = await merkleDistributor.claimMulti(batchedClaims);
+      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 38401);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
