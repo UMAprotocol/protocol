@@ -372,13 +372,19 @@ contract("MerkleDistributor.js", function(accounts) {
     });
     describe("(claimMulti)", function() {
       // 3 Total Trees to test multiple combinations of (1) receiver accounts and (2) reward currencies.
-      let rewardRecipients = [];
-      let rewardLeafs = [];
-      let merkleTrees = [];
+      let rewardRecipients;
+      let rewardLeafs;
+      let merkleTrees;
       let alternateRewardToken;
+      let batchedClaims;
+      let lastUsedWindowIndex;
       beforeEach(async function() {
-        // Assume we start at first windowIndex.
-        windowIndex = 0;
+        // Reset arrays between tests:
+        batchedClaims = [];
+        rewardLeafs = [];
+        rewardRecipients = [];
+        merkleTrees = [];
+        lastUsedWindowIndex = 0;
 
         // First tree reward recipients are same as other tests
         rewardRecipients.push(createRewardRecipientsFromSampleData(SamplePayouts));
@@ -442,102 +448,77 @@ contract("MerkleDistributor.js", function(accounts) {
           alternateRewardToken.address,
           merkleTrees[2].getRoot()
         );
+
+        // Construct claims for all trees assuming that each tree index is equal to its window index.
+        for (let i = 0; i < rewardLeafs.length; i++) {
+          rewardLeafs[i].forEach(leaf => {
+            batchedClaims.push({
+              windowIndex: lastUsedWindowIndex + i,
+              account: leaf.account,
+              accountIndex: leaf.accountIndex,
+              amount: leaf.amount,
+              merkleProof: merkleTrees[i].getProof(leaf.leaf)
+            });
+          });
+        }
       });
       it("Can make multiple claims in one transaction", async function() {
-        // Batch claim for account[0].
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[1][0];
+        // The same accounts make claims on all three trees, we will track their balances. This allows
+        // us to query the recipients from the first window (index 0) to track all of the recipients.
+        const allRecipients = rewardRecipients[0];
+        const balancesRewardToken = [];
+        const balancesAltRewardToken = [];
+        for (let recipient of allRecipients) {
+          const account = recipient.account;
+          balancesRewardToken.push(await rewardToken.balanceOf(account));
+          balancesAltRewardToken.push(await alternateRewardToken.balanceOf(account));
+        }
 
-        const accountBalanceBefore = await rewardToken.balanceOf(leaf1.account);
+        // Batch claim and check balances.
+        await merkleDistributor.claimMulti(batchedClaims);
+        for (let i = 0; i < allRecipients.length; i++) {
+          // Trees 0 and 1 payout in rewardToken.
+          const expectedPayoutRewardToken = toBN(rewardLeafs[0][i].amount).add(toBN(rewardLeafs[1][i].amount));
+          // Trees 2 payout in altRewardToken
+          const expectedPayoutAltRewardToken = toBN(rewardLeafs[2][i].amount);
 
-        const claims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex + 1,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[1].getProof(leaf2.leaf)
-          }
-        ];
-        await merkleDistributor.claimMulti(claims, rewardToken.address, leaf1.account, { from: rando });
-
-        // Account 0 should have gained claimed amount from both leaves.
-        const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
-        assert.equal(
-          (await rewardToken.balanceOf(leaf1.account)).toString(),
-          accountBalanceBefore.add(batchedClaimAmount).toString()
-        );
+          const account = allRecipients[i].account;
+          assert.equal(
+            balancesRewardToken[i].add(expectedPayoutRewardToken).toString(),
+            (await rewardToken.balanceOf(account)).toString()
+          );
+          assert.equal(
+            balancesAltRewardToken[i].add(expectedPayoutAltRewardToken).toString(),
+            (await alternateRewardToken.balanceOf(account)).toString()
+          );
+        }
 
         // One Claimed event should have been emitted for each batched claim.
         const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
-        assert.equal(claimedEvents.length, claims.length);
+        assert.equal(claimedEvents.length, allRecipients.length * 3);
       });
-      it("One tree: Can only batch claim for one account", async function() {
-        // Leaf 2 is for account[1], can't batch claim for two different accounts.
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[0][1];
-
-        const invalidClaims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[0].getProof(leaf2.leaf)
-          }
-        ];
-
-        // Show that verifyProof works for claims individually.
-        for (let claim of invalidClaims) {
-          assert.isTrue(await merkleDistributor.verifyClaim(claim));
-        }
-
-        // But batching them together fails.
-        assert(await didContractThrow(merkleDistributor.claimMulti(invalidClaims, rewardToken.address, leaf1.account)));
+      it("gas", async function() {
+        const txn = await merkleDistributor.claimMulti(batchedClaims);
+        assert.equal(txn.receipt.gasUsed, 1100274);
       });
-      it("Two trees: Can only batch claim for one reward currency", async function() {
-        // Leaf 2 is for a different reward token, can't batch claim for two different currencies.
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[2][0];
-
-        const invalidClaims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex + 2,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[2].getProof(leaf2.leaf)
-          }
-        ];
-
-        // Show that verifyProof works for claims individually.
-        for (let claim of invalidClaims) {
-          assert.isTrue(await merkleDistributor.verifyClaim(claim));
+      it("gas for making each claim individually", async function() {
+        let totalGas = toBN(0);
+        for (let claim of batchedClaims) {
+          const txn = await merkleDistributor.claim(claim);
+          totalGas = totalGas.addn(txn.receipt.gasUsed);
         }
-
-        // But batching them together fails.
-        assert(await didContractThrow(merkleDistributor.claimMulti(invalidClaims, rewardToken.address, leaf1.account)));
+        assert.equal(totalGas.toNumber(), 1966860);
+      });
+      it("Fails if any individual claim fails", async function() {
+        // Push an invalid claim with an incorrect window index.
+        batchedClaims.push({
+          windowIndex: 9,
+          account: rewardLeafs[0][0].account,
+          accountIndex: rewardLeafs[0][0].accountIndex,
+          amount: rewardLeafs[0][0].amount,
+          merkleProof: merkleTrees[0].getProof(rewardLeafs[0][0].leaf)
+        });
+        assert(await didContractThrow(merkleDistributor.claimMulti(batchedClaims)));
       });
     });
   });
