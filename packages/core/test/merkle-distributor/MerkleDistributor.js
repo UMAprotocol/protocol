@@ -1,4 +1,4 @@
-const { MerkleTree } = require("./merkleTree");
+const { MerkleTree } = require("@uma/merkle-distributor");
 const SamplePayouts = require("./SamplePayout.json");
 const truffleAssert = require("truffle-assertions");
 const { toBN, toWei, utf8ToHex } = web3.utils;
@@ -33,7 +33,10 @@ const createLeaf = recipient => {
     Object.keys(recipient).every(val => ["account", "amount"].includes(val)),
     "recipient does not contain required keys"
   );
-  return web3.utils.soliditySha3({ t: "address", v: recipient.account }, { t: "uint256", v: recipient.amount });
+  return Buffer.from(
+    web3.utils.soliditySha3({ t: "address", v: recipient.account }, { t: "uint256", v: recipient.amount }).slice(2),
+    "hex"
+  );
 };
 
 // Generate payouts to be used in tests using the SamplePayouts file. SamplePayouts is read in from a JsonFile.
@@ -105,7 +108,7 @@ contract("MerkleDistributor.js", function(accounts) {
       // Check on chain Window state:
       const windowState = await merkleDistributor.merkleWindows(windowIndex);
       assert.equal(windowState.start.toString(), windowStart.toString());
-      assert.equal(windowState.merkleRoot, merkleTree.getRoot());
+      assert.equal(windowState.merkleRoot, "0x" + merkleTree.getRoot().toString("hex"));
       assert.equal(windowState.rewardToken, rewardToken.address);
       assert.equal(windowState.ipfsHash, sampleIpfsHash);
 

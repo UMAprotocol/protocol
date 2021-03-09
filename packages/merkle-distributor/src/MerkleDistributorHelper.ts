@@ -80,4 +80,4 @@ async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddr
   return accountClaims;
 }
 
-export = { createMerkleDistributionProofs, getClaimsForAddress };
+export { createMerkleDistributionProofs, getClaimsForAddress };
