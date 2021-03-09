@@ -137,7 +137,7 @@ contract MerkleDistributor is Ownable {
         Claim[] memory claims,
         address rewardToken,
         address account
-    ) public {
+    ) external {
         uint256 amountToClaim = 0;
         for (uint256 i = 0; i < claims.length; i++) {
             Claim memory claim = claims[i];
@@ -152,7 +152,7 @@ contract MerkleDistributor is Ownable {
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
-    function claim(Claim memory claim) public {
+    function claim(Claim memory claim) external {
         _verifyAndMarkClaimed(claim);
         merkleWindows[claim.windowIndex].rewardToken.safeTransfer(claim.account, claim.amount);
     }
