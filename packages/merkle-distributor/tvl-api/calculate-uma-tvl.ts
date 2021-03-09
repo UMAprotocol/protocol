@@ -1,37 +1,73 @@
 const nodeFetch = require("node-fetch");
 
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, ConvertDecimals } = require("@uma/common");
 const web3 = getWeb3();
+const { toWei, toBN, fromWei } = web3.utils;
 
-const mainnetRegistry = new web3.eth.Contract(getAbi("Registry"), getAddress("Registry", 1));
-console.log("zz", getAddress("Registry", 1));
+const fixedPointAdjustment = toBN(toWei("1"));
 
-export async function calculateLatestTvl() {
-  console.log("running");
-  const registeredContracts = await fetchAllRegisteredContracts();
-  console.log("registeredContracts", registeredContracts);
-  const collateralAddresses = await fetchCollateralForFinancialContracts(registeredContracts);
+export async function calculateCurrentTvl() {
+  const allFinancialContractsData = await fetchAllFinancialContractsData();
+  const collateralInfoWithValue = await evaluateFinancialContractCollateral(allFinancialContractsData);
+  return collateralInfoWithValue
+    .reduce((accumulator: typeof web3.BN, obj: any) => {
+      return accumulator.add(toBN(toWei(obj.collateralValueInUsd)));
+    }, toBN("0"))
+    .div(fixedPointAdjustment)
+    .toString();
+}
 
-  const [balances, decimals, prices] = await Promise.all([
+export async function fetchAllFinancialContractsData() {
+  const registeredContracts: Array<string> = await fetchAllRegisteredContracts();
+  const collateralAddresses: Array<string> = await fetchCollateralForFinancialContracts(registeredContracts);
+  const { collateralBalances, collateralDecimals, collateralPrices } = await fetchCollateralInfo(
+    collateralAddresses,
+    registeredContracts
+  );
+
+  return registeredContracts
+    .map((contractAddress: string, index: number) => {
+      return {
+        contractAddress,
+        collateralAddress: collateralAddresses[index],
+        collateralBalance: collateralBalances[index],
+        collateralDecimals: collateralDecimals[index],
+        collateralPrices: collateralPrices[index]
+      };
+    })
+    .filter((financialContractObject: any) => financialContractObject.collateralBalance);
+}
+
+export async function evaluateFinancialContractCollateral(
+  collateralObjects: Array<{
+    contractAddress: string;
+    collateralAddress: string;
+    collateralBalance: string;
+    collateralDecimals: string;
+    collateralPrices: string;
+  }>
+) {
+  return collateralObjects.map((obj: any) => {
+    const collateralBalanceNormalized = ConvertDecimals(obj.collateralDecimals, 18, web3)(obj.collateralBalance);
+    const priceNormalized = toBN(toWei(obj.collateralPrices));
+    const collateralValue = collateralBalanceNormalized.mul(priceNormalized).div(fixedPointAdjustment);
+    return { ...obj, collateralValueInUsd: fromWei(collateralValue) };
+  });
+}
+
+export async function fetchCollateralInfo(collateralAddresses: Array<string>, registeredContracts: Array<string>) {
+  const [collateralBalances, collateralDecimals, collateralPrices] = await Promise.all([
     fetchCollateralBalances(collateralAddresses, registeredContracts),
     fetchCollateralDecimals(collateralAddresses),
     fetchCollateralValue(collateralAddresses)
   ]);
-  console.log("collateralAddresses", collateralAddresses);
-  console.log("balances", balances);
-  console.log("decimals", decimals);
-  console.log("prices", prices);
 
-  const fullDataStructure = registeredContracts
-    .map((contractAddress: string, index: number) => {
-      return { contractAddress, balance: balances[index], decimal: decimals[index], price: prices[index] };
-    })
-    .filter((financialContractObject: any) => financialContractObject.balance);
-  console.log("fullDataStructure", fullDataStructure);
+  return { collateralBalances, collateralDecimals, collateralPrices };
 }
 
 export async function fetchAllRegisteredContracts() {
+  const mainnetRegistry = new web3.eth.Contract(getAbi("Registry"), getAddress("Registry", 1));
   const events = await mainnetRegistry.getPastEvents("NewContractRegistered", { fromBlock: 0, toBlock: "latest" });
   return events.map((event: any) => event.returnValues.contractAddress);
 }
@@ -79,21 +115,22 @@ export async function fetchCollateralBalances(
   return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
 }
 
-export async function fetchCollateralValue(collateralTokenAddress: Array<string>) {
+export async function fetchCollateralValue(collateralTokenAddresses: Array<string>) {
   const hostApi = "https://api.coingecko.com/api/v3/simple/token_price/ethereum";
   const currency = "usd";
-  const tokenAddressArray = [...new Set(collateralTokenAddress.filter(n => n))].join("%2C");
+  const tokenAddressArray = [...new Set(collateralTokenAddresses.filter(n => n))].join("%2C");
 
   const response = await nodeFetch(`${hostApi}?contract_addresses=${tokenAddressArray}&vs_currencies=${currency}`);
   const prices = await response.json();
 
-  return collateralTokenAddress.map((address: any) => (address && prices[address] ? prices[address].usd : null));
+  return collateralTokenAddresses.map((address: string) =>
+    address && prices[address] ? prices[address].usd.toString() : null
+  );
 }
 
-// export async function calculateTvl(collateralBalances, collateralDecimals, collateralPrices) {}
-
-calculateLatestTvl()
+calculateCurrentTvl()
   .then(v => {
+    console.log("RETURN", v);
     process.exit(0);
   })
   .catch(e => {
