@@ -8,7 +8,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
    * @notice Constructs price feeds for projects listed on DefiPulse.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
-   * @param {String} apiKey DeFiPulse Data API key. Note: these API keys are rate-limited.
+   * @param {String} defipulseApiKey DeFiPulse Data API key. Note: these API keys are rate-limited.
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
@@ -20,7 +20,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
   constructor(
     logger,
     web3,
-    apiKey,
+    defipulseApiKey,
     lookback,
     networker,
     getTime,
@@ -31,7 +31,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     super();
     this.logger = logger;
     this.web3 = web3;
-    this.apiKey = apiKey;
+    this.defipulseApiKey = defipulseApiKey;
     this.lookback = lookback;
     this.networker = networker;
     this.getTime = getTime;

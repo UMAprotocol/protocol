@@ -1227,7 +1227,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     const config = {
       type: "defipulse",
       lookback: 604800,
-      apiKey: apiKey,
+      defipulseApiKey: apiKey,
       minTimeBetweenUpdates: 600,
       project: "SushiSwap"
     };
@@ -1241,12 +1241,15 @@ contract("CreatePriceFeed.js", function(accounts) {
     const validConfig = {
       type: "defipulse",
       lookback: 604800,
-      apiKey: apiKey,
+      defipulseApiKey: apiKey,
       minTimeBetweenUpdates: 600,
       project: "SushiSwap"
     };
 
-    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, defipulseApiKey: undefined }),
+      null
+    );
     assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: undefined }), null);
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
@@ -1256,5 +1259,6 @@ contract("CreatePriceFeed.js", function(accounts) {
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
       null
     );
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: "wutang" }), null);
   });
 });

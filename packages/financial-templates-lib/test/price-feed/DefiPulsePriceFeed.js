@@ -8,10 +8,10 @@ contract("DefiPulsePriceFeed.js", function() {
   let mockTime = 1611583300;
   let networker;
 
-  const apiKey = "test-api-key";
+  const defipulseApiKey = "test-api-key";
   const lookback = 3600 * 24 * 7;
   const decimals = 6;
-  const project = "Sushiswap";
+  const project = "SushiSwap";
 
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 600; // every 10 minutes
@@ -36,7 +36,7 @@ contract("DefiPulsePriceFeed.js", function() {
     defiPulsePriceFeed = new DefiPulsePriceFeed(
       dummyLogger,
       web3,
-      apiKey,
+      defipulseApiKey,
       lookback,
       networker,
       getTime,
