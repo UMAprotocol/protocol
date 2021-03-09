@@ -4,7 +4,7 @@ const Promise = require("bluebird");
 const assert = require("assert");
 const lodash = require("lodash");
 
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, ConvertDecimals } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -12,16 +12,15 @@ const { EmpBalancesHistory } = require("../processors");
 const { Prices } = require("../models");
 const { DecodeLog } = require("../contracts");
 
-module.exports = ({ queries, defaultEmpAbi, coingecko, synthPrices, firstEmpDate }) => {
+module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
-  assert(defaultEmpAbi, "requires defaultEmpAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
 
   // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
-  async function getBalanceHistory(empAddress, start, end, empAbi = defaultEmpAbi) {
+  async function getBalanceHistory(empAddress, start, end, empAbi) {
     assert(empAddress, "requires empAddress");
     assert(empAbi, "requires empAbi");
     // stream is a bit more optimal than waiting for entire query to return as array
@@ -133,10 +132,10 @@ module.exports = ({ queries, defaultEmpAbi, coingecko, synthPrices, firstEmpDate
   function calculateValueFromUsd(...args) {
     // have to do this because eslint wont pass and wont ignore unused vars. These params need to be
     // identical to calculateValue so the calls can be interchangeable.
-    const [tokens, , syntheticPrice] = args;
-    return toBN(tokens.toString())
-      .mul(toBN(toWei(syntheticPrice.toFixed(18))))
-      .div(toBN(toWei("1")));
+    const [tokens, , syntheticPrice, , syntheticTokenDecimal] = args;
+    // EMP API has changed, now synthetics are not always 18 decimals. We have to normalize them to 18 before value calc.
+    const tokensNormalized = ConvertDecimals(syntheticTokenDecimal, 18, web3)(tokens.toString());
+    return tokensNormalized.mul(toBN(toWei(syntheticPrice.toFixed(18)))).div(toBN(toWei("1")));
   }
 
   function toChecksumAddress(address) {
@@ -147,11 +146,11 @@ module.exports = ({ queries, defaultEmpAbi, coingecko, synthPrices, firstEmpDate
   function validateEmpInput(empValue) {
     assert(
       lodash.isArray(empValue),
-      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress, empAbi]"
     );
     assert(
-      empValue.length >= 2,
-      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+      empValue.length >= 3,
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress, empAbi]"
     );
     return empValue;
   }

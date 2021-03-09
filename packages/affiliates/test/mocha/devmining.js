@@ -246,7 +246,7 @@ describe("DevMining Rewards", function() {
       this.timeout(10000);
       // this function requires input contracts with their abi in the form of [[empAddress,empAbi]], which is why we map and return [contract]
       const result = await affiliates.utils.getAllBalanceHistories(
-        empContracts.map(contract => [contract]),
+        empContracts.map(contract => [contract, empAbi]),
         startingTimestamp,
         endingTimestamp
       );
@@ -305,17 +305,23 @@ describe("DevMining Rewards", function() {
     it("calculateValueFromUsd", async function() {
       // these are all stable coins so they should roughly be around 1 dollar
       // epsilon is high because variations could be nearly a dollar in any direction
-      const target = 10n ** 18n;
+      let target = 10n ** 18n;
       const syntheticPrice = 26.358177384415466;
       let result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 18, 18).toString();
       assert.equal(result, toWei(syntheticPrice.toFixed(18)));
 
+      target = 10n ** 8n;
       result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 0, 8).toString();
       assert.equal(result, toWei(syntheticPrice.toFixed(18)));
     });
     it("getBalanceHistory", async function() {
       this.timeout(10000);
-      const result = await affiliates.utils.getBalanceHistory(empContracts[0], startingTimestamp, endingTimestamp);
+      const result = await affiliates.utils.getBalanceHistory(
+        empContracts[0],
+        startingTimestamp,
+        endingTimestamp,
+        empAbi
+      );
       assert.ok(result);
       assert.ok(result.history.length());
     });
@@ -353,13 +359,17 @@ describe("DevMining Rewards", function() {
         totalRewards: devRewardsToDistribute,
         startTime: startingTimestamp,
         endTime: endingTimestamp,
-        empWhitelist: lodash.zip(empContracts, empDeployers),
+        empWhitelist: lodash.zip(
+          empContracts,
+          empDeployers,
+          empContracts.map(() => empAbi)
+        ),
         collateralTokens: collateralTokens,
         collateralTokenDecimals: collateralTokenDecimals,
         syntheticTokenDecimals: syntheticTokenDecimals
       });
 
-      assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deplorers for the 3 EMPs.
+      assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deployers for the 3 EMPs.
       assert.equal(Object.keys(result.empPayouts).length, empContracts.length); // There should be 3 emps
 
       assert.isBelow(
