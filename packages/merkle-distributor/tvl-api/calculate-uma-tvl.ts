@@ -10,18 +10,20 @@ const fixedPointAdjustment = toBN(toWei("1"));
 export async function calculateCurrentTvl() {
   const allFinancialContractsData = await fetchAllFinancialContractsData();
   const collateralInfoWithValue = await evaluateFinancialContractCollateral(allFinancialContractsData);
-  return collateralInfoWithValue
+  const currentTvl = collateralInfoWithValue
     .reduce((accumulator: typeof web3.BN, obj: any) => {
       return accumulator.add(toBN(toWei(obj.collateralValueInUsd)));
     }, toBN("0"))
     .div(fixedPointAdjustment)
     .toString();
+
+  return { currentTvl, currentTime: Math.round(new Date().getTime() / 1000) };
 }
 
 export async function fetchAllFinancialContractsData() {
   const registeredContracts: Array<string> = await fetchAllRegisteredContracts();
   const collateralAddresses: Array<string> = await fetchCollateralForFinancialContracts(registeredContracts);
-  const { collateralBalances, collateralDecimals, collateralPrices } = await fetchCollateralInfo(
+  const { collateralBalances, collateralDecimals, collateralPricesInUsd } = await fetchCollateralInfo(
     collateralAddresses,
     registeredContracts
   );
@@ -32,8 +34,8 @@ export async function fetchAllFinancialContractsData() {
         contractAddress,
         collateralAddress: collateralAddresses[index],
         collateralBalance: collateralBalances[index],
-        collateralDecimals: collateralDecimals[index],
-        collateralPrices: collateralPrices[index]
+        collateralDecimal: collateralDecimals[index],
+        collateralPriceInUsd: collateralPricesInUsd[index]
       };
     })
     .filter((financialContractObject: any) => financialContractObject.collateralBalance);
@@ -44,26 +46,26 @@ export async function evaluateFinancialContractCollateral(
     contractAddress: string;
     collateralAddress: string;
     collateralBalance: string;
-    collateralDecimals: string;
-    collateralPrices: string;
+    collateralDecimal: string;
+    collateralPriceInUsd: string;
   }>
 ) {
   return collateralObjects.map((obj: any) => {
-    const collateralBalanceNormalized = ConvertDecimals(obj.collateralDecimals, 18, web3)(obj.collateralBalance);
-    const priceNormalized = toBN(toWei(obj.collateralPrices));
+    const collateralBalanceNormalized = ConvertDecimals(obj.collateralDecimal, 18, web3)(obj.collateralBalance);
+    const priceNormalized = toBN(toWei(obj.collateralPriceInUsd));
     const collateralValue = collateralBalanceNormalized.mul(priceNormalized).div(fixedPointAdjustment);
     return { ...obj, collateralValueInUsd: fromWei(collateralValue) };
   });
 }
 
 export async function fetchCollateralInfo(collateralAddresses: Array<string>, registeredContracts: Array<string>) {
-  const [collateralBalances, collateralDecimals, collateralPrices] = await Promise.all([
+  const [collateralBalances, collateralDecimals, collateralPricesInUsd] = await Promise.all([
     fetchCollateralBalances(collateralAddresses, registeredContracts),
     fetchCollateralDecimals(collateralAddresses),
     fetchCollateralValue(collateralAddresses)
   ]);
 
-  return { collateralBalances, collateralDecimals, collateralPrices };
+  return { collateralBalances, collateralDecimals, collateralPricesInUsd };
 }
 
 export async function fetchAllRegisteredContracts() {
