@@ -557,18 +557,22 @@ contract("MerkleDistributor.js", function(accounts) {
     // # of leaves we will claim and fetch gas costs for.
     const SAMPLE_SIZE = 25;
     let batchedClaims;
+    const possibleRecipients = Object.keys(SamplePayouts.exampleRecipients);
 
     beforeEach(async function() {
       batchedClaims = [];
       windowIndex = 0;
 
-      // Use same claim data for each recipient.
-      const claimData = { account: rando, amount: 100 };
+      // Use same claim amount for each recipient since this won't affec tgas.
+      const claimData = { amount: 100 };
 
       // Construct leaves and give each a unique accountIndex:
       rewardLeafs = [];
       for (let i = 0; i < NUM_LEAVES; i++) {
-        const _claimData = { ...claimData, accountIndex: i };
+        // Claimant is one of the recipients in SampleJson. We use different recipients
+        // to test how `claimMulti` performs when paying different accounts.
+        const _claimAccount = possibleRecipients[i % possibleRecipients.length];
+        const _claimData = { ...claimData, accountIndex: i, account: _claimAccount };
         rewardLeafs.push({
           ..._claimData,
           leaf: createLeaf(_claimData)
@@ -592,7 +596,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99181);
+      assert.equal(tx.receipt.gasUsed, 99201);
     });
     it("gas deeper node", async function() {
       const leafIndex = 90000;
@@ -605,7 +609,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99201);
+      assert.equal(tx.receipt.gasUsed, 99203);
     });
     it("gas average random distribution", async function() {
       let total = toBN(0);
@@ -624,7 +628,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 84809);
+      assert.equal(Math.floor(average.toNumber()), 84813);
     });
     it("(batch claim): gas average random distribution", async function() {
       for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
@@ -638,8 +642,11 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleProof: proof
         });
       }
-      const tx = await merkleDistributor.claimMulti(batchedClaims, [rando], [rewardToken.address]);
-      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49304);
+      const tx = await merkleDistributor.claimMulti(batchedClaims, possibleRecipients, [rewardToken.address]);
+      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 53119);
+    });
+    it("(batch claim): gas average random distribution, two trees", async function() {
+      // TODO
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
@@ -661,7 +668,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 70396);
+      assert.equal(Math.floor(average.toNumber()), 75050);
     });
     it("(batch claim): gas average first 25", async function() {
       for (let i = 0; i < 25; i++) {
@@ -675,8 +682,8 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleProof: proof
         });
       }
-      const tx = await merkleDistributor.claimMulti(batchedClaims, [rando], [rewardToken.address]);
-      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 30858);
+      const tx = await merkleDistributor.claimMulti(batchedClaims, possibleRecipients, [rewardToken.address]);
+      assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 44085);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
