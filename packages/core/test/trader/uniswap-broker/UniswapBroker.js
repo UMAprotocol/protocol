@@ -36,7 +36,7 @@ const getPoolSpotPrice = async () => {
 };
 
 // For a given amountIn, return the amount out expected from a trade. aToB defines the direction of the trade. If aToB
-// is true then the trader is exchanging token a for token b. else, exchanging token b for token a.
+// is true then the trader is exchanging token a for token b. Else, exchanging token b for token a.
 const getAmountOut = async (amountIn, aToB) => {
   const [reserveIn, reserveOut] = aToB
     ? await Promise.all([tokenA.balanceOf(pairAddress), tokenB.balanceOf(pairAddress)])
