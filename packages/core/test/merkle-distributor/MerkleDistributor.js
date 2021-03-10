@@ -499,7 +499,10 @@ contract("MerkleDistributor.js", function(accounts) {
       });
       it("gas", async function() {
         const txn = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(txn.receipt.gasUsed, 1145489);
+        assert.equal(
+          Math.floor(txn.receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length)),
+          38174
+        );
       });
       it("gas for making each claim individually", async function() {
         let totalGas = toBN(0);
@@ -507,7 +510,12 @@ contract("MerkleDistributor.js", function(accounts) {
           const txn = await merkleDistributor.claim(claim);
           totalGas = totalGas.addn(txn.receipt.gasUsed);
         }
-        assert.equal(totalGas.toNumber(), 1966860);
+        assert.equal(
+          Math.floor(
+            totalGas.divn(rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length).toNumber()
+          ),
+          65562
+        );
       });
       it("Fails if any individual claim fails", async function() {
         // Push an invalid claim with an incorrect window index.
@@ -537,16 +545,16 @@ contract("MerkleDistributor.js", function(accounts) {
     const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
     // Reorders the batchedClaims array so that claims for the same
-    // account and same token are next to each other.
+    // account and same token are next to each other. Assuming that window
+    // indices and reward tokens are 1-to-1 mapped, we can "sort reward tokens"
+    // by sorting window indices.
     const sortClaimsByAccountAndToken = async () => {
       batchedClaims = batchedClaims
         .sort((a, b) => {
           return a.account - b.account;
         })
         .sort(async (a, b) => {
-          const rewardTokenA = (await merkleDistributor.merkleWindows(a.windowIndex)).rewardToken;
-          const rewardTokenB = (await merkleDistributor.merkleWindows(b.windowIndex)).rewardToken;
-          return rewardTokenA - rewardTokenB;
+          return a.windowIndex - b.windowIndex;
         });
     };
 
@@ -679,7 +687,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49951);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49943);
       });
       it("one tree: gas amortized first 25", async function() {
         for (let i = 0; i < 25; i++) {
@@ -695,7 +703,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 40822);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 40813);
       });
       it("many trees, many reward tokens: gas amortized for claims for one account", async function() {
         // This is a realistic scenario where the caller is making their claims for various
@@ -742,7 +750,7 @@ contract("MerkleDistributor.js", function(accounts) {
 
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 65758);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 65750);
       });
     });
   });

@@ -131,7 +131,8 @@ contract MerkleDistributor is Ownable {
     // together consecutive claims for the same account and same reward token to reduce gas.
     function claimMulti(Claim[] memory claims) external {
         uint256 batchedAmount = 0;
-        for (uint256 i = 0; i < claims.length; i++) {
+        uint256 claimCount = claims.length;
+        for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
             _verifyAndMarkClaimed(_claim);
             batchedAmount = batchedAmount.add(_claim.amount);
@@ -141,7 +142,7 @@ contract MerkleDistributor is Ownable {
             uint256 nextI = i.add(1);
             address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
             if (
-                nextI == claims.length || // This claim is last claim.
+                nextI == claimCount || // This claim is last claim.
                 address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken || // Next claim reward token is different than current one.
                 claims[nextI].account != _claim.account // Next claim account is different than current one.
             ) {
