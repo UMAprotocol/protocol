@@ -69,8 +69,8 @@ export async function getClaimsForAddress(merkleDistributorAddress: string, clai
   // For each claimID, check if the account has already claimed it on-chain. For this, we use the claimWindowIndex and
   // the claimer accountIndex.
   const hasAccountClaimed = await Promise.all(
-    potentialClaimWindowsIds.map((claimWindowIndex: string, index: number) =>
-      !claimsProofs[index].error
+    potentialClaimWindowsIds.map((claimWindowIndex: any, index: number) =>
+      !claimsProofs[index].errors
         ? merkleDistributorContract.isClaimed(claimWindowIndex, claimsProofs[index].accountIndex)
         : null
     )
@@ -78,8 +78,8 @@ export async function getClaimsForAddress(merkleDistributorAddress: string, clai
 
   // Finally, join the cloudflare and on-chain data to return all claims for the provided account. Filter out any claims
   // that contain error. This would occur if the account was not part of a particular claim window on this chainId.
-  const accountClaims = claimsProofs
-    .filter((claim: any) => !claim.error)
+  return claimsProofs
+    .filter((claim: any) => !claim.errors)
     .map((claim: any) => {
       return {
         ...claim,
@@ -87,5 +87,4 @@ export async function getClaimsForAddress(merkleDistributorAddress: string, clai
         hasClaimed: hasAccountClaimed[claim.windowIndex]
       };
     });
-  return accountClaims;
 }

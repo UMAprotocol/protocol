@@ -12,13 +12,8 @@ export default (pinataApiKey: string | undefined, pinataApiSecret: string | unde
   }
 
   async function viewFile(fileHash: string) {
-    try {
-      const response = await nodeFetch(`"https://ipfs.infura.io:5001/api/v0/get?arg=${fileHash}`);
-      const json = await response.json();
-      return json;
-    } catch (error) {
-      throw { message: "Something went wrong fetching your file!", error: new Error(error) };
-    }
+    const response = await nodeFetch(`"https://ipfs.infura.io:5001/api/v0/get?arg=${fileHash}`);
+    return await response.json();
   }
 
   async function pinHash(hashToPin: string) {

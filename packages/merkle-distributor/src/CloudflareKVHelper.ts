@@ -14,7 +14,6 @@ export default (accountId: string | undefined, namespaceId: string | undefined, 
   // Bulk add to Cloudflare KV. Data should be a stringified array of [{key:<your-key>,value:<your-value>}]
   async function _addDataToKV(data: string) {
     const response = await nodeFetch(`${baseUrl}/bulk`, { method: "put", body: data, headers: authenticatedHeader });
-    if (response.status != 200) throw { response, error: new Error("Something went wrong adding data to KV") };
     const jsonResponse = await response.json();
     return jsonResponse;
   }
@@ -22,7 +21,6 @@ export default (accountId: string | undefined, namespaceId: string | undefined, 
   // Fetched the data stored at a particular key from cloudflare. Throws on error. Errors include key not found.
   async function _fetchDataFromKV(key: string) {
     const response = await nodeFetch(`${baseUrl}/values/${key}`, { method: "get", headers: authenticatedHeader });
-    if (response.status != 200) throw { response, error: new Error("Something went wrong fetching data from KV") };
     return await response.json();
   }
 
@@ -74,18 +72,10 @@ export default (accountId: string | undefined, namespaceId: string | undefined, 
   }
 
   async function fetchClaimsFromKV(chainId: number, windowIndex: number, account: string) {
-    try {
-      return await _fetchDataFromKV(`${chainId}:${windowIndex}:${account}`);
-    } catch (error) {
-      return error;
-    }
+    return await _fetchDataFromKV(`${chainId}:${windowIndex}:${account}`);
   }
   async function fetchChainWindowIndicesFromKV(chainId: number) {
-    try {
-      return await _fetchDataFromKV(`${chainId}`);
-    } catch (error) {
-      return error;
-    }
+    return await _fetchDataFromKV(`${chainId}`);
   }
 
   return { addClaimsToKV, fetchClaimsFromKV, fetchChainWindowIndicesFromKV, updateChainWindowIndicesFromKV };
