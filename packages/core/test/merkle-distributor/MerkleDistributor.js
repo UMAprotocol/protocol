@@ -119,8 +119,6 @@ contract("MerkleDistributor.js", function(accounts) {
       const windowState = await merkleDistributor.merkleWindows(windowIndex);
 
       assert.equal(windowState.merkleRoot, "0x" + merkleTree.getRoot().toString("hex"));
-      assert.equal(windowState.merkleRoot, merkleTree.getRoot());
-
       assert.equal(windowState.rewardToken, rewardToken.address);
       assert.equal(windowState.ipfsHash, sampleIpfsHash);
 
@@ -247,7 +245,7 @@ contract("MerkleDistributor.js", function(accounts) {
           },
           { from: rando }
         );
-        assert.equal(claimTx.receipt.gasUsed, 87262);
+        assert.equal(claimTx.receipt.gasUsed, 87248);
       });
       it("Can claim on another account's behalf", async function() {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
@@ -441,12 +439,14 @@ contract("MerkleDistributor.js", function(accounts) {
         await merkleDistributor.setWindow(
           SamplePayouts.totalRewardsDistributed,
           rewardToken.address,
-          merkleTrees[0].getRoot()
+          merkleTrees[0].getRoot(),
+          sampleIpfsHash
         );
         await merkleDistributor.setWindow(
           String(Number(SamplePayouts.totalRewardsDistributed) * 2),
           rewardToken.address,
-          merkleTrees[1].getRoot()
+          merkleTrees[1].getRoot(),
+          sampleIpfsHash
         );
 
         // Third Merkle tree uses different currency:
@@ -459,7 +459,8 @@ contract("MerkleDistributor.js", function(accounts) {
         await merkleDistributor.setWindow(
           String(Number(SamplePayouts.totalRewardsDistributed) * 4),
           alternateRewardToken.address,
-          merkleTrees[2].getRoot()
+          merkleTrees[2].getRoot(),
+          sampleIpfsHash
         );
       });
       it("Can make multiple claims in one transaction", async function() {
@@ -589,7 +590,12 @@ contract("MerkleDistributor.js", function(accounts) {
       const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
       // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindow(totalRewardsDistributed, rewardToken.address, merkleTree.getRoot());
+      await merkleDistributor.setWindow(
+        totalRewardsDistributed,
+        rewardToken.address,
+        merkleTree.getRoot(),
+        sampleIpfsHash
+      );
     });
     it("gas middle node", async function() {
       const leafIndex = 50000;
@@ -602,7 +608,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99203);
+      assert.equal(tx.receipt.gasUsed, 99189);
     });
     it("gas deeper node", async function() {
       const leafIndex = 90000;
@@ -615,7 +621,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99223);
+      assert.equal(tx.receipt.gasUsed, 99209);
     });
     it("gas average random distribution", async function() {
       let total = toBN(0);
@@ -634,7 +640,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 84831);
+      assert.equal(Math.floor(average.toNumber()), 84817);
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
@@ -656,7 +662,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 70418);
+      assert.equal(Math.floor(average.toNumber()), 70404);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {

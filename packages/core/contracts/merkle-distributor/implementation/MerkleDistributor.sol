@@ -29,8 +29,6 @@ contract MerkleDistributor is Ownable {
         bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
-        // Merkle root describing the distribution.
-        bytes32 merkleRoot;
         // IPFS hash of the merkle tree. Can by used to independently fetch recipient proofs.
         string ipfsHash;
     }
@@ -110,7 +108,7 @@ contract MerkleDistributor is Ownable {
         uint256 indexToSet = lastCreatedIndex;
         lastCreatedIndex = indexToSet.add(1);
 
-        _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot,ipfsHash);
+        _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot, ipfsHash);
     }
 
     // Delete merkle root at window index. Likely to be followed by a withdrawRewards call to clear contract state.
