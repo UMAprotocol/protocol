@@ -499,7 +499,7 @@ contract("MerkleDistributor.js", function(accounts) {
       });
       it("gas", async function() {
         const txn = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(txn.receipt.gasUsed, 1100274);
+        assert.equal(txn.receipt.gasUsed, 1145489);
       });
       it("gas for making each claim individually", async function() {
         let totalGas = toBN(0);
@@ -535,6 +535,20 @@ contract("MerkleDistributor.js", function(accounts) {
     // Use same claim amount for each recipient since this won't affect gas.
     const claimData = { amount: 100 };
     const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
+
+    // Reorders the batchedClaims array so that claims for the same
+    // account and same token are next to each other.
+    const sortClaimsByAccountAndToken = async () => {
+      batchedClaims = batchedClaims
+        .sort((a, b) => {
+          return a.account - b.account;
+        })
+        .sort(async (a, b) => {
+          const rewardTokenA = (await merkleDistributor.merkleWindows(a.windowIndex)).rewardToken;
+          const rewardTokenB = (await merkleDistributor.merkleWindows(b.windowIndex)).rewardToken;
+          return rewardTokenA - rewardTokenB;
+        });
+    };
 
     beforeEach(async function() {
       batchedClaims = [];
@@ -651,7 +665,7 @@ contract("MerkleDistributor.js", function(accounts) {
       });
     });
     describe("(claimMulti)", function() {
-      it("gas amortized random distribution", async function() {
+      it("one tree: gas amortized random distribution", async function() {
         for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
           const leaf = rewardLeafs[i];
           const proof = merkleTree.getProof(leaf.leaf);
@@ -663,10 +677,11 @@ contract("MerkleDistributor.js", function(accounts) {
             merkleProof: proof
           });
         }
+        await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 56850);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49951);
       });
-      it("gas amortized first 25", async function() {
+      it("one tree: gas amortized first 25", async function() {
         for (let i = 0; i < 25; i++) {
           const leaf = rewardLeafs[i];
           const proof = merkleTree.getProof(leaf.leaf);
@@ -678,10 +693,11 @@ contract("MerkleDistributor.js", function(accounts) {
             merkleProof: proof
           });
         }
+        await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 44561);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 40822);
       });
-      it("gas amortized one account across multiple windows with different reward tokens", async function() {
+      it("many trees, many reward tokens: gas amortized for claims for one account", async function() {
         // This is a realistic scenario where the caller is making their claims for various
         // reward currencies across several windows.
 
@@ -691,16 +707,19 @@ contract("MerkleDistributor.js", function(accounts) {
         const rewardTokens = [];
         rewardTokens.push(rewardToken.address);
         for (let i = 1; i < windows; i++) {
-          const newRewardToken = await Token.new(`UMA KPI Options #${i}`, `uKPI${i}`, 18, {
-            from: contractCreator
-          });
-          await newRewardToken.addMember(1, contractCreator, { from: contractCreator });
-          await newRewardToken.mint(contractCreator, MAX_UINT_VAL, { from: contractCreator });
-          await newRewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, { from: contractCreator });
-          rewardTokens.push(newRewardToken.address);
+          // Create a new reward token every other claim:
+          if (i % 2 === 0) {
+            const newRewardToken = await Token.new(`UMA KPI Options #${i}`, `uKPI${i}`, 18, {
+              from: contractCreator
+            });
+            await newRewardToken.addMember(1, contractCreator, { from: contractCreator });
+            await newRewardToken.mint(contractCreator, MAX_UINT_VAL, { from: contractCreator });
+            await newRewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, { from: contractCreator });
+            rewardTokens.push(newRewardToken.address);
+          }
           await merkleDistributor.setWindow(
             totalRewardsDistributed,
-            newRewardToken.address,
+            rewardTokens[rewardTokens.length - 1],
             merkleTree.getRoot()
             // Note re-use the same merkle tree since the claim amounts and recipients are the same
           );
@@ -721,8 +740,9 @@ contract("MerkleDistributor.js", function(accounts) {
           });
         }
 
+        await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / windows), 80446);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 65758);
       });
     });
   });

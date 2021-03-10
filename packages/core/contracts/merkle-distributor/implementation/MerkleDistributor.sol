@@ -127,18 +127,36 @@ contract MerkleDistributor is Ownable {
      *
      ****************************/
 
-    // Batch claims to reduce gas versus individual submitting all claims.
+    // Batch claims to reduce gas versus individual submitting all claims. Optimistically tries to batch
+    // together consecutive claims for the same account and same reward token to reduce gas.
     function claimMulti(Claim[] memory claims) external {
+        uint256 batchedAmount = 0;
         for (uint256 i = 0; i < claims.length; i++) {
-            claim(claims[i]);
+            Claim memory _claim = claims[i];
+            _verifyAndMarkClaimed(_claim);
+            batchedAmount = batchedAmount.add(_claim.amount);
+
+            // If the next claim is NOT the same account or the same token (or this claim is the last one),
+            // then disburse the `batchedAmount` to the current claim's account for the current claim's reward token.
+            uint256 nextI = i.add(1);
+            address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
+            if (
+                nextI == claims.length || // This claim is last claim.
+                address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken || // Next claim reward token is different than current one.
+                claims[nextI].account != _claim.account // Next claim account is different than current one.
+            ) {
+                uint256 amountToDisburse = batchedAmount;
+                batchedAmount = 0;
+                IERC20(currentRewardToken).safeTransfer(_claim.account, amountToDisburse);
+            }
         }
     }
 
     // Claim `amount` of reward tokens for `account`. If `amount` and `account` do not exactly match the values stored
     // in the merkle proof for this `windowIndex` this method will revert.
-    function claim(Claim memory claim) public {
-        _verifyAndMarkClaimed(claim);
-        merkleWindows[claim.windowIndex].rewardToken.safeTransfer(claim.account, claim.amount);
+    function claim(Claim memory _claim) public {
+        _verifyAndMarkClaimed(_claim);
+        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
 
     // Returns True if the claim for `accountIndex` has already been completed for the Merkle
@@ -152,9 +170,9 @@ contract MerkleDistributor is Ownable {
     }
 
     // Checks {account, amount} against Merkle root at given window index.
-    function verifyClaim(Claim memory claim) public view returns (bool valid) {
-        bytes32 leaf = keccak256(abi.encodePacked(claim.account, claim.amount, claim.accountIndex));
-        return MerkleProof.verify(claim.merkleProof, merkleWindows[claim.windowIndex].merkleRoot, leaf);
+    function verifyClaim(Claim memory _claim) public view returns (bool valid) {
+        bytes32 leaf = keccak256(abi.encodePacked(_claim.account, _claim.amount, _claim.accountIndex));
+        return MerkleProof.verify(_claim.merkleProof, merkleWindows[_claim.windowIndex].merkleRoot, leaf);
     }
 
     /****************************
@@ -190,21 +208,21 @@ contract MerkleDistributor is Ownable {
     }
 
     // Verify claim is valid and mark it as completed in this contract.
-    function _verifyAndMarkClaimed(Claim memory claim) private {
+    function _verifyAndMarkClaimed(Claim memory _claim) private {
         // Check claimed proof against merkle window at given index.
-        require(verifyClaim(claim), "Incorrect merkle proof");
+        require(verifyClaim(_claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
-        require(!isClaimed(claim.windowIndex, claim.accountIndex), "Account has already claimed for this window");
+        require(!isClaimed(_claim.windowIndex, _claim.accountIndex), "Account has already claimed for this window");
 
         // Proof is correct and claim has not occurred yet, mark claimed complete.
-        _setClaimed(claim.windowIndex, claim.accountIndex);
+        _setClaimed(_claim.windowIndex, _claim.accountIndex);
         emit Claimed(
             msg.sender,
-            claim.windowIndex,
-            claim.account,
-            claim.accountIndex,
-            claim.amount,
-            address(merkleWindows[claim.windowIndex].rewardToken)
+            _claim.windowIndex,
+            _claim.account,
+            _claim.accountIndex,
+            _claim.amount,
+            address(merkleWindows[_claim.windowIndex].rewardToken)
         );
     }
 }
