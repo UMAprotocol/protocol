@@ -8,11 +8,12 @@ import "../../../common/implementation/Lockable.sol";
  * @title CoveredCall Financial Product Library
  * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract. The
  * contract holds say 1 WETH in collateral and pays out a portion of that, at expiry, if ETHUSD is above a set strike. If
- * ETHUSD is below that strike, the contract pays out 0.
- * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH
+ * ETHUSD is below that strike, the contract pays out 0. The fraction paid out if above the strike is defined by
+ * (oraclePrice - strikePrice) / oraclePrice;
+ * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH.
  * If ETHUSD = $600 at expiry, the call is $200 in the money, and the contract pays out 0.333 WETH (worth $200).
  * If ETHUSD = $800 at expiry, the call is $400 in the money, and the contract pays out 0.5 WETH (worth $400).
- * If ETHUSD < $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
+ * If ETHUSD =< $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
  */
 contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
@@ -70,17 +71,17 @@ contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable,
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
             return FixedPoint.fromUnscaledUint(1);
         }
-        if (oraclePrice.isLessThan(strike)) {
-            return 0;
+        if (oraclePrice.isLessThanOrEqual(strike)) {
+            return FixedPoint.fromUnscaledUint(0);
         } else {
             // Token expires to be worth the fraction of an collateral token that's in the money.
             // eg if ETHUSD is $500 and strike is $400, token is redeemable for 100/500 = 0.2 WETH (worth $100).
-            return (orcalePrice.sub(strike)).div(oraclePrice);
+            return (oraclePrice.sub(strike)).div(oraclePrice);
         }
     }
 
     /**
-     * @notice Returns a transformed collateral requirement by applying the cover call note payout structure.
+     * @notice Returns a transformed collateral requirement by applying the cover call payout structure.
      * @param oraclePrice price from the oracle to transform the collateral requirement.
      * @param collateralRequirement financial products collateral requirement to be scaled according to price and strike.
      * @return transformedCollateralRequirement the input collateral requirement with the transformation logic applied to it.
