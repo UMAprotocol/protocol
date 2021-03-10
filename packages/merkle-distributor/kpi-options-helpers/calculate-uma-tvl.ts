@@ -58,6 +58,7 @@ export function evaluateFinancialContractCollateral(
     const collateralBalanceNormalized = ConvertDecimals(obj.collateralDecimal, 18, web3)(obj.collateralBalance);
     const priceNormalized = toBN(toWei(obj.collateralPriceInUsd));
     const collateralValue = collateralBalanceNormalized.mul(priceNormalized).div(fixedPointAdjustment);
+
     return { ...obj, collateralValueInUsd: fromWei(collateralValue) };
   });
 }
