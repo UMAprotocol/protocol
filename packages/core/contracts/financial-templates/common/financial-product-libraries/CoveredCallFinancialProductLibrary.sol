@@ -16,7 +16,7 @@ import "../../../common/implementation/Lockable.sol";
  * If ETHUSD =< $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
  */
 contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
-    mapping(address => FixedPoint.Unsigned) financialProductStrikes;
+    mapping(address => FixedPoint.Unsigned) private financialProductStrikes;
 
     /**
      * @notice Enables the deployer of the library to set the strike price for an associated financial product.
@@ -76,6 +76,8 @@ contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable,
         } else {
             // Token expires to be worth the fraction of an collateral token that's in the money.
             // eg if ETHUSD is $500 and strike is $400, token is redeemable for 100/500 = 0.2 WETH (worth $100).
+            // Note: oraclePrice cannot be 0 here because it would always satisfy the if above because 0 <= x is always
+            // true.
             return (oraclePrice.sub(strike)).div(oraclePrice);
         }
     }
