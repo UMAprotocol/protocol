@@ -1,12 +1,15 @@
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
-const { DecodeAttribution, isAddress } = require("./contracts");
+const { DecodeAttribution, isAddress, toChecksumAddress } = require("./contracts");
 
-function EmpAttributions(empAbi, defaultAddress) {
+// Requires empAbi and a defaultAddress to set un attributed tags to
+// Optionally include the attributions model, which is required to have a single function:
+// "attribute(userAddress,tagAddress,tokenAmount)". By default this will be a SharedAttributions model.
+function EmpAttributions(empAbi, defaultAddress, attributions) {
   assert(empAbi, "requires empAbi");
   assert(defaultAddress, "requires defaultAddress");
   // stores complete balances for all events
-  const attributions = SharedAttributions();
+  attributions = attributions || SharedAttributions();
   const decoder = DecodeAttribution(empAbi);
 
   function handleTransaction(transaction) {
@@ -16,7 +19,8 @@ function EmpAttributions(empAbi, defaultAddress) {
     let attributionAddress = defaultAddress;
     // validate the tag is an address, otherwise fallback to default address
     // currently we will only accept valid addresses as a tag, this may change in future.
-    if (isAddress(tag)) attributionAddress = tag;
+    // Tagged addresses unfortunately always come in lower cased. We cast it to a checksum address if valid.
+    if (isAddress(tag)) attributionAddress = toChecksumAddress(tag);
     const user = transaction.from_address;
     const [, tokenAmount] = transaction.args;
     attributions.attribute(user, attributionAddress, tokenAmount.toString());
