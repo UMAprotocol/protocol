@@ -139,7 +139,7 @@ contract MerkleDistributor is Ownable {
 
             // If the next claim is NOT the same account or the same token (or this claim is the last one),
             // then disburse the `batchedAmount` to the current claim's account for the current claim's reward token.
-            uint256 nextI = i.add(1);
+            uint256 nextI = i + 1;
             address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
             if (
                 nextI == claimCount || // This claim is last claim.
