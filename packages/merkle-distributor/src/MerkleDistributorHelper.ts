@@ -4,11 +4,6 @@ const { getAbi } = require("@uma/core");
 
 import MerkleTree from "./MerkleTree";
 import CloudflareHelper from "./CloudflareKVHelper";
-const cfHelper = CloudflareHelper(
-  process.env.CLOUDFLARE_ACCOUNT_ID,
-  process.env.CLOUDFLARE_NAMESPACE_ID,
-  process.env.CLOUDFLARE_TOKEN
-);
 
 // keccak256(abi.encode(account, amount))
 export function createLeaf(account: string, amount: string, accountIndex: number) {
@@ -45,6 +40,13 @@ export function createMerkleDistributionProofs(
 }
 
 export async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddress: string, chainId: number) {
+  // Instantiate the cloudflare helper.
+  const cfHelper = CloudflareHelper(
+    process.env.CLOUDFLARE_ACCOUNT_ID,
+    process.env.CLOUDFLARE_NAMESPACE_ID,
+    process.env.CLOUDFLARE_TOKEN
+  );
+
   // Create a new ethers contract instance to fetch on-chain contract information.
   const infuraApiKey = process.env.INFURA_API_KEY || null;
   const ethersProvider = new ethers.providers.InfuraProvider(chainId, infuraApiKey);
