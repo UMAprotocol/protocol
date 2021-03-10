@@ -3,20 +3,28 @@ const { ethers } = require("ethers");
 const { getAbi } = require("@uma/core");
 
 import MerkleTree from "./MerkleTree";
-const CloudflareKVHelper = require("../src/CloudflareKVHelper");
+import CloudflareHelper from "./CloudflareKVHelper";
+const cfHelper = CloudflareHelper(
+  process.env.CLOUDFLARE_ACCOUNT_ID,
+  process.env.CLOUDFLARE_NAMESPACE_ID,
+  process.env.CLOUDFLARE_TOKEN
+);
 
 // keccak256(abi.encode(account, amount))
-const createLeaf = (account: string, amount: string) => {
-  return Buffer.from(ethers.utils.solidityKeccak256(["address", "uint256"], [account, amount]).substr(2), "hex");
-};
+export function createLeaf(account: string, amount: string, accountIndex: number) {
+  return Buffer.from(
+    ethers.utils.solidityKeccak256(["address", "uint256", "uint256"], [account, amount, accountIndex]).substr(2),
+    "hex"
+  );
+}
 
-function createMerkleDistributionProofs(
-  recipientsData: { [key: string]: { amount: string; metaData: any } },
+export function createMerkleDistributionProofs(
+  recipientsData: { [key: string]: { amount: string; metaData: any; accountIndex: number } },
   windowIndex: number
 ) {
   // Build an array of leafs for each recipient This is simply a hash of the address and recipient amount.
   const recipientLeafs = Object.keys(recipientsData).map((recipientAddress: string) =>
-    createLeaf(recipientAddress, recipientsData[recipientAddress].amount)
+    createLeaf(recipientAddress, recipientsData[recipientAddress].amount, recipientsData[recipientAddress].accountIndex)
   );
 
   // Build the merkle proof from the leafs.
@@ -26,6 +34,7 @@ function createMerkleDistributionProofs(
   const recipientsDataWithProof: any = {};
   Object.keys(recipientsData).forEach((recipientAddress, index) => {
     recipientsDataWithProof[recipientAddress] = {};
+    recipientsDataWithProof[recipientAddress].accountIndex = recipientsData[recipientAddress].accountIndex;
     recipientsDataWithProof[recipientAddress].amount = recipientsData[recipientAddress].amount;
     recipientsDataWithProof[recipientAddress].metaData = recipientsData[recipientAddress].metaData;
     recipientsDataWithProof[recipientAddress].windowIndex = windowIndex;
@@ -35,7 +44,7 @@ function createMerkleDistributionProofs(
   return { recipientsDataWithProof, merkleRoot: merkleTree.getHexRoot() };
 }
 
-async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddress: string, chainId: number) {
+export async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddress: string, chainId: number) {
   // Create a new ethers contract instance to fetch on-chain contract information.
   const infuraApiKey = process.env.INFURA_API_KEY || null;
   const ethersProvider = new ethers.providers.InfuraProvider(chainId, infuraApiKey);
@@ -44,27 +53,28 @@ async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddr
 
   // Fetch the information about a particular chainId. This will contain the window IDs, the reward token & IPFS hash
   // for all claim windows on a particular chain.
-  const chainWIndowInformation = await CloudflareKVHelper.fetchChainWindowIndicesFromKV(chainId);
+  const chainWIndowInformation = await cfHelper.fetchChainWindowIndicesFromKV(chainId);
   if (chainWIndowInformation.error) return chainWIndowInformation;
 
   // Extract the windowIDs from the chain information. These are the unique identifiers for each claims window.
   const potentialClaimWindowsIds = Object.keys(chainWIndowInformation);
 
-  // For each claimId, fetch the accounts information form cloudflare.
-  const claimsProofsPromises = potentialClaimWindowsIds.map((claimWindowIndex: string) =>
-    CloudflareKVHelper.fetchClaimsFromKV(chainId, Number(claimWindowIndex), claimerAddress)
+  // For each claimId, fetch the accounts information form cloudflare. This includes the proofs and metadata.
+  const claimsProofs = await Promise.all(
+    potentialClaimWindowsIds.map((claimWindowIndex: string) =>
+      cfHelper.fetchClaimsFromKV(chainId, Number(claimWindowIndex), claimerAddress)
+    )
   );
 
-  // For each claimID, check if the account has already claimed it on-chain.
-  const hasAccountClaimedPromises = potentialClaimWindowsIds.map((claimWindowIndex: string) =>
-    merkleDistributorContract.claimed(claimWindowIndex, claimerAddress)
+  // For each claimID, check if the account has already claimed it on-chain. For this, we use the claimWindowIndex and
+  // the claimer accountIndex.
+  const hasAccountClaimed = await Promise.all(
+    potentialClaimWindowsIds.map((claimWindowIndex: string, index: number) =>
+      !claimsProofs[index].error
+        ? merkleDistributorContract.isClaimed(claimWindowIndex, claimsProofs[index].accountIndex)
+        : null
+    )
   );
-
-  // Yield all claims calls in parallel.
-  const [claimsProofs, contractClaimsProofs] = await Promise.all([
-    Promise.all(claimsProofsPromises),
-    Promise.all(hasAccountClaimedPromises)
-  ]);
 
   // Finally, join the cloudflare and on-chain data to return all claims for the provided account. Filter out any claims
   // that contain error. This would occur if the account was not part of a particular claim window on this chainId.
@@ -74,10 +84,8 @@ async function getClaimsForAddress(merkleDistributorAddress: string, claimerAddr
       return {
         ...claim,
         ...chainWIndowInformation[claim.windowIndex.toString()],
-        hasClaimed: contractClaimsProofs[claim.windowIndex]
+        hasClaimed: hasAccountClaimed[claim.windowIndex]
       };
     });
   return accountClaims;
 }
-
-export { createMerkleDistributionProofs, getClaimsForAddress };

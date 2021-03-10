@@ -5211,6 +5211,36 @@
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
 
+"@uma/core-2-0-0@npm:@uma/core@2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-2.0.0.tgz#9e014d0c80b076858afd58685e737d545ab7f1b7"
+  integrity sha512-suWin2tNR4o4uKicvLGdURIkCds82rFHDIq9qS3XyEl6zkB/9DUOIGhsSUKHkTIzhIcNiDSfrYJ9Nu4DaU4LBg==
+  dependencies:
+    "@truffle/contract" "^4.2.20"
+    "@uma/common" "^2.0.0"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+    "@uma/core-1-2-0" "npm:@uma/core@1.2.0"
+    "@uma/core-1-2-1" "npm:@uma/core@1.2.1"
+    "@uma/core-1-2-2" "npm:@uma/core@1.2.2"
+    "@uniswap/lib" "4.0.1-alpha"
+    "@uniswap/v2-core" "1.0.0"
+    "@uniswap/v2-periphery" "1.1.0-beta.0"
+
+"@uma/core-2-0-1@npm:@uma/core@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-2.0.1.tgz#ad710e40fda7ff36ef4c14a100faf45370d8e642"
+  integrity sha512-MsGsB8hvYTeftyKc+8JWhN5AkkZ4pvgC9qhc5JZ3g9mVCVgkZLwHVNwGt+/SsOUa1KkSNzpY3RYXVz6pfLmNOw==
+  dependencies:
+    "@truffle/contract" "^4.2.20"
+    "@uma/common" "^2.0.1"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+    "@uma/core-1-2-0" "npm:@uma/core@1.2.0"
+    "@uma/core-1-2-1" "npm:@uma/core@1.2.1"
+    "@uma/core-1-2-2" "npm:@uma/core@1.2.2"
+    "@uniswap/lib" "4.0.1-alpha"
+    "@uniswap/v2-core" "1.0.0"
+    "@uniswap/v2-periphery" "1.1.0-beta.0"
+
 "@umaprotocol/react-plugin@^1.5.5":
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/@umaprotocol/react-plugin/-/react-plugin-1.5.5.tgz#c378fe8534c9df9a0ec02e16250fd59891cbb37f"
