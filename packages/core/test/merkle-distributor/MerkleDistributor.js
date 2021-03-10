@@ -558,13 +558,13 @@ contract("MerkleDistributor.js", function(accounts) {
     const SAMPLE_SIZE = 25;
     let batchedClaims;
     const possibleRecipients = Object.keys(SamplePayouts.exampleRecipients);
+    // Use same claim amount for each recipient since this won't affec tgas.
+    const claimData = { amount: 100 };
+    const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
     beforeEach(async function() {
       batchedClaims = [];
       windowIndex = 0;
-
-      // Use same claim amount for each recipient since this won't affec tgas.
-      const claimData = { amount: 100 };
 
       // Construct leaves and give each a unique accountIndex:
       rewardLeafs = [];
@@ -579,8 +579,6 @@ contract("MerkleDistributor.js", function(accounts) {
         });
       }
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
-
-      const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
       // Seed the merkleDistributor with the root of the tree and additional information.
       await merkleDistributor.setWindow(totalRewardsDistributed, rewardToken.address, merkleTree.getRoot());
@@ -645,8 +643,48 @@ contract("MerkleDistributor.js", function(accounts) {
       const tx = await merkleDistributor.claimMulti(batchedClaims, possibleRecipients, [rewardToken.address]);
       assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 53119);
     });
-    it("(batch claim): gas average random distribution, ten trees, ten tokens", async function() {
-      // TODO
+    it("(batch claim): gas average one account across multiple windows with different reward tokens", async function() {
+      // This is a realistic scenario where the caller is making their claims for various
+      // reward currencies across several windows.
+
+      // Create new windows with new reward tokens.
+      // Note: we start index `i=1` because we've already created a window.
+      const windows = 10;
+      const rewardTokens = [];
+      rewardTokens.push(rewardToken.address);
+      for (let i = 1; i < windows; i++) {
+        const newRewardToken = await Token.new(`UMA KPI Options #${i}`, `uKPI${i}`, 18, {
+          from: contractCreator
+        });
+        await newRewardToken.addMember(1, contractCreator, { from: contractCreator });
+        await newRewardToken.mint(contractCreator, MAX_UINT_VAL, { from: contractCreator });
+        await newRewardToken.approve(merkleDistributor.address, MAX_UINT_VAL, { from: contractCreator });
+        rewardTokens.push(newRewardToken.address);
+        await merkleDistributor.setWindow(
+          totalRewardsDistributed,
+          newRewardToken.address,
+          merkleTree.getRoot()
+          // Note re-use the same merkle tree since the claim amounts and recipients are the same
+        );
+      }
+
+      // Construct batched claims across windows for one account.
+      const accountIndex = 1;
+      for (let i = 0; i < windows; i++) {
+        const leaf = rewardLeafs[accountIndex];
+        const proof = merkleTree.getProof(leaf.leaf);
+        // Note: the proof can be re-used for each window since the accounts and amounts are identical.
+        batchedClaims.push({
+          windowIndex: windowIndex + i,
+          account: leaf.account,
+          accountIndex: leaf.accountIndex,
+          amount: leaf.amount,
+          merkleProof: proof
+        });
+      }
+
+      const tx = await merkleDistributor.claimMulti(batchedClaims, [possibleRecipients[accountIndex]], rewardTokens);
+      assert.equal(Math.floor(tx.receipt.gasUsed / windows), 87554);
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
